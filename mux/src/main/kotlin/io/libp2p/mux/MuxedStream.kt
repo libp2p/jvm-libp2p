@@ -1,7 +1,7 @@
 package io.libp2p.mux
 
 import java.util.Date
-import org.apache.tuweni.bytes.Bytes
+import io.netty.buffer.ByteBuf
 /**
  * MuxedStream is a bidirectional io pipe within a connection.
  * Adapted from Go reference implementation:
@@ -9,9 +9,9 @@ import org.apache.tuweni.bytes.Bytes
  */
 interface MuxedStream {
 
-    fun read(): Bytes
+    fun read(): ByteBuf
 
-    fun write(bytes: Bytes): Long
+    fun write(bytes: ByteBuf): Long
 
     fun close(): Boolean
 
@@ -21,5 +21,5 @@ interface MuxedStream {
 
     fun setReadDeadline(date: Date)
 
-    fun setWriteDeadcline(date: Date)
+    fun setWriteDeadline(date: Date)
 }

@@ -1,5 +1,5 @@
 dependencyManagement {
   dependencies {
-    dependencySet(group: 'org.apache.tuweni', version: '0.8.0-SNAPSHOT') { entry 'tuweni-bytes' }
+    dependency 'io.netty:netty-all:4.1.36.Final'
   }
 }

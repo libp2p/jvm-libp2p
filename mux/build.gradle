@@ -8,4 +8,6 @@ jar {
 
 description = 'An Interface for stream muxers'
 
-dependencies { implementation 'org.apache.tuweni:tuweni-bytes' }
+dependencies {
+  implementation 'io.netty:netty-all'
+}
