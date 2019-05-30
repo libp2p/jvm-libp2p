@@ -1,0 +1,5 @@
+dependencyManagement {
+  dependencies {
+    dependencySet(group: 'org.apache.tuweni', version: '0.8.0-SNAPSHOT') { entry 'tuweni-bytes' }
+  }
+}

@@ -1,0 +1,11 @@
+jar {
+  baseName 'mux'
+  manifest {
+    attributes('Implementation-Title': baseName,
+    'Implementation-Version': project.version)
+  }
+}
+
+description = 'An Interface for stream muxers'
+
+dependencies { implementation 'org.apache.tuweni:tuweni-bytes' }

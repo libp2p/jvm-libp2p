@@ -1,0 +1,233 @@
+
+import net.ltgt.gradle.errorprone.CheckSeverity
+
+plugins {
+  id 'com.diffplug.gradle.spotless' version '3.16.0'
+  id 'net.ltgt.errorprone' version '0.6'
+  id 'io.spring.dependency-management' version '1.0.6.RELEASE'
+  id 'com.github.hierynomus.license' version '0.15.0'
+  id 'org.gradle.crypto.checksum' version '1.1.0'
+  id 'org.jetbrains.kotlin.jvm' version '1.3.20'
+  id 'maven-publish'
+}
+
+// Version numbering
+
+def versionNumber = '0.0.1'
+def buildVersion = versionNumber + buildTag()
+
+static String buildTag() {
+  if (System.getenv('BUILD_RELEASE') == 'true') {
+    return ''
+  }
+  return '-SNAPSHOT'
+}
+
+
+// Default tasks and build aliases
+
+defaultTasks 'checkLicenses', 'jar', 'test', ':javadoc'
+
+def buildAliases = ['dev': [
+    'checkLicenses',
+    ':jar',
+    'test',
+    ':javadoc'
+  ]]
+
+def expandedTaskList = []
+gradle.startParameter.taskNames.each {
+  expandedTaskList << (buildAliases[it] ? buildAliases[it] : it)
+}
+gradle.startParameter.taskNames = expandedTaskList.flatten()
+
+// Gradle script formatting
+
+spotless {
+  groovyGradle {
+    target '**/*.gradle'
+    greclipse().configFile(rootProject.file('gradle/greclipse-gradle-style.properties'))
+    endWithNewline()
+  }
+}
+
+subprojects {
+
+  // Source formatting
+
+  apply plugin: 'com.diffplug.gradle.spotless'
+  spotless {
+    java {
+      target project.fileTree(project.projectDir) {
+        include '**/*.java'
+        exclude '**/generated-src/**/*.*'
+      }
+      removeUnusedImports()
+      //licenseHeaderFile rootProject.file('gradle/spotless.license.txt')
+      eclipse().configFile(rootProject.file('gradle/eclipse-java-style.xml'))
+      importOrder 'org.apache', 'java', ''
+      endWithNewline()
+    }
+    kotlin {
+      //licenseHeaderFile rootProject.file('gradle/spotless.license.txt')
+      ktlint().userData(['indent_size': '2', 'continuation_indent_size' : '2', 'max_line_length': '120'])
+      endWithNewline()
+    }
+  }
+
+
+  // Parallel build execution
+
+  tasks.withType(Test) {
+    // If GRADLE_MAX_TEST_FORKS is not set, use half the available processors
+    maxParallelForks = (System.getenv('GRADLE_MAX_TEST_FORKS') ?:
+      (Runtime.runtime.availableProcessors().intdiv(2) ?: 1)).toInteger()
+  }
+
+  tasks.withType(JavaCompile) {
+    options.fork = true
+    options.incremental = true
+    options.encoding = 'UTF-8'
+  }
+
+  task allDependencies(type: DependencyReportTask) {}
+}
+
+// Project defaults
+
+allprojects {
+  repositories {
+    jcenter()
+    mavenCentral()
+    maven { url "https://repository.apache.org/content/repositories/snapshots"}
+  }
+  apply plugin: 'java-library'
+  apply plugin: 'kotlin'
+  apply plugin: 'io.spring.dependency-management'
+  apply plugin: 'jacoco'
+  apply plugin: 'net.ltgt.errorprone'
+  apply plugin: 'maven-publish'
+  apply plugin: 'signing'
+  apply from: "${rootDir}/gradle/versions.gradle"
+  apply from: "${rootDir}/gradle/check-licenses.gradle"
+
+  version = buildVersion
+
+  repositories { jcenter() }
+
+
+  // Compiler arguments
+
+  sourceCompatibility = '1.8'
+  targetCompatibility = '1.8'
+
+  jacoco { toolVersion = '0.8.2' }
+
+  dependencies {
+    errorprone 'com.google.errorprone:error_prone_core'
+    if (JavaVersion.current().isJava8()) {
+      errorproneJavac("com.google.errorprone:javac")
+    }
+  }
+
+  tasks.withType(JavaCompile) {
+    if (JavaVersion.current() > JavaVersion.VERSION_1_8) {
+      options.compilerArgs.addAll(['--release', '8'])
+    }
+    options.compilerArgs += [
+      '-Xlint:unchecked',
+      '-Xlint:cast',
+      '-Xlint:rawtypes',
+      '-Xlint:overloads',
+      '-Xlint:divzero',
+      '-Xlint:finally',
+      '-Xlint:static',
+      '-Werror'
+    ]
+
+    options.errorprone {
+      excludedPaths '.*/generated-src/.*'
+      check('FutureReturnValueIgnored', CheckSeverity.OFF)
+      check('UnnecessaryParentheses', CheckSeverity.OFF)
+      disableWarningsInGeneratedCode = true
+    }
+
+  }
+
+  tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
+    kotlinOptions {
+      jvmTarget = "1.8"
+      allWarningsAsErrors = true
+      freeCompilerArgs = [
+        '-Xjsr305=strict',
+        '-Xjvm-default=enable',
+        '-Xuse-experimental=kotlin.Experimental'
+      ]
+    }
+  }
+
+
+  // Use JUnit5 for testing
+
+  test { useJUnitPlatform() { includeEngines 'spek', 'junit-jupiter' } }
+
+
+  // Artifact locations
+
+  jar {
+    destinationDir = file("${rootProject.buildDir}/libs")
+  }
+
+  task sourcesJar(type: Jar, dependsOn: classes) {
+    destinationDir = file("${rootProject.buildDir}/src")
+    classifier = 'sources'
+    from sourceSets.main.allSource
+  }
+
+  task javadocJar(type: Jar, dependsOn: javadoc) {
+    destinationDir = file("${rootProject.buildDir}/docs")
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+  }
+
+  // Packaging and deployment
+
+  tasks.withType(Jar) {
+    if (rootProject == project) {
+      baseName = project.name
+    } else {
+      baseName = rootProject.name + '-' + project.name
+    }
+    manifest {
+      attributes('Implementation-Title': baseName,
+      'Implementation-Version': project.version)
+    }
+    from(rootProject.projectDir) {
+      include 'DISCLAIMER'
+      include 'LICENSE'
+      include 'NOTICE'
+      into 'META-INF'
+    }
+  }
+}
+
+
+// Configure root project as a virtual package that depends on all components
+
+dependencies {
+  subprojects.each { p -> compile p }
+}
+
+jar {
+  subprojects.each { subproject ->
+
+    from subproject.configurations.archives.collect { it.path.endsWith('.jar') }.files.collect { zipTree(it) }
+  }
+}
+
+javadoc {
+  subprojects.each {
+    source += it.javadoc.source
+    classpath += it.javadoc.classpath
+  }
+}
