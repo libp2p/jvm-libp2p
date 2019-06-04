@@ -17,8 +17,15 @@ repositories {
 
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
-
     compile("io.netty:netty-all:4.1.36.Final")
+    compile("com.google.guava:guava:27.1-jre")
+    compile("org.bouncycastle:bcprov-jdk15on:1.61")
+    compile("org.bouncycastle:bcpkix-jdk15on:1.61")
+
+    testCompile("org.junit.jupiter:junit-jupiter-api:5.4.2")
+    testCompile("org.junit.jupiter:junit-jupiter-params:5.4.2")
+    testRuntime("org.junit.jupiter:junit-jupiter-engine:5.4.2")
+
 }
 
 tasks.withType<KotlinCompile> {
@@ -26,7 +33,13 @@ tasks.withType<KotlinCompile> {
 }
 
 // Parallel build execution
-tasks.withType<Test> {
+tasks.test {
+    useJUnitPlatform()
+
+    testLogging {
+        events("PASSED", "FAILED", "SKIPPED")
+    }
+
     // If GRADLE_MAX_TEST_FORKS is not set, use half the available processors
     maxParallelForks = (System.getenv("GRADLE_MAX_TEST_FORKS")?.toInt() ?:
     Runtime.getRuntime().availableProcessors().div(2))
