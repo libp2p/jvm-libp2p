@@ -11,7 +11,6 @@ class HostTest {
     fun testHost() {
         // Let's create a host! This is a nice fluent builder, kindly sponsored by Kotlin.
         val host = Host.create {
-
             secureChannels {
                 this[ProtocolMatcher(Mode.STRICT, name = "test")] = SecIoSecureChannel()
             }
