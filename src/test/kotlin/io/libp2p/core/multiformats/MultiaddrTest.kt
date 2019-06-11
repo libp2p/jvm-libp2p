@@ -1,8 +1,11 @@
 package io.libp2p.core.multiformats
 
+import io.libp2p.core.types.fromHex
+import io.libp2p.core.types.toHex
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
 
 class MultiaddrTest {
@@ -90,6 +93,15 @@ class MultiaddrTest {
             "/ip4/127.0.0.1/ipfs/QmcgpsyWgH8Y8ajJz1Cu72KnS5uo2Aa2LpzU7kinSupNKC/tcp/1234/unix/stdio",
             "/ip4/127.0.0.1/p2p/QmcgpsyWgH8Y8ajJz1Cu72KnS5uo2Aa2LpzU7kinSupNKC/tcp/1234/unix/stdio"
         )
+
+        @JvmStatic
+        fun toBytesParams() = listOf(
+            Arguments.of("/ip4/127.0.0.1/udp/1234", "047f000001910204d2".fromHex()),
+            Arguments.of("/ip4/127.0.0.1/tcp/4321", "047f0000010610e1".fromHex()),
+            Arguments.of("/ip4/127.0.0.1/udp/1234/ip4/127.0.0.1/tcp/4321", "047f000001910204d2047f0000010610e1".fromHex())
+            // TODO below fails due to Base32.decode() bug
+//            Arguments.of("/onion/aaimaq4ygg2iegci:80", "bc030010c0439831b48218480050".fromHex())
+        )
     }
 
     @ParameterizedTest
@@ -108,4 +120,10 @@ class MultiaddrTest {
             multiaddr1.toString().toLowerCase())
     }
 
+    @ParameterizedTest
+    @MethodSource("toBytesParams")
+    fun toBytes(str: String, bytes: ByteArray) {
+        assertEquals(bytes.toHex(), Multiaddr(str).getBytes().toHex())
+        assertEquals(str, Multiaddr(bytes).toString())
+    }
 }
