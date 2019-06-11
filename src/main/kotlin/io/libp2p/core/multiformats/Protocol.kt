@@ -13,6 +13,8 @@ import java.nio.charset.StandardCharsets
 import io.netty.buffer.Unpooled.buffer as byteBuf
 
 
+private const val LENGTH_PREFIXED_VAR_SIZE = -1
+
 /**
  * Partially translated from https://github.com/multiformats/java-multiaddr
  */
@@ -23,18 +25,18 @@ enum class Protocol(val code: Int, val size: Int, val typeName: String) {
     UDP(273, 16, "udp"),
     DCCP(33, 16, "dccp"),
     IP6(41, 128, "ip6"),
-    IP6ZONE(42, -1, "ip6zone"),
-    DNS4(54, -1, "dns4"),
-    DNS6(55, -1, "dns6"),
-    DNSADDR(56, -1, "dnsaddr"),
+    IP6ZONE(42, LENGTH_PREFIXED_VAR_SIZE, "ip6zone"),
+    DNS4(54, LENGTH_PREFIXED_VAR_SIZE, "dns4"),
+    DNS6(55, LENGTH_PREFIXED_VAR_SIZE, "dns6"),
+    DNSADDR(56, LENGTH_PREFIXED_VAR_SIZE, "dnsaddr"),
     SCTP(132, 16, "sctp"),
     UTP(301, 0, "utp"),
     UDT(302, 0, "udt"),
-    UNIX(400, -1, "unix") {
+    UNIX(400, LENGTH_PREFIXED_VAR_SIZE, "unix") {
         override fun isPath() = true
     },
-    IPFS(421, -1, "ipfs"),
-    P2P(421, -1, "p2p"),
+    IPFS(421, LENGTH_PREFIXED_VAR_SIZE, "ipfs"),
+    P2P(421, LENGTH_PREFIXED_VAR_SIZE, "p2p"),
     HTTPS(443, 0, "https"),
     ONION(444, 96, "onion"),
     QUIC(460, 0, "quic"),
@@ -134,7 +136,7 @@ enum class Protocol(val code: Int, val size: Int, val typeName: String) {
     }
 
     private fun sizeForAddress(buf: ByteBuf) =
-        if (size >= 0) size / 8 else buf.readUvarint().toInt()
+        if (size != LENGTH_PREFIXED_VAR_SIZE) size / 8 else buf.readUvarint().toInt()
 
     companion object {
         private val byCode = values().associate { p -> p.code to p }
