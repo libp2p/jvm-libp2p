@@ -13,6 +13,7 @@ plugins {
 
 repositories {
     mavenCentral()
+    maven("https://jitpack.io")
 }
 
 dependencies {
@@ -21,6 +22,8 @@ dependencies {
     compile("com.google.guava:guava:27.1-jre")
     compile("org.bouncycastle:bcprov-jdk15on:1.61")
     compile("org.bouncycastle:bcpkix-jdk15on:1.61")
+    compile("com.github.multiformats:java-multiaddr:v1.3.1")
+
 
     testCompile("org.junit.jupiter:junit-jupiter-api:5.4.2")
     testCompile("org.junit.jupiter:junit-jupiter-params:5.4.2")

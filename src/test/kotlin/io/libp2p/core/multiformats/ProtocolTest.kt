@@ -1,5 +1,6 @@
 package io.libp2p.core.multiformats
 
+import io.libp2p.core.types.readUvarint
 import io.libp2p.core.types.toByteBuf
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -13,6 +14,9 @@ class ProtocolTest {
     fun test1() {
         assertEquals(Protocol.TCP, Protocol.get("tcp"))
         assertEquals(Protocol.TCP, Protocol.get(6))
-        assertEquals("12345", Protocol.TCP.bytesToAddress(Protocol.TCP.addressToBytes("12345").toByteBuf()))
+        assertEquals("12345", Protocol.TCP.bytesToAddress(Protocol.TCP.addressToBytes("12345")))
+        for (protocol in Protocol.values()) {
+            assertEquals(protocol, Protocol.getOrThrow(protocol.encoded.toByteBuf().readUvarint().toInt()))
+        }
     }
 }

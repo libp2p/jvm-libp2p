@@ -4,6 +4,7 @@ import io.ipfs.multiaddr.Base32
 import io.ipfs.multiaddr.Protocol.LENGTH_PREFIXED_VAR_SIZE
 import io.libp2p.core.types.readUvarint
 import io.libp2p.core.types.toByteArray
+import io.libp2p.core.types.toByteBuf
 import io.libp2p.core.types.writeUvarint
 import io.netty.buffer.ByteBuf
 import java.net.Inet4Address
@@ -32,7 +33,7 @@ enum class Protocol(val code: Int, val size: Int, val typeName: String) {
     },
     IPFS(421, LENGTH_PREFIXED_VAR_SIZE, "ipfs"),
     HTTPS(443, 0, "https"),
-    ONION(444, 80, "onion"),
+    ONION(444, 96, "onion"),
     QUIC(460, 0, "quic"),
     WS(477, 0, "ws"),
     P2PCIRCUIT(290, 0, "p2p-circuit"),
@@ -49,7 +50,13 @@ enum class Protocol(val code: Int, val size: Int, val typeName: String) {
 
     fun addressToBytes(addr: String): ByteArray =
         when (this) {
-            IP4 -> Inet4Address.getByName(addr).address
+            IP4 -> {
+                val inetAddr = Inet4Address.getByName(addr)
+                if (inetAddr !is Inet4Address) {
+                    throw IllegalArgumentException("The address is not IP4 address: $addr")
+                }
+                inetAddr.address
+            }
             IP6 -> Inet6Address.getByName(addr).address
             TCP, UDP, DCCP, SCTP -> {
                 val x = Integer.parseInt(addr)
@@ -92,26 +99,25 @@ enum class Protocol(val code: Int, val size: Int, val typeName: String) {
 
     fun readAddressBytes(buf: ByteBuf) = buf.readBytes(sizeForAddress(buf))
 
-    fun bytesToAddress(buf: ByteBuf): String {
-        val addressBytes = readAddressBytes(buf);
+    fun bytesToAddress(addressBytes: ByteArray): String {
         return when (this) {
             IP4 -> {
-                Inet4Address.getByAddress(addressBytes.toByteArray())
+                Inet4Address.getByAddress(addressBytes)
                     .toString().substring(1)
             }
             IP6 -> {
-                Inet6Address.getByAddress(addressBytes.toByteArray())
+                Inet6Address.getByAddress(addressBytes)
                     .toString().substring(1)
             }
-            TCP, UDP, DCCP, SCTP -> addressBytes.readShort().toString()
+            TCP, UDP, DCCP, SCTP -> addressBytes.toByteBuf().readUnsignedShort().toString()
             ONION -> {
-                val host = addressBytes.readBytes(10).toByteArray()
-                val port = addressBytes.readShort()
+                val byteBuf = addressBytes.toByteBuf()
+                val host = byteBuf.readBytes(10).toByteArray()
+                val port = byteBuf.readUnsignedShort()
                 Base32.encode(host) + ":" + port
             }
             UNIX, DNS4, DNS6, DNSADDR -> {
-                val pathBytes = addressBytes.toByteArray()
-                String(pathBytes, StandardCharsets.UTF_8)
+                String(addressBytes, StandardCharsets.UTF_8)
             }
             else -> throw IllegalStateException("Unimplemented protocol type: $this")
         }

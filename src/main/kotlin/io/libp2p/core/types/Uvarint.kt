@@ -17,9 +17,9 @@ fun ByteBuf.readUvarint(): Long {
     var s = 0
 
     for (i in 0..9) {
-        val b = this.readByte()
-        if (b < 0x80) {
-            if (i == 9 && b > 1) {
+        val b = this.readByte().toUByte()
+        if (b < 0x80u) {
+            if (i == 9 && b > 1u) {
                 throw IllegalStateException("Overflow reading uvarint")
             }
             return x or (b.toLong() shl s)
