@@ -16,7 +16,8 @@ class ProtocolTest {
         assertEquals(Protocol.TCP, Protocol.get(6))
         assertEquals("12345", Protocol.TCP.bytesToAddress(Protocol.TCP.addressToBytes("12345")))
         for (protocol in Protocol.values()) {
-            assertEquals(protocol, Protocol.getOrThrow(protocol.encoded.toByteBuf().readUvarint().toInt()))
+            assertEquals(if (protocol == Protocol.IPFS) Protocol.P2P else protocol,
+                Protocol.getOrThrow(protocol.encoded.toByteBuf().readUvarint().toInt()))
         }
     }
 }
