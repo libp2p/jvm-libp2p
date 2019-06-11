@@ -2,13 +2,14 @@ package io.libp2p.core.types
 
 import io.netty.buffer.ByteBuf
 
-fun ByteBuf.writeUvarint(value: Long) {
+fun ByteBuf.writeUvarint(value: Long): ByteBuf {
     var v = value
     while (v >= 0x80) {
         this.writeByte((v or 0x80).toInt())
         v = v shr 7
     }
     this.writeByte(v.toInt())
+    return this
 }
 
 fun ByteBuf.readUvarint(): Long {
