@@ -86,7 +86,7 @@ class Multihash(val bytes: ByteBuf, val desc: Descriptor, val lengthBits: Int, v
             val code = code ?: REGISTRY[desc]?.code ?: throw InvalidMultihashException("Unrecognised multihash descriptor")
             with(Unpooled.buffer(lengthBytes + 10)) {
                 writeUvarint(code)
-                writeUvarint(lengthBytes.toLong())
+                writeUvarint(lengthBytes)
                 writeBytes(digest.slice(0, lengthBytes))
                 return Multihash(this, desc, lengthBits, digest)
             }

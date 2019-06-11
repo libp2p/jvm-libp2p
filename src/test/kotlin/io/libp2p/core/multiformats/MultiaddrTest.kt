@@ -52,10 +52,10 @@ class MultiaddrTest {
             "/ip6/0:0:0:0:0:0:0:1",
             "/ip6/2601:9:4f81:9700:803e:ca65:66e8:c21",
             "/ip6/2601:9:4f81:9700:803e:ca65:66e8:c21/udp/1234/quic",
-//            "/ip6zone/x/ip6/fe80::1",
-//            "/ip6zone/x%y/ip6/fe80::1",
-//            "/ip6zone/x%y/ip6/::",
-//            "/ip6zone/x/ip6/fe80::1/udp/1234/quic",
+            "/ip6zone/x/ip6/fe80:0:0:0:0:0:0:1",
+            "/ip6zone/x%y/ip6/fe80:0:0:0:0:0:0:1",
+            "/ip6zone/x%y/ip6/0:0:0:0:0:0:0:0",
+            "/ip6zone/x/ip6/fe80:0:0:0:0:0:0:1/udp/1234/quic",
             "/onion/timaq4ygg2iegci7:1234",
             "/onion/timaq4ygg2iegci7:80/http",
             "/udp/0",
@@ -66,29 +66,29 @@ class MultiaddrTest {
             "/sctp/1234",
             "/udp/65535",
             "/tcp/65535",
-//            "/ipfs/QmcgpsyWgH8Y8ajJz1Cu72KnS5uo2Aa2LpzU7kinSupNKC",
-//            "/p2p/QmcgpsyWgH8Y8ajJz1Cu72KnS5uo2Aa2LpzU7kinSupNKC",
+            "/ipfs/QmcgpsyWgH8Y8ajJz1Cu72KnS5uo2Aa2LpzU7kinSupNKC",
+            "/p2p/QmcgpsyWgH8Y8ajJz1Cu72KnS5uo2Aa2LpzU7kinSupNKC",
             "/udp/1234/sctp/1234",
             "/udp/1234/udt",
             "/udp/1234/utp",
             "/tcp/1234/http",
             "/tcp/1234/https",
-//            "/ipfs/QmcgpsyWgH8Y8ajJz1Cu72KnS5uo2Aa2LpzU7kinSupNKC/tcp/1234",
-//            "/p2p/QmcgpsyWgH8Y8ajJz1Cu72KnS5uo2Aa2LpzU7kinSupNKC/tcp/1234",
+            "/ipfs/QmcgpsyWgH8Y8ajJz1Cu72KnS5uo2Aa2LpzU7kinSupNKC/tcp/1234",
+            "/p2p/QmcgpsyWgH8Y8ajJz1Cu72KnS5uo2Aa2LpzU7kinSupNKC/tcp/1234",
             "/ip4/127.0.0.1/udp/1234",
             "/ip4/127.0.0.1/udp/0",
             "/ip4/127.0.0.1/tcp/1234",
             "/ip4/127.0.0.1/tcp/1234/",
             "/ip4/127.0.0.1/udp/1234/quic",
-//            "/ip4/127.0.0.1/ipfs/QmcgpsyWgH8Y8ajJz1Cu72KnS5uo2Aa2LpzU7kinSupNKC",
-//            "/ip4/127.0.0.1/ipfs/QmcgpsyWgH8Y8ajJz1Cu72KnS5uo2Aa2LpzU7kinSupNKC/tcp/1234",
-//            "/ip4/127.0.0.1/p2p/QmcgpsyWgH8Y8ajJz1Cu72KnS5uo2Aa2LpzU7kinSupNKC",
-//            "/ip4/127.0.0.1/p2p/QmcgpsyWgH8Y8ajJz1Cu72KnS5uo2Aa2LpzU7kinSupNKC/tcp/1234",
+            "/ip4/127.0.0.1/ipfs/QmcgpsyWgH8Y8ajJz1Cu72KnS5uo2Aa2LpzU7kinSupNKC",
+            "/ip4/127.0.0.1/ipfs/QmcgpsyWgH8Y8ajJz1Cu72KnS5uo2Aa2LpzU7kinSupNKC/tcp/1234",
+            "/ip4/127.0.0.1/p2p/QmcgpsyWgH8Y8ajJz1Cu72KnS5uo2Aa2LpzU7kinSupNKC",
+            "/ip4/127.0.0.1/p2p/QmcgpsyWgH8Y8ajJz1Cu72KnS5uo2Aa2LpzU7kinSupNKC/tcp/1234",
             "/unix/a/b/c/d/e",
             "/unix/stdio",
-            "/ip4/1.2.3.4/tcp/80/unix/a/b/c/d/e/f"
-//            "/ip4/127.0.0.1/ipfs/QmcgpsyWgH8Y8ajJz1Cu72KnS5uo2Aa2LpzU7kinSupNKC/tcp/1234/unix/stdio",
-//            "/ip4/127.0.0.1/p2p/QmcgpsyWgH8Y8ajJz1Cu72KnS5uo2Aa2LpzU7kinSupNKC/tcp/1234/unix/stdio"
+            "/ip4/1.2.3.4/tcp/80/unix/a/b/c/d/e/f",
+            "/ip4/127.0.0.1/ipfs/QmcgpsyWgH8Y8ajJz1Cu72KnS5uo2Aa2LpzU7kinSupNKC/tcp/1234/unix/stdio",
+            "/ip4/127.0.0.1/p2p/QmcgpsyWgH8Y8ajJz1Cu72KnS5uo2Aa2LpzU7kinSupNKC/tcp/1234/unix/stdio"
         )
     }
 
@@ -104,7 +104,8 @@ class MultiaddrTest {
         val multiaddr = Multiaddr(addr)
         val bytes = multiaddr.getBytes()
         val multiaddr1 = Multiaddr(bytes)
-        assertEquals(addr.toLowerCase().trimEnd('/'), multiaddr1.toString().toLowerCase())
+        assertEquals(addr.toLowerCase().trimEnd('/').replace("/ipfs/", "/p2p/"),
+            multiaddr1.toString().toLowerCase())
     }
 
 }
