@@ -1,7 +1,6 @@
 package io.libp2p.core.multiformats
 
 import io.ipfs.multiaddr.Base32
-import io.ipfs.multiaddr.Protocol.LENGTH_PREFIXED_VAR_SIZE
 import io.libp2p.core.types.readUvarint
 import io.libp2p.core.types.toByteArray
 import io.libp2p.core.types.toByteBuf
@@ -22,24 +21,22 @@ enum class Protocol(val code: Int, val size: Int, val typeName: String) {
     UDP(17, 16, "udp"),
     DCCP(33, 16, "dccp"),
     IP6(41, 128, "ip6"),
-    DNS4(54, LENGTH_PREFIXED_VAR_SIZE, "dns4"),
-    DNS6(55, LENGTH_PREFIXED_VAR_SIZE, "dns6"),
-    DNSADDR(56, LENGTH_PREFIXED_VAR_SIZE, "dnsaddr"),
+    DNS4(54, -1, "dns4"),
+    DNS6(55, -1, "dns6"),
+    DNSADDR(56, -1, "dnsaddr"),
     SCTP(132, 16, "sctp"),
     UTP(301, 0, "utp"),
     UDT(302, 0, "udt"),
-    UNIX(400, LENGTH_PREFIXED_VAR_SIZE, "unix") {
+    UNIX(400, -1, "unix") {
         override fun isPath() = true
     },
-    IPFS(421, LENGTH_PREFIXED_VAR_SIZE, "ipfs"),
+    IPFS(421, -1, "ipfs"),
     HTTPS(443, 0, "https"),
     ONION(444, 96, "onion"),
     QUIC(460, 0, "quic"),
     WS(477, 0, "ws"),
     P2PCIRCUIT(290, 0, "p2p-circuit"),
     HTTP(480, 0, "http");
-
-    private val LENGTH_PREFIXED_VAR_SIZE = -1
 
     val encoded: ByteArray = encode(code)
 
@@ -77,7 +74,7 @@ enum class Protocol(val code: Int, val size: Int, val typeName: String) {
                 byteBuf(18)
                     .writeBytes(onionHostBytes)
                     .writeShort(port)
-                    .toByteArray();
+                    .toByteArray()
             }
             UNIX -> {
                 val addr1 = if (addr.startsWith("/")) addr.substring(1) else addr
@@ -124,7 +121,7 @@ enum class Protocol(val code: Int, val size: Int, val typeName: String) {
     }
 
     private fun sizeForAddress(buf: ByteBuf) =
-        if (size != LENGTH_PREFIXED_VAR_SIZE) size / 8 else buf.readUvarint().toInt()
+        if (size >= 0) size / 8 else buf.readUvarint().toInt()
 
     companion object {
         private val byCode = values().associate { p -> p.code to p }
