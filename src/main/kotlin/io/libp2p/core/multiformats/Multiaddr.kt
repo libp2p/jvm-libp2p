@@ -6,7 +6,7 @@ import io.libp2p.core.types.toByteBuf
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 
-class Multiaddr(val components: Array<Pair<Protocol, ByteArray>>) {
+class Multiaddr(val components: List<Pair<Protocol, ByteArray>>) {
 
     constructor(addr: String) : this(parseString(addr))
 
@@ -33,14 +33,14 @@ class Multiaddr(val components: Array<Pair<Protocol, ByteArray>>) {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
         other as Multiaddr
-        if (!components.contentEquals(other.components)) return false
+        if (!components.equals(other.components)) return false
         return true
     }
 
-    override fun hashCode(): Int =  components.contentHashCode()
+    override fun hashCode(): Int =  components.hashCode()
 
     companion object {
-        private fun parseString(addr_: String): Array<Pair<Protocol, ByteArray>> {
+        private fun parseString(addr_: String): List<Pair<Protocol, ByteArray>> {
             val ret: MutableList<Pair<Protocol, ByteArray>> = mutableListOf()
 
             try {
@@ -72,16 +72,16 @@ class Multiaddr(val components: Array<Pair<Protocol, ByteArray>>) {
             } catch (e: Exception) {
                 throw IllegalArgumentException("Malformed multiaddr: '$addr_", e)
             }
-            return ret.toTypedArray()
+            return ret
         }
 
-        private fun parseBytes(buf: ByteBuf): Array<Pair<Protocol, ByteArray>> {
+        private fun parseBytes(buf: ByteBuf): List<Pair<Protocol, ByteArray>> {
             val ret: MutableList<Pair<Protocol, ByteArray>> = mutableListOf()
             while (buf.isReadable) {
                 val protocol = Protocol.getOrThrow(buf.readUvarint().toInt())
                 ret.add(protocol to protocol.readAddressBytes(buf).toByteArray())
             }
-            return ret.toTypedArray()
+            return ret
         }
     }
 }
