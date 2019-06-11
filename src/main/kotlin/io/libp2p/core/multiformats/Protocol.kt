@@ -20,7 +20,7 @@ enum class Protocol(val code: Int, val size: Int, val typeName: String) {
 
     IP4(4, 32, "ip4"),
     TCP(6, 16, "tcp"),
-    UDP(17, 16, "udp"),
+    UDP(273, 16, "udp"),
     DCCP(33, 16, "dccp"),
     IP6(41, 128, "ip6"),
     IP6ZONE(42, -1, "ip6zone"),
