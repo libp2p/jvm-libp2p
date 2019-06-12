@@ -6,7 +6,7 @@ import io.libp2p.core.security.SecureChannel
 /**
  * The Host is the libp2p entrypoint.
  */
-class Host private constructor (id: PeerId, secureChannels: Map<ProtocolMatcher, SecureChannel>) {
+class Host private constructor (var id: PeerId?, var secureChannels: Map<ProtocolMatcher, SecureChannel>) {
 
     fun peer(id: PeerId): Peer = TODO()
 
@@ -37,7 +37,7 @@ class Host private constructor (id: PeerId, secureChannels: Map<ProtocolMatcher,
         fun build(): Host {
             // TODO: validate parameters.
 
-            return Host(id!!, secureChannels)
+            return Host(id, secureChannels)
         }
     }
 }
