@@ -2,7 +2,9 @@
 
 > a minimal libp2p implementation for the JVM, written in Kotlin 🔥
 
-**⚠️ This is heavy work in progress! ⚠**
+**⚠️ This is heavy work in progress! ⚠** _Status: we're sketching out 
+the system in the [`sketch`](https://github.com/raulk/jvm-libp2p-minimal/tree/sketch)
+branch._
 
 ## What we're doing here
 
