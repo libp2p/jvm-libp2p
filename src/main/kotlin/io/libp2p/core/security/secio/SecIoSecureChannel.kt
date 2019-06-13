@@ -8,8 +8,7 @@ import io.netty.channel.ChannelInitializer
 import io.netty.channel.socket.SocketChannel
 
 class SecIoSecureChannel : SecureChannel {
-    override val matcher: ProtocolMatcher
-        get() = ProtocolMatcher(Mode.STRICT, name = "/secio/1.0.0")
+    override val matcher = ProtocolMatcher(Mode.STRICT, name = "/secio/1.0.0")
 
     override fun initializer(): ChannelInitializer<SocketChannel> =
         object : ChannelInitializer<SocketChannel>() {
