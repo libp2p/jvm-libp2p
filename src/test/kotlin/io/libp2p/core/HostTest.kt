@@ -3,10 +3,12 @@ package io.libp2p.core
 import io.libp2p.core.protocol.Mode
 import io.libp2p.core.protocol.ProtocolMatcher
 import io.libp2p.core.security.secio.SecIoSecureChannel
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 
 class HostTest {
 
+    @Disabled
     @Test
     fun testHost() {
         // Let's create a host! This is a nice fluent builder, kindly sponsored by Kotlin.
