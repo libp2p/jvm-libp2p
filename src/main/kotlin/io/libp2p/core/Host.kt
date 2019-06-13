@@ -18,7 +18,7 @@ class Host private constructor (var id: PeerId?, var secureChannels: Map<Protoco
     }
 
     class Builder {
-        private var id : PeerId? = null
+        private var id: PeerId? = null
         private var secureChannels = mutableMapOf<ProtocolMatcher, SecureChannel>()
 
         /**

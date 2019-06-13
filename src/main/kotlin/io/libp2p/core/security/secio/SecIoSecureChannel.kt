@@ -17,6 +17,5 @@ class SecIoSecureChannel : SecureChannel {
             }
         }
 
-    class SecIoHandler: ChannelInboundHandlerAdapter()
-
+    class SecIoHandler : ChannelInboundHandlerAdapter()
 }

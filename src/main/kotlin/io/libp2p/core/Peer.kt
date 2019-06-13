@@ -1,7 +1,6 @@
 package io.libp2p.core
 
 import io.libp2p.core.multiformats.Multiaddr
-import io.netty.channel.ChannelFuture
 import java.util.concurrent.Future
 
 class Peer(val id: PeerId) {
@@ -12,16 +11,16 @@ class Peer(val id: PeerId) {
 
     fun streams(): PeerStreams = PeerStreams()
 
-    fun connect() : Future<PeerConnection> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    fun connect(): Future<PeerConnection> {
+        TODO("not implemented") // To change body of created functions use File | Settings | File Templates.
     }
 
     fun disconnect() {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented") // To change body of created functions use File | Settings | File Templates.
     }
 
-    fun connection() : PeerConnection? {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    fun connection(): PeerConnection? {
+        TODO("not implemented") // To change body of created functions use File | Settings | File Templates.
     }
 
     enum class Status {
@@ -29,4 +28,3 @@ class Peer(val id: PeerId) {
         CONNECTED
     }
 }
-

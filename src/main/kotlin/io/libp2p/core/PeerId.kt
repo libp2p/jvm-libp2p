@@ -8,5 +8,4 @@ inline class PeerId(val b: ByteArray) {
             return null
         }
     }
-
 }

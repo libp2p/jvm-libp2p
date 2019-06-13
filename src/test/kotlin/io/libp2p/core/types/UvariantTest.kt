@@ -11,12 +11,11 @@ class UvariantTest {
 
     @Test
     fun test1() {
-        for (i in 0 .. 10000L) {
+        for (i in 0..10000L) {
             val buf = Unpooled.buffer()
-            buf.writeUvarint(i);
+            buf.writeUvarint(i)
             Assertions.assertEquals(i, buf.readUvarint())
             Assertions.assertFalse(buf.isReadable)
         }
     }
-
 }

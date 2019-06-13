@@ -12,7 +12,6 @@ import java.net.Inet6Address
 import java.nio.charset.StandardCharsets
 import io.netty.buffer.Unpooled.buffer as byteBuf
 
-
 private const val LENGTH_PREFIXED_VAR_SIZE = -1
 
 /**
@@ -72,7 +71,6 @@ enum class Protocol(val code: Int, val size: Int, val typeName: String) {
                     .writeUvarint(hashBytes.size)
                     .writeBytes(hashBytes)
                     .toByteArray()
-
             }
             ONION -> {
                 val split = addr.split(":")
