@@ -24,6 +24,7 @@ repositories {
 
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.0-M1")
     compile("io.netty:netty-all:4.1.36.Final")
     compile("com.google.guava:guava:27.1-jre")
     compile("org.bouncycastle:bcprov-jdk15on:1.61")

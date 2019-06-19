@@ -28,20 +28,20 @@ import org.bouncycastle.jce.spec.ECPublicKeySpec
 import java.security.KeyFactory
 import java.security.KeyPair
 import java.security.KeyPairGenerator
-import java.security.PublicKey
 import java.security.SecureRandom
 import java.security.Signature
 import java.security.spec.PKCS8EncodedKeySpec
 import java.security.spec.X509EncodedKeySpec
 import java.security.PrivateKey as JavaPrivateKey
 import java.security.interfaces.ECPrivateKey as JavaECPrivateKey
+import java.security.interfaces.ECPublicKey as JavaECPublicKey
 
 private val CURVE: ECNamedCurveParameterSpec = ECNamedCurveTable.getParameterSpec(P256_CURVE)
 
 /**
  * @param priv the private key backing this instance.
  */
-class EcdsaPrivateKey(private val priv: JavaPrivateKey) : PrivKey(Crypto.KeyType.ECDSA) {
+class EcdsaPrivateKey(val priv: JavaECPrivateKey) : PrivKey(Crypto.KeyType.ECDSA) {
 
     init {
         // Set up private key.
@@ -65,14 +65,14 @@ class EcdsaPrivateKey(private val priv: JavaPrivateKey) : PrivKey(Crypto.KeyType
             sign()
         }
 
-    override fun publicKey(): PubKey {
+    override fun publicKey(): EcdsaPublicKey {
         val pubSpec: ECPublicKeySpec = (priv as BCECPrivateKey).run {
             val q = parameters.g.multiply((this as org.bouncycastle.jce.interfaces.ECPrivateKey).d)
             ECPublicKeySpec(q, parameters)
         }
 
         return with(KeyFactory.getInstance(ECDSA_ALGORITHM, Libp2pCrypto.provider)) {
-            EcdsaPublicKey(generatePublic(pubSpec))
+            EcdsaPublicKey(generatePublic(pubSpec) as JavaECPublicKey)
         }
     }
 
@@ -82,7 +82,7 @@ class EcdsaPrivateKey(private val priv: JavaPrivateKey) : PrivKey(Crypto.KeyType
 /**
  * @param pub the public key backing this instance.
  */
-class EcdsaPublicKey(private val pub: PublicKey) : PubKey(Crypto.KeyType.ECDSA) {
+class EcdsaPublicKey(val pub: JavaECPublicKey) : PubKey(Crypto.KeyType.ECDSA) {
 
     override fun raw(): ByteArray = pub.encoded
 
@@ -107,7 +107,7 @@ private fun generateECDSAKeyPairWithCurve(curve: ECNamedCurveParameterSpec): Pai
         genKeyPair()
     }
 
-    return Pair(EcdsaPrivateKey(keypair.private as JavaECPrivateKey), EcdsaPublicKey(keypair.public))
+    return Pair(EcdsaPrivateKey(keypair.private as JavaECPrivateKey), EcdsaPublicKey(keypair.public as JavaECPublicKey))
 }
 
 /**
@@ -119,6 +119,13 @@ fun generateEcdsaKeyPair(): Pair<PrivKey, PubKey> {
     // and
     // http://www.bouncycastle.org/wiki/pages/viewpage.action?pageId=362269
     return generateECDSAKeyPairWithCurve(CURVE)
+}
+
+fun generateEcdsaKeyPair(curve: String): Pair<PrivKey, PubKey> {
+    // http://www.bouncycastle.org/wiki/display/JA1/Supported+Curves+%28ECDSA+and+ECGOST%29
+    // and
+    // http://www.bouncycastle.org/wiki/pages/viewpage.action?pageId=362269
+    return generateECDSAKeyPairWithCurve(ECNamedCurveTable.getParameterSpec(curve))
 }
 
 /**
@@ -136,7 +143,7 @@ fun ecdsaKeyPairFromKey(priv: EcdsaPrivateKey): Pair<PrivKey, PubKey> = Pair(pri
 fun unmarshalEcdsaPrivateKey(keyBytes: ByteArray): PrivKey = EcdsaPrivateKey(
     KeyFactory.getInstance(ECDSA_ALGORITHM, Libp2pCrypto.provider).generatePrivate(
         PKCS8EncodedKeySpec(keyBytes)
-    )
+    ) as JavaECPrivateKey
 )
 
 /**
@@ -144,7 +151,7 @@ fun unmarshalEcdsaPrivateKey(keyBytes: ByteArray): PrivKey = EcdsaPrivateKey(
  * @param keyBytes the key bytes.
  * @return a public key.
  */
-fun unmarshalEcdsaPublicKey(keyBytes: ByteArray): PubKey =
+fun unmarshalEcdsaPublicKey(keyBytes: ByteArray): EcdsaPublicKey =
     with(KeyFactory.getInstance(ECDSA_ALGORITHM, Libp2pCrypto.provider)) {
-        EcdsaPublicKey(generatePublic(X509EncodedKeySpec(keyBytes)))
+        EcdsaPublicKey(generatePublic(X509EncodedKeySpec(keyBytes)) as JavaECPublicKey)
     }
