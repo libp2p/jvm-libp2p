@@ -19,6 +19,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.sendBlocking
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import java.util.concurrent.atomic.AtomicInteger
 
 
@@ -26,6 +27,7 @@ class SecIoSecureChannel<TChannel: io.netty.channel.Channel>(val localKey: PrivK
                                                              val remotePeerId: PeerId?) : SecureChannel<TChannel> {
 
     private val HandshakeHandlerName = "SecIoHandshake"
+    private val HadshakeTimeout = 30 * 1000L
 
     override val matcher = ProtocolMatcher(Mode.STRICT, name = "/secio/1.0.0")
 
@@ -45,10 +47,11 @@ class SecIoSecureChannel<TChannel: io.netty.channel.Channel>(val localKey: PrivK
         override fun channelActive(ctx: ChannelHandlerContext) {
             val negotiator = SecioHandshake(kInChannel, { buf -> ctx.writeAndFlush(buf) }, localKey, remotePeerId)
 
-            // TODO just an initial coroutine effort here
             deferred = GlobalScope.async {
                 try {
-                    negotiator.doHandshake()
+                    withTimeout(HadshakeTimeout) {
+                        negotiator.doHandshake()
+                    }
                 } catch (e: Exception) {
                     ctx.fireExceptionCaught(e)
                     throw e
@@ -60,9 +63,7 @@ class SecIoSecureChannel<TChannel: io.netty.channel.Channel>(val localKey: PrivK
             kInChannel.sendBlocking(msg as ByteBuf)
             val cnt = messageReadCount.incrementAndGet()
             if (cnt == 2) {
-                val (local, remote) = runBlocking {
-                    deferred!!.await()
-                }
+                val (local, remote) = runBlocking { withTimeout(5000) { deferred!!.await() }}
                 val secIoCodec = SecIoCodec(local, remote)
                 ctx.channel().pipeline().addBefore(HandshakeHandlerName, "PacketLenEncoder",
                     LengthFieldPrepender(4))
