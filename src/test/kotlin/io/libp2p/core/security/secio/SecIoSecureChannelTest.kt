@@ -5,10 +5,8 @@ import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.types.toByteArray
 import io.libp2p.core.types.toByteBuf
 import io.netty.buffer.ByteBuf
-import io.netty.channel.Channel
 import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelHandlerContext
-import io.netty.channel.ChannelInboundHandlerAdapter
 import io.netty.channel.embedded.EmbeddedChannel
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
@@ -23,34 +21,12 @@ import java.util.concurrent.TimeUnit
 
 class SecIoSecureChannelTest {
 
-    open class TestHandler(val name: String): ChannelInboundHandlerAdapter() {
-        override fun channelActive(ctx: ChannelHandlerContext) {
-            println("==$name== Active")
-            super.channelActive(ctx)
-        }
-
-        override fun channelRegistered(ctx: ChannelHandlerContext?) {
-            println("==$name== channelRegistered")
-            super.channelRegistered(ctx)
-        }
-
-        override fun exceptionCaught(ctx: ChannelHandlerContext?, cause: Throwable?) {
-            println("==$name== exceptionCaught: $cause")
-            super.exceptionCaught(ctx, cause)
-        }
-
-        override fun handlerAdded(ctx: ChannelHandlerContext?) {
-            println("==$name== handlerAdded")
-            super.handlerAdded(ctx)
-        }
-    }
-
     @Test
     fun test1() {
         val (privKey1, pubKey1) = generateKeyPair(KEY_TYPE.ECDSA)
         val (privKey2, pubKey2) = generateKeyPair(KEY_TYPE.ECDSA)
-        val ch1 = SecIoSecureChannel<Channel>(privKey1, null)
-        val ch2 = SecIoSecureChannel<Channel>(privKey2, null)
+        val ch1 = SecIoSecureChannel(privKey1, null)
+        val ch2 = SecIoSecureChannel(privKey2, null)
         var rec1: String? = null
         var rec2: String? = null
         val latch = CountDownLatch(2)
@@ -60,7 +36,7 @@ class SecIoSecureChannelTest {
                 ctx.writeAndFlush("Hello World from $name".toByteArray().toByteBuf())
             }
 
-            override fun channelRead(ctx: ChannelHandlerContext?, msg: Any?) {
+            override fun channelRead(ctx: ChannelHandlerContext, msg: Any?) {
                 msg as ByteBuf
                 rec1 = msg.toByteArray().toString(StandardCharsets.UTF_8)
                 println("==$name== read: $rec1")
@@ -73,7 +49,7 @@ class SecIoSecureChannelTest {
                 ctx.writeAndFlush("Hello World from $name".toByteArray().toByteBuf())
             }
 
-            override fun channelRead(ctx: ChannelHandlerContext?, msg: Any?) {
+            override fun channelRead(ctx: ChannelHandlerContext, msg: Any?) {
                 msg as ByteBuf
                 rec2 = msg.toByteArray().toString(StandardCharsets.UTF_8)
                 println("==$name== read: $rec2")

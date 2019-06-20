@@ -4,7 +4,7 @@ import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.protocol.Mode
 import io.libp2p.core.protocol.ProtocolMatcher
-import io.libp2p.core.security.SecureChannel
+import io.libp2p.core.protocol.SecureChannel
 import io.libp2p.core.types.toByteArray
 import io.libp2p.core.types.toByteBuf
 import io.netty.buffer.ByteBuf
@@ -21,28 +21,29 @@ import kotlinx.coroutines.channels.sendBlocking
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import java.util.concurrent.atomic.AtomicInteger
+import io.netty.channel.Channel as NettyChannel
 
 
-class SecIoSecureChannel<TChannel: io.netty.channel.Channel>(val localKey: PrivKey,
-                                                             val remotePeerId: PeerId?) : SecureChannel<TChannel> {
+class SecIoSecureChannel(val localKey: PrivKey, val remotePeerId: PeerId? = null) :
+    SecureChannel {
 
     private val HandshakeHandlerName = "SecIoHandshake"
     private val HadshakeTimeout = 30 * 1000L
 
     override val matcher = ProtocolMatcher(Mode.STRICT, name = "/secio/1.0.0")
 
-    override fun initializer(): ChannelInitializer<TChannel> =
-        object : ChannelInitializer<TChannel>() {
-            override fun initChannel(ch: TChannel) {
+    override fun initializer(): ChannelInitializer<NettyChannel> =
+        object : ChannelInitializer<NettyChannel>() {
+            override fun initChannel(ch: NettyChannel) {
                 ch.pipeline().addLast(HandshakeHandlerName, SecIoHandshake())
             }
         }
 
     inner class SecIoHandshake : ChannelInboundHandlerAdapter() {
-        val kInChannel = Channel<ByteBuf>(1)
-        var deferred: Deferred<Pair<SecioParams, SecioParams>>? = null
-        val messageReadCount = AtomicInteger()
-        var nonce: ByteArray? = null
+        private val kInChannel = Channel<ByteBuf>(1)
+        private var deferred: Deferred<Pair<SecioParams, SecioParams>>? = null
+        private val messageReadCount = AtomicInteger()
+        private var nonce: ByteArray? = null
 
         override fun channelActive(ctx: ChannelHandlerContext) {
             val negotiator = SecioHandshake(kInChannel, { buf -> ctx.writeAndFlush(buf) }, localKey, remotePeerId)

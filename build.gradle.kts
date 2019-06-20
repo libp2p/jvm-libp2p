@@ -22,6 +22,8 @@ repositories {
     maven("https://jitpack.io")
 }
 
+val log4j2Version = "2.11.2"
+
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.0-M1")
@@ -31,6 +33,9 @@ dependencies {
     compile("org.bouncycastle:bcpkix-jdk15on:1.61")
     compile("com.github.multiformats:java-multiaddr:v1.3.1")
     compile("com.google.protobuf:protobuf-java:3.6.1")
+    compile("com.google.protobuf:protobuf-java:3.6.1")
+    compile("org.apache.logging.log4j:log4j-api:${log4j2Version}")
+    compile("org.apache.logging.log4j:log4j-core:${log4j2Version}")
 
 
     testCompile("org.junit.jupiter:junit-jupiter-api:5.4.2")
