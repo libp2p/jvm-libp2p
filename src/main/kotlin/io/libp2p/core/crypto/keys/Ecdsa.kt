@@ -89,6 +89,9 @@ class EcdsaPublicKey(val pub: JavaECPublicKey) : PubKey(Crypto.KeyType.ECDSA) {
 
     override fun raw(): ByteArray = pub.encoded
 
+    fun toUncompressedBytes(): ByteArray =
+        byteArrayOf(0x04) + pub.w.affineX.toByteArray() + pub.w.affineY.toByteArray()
+
     override fun verify(data: ByteArray, signature: ByteArray): Boolean =
         with(Signature.getInstance(SHA_256_WITH_ECDSA, Libp2pCrypto.provider)) {
             initVerify(pub)
@@ -104,7 +107,7 @@ class EcdsaPublicKey(val pub: JavaECPublicKey) : PubKey(Crypto.KeyType.ECDSA) {
  * @param curve the curve spec.
  * @return a pair of private and public keys.
  */
-private fun generateECDSAKeyPairWithCurve(curve: ECNamedCurveParameterSpec): Pair<PrivKey, PubKey> {
+private fun generateECDSAKeyPairWithCurve(curve: ECNamedCurveParameterSpec): Pair<EcdsaPrivateKey, EcdsaPublicKey> {
     val keypair: KeyPair = with(KeyPairGenerator.getInstance(ECDSA_ALGORITHM, Libp2pCrypto.provider)) {
         initialize(curve, SecureRandom())
         genKeyPair()
@@ -124,7 +127,7 @@ fun generateEcdsaKeyPair(): Pair<PrivKey, PubKey> {
     return generateECDSAKeyPairWithCurve(CURVE)
 }
 
-fun generateEcdsaKeyPair(curve: String): Pair<PrivKey, PubKey> {
+fun generateEcdsaKeyPair(curve: String): Pair<EcdsaPrivateKey, EcdsaPublicKey> {
     // http://www.bouncycastle.org/wiki/display/JA1/Supported+Curves+%28ECDSA+and+ECGOST%29
     // and
     // http://www.bouncycastle.org/wiki/pages/viewpage.action?pageId=362269
@@ -165,5 +168,8 @@ fun decodeEcdsaPublicKeyUncompressed(ecCurve: String, keyBytes: ByteArray): Ecds
     val params = ECNamedCurveSpec(ecCurve, spec.getCurve(), spec.getG(), spec.getN())
     val point = ECPointUtil.decodePoint(params.getCurve(), keyBytes)
     val pubKeySpec = java.security.spec.ECPublicKeySpec(point, params)
-    return EcdsaPublicKey(kf.generatePublic(pubKeySpec) as JavaECPublicKey)
+    val publicKey = kf.generatePublic(pubKeySpec)
+    publicKey as JavaECPublicKey
+    return EcdsaPublicKey(publicKey)
 }
+

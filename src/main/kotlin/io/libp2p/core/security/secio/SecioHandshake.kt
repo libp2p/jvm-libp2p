@@ -87,7 +87,7 @@ class SecioHandshake(
         val (ephPrivKey, ephPubKey) = generateEcdsaKeyPair(curve)
 
         val exchangeMsg = Spipe.Exchange.newBuilder()
-            .setEpubkey(ephPubKey.bytes().toProtobuf())
+            .setEpubkey(ephPubKey.toUncompressedBytes().toProtobuf())
             .setSignature(
                 localKey.sign(proposeMsg.toByteArray() + remotePropose.toByteArray() + ephPubKey.bytes()).toProtobuf()
             ).build()
