@@ -35,6 +35,9 @@ class SecIoSecureChannel(val localKey: PrivKey, val remotePeerId: PeerId? = null
     override fun initializer(): ChannelInitializer<NettyChannel> =
         object : ChannelInitializer<NettyChannel>() {
             override fun initChannel(ch: NettyChannel) {
+                ch.pipeline().addLast("PacketLenEncoder", LengthFieldPrepender(4))
+                ch.pipeline().addLast("PacketLenDecoder",
+                    LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0, 4, 0, 4))
                 ch.pipeline().addLast(HandshakeHandlerName, SecIoHandshake())
             }
         }
@@ -54,6 +57,7 @@ class SecIoSecureChannel(val localKey: PrivKey, val remotePeerId: PeerId? = null
                         negotiator.doHandshake()
                     }
                 } catch (e: Exception) {
+                    e.printStackTrace() // TODO logging
                     ctx.fireExceptionCaught(e)
                     throw e
                 }
@@ -66,10 +70,6 @@ class SecIoSecureChannel(val localKey: PrivKey, val remotePeerId: PeerId? = null
             if (cnt == 2) {
                 val (local, remote) = runBlocking { withTimeout(5000) { deferred!!.await() }}
                 val secIoCodec = SecIoCodec(local, remote)
-                ctx.channel().pipeline().addBefore(HandshakeHandlerName, "PacketLenEncoder",
-                    LengthFieldPrepender(4))
-                ctx.channel().pipeline().addBefore(HandshakeHandlerName, "PacketLenDecoder",
-                    LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0, 4, 0, 4))
                 ctx.channel().pipeline().addBefore(HandshakeHandlerName, "SecIoCodec", secIoCodec)
                 ctx.writeAndFlush(remote.nonce.toByteBuf())
                 nonce = local.nonce
@@ -82,7 +82,8 @@ class SecIoSecureChannel(val localKey: PrivKey, val remotePeerId: PeerId? = null
             }
         }
 
-        override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable?) {
+        override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
+            cause.printStackTrace() // TODO logging
             kInChannel.close(cause)
             ctx.channel().close()
         }

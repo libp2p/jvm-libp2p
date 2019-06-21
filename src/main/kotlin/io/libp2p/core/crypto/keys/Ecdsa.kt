@@ -23,7 +23,10 @@ import io.libp2p.core.crypto.PubKey
 import io.libp2p.core.crypto.SHA_256_WITH_ECDSA
 import org.bouncycastle.jcajce.provider.asymmetric.ec.BCECPrivateKey
 import org.bouncycastle.jce.ECNamedCurveTable
+import org.bouncycastle.jce.ECPointUtil
+import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.bouncycastle.jce.spec.ECNamedCurveParameterSpec
+import org.bouncycastle.jce.spec.ECNamedCurveSpec
 import org.bouncycastle.jce.spec.ECPublicKeySpec
 import java.security.KeyFactory
 import java.security.KeyPair
@@ -155,3 +158,12 @@ fun unmarshalEcdsaPublicKey(keyBytes: ByteArray): EcdsaPublicKey =
     with(KeyFactory.getInstance(ECDSA_ALGORITHM, Libp2pCrypto.provider)) {
         EcdsaPublicKey(generatePublic(X509EncodedKeySpec(keyBytes)) as JavaECPublicKey)
     }
+
+fun decodeEcdsaPublicKeyUncompressed(ecCurve: String, keyBytes: ByteArray): EcdsaPublicKey  {
+    val spec = ECNamedCurveTable.getParameterSpec(ecCurve)
+    val kf = KeyFactory.getInstance("ECDSA", BouncyCastleProvider())
+    val params = ECNamedCurveSpec(ecCurve, spec.getCurve(), spec.getG(), spec.getN())
+    val point = ECPointUtil.decodePoint(params.getCurve(), keyBytes)
+    val pubKeySpec = java.security.spec.ECPublicKeySpec(point, params)
+    return EcdsaPublicKey(kf.generatePublic(pubKeySpec) as JavaECPublicKey)
+}

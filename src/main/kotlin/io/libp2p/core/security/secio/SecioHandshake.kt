@@ -7,7 +7,7 @@ import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.crypto.PubKey
 import io.libp2p.core.crypto.StretchedKey
 import io.libp2p.core.crypto.keys.EcdsaPrivateKey
-import io.libp2p.core.crypto.keys.EcdsaPublicKey
+import io.libp2p.core.crypto.keys.decodeEcdsaPublicKeyUncompressed
 import io.libp2p.core.crypto.keys.generateEcdsaKeyPair
 import io.libp2p.core.crypto.sha256
 import io.libp2p.core.crypto.stretchKeys
@@ -101,8 +101,7 @@ class SecioHandshake(
         }
 
         val ecCurve = ECNamedCurveTable.getParameterSpec(curve).curve
-        val remoteEphPublickKey = unmarshalPublicKey(remoteExchangeMsg.epubkey.toByteArray())
-        remoteEphPublickKey as EcdsaPublicKey
+        val remoteEphPublickKey = decodeEcdsaPublicKeyUncompressed(curve, remoteExchangeMsg.epubkey.toByteArray())
         val remoteEphPubPoint = ecCurve.validatePoint(remoteEphPublickKey.pub.w.affineX, remoteEphPublickKey.pub.w.affineY)
 
         ephPrivKey as EcdsaPrivateKey

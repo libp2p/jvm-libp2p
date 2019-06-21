@@ -30,7 +30,7 @@ class NetworkTest {
         b.option(ChannelOption.SO_KEEPALIVE, true)
         b.option(ChannelOption.MESSAGE_SIZE_ESTIMATOR, DefaultMessageSizeEstimator.DEFAULT)
         b.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 15 * 1000)
-        b.remoteAddress("localhost", 30000)
+        b.remoteAddress("localhost", 10000)
 
         val (privKey1, pubKey1) = generateKeyPair(KEY_TYPE.ECDSA)
         val protocolSelect = ProtocolSelect(listOf(SecIoSecureChannel(privKey1)))
