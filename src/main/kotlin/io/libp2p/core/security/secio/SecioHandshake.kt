@@ -89,7 +89,9 @@ class SecioHandshake(
         val exchangeMsg = Spipe.Exchange.newBuilder()
             .setEpubkey(ephPubKey.toUncompressedBytes().toProtobuf())
             .setSignature(
-                localKey.sign(proposeMsg.toByteArray() + remotePropose.toByteArray() + ephPubKey.bytes()).toProtobuf()
+                localKey.sign(proposeMsg.toByteArray()
+                        + remotePropose.toByteArray()
+                        + ephPubKey.toUncompressedBytes()).toProtobuf()
             ).build()
 
         val remoteExchangeMsg = writeRead(exchangeMsg)

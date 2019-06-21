@@ -73,11 +73,8 @@ class SecIoSecureChannel(val localKey: PrivKey, val remotePeerId: PeerId? = null
                 val (local, remote) = runBlocking { withTimeout(5000) { deferred!!.await() }}
                 val secIoCodec = SecIoCodec(local, remote)
                 nonce = local.nonce
-                Thread {
-                    Thread.sleep(10000)
-                    ctx.channel().pipeline().addBefore(HandshakeHandlerName, "SecIoCodec", secIoCodec)
-                    writeAndFlush(ctx, remote.nonce.toByteBuf())
-                }.start()
+                ctx.channel().pipeline().addBefore(HandshakeHandlerName, "SecIoCodec", secIoCodec)
+                writeAndFlush(ctx, remote.nonce.toByteBuf())
             } else if (cnt == 3) {
                 if (!nonce!!.contentEquals(msg.toByteArray())) throw InvalidInitialPacket()
                 ctx.channel().pipeline().remove(HandshakeHandlerName)

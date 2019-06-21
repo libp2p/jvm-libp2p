@@ -19,3 +19,5 @@ fun ByteBuf.toByteArray(from: Int = 0, to: Int = Int.MAX_VALUE): ByteArray {
 
 
 fun ByteArray.toByteBuf(): ByteBuf = Unpooled.wrappedBuffer(this)
+
+fun ByteArray.sliceTrailing(count: Int) = slice((size - count) until size)
