@@ -20,6 +20,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.sendBlocking
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
 import io.netty.channel.Channel as NettyChannel
 
@@ -47,9 +48,10 @@ class SecIoSecureChannel(val localKey: PrivKey, val remotePeerId: PeerId? = null
         private var deferred: Deferred<Pair<SecioParams, SecioParams>>? = null
         private val messageReadCount = AtomicInteger()
         private var nonce: ByteArray? = null
+        private val executor = Executors.newSingleThreadExecutor()
 
         override fun channelActive(ctx: ChannelHandlerContext) {
-            val negotiator = SecioHandshake(kInChannel, { buf -> ctx.writeAndFlush(buf) }, localKey, remotePeerId)
+            val negotiator = SecioHandshake(kInChannel, { buf -> writeAndFlush(ctx, buf) }, localKey, remotePeerId)
 
             deferred = GlobalScope.async {
                 try {
@@ -70,9 +72,12 @@ class SecIoSecureChannel(val localKey: PrivKey, val remotePeerId: PeerId? = null
             if (cnt == 2) {
                 val (local, remote) = runBlocking { withTimeout(5000) { deferred!!.await() }}
                 val secIoCodec = SecIoCodec(local, remote)
-                ctx.channel().pipeline().addBefore(HandshakeHandlerName, "SecIoCodec", secIoCodec)
-                ctx.writeAndFlush(remote.nonce.toByteBuf())
                 nonce = local.nonce
+                Thread {
+                    Thread.sleep(10000)
+                    ctx.channel().pipeline().addBefore(HandshakeHandlerName, "SecIoCodec", secIoCodec)
+                    writeAndFlush(ctx, remote.nonce.toByteBuf())
+                }.start()
             } else if (cnt == 3) {
                 if (!nonce!!.contentEquals(msg.toByteArray())) throw InvalidInitialPacket()
                 ctx.channel().pipeline().remove(HandshakeHandlerName)
@@ -80,6 +85,19 @@ class SecIoSecureChannel(val localKey: PrivKey, val remotePeerId: PeerId? = null
             } else if (cnt > 3) {
                 throw InvalidNegotiationState()
             }
+        }
+
+        private fun writeAndFlush(ctx: ChannelHandlerContext, bb: ByteBuf) {
+            // this is a workaround for Netty limitation when messages could be reordered
+            // when sending both from event loop and other thread
+            // https://github.com/netty/netty/issues/3887
+            executor.execute {
+                ctx.writeAndFlush(bb)
+            }
+        }
+
+        override fun channelUnregistered(ctx: ChannelHandlerContext?) {
+            executor.shutdown()
         }
 
         override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
