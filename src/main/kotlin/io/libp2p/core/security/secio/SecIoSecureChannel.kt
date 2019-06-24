@@ -5,6 +5,7 @@ import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.protocol.Mode
 import io.libp2p.core.protocol.ProtocolMatcher
 import io.libp2p.core.protocol.SecureChannel
+import io.libp2p.core.protocol.SecureChannelInitializerName
 import io.libp2p.core.types.toByteArray
 import io.libp2p.core.types.toByteBuf
 import io.netty.buffer.ByteBuf
@@ -36,10 +37,10 @@ class SecIoSecureChannel(val localKey: PrivKey, val remotePeerId: PeerId? = null
     override fun initializer(): ChannelInitializer<NettyChannel> =
         object : ChannelInitializer<NettyChannel>() {
             override fun initChannel(ch: NettyChannel) {
-                ch.pipeline().addLast("PacketLenEncoder", LengthFieldPrepender(4))
-                ch.pipeline().addLast("PacketLenDecoder",
+                ch.pipeline().addBefore(SecureChannelInitializerName, "PacketLenEncoder", LengthFieldPrepender(4))
+                ch.pipeline().addBefore(SecureChannelInitializerName, "PacketLenDecoder",
                     LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0, 4, 0, 4))
-                ch.pipeline().addLast(HandshakeHandlerName, SecIoHandshake())
+                ch.pipeline().addBefore(SecureChannelInitializerName, HandshakeHandlerName, SecIoHandshake())
             }
         }
 

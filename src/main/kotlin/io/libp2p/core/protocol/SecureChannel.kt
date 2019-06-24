@@ -3,6 +3,8 @@ package io.libp2p.core.protocol
 import io.netty.channel.Channel
 import io.netty.channel.ChannelInitializer
 
+
+const val SecureChannelInitializerName = "SecureChannelInitializer"
 /**
  * The SecureChannel interface is implemented by all security channels, such as SecIO, TLS 1.3, Noise, and so on.
  */

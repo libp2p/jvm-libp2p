@@ -6,6 +6,7 @@ import io.libp2p.core.protocol.Negotiator
 import io.libp2p.core.protocol.ProtocolSelect
 import io.netty.bootstrap.Bootstrap
 import io.netty.channel.Channel
+import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInitializer
 import io.netty.channel.ChannelOption
 import io.netty.channel.DefaultMessageSizeEstimator
@@ -37,9 +38,14 @@ class NetworkTest {
 
         b.handler(object: ChannelInitializer<Channel>() {
             override fun initChannel(ch: Channel) {
-                ch.pipeline().addLast(LoggingHandler(LogLevel.ERROR))
+                ch.pipeline().addLast(LoggingHandler("###1", LogLevel.ERROR))
                 ch.pipeline().addLast(Negotiator.createInitializer(true, "/secio/1.0.0"))
                 ch.pipeline().addLast(protocolSelect)
+                ch.pipeline().addLast(object: LoggingHandler("###2", LogLevel.ERROR) {
+                    override fun channelActive(ctx: ChannelHandlerContext?) {
+                        super.channelActive(ctx)
+                    }
+                })
             }
         })
 

@@ -62,8 +62,6 @@ class SecIoSecureChannelTest {
 
         latch.await(10, TimeUnit.SECONDS)
 
-        Thread.sleep(10000000)
-
         Assertions.assertEquals("Hello World from 1", rec2)
         Assertions.assertEquals("Hello World from 2", rec1)
     }
