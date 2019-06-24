@@ -26,6 +26,7 @@ import io.libp2p.core.crypto.keys.unmarshalRsaPrivateKey
 import io.libp2p.core.crypto.keys.unmarshalRsaPublicKey
 import io.libp2p.core.crypto.keys.unmarshalSecp256k1PrivateKey
 import io.libp2p.core.crypto.keys.unmarshalSecp256k1PublicKey
+import io.libp2p.core.types.toHex
 import org.bouncycastle.crypto.digests.SHA256Digest
 import org.bouncycastle.crypto.digests.SHA512Digest
 import org.bouncycastle.crypto.macs.HMac
@@ -191,7 +192,10 @@ fun marshalPrivateKey(privKey: PrivKey): ByteArray =
         .build()
         .toByteArray()
 
-data class StretchedKey(val iv: ByteArray, val cipherKey: ByteArray, val macKey: ByteArray)
+data class StretchedKey(val iv: ByteArray, val cipherKey: ByteArray, val macKey: ByteArray) {
+    override fun toString(): String =
+        "StretchedKey[iv=" + iv.toHex() + ", cipherKey=" + cipherKey.toHex() + ", macKey=" + macKey.toHex() + "]"
+}
 
 fun stretchKeys(cipherType: String, hashType: String, secret: ByteArray): Pair<StretchedKey, StretchedKey> {
     val ivSize = 16

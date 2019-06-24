@@ -40,6 +40,7 @@ import java.security.PrivateKey as JavaPrivateKey
 import java.security.interfaces.ECPrivateKey as JavaECPrivateKey
 import java.security.interfaces.ECPublicKey as JavaECPublicKey
 
+
 private val CURVE: ECNamedCurveParameterSpec = ECNamedCurveTable.getParameterSpec(P256_CURVE)
 
 /**

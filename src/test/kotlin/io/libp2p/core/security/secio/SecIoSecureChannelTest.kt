@@ -8,6 +8,8 @@ import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.embedded.EmbeddedChannel
+import io.netty.handler.logging.LogLevel
+import io.netty.handler.logging.LoggingHandler
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import java.nio.charset.StandardCharsets
@@ -30,7 +32,7 @@ class SecIoSecureChannelTest {
         var rec1: String? = null
         var rec2: String? = null
         val latch = CountDownLatch(2)
-        val eCh1 = TestChannel(ch1.initializer(), object: TestHandler("1") {
+        val eCh1 = TestChannel(LoggingHandler("#1", LogLevel.ERROR), ch1.initializer(), object: TestHandler("1") {
             override fun channelActive(ctx: ChannelHandlerContext) {
                 super.channelActive(ctx)
                 ctx.writeAndFlush("Hello World from $name".toByteArray().toByteBuf())
@@ -43,7 +45,7 @@ class SecIoSecureChannelTest {
                 latch.countDown()
             }
         })
-        val eCh2 = TestChannel(ch2.initializer(), object: TestHandler("2") {
+        val eCh2 = TestChannel(LoggingHandler("#2", LogLevel.ERROR), ch2.initializer(), object: TestHandler("2") {
             override fun channelActive(ctx: ChannelHandlerContext) {
                 super.channelActive(ctx)
                 ctx.writeAndFlush("Hello World from $name".toByteArray().toByteBuf())
@@ -59,6 +61,8 @@ class SecIoSecureChannelTest {
         interConnect(eCh1, eCh2)
 
         latch.await(10, TimeUnit.SECONDS)
+
+        Thread.sleep(10000000)
 
         Assertions.assertEquals("Hello World from 1", rec2)
         Assertions.assertEquals("Hello World from 2", rec1)

@@ -6,7 +6,6 @@ import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.crypto.PubKey
 import io.libp2p.core.crypto.StretchedKey
-import io.libp2p.core.crypto.keys.EcdsaPrivateKey
 import io.libp2p.core.crypto.keys.decodeEcdsaPublicKeyUncompressed
 import io.libp2p.core.crypto.keys.generateEcdsaKeyPair
 import io.libp2p.core.crypto.sha256
@@ -20,6 +19,7 @@ import kotlinx.coroutines.channels.ReceiveChannel
 import org.bouncycastle.crypto.digests.SHA256Digest
 import org.bouncycastle.crypto.digests.SHA512Digest
 import org.bouncycastle.crypto.macs.HMac
+import org.bouncycastle.crypto.params.KeyParameter
 import org.bouncycastle.jce.ECNamedCurveTable
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import spipe.pb.Spipe
@@ -106,17 +106,23 @@ class SecioHandshake(
         val remoteEphPublickKey = decodeEcdsaPublicKeyUncompressed(curve, remoteExchangeMsg.epubkey.toByteArray())
         val remoteEphPubPoint = ecCurve.validatePoint(remoteEphPublickKey.pub.w.affineX, remoteEphPublickKey.pub.w.affineY)
 
-        ephPrivKey as EcdsaPrivateKey
         val sharedSecretPoint = ecCurve.multiplier.multiply(remoteEphPubPoint, ephPrivKey.priv.s)
+        val sharedSecret = sharedSecretPoint.normalize().affineXCoord.encoded
 
-        val (k1, k2) = stretchKeys(cipher, hash, sharedSecretPoint.getEncoded(true))
+
+        val (k1, k2) = stretchKeys(cipher, hash, sharedSecret)
+
         val localKeys = if(order > 0) k1 else k2
         val remoteKeys = if(order > 0) k2 else k1
 
-        val hmac = when(hash) {
-            "SHA256" -> HMac(SHA256Digest())
-            "SHA512" -> HMac(SHA512Digest())
-            else -> throw IllegalArgumentException("Unsupported hash function: $hash")
+        val hmacFactory: (ByteArray) -> HMac = { macKey ->
+            val ret = when(hash) {
+                "SHA256" -> HMac(SHA256Digest())
+                "SHA512" -> HMac(SHA512Digest())
+                else -> throw IllegalArgumentException("Unsupported hash function: $hash")
+            }
+            ret.init(KeyParameter(macKey))
+            ret
         }
 
         val localCipher = Cipher.getInstance("AES/CTR/NoPadding", BouncyCastleProvider())
@@ -126,9 +132,9 @@ class SecioHandshake(
 
         return Pair(
             SecioParams(nonce, localKey.publicKey(), ephPubKey.bytes(),
-                localKeys, curve, cipher, hash, hmac, localCipher),
+                localKeys, curve, cipher, hash, hmacFactory.invoke(localKeys.macKey), localCipher),
             SecioParams(remotePropose.rand.toByteArray(), remotePubKey, remoteEphPubPoint.getEncoded(true),
-                remoteKeys, curve, cipher, hash, hmac, remoteCipher)
+                remoteKeys, curve, cipher, hash, hmacFactory.invoke(remoteKeys.macKey), remoteCipher)
         )
     }
 
