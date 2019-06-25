@@ -86,7 +86,7 @@ object Negotiator {
             write(MULTISTREAM_PROTO_BYTES)
             write(NEWLINE)
             write(protocols[0].toByteArray().toByteBuf())
-            write(NEWLINE)
+            writeAndFlush(NEWLINE)
         }
     }
 
