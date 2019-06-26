@@ -12,14 +12,13 @@ import io.netty.channel.ChannelInboundHandlerAdapter
 class ProtocolSelect(val protocols: List<SecureChannel> = mutableListOf()): ChannelInboundHandlerAdapter() {
 
     override fun userEventTriggered(ctx: ChannelHandlerContext, evt: Any) {
-
-        if (evt is ProtocolNegotiationSucceeded) {
-            val channel = protocols.find { it.matcher.matches(evt.proto) }
-                ?: throw Libp2pException("Protocol negotiation failed: not supported protocol ${evt.proto}")
-            ctx.pipeline().replace(this, SecureChannelInitializerName, channel.initializer())
-
-        } else if (evt is ProtocolNegotiationFailed) {
-            throw Libp2pException("ProtocolNegotiationFailed: $evt")
+        when(evt) {
+            is ProtocolNegotiationSucceeded -> {
+                val channel = protocols.find { it.matcher.matches(evt.proto) }
+                    ?: throw Libp2pException("Protocol negotiation failed: not supported protocol ${evt.proto}")
+                ctx.pipeline().replace(this, SecureChannelInitializerName, channel.initializer())
+            }
+            is ProtocolNegotiationFailed -> throw Libp2pException("ProtocolNegotiationFailed: $evt")
         }
         super.userEventTriggered(ctx, evt)
     }
