@@ -89,6 +89,8 @@ class SecIoSecureChannel(val localKey: PrivKey, val remotePeerId: PeerId? = null
             // this is a workaround for Netty limitation when messages could be reordered
             // when sending both from event loop and other thread
             // https://github.com/netty/netty/issues/3887
+            // TODO the reorder may still happen when higher level handler is activated and immediately
+            // sends a messages from the handler callback
             executor.execute {
                 ctx.writeAndFlush(bb)
             }
