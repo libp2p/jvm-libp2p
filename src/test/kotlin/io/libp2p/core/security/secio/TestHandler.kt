@@ -36,4 +36,14 @@ open class TestHandler(val name: String = ""): ChannelInboundHandlerAdapter() {
         println("==$name== read: $content")
         super.channelRead(ctx, msg)
     }
+
+    override fun channelInactive(ctx: ChannelHandlerContext?) {
+        println("==$name== channelInactive")
+        super.channelInactive(ctx)
+    }
+
+    override fun channelUnregistered(ctx: ChannelHandlerContext?) {
+        println("==$name== channelUnregistered")
+        super.channelUnregistered(ctx)
+    }
 }

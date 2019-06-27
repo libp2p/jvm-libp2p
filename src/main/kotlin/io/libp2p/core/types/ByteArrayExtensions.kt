@@ -10,7 +10,7 @@ fun String.fromHex() =
 
 operator fun ByteArray.compareTo(other: ByteArray): Int {
     if (size != other.size) return size - other.size
-    for (i in 0..size) {
+    for (i in 0 until size) {
         if (this[i] != other[i]) return this[i].toInt().and(0xFF) - other[i].toInt().and(0xFF)
     }
     return 0;

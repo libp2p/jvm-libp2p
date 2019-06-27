@@ -3,9 +3,7 @@ package io.libp2p.core.security.secio
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.generateKeyPair
 import io.netty.buffer.ByteBuf
-import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import java.nio.charset.StandardCharsets
@@ -17,28 +15,45 @@ import java.nio.charset.StandardCharsets
 class Test {
     @Test
     fun test1() {
-        runBlocking {
-            val (privKey1, pubKey1) = generateKeyPair(KEY_TYPE.ECDSA)
-            val (privKey2, pubKey2) = generateKeyPair(KEY_TYPE.ECDSA)
-            val ch1 = Channel<ByteBuf>(8)
-            val ch2 = Channel<ByteBuf>(8)
-            val hs1 = SecioHandshake(ch1, { bb -> ch2.send(bb) }, privKey1, null)
-            val hs2 = SecioHandshake(ch2, { bb -> ch1.send(bb) }, privKey2, null)
-            val dres1 = async { hs1.doHandshake() }
-            val dres2 = async { hs2.doHandshake() }
+        val (privKey1, pubKey1) = generateKeyPair(KEY_TYPE.ECDSA)
+        val (privKey2, pubKey2) = generateKeyPair(KEY_TYPE.ECDSA)
+        val ch1 = Channel<ByteBuf>(8)
+        val ch2 = Channel<ByteBuf>(8)
+        var bb1: ByteBuf? = null
+        var bb2: ByteBuf? = null
 
-            val res1 = dres1.await()
-            val res2 = dres2.await()
+        val hs1 = SecioHandshake({ bb -> bb1 = bb }, privKey1, null)
+        val hs2 = SecioHandshake({ bb -> bb2 = bb }, privKey2, null)
 
-            val enc1 = res1.first.cipher.doFinal("Hello".toByteArray())
-            val dec1 = res2.second.cipher.doFinal(enc1)
+        hs1.start()
+        hs2.start()
 
-            Assertions.assertEquals("Hello", dec1.toString(StandardCharsets.UTF_8))
+        Assertions.assertTrue(bb1 != null)
+        Assertions.assertTrue(bb2 != null)
+        var msgFor1 = bb2!!
+        var msgFor2 = bb1!!
+        bb1 = null
+        bb2 = null
 
-            val enc2 = res2.first.cipher.doFinal("Hello".toByteArray())
-            val dec2 = res1.second.cipher.doFinal(enc2)
+        hs1.onNewMessage(msgFor1)
+        hs2.onNewMessage(msgFor2)
+        Assertions.assertTrue(bb1 != null)
+        Assertions.assertTrue(bb2 != null)
 
-            Assertions.assertEquals("Hello", dec2.toString(StandardCharsets.UTF_8))
-        }
+        val keys1 = hs1.onNewMessage(bb2!!)
+        val keys2 = hs2.onNewMessage(bb1!!)
+
+        Assertions.assertTrue(keys1 != null)
+        Assertions.assertTrue(keys2 != null)
+
+        val enc1 = keys1!!.first.cipher.doFinal("Hello".toByteArray())
+        val dec1 = keys2!!.second.cipher.doFinal(enc1)
+
+        Assertions.assertEquals("Hello", dec1.toString(StandardCharsets.UTF_8))
+
+        val enc2 = keys2!!.first.cipher.doFinal("Hello".toByteArray())
+        val dec2 = keys1!!.second.cipher.doFinal(enc2)
+
+        Assertions.assertEquals("Hello", dec2.toString(StandardCharsets.UTF_8))
     }
 }

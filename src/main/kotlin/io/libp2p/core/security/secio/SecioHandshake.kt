@@ -6,16 +6,19 @@ import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.crypto.PubKey
 import io.libp2p.core.crypto.StretchedKey
+import io.libp2p.core.crypto.keys.EcdsaPrivateKey
+import io.libp2p.core.crypto.keys.EcdsaPublicKey
 import io.libp2p.core.crypto.keys.decodeEcdsaPublicKeyUncompressed
 import io.libp2p.core.crypto.keys.generateEcdsaKeyPair
 import io.libp2p.core.crypto.sha256
 import io.libp2p.core.crypto.stretchKeys
 import io.libp2p.core.crypto.unmarshalPublicKey
 import io.libp2p.core.types.compareTo
+import io.libp2p.core.types.toByteArray
+import io.libp2p.core.types.toByteBuf
 import io.libp2p.core.types.toProtobuf
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
-import kotlinx.coroutines.channels.ReceiveChannel
 import org.bouncycastle.crypto.digests.SHA256Digest
 import org.bouncycastle.crypto.digests.SHA512Digest
 import org.bouncycastle.crypto.macs.HMac
@@ -46,10 +49,20 @@ data class SecioParams(
  * Created by Anton Nashatyrev on 14.06.2019.
  */
 class SecioHandshake(
-    private val inboundChannel: ReceiveChannel<ByteBuf>,
-    private val outboundChannel: suspend (ByteBuf) -> Unit,
+    private val outboundChannel: (ByteBuf) -> Unit,
     val localKey: PrivKey,
     val remotePeerId: PeerId?) {
+
+    enum class State {
+        Initial,
+        ProposeSent,
+        ExchangeSent,
+        KeysCreated,
+        SecureChannelCreated,
+        FinalValidated
+    }
+
+    private var state = State.Initial
 
     val random: SecureRandom = SecureRandom.getInstanceStrong()
     val nonceSize = 16
@@ -57,12 +70,23 @@ class SecioHandshake(
     val hashes = linkedSetOf("SHA256", "SHA512")
     val curves = linkedSetOf("P-256", "P-384", "P-521")
 
-    suspend fun doHandshake(): Pair<SecioParams, SecioParams> {
-        val nonce = ByteArray(nonceSize)
-        random.nextBytes(nonce)
+    private val nonce = ByteArray(nonceSize).apply { random.nextBytes(this) }
+    private var proposeMsg: Spipe.Propose? = null;
+    private var remotePropose: Spipe.Propose? = null
+    private var remotePubKey: PubKey? = null
+    private var order: Int? = null
+    private var curve: String? = null
+    private var hash: String? = null
+    private var cipher: String? = null
+    private var ephPrivKey: EcdsaPrivateKey? = null
+    private var ephPubKey: EcdsaPublicKey? = null
+
+    fun isComplete() = state == State.FinalValidated
+
+    fun start() {
         val localPubKeyBytes = localKey.publicKey().bytes();
 
-        val proposeMsg = Spipe.Propose.newBuilder()
+        proposeMsg = Spipe.Propose.newBuilder()
             .setRand(nonce.toProtobuf())
             .setPubkey(localPubKeyBytes.toProtobuf())
             .setExchanges(curves.joinToString(","))
@@ -70,79 +94,106 @@ class SecioHandshake(
             .setCiphers(ciphers.joinToString(","))
             .build()
 
-        val remotePropose: Spipe.Propose = writeRead(proposeMsg)
-
-        val remotePubKeyBytes = remotePropose.pubkey.toByteArray();
-        val remotePubKey = unmarshalPublicKey(remotePubKeyBytes)
-        val calcedPeerId = PeerId.fromPubKey(remotePubKey)
-        if (remotePeerId != null && calcedPeerId != remotePeerId) throw InvalidRemotePubKey()
-
-        val h1 = sha256(remotePubKeyBytes + nonce)
-        val h2 = sha256(localPubKeyBytes + remotePropose.rand.toByteArray())
-        val order = h1.compareTo(h2);
-        val curve = selectBest(order, curves, remotePropose.exchanges.split(","))
-        val hash = selectBest(order, hashes, remotePropose.hashes.split(","))
-        val cipher = selectBest(order, ciphers, remotePropose.ciphers.split(","))
-
-        val (ephPrivKey, ephPubKey) = generateEcdsaKeyPair(curve)
-
-        val exchangeMsg = Spipe.Exchange.newBuilder()
-            .setEpubkey(ephPubKey.toUncompressedBytes().toProtobuf())
-            .setSignature(
-                localKey.sign(proposeMsg.toByteArray()
-                        + remotePropose.toByteArray()
-                        + ephPubKey.toUncompressedBytes()).toProtobuf()
-            ).build()
-
-        val remoteExchangeMsg = writeRead(exchangeMsg)
-
-        if (!remotePubKey.verify(
-                remotePropose.toByteArray() + proposeMsg.toByteArray() + remoteExchangeMsg.epubkey.toByteArray(),
-                remoteExchangeMsg.signature.toByteArray())) {
-            throw InvalidSignature()
-        }
-
-        val ecCurve = ECNamedCurveTable.getParameterSpec(curve).curve
-        val remoteEphPublickKey = decodeEcdsaPublicKeyUncompressed(curve, remoteExchangeMsg.epubkey.toByteArray())
-        val remoteEphPubPoint = ecCurve.validatePoint(remoteEphPublickKey.pub.w.affineX, remoteEphPublickKey.pub.w.affineY)
-
-        val sharedSecretPoint = ecCurve.multiplier.multiply(remoteEphPubPoint, ephPrivKey.priv.s)
-        val sharedSecret = sharedSecretPoint.normalize().affineXCoord.encoded
-
-
-        val (k1, k2) = stretchKeys(cipher, hash, sharedSecret)
-
-        val localKeys = if(order > 0) k1 else k2
-        val remoteKeys = if(order > 0) k2 else k1
-
-        val hmacFactory: (ByteArray) -> HMac = { macKey ->
-            val ret = when(hash) {
-                "SHA256" -> HMac(SHA256Digest())
-                "SHA512" -> HMac(SHA512Digest())
-                else -> throw IllegalArgumentException("Unsupported hash function: $hash")
-            }
-            ret.init(KeyParameter(macKey))
-            ret
-        }
-
-        val localCipher = Cipher.getInstance("AES/CTR/NoPadding", BouncyCastleProvider())
-        localCipher.init(Cipher.ENCRYPT_MODE, SecretKeySpec(localKeys.cipherKey, "AES"), IvParameterSpec(localKeys.iv))
-        val remoteCipher = Cipher.getInstance("AES/CTR/NoPadding", BouncyCastleProvider())
-        remoteCipher.init(Cipher.DECRYPT_MODE, SecretKeySpec(remoteKeys.cipherKey, "AES"), IvParameterSpec(remoteKeys.iv))
-
-        return Pair(
-            SecioParams(nonce, localKey.publicKey(), ephPubKey.bytes(),
-                localKeys, curve, cipher, hash, hmacFactory.invoke(localKeys.macKey), localCipher),
-            SecioParams(remotePropose.rand.toByteArray(), remotePubKey, remoteEphPubPoint.getEncoded(true),
-                remoteKeys, curve, cipher, hash, hmacFactory.invoke(remoteKeys.macKey), remoteCipher)
-        )
+        state = State.ProposeSent
+        write(proposeMsg!!)
     }
 
-    private suspend inline fun <MessageType: Message> writeRead(outMsg: MessageType): MessageType {
+    fun onSecureChannelSetup() {
+        if (state != State.KeysCreated) throw InvalidNegotiationState()
+        outboundChannel.invoke(remotePropose!!.rand.toByteArray().toByteBuf())
+        state = State.SecureChannelCreated
+    }
+
+    fun onNewMessage(buf: ByteBuf): Pair<SecioParams, SecioParams>? {
+        when (state) {
+            State.ProposeSent -> {
+                remotePropose = read(buf, Spipe.Propose.parser())
+                val remotePubKeyBytes = remotePropose!!.pubkey.toByteArray();
+                remotePubKey = unmarshalPublicKey(remotePubKeyBytes)
+                val calcedPeerId = PeerId.fromPubKey(remotePubKey!!)
+                if (remotePeerId != null && calcedPeerId != remotePeerId) throw InvalidRemotePubKey()
+
+                val h1 = sha256(remotePubKeyBytes + nonce)
+                val h2 = sha256(localKey.publicKey().bytes() + remotePropose!!.rand.toByteArray())
+                order = h1.compareTo(h2)
+                if (order == 0) throw SelfConnecting()
+                curve = selectBest(order!!, curves, remotePropose!!.exchanges.split(","))
+                hash = selectBest(order!!, hashes, remotePropose!!.hashes.split(","))
+                cipher = selectBest(order!!, ciphers, remotePropose!!.ciphers.split(","))
+
+                val (ephPrivKeyL, ephPubKeyL) = generateEcdsaKeyPair(curve!!)
+                ephPrivKey = ephPrivKeyL
+                ephPubKey = ephPubKeyL
+
+                val exchangeMsg = Spipe.Exchange.newBuilder()
+                    .setEpubkey(ephPubKeyL.toUncompressedBytes().toProtobuf())
+                    .setSignature(
+                        localKey.sign(proposeMsg!!.toByteArray()
+                                + remotePropose!!.toByteArray()
+                                + ephPubKeyL.toUncompressedBytes()).toProtobuf()
+                    ).build()
+
+                state = State.ExchangeSent
+                write(exchangeMsg)
+            }
+            State.ExchangeSent -> {
+                val remoteExchangeMsg = read(buf, Spipe.Exchange.parser())
+                if (!remotePubKey!!.verify(
+                        remotePropose!!.toByteArray() + proposeMsg!!.toByteArray() + remoteExchangeMsg.epubkey.toByteArray(),
+                        remoteExchangeMsg.signature.toByteArray())) {
+                    throw InvalidSignature()
+                }
+
+                val ecCurve = ECNamedCurveTable.getParameterSpec(curve).curve
+                val remoteEphPublickKey = decodeEcdsaPublicKeyUncompressed(curve!!, remoteExchangeMsg.epubkey.toByteArray())
+                val remoteEphPubPoint = ecCurve.validatePoint(remoteEphPublickKey.pub.w.affineX, remoteEphPublickKey.pub.w.affineY)
+
+                val sharedSecretPoint = ecCurve.multiplier.multiply(remoteEphPubPoint, ephPrivKey!!.priv.s)
+                val sharedSecret = sharedSecretPoint.normalize().affineXCoord.encoded
+
+
+                val (k1, k2) = stretchKeys(cipher!!, hash!!, sharedSecret)
+
+                val localKeys = if(order!! > 0) k1 else k2
+                val remoteKeys = if(order!! > 0) k2 else k1
+
+                val hmacFactory: (ByteArray) -> HMac = { macKey ->
+                    val ret = when(hash) {
+                        "SHA256" -> HMac(SHA256Digest())
+                        "SHA512" -> HMac(SHA512Digest())
+                        else -> throw IllegalArgumentException("Unsupported hash function: $hash")
+                    }
+                    ret.init(KeyParameter(macKey))
+                    ret
+                }
+
+                val localCipher = Cipher.getInstance("AES/CTR/NoPadding", BouncyCastleProvider())
+                localCipher.init(Cipher.ENCRYPT_MODE, SecretKeySpec(localKeys.cipherKey, "AES"), IvParameterSpec(localKeys.iv))
+                val remoteCipher = Cipher.getInstance("AES/CTR/NoPadding", BouncyCastleProvider())
+                remoteCipher.init(Cipher.DECRYPT_MODE, SecretKeySpec(remoteKeys.cipherKey, "AES"), IvParameterSpec(remoteKeys.iv))
+
+                state = State.KeysCreated
+                return Pair(
+                    SecioParams(nonce, localKey.publicKey(), ephPubKey!!.bytes(),
+                        localKeys, curve!!, cipher!!, hash!!, hmacFactory.invoke(localKeys.macKey), localCipher),
+                    SecioParams(remotePropose!!.rand.toByteArray(), remotePubKey!!, remoteEphPubPoint.getEncoded(true),
+                        remoteKeys, curve!!, cipher!!, hash!!, hmacFactory.invoke(remoteKeys.macKey), remoteCipher)
+                )
+            }
+            State.SecureChannelCreated -> {
+                if (!nonce.contentEquals(buf.toByteArray())) throw InvalidInitialPacket()
+                state = State.FinalValidated
+            }
+            else -> throw InvalidNegotiationState()
+        }
+        return null
+    }
+
+    private fun write(outMsg: Message) {
         val byteBuf = Unpooled.buffer().writeBytes(outMsg.toByteArray())
         outboundChannel.invoke(byteBuf)
-        val buf = inboundChannel.receive()
-        val parser: Parser<MessageType> = outMsg.parserForType as Parser<MessageType>
+    }
+    private fun <MessageType: Message> read(buf: ByteBuf, parser: Parser<MessageType>): MessageType {
         return parser.parseFrom(buf.nioBuffer())
     }
 

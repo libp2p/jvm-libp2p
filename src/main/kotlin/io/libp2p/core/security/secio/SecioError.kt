@@ -12,5 +12,6 @@ class InvalidRemotePubKey: SecioHandshakeError()
 class InvalidSignature: SecioHandshakeError()
 class InvalidNegotiationState: SecioHandshakeError()
 class InvalidInitialPacket: SecioHandshakeError()
+class SelfConnecting: SecioHandshakeError()
 
 class MacMismatch: SecioError()
