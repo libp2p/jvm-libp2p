@@ -24,12 +24,8 @@ import org.bouncycastle.crypto.digests.SHA512Digest
 import org.bouncycastle.crypto.macs.HMac
 import org.bouncycastle.crypto.params.KeyParameter
 import org.bouncycastle.jce.ECNamedCurveTable
-import org.bouncycastle.jce.provider.BouncyCastleProvider
 import spipe.pb.Spipe
 import java.security.SecureRandom
-import javax.crypto.Cipher
-import javax.crypto.spec.IvParameterSpec
-import javax.crypto.spec.SecretKeySpec
 
 data class SecioParams(
     val nonce: ByteArray,
@@ -41,8 +37,7 @@ data class SecioParams(
     val cipherT: String,
     val hashT: String,
 
-    val mac: HMac,
-    val cipher: Cipher
+    val mac: HMac
 )
 
 /**
@@ -167,17 +162,12 @@ class SecioHandshake(
                     ret
                 }
 
-                val localCipher = Cipher.getInstance("AES/CTR/NoPadding", BouncyCastleProvider())
-                localCipher.init(Cipher.ENCRYPT_MODE, SecretKeySpec(localKeys.cipherKey, "AES"), IvParameterSpec(localKeys.iv))
-                val remoteCipher = Cipher.getInstance("AES/CTR/NoPadding", BouncyCastleProvider())
-                remoteCipher.init(Cipher.DECRYPT_MODE, SecretKeySpec(remoteKeys.cipherKey, "AES"), IvParameterSpec(remoteKeys.iv))
-
                 state = State.KeysCreated
                 return Pair(
                     SecioParams(nonce, localKey.publicKey(), ephPubKey!!.bytes(),
-                        localKeys, curve!!, cipher!!, hash!!, hmacFactory.invoke(localKeys.macKey), localCipher),
+                        localKeys, curve!!, cipher!!, hash!!, hmacFactory.invoke(localKeys.macKey)),
                     SecioParams(remotePropose!!.rand.toByteArray(), remotePubKey!!, remoteEphPubPoint.getEncoded(true),
-                        remoteKeys, curve!!, cipher!!, hash!!, hmacFactory.invoke(remoteKeys.macKey), remoteCipher)
+                        remoteKeys, curve!!, cipher!!, hash!!, hmacFactory.invoke(remoteKeys.macKey))
                 )
             }
             State.SecureChannelCreated -> {
