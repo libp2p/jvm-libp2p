@@ -1,9 +1,10 @@
-package io.libp2p.core.security
+package io.libp2p.core.protocol
 
-import io.libp2p.core.protocol.ProtocolMatcher
+import io.netty.channel.Channel
 import io.netty.channel.ChannelInitializer
-import io.netty.channel.socket.SocketChannel
 
+
+const val SecureChannelInitializerName = "SecureChannelInitializer"
 /**
  * The SecureChannel interface is implemented by all security channels, such as SecIO, TLS 1.3, Noise, and so on.
  */
@@ -18,5 +19,5 @@ interface SecureChannel {
      * Returns the ChannelInitializer that will be invoked to initialize the channel when
      * this secure channel activates.
      */
-    fun initializer(): ChannelInitializer<SocketChannel>
+    fun initializer(): ChannelInitializer<Channel>
 }

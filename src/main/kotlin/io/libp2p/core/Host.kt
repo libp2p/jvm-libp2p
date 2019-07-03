@@ -1,7 +1,7 @@
 package io.libp2p.core
 
 import io.libp2p.core.protocol.ProtocolMatcher
-import io.libp2p.core.security.SecureChannel
+import io.libp2p.core.protocol.SecureChannel
 
 /**
  * The Host is the libp2p entrypoint.
@@ -18,7 +18,7 @@ class Host private constructor (var id: PeerId?, var secureChannels: Map<Protoco
     }
 
     class Builder {
-        private var id : PeerId? = null
+        private var id: PeerId? = null
         private var secureChannels = mutableMapOf<ProtocolMatcher, SecureChannel>()
 
         /**

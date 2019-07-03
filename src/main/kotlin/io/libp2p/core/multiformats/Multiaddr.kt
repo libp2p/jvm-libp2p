@@ -16,7 +16,7 @@ data class Multiaddr(val components: List<Pair<Protocol, ByteArray>>) {
     fun getStringComponents(): List<Pair<Protocol, String?>> =
         components.map { p -> p.first to if (p.first.size == 0) null else p.first.bytesToAddress(p.second) }
 
-    fun writeBytes(buf: ByteBuf) : ByteBuf {
+    fun writeBytes(buf: ByteBuf): ByteBuf {
         for (component in components) {
             buf.writeBytes(component.first.encoded)
             buf.writeBytes(component.second)
@@ -24,10 +24,10 @@ data class Multiaddr(val components: List<Pair<Protocol, ByteArray>>) {
         return buf
     }
 
-    fun getBytes() : ByteArray = writeBytes(Unpooled.buffer()).toByteArray()
+    fun getBytes(): ByteArray = writeBytes(Unpooled.buffer()).toByteArray()
 
-    override fun toString(): String = getStringComponents().joinToString(separator = "")
-            { p -> "/" + p.first.typeName + if (p.second != null) "/" + p.second else ""}
+    override fun toString(): String = getStringComponents().joinToString(separator = "") { p ->
+        "/" + p.first.typeName + if (p.second != null) "/" + p.second else "" }
 
     companion object {
         private fun parseString(addr_: String): List<Pair<Protocol, ByteArray>> {
