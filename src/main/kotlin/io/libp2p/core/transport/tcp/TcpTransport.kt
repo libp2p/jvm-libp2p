@@ -4,9 +4,9 @@ import io.libp2p.core.Connection
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.transport.ConnectionUpgrader
 import io.libp2p.core.transport.Transport
+import io.libp2p.core.types.toCompletableFuture
 import io.netty.bootstrap.Bootstrap
 import io.netty.bootstrap.ServerBootstrap
-import io.netty.channel.ChannelFutureListener
 import java.util.concurrent.CompletableFuture
 
 /**
@@ -42,25 +42,8 @@ class TcpTransport(val upgrader: ConnectionUpgrader) : Transport {
         TODO("not implemented")
     }
 
-    override fun dial(addr: Multiaddr): CompletableFuture<Connection> {
-        val ret = CompletableFuture<Connection>()
-
-        val muxerListener = ChannelFutureListener {
-            if (!it.isSuccess) {
-                ret.completeExceptionally(it.cause())
-            }
-            ret.complete(Connection(it.channel()))
-        }
-
-        val secureChannelListener = ChannelFutureListener {
-            if (!it.isSuccess) {
-                ret.completeExceptionally(it.cause())
-            }
-            upgrader.establishMuxer(it.channel()).addListener(muxerListener)
-        }
-
-        // TODO: add an overarching timeout covering all upgrades.
-        client.connect().addListener(secureChannelListener)
-        return ret
-    }
+    override fun dial(addr: Multiaddr): CompletableFuture<Connection> =
+        client.connect().toCompletableFuture()
+            .thenCompose { upgrader.establishMuxer(it).toCompletableFuture() }
+            .thenApply { Connection(it) }
 }
