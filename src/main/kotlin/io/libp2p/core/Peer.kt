@@ -3,24 +3,22 @@ package io.libp2p.core
 import io.libp2p.core.multiformats.Multiaddr
 import java.util.concurrent.Future
 
-class Peer(val id: PeerId) {
+abstract class Peer(private val host: Host, val id: PeerId) {
+    open fun status(): Status = Status.KNOWN
+    open fun addrs(): List<Multiaddr> = emptyList()
 
-    fun status(): Status = Status.KNOWN
+    abstract fun streams(): List<Stream>
 
-    fun addrs(): List<Multiaddr> = emptyList()
-
-    fun streams(): PeerStreams = PeerStreams()
-
-    fun connect(): Future<PeerConnection> {
-        TODO("not implemented") // To change body of created functions use File | Settings | File Templates.
+    fun connect() : Future<Connection> {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
     fun disconnect() {
-        TODO("not implemented") // To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
-    fun connection(): PeerConnection? {
-        TODO("not implemented") // To change body of created functions use File | Settings | File Templates.
+    fun connection() : Connection? {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
     enum class Status {
@@ -28,3 +26,4 @@ class Peer(val id: PeerId) {
         CONNECTED
     }
 }
+

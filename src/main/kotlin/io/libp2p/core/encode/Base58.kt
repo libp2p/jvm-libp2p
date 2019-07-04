@@ -1,7 +1,6 @@
 package io.libp2p.core.encode
 
 import java.util.Arrays
-import java.lang.RuntimeException
 
 // Adapted from https://github.com/bitcoinj/bitcoinj/
 object Base58 {

@@ -3,6 +3,7 @@ package io.libp2p.core.protocol
 import io.libp2p.core.Libp2pException
 import io.libp2p.core.events.ProtocolNegotiationFailed
 import io.libp2p.core.events.ProtocolNegotiationSucceeded
+import io.libp2p.core.security.SecureChannel
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
 
@@ -16,7 +17,7 @@ class ProtocolSelect(val protocols: List<SecureChannel> = mutableListOf()): Chan
             is ProtocolNegotiationSucceeded -> {
                 val channel = protocols.find { it.matcher.matches(evt.proto) }
                     ?: throw Libp2pException("Protocol negotiation failed: not supported protocol ${evt.proto}")
-                ctx.pipeline().replace(this, SecureChannelInitializerName, channel.initializer())
+                ctx.pipeline().replace(this, "SecureChannelInitializer", channel.initializer().channelInitializer)
             }
             is ProtocolNegotiationFailed -> throw Libp2pException("ProtocolNegotiationFailed: $evt")
         }

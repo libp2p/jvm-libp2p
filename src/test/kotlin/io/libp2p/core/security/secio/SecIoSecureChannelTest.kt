@@ -32,32 +32,36 @@ class SecIoSecureChannelTest {
         var rec1: String? = null
         var rec2: String? = null
         val latch = CountDownLatch(2)
-        val eCh1 = TestChannel(LoggingHandler("#1", LogLevel.ERROR), ch1.initializer(), object: TestHandler("1") {
-            override fun channelActive(ctx: ChannelHandlerContext) {
-                super.channelActive(ctx)
-                ctx.writeAndFlush("Hello World from $name".toByteArray().toByteBuf())
-            }
+        val eCh1 = TestChannel(LoggingHandler("#1", LogLevel.ERROR), ch1.initializer().channelInitializer,
+            object : TestHandler("1") {
+                override fun channelActive(ctx: ChannelHandlerContext) {
+                    super.channelActive(ctx)
+                    ctx.writeAndFlush("Hello World from $name".toByteArray().toByteBuf())
+                }
 
-            override fun channelRead(ctx: ChannelHandlerContext, msg: Any?) {
-                msg as ByteBuf
-                rec1 = msg.toByteArray().toString(StandardCharsets.UTF_8)
-                println("==$name== read: $rec1")
-                latch.countDown()
-            }
-        })
-        val eCh2 = TestChannel(LoggingHandler("#2", LogLevel.ERROR), ch2.initializer(), object: TestHandler("2") {
-            override fun channelActive(ctx: ChannelHandlerContext) {
-                super.channelActive(ctx)
-                ctx.writeAndFlush("Hello World from $name".toByteArray().toByteBuf())
-            }
+                override fun channelRead(ctx: ChannelHandlerContext, msg: Any?) {
+                    msg as ByteBuf
+                    rec1 = msg.toByteArray().toString(StandardCharsets.UTF_8)
+                    println("==$name== read: $rec1")
+                    latch.countDown()
+                }
+            })
+        val eCh2 = TestChannel(
+            LoggingHandler("#2", LogLevel.ERROR),
+            ch2.initializer().channelInitializer,
+            object : TestHandler("2") {
+                override fun channelActive(ctx: ChannelHandlerContext) {
+                    super.channelActive(ctx)
+                    ctx.writeAndFlush("Hello World from $name".toByteArray().toByteBuf())
+                }
 
-            override fun channelRead(ctx: ChannelHandlerContext, msg: Any?) {
-                msg as ByteBuf
-                rec2 = msg.toByteArray().toString(StandardCharsets.UTF_8)
-                println("==$name== read: $rec2")
-                latch.countDown()
-            }
-        })
+                override fun channelRead(ctx: ChannelHandlerContext, msg: Any?) {
+                    msg as ByteBuf
+                    rec2 = msg.toByteArray().toString(StandardCharsets.UTF_8)
+                    println("==$name== read: $rec2")
+                    latch.countDown()
+                }
+            })
         interConnect(eCh1, eCh2)
 
         latch.await(10, TimeUnit.SECONDS)
