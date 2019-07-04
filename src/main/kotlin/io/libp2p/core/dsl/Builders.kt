@@ -74,7 +74,7 @@ class Builder {
         val addressBook = addressBook.impl
 
         val id = identity.factory()
-        val network = Network(transports, Network.Config(network.listen.map { Multiaddr() }))    // TODO: construct Multiaddr properly.
+        val network = Network(transports, Network.Config(network.listen.map { Multiaddr(it) }))
         return Host(id, network, addressBook)
     }
 }

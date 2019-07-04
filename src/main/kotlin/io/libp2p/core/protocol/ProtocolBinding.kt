@@ -1,6 +1,7 @@
 package io.libp2p.core.protocol
 
 import io.netty.channel.Channel
+import io.netty.channel.ChannelInitializer
 import java.util.concurrent.CompletableFuture
 
 /**
@@ -23,14 +24,18 @@ interface ProtocolBinding<TController> {
     val matcher: ProtocolMatcher
 
     /**
-     * Activates this protocol on the provided channel, and returns an optional controller object. To
+     * Returns initializer for this protocol on the provided channel, together with an optional controller object.
      */
-    fun activate(ch: Channel): CompletableFuture<TController>
+    fun initializer(): ProtocolBindingInitializer<TController>
 }
+
+class ProtocolBindingInitializer<TController>(
+    val channelInitializer: ChannelInitializer<Channel>,
+    val controller: CompletableFuture<TController>)
 
 class DummyProtocolBinding: ProtocolBinding<Nothing> {
     override val announce: String = "/dummy/0.0.0"
     override val matcher: ProtocolMatcher = ProtocolMatcher(Mode.NEVER)
 
-    override fun activate(ch: Channel): CompletableFuture<Nothing> = TODO("not implemented")
+    override fun initializer(): ProtocolBindingInitializer<Nothing> = TODO("not implemented")
 }
