@@ -2,13 +2,14 @@ package io.libp2p.core.protocol
 
 import io.libp2p.core.events.ProtocolNegotiationFailed
 import io.libp2p.core.events.ProtocolNegotiationSucceeded
-import io.libp2p.core.types.toByteBuf
+import io.netty.buffer.Unpooled.wrappedBuffer
 import io.netty.channel.Channel
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
+import io.netty.channel.ChannelInitializer
 import io.netty.handler.codec.DelimiterBasedFrameDecoder
-import io.netty.handler.codec.Delimiters
 import io.netty.handler.codec.string.StringDecoder
+import io.netty.handler.codec.string.StringEncoder
 import io.netty.handler.timeout.ReadTimeoutHandler
 import java.util.concurrent.TimeUnit
 
@@ -37,20 +38,34 @@ object Negotiator {
     private const val TIMEOUT_MILLIS: Long = 10_000
     private const val MULTISTREAM_PROTO = "/multistream/1.0.0"
 
-    private val MULTISTREAM_PROTO_BYTES = MULTISTREAM_PROTO.toByteArray().toByteBuf()
-    private val NEWLINE = "\n".toByteArray().toByteBuf()
-    private val NA = "na".toByteArray().toByteBuf()
+    private val HEADING = '\u0013'
+    private val NEWLINE = "\n"
+    private val DELIMITER = "\r"
+    private val NA = "na"
+    private val DELIMITERS = arrayOf(
+            wrappedBuffer("\n\r".toByteArray()),
+            wrappedBuffer("\n".toByteArray())
+        )
+
+    fun createInitializer(initiator: Boolean, vararg protocols: String): ChannelInitializer<Channel> {
+        return object: ChannelInitializer<Channel>() {
+            override fun initChannel(ch: Channel) {
+                initNegotiator(ch, initiator, *protocols)
+            }
+        }
+    }
 
     /**
      * Negotiate as an initiator.
      */
-    fun asInitiator(ch: Channel, vararg protocols: String) {
+    fun initNegotiator(ch: Channel, initiator: Boolean, vararg protocols: String) {
         if (protocols.isEmpty()) throw ProtocolNegotiationException("No protocols provided")
 
         val prehandlers = listOf(
             ReadTimeoutHandler(TIMEOUT_MILLIS, TimeUnit.MILLISECONDS),
-            DelimiterBasedFrameDecoder(1024, *Delimiters.lineDelimiter()),
-            StringDecoder(Charsets.UTF_8)
+            DelimiterBasedFrameDecoder(1024, *DELIMITERS),
+            StringDecoder(Charsets.UTF_8),
+            StringEncoder(Charsets.UTF_8)
         )
 
         prehandlers.forEach { ch.pipeline().addLast(it) }
@@ -59,77 +74,46 @@ object Negotiator {
             var i = 0
             var headerRead = false
 
-            override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
+            override fun channelActive(ctx: ChannelHandlerContext) {
+                val helloString = HEADING + MULTISTREAM_PROTO + NEWLINE +
+                        if (initiator) DELIMITER + protocols[0] + NEWLINE else ""
+                ctx.writeAndFlush(helloString)
+            }
+
+            override fun channelRead(ctx: ChannelHandlerContext, msgRaw: Any) {
+                val msg = (msgRaw as String).trimStart(HEADING)
+                var completeEvent: Any? = null
                 when {
-                    msg as String == MULTISTREAM_PROTO ->
+                    msg == MULTISTREAM_PROTO ->
                         if (!headerRead) headerRead = true else
                             throw ProtocolNegotiationException("Received multistream header more than once")
-                    msg == protocols[i] -> {
-                        prehandlers.forEach { ctx.pipeline().remove(it) }
-                        ctx.pipeline().remove(this)
-                        ctx.pipeline().fireUserEventTriggered(ProtocolNegotiationSucceeded(msg))
+                    initiator && (i == protocols.lastIndex || msg == protocols[i]) -> {
+                        completeEvent = if (msg == protocols[i]) ProtocolNegotiationSucceeded(msg)
+                                else ProtocolNegotiationFailed(protocols.toList())
+
                     }
-                    i == protocols.lastIndex -> {
-                        prehandlers.forEach { ctx.pipeline().remove(it) }
-                        ctx.pipeline().remove(this)
-                        ctx.pipeline().fireUserEventTriggered(ProtocolNegotiationFailed(protocols.toList()))
+                    !initiator && protocols.contains(msg) -> {
+                        ctx.writeAndFlush(HEADING + msg + NEWLINE)
+                        completeEvent = ProtocolNegotiationSucceeded(msg)
                     }
-                    else -> ctx.run {
-                        write(protocols[++i].toByteArray().toByteBuf())
-                        writeAndFlush(NEWLINE)
+                    initiator -> ctx.run {
+                        writeAndFlush(protocols[++i] + NEWLINE)
                     }
+                    !initiator -> {
+                        ctx.writeAndFlush(HEADING + NA + NEWLINE)
+                    }
+                }
+                if (completeEvent != null) {
+                    // first fire event to setup a handler for selected protocol
+                    ctx.pipeline().fireUserEventTriggered(completeEvent)
+                    ctx.pipeline().remove(this)
+                    // DelimiterBasedFrameDecoder should be removed last since it
+                    // propagates unhandled bytes on removal
+                    prehandlers.reversed().forEach { ctx.pipeline().remove(it) }
+                    // activate a handler for selected protocol
+                    ctx.fireChannelActive()
                 }
             }
         })
-
-        ch.run {
-            write(MULTISTREAM_PROTO_BYTES)
-            write(NEWLINE)
-            write(protocols[0].toByteArray().toByteBuf())
-            writeAndFlush(NEWLINE)
-        }
-    }
-
-    /**
-     * Negotiate as a responder.
-     */
-    fun asResponder(ch: Channel, supported: List<String>) {
-        if (supported.isEmpty()) throw ProtocolNegotiationException("No protocols provided")
-
-        val prehandlers = listOf(
-            ReadTimeoutHandler(TIMEOUT_MILLIS, TimeUnit.MILLISECONDS),
-            DelimiterBasedFrameDecoder(1024, *Delimiters.lineDelimiter()),
-            StringDecoder(Charsets.UTF_8)
-        )
-
-        prehandlers.forEach { ch.pipeline().addLast(it) }
-
-        ch.pipeline().addLast(object : ChannelInboundHandlerAdapter() {
-            var headerRead = false
-            override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
-                when {
-                    msg as String == MULTISTREAM_PROTO ->
-                        if (!headerRead) headerRead = true else
-                            throw ProtocolNegotiationException("Received multistream header more than once")
-                    supported.contains(msg) -> {
-                        ctx.write(msg)
-                        ctx.writeAndFlush(NEWLINE)
-                        prehandlers.forEach { ctx.pipeline().remove(it) }
-                        ctx.pipeline().remove(this)
-                        ctx.pipeline().fireUserEventTriggered(ProtocolNegotiationSucceeded(msg))
-                    }
-                    else -> {
-                        // TODO: cap the maximum inbound attempts.
-                        ctx.write(NA)
-                        ctx.writeAndFlush(NEWLINE)
-                    }
-                }
-            }
-        })
-
-        ch.run {
-            write(MULTISTREAM_PROTO_BYTES)
-            writeAndFlush(NEWLINE)
-        }
     }
 }
