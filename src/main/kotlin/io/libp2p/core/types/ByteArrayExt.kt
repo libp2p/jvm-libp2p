@@ -21,6 +21,8 @@ operator fun ByteArray.compareTo(other: ByteArray): Int {
 
 fun ByteArray.toProtobuf(): ByteString = ByteString.copyFrom(this)
 
+fun ByteArray.sliceTrailing(count: Int) = slice((size - count) until size)
+
 fun BigInteger.toBytes(numBytes: Int): ByteArray {
     val bytes = ByteArray(numBytes)
     val biBytes = toByteArray();

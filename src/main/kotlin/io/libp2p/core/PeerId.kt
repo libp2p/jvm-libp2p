@@ -15,5 +15,9 @@ inline class PeerId(val b: ByteArray) {
             return PeerId(ByteArray(32))
         }
 
+        @JvmStatic
+        fun random(): PeerId {
+            return PeerId(ByteArray(0))
+        }
     }
 }

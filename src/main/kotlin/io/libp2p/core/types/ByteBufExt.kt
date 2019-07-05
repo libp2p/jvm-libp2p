@@ -2,6 +2,9 @@ package io.libp2p.core.types
 
 import io.netty.buffer.ByteBuf
 
+/**
+ * Extends ByteBuf to add a write* method for unsigned varints, as defined in https://github.com/multiformats/unsigned-varint.
+ */
 fun ByteBuf.writeUvarint(value: Int): ByteBuf = writeUvarint(value.toLong())
 
 fun ByteBuf.writeUvarint(value: Long): ByteBuf {
@@ -14,6 +17,9 @@ fun ByteBuf.writeUvarint(value: Long): ByteBuf {
     return this
 }
 
+/**
+ * Extends ByteBuf to add a read* method for unsigned varints, as defined in https://github.com/multiformats/unsigned-varint.
+ */
 fun ByteBuf.readUvarint(): Long {
     var x: Long = 0
     var s = 0

@@ -4,9 +4,12 @@ import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 import kotlin.math.min
 
-fun ByteBuf.toByteArray(): ByteArray = ByteArray(this.readableBytes()).let {
-    slice().readBytes(it)
-    it
+/**
+ * Extends Netty's ByteBuf with syntactic sugar to extract a ByteArray (byte[] in Java) easily,
+ * which is created by copy.
+ */
+fun ByteBuf.toByteArray(): ByteArray = ByteArray(this.readableBytes()).apply {
+    slice().readBytes(this)
 }
 
 fun ByteBuf.toByteArray(from: Int = 0, to: Int = Int.MAX_VALUE): ByteArray {
@@ -17,7 +20,7 @@ fun ByteBuf.toByteArray(from: Int = 0, to: Int = Int.MAX_VALUE): ByteArray {
     return ret
 }
 
-
+/**
+ * Extends Kotlin's ByteArray (byte[] in Java) with syntactic sugar to wrap it in Netty's ByteBuf easily.
+ */
 fun ByteArray.toByteBuf(): ByteBuf = Unpooled.wrappedBuffer(this)
-
-fun ByteArray.sliceTrailing(count: Int) = slice((size - count) until size)
