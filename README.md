@@ -44,7 +44,7 @@ implementation:
 - [X] multiformats: [multiaddr](https://github.com/multiformats/multiaddr)
 - [X] crypto (RSA, ed25519, secp256k1?)ç
 - [ ] [connection bootstrapping](https://github.com/libp2p/specs/pull/168)
-- [ ] [secio](https://github.com/libp2p/specs/pull/106)
+- [X] [secio](https://github.com/libp2p/specs/pull/106)
 - [ ] mplex as a multiplexer
 - [ ] stream multiplexing
 - [ ] TCP transport (dialing and listening)
