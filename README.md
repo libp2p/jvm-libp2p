@@ -25,10 +25,10 @@ The endeavour to build jvm-libp2p is split in two phases:
     * We are shooting for Aug/early Sept 2019.
     * Only Java-friendly façade.
 
-* **maturity phase (v1.x):** an flexible and versatile stack adhering to the
-  key design principles of modularity and pluggability advocated by the libp2p
-  project, offering features present in mature implementations like go-libp2p,
-  rust-libp2p, js-libp2p.
+* **maturity phase (v1.x):** upgrades the minimal version to a flexible and
+  versatile stack adhering to the key design principles of modularity and
+  pluggability that define the libp2p project. It adds features present in
+  mature implementations like go-libp2p, rust-libp2p, js-libp2p.
     * will offer: pluggable peerstore, connection manager, QUIC transport,
       circuit relay, AutoNAT, AutoRelay, NAT traversal, etc.
     * Android-friendly.
