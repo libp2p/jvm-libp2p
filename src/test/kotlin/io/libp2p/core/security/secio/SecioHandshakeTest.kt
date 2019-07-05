@@ -6,7 +6,6 @@ import io.netty.buffer.ByteBuf
 import kotlinx.coroutines.channels.Channel
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
-import java.nio.charset.StandardCharsets
 
 /**
  * Created by Anton Nashatyrev on 18.06.2019.
@@ -46,14 +45,16 @@ class Test {
         Assertions.assertTrue(keys1 != null)
         Assertions.assertTrue(keys2 != null)
 
-        val enc1 = keys1!!.first.cipher.doFinal("Hello".toByteArray())
-        val dec1 = keys2!!.second.cipher.doFinal(enc1)
+        val plainMsg = "Hello".toByteArray()
+        val tmp = ByteArray(plainMsg.size)
+        SecIoCodec.createCipher(keys1!!.first).processBytes(plainMsg, 0, plainMsg.size, tmp, 0)
+        SecIoCodec.createCipher(keys2!!.second).processBytes(tmp, 0, tmp.size, tmp, 0)
 
-        Assertions.assertEquals("Hello", dec1.toString(StandardCharsets.UTF_8))
+        Assertions.assertArrayEquals(plainMsg, tmp)
 
-        val enc2 = keys2!!.first.cipher.doFinal("Hello".toByteArray())
-        val dec2 = keys1!!.second.cipher.doFinal(enc2)
+        SecIoCodec.createCipher(keys2!!.first).processBytes(plainMsg, 0, plainMsg.size, tmp, 0)
+        SecIoCodec.createCipher(keys1!!.second).processBytes(tmp, 0, tmp.size, tmp, 0)
 
-        Assertions.assertEquals("Hello", dec2.toString(StandardCharsets.UTF_8))
+        Assertions.assertArrayEquals(plainMsg, tmp)
     }
 }
