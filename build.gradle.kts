@@ -13,6 +13,7 @@ plugins {
     kotlin("jvm") version "1.3.31"
     id("org.jmailen.kotlinter") version "1.26.0"
     id("com.google.protobuf") version "0.8.7"
+    `build-scan`
 
     `maven-publish`
 }
@@ -93,4 +94,9 @@ kotlinter {
 val compileKotlin: KotlinCompile by tasks
 compileKotlin.kotlinOptions {
     freeCompilerArgs = listOf("-XXLanguage:+InlineClasses")
+}
+
+buildScan {
+    termsOfServiceUrl = "https://gradle.com/terms-of-service"
+    termsOfServiceAgree = "yes"
 }
