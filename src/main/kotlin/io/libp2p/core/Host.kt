@@ -11,6 +11,5 @@ class Host(
 ) {
 
     fun start() {
-
     }
 }

@@ -6,11 +6,13 @@ package io.libp2p.core.protocol
 data class ProtocolMatcher(val mode: Mode, val name: String? = null, val predicate: ((String) -> Boolean)? = null) {
 
     init {
-        when(mode) {
-            Mode.NEVER -> {}
+        when (mode) {
+            Mode.NEVER -> {
+            }
             Mode.STRICT -> name ?: throw IllegalArgumentException("STRICT mode requires a name to match against")
             Mode.PREFIX -> name ?: throw IllegalArgumentException("PREFIX mode requires a prefix to match against")
-            Mode.PREDICATE -> predicate ?: throw IllegalArgumentException("PREDICATE mode requires a predicate to invoke")
+            Mode.PREDICATE -> predicate
+                ?: throw IllegalArgumentException("PREDICATE mode requires a predicate to invoke")
         }
     }
 
@@ -18,7 +20,7 @@ data class ProtocolMatcher(val mode: Mode, val name: String? = null, val predica
      * Evaluates this matcher against a proposed protocol ID.
      */
     // TODO: we could use an operator fun here, e.g. == or invoke, but that would probably harm interop with Java.
-    fun matches(proposed: String): Boolean = when(mode) {
+    fun matches(proposed: String): Boolean = when (mode) {
         Mode.NEVER -> false
         Mode.STRICT -> proposed == name!!
         Mode.PREFIX -> proposed.startsWith(name!!)

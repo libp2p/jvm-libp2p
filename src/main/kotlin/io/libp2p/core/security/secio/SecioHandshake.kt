@@ -46,7 +46,8 @@ data class SecioParams(
 class SecioHandshake(
     private val outboundChannel: (ByteBuf) -> Unit,
     val localKey: PrivKey,
-    val remotePeerId: PeerId?) {
+    val remotePeerId: PeerId?
+) {
 
     enum class State {
         Initial,
@@ -66,7 +67,7 @@ class SecioHandshake(
     val curves = linkedSetOf("P-256", "P-384", "P-521")
 
     private val nonce = ByteArray(nonceSize).apply { random.nextBytes(this) }
-    private var proposeMsg: Spipe.Propose? = null;
+    private var proposeMsg: Spipe.Propose? = null
     private var remotePropose: Spipe.Propose? = null
     private var remotePubKey: PubKey? = null
     private var order: Int? = null
@@ -79,7 +80,7 @@ class SecioHandshake(
     fun isComplete() = state == State.FinalValidated
 
     fun start() {
-        val localPubKeyBytes = localKey.publicKey().bytes();
+        val localPubKeyBytes = localKey.publicKey().bytes()
 
         proposeMsg = Spipe.Propose.newBuilder()
             .setRand(nonce.toProtobuf())
@@ -103,7 +104,7 @@ class SecioHandshake(
         when (state) {
             State.ProposeSent -> {
                 remotePropose = read(buf, Spipe.Propose.parser())
-                val remotePubKeyBytes = remotePropose!!.pubkey.toByteArray();
+                val remotePubKeyBytes = remotePropose!!.pubkey.toByteArray()
                 remotePubKey = unmarshalPublicKey(remotePubKeyBytes)
                 val calcedPeerId = PeerId.fromPubKey(remotePubKey!!)
                 if (remotePeerId != null && calcedPeerId != remotePeerId) throw InvalidRemotePubKey()
@@ -123,9 +124,10 @@ class SecioHandshake(
                 val exchangeMsg = Spipe.Exchange.newBuilder()
                     .setEpubkey(ephPubKeyL.toUncompressedBytes().toProtobuf())
                     .setSignature(
-                        localKey.sign(proposeMsg!!.toByteArray()
-                                + remotePropose!!.toByteArray()
-                                + ephPubKeyL.toUncompressedBytes()).toProtobuf()
+                        localKey.sign(
+                            proposeMsg!!.toByteArray() + remotePropose!!.toByteArray() +
+                                    ephPubKeyL.toUncompressedBytes()
+                        ).toProtobuf()
                     ).build()
 
                 state = State.ExchangeSent
@@ -135,25 +137,28 @@ class SecioHandshake(
                 val remoteExchangeMsg = read(buf, Spipe.Exchange.parser())
                 if (!remotePubKey!!.verify(
                         remotePropose!!.toByteArray() + proposeMsg!!.toByteArray() + remoteExchangeMsg.epubkey.toByteArray(),
-                        remoteExchangeMsg.signature.toByteArray())) {
+                        remoteExchangeMsg.signature.toByteArray()
+                    )
+                ) {
                     throw InvalidSignature()
                 }
 
                 val ecCurve = ECNamedCurveTable.getParameterSpec(curve).curve
-                val remoteEphPublickKey = decodeEcdsaPublicKeyUncompressed(curve!!, remoteExchangeMsg.epubkey.toByteArray())
-                val remoteEphPubPoint = ecCurve.validatePoint(remoteEphPublickKey.pub.w.affineX, remoteEphPublickKey.pub.w.affineY)
+                val remoteEphPublickKey =
+                    decodeEcdsaPublicKeyUncompressed(curve!!, remoteExchangeMsg.epubkey.toByteArray())
+                val remoteEphPubPoint =
+                    ecCurve.validatePoint(remoteEphPublickKey.pub.w.affineX, remoteEphPublickKey.pub.w.affineY)
 
                 val sharedSecretPoint = ecCurve.multiplier.multiply(remoteEphPubPoint, ephPrivKey!!.priv.s)
                 val sharedSecret = sharedSecretPoint.normalize().affineXCoord.encoded
 
-
                 val (k1, k2) = stretchKeys(cipher!!, hash!!, sharedSecret)
 
-                val localKeys = if(order!! > 0) k1 else k2
-                val remoteKeys = if(order!! > 0) k2 else k1
+                val localKeys = if (order!! > 0) k1 else k2
+                val remoteKeys = if (order!! > 0) k2 else k1
 
                 val hmacFactory: (ByteArray) -> HMac = { macKey ->
-                    val ret = when(hash) {
+                    val ret = when (hash) {
                         "SHA256" -> HMac(SHA256Digest())
                         "SHA512" -> HMac(SHA512Digest())
                         else -> throw IllegalArgumentException("Unsupported hash function: $hash")
@@ -164,10 +169,14 @@ class SecioHandshake(
 
                 state = State.KeysCreated
                 return Pair(
-                    SecioParams(nonce, localKey.publicKey(), ephPubKey!!.bytes(),
-                        localKeys, curve!!, cipher!!, hash!!, hmacFactory.invoke(localKeys.macKey)),
-                    SecioParams(remotePropose!!.rand.toByteArray(), remotePubKey!!, remoteEphPubPoint.getEncoded(true),
-                        remoteKeys, curve!!, cipher!!, hash!!, hmacFactory.invoke(remoteKeys.macKey))
+                    SecioParams(
+                        nonce, localKey.publicKey(), ephPubKey!!.bytes(),
+                        localKeys, curve!!, cipher!!, hash!!, hmacFactory.invoke(localKeys.macKey)
+                    ),
+                    SecioParams(
+                        remotePropose!!.rand.toByteArray(), remotePubKey!!, remoteEphPubPoint.getEncoded(true),
+                        remoteKeys, curve!!, cipher!!, hash!!, hmacFactory.invoke(remoteKeys.macKey)
+                    )
                 )
             }
             State.SecureChannelCreated -> {
@@ -183,7 +192,8 @@ class SecioHandshake(
         val byteBuf = Unpooled.buffer().writeBytes(outMsg.toByteArray())
         outboundChannel.invoke(byteBuf)
     }
-    private fun <MessageType: Message> read(buf: ByteBuf, parser: Parser<MessageType>): MessageType {
+
+    private fun <MessageType : Message> read(buf: ByteBuf, parser: Parser<MessageType>): MessageType {
         return parser.parseFrom(buf.nioBuffer())
     }
 

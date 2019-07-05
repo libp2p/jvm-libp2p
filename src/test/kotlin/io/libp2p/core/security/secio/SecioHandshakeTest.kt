@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test
  * Created by Anton Nashatyrev on 18.06.2019.
  */
 
-class Test {
+class SecioHandshakeTest {
     @Test
     fun test1() {
         val (privKey1, pubKey1) = generateKeyPair(KEY_TYPE.ECDSA)
