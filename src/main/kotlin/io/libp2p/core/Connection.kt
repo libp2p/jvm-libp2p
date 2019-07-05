@@ -10,5 +10,4 @@ import io.netty.channel.Channel
 class Connection(val ch: Channel) {
     private val muxerSession by lazy { ch.attr(MUXER_SESSION) }
     private val secureSession by lazy { ch.attr(SECURE_SESSION) }
-
 }

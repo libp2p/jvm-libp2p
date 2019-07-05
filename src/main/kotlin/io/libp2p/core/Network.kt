@@ -48,5 +48,4 @@ class Network(private val transports: List<Transport>, private val config: Confi
         //    pending dials to avoid leaking.
         return CompletableFuture()
     }
-
 }

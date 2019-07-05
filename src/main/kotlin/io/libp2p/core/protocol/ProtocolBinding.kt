@@ -31,9 +31,10 @@ interface ProtocolBinding<TController> {
 
 class ProtocolBindingInitializer<TController>(
     val channelInitializer: ChannelInitializer<Channel>,
-    val controller: CompletableFuture<TController>)
+    val controller: CompletableFuture<TController>
+)
 
-class DummyProtocolBinding: ProtocolBinding<Nothing> {
+class DummyProtocolBinding : ProtocolBinding<Nothing> {
     override val announce: String = "/dummy/0.0.0"
     override val matcher: ProtocolMatcher = ProtocolMatcher(Mode.NEVER)
 

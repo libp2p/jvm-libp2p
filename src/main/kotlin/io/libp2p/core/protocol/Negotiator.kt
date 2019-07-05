@@ -43,12 +43,12 @@ object Negotiator {
     private val DELIMITER = "\r"
     private val NA = "na"
     private val DELIMITERS = arrayOf(
-            wrappedBuffer("\n\r".toByteArray()),
-            wrappedBuffer("\n".toByteArray())
-        )
+        wrappedBuffer("\n\r".toByteArray()),
+        wrappedBuffer("\n".toByteArray())
+    )
 
     fun createInitializer(initiator: Boolean, vararg protocols: String): ChannelInitializer<Channel> {
-        return object: ChannelInitializer<Channel>() {
+        return object : ChannelInitializer<Channel>() {
             override fun initChannel(ch: Channel) {
                 initNegotiator(ch, initiator, *protocols)
             }
@@ -89,8 +89,7 @@ object Negotiator {
                             throw ProtocolNegotiationException("Received multistream header more than once")
                     initiator && (i == protocols.lastIndex || msg == protocols[i]) -> {
                         completeEvent = if (msg == protocols[i]) ProtocolNegotiationSucceeded(msg)
-                                else ProtocolNegotiationFailed(protocols.toList())
-
+                        else ProtocolNegotiationFailed(protocols.toList())
                     }
                     !initiator && protocols.contains(msg) -> {
                         ctx.writeAndFlush(HEADING + msg + NEWLINE)

@@ -208,7 +208,7 @@ fun stretchKeys(cipherType: String, hashType: String, secret: ByteArray): Pair<S
     val seed = "key expansion".toByteArray()
     val result = ByteArray(2 * (ivSize + cipherKeySize + hmacKeySize))
 
-    val hmac = when(hashType) {
+    val hmac = when (hashType) {
         "SHA256" -> HMac(SHA256Digest())
         "SHA512" -> HMac(SHA512Digest())
         else -> throw IllegalArgumentException("Unsupported hash function: $hashType")

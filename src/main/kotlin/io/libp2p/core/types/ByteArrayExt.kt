@@ -16,7 +16,7 @@ operator fun ByteArray.compareTo(other: ByteArray): Int {
     for (i in 0 until size) {
         if (this[i] != other[i]) return this[i].toInt().and(0xFF) - other[i].toInt().and(0xFF)
     }
-    return 0;
+    return 0
 }
 
 fun ByteArray.toProtobuf(): ByteString = ByteString.copyFrom(this)
@@ -25,9 +25,9 @@ fun ByteArray.sliceTrailing(count: Int) = slice((size - count) until size)
 
 fun BigInteger.toBytes(numBytes: Int): ByteArray {
     val bytes = ByteArray(numBytes)
-    val biBytes = toByteArray();
+    val biBytes = toByteArray()
     val start = if (biBytes.size == numBytes + 1) 1 else 0
     val length = min(biBytes.size, numBytes)
     arraycopy(biBytes, start, bytes, numBytes - length, length)
-    return bytes;
+    return bytes
 }

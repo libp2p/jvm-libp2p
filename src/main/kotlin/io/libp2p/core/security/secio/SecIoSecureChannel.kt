@@ -19,7 +19,6 @@ import java.security.PublicKey
 import java.util.concurrent.CompletableFuture
 import io.netty.channel.Channel as NettyChannel
 
-
 class SecIoSecureChannel(val localKey: PrivKey, val remotePeerId: PeerId? = null) :
     SecureChannel {
 
@@ -29,13 +28,12 @@ class SecIoSecureChannel(val localKey: PrivKey, val remotePeerId: PeerId? = null
     override val announce = "/secio/1.0.0"
     override val matcher = ProtocolMatcher(Mode.STRICT, name = "/secio/1.0.0")
 
-
     override fun initializer(): ProtocolBindingInitializer<SecureChannel.Session> {
         val ret = CompletableFuture<SecureChannel.Session>()
         // bridge the result of the secure channel bootstrap with the promise.
         val resultHandler = object : ChannelInboundHandlerAdapter() {
             override fun userEventTriggered(ctx: ChannelHandlerContext, evt: Any) {
-                when(evt) {
+                when (evt) {
                     is SecureChannelInitialized -> ret.complete(evt.session)
                     is SecureChannelFailed -> ret.completeExceptionally(evt.exception)
                 }
@@ -54,7 +52,8 @@ class SecIoSecureChannel(val localKey: PrivKey, val remotePeerId: PeerId? = null
                         )
                     )
                 }
-            }, ret)
+            }, ret
+        )
     }
 
     inner class SecIoHandshake : ChannelInboundHandlerAdapter() {
@@ -106,5 +105,3 @@ class SecioSession(
     override val remoteId: PeerId,
     override val remotePubKey: PublicKey
 ) : SecureChannel.Session
-
-

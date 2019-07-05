@@ -36,10 +36,8 @@ import java.security.SecureRandom
 import java.security.Signature
 import java.security.spec.PKCS8EncodedKeySpec
 import java.security.spec.X509EncodedKeySpec
-import java.security.PrivateKey as JavaPrivateKey
 import java.security.interfaces.ECPrivateKey as JavaECPrivateKey
 import java.security.interfaces.ECPublicKey as JavaECPublicKey
-
 
 private val CURVE: ECNamedCurveParameterSpec = ECNamedCurveTable.getParameterSpec(P256_CURVE)
 
@@ -164,7 +162,7 @@ fun unmarshalEcdsaPublicKey(keyBytes: ByteArray): EcdsaPublicKey =
         EcdsaPublicKey(generatePublic(X509EncodedKeySpec(keyBytes)) as JavaECPublicKey)
     }
 
-fun decodeEcdsaPublicKeyUncompressed(ecCurve: String, keyBytes: ByteArray): EcdsaPublicKey  {
+fun decodeEcdsaPublicKeyUncompressed(ecCurve: String, keyBytes: ByteArray): EcdsaPublicKey {
     val spec = ECNamedCurveTable.getParameterSpec(ecCurve)
     val kf = KeyFactory.getInstance("ECDSA", BouncyCastleProvider())
     val params = ECNamedCurveSpec(ecCurve, spec.getCurve(), spec.getG(), spec.getN())
@@ -174,4 +172,3 @@ fun decodeEcdsaPublicKeyUncompressed(ecCurve: String, keyBytes: ByteArray): Ecds
     publicKey as JavaECPublicKey
     return EcdsaPublicKey(publicKey)
 }
-

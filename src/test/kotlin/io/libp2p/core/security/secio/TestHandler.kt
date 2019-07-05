@@ -6,7 +6,7 @@ import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
 
-open class TestHandler(val name: String = ""): ChannelInboundHandlerAdapter() {
+open class TestHandler(val name: String = "") : ChannelInboundHandlerAdapter() {
     override fun channelActive(ctx: ChannelHandlerContext) {
         println("==$name== Active")
         super.channelActive(ctx)
@@ -28,7 +28,7 @@ open class TestHandler(val name: String = ""): ChannelInboundHandlerAdapter() {
     }
 
     override fun channelRead(ctx: ChannelHandlerContext, msg: Any?) {
-        val content = when(msg) {
+        val content = when (msg) {
 //            is ByteBuf -> msg.toByteArray().toHex() + "(" + msg.toByteArray().toString(StandardCharsets.UTF_8) + ")"
             is ByteBuf -> msg.toByteArray().toHex() + "(" + msg.readableBytes() + ")"
             else -> msg.toString()

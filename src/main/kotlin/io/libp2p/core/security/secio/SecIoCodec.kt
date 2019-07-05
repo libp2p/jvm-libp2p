@@ -14,11 +14,11 @@ import org.bouncycastle.crypto.params.ParametersWithIV
 
 class SecIoCodec(val local: SecioParams, val remote: SecioParams) : MessageToMessageCodec<ByteBuf, ByteBuf>() {
 
-    private val localCipher  = createCipher(local)
+    private val localCipher = createCipher(local)
     private val remoteCipher = createCipher(remote)
 
     companion object {
-        fun createCipher(params: SecioParams) : StreamCipher {
+        fun createCipher(params: SecioParams): StreamCipher {
             val aesEngine = AESEngine().apply {
                 init(true, KeyParameter(params.keys.cipherKey))
             }
