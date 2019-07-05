@@ -1,37 +1,55 @@
-# jvm-libp2p-minimal
+# jvm-libp2p
 
-> a minimal libp2p implementation for the JVM, written in Kotlin 🔥
+[![](https://img.shields.io/badge/project-libp2p-yellow.svg?style=flat-square)](https://libp2p.io/)
+[![Gitter](https://img.shields.io/gitter/room/libp2p/jvm-libp2p.svg)](https://gitter.im/jvm-libp2p/community)
+[![](https://img.shields.io/badge/freenode-%23libp2p-yellow.svg?style=flat-square)](http://webchat.freenode.net/?channels=%23libp2p)
+[![Build Status](https://travis-ci.com/libp2p/jvm-libp2p.svg?branch=master)](https://travis-ci.com/libp2p/jvm-libp2p)
+[![Discourse posts](https://img.shields.io/discourse/https/discuss.libp2p.io/posts.svg)](https://discuss.libp2p.io)
 
-**⚠️ This is heavy work in progress! ⚠** _Status: we're sketching out 
-the system in the [`sketch`](https://github.com/raulk/jvm-libp2p-minimal/tree/sketch)
-branch._
+> a libp2p implementation for the JVM, written in Kotlin 🔥
 
-## What we're doing here
+**⚠️ This is heavy work in progress! ⚠**
 
-We aim to provide the bare minimum stack that will allow JVM-based Ethereum 2.0
-clients to interoperate with other clients that rely on fully-fledged libp2p
-stacks written in other languages.
+## Roadmap
 
-To achieve this, we have to be wire-compliant, but don't need to fulfill all
-libp2p abstractions at this time.
+The endeavour to build jvm-libp2p is split in two phases:
 
-This effort will act as a starting point to evolve this project into a
-fully-fledged libp2p stack for JVM environments, including Android runtimes.
+* **minimal phase (v0.x):** aims to provide the bare minimum stack that will
+  allow JVM-based Ethereum 2.0 clients to interoperate with other clients that
+  rely on fully-fledged libp2p stacks written in other languages.
+    * To achieve this, we have to be wire-compliant, but don't need to fulfill
+      the complete catalogue of libp2p abstractions.
+    * This effort will act as a starting point to evolve this project into a
+      fully-fledged libp2p stack for JVM environments, including Android
+      runtimes.
+    * We are shooting for Aug/early Sept 2019.
+    * Only Java-friendly façade.
 
-## Definition of Done
+* **maturity phase (v1.x):** upgrades the minimal version to a flexible and
+  versatile stack adhering to the key design principles of modularity and
+  pluggability that define the libp2p project. It adds features present in
+  mature implementations like go-libp2p, rust-libp2p, js-libp2p.
+    * will offer: pluggable peerstore, connection manager, QUIC transport,
+      circuit relay, AutoNAT, AutoRelay, NAT traversal, etc.
+    * Android-friendly.
+    * Kotlin coroutine-based façade, possibly a Reactive Streams façade too.
+    * work will begin after the minimal phase concludes.
+
+## minimal phase (v0.x): Definition of Done
 
 We have identified the following components on the path to attaining a minimal
 implementation:
 
+- [X] multistream-select 1.0
+- [X] multiformats: [multiaddr](https://github.com/multiformats/multiaddr)
+- [X] crypto (RSA, ed25519, secp256k1?)ç
+- [X] [secio](https://github.com/libp2p/specs/pull/106)
 - [ ] [connection bootstrapping](https://github.com/libp2p/specs/pull/168)
-- [ ] multistream-select 1.0
-- [ ] [secio](https://github.com/libp2p/specs/pull/106)
 - [ ] mplex as a multiplexer
 - [ ] stream multiplexing
 - [ ] TCP transport (dialing and listening)
-- [ ] multiformats: [multiaddr](https://github.com/multiformats/multiaddr)
-- [ ] [peer ID](https://github.com/libp2p/specs/pull/100) & crypto (RSA,
-  ed25519, secp256k1?)
+- [ ] identify protocol
+- [ ] [peer ID](https://github.com/libp2p/specs/pull/100)
 
 We are explicitly leaving out the peerstore, DHT, pubsub, connection manager,
 etc. and other subsystems or concepts that are internal to implementations and
