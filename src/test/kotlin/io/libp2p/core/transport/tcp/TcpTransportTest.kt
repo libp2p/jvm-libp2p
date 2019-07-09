@@ -25,14 +25,14 @@ class TcpTransportTest {
 
     @ParameterizedTest
     @MethodSource("validMultiaddrs")
-    fun `handles(addr) returns true if addr contains tcp protocol` (addr: Multiaddr) {
+    fun `handles(addr) returns true if addr contains tcp protocol`(addr: Multiaddr) {
         val tcp = TcpTransport(upgrader)
         assert(tcp.handles(addr))
     }
 
     @ParameterizedTest
     @MethodSource("invalidMultiaddrs")
-    fun `handles(addr) returns false if addr does not contain tcp protocol` (addr: Multiaddr) {
+    fun `handles(addr) returns false if addr does not contain tcp protocol`(addr: Multiaddr) {
         val tcp = TcpTransport(upgrader)
         assert(!tcp.handles(addr))
     }
