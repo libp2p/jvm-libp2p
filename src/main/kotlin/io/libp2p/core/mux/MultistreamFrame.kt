@@ -7,6 +7,7 @@ class MultistreamFrame(val id: MultiplexId, val flag: Flag, val data: ByteBuf? =
     enum class Flag {
         OPEN,
         DATA,
-        CLOSE
+        CLOSE,
+        RESET
     }
 }

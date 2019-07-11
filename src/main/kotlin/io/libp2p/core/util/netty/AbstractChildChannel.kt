@@ -18,16 +18,24 @@ import java.net.SocketAddress
  */
 abstract class AbstractChildChannel(parent: Channel, id: ChannelId?) : AbstractChannel(parent, id) {
     private enum class State {
-        OPEN, ACTIVE, CLOSED
+        OPEN, ACTIVE, INACTIVE, CLOSED
     }
 
     private var state = State.OPEN
+    private var closeImplicitly = false
 
     init {
         parent.closeFuture().addListener {
-            pipeline().fireChannelInactive()
-            pipeline().close()
-            pipeline().deregister()
+            closeImpl()
+        }
+    }
+
+    fun closeImpl() {
+        closeImplicitly = true
+        try {
+            close()
+        } finally {
+            closeImplicitly = false
         }
     }
 
@@ -58,7 +66,19 @@ abstract class AbstractChildChannel(parent: Channel, id: ChannelId?) : AbstractC
     }
 
     override fun doClose() {
+        if (!closeImplicitly) onClientClosed()
+        deactivate()
+        pipeline().deregister()
         state = State.CLOSED
+    }
+
+    protected open fun onClientClosed() {}
+
+    protected fun deactivate() {
+        if (state == State.ACTIVE) {
+            pipeline().fireChannelInactive()
+            state = State.INACTIVE
+        }
     }
 
     override fun doBeginRead() {

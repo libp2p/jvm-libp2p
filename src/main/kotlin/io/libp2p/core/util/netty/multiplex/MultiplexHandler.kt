@@ -6,6 +6,7 @@ import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandler
 import io.netty.channel.ChannelInboundHandlerAdapter
 import java.util.concurrent.CompletableFuture
+import java.util.function.Function
 
 /**
  * Created by Anton Nashatyrev on 09.07.2019.
@@ -50,11 +51,30 @@ abstract class MultiplexHandler<TData>(override val inboundInitializer: ChannelH
         streamMap[id] = createChild(id, inboundInitializer)
     }
 
-    protected fun onRemoteClose(id: MultiplexId) {
-        streamMap.remove(id)?.close()
+    protected fun onRemoteDisconnect(id: MultiplexId) {
+        val child = streamMap[id] ?: throw Libp2pException("Channel with id $id not opened")
+        child.onRemoteDisconnected()
     }
+
+    protected fun onRemoteClose(id: MultiplexId) {
+        streamMap[id]?.closeImpl()
+    }
+
+    fun localDisconnect(child: MultiplexChannel<TData>) {
+        onLocalDisconnect(child)
+    }
+
+    fun localClose(child: MultiplexChannel<TData>) {
+        onLocalClose(child)
+    }
+
+    fun onClosed(child: MultiplexChannel<TData>) {
+        streamMap.remove(child.id)
+    }
+
     protected abstract fun onLocalOpen(child: MultiplexChannel<TData>)
-    abstract fun onLocalClose(child: MultiplexChannel<TData>)
+    protected abstract fun onLocalClose(child: MultiplexChannel<TData>)
+    protected abstract fun onLocalDisconnect(child: MultiplexChannel<TData>)
 
     private fun createChild(id: MultiplexId, initializer: ChannelHandler): MultiplexChannel<TData> {
         val ret = MultiplexChannel(this, initializer, id)
@@ -64,9 +84,10 @@ abstract class MultiplexHandler<TData>(override val inboundInitializer: ChannelH
 
     protected abstract fun generateNextId(): MultiplexId
 
-    override fun newStream(outboundInitializer: ChannelHandler): CompletableFuture<Unit> =
-        activeFuture.thenApplyAsync({
+    override fun newStream(outboundInitializer: ChannelHandler): CompletableFuture<Unit> {
+        return activeFuture.thenApplyAsync(Function {
             val child = createChild(generateNextId(), outboundInitializer)
             onLocalOpen(child)
         }, getChannelHandlerContext().channel().eventLoop())
+    }
 }

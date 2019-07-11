@@ -17,7 +17,8 @@ class MultistreamHandler(inboundInitializer: ChannelHandler) : MultiplexHandler<
         msg as MultistreamFrame
         when (msg.flag) {
             MultistreamFrame.Flag.OPEN -> onRemoteOpen(msg.id)
-            MultistreamFrame.Flag.CLOSE -> onRemoteClose(msg.id)
+            MultistreamFrame.Flag.CLOSE -> onRemoteDisconnect(msg.id)
+            MultistreamFrame.Flag.RESET -> onRemoteClose(msg.id)
             MultistreamFrame.Flag.DATA -> childRead(msg.id, msg.data!!)
         }
     }
@@ -31,8 +32,12 @@ class MultistreamHandler(inboundInitializer: ChannelHandler) : MultiplexHandler<
         getChannelHandlerContext().writeAndFlush(MultistreamFrame(child.id, MultistreamFrame.Flag.OPEN))
     }
 
-    override fun onLocalClose(child: MultiplexChannel<ByteBuf>) {
+    override fun onLocalDisconnect(child: MultiplexChannel<ByteBuf>) {
         getChannelHandlerContext().writeAndFlush(MultistreamFrame(child.id, MultistreamFrame.Flag.CLOSE))
+    }
+
+    override fun onLocalClose(child: MultiplexChannel<ByteBuf>) {
+        getChannelHandlerContext().writeAndFlush(MultistreamFrame(child.id, MultistreamFrame.Flag.RESET))
     }
 
     override fun generateNextId() = MultiplexId(idGenerator.incrementAndGet())
