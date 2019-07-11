@@ -64,10 +64,9 @@ abstract class MultiplexHandler<TData>(override val inboundInitializer: ChannelH
 
     protected abstract fun generateNextId(): MultiplexId
 
-    override fun newStream(outboundInitializer: ChannelHandler): CompletableFuture<Unit> {
-        return activeFuture.thenApply {
+    override fun newStream(outboundInitializer: ChannelHandler): CompletableFuture<Unit> =
+        activeFuture.thenApplyAsync({
             val child = createChild(generateNextId(), outboundInitializer)
             onLocalOpen(child)
-        }
-    }
+        }, getChannelHandlerContext().channel().eventLoop())
 }
