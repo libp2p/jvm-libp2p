@@ -10,64 +10,57 @@
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
  */
-package io.libp2p.core.wip
+package io.libp2p.core.mplex
 
-import io.libp2p.core.mplex.MplexFrame
 import io.libp2p.core.types.readUvarint
 import io.libp2p.core.types.toByteArray
 import io.libp2p.core.types.writeUvarint
+import io.libp2p.core.wip.MplexFrame
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.codec.MessageToMessageCodec
 
-class VarintMessageCodec : MessageToMessageCodec<ByteBuf, MplexFrame>() {
-    override fun encode(ctx: ChannelHandlerContext?, msg: MplexFrame, out: MutableList<Any>) {
+/**
+ * A Netty codec implementation that converts [MplexFrame] instances to [ByteBuf] and vice-versa.
+ */
+class MplexFrameCodec : MessageToMessageCodec<ByteBuf, MplexFrame>() {
 
-        val header = msg.streamId.shl(3).or(msg.flag.toLong())
-        val lenData = msg.data.size
-
-        val buf = Unpooled.buffer()
-        buf.writeUvarint(header)
-        buf.writeUvarint(lenData)
-        buf.writeBytes(msg.data)
-        out.add(buf)
-
-//        out.add(
-//            Unpooled.wrappedBuffer(
-//                Unpooled.wrappedBuffer(outByteArr),
-//                Unpooled.wrappedBuffer(macArr)
-//            )
-//        )
-
+    /**
+     * Encodes the given mplex frame into bytes and writes them into the output list.
+     * @see [https://github.com/libp2p/specs/tree/master/mplex]
+     * @param ctx the context.
+     * @param msg the mplex frame.
+     * @param out the list to write the bytes to.
+     */
+    override fun encode(ctx: ChannelHandlerContext, msg: MplexFrame, out: MutableList<Any>) {
+        out.add(with(Unpooled.buffer()) {
+            writeUvarint(msg.streamId.shl(3).or(msg.flag.toLong()))
+            writeUvarint(msg.data.size)
+            writeBytes(msg.data)
+        })
     }
 
-    override fun decode(ctx: ChannelHandlerContext?, msg: ByteBuf, out: MutableList<Any>) {
+    /**
+     * Decodes the bytes in the given byte buffer and constructs a [MplexFrame] that is written into
+     * the output list.
+     * @param ctx the context.
+     * @param msg the byte buffer.
+     * @param out the list to write the extracted frame to.
+     */
+    override fun decode(ctx: ChannelHandlerContext, msg: ByteBuf, out: MutableList<Any>) {
         val readableByteCount = msg.readableBytes()
-        val current = msg.toByteArray()
-        var bytesRead = 0
-        var readMoreData = readableByteCount > 0
-        while (readMoreData) {
-            msg.markReaderIndex()
-            val header = msg.readUvarint()
+        msg.markReaderIndex()
+        val header = msg.readUvarint()
+        val lenData = msg.readUvarint()
+        val bytesRead = msg.readerIndex()
+        if (lenData > readableByteCount - bytesRead) {
+            msg.resetReaderIndex()
+        } else {
             val streamTag = header.and(0x07).toInt()
             val streamId = header.shr(3)
-            val lenData = msg.readUvarint()
-            bytesRead = msg.readerIndex()
-            if (lenData > readableByteCount - bytesRead) {
-                readMoreData = false
-                msg.resetReaderIndex()
-                out.add(msg)
-            } else {
-//                val data = msg.readSlice(lenData.toInt()).retain()
-                val data = msg.readBytes(lenData.toInt()).toByteArray()
-                val frame = MplexFrame(streamTag, streamId, data)
-                out.add(frame)
-                println("*** Decoded msg=$frame")
-                bytesRead = msg.readerIndex()
-                readMoreData = bytesRead < readableByteCount
-//                out.add(`in`.readSlice(outLen).retain())
-            }
+            val data = msg.readBytes(lenData.toInt()).toByteArray()
+            out.add(MplexFrame(streamId, streamTag, data))
         }
 
         println("*** Done")

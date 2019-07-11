@@ -12,6 +12,7 @@
  */
 package io.libp2p.core.wip
 
+import io.libp2p.core.mplex.MplexFlags
 import io.libp2p.core.types.toByteArray
 import io.libp2p.core.types.writeUvarint
 import io.netty.buffer.Unpooled
@@ -22,13 +23,17 @@ import io.netty.buffer.Unpooled
  * @param streamId the ID of the stream.
  * @param flag the flag value for this frame.
  * @param data the data segment.
+ * @see [mplex documentation](https://github.com/libp2p/specs/tree/master/mplex#opening-a-new-stream)
  */
 data class MplexFrame(val streamId: Long, val flag: Int, val data: ByteArray) {
 
+    /**
+     * The data interpreted as a UTF-8 string.
+     */
     val dataString = String(data)
 
     override fun toString(): String {
-        return "[$streamId]: tag=$streamTag, len(data)=${data.size}"
+        return "[s#$streamId]: flag=$flag, data length=${data.size}"
     }
 
     override fun equals(other: Any?): Boolean {
@@ -54,25 +59,58 @@ data class MplexFrame(val streamId: Long, val flag: Int, val data: ByteArray) {
     }
 
 
-//    var data = createStreamStrings("/multistream/1.0.0\n", "/chat/1.0.0\n")
-//    var frame = MplexFrame(MplexDataHandler.messageTag + 1, msg.streamId, data)
-
     companion object {
 
-        fun createStream(streamId: Long, streamName: String = "$streamId"): MplexFrame {
-            return MplexFrame(MplexDataHandler.NewStream, streamId, createStreamStrings(streamName))
+        /**
+         * Separates data items in a frame.
+         */
+        private const val ItemSeparator = '\n'
+
+        /**
+         * Creates a frame representing a new stream with the given ID and (optional) name.
+         * @param streamId the stream ID.
+         * @param streamName the optional name of the stream.
+         */
+        fun createNewStream(streamId: Long, streamName: String = "$streamId"): MplexFrame {
+            return MplexFrame(
+                streamId,
+                MplexFlags.NewStream,
+                createStreamData(streamName)
+            )
         }
 
+        /**
+         * Creates a frame representing a message to be conveyed to the other peer.
+         * @param initiator whether this peer is the initiator.
+         * @param streamId the stream ID.
+         * @param strings an array of string values to be sent to the other peer.
+         */
         fun createMessage(initiator: Boolean, streamId: Long, vararg strings: String): MplexFrame {
-            val tag = if (initiator) MplexDataHandler.MessageInitiator else MplexDataHandler.MessageReceiver
-            return MplexFrame(tag, streamId, createStreamStrings(*strings))
+            return MplexFrame(
+                streamId,
+                if (initiator) MplexFlags.MessageInitiator else MplexFlags.MessageReceiver,
+                createStreamData(*strings)
+            )
         }
 
-        private fun createStreamStrings(vararg strings: String): ByteArray {
+        /**
+         * Converts the given strings into the correct payload data structure to be written out in an [MplexFrame].
+         * @param strings string to be written out in the payload.
+         * @return a byte array representing the payload.
+         */
+        private fun createStreamData(vararg strings: String): ByteArray {
             return with(Unpooled.buffer()) {
                 strings.forEach {
-                    writeUvarint(it.length)
-                    writeBytes(it.toByteArray())
+                    // Add a '\n' char if it doesn't already end with one.
+                    val stringToWrite =
+                        if (it.endsWith(ItemSeparator)) {
+                            it
+                        } else {
+                            it + ItemSeparator
+                        }
+                    // Write each string with the length prefix.
+                    writeUvarint(stringToWrite.length)
+                    writeBytes(stringToWrite.toByteArray())
                 }
                 toByteArray()
             }

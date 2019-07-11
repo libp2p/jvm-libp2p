@@ -10,12 +10,11 @@
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
  */
-package io.libp2p.core.wip
+package io.libp2p.core.mplex
 
 import io.libp2p.core.Libp2pException
 import io.libp2p.core.events.ProtocolNegotiationFailed
 import io.libp2p.core.events.ProtocolNegotiationSucceeded
-import io.libp2p.core.mplex.MplexChannelInitializer
 import io.libp2p.core.protocol.Protocols
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter

@@ -2,6 +2,7 @@ package io.libp2p.core.security.secio
 
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.generateKeyPair
+import io.libp2p.core.mplex.MplexChannelInitializer
 import io.libp2p.core.protocol.Negotiator
 import io.libp2p.core.protocol.ProtocolSelect
 import io.netty.bootstrap.Bootstrap
@@ -19,8 +20,8 @@ import org.junit.jupiter.api.Test
 
 class NetworkTest {
 
-    @Disabled
     @Test
+    @Disabled
     fun connect1() {
 
         val b = Bootstrap()
@@ -43,6 +44,7 @@ class NetworkTest {
                 ch.pipeline().addLast(secioProtocolSelect)
                 ch.pipeline().addLast(LoggingHandler("###2", LogLevel.ERROR))
                 ch.pipeline().addLast(Negotiator.createInitializer(true, "/mplex/6.7.0"))
+                ch.pipeline().addLast(MplexChannelInitializer())
             }
         })
 
