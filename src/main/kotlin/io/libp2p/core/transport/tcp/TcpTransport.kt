@@ -2,6 +2,7 @@ package io.libp2p.core.transport.tcp
 
 import io.libp2p.core.Connection
 import io.libp2p.core.multiformats.Multiaddr
+import io.libp2p.core.multiformats.Protocol
 import io.libp2p.core.transport.ConnectionUpgrader
 import io.libp2p.core.transport.Transport
 import io.libp2p.core.types.toCompletableFuture
@@ -26,7 +27,8 @@ class TcpTransport(val upgrader: ConnectionUpgrader) : Transport {
 
     // Checks if this transport can handle this multiaddr. It should return true for multiaddrs containing `tcp` atoms.
     override fun handles(addr: Multiaddr): Boolean {
-        return false
+        return addr.components
+            .any { pair -> pair.first == Protocol.TCP }
     }
 
     // Closes this transport entirely, aborting all ongoing connections and shutting down any listeners.
