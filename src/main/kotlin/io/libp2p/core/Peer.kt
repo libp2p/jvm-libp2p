@@ -9,16 +9,16 @@ abstract class Peer(private val host: Host, val id: PeerId) {
 
     abstract fun streams(): List<Stream>
 
-    fun connect() : Future<Connection> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    fun connect(): Future<Connection> {
+        TODO("not implemented")
     }
 
     fun disconnect() {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
-    fun connection() : Connection? {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    fun connection(): Connection? {
+        TODO("not implemented")
     }
 
     enum class Status {
@@ -26,4 +26,3 @@ abstract class Peer(private val host: Host, val id: PeerId) {
         CONNECTED
     }
 }
-

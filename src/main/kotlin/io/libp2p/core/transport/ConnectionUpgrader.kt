@@ -13,7 +13,7 @@ class ConnectionUpgrader(
     private val secureChannels: List<SecureChannel>,
     private val muxers: List<StreamMuxer>
 ) {
-    fun establishSecureChannel(ch: Channel) : ChannelFuture = TODO()
+    fun establishSecureChannel(ch: Channel): ChannelFuture = TODO()
 
     fun establishMuxer(ch: Channel): ChannelFuture = TODO()
 }

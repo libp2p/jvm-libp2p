@@ -16,7 +16,7 @@ typealias StreamMuxerCtor = () -> StreamMuxer
 typealias SecureChannelCtor = () -> SecureChannel
 typealias ProtocolCtor = () -> ProtocolBinding<*>
 
-class HostConfigurationException(message: String): RuntimeException(message)
+class HostConfigurationException(message: String) : RuntimeException(message)
 
 /**
  * Starts a fluent builder to construct a new Host.
@@ -52,11 +52,11 @@ class Builder {
      */
     fun transports(fn: TransportsBuilder.() -> Unit): Builder = apply { fn(transports) }
 
-    fun addressBook(fn: AddressBookBuilder.() -> Unit): Builder = apply {fn(addressBook) }
+    fun addressBook(fn: AddressBookBuilder.() -> Unit): Builder = apply { fn(addressBook) }
 
-    fun protocols(fn: ProtocolsBuilder.() -> Unit): Builder = apply {fn(protocols)}
+    fun protocols(fn: ProtocolsBuilder.() -> Unit): Builder = apply { fn(protocols) }
 
-    fun network(fn: NetworkConfigBuilder.() -> Unit): Builder = apply {fn(network)}
+    fun network(fn: NetworkConfigBuilder.() -> Unit): Builder = apply { fn(network) }
 
     /**
      * Constructs the Host with the provided parameters.
@@ -67,7 +67,7 @@ class Builder {
         if (transports.values.isEmpty()) throw HostConfigurationException("at least one transport is required")
 
         val secureChannels = secureChannels.values.map { it() }
-        val muxers = muxers.values.map{ it() }
+        val muxers = muxers.values.map { it() }
 
         val upgrader = ConnectionUpgrader(secureChannels, muxers)
         val transports = transports.values.map { it(upgrader) }
