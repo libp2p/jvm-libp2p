@@ -30,7 +30,6 @@ class SecIoSecureChannelTest {
         val (privKey1, pubKey1) = generateKeyPair(KEY_TYPE.ECDSA)
         val (privKey2, pubKey2) = generateKeyPair(KEY_TYPE.ECDSA)
 
-
         var rec1: String? = null
         var rec2: String? = null
         val latch = CountDownLatch(2)
