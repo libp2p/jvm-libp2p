@@ -12,6 +12,7 @@
  */
 package io.libp2p.core.mplex
 
+import io.libp2p.core.types.readUvarint
 import io.libp2p.core.wip.MplexFrame
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
@@ -32,6 +33,13 @@ class MplexFrameHandler : ChannelInboundHandlerAdapter() {
     override fun channelRead(ctx: ChannelHandlerContext?, msg: Any?) {
         msg as MplexFrame
 
+        //        By default, libp2p will route each protocol id to its handler function
+        // using exact literal matching of the protocol id, so new versions will need to
+        // \be registered separately. However, the handler function receives the protocol
+        // id negotiated for each new stream, so it's possible to register the same handler
+        // for multiple versions of a protocol and dynamically alter functionality based
+        // on the version in use for a given stream.
+
         if (msg.flag == MplexFlags.NewStream) {
             initiator = false
             val streamName = String(msg.data)
@@ -50,6 +58,16 @@ class MplexFrameHandler : ChannelInboundHandlerAdapter() {
 //            val frame = MplexFrame(newStreamTag + 1, msg.streamId, "sam".toByteArray())
 //            ctx!!.writeAndFlush(frame)
         } else if (msg.flag == MplexFlags.MessageInitiator || msg.flag == MplexFlags.MessageReceiver) {
+
+            val (length, remaining) = msg.data.readUvarint()
+            continue here, parse out protocol bits!
+            remaining.slice(IntRange(0, length.toInt() - 1))
+
+
+
+
+            String(msg.data.readUvarint().second)
+
             // Expect:/multistream/1.0.0\r/ipfs/id/1.0.0
             if (msg.dataString.contains("/ipfs/id")) {
 //                val parser = IdentifyOuterClass.Identify.parser()

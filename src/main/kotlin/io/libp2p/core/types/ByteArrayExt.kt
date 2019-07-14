@@ -1,6 +1,7 @@
 package io.libp2p.core.types
 
 import com.google.protobuf.ByteString
+import io.netty.buffer.ByteBuf
 import java.lang.Math.min
 import java.lang.System.arraycopy
 import java.math.BigInteger
@@ -30,4 +31,34 @@ fun BigInteger.toBytes(numBytes: Int): ByteArray {
     val length = min(biBytes.size, numBytes)
     arraycopy(biBytes, start, bytes, numBytes - length, length)
     return bytes
+}
+
+
+/**
+ * Extends ByteBuf to add a read* method for unsigned varints, as defined in https://github.com/multiformats/unsigned-varint.
+ */
+fun ByteArray.readUvarint(): Pair<Long, ByteArray> {
+    var x: Long = 0
+    var s = 0
+
+    var index = 0
+    var result: Long? = null
+    for (i in 0..9) {
+        val b = this.get(index++).toUByte().toShort()//readUnsignedByte()
+        if (b < 0x80) {
+            if (i == 9 && b > 1) {
+                throw IllegalStateException("Overflow reading uvarint")
+            }
+            result = x or (b.toLong() shl s)
+            break
+        }
+        x = x or (b.toLong() and 0x7f shl s)
+        s += 7
+    }
+
+    if (result != null) {
+        return Pair(result, slice(IntRange(index, size - 1)).toByteArray())
+    }
+
+    throw IllegalStateException("uvarint too long")
 }
