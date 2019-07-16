@@ -39,5 +39,4 @@ class MplexChannelInboundHandler : ChannelInboundHandlerAdapter() {
         }
         super.userEventTriggered(ctx, evt)
     }
-
 }

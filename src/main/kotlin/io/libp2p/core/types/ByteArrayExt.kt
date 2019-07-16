@@ -1,7 +1,6 @@
 package io.libp2p.core.types
 
 import com.google.protobuf.ByteString
-import io.netty.buffer.ByteBuf
 import java.lang.Math.min
 import java.lang.System.arraycopy
 import java.math.BigInteger
@@ -33,7 +32,6 @@ fun BigInteger.toBytes(numBytes: Int): ByteArray {
     return bytes
 }
 
-
 /**
  * Extends ByteBuf to add a read* method for unsigned varints, as defined in https://github.com/multiformats/unsigned-varint.
  */
@@ -44,7 +42,7 @@ fun ByteArray.readUvarint(): Pair<Long, ByteArray>? {
     var index = 0
     var result: Long? = null
     for (i in 0..9) {
-        val b = this.get(index++).toUByte().toShort()//readUnsignedByte()
+        val b = this.get(index++).toUByte().toShort()
         if (b < 0x80) {
             if (i == 9 && b > 1) {
                 return null

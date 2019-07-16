@@ -35,5 +35,4 @@ class MplexChannelInitializer : ChannelInitializer<Channel>() {
     companion object {
         private const val TIMEOUT_MILLIS: Long = 10_000
     }
-
 }

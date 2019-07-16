@@ -58,7 +58,6 @@ data class MplexFrame(val streamId: Long, val flag: Int, val data: ByteArray = B
         return result
     }
 
-
     companion object {
 
         /**
@@ -69,7 +68,7 @@ data class MplexFrame(val streamId: Long, val flag: Int, val data: ByteArray = B
         /**
          * Creates a frame representing a new stream with the given ID and (optional) name.
          * @param streamId the stream ID.
-         * @param streamName the optional name of the stream.
+         * @param MustreamName the optional name of the stream.
          * @return the frame.
          */
         fun createNewStream(streamId: Long, streamName: String = "$streamId"): MplexFrame {

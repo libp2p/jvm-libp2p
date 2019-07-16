@@ -28,16 +28,9 @@ class MultiplexStream(val streamId: Long, val initiator: Boolean, val name: Stri
      */
     var state = MultiplexStreamState.READY
 
-    var closedRemote = false
-
     var chatStreamId = 100L // temp
 
-    // I have named this as "Terminate" just to emphasize that the stream ought not to be used hereon.
-    fun terminate() {
-        // TODO: close completely!
-    }
-
-    // TODO: protocol handler
+    // TODO: implement a protocol handler
     fun handle(
         ctx: ChannelHandlerContext,
         protocols: List<String>,
@@ -53,7 +46,6 @@ class MultiplexStream(val streamId: Long, val initiator: Boolean, val name: Stri
                 "na"
             )
             ctx!!.writeAndFlush(frame)
-
         } else if (protocols.contains(Protocols.CHAT_1_0_0)) {
             ctx!!.writeAndFlush(
                 MplexFrame.createMessage(
@@ -77,15 +69,15 @@ class MultiplexStream(val streamId: Long, val initiator: Boolean, val name: Stri
     }
 
     fun closeRemote() {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     fun resetRemote() {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        // TODO: need the channel! How to obtain it? Should we set it in the constructor?
+        TODO("not implemented")
     }
 
     fun updateState(state: MultiplexStreamState) {
-
+        this.state = state
     }
-
 }

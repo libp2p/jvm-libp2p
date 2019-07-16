@@ -18,7 +18,6 @@ import io.libp2p.core.wip.MplexFrame
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
 
-
 /**
  * TODO: open questions/items:
  * <ol>
@@ -36,7 +35,6 @@ class MplexFrameHandler : ChannelInboundHandlerAdapter() {
      * A map from stream ID to the stream instance.
      */
     private val mapOfStreams = mutableMapOf<Long, MultiplexStream>()
-
 
     override fun channelRead(ctx: ChannelHandlerContext, msg: Any?) {
         msg as MplexFrame
@@ -74,7 +72,6 @@ class MplexFrameHandler : ChannelInboundHandlerAdapter() {
                 }
             }
         }
-
 
         super.channelRead(ctx, msg)
     }
@@ -156,7 +153,6 @@ class MplexFrameHandler : ChannelInboundHandlerAdapter() {
             // mapOfStreams.remove(stream.streamId)
         }
     }
-
 
     /**
      * Parses the frame's bytes and returns a pair containing the list of protocols in bytes (if any), and the

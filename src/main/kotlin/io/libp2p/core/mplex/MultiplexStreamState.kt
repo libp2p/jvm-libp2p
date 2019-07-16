@@ -55,5 +55,4 @@ enum class MultiplexStreamState {
      * @return true if this peer can receive a message through this stream.
      */
     abstract fun canReceive(): Boolean
-
 }

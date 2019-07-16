@@ -63,5 +63,4 @@ class MplexFrameCodec : MessageToMessageCodec<ByteBuf, MplexFrame>() {
             out.add(MplexFrame(streamId, streamTag, data))
         }
     }
-
 }

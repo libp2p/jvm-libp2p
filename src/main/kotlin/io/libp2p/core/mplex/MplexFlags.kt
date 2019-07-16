@@ -16,7 +16,6 @@ package io.libp2p.core.mplex
  * Contains all the permissible values for flags in the <code>mplex</code> protocol.
  */
 object MplexFlags {
-
     const val NewStream = 0
     const val MessageReceiver = 1
     const val MessageInitiator = 2
@@ -24,5 +23,4 @@ object MplexFlags {
     const val CloseInitiator = 4
     const val ResetReceiver = 5
     const val ResetInitiator = 6
-
 }
