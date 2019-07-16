@@ -12,127 +12,184 @@
  */
 package io.libp2p.core.mplex
 
+import io.libp2p.core.Libp2pException
 import io.libp2p.core.types.readUvarint
 import io.libp2p.core.wip.MplexFrame
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
 
+
+/**
+ * TODO: open questions/items:
+ * <ol>
+ *      <li>perhaps this should be the Multiplexer?</li>
+ *      <li>we need to add in exception handling so that states can be reverted</li>
+ *      <li>Do we want an instance of this handler/multiplexor to be for the whole app, or one instance per channel?</li>
+ *      <li>Don't accept any data once channelActive() is called unless it is over a stream</li>
+ *      <li>add better logging!</li>
+ *      <li>add a timer to remove closed/reset streams after 30 seconds perhaps</li>
+ * </ol>
+ */
 class MplexFrameHandler : ChannelInboundHandlerAdapter() {
 
-    var initiator = false
+    /**
+     * A map from stream ID to the stream instance.
+     */
+    private val mapOfStreams = mutableMapOf<Long, MultiplexStream>()
 
-    val chatStreamId = 100L
-    var flagChatOpened = false
 
-    override fun channelActive(ctx: ChannelHandlerContext) {
-        // TODO: now that mplex is active, we should not accept any data off the raw connection.
-        // Once mplex is set up, the connection should no longer be writable or readable directly.
-        // You can only read or write from/to streams
-    }
-
-    override fun channelRead(ctx: ChannelHandlerContext?, msg: Any?) {
+    override fun channelRead(ctx: ChannelHandlerContext, msg: Any?) {
         msg as MplexFrame
-
-        //        By default, libp2p will route each protocol id to its handler function
-        // using exact literal matching of the protocol id, so new versions will need to
-        // \be registered separately. However, the handler function receives the protocol
-        // id negotiated for each new stream, so it's possible to register the same handler
-        // for multiple versions of a protocol and dynamically alter functionality based
-        // on the version in use for a given stream.
+        val currentStream = mapOfStreams[msg.streamId]
 
         if (msg.flag == MplexFlags.NewStream) {
-            initiator = false
-            val streamName = String(msg.data)
-            println("Have new stream['$streamName']: $msg")
-
-//            val frame = MplexFrame.createMessage(initiator, msg.streamId, "/multistream/1.0.0\n", "/chat/1.0.0\n")
-//            ctx!!.writeAndFlush(frame)
-
-            // Send /multistream/1.0.0
-            // /secio/1.0.0
-            // /yamux/1.0.0 then it goes to the respective mstream handler!
-//
-
-//            continue here, set up test to parse this!
-//            Then we need to send our equivalent of this outside a message!
-//            val frame = MplexFrame(newStreamTag + 1, msg.streamId, "sam".toByteArray())
-//            ctx!!.writeAndFlush(frame)
-        } else if (msg.flag == MplexFlags.MessageInitiator || msg.flag == MplexFlags.MessageReceiver) {
-
-            val (length, remaining) = msg.data.readUvarint()
-            continue here, parse out protocol bits!
-            remaining.slice(IntRange(0, length.toInt() - 1))
-
-
-
-
-            String(msg.data.readUvarint().second)
-
-            // Expect:/multistream/1.0.0\r/ipfs/id/1.0.0
-            if (msg.dataString.contains("/ipfs/id")) {
-//                val parser = IdentifyOuterClass.Identify.parser()
-//                val x = parser.parseFrom(msg.data)
-                var frame =
-//                    MplexFrame.createMessage(initiator, msg.streamId, "na\n")
-                    MplexFrame.createMessage(
-                        initiator,
-                        msg.streamId,
-                        "/multistream/1.0.0",
-                        "/ipfs/id/1.0.0",
-                        "na"
-                    )
-                ctx!!.writeAndFlush(frame)
-
-            } else if (msg.dataString.contains("/chat/1.0.0")) {
-                println("GOt chat!!!")
-                ctx!!.writeAndFlush(
-                    MplexFrame.createMessage(
-                        initiator,
-                        chatStreamId,
-                        "Hello there!"
-                    )
-                )
-            } else if (msg.dataString.contains("/multistream/1.0.0")) {
-                ctx!!.writeAndFlush(
-                    MplexFrame.createMessage(
-                        initiator,
-                        chatStreamId,
-                        "/multistream/1.0.0",
-                        "/chat/1.0.0"
-                    )
-                )
+            if (currentStream != null) {
+                // We should reject this new clashing stream id.
+                resetStream(ctx, currentStream)
             } else {
-                println("DATA EVENT: handle it ${msg.dataString}")
+                acceptStream(msg.streamId, msg.dataString)
             }
-            // Part 2.
-//            frame = MplexFrame.createMessage(initiator, msg.streamId, "/multistream/1.0.0", "/chat/1.0.0")
-//            ctx!!.writeAndFlush(frame)
-        } else if (msg.flag == MplexFlags.MessageReceiver) {
-            if (msg.streamId == chatStreamId) {
-                flagChatOpened = true
-                ctx!!.writeAndFlush(
-                    MplexFrame.createMessage(
-                        initiator,
-                        chatStreamId,
-                        "/multistream/1.0.0",
-                        "/chat/1.0.0"
-                    )
-                )
-            } else {
-                throw RuntimeException("UNEXPECTED")
-            }
-        } else if (msg.flag == MplexFlags.ResetReceiver || msg.flag == MplexFlags.ResetInitiator) {
-            println("Stream has been reset, now try to send across a chat.")
-            initiator = true
-
-            var frame = MplexFrame.createNewStream(chatStreamId)
-            ctx!!.writeAndFlush(frame)
-//            ctx!!.disconnect().sync()
         } else {
+            if (currentStream == null) {
+                throw Libp2pException("No stream found for id=${msg.streamId}")
+            }
 
-            println("*** WARN: Unsupported stream: $msg")
+            // Being lazy - subtracting 1 makes our comparison simpler.
+            when (if (currentStream.initiator) msg.flag else msg.flag - 1) {
+                MplexFlags.MessageReceiver -> {
+                    val protocolsAndPayload = parseFrame(msg.data)
+                    val protocols = protocolsAndPayload.first
+                    val payload = if (protocolsAndPayload.first.isEmpty()) msg.data else protocolsAndPayload.second
+                    processStreamData(ctx, currentStream, protocols, payload)
+                }
+                MplexFlags.ResetReceiver -> {
+                    processResetStream(ctx, currentStream)
+                }
+                MplexFlags.CloseReceiver -> {
+                    processCloseStream(ctx, currentStream)
+                }
+                else -> {
+                    println("*** WARN: Unsupported stream flags: $msg")
+                    resetStream(ctx, currentStream)
+                }
+            }
         }
 
+
         super.channelRead(ctx, msg)
+    }
+
+    /**
+     * Processes a newly established stream.
+     * @param streamId the stream ID.
+     * @param streamName the name of the stream.
+     */
+    private fun acceptStream(streamId: Long, streamName: String) {
+        mapOfStreams[streamId] = MultiplexStream(streamId, false, streamName)
+    }
+
+    /**
+     * Processes the stream data.
+     * @param ctx the channel context.
+     * @param stream the stream over which the data was sent.
+     * @param protocols the protocols in the payload, if any.
+     * @param payload the data payload in the message.
+     */
+    private fun processStreamData(
+        ctx: ChannelHandlerContext,
+        stream: MultiplexStream,
+        protocols: List<String>,
+        payload: ByteArray?
+    ) {
+        if (!stream.state.canReceive()) {
+            resetStream(ctx, stream)
+            return
+        }
+
+        println("Process data - call protocol handler for protocols: $protocols and data: ${String(payload!!)}")
+    }
+
+    /**
+     * Processes a received request to reset a stream from the other peer.
+     * @param ctx the channel context.
+     * @param stream the stream to be reset.
+     */
+    private fun processResetStream(ctx: ChannelHandlerContext, stream: MultiplexStream) {
+        if (!stream.state.canReceive()) {
+            resetStream(ctx, stream)
+            return
+        }
+
+        stream.updateState(MultiplexStreamState.RESET_REMOTE)
+    }
+
+    /**
+     * Processes a received request to close a stream from the other peer.
+     * @param ctx the channel context.
+     * @param stream the stream to be closed.
+     */
+    private fun processCloseStream(ctx: ChannelHandlerContext, stream: MultiplexStream) {
+        if (!stream.state.canReceive()) {
+            resetStream(ctx, stream)
+            return
+        }
+        when (stream.state) {
+            MultiplexStreamState.CLOSED_LOCAL -> {
+                stream.updateState(MultiplexStreamState.CLOSED_BOTH_WAYS)
+            }
+            else -> {
+                stream.updateState(MultiplexStreamState.CLOSED_REMOTE)
+            }
+        }
+        // TODO: remove from the map.
+    }
+
+    /**
+     * Resets the given stream.
+     * @param ctx the channel context.
+     * @param stream the stream to be reset.
+     */
+    private fun resetStream(ctx: ChannelHandlerContext, stream: MultiplexStream) {
+        if (stream.state.canSend()) {
+            ctx.writeAndFlush(MplexFrame.createReset(stream.initiator, stream.streamId))
+            stream.updateState(MultiplexStreamState.RESET_LOCAL)
+            // mapOfStreams.remove(stream.streamId)
+        }
+    }
+
+
+    /**
+     * Parses the frame's bytes and returns a pair containing the list of protocols in bytes (if any), and the
+     * data bytes after the protocol(s).
+     * @param bytes the frame's bytes to be parsed.
+     * @return a pair containing the list of protocols (if any) and the data payload.
+     */
+    private fun parseFrame(bytes: ByteArray): Pair<List<String>, ByteArray?> {
+        val protocols = mutableListOf<String>()
+
+        var arrayToProcess = bytes
+        var parts = arrayToProcess.readUvarint()
+        var leftOverBytes: ByteArray? = null
+
+        while (parts != null) {
+            val protocolLength = parts.first.toInt()
+            val remainingBytes = parts.second
+            val protocol = remainingBytes.slice(0 until protocolLength - 1)
+            protocols.add(String(protocol.toByteArray()))
+
+            if (remainingBytes.size > parts.first.toInt()) {
+                arrayToProcess = remainingBytes.sliceArray(protocolLength until remainingBytes.size)
+                parts = arrayToProcess.readUvarint()
+                if (parts == null) {
+                    // No varint prefix, so remaining bytes must be payload.
+                    leftOverBytes = arrayToProcess
+                }
+            } else {
+                parts = null
+                leftOverBytes = null
+            }
+        }
+
+        return Pair(protocols, leftOverBytes)
     }
 }

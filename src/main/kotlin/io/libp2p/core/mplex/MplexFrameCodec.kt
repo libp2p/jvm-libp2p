@@ -62,9 +62,6 @@ class MplexFrameCodec : MessageToMessageCodec<ByteBuf, MplexFrame>() {
             val data = msg.readBytes(lenData.toInt()).toByteArray()
             out.add(MplexFrame(streamId, streamTag, data))
         }
-
-        println("*** Done")
-//        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
 }

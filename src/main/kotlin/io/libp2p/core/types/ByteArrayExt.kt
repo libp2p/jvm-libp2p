@@ -37,7 +37,7 @@ fun BigInteger.toBytes(numBytes: Int): ByteArray {
 /**
  * Extends ByteBuf to add a read* method for unsigned varints, as defined in https://github.com/multiformats/unsigned-varint.
  */
-fun ByteArray.readUvarint(): Pair<Long, ByteArray> {
+fun ByteArray.readUvarint(): Pair<Long, ByteArray>? {
     var x: Long = 0
     var s = 0
 
@@ -47,7 +47,7 @@ fun ByteArray.readUvarint(): Pair<Long, ByteArray> {
         val b = this.get(index++).toUByte().toShort()//readUnsignedByte()
         if (b < 0x80) {
             if (i == 9 && b > 1) {
-                throw IllegalStateException("Overflow reading uvarint")
+                return null
             }
             result = x or (b.toLong() shl s)
             break
@@ -56,9 +56,9 @@ fun ByteArray.readUvarint(): Pair<Long, ByteArray> {
         s += 7
     }
 
-    if (result != null) {
+    if (result != null && result <= size) {
         return Pair(result, slice(IntRange(index, size - 1)).toByteArray())
     }
 
-    throw IllegalStateException("uvarint too long")
+    return null
 }

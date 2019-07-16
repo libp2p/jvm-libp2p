@@ -25,7 +25,7 @@ import io.netty.buffer.Unpooled
  * @param data the data segment.
  * @see [mplex documentation](https://github.com/libp2p/specs/tree/master/mplex#opening-a-new-stream)
  */
-data class MplexFrame(val streamId: Long, val flag: Int, val data: ByteArray) {
+data class MplexFrame(val streamId: Long, val flag: Int, val data: ByteArray = ByteArray(0)) {
 
     /**
      * The data interpreted as a UTF-8 string.
@@ -70,6 +70,7 @@ data class MplexFrame(val streamId: Long, val flag: Int, val data: ByteArray) {
          * Creates a frame representing a new stream with the given ID and (optional) name.
          * @param streamId the stream ID.
          * @param streamName the optional name of the stream.
+         * @return the frame.
          */
         fun createNewStream(streamId: Long, streamName: String = "$streamId"): MplexFrame {
             return MplexFrame(
@@ -84,12 +85,26 @@ data class MplexFrame(val streamId: Long, val flag: Int, val data: ByteArray) {
          * @param initiator whether this peer is the initiator.
          * @param streamId the stream ID.
          * @param strings an array of string values to be sent to the other peer.
+         * @return the frame.
          */
         fun createMessage(initiator: Boolean, streamId: Long, vararg strings: String): MplexFrame {
             return MplexFrame(
                 streamId,
                 if (initiator) MplexFlags.MessageInitiator else MplexFlags.MessageReceiver,
                 createStreamData(*strings)
+            )
+        }
+
+        /**
+         * Creates a frame representing a reset message to be conveyed to the other peer.
+         * @param initiator whether htis peer is the initiator.
+         * @param streamId the stream ID.
+         * @return the frame.
+         */
+        fun createReset(initiator: Boolean, streamId: Long): MplexFrame {
+            return MplexFrame(
+                streamId,
+                if (initiator) MplexFlags.ResetInitiator else MplexFlags.ResetReceiver
             )
         }
 
@@ -115,6 +130,5 @@ data class MplexFrame(val streamId: Long, val flag: Int, val data: ByteArray) {
                 toByteArray()
             }
         }
-
     }
 }

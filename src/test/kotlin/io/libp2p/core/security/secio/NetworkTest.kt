@@ -5,6 +5,7 @@ import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.mplex.MplexChannelInitializer
 import io.libp2p.core.protocol.Negotiator
 import io.libp2p.core.protocol.ProtocolSelect
+import io.libp2p.core.protocol.Protocols
 import io.netty.bootstrap.Bootstrap
 import io.netty.channel.Channel
 import io.netty.channel.ChannelInitializer
@@ -40,10 +41,10 @@ class NetworkTest {
         b.handler(object: ChannelInitializer<Channel>() {
             override fun initChannel(ch: Channel) {
                 ch.pipeline().addLast(LoggingHandler("###1", LogLevel.ERROR))
-                ch.pipeline().addLast(Negotiator.createInitializer(true, "/secio/1.0.0"))
+                ch.pipeline().addLast(Negotiator.createInitializer(true, Protocols.SECIO_1_0_0))
                 ch.pipeline().addLast(secioProtocolSelect)
                 ch.pipeline().addLast(LoggingHandler("###2", LogLevel.ERROR))
-                ch.pipeline().addLast(Negotiator.createInitializer(true, "/mplex/6.7.0"))
+                ch.pipeline().addLast(Negotiator.createInitializer(true, Protocols.MPLEX_6_7_0))
                 ch.pipeline().addLast(MplexChannelInitializer())
             }
         })
