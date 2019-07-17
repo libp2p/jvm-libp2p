@@ -102,8 +102,6 @@ class MplexFrameHandler : ChannelInboundHandlerAdapter() {
             resetStream(ctx, stream)
             return
         }
-
-        println("Process data - call protocol handler for protocols: $protocols and data: ${String(payload!!)}")
     }
 
     /**
