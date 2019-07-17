@@ -46,6 +46,7 @@ class NetworkTest {
                 ch.pipeline().addLast(LoggingHandler("###2", LogLevel.ERROR))
                 ch.pipeline().addLast(Negotiator.createInitializer(true, Protocols.MPLEX_6_7_0))
                 ch.pipeline().addLast(MplexChannelInitializer())
+                ch.pipeline().addLast(LoggingHandler("###3", LogLevel.ERROR))
             }
         })
 
