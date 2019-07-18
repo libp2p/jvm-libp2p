@@ -2,11 +2,12 @@ package io.libp2p.core.security.secio
 
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.generateKeyPair
+import io.libp2p.core.mplex.MplexChannelInitializer
 import io.libp2p.core.protocol.Negotiator
 import io.libp2p.core.protocol.ProtocolSelect
+import io.libp2p.core.protocol.Protocols
 import io.netty.bootstrap.Bootstrap
 import io.netty.channel.Channel
-import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInitializer
 import io.netty.channel.ChannelOption
 import io.netty.channel.DefaultMessageSizeEstimator
@@ -19,8 +20,8 @@ import org.junit.jupiter.api.Test
 
 class NetworkTest {
 
-    @Disabled
     @Test
+    @Disabled
     fun connect1() {
 
         val b = Bootstrap()
@@ -33,18 +34,18 @@ class NetworkTest {
         b.remoteAddress("localhost", 10000)
 
         val (privKey1, pubKey1) = generateKeyPair(KEY_TYPE.ECDSA)
-        val protocolSelect = ProtocolSelect(listOf(SecIoSecureChannel(privKey1)))
+        val secioProtocolSelect = ProtocolSelect(listOf(SecIoSecureChannel(privKey1)))
+//        val mplexProtocolSelect = ProtocolSelect(listOf(MplexStreamMuxer()))
 
         b.handler(object : ChannelInitializer<Channel>() {
             override fun initChannel(ch: Channel) {
                 ch.pipeline().addLast(LoggingHandler("###1", LogLevel.ERROR))
-                ch.pipeline().addLast(Negotiator.createInitializer(true, "/secio/1.0.0"))
-                ch.pipeline().addLast(protocolSelect)
-                ch.pipeline().addLast(object : LoggingHandler("###2", LogLevel.ERROR) {
-                    override fun channelActive(ctx: ChannelHandlerContext?) {
-                        super.channelActive(ctx)
-                    }
-                })
+                ch.pipeline().addLast(Negotiator.createInitializer(true, Protocols.SECIO_1_0_0))
+                ch.pipeline().addLast(secioProtocolSelect)
+                ch.pipeline().addLast(LoggingHandler("###2", LogLevel.ERROR))
+                ch.pipeline().addLast(Negotiator.createInitializer(true, Protocols.MPLEX_6_7_0))
+                ch.pipeline().addLast(MplexChannelInitializer())
+                ch.pipeline().addLast(LoggingHandler("###3", LogLevel.ERROR))
             }
         })
 

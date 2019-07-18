@@ -37,7 +37,7 @@ class ProtocolNegotiationException(message: String) : RuntimeException(message)
  */
 object Negotiator {
     private const val TIMEOUT_MILLIS: Long = 10_000
-    private const val MULTISTREAM_PROTO = "/multistream/1.0.0"
+    private const val MULTISTREAM_PROTO = Protocols.MULTISTREAM_1_0_0
 
     private val NA = "na"
     private val LS = "ls"
