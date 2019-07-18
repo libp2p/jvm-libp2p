@@ -13,8 +13,10 @@
 package io.libp2p.core.wip
 
 import io.libp2p.core.mplex.MplexFlags
-import io.libp2p.core.types.toByteArray
+import io.libp2p.core.mux.MultistreamFrame
 import io.libp2p.core.types.writeUvarint
+import io.libp2p.core.util.netty.multiplex.MultiplexId
+import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 
 /**
@@ -25,38 +27,8 @@ import io.netty.buffer.Unpooled
  * @param data the data segment.
  * @see [mplex documentation](https://github.com/libp2p/specs/tree/master/mplex#opening-a-new-stream)
  */
-data class MplexFrame(val streamId: Long, val flag: Int, val data: ByteArray = ByteArray(0)) {
-
-    /**
-     * The data interpreted as a UTF-8 string.
-     */
-    val dataString = String(data)
-
-    override fun toString(): String {
-        return "[s#$streamId]: flag=$flag, data length=${data.size}"
-    }
-
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (javaClass != other?.javaClass) return false
-
-        other as MplexFrame
-
-        if (streamId != other.streamId) return false
-        if (flag != other.flag) return false
-        if (!data.contentEquals(other.data)) return false
-        if (dataString != other.dataString) return false
-
-        return true
-    }
-
-    override fun hashCode(): Int {
-        var result = streamId.hashCode()
-        result = 31 * result + flag
-        result = 31 * result + data.contentHashCode()
-        result = 31 * result + dataString.hashCode()
-        return result
-    }
+class MplexFrame(streamId: Long, val mplexFlag: Int, data: ByteBuf? = null)
+    : MultistreamFrame(MultiplexId(streamId), MplexFlags.toAbstractFlag(mplexFlag), data){
 
     companion object {
 
@@ -112,8 +84,8 @@ data class MplexFrame(val streamId: Long, val flag: Int, val data: ByteArray = B
          * @param strings string to be written out in the payload.
          * @return a byte array representing the payload.
          */
-        private fun createStreamData(vararg strings: String): ByteArray {
-            return with(Unpooled.buffer()) {
+        private fun createStreamData(vararg strings: String): ByteBuf {
+            return Unpooled.buffer().apply {
                 strings.forEach {
                     // Add a '\n' char if it doesn't already end with one.
                     val stringToWrite =
@@ -126,7 +98,6 @@ data class MplexFrame(val streamId: Long, val flag: Int, val data: ByteArray = B
                     writeUvarint(stringToWrite.length)
                     writeBytes(stringToWrite.toByteArray())
                 }
-                toByteArray()
             }
         }
     }

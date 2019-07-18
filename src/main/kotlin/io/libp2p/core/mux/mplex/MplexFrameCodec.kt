@@ -12,8 +12,8 @@
  */
 package io.libp2p.core.mplex
 
+import io.libp2p.core.mux.MultistreamFrame
 import io.libp2p.core.types.readUvarint
-import io.libp2p.core.types.toByteArray
 import io.libp2p.core.types.writeUvarint
 import io.libp2p.core.wip.MplexFrame
 import io.netty.buffer.ByteBuf
@@ -24,7 +24,8 @@ import io.netty.handler.codec.MessageToMessageCodec
 /**
  * A Netty codec implementation that converts [MplexFrame] instances to [ByteBuf] and vice-versa.
  */
-class MplexFrameCodec : MessageToMessageCodec<ByteBuf, MplexFrame>() {
+class MplexFrameCodec : MessageToMessageCodec<ByteBuf, MultistreamFrame>() {
+    var initiator = false
 
     /**
      * Encodes the given mplex frame into bytes and writes them into the output list.
@@ -33,12 +34,18 @@ class MplexFrameCodec : MessageToMessageCodec<ByteBuf, MplexFrame>() {
      * @param msg the mplex frame.
      * @param out the list to write the bytes to.
      */
-    override fun encode(ctx: ChannelHandlerContext, msg: MplexFrame, out: MutableList<Any>) {
-        out.add(with(Unpooled.buffer()) {
-            writeUvarint(msg.streamId.shl(3).or(msg.flag.toLong()))
-            writeUvarint(msg.data.size)
-            writeBytes(msg.data)
-        })
+    override fun encode(ctx: ChannelHandlerContext, msg: MultistreamFrame, out: MutableList<Any>) {
+        if (msg.flag == MultistreamFrame.Flag.OPEN) initiator = true
+
+        out.add(
+            Unpooled.wrappedBuffer(
+                Unpooled.buffer().apply {
+                    writeUvarint(msg.id.id.shl(3).or(MplexFlags.toMplexFlag(msg.flag, initiator).toLong()))
+                    writeUvarint(msg.data!!.readableBytes())
+                },
+                msg.data
+            )
+        )
     }
 
     /**
@@ -49,18 +56,15 @@ class MplexFrameCodec : MessageToMessageCodec<ByteBuf, MplexFrame>() {
      * @param out the list to write the extracted frame to.
      */
     override fun decode(ctx: ChannelHandlerContext, msg: ByteBuf, out: MutableList<Any>) {
-        val readableByteCount = msg.readableBytes()
-        msg.markReaderIndex()
-        val header = msg.readUvarint()
-        val lenData = msg.readUvarint()
-        val bytesRead = msg.readerIndex()
-        if (lenData > readableByteCount - bytesRead) {
-            msg.resetReaderIndex()
-        } else {
+        while(msg.isReadable) {
+            val header = msg.readUvarint()
+            val lenData = msg.readUvarint()
             val streamTag = header.and(0x07).toInt()
             val streamId = header.shr(3)
-            val data = msg.readBytes(lenData.toInt()).toByteArray()
-            out.add(MplexFrame(streamId, streamTag, data))
+            val data = msg.slice(0 , lenData.toInt())
+            val mplexFrame = MplexFrame(streamId, streamTag, data)
+            if (mplexFrame.flag == MultistreamFrame.Flag.OPEN) initiator = false
+            out.add(mplexFrame)
         }
     }
 }
