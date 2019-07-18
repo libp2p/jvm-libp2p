@@ -11,7 +11,7 @@ import java.util.concurrent.atomic.AtomicLong
 
 class MultistreamHandler(inboundInitializer: ChannelHandler) : MultiplexHandler<ByteBuf>(inboundInitializer) {
 
-    val idGenerator = AtomicLong(Random().nextLong())
+    private val idGenerator = AtomicLong(Random().nextLong())
 
     override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
         msg as MultistreamFrame

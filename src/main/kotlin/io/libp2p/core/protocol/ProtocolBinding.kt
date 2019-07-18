@@ -26,7 +26,7 @@ interface ProtocolBinding<TController> {
     /**
      * Returns initializer for this protocol on the provided channel, together with an optional controller object.
      */
-    fun initializer(): ProtocolBindingInitializer<TController>
+    fun initializer(selectedProtocol: String): ProtocolBindingInitializer<TController>
 }
 
 class ProtocolBindingInitializer<TController>(
@@ -38,5 +38,5 @@ class DummyProtocolBinding : ProtocolBinding<Nothing> {
     override val announce: String = "/dummy/0.0.0"
     override val matcher: ProtocolMatcher = ProtocolMatcher(Mode.NEVER)
 
-    override fun initializer(): ProtocolBindingInitializer<Nothing> = TODO("not implemented")
+    override fun initializer(selectedProtocol: String): ProtocolBindingInitializer<Nothing> = TODO("not implemented")
 }

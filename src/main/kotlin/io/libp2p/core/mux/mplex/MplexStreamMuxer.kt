@@ -6,8 +6,8 @@ import io.libp2p.core.protocol.ProtocolBindingInitializer
 import io.libp2p.core.protocol.ProtocolMatcher
 
 class MplexStreamMuxer : StreamMuxer {
-    override val announce = "/mplex/1.0.0"
+    override val announce = "/mplex/6.7.0"
     override val matcher: ProtocolMatcher = ProtocolMatcher(Mode.STRICT, announce, null)
 
-    override fun initializer(): ProtocolBindingInitializer<StreamMuxer.Session> = TODO("not implemented")
+    override fun initializer(selectedProtocol: String): ProtocolBindingInitializer<StreamMuxer.Session> = TODO("not implemented")
 }

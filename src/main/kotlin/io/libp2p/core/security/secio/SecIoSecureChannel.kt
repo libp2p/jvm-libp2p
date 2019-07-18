@@ -28,7 +28,7 @@ class SecIoSecureChannel(val localKey: PrivKey, val remotePeerId: PeerId? = null
     override val announce = "/secio/1.0.0"
     override val matcher = ProtocolMatcher(Mode.STRICT, name = "/secio/1.0.0")
 
-    override fun initializer(): ProtocolBindingInitializer<SecureChannel.Session> {
+    override fun initializer(selectedProtocol: String): ProtocolBindingInitializer<SecureChannel.Session> {
         val ret = CompletableFuture<SecureChannel.Session>()
         // bridge the result of the secure channel bootstrap with the promise.
         val resultHandler = object : ChannelInboundHandlerAdapter() {

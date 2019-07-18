@@ -1,14 +1,14 @@
 package io.libp2p.core.transport.tcp
 
-import io.libp2p.core.Connection
+import io.libp2p.core.ConnectionHandler
 import io.libp2p.core.Libp2pException
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multiformats.Protocol.DNSADDR
 import io.libp2p.core.multiformats.Protocol.IP4
 import io.libp2p.core.multiformats.Protocol.IP6
 import io.libp2p.core.multiformats.Protocol.TCP
+import io.libp2p.core.transport.AbstractTransport
 import io.libp2p.core.transport.ConnectionUpgrader
-import io.libp2p.core.transport.Transport
 import io.libp2p.core.types.toCompletableFuture
 import io.netty.bootstrap.Bootstrap
 import io.netty.bootstrap.ServerBootstrap
@@ -21,7 +21,7 @@ import java.util.concurrent.CompletableFuture
  * Given that TCP by itself is not authenticated, encrypted, nor multiplexed, this transport uses the upgrader to
  * shim those capabilities via dynamic negotiation.
  */
-class TcpTransport(val upgrader: ConnectionUpgrader) : Transport {
+class TcpTransport(upgrader: ConnectionUpgrader) : AbstractTransport(upgrader) {
     private var server: ServerBootstrap? = ServerBootstrap()
     private var client: Bootstrap = Bootstrap()
 
@@ -41,7 +41,7 @@ class TcpTransport(val upgrader: ConnectionUpgrader) : Transport {
         TODO("not implemented")
     }
 
-    override fun listen(addr: Multiaddr): CompletableFuture<Void> {
+    override fun listen(addr: Multiaddr, connHandler: ConnectionHandler): CompletableFuture<Void> {
         TODO("not implemented")
     }
 
@@ -49,11 +49,14 @@ class TcpTransport(val upgrader: ConnectionUpgrader) : Transport {
         TODO("not implemented")
     }
 
-    override fun dial(addr: Multiaddr): CompletableFuture<Connection> =
-        client.connect(fromMultiaddr(addr)).toCompletableFuture()
-            .thenCompose { upgrader.establishSecureChannel(it).toCompletableFuture() }
-            .thenCompose { upgrader.establishMuxer(it).toCompletableFuture() }
-            .thenApply { Connection(it) }
+    override fun dial(addr: Multiaddr, connHandler: ConnectionHandler): CompletableFuture<Void> {
+        val (channelHandler, muxerFuture) = createConnectionHandler(connHandler, true)
+        return client
+            .handler(channelHandler)
+            .connect(fromMultiaddr(addr)).toCompletableFuture()
+            .thenCompose { muxerFuture }
+            .thenApply { }
+    }
 
     private fun fromMultiaddr(addr: Multiaddr): InetSocketAddress {
         val host = addr.getStringComponents().find { p -> p.first in arrayOf(IP4, IP6, DNSADDR) }
