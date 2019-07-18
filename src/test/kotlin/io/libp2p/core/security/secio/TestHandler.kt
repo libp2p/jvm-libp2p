@@ -5,25 +5,26 @@ import io.libp2p.core.types.toHex
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
+import org.apache.logging.log4j.LogManager
 
 open class TestHandler(val name: String = "") : ChannelInboundHandlerAdapter() {
     override fun channelActive(ctx: ChannelHandlerContext) {
-        println("==$name== Active")
+        logger.debug("==$name== Active")
         super.channelActive(ctx)
     }
 
     override fun channelRegistered(ctx: ChannelHandlerContext?) {
-        println("==$name== channelRegistered")
+        logger.debug("==$name== channelRegistered")
         super.channelRegistered(ctx)
     }
 
     override fun exceptionCaught(ctx: ChannelHandlerContext?, cause: Throwable?) {
-        println("==$name== exceptionCaught: $cause")
+        logger.debug("==$name== exceptionCaught: $cause")
         super.exceptionCaught(ctx, cause)
     }
 
     override fun handlerAdded(ctx: ChannelHandlerContext?) {
-        println("==$name== handlerAdded")
+        logger.debug("==$name== handlerAdded")
         super.handlerAdded(ctx)
     }
 
@@ -33,17 +34,21 @@ open class TestHandler(val name: String = "") : ChannelInboundHandlerAdapter() {
             is ByteBuf -> msg.toByteArray().toHex() + "(" + msg.readableBytes() + ")"
             else -> msg.toString()
         }
-        println("==$name== read: $content")
+        logger.debug("==$name== read: $content")
         super.channelRead(ctx, msg)
     }
 
     override fun channelInactive(ctx: ChannelHandlerContext?) {
-        println("==$name== channelInactive")
+        logger.debug("==$name== channelInactive")
         super.channelInactive(ctx)
     }
 
     override fun channelUnregistered(ctx: ChannelHandlerContext?) {
-        println("==$name== channelUnregistered")
+        logger.debug("==$name== channelUnregistered")
         super.channelUnregistered(ctx)
+    }
+
+    companion object {
+        private val logger = LogManager.getLogger(TestHandler::class.java)
     }
 }

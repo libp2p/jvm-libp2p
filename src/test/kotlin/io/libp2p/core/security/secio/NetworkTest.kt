@@ -14,6 +14,7 @@ import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.nio.NioSocketChannel
 import io.netty.handler.logging.LogLevel
 import io.netty.handler.logging.LoggingHandler
+import org.apache.logging.log4j.LogManager
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 
@@ -49,10 +50,14 @@ class NetworkTest {
         })
 
         // Start the client.
-        println("Connecting")
+        logger.info("Establishing a connection ...")
         b.connect().await()
-        println("Connected")
+        logger.info("Connection established.")
 
         Thread.sleep(10000000L)
+    }
+
+    companion object {
+        private val logger = LogManager.getLogger(NetworkTest::class.java)
     }
 }
