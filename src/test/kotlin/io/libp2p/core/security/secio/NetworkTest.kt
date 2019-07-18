@@ -18,7 +18,6 @@ import io.netty.handler.logging.LoggingHandler
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 
-
 class NetworkTest {
 
     @Test
@@ -38,7 +37,7 @@ class NetworkTest {
         val secioProtocolSelect = ProtocolSelect(listOf(SecIoSecureChannel(privKey1)))
 //        val mplexProtocolSelect = ProtocolSelect(listOf(MplexStreamMuxer()))
 
-        b.handler(object: ChannelInitializer<Channel>() {
+        b.handler(object : ChannelInitializer<Channel>() {
             override fun initChannel(ch: Channel) {
                 ch.pipeline().addLast(LoggingHandler("###1", LogLevel.ERROR))
                 ch.pipeline().addLast(Negotiator.createInitializer(true, Protocols.SECIO_1_0_0))
