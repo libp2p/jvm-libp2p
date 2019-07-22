@@ -1,4 +1,4 @@
-package io.libp2p.core.util.netty.multiplex
+package io.libp2p.core.util.netty.mux
 
 import io.libp2p.core.util.netty.AbstractChildChannel
 import io.netty.channel.ChannelHandler
@@ -9,10 +9,10 @@ import java.net.SocketAddress
 /**
  * Alternative effort to start MultistreamChannel implementation from AbstractChannel
  */
-class MultiplexChannel<TData>(
-    val parent: MultiplexHandler<TData>,
-    val initializer: ChannelHandler,
-    val id: MultiplexId
+class MuxChannel<TData>(
+    val parent: AbtractMuxHandler<TData>,
+    val id: MuxId,
+    var initializer: ChannelHandler? = null
 ) : AbstractChildChannel(parent.ctx!!.channel(), id) {
 
     private var remoteDisconnected = false
@@ -63,4 +63,4 @@ class MultiplexChannel<TData>(
 
 class RemoteWriteClosed
 
-data class MultiplexSocketAddress(val parentAddress: SocketAddress, val streamId: MultiplexId) : SocketAddress()
+data class MultiplexSocketAddress(val parentAddress: SocketAddress, val streamId: MuxId) : SocketAddress()

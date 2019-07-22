@@ -1,7 +1,9 @@
 package io.libp2p.core.security.secio
 
 import io.libp2p.core.PeerId
+import io.libp2p.core.SECURE_SESSION
 import io.libp2p.core.crypto.PrivKey
+import io.libp2p.core.crypto.PubKey
 import io.libp2p.core.events.SecureChannelFailed
 import io.libp2p.core.events.SecureChannelInitialized
 import io.libp2p.core.protocol.Mode
@@ -15,7 +17,6 @@ import io.netty.channel.ChannelInboundHandlerAdapter
 import io.netty.channel.ChannelInitializer
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder
 import io.netty.handler.codec.LengthFieldPrepender
-import java.security.PublicKey
 import java.util.concurrent.CompletableFuture
 import io.netty.channel.Channel as NettyChannel
 
@@ -34,10 +35,17 @@ class SecIoSecureChannel(val localKey: PrivKey, val remotePeerId: PeerId? = null
         val resultHandler = object : ChannelInboundHandlerAdapter() {
             override fun userEventTriggered(ctx: ChannelHandlerContext, evt: Any) {
                 when (evt) {
-                    is SecureChannelInitialized -> ret.complete(evt.session)
-                    is SecureChannelFailed -> ret.completeExceptionally(evt.exception)
+                    is SecureChannelInitialized -> {
+                        ctx.channel().attr(SECURE_SESSION).set(evt.session)
+                        ret.complete(evt.session)
+                        ctx.pipeline().remove(this)
+                    }
+                    is SecureChannelFailed -> {
+                        ret.completeExceptionally(evt.exception)
+                        ctx.pipeline().remove(this)
+                    }
                 }
-                ctx.pipeline().remove(this)
+                ctx.fireUserEventTriggered(evt)
             }
         }
         return ProtocolBindingInitializer(
@@ -59,6 +67,7 @@ class SecIoSecureChannel(val localKey: PrivKey, val remotePeerId: PeerId? = null
     inner class SecIoHandshake : ChannelInboundHandlerAdapter() {
         private var negotiator: SecioHandshake? = null
         private var activated = false
+        private var secIoCodec: SecIoCodec? = null
 
         override fun channelActive(ctx: ChannelHandlerContext) {
             if (!activated) {
@@ -75,12 +84,18 @@ class SecIoSecureChannel(val localKey: PrivKey, val remotePeerId: PeerId? = null
             val keys = negotiator!!.onNewMessage(msg as ByteBuf)
 
             if (keys != null) {
-                val secIoCodec = SecIoCodec(keys.first, keys.second)
+                secIoCodec = SecIoCodec(keys.first, keys.second)
                 ctx.channel().pipeline().addBefore(HandshakeHandlerName, "SecIoCodec", secIoCodec)
                 negotiator!!.onSecureChannelSetup()
             }
 
             if (negotiator!!.isComplete()) {
+                val session = SecioSession(
+                    PeerId.fromPubKey(secIoCodec!!.local.permanentPubKey),
+                    PeerId.fromPubKey(secIoCodec!!.remote.permanentPubKey),
+                    secIoCodec!!.remote.permanentPubKey
+                )
+                ctx.fireUserEventTriggered(SecureChannelInitialized(session))
                 ctx.channel().pipeline().remove(HandshakeHandlerName)
                 ctx.fireChannelActive()
             }
@@ -91,6 +106,7 @@ class SecIoSecureChannel(val localKey: PrivKey, val remotePeerId: PeerId? = null
         }
 
         override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
+            ctx.fireUserEventTriggered(SecureChannelFailed(cause))
             cause.printStackTrace() // TODO logging
             ctx.channel().close()
         }
@@ -100,8 +116,5 @@ class SecIoSecureChannel(val localKey: PrivKey, val remotePeerId: PeerId? = null
 /**
  * SecioSession exposes the identity and public security material of the other party as authenticated by SecIO.
  */
-class SecioSession(
-    override val localId: PeerId,
-    override val remoteId: PeerId,
-    override val remotePubKey: PublicKey
-) : SecureChannel.Session
+class SecioSession(localId: PeerId, remoteId: PeerId, remotePubKey: PubKey) :
+    SecureChannel.Session(localId, remoteId, remotePubKey)

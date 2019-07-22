@@ -2,6 +2,7 @@ package io.libp2p.core.transport.tcp
 
 import io.libp2p.core.ConnectionHandler
 import io.libp2p.core.Libp2pException
+import io.libp2p.core.StreamHandler
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multiformats.Protocol.DNSADDR
 import io.libp2p.core.multiformats.Protocol.IP4
@@ -21,9 +22,9 @@ import java.util.concurrent.CompletableFuture
  * Given that TCP by itself is not authenticated, encrypted, nor multiplexed, this transport uses the upgrader to
  * shim those capabilities via dynamic negotiation.
  */
-class TcpTransport(upgrader: ConnectionUpgrader) : AbstractTransport(upgrader) {
-    private var server: ServerBootstrap? = ServerBootstrap()
-    private var client: Bootstrap = Bootstrap()
+class TcpTransport(
+    upgrader: ConnectionUpgrader, var client: Bootstrap, val server: ServerBootstrap? = null
+) : AbstractTransport(upgrader) {
 
     // Initializes the server and client fields, preparing them to establish outbound connections (client)
     // and to accept inbound connections (server).
@@ -41,7 +42,8 @@ class TcpTransport(upgrader: ConnectionUpgrader) : AbstractTransport(upgrader) {
         TODO("not implemented")
     }
 
-    override fun listen(addr: Multiaddr, connHandler: ConnectionHandler): CompletableFuture<Void> {
+    override fun listen(addr: Multiaddr, connHandler: ConnectionHandler, streamHandler: StreamHandler): CompletableFuture<Void> {
+        server ?: throw Libp2pException("No ServerBootstrap to listen")
         TODO("not implemented")
     }
 
@@ -49,13 +51,12 @@ class TcpTransport(upgrader: ConnectionUpgrader) : AbstractTransport(upgrader) {
         TODO("not implemented")
     }
 
-    override fun dial(addr: Multiaddr, connHandler: ConnectionHandler): CompletableFuture<Void> {
-        val (channelHandler, muxerFuture) = createConnectionHandler(connHandler, true)
+    override fun dial(addr: Multiaddr, connHandler: ConnectionHandler, streamHandler: StreamHandler): CompletableFuture<Unit> {
+        val (channelHandler, muxerFuture) = createConnectionHandler(connHandler, streamHandler,true)
         return client
             .handler(channelHandler)
             .connect(fromMultiaddr(addr)).toCompletableFuture()
             .thenCompose { muxerFuture }
-            .thenApply { }
     }
 
     private fun fromMultiaddr(addr: Multiaddr): InetSocketAddress {

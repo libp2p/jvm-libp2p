@@ -13,9 +13,9 @@
 package io.libp2p.core.wip
 
 import io.libp2p.core.mplex.MplexFlags
-import io.libp2p.core.mux.MultistreamFrame
+import io.libp2p.core.mux.MuxFrame
 import io.libp2p.core.types.writeUvarint
-import io.libp2p.core.util.netty.multiplex.MultiplexId
+import io.libp2p.core.util.netty.mux.MuxId
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 
@@ -28,7 +28,7 @@ import io.netty.buffer.Unpooled
  * @see [mplex documentation](https://github.com/libp2p/specs/tree/master/mplex#opening-a-new-stream)
  */
 class MplexFrame(streamId: Long, val mplexFlag: Int, data: ByteBuf? = null)
-    : MultistreamFrame(MultiplexId(streamId), MplexFlags.toAbstractFlag(mplexFlag), data){
+    : MuxFrame(MuxId(streamId), MplexFlags.toAbstractFlag(mplexFlag), data){
 
     companion object {
 

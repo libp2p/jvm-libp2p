@@ -1,7 +1,6 @@
 package io.libp2p.core.protocol
 
-import io.netty.channel.Channel
-import io.netty.channel.ChannelInitializer
+import io.netty.channel.ChannelHandler
 import java.util.concurrent.CompletableFuture
 
 /**
@@ -30,7 +29,7 @@ interface ProtocolBinding<TController> {
 }
 
 class ProtocolBindingInitializer<TController>(
-    val channelInitializer: ChannelInitializer<Channel>,
+    val channelInitializer: ChannelHandler,
     val controller: CompletableFuture<TController>
 )
 

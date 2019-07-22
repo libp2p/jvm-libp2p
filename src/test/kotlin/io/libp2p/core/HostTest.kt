@@ -6,7 +6,6 @@ import io.libp2p.core.dsl.host
 import io.libp2p.core.mux.mplex.MplexStreamMuxer
 import io.libp2p.core.protocol.DummyProtocolBinding
 import io.libp2p.core.security.secio.SecIoSecureChannel
-import io.libp2p.core.transport.tcp.TcpTransport
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 
@@ -31,9 +30,9 @@ class HostTest {
             muxers {
                 +::MplexStreamMuxer
             }
-            transports {
-                +::TcpTransport
-            }
+//            transports {
+//                +::TcpTransport
+//            }
             addressBook {
                 memory()
             }

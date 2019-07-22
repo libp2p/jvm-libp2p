@@ -13,11 +13,11 @@
 package io.libp2p.core.mplex
 
 import io.libp2p.core.Libp2pException
-import io.libp2p.core.mux.MultistreamFrame
-import io.libp2p.core.mux.MultistreamFrame.Flag.CLOSE
-import io.libp2p.core.mux.MultistreamFrame.Flag.DATA
-import io.libp2p.core.mux.MultistreamFrame.Flag.OPEN
-import io.libp2p.core.mux.MultistreamFrame.Flag.RESET
+import io.libp2p.core.mux.MuxFrame
+import io.libp2p.core.mux.MuxFrame.Flag.CLOSE
+import io.libp2p.core.mux.MuxFrame.Flag.DATA
+import io.libp2p.core.mux.MuxFrame.Flag.OPEN
+import io.libp2p.core.mux.MuxFrame.Flag.RESET
 
 /**
  * Contains all the permissible values for flags in the <code>mplex</code> protocol.
@@ -31,7 +31,7 @@ object MplexFlags {
     const val ResetReceiver = 5
     const val ResetInitiator = 6
 
-    fun toAbstractFlag(mplexFlag: Int): MultistreamFrame.Flag =
+    fun toAbstractFlag(mplexFlag: Int): MuxFrame.Flag =
         when(mplexFlag) {
             NewStream -> OPEN
             MessageReceiver, MessageInitiator -> DATA
@@ -40,7 +40,7 @@ object MplexFlags {
             else -> throw Libp2pException("Unknown mplex flag: $mplexFlag")
         }
 
-    fun toMplexFlag(abstractFlag: MultistreamFrame.Flag, initiator: Boolean): Int =
+    fun toMplexFlag(abstractFlag: MuxFrame.Flag, initiator: Boolean): Int =
         when(abstractFlag) {
             OPEN -> NewStream
             DATA -> if (initiator) MessageInitiator else MessageReceiver

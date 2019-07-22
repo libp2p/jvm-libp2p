@@ -3,6 +3,7 @@ package io.libp2p.core.protocol
 import io.libp2p.core.events.ProtocolNegotiationFailed
 import io.libp2p.core.events.ProtocolNegotiationSucceeded
 import io.libp2p.core.util.netty.StringSuffixCodec
+import io.libp2p.core.util.netty.nettyInitializer
 import io.netty.channel.Channel
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
@@ -43,10 +44,8 @@ object Negotiator {
     private val LS = "ls"
 
     fun createInitializer(initiator: Boolean, vararg protocols: String): ChannelInitializer<Channel> {
-        return object : ChannelInitializer<Channel>() {
-            override fun initChannel(ch: Channel) {
-                initNegotiator(ch, initiator, *protocols)
-            }
+        return nettyInitializer {
+            initNegotiator(it, initiator, *protocols)
         }
     }
 

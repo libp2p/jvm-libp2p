@@ -1,5 +1,5 @@
 package io.libp2p.core
 
-import java.util.function.Function
+import java.util.function.Consumer
 
-abstract class ConnectionHandler: Function<Connection, StreamHandler>
+abstract class ConnectionHandler: Consumer<Connection>

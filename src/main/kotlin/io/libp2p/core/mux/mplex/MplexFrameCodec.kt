@@ -12,7 +12,7 @@
  */
 package io.libp2p.core.mplex
 
-import io.libp2p.core.mux.MultistreamFrame
+import io.libp2p.core.mux.MuxFrame
 import io.libp2p.core.types.readUvarint
 import io.libp2p.core.types.writeUvarint
 import io.libp2p.core.wip.MplexFrame
@@ -24,7 +24,7 @@ import io.netty.handler.codec.MessageToMessageCodec
 /**
  * A Netty codec implementation that converts [MplexFrame] instances to [ByteBuf] and vice-versa.
  */
-class MplexFrameCodec : MessageToMessageCodec<ByteBuf, MultistreamFrame>() {
+class MplexFrameCodec : MessageToMessageCodec<ByteBuf, MuxFrame>() {
     var initiator = false
 
     /**
@@ -34,16 +34,16 @@ class MplexFrameCodec : MessageToMessageCodec<ByteBuf, MultistreamFrame>() {
      * @param msg the mplex frame.
      * @param out the list to write the bytes to.
      */
-    override fun encode(ctx: ChannelHandlerContext, msg: MultistreamFrame, out: MutableList<Any>) {
-        if (msg.flag == MultistreamFrame.Flag.OPEN) initiator = true
+    override fun encode(ctx: ChannelHandlerContext, msg: MuxFrame, out: MutableList<Any>) {
+        if (msg.flag == MuxFrame.Flag.OPEN) initiator = true
 
         out.add(
             Unpooled.wrappedBuffer(
                 Unpooled.buffer().apply {
                     writeUvarint(msg.id.id.shl(3).or(MplexFlags.toMplexFlag(msg.flag, initiator).toLong()))
-                    writeUvarint(msg.data!!.readableBytes())
+                    writeUvarint(msg.data?.readableBytes() ?: 0)
                 },
-                msg.data
+                msg.data ?: Unpooled.EMPTY_BUFFER
             )
         )
     }
@@ -61,9 +61,10 @@ class MplexFrameCodec : MessageToMessageCodec<ByteBuf, MultistreamFrame>() {
             val lenData = msg.readUvarint()
             val streamTag = header.and(0x07).toInt()
             val streamId = header.shr(3)
-            val data = msg.slice(0 , lenData.toInt())
+            val data = msg.readBytes(lenData.toInt())
+            data.retain() // on leaving encode() the superclass handler releases the buffer but need to forward it
             val mplexFrame = MplexFrame(streamId, streamTag, data)
-            if (mplexFrame.flag == MultistreamFrame.Flag.OPEN) initiator = false
+            if (mplexFrame.flag == MuxFrame.Flag.OPEN) initiator = false
             out.add(mplexFrame)
         }
     }

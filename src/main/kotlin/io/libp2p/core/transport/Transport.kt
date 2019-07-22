@@ -1,6 +1,7 @@
 package io.libp2p.core.transport
 
 import io.libp2p.core.ConnectionHandler
+import io.libp2p.core.StreamHandler
 import io.libp2p.core.multiformats.Multiaddr
 import java.util.concurrent.CompletableFuture
 
@@ -31,7 +32,7 @@ interface Transport {
     /**
      * Makes this transport listen on this multiaddr. The future completes once the endpoint is effectively listening.
      */
-    fun listen(addr: Multiaddr, connHandler: ConnectionHandler): CompletableFuture<Void>
+    fun listen(addr: Multiaddr, connHandler: ConnectionHandler, streamHandler: StreamHandler): CompletableFuture<Void>
 
     /**
      * Makes this transport stop listening on this multiaddr. Any connections maintained from this source host and port
@@ -43,5 +44,5 @@ interface Transport {
     /**
      * Dials the specified multiaddr and returns a promise of a Connection.
      */
-    fun dial(addr: Multiaddr, connHandler: ConnectionHandler): CompletableFuture<Void>
+    fun dial(addr: Multiaddr, connHandler: ConnectionHandler, streamHandler: StreamHandler): CompletableFuture<Unit>
 }

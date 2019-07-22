@@ -1,8 +1,8 @@
 package io.libp2p.core.protocol
 
-import io.netty.channel.Channel
+import io.libp2p.core.types.forward
+import io.libp2p.core.util.netty.nettyInitializer
 import io.netty.channel.ChannelHandler
-import io.netty.channel.ChannelInitializer
 import java.util.concurrent.CompletableFuture
 
 interface Multistream<TController> {
@@ -22,11 +22,11 @@ class MultistreamImpl<TController>(override val bindings: List<ProtocolBinding<T
 
     override fun initializer(): Pair<ChannelHandler, CompletableFuture<TController>> {
         val fut = CompletableFuture<TController>()
-        val handler = object : ChannelInitializer<Channel>() {
-            override fun initChannel(ch: Channel) {
-                ch.pipeline().addLast(Negotiator.createInitializer(initiator, *bindings.map { it.announce }.toTypedArray()))
-                ch.pipeline().addLast(ProtocolSelect(bindings))
-            }
+        val handler = nettyInitializer {
+            it.pipeline().addLast(Negotiator.createInitializer(initiator, *bindings.map { it.announce }.toTypedArray()))
+            val protocolSelect = ProtocolSelect(bindings)
+            protocolSelect.selectedFuture.forward(fut)
+            it.pipeline().addLast(protocolSelect)
         }
 
         return handler to fut
