@@ -18,7 +18,6 @@ import io.netty.channel.ChannelInitializer
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder
 import io.netty.handler.codec.LengthFieldPrepender
 import org.apache.logging.log4j.LogManager
-import java.security.PublicKey
 import java.util.concurrent.CompletableFuture
 import io.netty.channel.Channel as NettyChannel
 
