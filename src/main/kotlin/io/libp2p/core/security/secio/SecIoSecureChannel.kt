@@ -17,11 +17,14 @@ import io.netty.channel.ChannelInboundHandlerAdapter
 import io.netty.channel.ChannelInitializer
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder
 import io.netty.handler.codec.LengthFieldPrepender
+import org.apache.logging.log4j.LogManager
+import java.security.PublicKey
 import java.util.concurrent.CompletableFuture
 import io.netty.channel.Channel as NettyChannel
 
 class SecIoSecureChannel(val localKey: PrivKey, val remotePeerId: PeerId? = null) :
     SecureChannel {
+    private val log = LogManager.getLogger(SecIoSecureChannel::class.java)
 
     private val HandshakeHandlerName = "SecIoHandshake"
     private val HadshakeTimeout = 30 * 1000L
@@ -108,7 +111,7 @@ class SecIoSecureChannel(val localKey: PrivKey, val remotePeerId: PeerId? = null
 
         override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
             ctx.fireUserEventTriggered(SecureChannelFailed(cause))
-            cause.printStackTrace() // TODO logging
+            log.error(cause.message)
             ctx.channel().close()
         }
     }

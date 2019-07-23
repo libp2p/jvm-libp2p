@@ -35,6 +35,7 @@ dependencies {
     compile("com.github.multiformats:java-multiaddr:v1.3.1")
     compile("com.google.protobuf:protobuf-java:3.6.1")
     compile("com.google.protobuf:protobuf-java:3.6.1")
+
     compile("org.apache.logging.log4j:log4j-api:${log4j2Version}")
     compile("org.apache.logging.log4j:log4j-core:${log4j2Version}")
 

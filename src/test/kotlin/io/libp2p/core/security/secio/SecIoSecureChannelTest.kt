@@ -12,6 +12,7 @@ import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.embedded.EmbeddedChannel
 import io.netty.handler.logging.LogLevel
 import io.netty.handler.logging.LoggingHandler
+import org.apache.logging.log4j.LogManager
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import java.nio.charset.StandardCharsets
@@ -45,7 +46,7 @@ class SecIoSecureChannelTest {
                 override fun channelRead(ctx: ChannelHandlerContext, msg: Any?) {
                     msg as ByteBuf
                     rec1 = msg.toByteArray().toString(StandardCharsets.UTF_8)
-                    println("==$name== read: $rec1")
+                    logger.debug("==$name== read: $rec1")
                     latch.countDown()
                 }
             })
@@ -62,7 +63,7 @@ class SecIoSecureChannelTest {
                 override fun channelRead(ctx: ChannelHandlerContext, msg: Any?) {
                     msg as ByteBuf
                     rec2 = msg.toByteArray().toString(StandardCharsets.UTF_8)
-                    println("==$name== read: $rec2")
+                    logger.debug("==$name== read: $rec2")
                     latch.countDown()
                 }
             })
@@ -72,6 +73,10 @@ class SecIoSecureChannelTest {
 
         Assertions.assertEquals("Hello World from 1", rec2)
         Assertions.assertEquals("Hello World from 2", rec1)
+    }
+
+    companion object {
+        private val logger = LogManager.getLogger(SecIoSecureChannelTest::class.java)
     }
 }
 
@@ -100,8 +105,12 @@ class TestChannel(vararg handlers: ChannelHandler?) : EmbeddedChannel(*handlers)
 
     fun send(msg: Any) {
         executor.execute {
-            println("---- link!!.writeInbound")
+            logger.debug("---- link!!.writeInbound")
             link!!.writeInbound(msg)
         }
+    }
+
+    companion object {
+        private val logger = LogManager.getLogger(TestChannel::class.java)
     }
 }
