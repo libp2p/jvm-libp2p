@@ -13,14 +13,10 @@ import io.libp2p.core.mux.mplex.MplexStreamMuxer
 import io.libp2p.core.transport.ConnectionUpgrader
 import io.libp2p.core.transport.tcp.TcpTransport
 import io.libp2p.core.types.toByteArray
-import io.netty.bootstrap.Bootstrap
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
-import io.netty.channel.ChannelOption
-import io.netty.channel.nio.NioEventLoopGroup
-import io.netty.channel.socket.nio.NioSocketChannel
 import io.netty.handler.logging.LogLevel
 import io.netty.handler.logging.LoggingHandler
 import org.junit.jupiter.api.Assertions
@@ -70,11 +66,6 @@ class EchoSampleTest {
     @Disabled
     fun connect1() {
 
-        val clientBootstrap = Bootstrap()
-        clientBootstrap.group(NioEventLoopGroup())
-        clientBootstrap.channel(NioSocketChannel::class.java)
-        clientBootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 15 * 1000)
-
         val (privKey1, pubKey1) = generateKeyPair(KEY_TYPE.ECDSA)
         val upgrader = ConnectionUpgrader(
             listOf(SecIoSecureChannel(privKey1)),
@@ -85,7 +76,7 @@ class EchoSampleTest {
                 it.afterSecureHandler = LoggingHandler("#2", LogLevel.ERROR)
             }
 
-        val tcpTransport = TcpTransport(upgrader, clientBootstrap)
+        val tcpTransport = TcpTransport(upgrader)
         val applicationProtocols = listOf(TestProtocol())
         val inboundStreamHandler = StreamHandler.create(Multistream.create(applicationProtocols, false))
         println("Dialing...")

@@ -14,6 +14,9 @@ import io.libp2p.core.transport.ConnectionUpgrader
 import io.libp2p.core.types.toCompletableFuture
 import io.netty.bootstrap.Bootstrap
 import io.netty.bootstrap.ServerBootstrap
+import io.netty.channel.ChannelOption
+import io.netty.channel.nio.NioEventLoopGroup
+import io.netty.channel.socket.nio.NioSocketChannel
 import java.net.InetSocketAddress
 import java.util.concurrent.CompletableFuture
 
@@ -24,8 +27,15 @@ import java.util.concurrent.CompletableFuture
  * shim those capabilities via dynamic negotiation.
  */
 class TcpTransport(
-    upgrader: ConnectionUpgrader, var client: Bootstrap, val server: ServerBootstrap? = null
+    upgrader: ConnectionUpgrader
 ) : AbstractTransport(upgrader) {
+
+    var client: Bootstrap = Bootstrap().apply {
+        group(NioEventLoopGroup())
+        channel(NioSocketChannel::class.java)
+        option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 15 * 1000)
+    }
+    var server: ServerBootstrap? = null
 
     // Initializes the server and client fields, preparing them to establish outbound connections (client)
     // and to accept inbound connections (server).
