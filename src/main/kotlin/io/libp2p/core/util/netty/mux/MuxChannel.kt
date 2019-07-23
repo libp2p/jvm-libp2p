@@ -4,6 +4,7 @@ import io.libp2p.core.util.netty.AbstractChildChannel
 import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelMetadata
 import io.netty.channel.ChannelOutboundBuffer
+import io.netty.util.ReferenceCountUtil
 import java.net.SocketAddress
 
 /**
@@ -31,7 +32,19 @@ class MuxChannel<TData>(
     }
 
     override fun doWrite(buf: ChannelOutboundBuffer) {
-        buf.forEachFlushedMessage { parent.onChildWrite(this, it as TData) }
+        while (true) {
+            val msg = buf.current() ?: break
+            try {
+                // the msg is released by both onChildWrite and buf.remove() so we need to retain
+                // however it is still to be confirmed that no buf leaks happen here TODO
+                ReferenceCountUtil.retain(msg)
+                parent.onChildWrite(this, msg as TData)
+                buf.remove()
+            } catch (cause: Throwable) {
+                buf.remove(cause)
+            }
+
+        }
     }
 
     override fun doDisconnect() {
