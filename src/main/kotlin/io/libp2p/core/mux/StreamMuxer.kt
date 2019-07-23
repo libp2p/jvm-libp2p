@@ -13,6 +13,6 @@ interface StreamMuxer : ProtocolBinding<StreamMuxer.Session> {
     interface Session {
         var streamHandler: StreamHandler?
         fun createStream(streamHandler: StreamHandler): CompletableFuture<Stream>
-        fun close() : Unit = TODO()
+        fun close(): Unit = TODO()
     }
 }

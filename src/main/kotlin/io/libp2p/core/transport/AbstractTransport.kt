@@ -7,7 +7,7 @@ import io.libp2p.core.util.netty.nettyInitializer
 import io.netty.channel.ChannelHandler
 import java.util.concurrent.CompletableFuture
 
-abstract class AbstractTransport(val upgrader: ConnectionUpgrader): Transport {
+abstract class AbstractTransport(val upgrader: ConnectionUpgrader) : Transport {
 
     protected fun createConnectionHandler(
         streamHandler: StreamHandler,
@@ -15,7 +15,7 @@ abstract class AbstractTransport(val upgrader: ConnectionUpgrader): Transport {
     ): Pair<ChannelHandler, CompletableFuture<Connection>> {
 
         val connFuture = CompletableFuture<Connection>()
-        return nettyInitializer {ch ->
+        return nettyInitializer { ch ->
             upgrader.establishSecureChannel(ch, initiator)
                 .thenCompose {
                     upgrader.establishMuxer(ch, streamHandler, initiator)

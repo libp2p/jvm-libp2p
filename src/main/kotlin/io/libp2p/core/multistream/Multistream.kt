@@ -12,8 +12,10 @@ interface Multistream<TController> {
     fun initializer(): Pair<ChannelHandler, CompletableFuture<TController>>
 
     companion object {
-        fun <TController> create(bindings: List<ProtocolBinding<TController>>, initiator: Boolean): Multistream<TController>
-                = MultistreamImpl(bindings, initiator)
+        fun <TController> create(
+            bindings: List<ProtocolBinding<TController>>,
+            initiator: Boolean
+        ): Multistream<TController> = MultistreamImpl(bindings, initiator)
     }
 }
 
@@ -36,5 +38,4 @@ class MultistreamImpl<TController>(override val bindings: List<ProtocolBinding<T
 
         return handler to fut
     }
-
 }

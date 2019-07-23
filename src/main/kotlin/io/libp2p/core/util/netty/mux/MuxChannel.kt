@@ -43,7 +43,6 @@ class MuxChannel<TData>(
             } catch (cause: Throwable) {
                 buf.remove(cause)
             }
-
         }
     }
 

@@ -63,7 +63,7 @@ class TcpTransport(
     }
 
     override fun dial(addr: Multiaddr, streamHandler: StreamHandler): CompletableFuture<Connection> {
-        val (channelHandler, connFuture) = createConnectionHandler(streamHandler,true)
+        val (channelHandler, connFuture) = createConnectionHandler(streamHandler, true)
         return client
             .handler(channelHandler)
             .connect(fromMultiaddr(addr)).toCompletableFuture()

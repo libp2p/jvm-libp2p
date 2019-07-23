@@ -16,6 +16,4 @@ open class MuxFrame(val id: MuxId, val flag: Flag, val data: ByteBuf? = null) {
     override fun toString(): String {
         return "MuxFrame(id=$id, flag=$flag, data=${data?.toByteArray()?.toHex()})"
     }
-
-
 }

@@ -69,7 +69,7 @@ class MultiplexHandlerTest {
         }
         val childHandlers = mutableListOf<TestHandler>()
         val multistreamHandler = MuxHandler(StreamHandler.create(
-            nettyInitializer{
+            nettyInitializer {
                 println("New child channel created")
                 val handler = TestHandler()
                 it.pipeline().addLast(handler)

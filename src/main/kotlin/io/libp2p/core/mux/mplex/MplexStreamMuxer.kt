@@ -22,7 +22,7 @@ class MplexStreamMuxer : StreamMuxer {
 
     override fun initializer(selectedProtocol: String): ProtocolBindingInitializer<StreamMuxer.Session> {
         val muxSessionFuture = CompletableFuture<StreamMuxer.Session>()
-        val nettyInitializer = nettyInitializer {ch ->
+        val nettyInitializer = nettyInitializer { ch ->
             ch.pipeline().addLast(MplexFrameCodec())
             intermediateFrameHandler?.also { ch.pipeline().addLast(it) }
             ch.pipeline().addLast("MuxerSessionTracker", object : ChannelInboundHandlerAdapter() {

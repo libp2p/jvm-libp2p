@@ -27,8 +27,8 @@ import io.netty.buffer.Unpooled
  * @param data the data segment.
  * @see [mplex documentation](https://github.com/libp2p/specs/tree/master/mplex#opening-a-new-stream)
  */
-class MplexFrame(streamId: Long, val mplexFlag: Int, data: ByteBuf? = null)
-    : MuxFrame(MuxId(streamId), MplexFlags.toAbstractFlag(mplexFlag), data){
+class MplexFrame(streamId: Long, val mplexFlag: Int, data: ByteBuf? = null) :
+    MuxFrame(MuxId(streamId), MplexFlags.toAbstractFlag(mplexFlag), data) {
 
     companion object {
 

@@ -32,7 +32,7 @@ object MplexFlags {
     const val ResetInitiator = 6
 
     fun toAbstractFlag(mplexFlag: Int): MuxFrame.Flag =
-        when(mplexFlag) {
+        when (mplexFlag) {
             NewStream -> OPEN
             MessageReceiver, MessageInitiator -> DATA
             CloseReceiver, CloseInitiator -> CLOSE
@@ -41,11 +41,10 @@ object MplexFlags {
         }
 
     fun toMplexFlag(abstractFlag: MuxFrame.Flag, initiator: Boolean): Int =
-        when(abstractFlag) {
+        when (abstractFlag) {
             OPEN -> NewStream
             DATA -> if (initiator) MessageInitiator else MessageReceiver
             CLOSE -> if (initiator) CloseInitiator else CloseReceiver
             RESET -> if (initiator) ResetInitiator else ResetReceiver
         }
-
 }

@@ -2,7 +2,6 @@ package io.libp2p.core.types
 
 import java.util.concurrent.CompletableFuture
 
-
 fun <C> CompletableFuture<C>.bind(result: CompletableFuture<C>) {
     result.whenComplete { res, t ->
         if (t != null) {

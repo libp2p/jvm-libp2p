@@ -78,8 +78,7 @@ abstract class AbtractMuxHandler<TData>(var inboundInitializer: ChannelHandler? 
         return child
     }
 
-    open protected fun createChannel(id: MuxId, initializer: ChannelHandler)
-            = MuxChannel(this, id, initializer)
+    protected open fun createChannel(id: MuxId, initializer: ChannelHandler) = MuxChannel(this, id, initializer)
 
     protected abstract fun generateNextId(): MuxId
 

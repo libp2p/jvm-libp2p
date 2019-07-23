@@ -4,7 +4,7 @@ import io.libp2p.core.multistream.Multistream
 import io.netty.channel.ChannelHandler
 import java.util.function.Consumer
 
-interface StreamHandler: Consumer<Stream> {
+interface StreamHandler : Consumer<Stream> {
     val channelInitializer: ChannelHandler
 
     companion object {
@@ -13,10 +13,5 @@ interface StreamHandler: Consumer<Stream> {
             override fun accept(t: Stream) {}
         }
         fun create(multistream: Multistream<*>) = create(multistream.initializer().first)
-
-//        fun createDialer() = object : StreamHandler {
-//            override val channelInitializer = channelInitializer
-//            override fun accept(t: Stream) {}
-//        }
     }
 }

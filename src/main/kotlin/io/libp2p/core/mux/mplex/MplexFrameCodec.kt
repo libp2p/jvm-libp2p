@@ -56,7 +56,7 @@ class MplexFrameCodec : MessageToMessageCodec<ByteBuf, MuxFrame>() {
      * @param out the list to write the extracted frame to.
      */
     override fun decode(ctx: ChannelHandlerContext, msg: ByteBuf, out: MutableList<Any>) {
-        while(msg.isReadable) {
+        while (msg.isReadable) {
             val header = msg.readUvarint()
             val lenData = msg.readUvarint()
             val streamTag = header.and(0x07).toInt()

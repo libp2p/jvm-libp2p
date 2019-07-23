@@ -25,12 +25,12 @@ import org.junit.jupiter.api.Test
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 
-class TestController: ChannelInboundHandlerAdapter() {
+class TestController : ChannelInboundHandlerAdapter() {
     var ctx: ChannelHandlerContext? = null
     val respFuture = CompletableFuture<String>()
     val activeFuture = CompletableFuture<TestController>()
 
-    fun echo(str: String) : CompletableFuture<String> {
+    fun echo(str: String): CompletableFuture<String> {
         ctx!!.writeAndFlush(Unpooled.copiedBuffer(str.toByteArray()))
         return respFuture
     }
@@ -46,7 +46,7 @@ class TestController: ChannelInboundHandlerAdapter() {
     }
 }
 
-class TestProtocol: ProtocolBinding<TestController> {
+class TestProtocol : ProtocolBinding<TestController> {
     override val announce = "/echo/1.0.0"
     override val matcher = ProtocolMatcher(Mode.STRICT, announce)
     override fun initializer(selectedProtocol: String): ProtocolBindingInitializer<TestController> {
