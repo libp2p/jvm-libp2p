@@ -19,16 +19,17 @@ import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
 import io.netty.handler.logging.LogLevel
 import io.netty.handler.logging.LoggingHandler
+import org.apache.logging.log4j.LogManager
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 
-class TestController : ChannelInboundHandlerAdapter() {
+class EchoController : ChannelInboundHandlerAdapter() {
     var ctx: ChannelHandlerContext? = null
     val respFuture = CompletableFuture<String>()
-    val activeFuture = CompletableFuture<TestController>()
+    val activeFuture = CompletableFuture<EchoController>()
 
     fun echo(str: String): CompletableFuture<String> {
         ctx!!.writeAndFlush(Unpooled.copiedBuffer(str.toByteArray()))
@@ -46,11 +47,11 @@ class TestController : ChannelInboundHandlerAdapter() {
     }
 }
 
-class TestProtocol : ProtocolBinding<TestController> {
+class EchoProtocol : ProtocolBinding<EchoController> {
     override val announce = "/echo/1.0.0"
     override val matcher = ProtocolMatcher(Mode.STRICT, announce)
-    override fun initializer(selectedProtocol: String): ProtocolBindingInitializer<TestController> {
-        val controller = TestController()
+    override fun initializer(selectedProtocol: String): ProtocolBindingInitializer<EchoController> {
+        val controller = EchoController()
         return ProtocolBindingInitializer(controller, controller.activeFuture)
     }
 }
@@ -65,39 +66,40 @@ class EchoSampleTest {
     @Test
     @Disabled
     fun connect1() {
+        val logger = LogManager.getLogger("test")
 
         val (privKey1, pubKey1) = generateKeyPair(KEY_TYPE.ECDSA)
         val upgrader = ConnectionUpgrader(
             listOf(SecIoSecureChannel(privKey1)),
             listOf(MplexStreamMuxer().also {
-                it.intermediateFrameHandler = LoggingHandler("#3", LogLevel.ERROR) })
+                it.intermediateFrameHandler = LoggingHandler("#3", LogLevel.INFO) })
         ).also {
-                it.beforeSecureHandler = LoggingHandler("#1", LogLevel.ERROR)
-                it.afterSecureHandler = LoggingHandler("#2", LogLevel.ERROR)
+                it.beforeSecureHandler = LoggingHandler("#1", LogLevel.INFO)
+                it.afterSecureHandler = LoggingHandler("#2", LogLevel.INFO)
             }
 
         val tcpTransport = TcpTransport(upgrader)
-        val applicationProtocols = listOf(TestProtocol())
+        val applicationProtocols = listOf(EchoProtocol())
         val inboundStreamHandler = StreamHandler.create(Multistream.create(applicationProtocols, false))
-        println("Dialing...")
+        logger.info("Dialing...")
         val connFuture = tcpTransport.dial(Multiaddr("/ip4/127.0.0.1/tcp/10000"), inboundStreamHandler)
 
         val echoString = "Helooooooooooooooooooooooooo\n"
         connFuture.thenCompose {
-            println("#### Connection made")
+            logger.info("Connection made")
             val echoInitiator = Multistream.create(applicationProtocols, true)
             val (channelHandler, completableFuture) =
                 echoInitiator.initializer()
-            println("#### Creating stream")
+            logger.info("Creating stream")
             it.muxerSession.get().createStream(StreamHandler.create(channelHandler))
             completableFuture
         }.thenCompose {
-            println("#### Stream created, sending echo string...")
+            logger.info("Stream created, sending echo string...")
             it.echo(echoString)
         }.thenAccept {
-            println("#### Received back string: $it")
+            logger.info("Received back string: $it")
             Assertions.assertEquals(echoString, it)
         }.get(5, TimeUnit.SECONDS)
-        println("#### Success!")
+        logger.info("Success!")
     }
 }
