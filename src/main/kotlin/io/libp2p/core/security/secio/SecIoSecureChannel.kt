@@ -10,7 +10,7 @@ import io.libp2p.core.multistream.Mode
 import io.libp2p.core.multistream.ProtocolBindingInitializer
 import io.libp2p.core.multistream.ProtocolMatcher
 import io.libp2p.core.security.SecureChannel
-import io.libp2p.core.util.replace
+import io.libp2p.core.types.replace
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
