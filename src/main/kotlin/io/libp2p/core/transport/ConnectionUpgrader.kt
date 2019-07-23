@@ -14,10 +14,10 @@ import java.util.concurrent.CompletableFuture
  */
 class ConnectionUpgrader(
     private val secureChannels: List<SecureChannel>,
-    private val muxers: List<StreamMuxer>,
-    private val beforeSecureHandler: ChannelHandler? = null,
-    private val afterSecureHandler: ChannelHandler? = null
-) {
+    private val muxers: List<StreamMuxer>) {
+
+    var beforeSecureHandler: ChannelHandler? = null
+    var afterSecureHandler: ChannelHandler? = null
     fun establishSecureChannel(ch: Channel, initiator: Boolean): CompletableFuture<SecureChannel.Session> {
         val (channelHandler, future) =
             Multistream.create(secureChannels, initiator).initializer()

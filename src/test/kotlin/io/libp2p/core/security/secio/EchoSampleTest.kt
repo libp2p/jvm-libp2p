@@ -1,8 +1,6 @@
 package io.libp2p.core.security.secio
 
-import io.libp2p.core.Connection
-import io.libp2p.core.ConnectionHandler
-import io.libp2p.core.StreamHandlerMock
+import io.libp2p.core.StreamHandler
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.multiformats.Multiaddr
@@ -63,46 +61,44 @@ class TestProtocol: ProtocolBinding<TestController> {
 
 class EchoSampleTest {
 
+    /**
+     * Requires running go echo sample
+     * https://github.com/libp2p/go-libp2p-examples/tree/master/echo
+     * > echo -l 10000
+     */
     @Test
     @Disabled
     fun connect1() {
 
-        val b = Bootstrap()
-        b.group(NioEventLoopGroup())
-        b.channel(NioSocketChannel::class.java)
-        b.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 15 * 1000)
+        val clientBootstrap = Bootstrap()
+        clientBootstrap.group(NioEventLoopGroup())
+        clientBootstrap.channel(NioSocketChannel::class.java)
+        clientBootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 15 * 1000)
 
         val (privKey1, pubKey1) = generateKeyPair(KEY_TYPE.ECDSA)
         val upgrader = ConnectionUpgrader(
             listOf(SecIoSecureChannel(privKey1)),
-            listOf(MplexStreamMuxer()),
-            LoggingHandler("", LogLevel.ERROR),
-            LoggingHandler("###", LogLevel.ERROR)
-        )
-        val tcpTransport = TcpTransport(upgrader, b)
-        val connFuture = CompletableFuture<Connection>()
-        val connHandler = object : ConnectionHandler() {
-            override fun accept(conn: Connection) {
-                println("New connection: $conn")
-                connFuture.complete(conn)
+            listOf(MplexStreamMuxer().also {
+                it.intermediateFrameHandler = LoggingHandler("#3", LogLevel.ERROR) })
+        ).also {
+                it.beforeSecureHandler = LoggingHandler("#1", LogLevel.ERROR)
+                it.afterSecureHandler = LoggingHandler("#2", LogLevel.ERROR)
             }
-        }
-        val appProtocolsMultistream = Multistream.create(listOf(TestProtocol()), false)
-        val streamHandler = StreamHandlerMock(appProtocolsMultistream.initializer().first)
-        val dialFuture = tcpTransport.dial(Multiaddr("/ip4/127.0.0.1/tcp/10000"), connHandler, streamHandler)
-        dialFuture.handle { ignore, thr ->
-            println("Dial complete: $thr")
-        }
+
+        val tcpTransport = TcpTransport(upgrader, clientBootstrap)
+        val applicationProtocols = listOf(TestProtocol())
+        val inboundStreamHandler = StreamHandler.create(Multistream.create(applicationProtocols, false))
         println("Dialing...")
+        val connFuture = tcpTransport.dial(Multiaddr("/ip4/127.0.0.1/tcp/10000"), inboundStreamHandler)
 
         val echoString = "Helooooooooooooooooooooooooo\n"
         connFuture.thenCompose {
             println("#### Connection made")
-            val echoInitiator = Multistream.create(listOf(TestProtocol()), true)
+            val echoInitiator = Multistream.create(applicationProtocols, true)
             val (channelHandler, completableFuture) =
                 echoInitiator.initializer()
             println("#### Creating stream")
-            it.muxerSession.get().createStream(StreamHandlerMock(channelHandler))
+            it.muxerSession.get().createStream(StreamHandler.create(channelHandler))
             completableFuture
         }.thenCompose {
             println("#### Stream created, sending echo string...")

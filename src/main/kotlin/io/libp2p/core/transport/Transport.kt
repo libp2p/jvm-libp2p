@@ -1,5 +1,6 @@
 package io.libp2p.core.transport
 
+import io.libp2p.core.Connection
 import io.libp2p.core.ConnectionHandler
 import io.libp2p.core.StreamHandler
 import io.libp2p.core.multiformats.Multiaddr
@@ -44,5 +45,5 @@ interface Transport {
     /**
      * Dials the specified multiaddr and returns a promise of a Connection.
      */
-    fun dial(addr: Multiaddr, connHandler: ConnectionHandler, streamHandler: StreamHandler): CompletableFuture<Unit>
+    fun dial(addr: Multiaddr, streamHandler: StreamHandler): CompletableFuture<Connection>
 }

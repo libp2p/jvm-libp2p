@@ -1,10 +1,22 @@
 package io.libp2p.core
 
+import io.libp2p.core.multistream.Multistream
 import io.netty.channel.ChannelHandler
 import java.util.function.Consumer
 
-abstract class StreamHandler(val channelInitializer: ChannelHandler): Consumer<Stream>
+interface StreamHandler: Consumer<Stream> {
+    val channelInitializer: ChannelHandler
 
-class StreamHandlerMock(channelInitializer: ChannelHandler) : StreamHandler(channelInitializer) {
-    override fun accept(t: Stream) {}
+    companion object {
+        fun create(channelInitializer: ChannelHandler) = object : StreamHandler {
+            override val channelInitializer = channelInitializer
+            override fun accept(t: Stream) {}
+        }
+        fun create(multistream: Multistream<*>) = create(multistream.initializer().first)
+
+//        fun createDialer() = object : StreamHandler {
+//            override val channelInitializer = channelInitializer
+//            override fun accept(t: Stream) {}
+//        }
+    }
 }

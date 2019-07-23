@@ -1,5 +1,6 @@
 package io.libp2p.core.transport.tcp
 
+import io.libp2p.core.Connection
 import io.libp2p.core.ConnectionHandler
 import io.libp2p.core.Libp2pException
 import io.libp2p.core.StreamHandler
@@ -51,12 +52,12 @@ class TcpTransport(
         TODO("not implemented")
     }
 
-    override fun dial(addr: Multiaddr, connHandler: ConnectionHandler, streamHandler: StreamHandler): CompletableFuture<Unit> {
-        val (channelHandler, muxerFuture) = createConnectionHandler(connHandler, streamHandler,true)
+    override fun dial(addr: Multiaddr, streamHandler: StreamHandler): CompletableFuture<Connection> {
+        val (channelHandler, connFuture) = createConnectionHandler(streamHandler,true)
         return client
             .handler(channelHandler)
             .connect(fromMultiaddr(addr)).toCompletableFuture()
-            .thenCompose { muxerFuture }
+            .thenCompose { connFuture }
     }
 
     private fun fromMultiaddr(addr: Multiaddr): InetSocketAddress {

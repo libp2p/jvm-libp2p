@@ -13,16 +13,16 @@ import io.netty.channel.ChannelHandlerContext
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicLong
 
-class MuxHandler(streamHandler: StreamHandler? = null) : AbtractMuxHandler<ByteBuf>(), StreamMuxer.Session {
+class MuxHandler() : AbtractMuxHandler<ByteBuf>(), StreamMuxer.Session {
 
     private val idGenerator = AtomicLong(0xF)
 
+    constructor(streamHandler: StreamHandler) : this() {
+        this.streamHandler = streamHandler
+    }
+
     override fun handlerAdded(ctx: ChannelHandlerContext) {
         super.handlerAdded(ctx)
-//    }
-//
-//    override fun channelRegistered(ctx: ChannelHandlerContext) {
-//        super.channelRegistered(ctx)
         ctx.channel().attr(MUXER_SESSION).set(this)
         ctx.fireUserEventTriggered(MuxSessionInitialized(this))
     }
@@ -59,7 +59,7 @@ class MuxHandler(streamHandler: StreamHandler? = null) : AbtractMuxHandler<ByteB
 
     override fun generateNextId() = MuxId(idGenerator.incrementAndGet())
 
-    override var streamHandler: StreamHandler? = streamHandler
+    override var streamHandler: StreamHandler? = null
         set(value) {
             field = value
             inboundInitializer = value!!.channelInitializer

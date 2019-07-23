@@ -9,23 +9,23 @@ import io.libp2p.core.multistream.ProtocolMatcher
 import io.libp2p.core.mux.MuxHandler
 import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.core.util.netty.nettyInitializer
+import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
-import io.netty.handler.logging.LogLevel
-import io.netty.handler.logging.LoggingHandler
 import java.util.concurrent.CompletableFuture
 
 class MplexStreamMuxer : StreamMuxer {
     override val announce = "/mplex/6.7.0"
     override val matcher: ProtocolMatcher =
         ProtocolMatcher(Mode.STRICT, announce)
+    var intermediateFrameHandler: ChannelHandler? = null
 
     override fun initializer(selectedProtocol: String): ProtocolBindingInitializer<StreamMuxer.Session> {
         val muxSessionFuture = CompletableFuture<StreamMuxer.Session>()
-        val nettyInitializer = nettyInitializer {
-            it.pipeline().addLast(MplexFrameCodec())
-            it.pipeline().addLast(LoggingHandler("### MPLEX ###", LogLevel.ERROR))
-            it.pipeline().addLast("MuxerSessionTracker", object : ChannelInboundHandlerAdapter() {
+        val nettyInitializer = nettyInitializer {ch ->
+            ch.pipeline().addLast(MplexFrameCodec())
+            intermediateFrameHandler?.also { ch.pipeline().addLast(it) }
+            ch.pipeline().addLast("MuxerSessionTracker", object : ChannelInboundHandlerAdapter() {
                 override fun userEventTriggered(ctx: ChannelHandlerContext, evt: Any) {
                     when (evt) {
                         is MuxSessionInitialized -> {
@@ -40,7 +40,7 @@ class MplexStreamMuxer : StreamMuxer {
                     }
                 }
             })
-            it.pipeline().addBefore("MuxerSessionTracker", "MuxHandler", MuxHandler())
+            ch.pipeline().addBefore("MuxerSessionTracker", "MuxHandler", MuxHandler())
         }
         return ProtocolBindingInitializer(nettyInitializer, muxSessionFuture)
     }

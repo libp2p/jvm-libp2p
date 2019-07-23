@@ -1,7 +1,7 @@
 package io.libp2p.core.mux
 
 import io.libp2p.core.Libp2pException
-import io.libp2p.core.StreamHandlerMock
+import io.libp2p.core.StreamHandler
 import io.libp2p.core.mux.MuxFrame.Flag.DATA
 import io.libp2p.core.mux.MuxFrame.Flag.OPEN
 import io.libp2p.core.mux.MuxFrame.Flag.RESET
@@ -68,7 +68,7 @@ class MultiplexHandlerTest {
             }
         }
         val childHandlers = mutableListOf<TestHandler>()
-        val multistreamHandler = MuxHandler(StreamHandlerMock(
+        val multistreamHandler = MuxHandler(StreamHandler.create(
             nettyInitializer{
                 println("New child channel created")
                 val handler = TestHandler()
