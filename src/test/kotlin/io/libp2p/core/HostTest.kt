@@ -3,8 +3,8 @@ package io.libp2p.core
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.dsl.host
+import io.libp2p.core.multistream.DummyProtocolBinding
 import io.libp2p.core.mux.mplex.MplexStreamMuxer
-import io.libp2p.core.protocol.DummyProtocolBinding
 import io.libp2p.core.security.secio.SecIoSecureChannel
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test

@@ -1,8 +1,8 @@
 package io.libp2p.core.transport
 
 import io.libp2p.core.StreamHandler
+import io.libp2p.core.multistream.Multistream
 import io.libp2p.core.mux.StreamMuxer
-import io.libp2p.core.protocol.Multistream
 import io.libp2p.core.security.SecureChannel
 import io.netty.channel.Channel
 import io.netty.channel.ChannelHandler
@@ -23,7 +23,7 @@ class ConnectionUpgrader(
             Multistream.create(secureChannels, initiator).initializer()
         if (beforeSecureHandler != null) {
             ch.pipeline().addLast(beforeSecureHandler)
-            future.thenAccept { ch.pipeline().remove(beforeSecureHandler) }
+//            future.thenAccept { ch.pipeline().remove(beforeSecureHandler) }
         }
         ch.pipeline().addLast(channelHandler)
         if (afterSecureHandler != null) {

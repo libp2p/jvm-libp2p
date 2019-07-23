@@ -1,7 +1,8 @@
-package io.libp2p.core.protocol
+package io.libp2p.core.multistream
 
 import io.libp2p.core.events.ProtocolNegotiationFailed
 import io.libp2p.core.events.ProtocolNegotiationSucceeded
+import io.libp2p.core.protocol.Protocols
 import io.libp2p.core.util.netty.StringSuffixCodec
 import io.libp2p.core.util.netty.nettyInitializer
 import io.netty.channel.Channel

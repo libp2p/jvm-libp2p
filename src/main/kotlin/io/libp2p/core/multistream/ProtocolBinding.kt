@@ -1,4 +1,4 @@
-package io.libp2p.core.protocol
+package io.libp2p.core.multistream
 
 import io.netty.channel.ChannelHandler
 import java.util.concurrent.CompletableFuture
@@ -35,7 +35,8 @@ class ProtocolBindingInitializer<TController>(
 
 class DummyProtocolBinding : ProtocolBinding<Nothing> {
     override val announce: String = "/dummy/0.0.0"
-    override val matcher: ProtocolMatcher = ProtocolMatcher(Mode.NEVER)
+    override val matcher: ProtocolMatcher =
+        ProtocolMatcher(Mode.NEVER)
 
     override fun initializer(selectedProtocol: String): ProtocolBindingInitializer<Nothing> = TODO("not implemented")
 }

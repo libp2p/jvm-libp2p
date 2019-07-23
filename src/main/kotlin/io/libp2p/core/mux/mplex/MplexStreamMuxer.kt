@@ -3,11 +3,11 @@ package io.libp2p.core.mux.mplex
 import io.libp2p.core.events.MuxSessionFailed
 import io.libp2p.core.events.MuxSessionInitialized
 import io.libp2p.core.mplex.MplexFrameCodec
+import io.libp2p.core.multistream.Mode
+import io.libp2p.core.multistream.ProtocolBindingInitializer
+import io.libp2p.core.multistream.ProtocolMatcher
 import io.libp2p.core.mux.MuxHandler
 import io.libp2p.core.mux.StreamMuxer
-import io.libp2p.core.protocol.Mode
-import io.libp2p.core.protocol.ProtocolBindingInitializer
-import io.libp2p.core.protocol.ProtocolMatcher
 import io.libp2p.core.util.netty.nettyInitializer
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
@@ -17,7 +17,8 @@ import java.util.concurrent.CompletableFuture
 
 class MplexStreamMuxer : StreamMuxer {
     override val announce = "/mplex/6.7.0"
-    override val matcher: ProtocolMatcher = ProtocolMatcher(Mode.STRICT, announce)
+    override val matcher: ProtocolMatcher =
+        ProtocolMatcher(Mode.STRICT, announce)
 
     override fun initializer(selectedProtocol: String): ProtocolBindingInitializer<StreamMuxer.Session> {
         val muxSessionFuture = CompletableFuture<StreamMuxer.Session>()

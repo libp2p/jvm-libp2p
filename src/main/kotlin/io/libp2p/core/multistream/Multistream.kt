@@ -1,4 +1,4 @@
-package io.libp2p.core.protocol
+package io.libp2p.core.multistream
 
 import io.libp2p.core.types.forward
 import io.libp2p.core.util.netty.nettyInitializer
@@ -23,7 +23,12 @@ class MultistreamImpl<TController>(override val bindings: List<ProtocolBinding<T
     override fun initializer(): Pair<ChannelHandler, CompletableFuture<TController>> {
         val fut = CompletableFuture<TController>()
         val handler = nettyInitializer {
-            it.pipeline().addLast(Negotiator.createInitializer(initiator, *bindings.map { it.announce }.toTypedArray()))
+            it.pipeline().addLast(
+                Negotiator.createInitializer(
+                    initiator,
+                    *bindings.map { it.announce }.toTypedArray()
+                )
+            )
             val protocolSelect = ProtocolSelect(bindings)
             protocolSelect.selectedFuture.forward(fut)
             it.pipeline().addLast(protocolSelect)

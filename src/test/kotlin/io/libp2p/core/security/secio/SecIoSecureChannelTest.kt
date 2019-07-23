@@ -2,8 +2,8 @@ package io.libp2p.core.security.secio
 
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.generateKeyPair
-import io.libp2p.core.protocol.Negotiator
-import io.libp2p.core.protocol.ProtocolSelect
+import io.libp2p.core.multistream.Negotiator
+import io.libp2p.core.multistream.ProtocolSelect
 import io.libp2p.core.types.toByteArray
 import io.libp2p.core.types.toByteBuf
 import io.netty.buffer.ByteBuf

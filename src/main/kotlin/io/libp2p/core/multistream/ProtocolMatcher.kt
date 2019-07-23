@@ -1,4 +1,4 @@
-package io.libp2p.core.protocol
+package io.libp2p.core.multistream
 
 /**
  * A matcher that evaluates whether a given protocol activates based on its protocol ID.

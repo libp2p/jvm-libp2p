@@ -6,9 +6,9 @@ import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.crypto.PubKey
 import io.libp2p.core.events.SecureChannelFailed
 import io.libp2p.core.events.SecureChannelInitialized
-import io.libp2p.core.protocol.Mode
-import io.libp2p.core.protocol.ProtocolBindingInitializer
-import io.libp2p.core.protocol.ProtocolMatcher
+import io.libp2p.core.multistream.Mode
+import io.libp2p.core.multistream.ProtocolBindingInitializer
+import io.libp2p.core.multistream.ProtocolMatcher
 import io.libp2p.core.security.SecureChannel
 import io.libp2p.core.util.replace
 import io.netty.buffer.ByteBuf
@@ -27,7 +27,8 @@ class SecIoSecureChannel(val localKey: PrivKey, val remotePeerId: PeerId? = null
     private val HadshakeTimeout = 30 * 1000L
 
     override val announce = "/secio/1.0.0"
-    override val matcher = ProtocolMatcher(Mode.STRICT, name = "/secio/1.0.0")
+    override val matcher =
+        ProtocolMatcher(Mode.STRICT, name = "/secio/1.0.0")
 
     override fun initializer(selectedProtocol: String): ProtocolBindingInitializer<SecureChannel.Session> {
         val ret = CompletableFuture<SecureChannel.Session>()

@@ -6,12 +6,12 @@ import io.libp2p.core.StreamHandlerMock
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.multiformats.Multiaddr
+import io.libp2p.core.multistream.Mode
+import io.libp2p.core.multistream.Multistream
+import io.libp2p.core.multistream.ProtocolBinding
+import io.libp2p.core.multistream.ProtocolBindingInitializer
+import io.libp2p.core.multistream.ProtocolMatcher
 import io.libp2p.core.mux.mplex.MplexStreamMuxer
-import io.libp2p.core.protocol.Mode
-import io.libp2p.core.protocol.Multistream
-import io.libp2p.core.protocol.ProtocolBinding
-import io.libp2p.core.protocol.ProtocolBindingInitializer
-import io.libp2p.core.protocol.ProtocolMatcher
 import io.libp2p.core.transport.ConnectionUpgrader
 import io.libp2p.core.transport.tcp.TcpTransport
 import io.libp2p.core.types.toByteArray
@@ -95,7 +95,7 @@ class EchoSampleTest {
         }
         println("Dialing...")
 
-        val echoString = "Heloooooooooo\n"
+        val echoString = "Helooooooooooooooooooooooooo\n"
         connFuture.thenCompose {
             println("#### Connection made")
             val echoInitiator = Multistream.create(listOf(TestProtocol()), true)

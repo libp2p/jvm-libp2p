@@ -1,4 +1,4 @@
-package io.libp2p.core.protocol
+package io.libp2p.core.multistream
 
 import io.libp2p.core.Libp2pException
 import io.libp2p.core.events.ProtocolNegotiationFailed

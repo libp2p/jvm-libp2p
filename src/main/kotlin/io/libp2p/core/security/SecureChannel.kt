@@ -2,7 +2,7 @@ package io.libp2p.core.security
 
 import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.PubKey
-import io.libp2p.core.protocol.ProtocolBinding
+import io.libp2p.core.multistream.ProtocolBinding
 
 /**
  * The SecureChannel interface is implemented by all security channels, such as SecIO, TLS 1.3, Noise, and so on.
