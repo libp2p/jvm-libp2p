@@ -6,7 +6,7 @@ import io.libp2p.core.types.toByteBuf
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 
-data class Multiaddr(val components: List<Pair<Protocol, ByteArray>>) {
+class Multiaddr(val components: List<Pair<Protocol, ByteArray>>) {
 
     constructor(addr: String) : this(parseString(addr))
 
@@ -28,6 +28,17 @@ data class Multiaddr(val components: List<Pair<Protocol, ByteArray>>) {
 
     override fun toString(): String = getStringComponents().joinToString(separator = "") { p ->
         "/" + p.first.typeName + if (p.second != null) "/" + p.second else "" }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+        other as Multiaddr
+        return toString() == other.toString()
+    }
+
+    override fun hashCode(): Int {
+        return toString().hashCode()
+    }
 
     companion object {
         private fun parseString(addr_: String): List<Pair<Protocol, ByteArray>> {
