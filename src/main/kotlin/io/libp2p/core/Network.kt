@@ -27,7 +27,7 @@ class Network(private val transports: List<Transport>, private val config: Confi
             // find the appropriate transport.
             val dialTpt = transports.firstOrNull { tpt -> tpt.handles(addr) }
                 ?: throw RuntimeException("no transport to handle addr: $addr")
-            futs += dialTpt.listen(addr)
+//            futs += dialTpt.listen(addr)
         }
         return CompletableFuture.allOf(*futs.toTypedArray())
     }

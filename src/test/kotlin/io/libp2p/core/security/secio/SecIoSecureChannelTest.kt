@@ -2,6 +2,8 @@ package io.libp2p.core.security.secio
 
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.generateKeyPair
+import io.libp2p.core.multistream.Negotiator
+import io.libp2p.core.multistream.ProtocolSelect
 import io.libp2p.core.types.toByteArray
 import io.libp2p.core.types.toByteBuf
 import io.netty.buffer.ByteBuf
@@ -28,12 +30,13 @@ class SecIoSecureChannelTest {
     fun test1() {
         val (privKey1, pubKey1) = generateKeyPair(KEY_TYPE.ECDSA)
         val (privKey2, pubKey2) = generateKeyPair(KEY_TYPE.ECDSA)
-        val ch1 = SecIoSecureChannel(privKey1, null)
-        val ch2 = SecIoSecureChannel(privKey2, null)
+
         var rec1: String? = null
         var rec2: String? = null
         val latch = CountDownLatch(2)
-        val eCh1 = TestChannel(LoggingHandler("#1", LogLevel.ERROR), ch1.initializer().channelInitializer,
+        val eCh1 = TestChannel(LoggingHandler("#1", LogLevel.ERROR),
+            Negotiator.createInitializer(true, "/secio/1.0.0"),
+            ProtocolSelect(listOf(SecIoSecureChannel(privKey1))),
             object : TestHandler("1") {
                 override fun channelActive(ctx: ChannelHandlerContext) {
                     super.channelActive(ctx)
@@ -49,7 +52,8 @@ class SecIoSecureChannelTest {
             })
         val eCh2 = TestChannel(
             LoggingHandler("#2", LogLevel.ERROR),
-            ch2.initializer().channelInitializer,
+            Negotiator.createInitializer(true, "/secio/1.0.0"),
+            ProtocolSelect(listOf(SecIoSecureChannel(privKey2))),
             object : TestHandler("2") {
                 override fun channelActive(ctx: ChannelHandlerContext) {
                     super.channelActive(ctx)

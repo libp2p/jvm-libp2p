@@ -1,13 +1,16 @@
-package io.libp2p.core.protocol
+package io.libp2p.core.multistream
 
 import io.libp2p.core.events.ProtocolNegotiationFailed
 import io.libp2p.core.events.ProtocolNegotiationSucceeded
-import io.netty.buffer.Unpooled.wrappedBuffer
+import io.libp2p.core.protocol.Protocols
+import io.libp2p.core.util.netty.StringSuffixCodec
+import io.libp2p.core.util.netty.nettyInitializer
 import io.netty.channel.Channel
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
 import io.netty.channel.ChannelInitializer
-import io.netty.handler.codec.DelimiterBasedFrameDecoder
+import io.netty.handler.codec.protobuf.ProtobufVarint32FrameDecoder
+import io.netty.handler.codec.protobuf.ProtobufVarint32LengthFieldPrepender
 import io.netty.handler.codec.string.StringDecoder
 import io.netty.handler.codec.string.StringEncoder
 import io.netty.handler.timeout.ReadTimeoutHandler
@@ -36,22 +39,14 @@ class ProtocolNegotiationException(message: String) : RuntimeException(message)
  */
 object Negotiator {
     private const val TIMEOUT_MILLIS: Long = 10_000
-    private const val MULTISTREAM_PROTO = "/multistream/1.0.0"
+    private const val MULTISTREAM_PROTO = Protocols.MULTISTREAM_1_0_0
 
-    private val HEADING = '\u0013'
-    private val NEWLINE = "\n"
-    private val DELIMITER = "\r"
     private val NA = "na"
-    private val DELIMITERS = arrayOf(
-        wrappedBuffer("\n\r".toByteArray()),
-        wrappedBuffer("\n".toByteArray())
-    )
+    private val LS = "ls"
 
     fun createInitializer(initiator: Boolean, vararg protocols: String): ChannelInitializer<Channel> {
-        return object : ChannelInitializer<Channel>() {
-            override fun initChannel(ch: Channel) {
-                initNegotiator(ch, initiator, *protocols)
-            }
+        return nettyInitializer {
+            initNegotiator(it, initiator, *protocols)
         }
     }
 
@@ -63,9 +58,11 @@ object Negotiator {
 
         val prehandlers = listOf(
             ReadTimeoutHandler(TIMEOUT_MILLIS, TimeUnit.MILLISECONDS),
-            DelimiterBasedFrameDecoder(1024, *DELIMITERS),
+            ProtobufVarint32FrameDecoder(),
+            ProtobufVarint32LengthFieldPrepender(),
             StringDecoder(Charsets.UTF_8),
-            StringEncoder(Charsets.UTF_8)
+            StringEncoder(Charsets.UTF_8),
+            StringSuffixCodec('\n')
         )
 
         prehandlers.forEach { ch.pipeline().addLast(it) }
@@ -75,31 +72,35 @@ object Negotiator {
             var headerRead = false
 
             override fun channelActive(ctx: ChannelHandlerContext) {
-                val helloString = HEADING + MULTISTREAM_PROTO + NEWLINE +
-                        if (initiator) DELIMITER + protocols[0] + NEWLINE else ""
-                ctx.writeAndFlush(helloString)
+                ctx.write(MULTISTREAM_PROTO)
+                if (initiator) ctx.write(protocols[0])
+                ctx.flush()
             }
 
-            override fun channelRead(ctx: ChannelHandlerContext, msgRaw: Any) {
-                val msg = (msgRaw as String).trimStart(HEADING)
+            override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
+                msg as String
                 var completeEvent: Any? = null
                 when {
                     msg == MULTISTREAM_PROTO ->
                         if (!headerRead) headerRead = true else
                             throw ProtocolNegotiationException("Received multistream header more than once")
+                    msg == LS -> {
+                        protocols.forEach { ctx.write(it) }
+                        ctx.flush()
+                    }
                     initiator && (i == protocols.lastIndex || msg == protocols[i]) -> {
                         completeEvent = if (msg == protocols[i]) ProtocolNegotiationSucceeded(msg)
                         else ProtocolNegotiationFailed(protocols.toList())
                     }
                     !initiator && protocols.contains(msg) -> {
-                        ctx.writeAndFlush(HEADING + msg + NEWLINE)
+                        ctx.writeAndFlush(msg)
                         completeEvent = ProtocolNegotiationSucceeded(msg)
                     }
                     initiator -> ctx.run {
-                        writeAndFlush(protocols[++i] + NEWLINE)
+                        writeAndFlush(protocols[++i])
                     }
                     !initiator -> {
-                        ctx.writeAndFlush(HEADING + NA + NEWLINE)
+                        ctx.writeAndFlush(NA)
                     }
                 }
                 if (completeEvent != null) {

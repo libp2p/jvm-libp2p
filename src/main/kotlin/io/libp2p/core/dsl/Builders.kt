@@ -5,8 +5,8 @@ import io.libp2p.core.Host
 import io.libp2p.core.Network
 import io.libp2p.core.PeerId
 import io.libp2p.core.multiformats.Multiaddr
+import io.libp2p.core.multistream.ProtocolBinding
 import io.libp2p.core.mux.StreamMuxer
-import io.libp2p.core.protocol.ProtocolBinding
 import io.libp2p.core.security.SecureChannel
 import io.libp2p.core.transport.ConnectionUpgrader
 import io.libp2p.core.transport.Transport

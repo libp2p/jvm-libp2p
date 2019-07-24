@@ -1,14 +1,16 @@
 package io.libp2p.core.security.secio
 
 import io.libp2p.core.PeerId
+import io.libp2p.core.SECURE_SESSION
 import io.libp2p.core.crypto.PrivKey
+import io.libp2p.core.crypto.PubKey
 import io.libp2p.core.events.SecureChannelFailed
 import io.libp2p.core.events.SecureChannelInitialized
-import io.libp2p.core.protocol.Mode
-import io.libp2p.core.protocol.ProtocolBindingInitializer
-import io.libp2p.core.protocol.ProtocolMatcher
+import io.libp2p.core.multistream.Mode
+import io.libp2p.core.multistream.ProtocolBindingInitializer
+import io.libp2p.core.multistream.ProtocolMatcher
 import io.libp2p.core.security.SecureChannel
-import io.libp2p.core.util.replace
+import io.libp2p.core.types.replace
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
@@ -16,7 +18,6 @@ import io.netty.channel.ChannelInitializer
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder
 import io.netty.handler.codec.LengthFieldPrepender
 import org.apache.logging.log4j.LogManager
-import java.security.PublicKey
 import java.util.concurrent.CompletableFuture
 import io.netty.channel.Channel as NettyChannel
 
@@ -28,18 +29,26 @@ class SecIoSecureChannel(val localKey: PrivKey, val remotePeerId: PeerId? = null
     private val HadshakeTimeout = 30 * 1000L
 
     override val announce = "/secio/1.0.0"
-    override val matcher = ProtocolMatcher(Mode.STRICT, name = "/secio/1.0.0")
+    override val matcher =
+        ProtocolMatcher(Mode.STRICT, name = "/secio/1.0.0")
 
-    override fun initializer(): ProtocolBindingInitializer<SecureChannel.Session> {
+    override fun initializer(selectedProtocol: String): ProtocolBindingInitializer<SecureChannel.Session> {
         val ret = CompletableFuture<SecureChannel.Session>()
         // bridge the result of the secure channel bootstrap with the promise.
         val resultHandler = object : ChannelInboundHandlerAdapter() {
             override fun userEventTriggered(ctx: ChannelHandlerContext, evt: Any) {
                 when (evt) {
-                    is SecureChannelInitialized -> ret.complete(evt.session)
-                    is SecureChannelFailed -> ret.completeExceptionally(evt.exception)
+                    is SecureChannelInitialized -> {
+                        ctx.channel().attr(SECURE_SESSION).set(evt.session)
+                        ret.complete(evt.session)
+                        ctx.pipeline().remove(this)
+                    }
+                    is SecureChannelFailed -> {
+                        ret.completeExceptionally(evt.exception)
+                        ctx.pipeline().remove(this)
+                    }
                 }
-                ctx.pipeline().remove(this)
+                ctx.fireUserEventTriggered(evt)
             }
         }
         return ProtocolBindingInitializer(
@@ -61,6 +70,7 @@ class SecIoSecureChannel(val localKey: PrivKey, val remotePeerId: PeerId? = null
     inner class SecIoHandshake : ChannelInboundHandlerAdapter() {
         private var negotiator: SecioHandshake? = null
         private var activated = false
+        private var secIoCodec: SecIoCodec? = null
 
         override fun channelActive(ctx: ChannelHandlerContext) {
             if (!activated) {
@@ -77,12 +87,18 @@ class SecIoSecureChannel(val localKey: PrivKey, val remotePeerId: PeerId? = null
             val keys = negotiator!!.onNewMessage(msg as ByteBuf)
 
             if (keys != null) {
-                val secIoCodec = SecIoCodec(keys.first, keys.second)
+                secIoCodec = SecIoCodec(keys.first, keys.second)
                 ctx.channel().pipeline().addBefore(HandshakeHandlerName, "SecIoCodec", secIoCodec)
                 negotiator!!.onSecureChannelSetup()
             }
 
             if (negotiator!!.isComplete()) {
+                val session = SecioSession(
+                    PeerId.fromPubKey(secIoCodec!!.local.permanentPubKey),
+                    PeerId.fromPubKey(secIoCodec!!.remote.permanentPubKey),
+                    secIoCodec!!.remote.permanentPubKey
+                )
+                ctx.fireUserEventTriggered(SecureChannelInitialized(session))
                 ctx.channel().pipeline().remove(HandshakeHandlerName)
                 ctx.fireChannelActive()
             }
@@ -93,6 +109,7 @@ class SecIoSecureChannel(val localKey: PrivKey, val remotePeerId: PeerId? = null
         }
 
         override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
+            ctx.fireUserEventTriggered(SecureChannelFailed(cause))
             log.error(cause.message)
             ctx.channel().close()
         }
@@ -102,8 +119,5 @@ class SecIoSecureChannel(val localKey: PrivKey, val remotePeerId: PeerId? = null
 /**
  * SecioSession exposes the identity and public security material of the other party as authenticated by SecIO.
  */
-class SecioSession(
-    override val localId: PeerId,
-    override val remoteId: PeerId,
-    override val remotePubKey: PublicKey
-) : SecureChannel.Session
+class SecioSession(localId: PeerId, remoteId: PeerId, remotePubKey: PubKey) :
+    SecureChannel.Session(localId, remoteId, remotePubKey)
