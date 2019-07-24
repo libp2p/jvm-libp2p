@@ -28,19 +28,19 @@ interface Transport {
     /**
      * Stops the transport entirely, closing down all ongoing connections, outbound dials, and listening endpoints.
      */
-    fun close(): CompletableFuture<Void>
+    fun close(): CompletableFuture<Unit>
 
     /**
      * Makes this transport listen on this multiaddr. The future completes once the endpoint is effectively listening.
      */
-    fun listen(addr: Multiaddr, connHandler: ConnectionHandler, streamHandler: StreamHandler): CompletableFuture<Void>
+    fun listen(addr: Multiaddr, connHandler: ConnectionHandler, streamHandler: StreamHandler): CompletableFuture<Unit>
 
     /**
      * Makes this transport stop listening on this multiaddr. Any connections maintained from this source host and port
      * will be disconnected as a result. The future completes once the endpoint and all its connections are effectively
      * stopped.
      */
-    fun unlisten(addr: Multiaddr): CompletableFuture<Void>
+    fun unlisten(addr: Multiaddr): CompletableFuture<Unit>
 
     /**
      * Dials the specified multiaddr and returns a promise of a Connection.

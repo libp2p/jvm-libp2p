@@ -6,6 +6,8 @@ import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelPipeline
 import java.util.concurrent.CompletableFuture
 
+fun ChannelFuture.toVoidCompletableFuture(): CompletableFuture<Unit> = toCompletableFuture().thenApply { }
+
 fun ChannelFuture.toCompletableFuture(): CompletableFuture<Channel> {
     val ret = CompletableFuture<Channel>()
     this.addListener {

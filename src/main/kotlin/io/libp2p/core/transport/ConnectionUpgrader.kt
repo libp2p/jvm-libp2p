@@ -22,14 +22,9 @@ class ConnectionUpgrader(
     fun establishSecureChannel(ch: Channel, initiator: Boolean): CompletableFuture<SecureChannel.Session> {
         val (channelHandler, future) =
             Multistream.create(secureChannels, initiator).initializer()
-        if (beforeSecureHandler != null) {
-            ch.pipeline().addLast(beforeSecureHandler)
-//            future.thenAccept { ch.pipeline().remove(beforeSecureHandler) }
-        }
+        beforeSecureHandler?.also { ch.pipeline().addLast(it) }
         ch.pipeline().addLast(channelHandler)
-        if (afterSecureHandler != null) {
-            ch.pipeline().addLast(afterSecureHandler)
-        }
+        afterSecureHandler?.also { ch.pipeline().addLast(it) }
         return future
     }
 
