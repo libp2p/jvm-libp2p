@@ -110,6 +110,7 @@ class SecIoSecureChannel(val localKey: PrivKey, val remotePeerId: PeerId? = null
         }
 
         override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
+            ctx.fireUserEventTriggered(SecureChannelFailed(cause))
             log.error(cause.message)
             ctx.channel().close()
         }
