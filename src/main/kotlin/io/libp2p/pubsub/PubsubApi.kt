@@ -13,13 +13,12 @@ interface PubsubSubscriberApi {
     fun unsubscribe(vararg topics: Topic)
 }
 
-
 interface PubsubPublisherApi {
 
     fun publish(data: ByteBuf, vararg topics: Topic): CompletableFuture<Void>
 }
 
-interface PubsubApi: PubsubSubscriberApi {
+interface PubsubApi : PubsubSubscriberApi {
 
     fun createPublisher(privKey: PrivKey, seqId: Long = nextLong()): PubsubPublisherApi
 }

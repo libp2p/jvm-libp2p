@@ -4,5 +4,5 @@ import pubsub.pb.Rpc
 
 interface PubsubMessageValidator {
 
-    fun validate(msg: Rpc.Message) {}
+    fun validate(msg: Rpc.RPC) {}
 }

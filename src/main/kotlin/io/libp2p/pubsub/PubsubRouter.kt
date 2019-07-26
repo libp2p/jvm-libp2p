@@ -7,7 +7,7 @@ import java.util.function.Consumer
 
 interface PubsubMessageRouter {
 
-    fun publish(msg: Rpc.Message): CompletableFuture<Void>
+    fun publish(msg: Rpc.Message): CompletableFuture<Unit>
 
     fun setHandler(handler: Consumer<Rpc.Message>)
 
@@ -18,9 +18,9 @@ interface PubsubMessageRouter {
 
 interface PubsubPeerRouter {
 
-    fun peerConnected(peer: Stream)
+    fun addPeer(peer: Stream)
 
-    fun peerDisconnected(peer: Stream)
+    fun removePeer(peer: Stream)
 }
 
-interface PubsubRouter: PubsubMessageRouter, PubsubPeerRouter
+interface PubsubRouter : PubsubMessageRouter, PubsubPeerRouter
