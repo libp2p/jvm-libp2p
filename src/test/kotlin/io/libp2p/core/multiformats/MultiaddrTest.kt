@@ -4,6 +4,8 @@ import io.libp2p.core.types.fromHex
 import io.libp2p.core.types.toHex
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotEquals
+import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
@@ -125,5 +127,13 @@ class MultiaddrTest {
     fun toBytes(str: String, bytes: ByteArray) {
         assertEquals(bytes.toHex(), Multiaddr(str).getBytes().toHex())
         assertEquals(str, Multiaddr(bytes).toString())
+    }
+
+    @Test
+    fun testEqualsHashcode() {
+        assertEquals(Multiaddr("/ip4/0.0.0.0/tcp/20000"), Multiaddr("/ip4/0.0.0.0/tcp/20000"))
+        assertEquals(Multiaddr("/ip4/0.0.0.0/tcp/20000").hashCode(), Multiaddr("/ip4/0.0.0.0/tcp/20000").hashCode())
+        assertNotEquals(Multiaddr("/ip4/0.0.0.0/tcp/20001"), Multiaddr("/ip4/0.0.0.0/tcp/20000"))
+        assertNotEquals(Multiaddr("/ip4/0.0.0.1/tcp/20000"), Multiaddr("/ip4/0.0.0.0/tcp/20000"))
     }
 }

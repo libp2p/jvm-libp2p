@@ -1,5 +1,6 @@
 package io.libp2p.core.multistream
 
+import io.libp2p.core.ConnectionClosedException
 import io.libp2p.core.Libp2pException
 import io.libp2p.core.events.ProtocolNegotiationFailed
 import io.libp2p.core.events.ProtocolNegotiationSucceeded
@@ -31,7 +32,10 @@ class ProtocolSelect<TController>(val protocols: List<ProtocolBinding<TControlle
     }
 
     override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable?) {
-        selectedFuture.completeExceptionally(cause)
         ctx.close()
+    }
+
+    override fun channelUnregistered(ctx: ChannelHandlerContext) {
+        selectedFuture.completeExceptionally(ConnectionClosedException("Channel closed ${ctx.channel()}"))
     }
 }

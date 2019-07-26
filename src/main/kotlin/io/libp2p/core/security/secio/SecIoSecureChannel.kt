@@ -1,5 +1,6 @@
 package io.libp2p.core.security.secio
 
+import io.libp2p.core.ConnectionClosedException
 import io.libp2p.core.PeerId
 import io.libp2p.core.SECURE_SESSION
 import io.libp2p.core.crypto.PrivKey
@@ -112,6 +113,11 @@ class SecIoSecureChannel(val localKey: PrivKey, val remotePeerId: PeerId? = null
             ctx.fireUserEventTriggered(SecureChannelFailed(cause))
             log.error(cause.message)
             ctx.channel().close()
+        }
+
+        override fun channelUnregistered(ctx: ChannelHandlerContext) {
+            ctx.fireUserEventTriggered(SecureChannelFailed(ConnectionClosedException("Connection was closed ${ctx.channel()}")))
+            super.channelUnregistered(ctx)
         }
     }
 }
