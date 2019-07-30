@@ -225,3 +225,11 @@ $RECYCLE.BIN/
 
 # Windows shortcuts
 *.lnk
+/.project
+/.idea/codeStyles/codeStyleConfig.xml
+/.idea/jvm-libp2p.iml
+/.idea/kotlinScripting.xml
+/.idea/misc.xml
+/.idea/modules.xml
+/.idea/codeStyles/Project.xml
+/.idea/vcs.xml

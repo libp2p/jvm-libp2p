@@ -21,14 +21,14 @@ class NoiseOverTcp {
 
     private val upgrader = ConnectionUpgrader(emptyList(), emptyList())
 
-    fun setupTcpTransport(addr: Multiaddr) {
+    fun setupTcpTransport(addr: Multiaddr): Boolean {
         val tcp = TcpTransport(upgrader)
         assert(tcp.handles(addr))
+        return true
     }
 }
 
 fun main(args: Array<String>) {
-    val noisytcp = NoiseOverTcp();
-    noisytcp.setupTcpTransport(NoiseOverTcp.validMultiaddrs().get(0));
-
+    val noisytcp = NoiseOverTcp()
+    noisytcp.setupTcpTransport(NoiseOverTcp.validMultiaddrs().get(0))
 }

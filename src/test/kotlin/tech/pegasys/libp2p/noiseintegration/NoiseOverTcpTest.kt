@@ -26,9 +26,9 @@ class NoiseOverTcpTest {
 
     @ParameterizedTest
     @MethodSource("validMultiaddrs")
-    fun `handles(addr) returns true if addr contains tcp protocol`(addr: Multiaddr) {
-        val tcp = TcpTransport(upgrader)
-        assert(tcp.handles(addr))
+    fun NoiseOverTcpTestValidAddrs(addr: Multiaddr) {
+        val tcp = NoiseOverTcp()
+        assert(tcp.setupTcpTransport(addr))
     }
 
     @ParameterizedTest

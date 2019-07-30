@@ -39,6 +39,7 @@ dependencies {
     compile("org.apache.logging.log4j:log4j-api:${log4j2Version}")
     compile("org.apache.logging.log4j:log4j-core:${log4j2Version}")
 
+    compile("javax.xml.bind:jaxb-api:2.3.1")
 
     testCompile("org.junit.jupiter:junit-jupiter-api:5.4.2")
     testCompile("org.junit.jupiter:junit-jupiter-params:5.4.2")
