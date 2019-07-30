@@ -52,6 +52,12 @@ fun ByteArray.toLongBigEndian(): Long {
             this[7].toLong() and 0xFF
 }
 
+fun Long.toBytesBigEndian() =
+    ByteArray(8) {i -> (this shr ((7 - i) * 8)).toByte() }
+
+fun Int.toBytesBigEndian() =
+    ByteArray(4) {i -> (this shr ((3 - i) * 8)).toByte() }
+
 /**
  * Extends ByteBuf to add a read* method for unsigned varints, as defined in https://github.com/multiformats/unsigned-varint.
  */
