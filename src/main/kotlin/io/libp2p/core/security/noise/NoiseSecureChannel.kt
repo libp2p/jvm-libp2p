@@ -1,11 +1,15 @@
 package io.libp2p.core.security.noise
 
+import com.southernstorm.noise.protocol.HandshakeState
 import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.protocol.ProtocolBindingInitializer
 import io.libp2p.core.protocol.ProtocolMatcher
 import io.libp2p.core.security.SecureChannel
+import io.netty.channel.Channel
+import io.netty.channel.ChannelInitializer
 import java.security.PublicKey
+import java.util.concurrent.CompletableFuture
 
 class NoiseSecureChannel(val localKey: PrivKey, val remotePeerId: PeerId? = null) :
         SecureChannel {
@@ -15,11 +19,19 @@ class NoiseSecureChannel(val localKey: PrivKey, val remotePeerId: PeerId? = null
         get() = TODO("not implemented") // To change initializer of created properties use File | Settings | File Templates.
 
     override fun initializer(): ProtocolBindingInitializer<SecureChannel.Session> {
-        TODO("not implemented") // To change body of created functions use File | Settings | File Templates.
+        val ret = CompletableFuture<SecureChannel.Session>()
+        val hs = HandshakeState("Noise_XX_25519_AESGCM_SHA256", HandshakeState.INITIATOR)
+        return ProtocolBindingInitializer(
+            object : ChannelInitializer<Channel>() {
+                override fun initChannel(ch: Channel) {
+
+                }
+            }, ret
+        )
+        // TODO("not implemented") // To change body of created functions use File | Settings | File Templates.
     }
 
-    private fun a() {
-    }
+
 }
 
 /**
