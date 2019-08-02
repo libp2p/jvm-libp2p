@@ -31,6 +31,7 @@ class PubsubRouterTest {
     fun test1() {
         val router1 = TestRouter("#1")
         val router2 = TestRouter("#2")
+        router2.router.subscribe("topic1")
 
         router1.connect(router2)
 
@@ -45,6 +46,8 @@ class PubsubRouterTest {
         val router1 = TestRouter()
         val router2 = TestRouter()
         val router3 = TestRouter()
+
+        listOf(router1, router2, router3).forEach { it.router.subscribe("topic1", "topic2", "topic3") }
 
         router1.connect(router2)
         router2.connect(router3)

@@ -67,16 +67,20 @@ abstract class AbstractRouter : PubsubRouter {
     val pendingRpcParts = mutableMapOf<StreamHandler, MutableList<Rpc.RPC>>()
 
     override fun publish(msg: Rpc.Message): CompletableFuture<Unit> {
-        val rpcMsg = Rpc.RPC.newBuilder().addPublish(msg).build()
         return if (MessageUID(msg) in seenMessages) {
             CompletableFuture<Unit>().also { it.completeExceptionally(MessageAlreadySeenException("Msg: $msg")) }
         } else {
-            validator.validate(rpcMsg) // check ourselves not to be a bad peer
-            return broadcastOutbound(rpcMsg).thenApply {
+            validator.validate(msg) // check ourselves not to be a bad peer
+            return broadcastOutbound(msg).thenApply {
                 seenMessages.plus(MessageUID(msg))
                 Unit
             }
         }
+    }
+
+    protected open fun submitPublishMessage(toPeer: StreamHandler, msg: Rpc.Message): CompletableFuture<Unit> {
+        addPendingRpcPart(toPeer, Rpc.RPC.newBuilder().addPublish(msg).build())
+        return CompletableFuture.completedFuture(null) // TODO
     }
 
     fun addPendingRpcPart(toPeer: StreamHandler, msgPart: Rpc.RPC)  {
@@ -84,7 +88,7 @@ abstract class AbstractRouter : PubsubRouter {
     }
 
     fun collectPeerMessage(toPeer: StreamHandler): Rpc.RPC? {
-        val msgs = pendingRpcParts.remove(toPeer) ?: emptyList()
+        val msgs = pendingRpcParts.remove(toPeer) ?: emptyList<Rpc.RPC>()
         if (msgs.isEmpty()) return null
 
         val bld = Rpc.RPC.newBuilder()
@@ -111,7 +115,7 @@ abstract class AbstractRouter : PubsubRouter {
     protected open fun createStreamHandler(stream: Stream): StreamHandler = StreamHandler((stream))
 
     // msg: validated unseen messages received from api
-    protected abstract fun broadcastOutbound(msg: Rpc.RPC): CompletableFuture<Unit>
+    protected abstract fun broadcastOutbound(msg: Rpc.Message): CompletableFuture<Unit>
 
     // msg: validated unseen messages received from wire
     protected abstract fun broadcastInbound(msg: Rpc.RPC, receivedFrom: StreamHandler)
@@ -148,7 +152,10 @@ abstract class AbstractRouter : PubsubRouter {
         }
     }
 
-    fun getTopicPeers(topic: String) = peers.filter { topic in it.topics }
+    fun getTopicsPeers(topics: Collection<String>) =
+        peers.filter { topics.intersect(it.topics).isNotEmpty() }
+    fun getTopicPeers(topic: String) =
+        peers.filter { topic in it.topics }
 
     private fun filterSeen(msg: Rpc.RPC): Rpc.RPC =
         Rpc.RPC.newBuilder(msg)
@@ -156,8 +163,8 @@ abstract class AbstractRouter : PubsubRouter {
             .addAllPublish(msg.publishList.filter { MessageUID(it) !in seenMessages })
             .build()
 
-    override fun subscribe(vararg topics: ByteArray) {
-        topics.map { String(it) } .forEach(::subscribe)
+    override fun subscribe(vararg topics: String) {
+        topics.forEach(::subscribe)
     }
 
     protected open fun subscribe(topic: String) {
@@ -167,8 +174,8 @@ abstract class AbstractRouter : PubsubRouter {
         subscribedTopics += topic
     }
 
-    override fun unsubscribe(vararg topics: ByteArray) {
-        topics.map { String(it) } .forEach(::unsubscribe)
+    override fun unsubscribe(vararg topics: String) {
+        topics.forEach(::unsubscribe)
     }
 
     protected open  fun unsubscribe(topic: String) {

@@ -8,23 +8,22 @@ import java.util.concurrent.CompletableFuture
 class FloodRouter : AbstractRouter() {
 
     // msg: validated unseen messages received from api
-    override fun broadcastOutbound(msg: Rpc.RPC): CompletableFuture<Unit> {
-        val sentFutures = peers
-            .map { send(it, msg) }
-        return anyComplete(sentFutures)
+    override fun broadcastOutbound(msg: Rpc.Message): CompletableFuture<Unit> {
+        val ret = broadcast(msg, null)
+        flushAllPending()
+        return ret
     }
 
     // msg: validated unseen messages received from wire
     override fun broadcastInbound(msg: Rpc.RPC, receivedFrom: StreamHandler) {
-        peers.filter { it != receivedFrom }
-            .forEach { send(it, msg) }
+        msg.publishList.forEach { broadcast(it, receivedFrom) }
+        flushAllPending()
     }
 
-    override fun subscribe(vararg topics: ByteArray) {
-        // NOP
-    }
-
-    override fun unsubscribe(vararg topics: ByteArray) {
-        // NOP
+    private fun broadcast(msg: Rpc.Message, receivedFrom: StreamHandler?): CompletableFuture<Unit> {
+        val sentFutures = getTopicsPeers(msg.topicIDsList)
+            .filter { it != receivedFrom }
+            .map { submitPublishMessage(it, msg) }
+        return anyComplete(sentFutures)
     }
 }

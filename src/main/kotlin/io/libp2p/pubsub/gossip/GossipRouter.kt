@@ -18,7 +18,7 @@ class GossipRouter : AbstractRouter() {
         val messages = mutableMapOf<String, Rpc.Message>()
         private val history = LimitedList<MutableList<CacheEntry>>(historyLength)
             .also { it.add(mutableListOf()) }
-            .also { it.onDrop { it.map { it.msgId }.forEach(messages::remove) } }
+            .also { it.onDrop { it.forEach { messages.remove(it.msgId) } } }
 
         fun put(msg: Rpc.Message) = getGossipId(msg).also {
                 messages[it] = msg
@@ -46,11 +46,6 @@ class GossipRouter : AbstractRouter() {
     private var inited = false
 
     private fun getGossipId(msg: Rpc.Message): String = TODO()
-
-    private fun submitPublishMessage(toPeer: StreamHandler, msg: Rpc.Message): CompletableFuture<Unit> {
-        addPendingRpcPart(toPeer, Rpc.RPC.newBuilder().addPublish(msg).build())
-        return CompletableFuture.completedFuture(null) // TODO
-    }
 
     private fun submitGossip(topic: String, peers: Collection<StreamHandler>) {
         val ids = mCache.getMessageIds(topic)
@@ -104,11 +99,7 @@ class GossipRouter : AbstractRouter() {
         }.forEach { processControlMessage(it, receivedFrom) }
     }
 
-    override fun broadcastOutbound(msg: Rpc.RPC): CompletableFuture<Unit> =
-        anyComplete(msg.publishList.map(::broadcastOutbound))
-
-
-    private fun broadcastOutbound(msg: Rpc.Message): CompletableFuture<Unit> {
+    override fun broadcastOutbound(msg: Rpc.Message): CompletableFuture<Unit> {
         msg.topicIDsList.forEach { lastPublished[it] = heartbeat.currentTime() }
 
         val list = msg.topicIDsList

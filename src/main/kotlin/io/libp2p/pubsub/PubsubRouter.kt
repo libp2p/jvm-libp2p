@@ -11,9 +11,9 @@ interface PubsubMessageRouter {
 
     fun setHandler(handler: Consumer<Rpc.Message>)
 
-    fun subscribe(vararg topics: ByteArray)
+    fun subscribe(vararg topics: String)
 
-    fun unsubscribe(vararg topics: ByteArray)
+    fun unsubscribe(vararg topics: String)
 }
 
 interface PubsubPeerRouter {
