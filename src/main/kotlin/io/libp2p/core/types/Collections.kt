@@ -5,9 +5,11 @@ import java.util.LinkedHashMap
 import java.util.LinkedList
 import java.util.function.Predicate
 
+fun <C> Collection<C>.copy(): Collection<C> = this.toMutableList()
+
 class LRUSet {
     companion object {
-        fun <C> create(maxSize: Int): Set<C> {
+        fun <C> create(maxSize: Int): MutableSet<C> {
             return Collections.newSetFromMap(object : LinkedHashMap<C, Boolean>() {
                 override fun removeEldestEntry(eldest: MutableMap.MutableEntry<C, Boolean>?): Boolean {
                     return size > maxSize

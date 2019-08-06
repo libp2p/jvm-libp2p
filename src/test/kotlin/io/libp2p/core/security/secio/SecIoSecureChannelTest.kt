@@ -6,10 +6,11 @@ import io.libp2p.core.multistream.Negotiator
 import io.libp2p.core.multistream.ProtocolSelect
 import io.libp2p.core.types.toByteArray
 import io.libp2p.core.types.toByteBuf
+import io.libp2p.tools.TestChannel
+import io.libp2p.tools.TestChannel.Companion.interConnect
+import io.libp2p.tools.TestHandler
 import io.netty.buffer.ByteBuf
-import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelHandlerContext
-import io.netty.channel.embedded.EmbeddedChannel
 import io.netty.handler.logging.LogLevel
 import io.netty.handler.logging.LoggingHandler
 import org.apache.logging.log4j.LogManager
@@ -17,7 +18,6 @@ import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.CountDownLatch
-import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 /**
@@ -80,37 +80,3 @@ class SecIoSecureChannelTest {
     }
 }
 
-fun interConnect(ch1: TestChannel, ch2: TestChannel) {
-    ch1.connect(ch2)
-    ch2.connect(ch1)
-}
-
-class TestChannel(vararg handlers: ChannelHandler?) : EmbeddedChannel(*handlers) {
-    var link: TestChannel? = null
-    val executor = Executors.newSingleThreadExecutor()
-
-    @Synchronized
-    fun connect(other: TestChannel) {
-        link = other
-        outboundMessages().forEach(this::send)
-    }
-
-    @Synchronized
-    override fun handleOutboundMessage(msg: Any?) {
-        super.handleOutboundMessage(msg)
-        if (link != null) {
-            send(msg!!)
-        }
-    }
-
-    fun send(msg: Any) {
-        executor.execute {
-            logger.debug("---- link!!.writeInbound")
-            link!!.writeInbound(msg)
-        }
-    }
-
-    companion object {
-        private val logger = LogManager.getLogger(TestChannel::class.java)
-    }
-}

@@ -1,22 +1,15 @@
 package io.libp2p.pubsub
 
-import io.libp2p.core.Connection
-import io.libp2p.core.Stream
-import io.libp2p.core.security.secio.TestChannel
-import io.libp2p.core.security.secio.interConnect
-import io.libp2p.core.types.lazyVar
 import io.libp2p.core.types.toBytesBigEndian
 import io.libp2p.core.types.toProtobuf
-import io.libp2p.core.util.netty.nettyInitializer
 import io.libp2p.pubsub.flood.FloodRouter
+import io.libp2p.pubsub.gossip.GossipRouter
 import io.netty.handler.logging.LogLevel
-import io.netty.handler.logging.LoggingHandler
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import pubsub.pb.Rpc
-import java.util.concurrent.LinkedBlockingQueue
+import java.time.Duration
 import java.util.concurrent.TimeUnit
-import java.util.function.Consumer
 
 class PubsubRouterTest {
 
@@ -29,11 +22,13 @@ class PubsubRouterTest {
 
     @Test
     fun test1() {
-        val router1 = TestRouter("#1")
-        val router2 = TestRouter("#2")
+        val fuzz = DeterministicFuzz()
+
+        val router1 = fuzz.createTestRouter(GossipRouter())
+        val router2 = fuzz.createTestRouter(GossipRouter())
         router2.router.subscribe("topic1")
 
-        router1.connect(router2)
+        router1.connect(router2, LogLevel.ERROR, LogLevel.ERROR)
 
         val msg = newMessage("topic1", 0L, "Hello".toByteArray())
         router1.router.publish(msg)
@@ -43,14 +38,25 @@ class PubsubRouterTest {
 
     @Test
     fun test2() {
-        val router1 = TestRouter()
-        val router2 = TestRouter()
-        val router3 = TestRouter()
+        scenario2 { FloodRouter() }
+        scenario2 { GossipRouter() }
+    }
+
+    fun scenario2(routerFactory: () -> PubsubRouterDebug) {
+        val fuzz = DeterministicFuzz()
+
+        val router1 = fuzz.createTestRouter(routerFactory())
+        val router2 = fuzz.createTestRouter(routerFactory())
+        val router3 = fuzz.createTestRouter(routerFactory())
+
+        val conn_1_2 = router1.connect(router2, pubsubLogs = LogLevel.ERROR)
+        val conn_2_3 = router2.connect(router3, pubsubLogs = LogLevel.ERROR)
 
         listOf(router1, router2, router3).forEach { it.router.subscribe("topic1", "topic2", "topic3") }
 
-        router1.connect(router2)
-        router2.connect(router3)
+        // 2 heartbeats for all
+        fuzz.timeController.addTime(Duration.ofSeconds(2))
+
 
         val msg1 = newMessage("topic1", 0L, "Hello".toByteArray())
         router1.router.publish(msg1)
@@ -61,7 +67,7 @@ class PubsubRouterTest {
         Assertions.assertTrue(router2.inboundMessages.isEmpty())
         Assertions.assertTrue(router3.inboundMessages.isEmpty())
 
-        val msg2 = newMessage("topic2", 0L, "Hello".toByteArray())
+        val msg2 = newMessage("topic2", 1L, "Hello".toByteArray())
         router2.router.publish(msg2)
 
         Assertions.assertEquals(msg2, router1.inboundMessages.poll(5, TimeUnit.SECONDS))
@@ -70,9 +76,9 @@ class PubsubRouterTest {
         Assertions.assertTrue(router2.inboundMessages.isEmpty())
         Assertions.assertTrue(router3.inboundMessages.isEmpty())
 
-        router3.connect(router1)
+        val conn_3_1 = router3.connect(router1, pubsubLogs = LogLevel.ERROR)
 
-        val msg3 = newMessage("topic3", 0L, "Hello".toByteArray())
+        val msg3 = newMessage("topic3", 2L, "Hello".toByteArray())
         router2.router.publish(msg3)
 
         Assertions.assertEquals(msg3, router1.inboundMessages.poll(5, TimeUnit.SECONDS))
@@ -80,33 +86,17 @@ class PubsubRouterTest {
         Assertions.assertTrue(router1.inboundMessages.isEmpty())
         Assertions.assertTrue(router2.inboundMessages.isEmpty())
         Assertions.assertTrue(router3.inboundMessages.isEmpty())
+
+        conn_2_3.disconnect()
+        conn_3_1.disconnect()
+
+        val msg4 = newMessage("topic3", 3L, "Hello - 4".toByteArray())
+        router2.router.publish(msg4)
+
+        Assertions.assertEquals(msg4, router1.inboundMessages.poll(5, TimeUnit.SECONDS))
+        Assertions.assertTrue(router1.inboundMessages.isEmpty())
+        Assertions.assertTrue(router2.inboundMessages.isEmpty())
+        Assertions.assertTrue(router3.inboundMessages.isEmpty())
     }
 }
 
-class TestRouter(val loggerName: String? = null) {
-
-    val inboundMessages = LinkedBlockingQueue<Rpc.Message>()
-    var routerHandler by lazyVar { Consumer<Rpc.Message> {
-        inboundMessages += it
-    } }
-    var routerInstance by lazyVar { FloodRouter() }
-    var router by lazyVar { routerInstance.also { it.setHandler(routerHandler) } }
-
-    private fun newChannel() =
-        TestChannel(
-            nettyInitializer {
-                if (loggerName != null) {
-                    it.pipeline().addFirst(LoggingHandler(loggerName, LogLevel.ERROR))
-                }
-                val conn1 = Connection(TestChannel())
-                val stream1 = Stream(it, conn1)
-                router.addPeer(stream1)
-            })
-
-    fun connect(another: TestRouter): Pair<TestChannel, TestChannel> {
-        val thisChannel = newChannel()
-        val anotherChannel = another.newChannel()
-        interConnect(thisChannel, anotherChannel)
-        return thisChannel to anotherChannel
-    }
-}

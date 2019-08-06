@@ -3,13 +3,14 @@ package io.libp2p.pubsub.gossip
 import io.libp2p.core.types.LimitedList
 import io.libp2p.core.types.anyComplete
 import io.libp2p.core.types.lazyVar
+import io.libp2p.core.types.toHex
 import io.libp2p.core.types.whenTrue
 import io.libp2p.pubsub.AbstractRouter
 import pubsub.pb.Rpc
-import java.util.Random
+import java.time.Duration
 import java.util.concurrent.CompletableFuture
 
-class GossipRouter : AbstractRouter() {
+open class GossipRouter : AbstractRouter() {
 
     data class CacheEntry(val msgId: String, val topics: Set<String>)
 
@@ -31,12 +32,12 @@ class GossipRouter : AbstractRouter() {
         fun shift() = history.add(mutableListOf())
     }
 
-    var heartbeat by lazyVar { Heartbeat() }
-    var random by lazyVar { Random() }
-    var D by lazyVar { 3 }
-    var DLow by lazyVar { 2 }
-    var DHigh by lazyVar { 4 }
-    var fanoutTTL by lazyVar { 60 * 1000L }
+    var heartbeatInterval by lazyVar { Duration.ofSeconds(1) }
+    var heartbeat by lazyVar { Heartbeat.create(executor, heartbeatInterval, curTime) }
+    var D = 3
+    var DLow = 2
+    var DHigh = 4
+    var fanoutTTL = 60 * 1000L
     var gossipSize by lazyVar { 3 }
     var gossipHistoryLength by lazyVar { 5 }
     var mCache by lazyVar { MCache(gossipSize, gossipHistoryLength) }
@@ -45,7 +46,7 @@ class GossipRouter : AbstractRouter() {
     val lastPublished = mutableMapOf<String, Long>()
     private var inited = false
 
-    private fun getGossipId(msg: Rpc.Message): String = TODO()
+    private fun getGossipId(msg: Rpc.Message): String = msg.from.toByteArray().toHex() + msg.seqno.toByteArray().toHex()
 
     private fun submitGossip(topic: String, peers: Collection<StreamHandler>) {
         val ids = mCache.getMessageIds(topic)
@@ -97,6 +98,7 @@ class GossipRouter : AbstractRouter() {
         msg.control.run {
             (graftList + pruneList + ihaveList + iwantList)
         }.forEach { processControlMessage(it, receivedFrom) }
+        flushAllPending()
     }
 
     override fun broadcastOutbound(msg: Rpc.Message): CompletableFuture<Unit> {
@@ -113,13 +115,14 @@ class GossipRouter : AbstractRouter() {
             .map { submitPublishMessage(it, msg) }
 
         mCache.put(msg)
+        flushAllPending()
         return anyComplete(list)
     }
 
     override fun subscribe(topic: String) {
         super.subscribe(topic)
         val fanoutPeers = fanout[topic] ?: mutableListOf()
-        val meshPeers = mesh[topic] ?: mutableListOf()
+        val meshPeers = mesh.getOrPut(topic) { mutableListOf() }
         val otherPeers = getTopicPeers(topic) - meshPeers - fanoutPeers
         if (meshPeers.size < D) {
             val addFromFanout = fanoutPeers.shuffled(random).take(D - meshPeers.size)
@@ -152,10 +155,6 @@ class GossipRouter : AbstractRouter() {
             }
             submitGossip(topic, peers)
         }
-        lastPublished.entries.removeIf { entry ->
-            (time - entry.value > fanoutTTL)
-                .whenTrue { fanout.remove(entry.key) }
-        }
         fanout.entries.forEach { (topic, peers) ->
             peers.removeIf { it in getTopicPeers(topic) }
             val needMore = D - peers.size
@@ -164,7 +163,12 @@ class GossipRouter : AbstractRouter() {
             }
             submitGossip(topic, peers)
         }
+        lastPublished.entries.removeIf { (topic, lastPub) ->
+            (time - lastPub > fanoutTTL)
+                .whenTrue { fanout.remove(topic) } }
+
         mCache.shift()
+        flushAllPending()
     }
 
     private fun prune(peer: StreamHandler, topic: String) = addPendingRpcPart(

@@ -1,4 +1,4 @@
-package io.libp2p.core.security.secio
+package io.libp2p.tools
 
 import io.libp2p.core.types.toByteArray
 import io.libp2p.core.types.toHex

@@ -1,40 +1,52 @@
 package io.libp2p.pubsub
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder
 import io.libp2p.core.Stream
 import io.libp2p.core.types.LRUSet
+import io.libp2p.core.types.copy
+import io.libp2p.core.types.forward
 import io.libp2p.core.types.lazyVar
 import io.libp2p.core.types.toLongBigEndian
 import io.libp2p.core.types.toVoidCompletableFuture
+import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
 import io.netty.handler.codec.protobuf.ProtobufDecoder
 import io.netty.handler.codec.protobuf.ProtobufEncoder
 import org.apache.logging.log4j.LogManager
 import pubsub.pb.Rpc
+import java.util.Random
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CopyOnWriteArrayList
-import java.util.function.Consumer
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
 
-abstract class AbstractRouter : PubsubRouter {
+abstract class AbstractRouter : PubsubRouter, PubsubRouterDebug {
 
     open inner class StreamHandler(val stream: Stream) : ChannelInboundHandlerAdapter() {
         lateinit var ctx: ChannelHandlerContext
         val topics = mutableSetOf<String>()
 
         override fun channelRead(ctx: ChannelHandlerContext, msg: Any?) {
-            onInbound(this, msg as Rpc.RPC)
+            runOnEventThread {
+                onInbound(this, msg as Rpc.RPC)
+            }
         }
 
         override fun channelActive(ctx: ChannelHandlerContext) {
             this.ctx = ctx
-            onPeerActive(this)
+            runOnEventThread {
+                onPeerActive(this)
+            }
         }
         override fun channelUnregistered(ctx: ChannelHandlerContext?) {
-            onPeerDisconnected(this)
+            runOnEventThread {
+                onPeerDisconnected(this)
+            }
         }
 
-        override fun exceptionCaught(ctx: ChannelHandlerContext?, cause: Throwable?) {
-            logger.warn("Unexpected error", cause)
+        override fun exceptionCaught(ctx: ChannelHandlerContext?, cause: Throwable) {
+            runOnEventThread { onPeerException(this, cause) }
         }
     }
 
@@ -58,22 +70,26 @@ abstract class AbstractRouter : PubsubRouter {
         }
     }
 
-    private var msgHandler: Consumer<Rpc.Message> = Consumer { }
+    override var executor: ScheduledExecutorService by lazyVar { Executors.newSingleThreadScheduledExecutor(threadFactory) }
+    override var curTime: () -> Long by lazyVar { { System.currentTimeMillis() } }
+    override var random by lazyVar { Random() }
+
+    private var msgHandler: (Rpc.Message) -> Unit = { }
     var maxSeenMessagesSizeSet = 10000
     var validator: PubsubMessageValidator = object : PubsubMessageValidator {}
     val peers = CopyOnWriteArrayList<StreamHandler>()
-    val seenMessages by lazyVar { LRUSet.create<MessageUID>(maxSeenMessagesSizeSet) }
+    val seenMessages by lazy { LRUSet.create<MessageUID>(maxSeenMessagesSizeSet) }
     val subscribedTopics = mutableSetOf<String>()
     val pendingRpcParts = mutableMapOf<StreamHandler, MutableList<Rpc.RPC>>()
 
     override fun publish(msg: Rpc.Message): CompletableFuture<Unit> {
-        return if (MessageUID(msg) in seenMessages) {
-            CompletableFuture<Unit>().also { it.completeExceptionally(MessageAlreadySeenException("Msg: $msg")) }
-        } else {
-            validator.validate(msg) // check ourselves not to be a bad peer
-            return broadcastOutbound(msg).thenApply {
-                seenMessages.plus(MessageUID(msg))
-                Unit
+        return submitOnEventThread {
+            if (MessageUID(msg) in seenMessages) {
+                CompletableFuture<Unit>().also { it.completeExceptionally(MessageAlreadySeenException("Msg: $msg")) }
+            } else {
+                validator.validate(msg) // check ourselves not to be a bad peer
+                seenMessages += MessageUID(msg)
+                broadcastOutbound(msg)
             }
         }
     }
@@ -83,11 +99,23 @@ abstract class AbstractRouter : PubsubRouter {
         return CompletableFuture.completedFuture(null) // TODO
     }
 
+    fun runOnEventThread(run: () -> Unit) {
+        executor.execute(run)
+    }
+
+    fun <C> submitOnEventThread(run: () -> CompletableFuture<C>): CompletableFuture<C> {
+        val ret = CompletableFuture<C>()
+        executor.execute {
+            run().forward(ret)
+        }
+        return ret
+    }
+
     fun addPendingRpcPart(toPeer: StreamHandler, msgPart: Rpc.RPC)  {
         pendingRpcParts.getOrPut(toPeer, { mutableListOf() }) += msgPart
     }
 
-    fun collectPeerMessage(toPeer: StreamHandler): Rpc.RPC? {
+    protected fun collectPeerMessage(toPeer: StreamHandler): Rpc.RPC? {
         val msgs = pendingRpcParts.remove(toPeer) ?: emptyList<Rpc.RPC>()
         if (msgs.isEmpty()) return null
 
@@ -96,15 +124,20 @@ abstract class AbstractRouter : PubsubRouter {
         return bld.build()
     }
 
-    fun flushAllPending() {
-        pendingRpcParts.keys.toMutableList().forEach {peer ->
+    protected fun flushAllPending() {
+        pendingRpcParts.keys.copy().forEach {peer ->
             collectPeerMessage(peer)?.also { send(peer, it) }
         }
     }
 
     override fun addPeer(peer: Stream) {
+        addPeerWithDebugHandler(peer, null)
+    }
+
+    override fun addPeerWithDebugHandler(peer: Stream, debugHandler: ChannelHandler?) {
         peer.ch.pipeline().addLast(ProtobufDecoder(Rpc.RPC.getDefaultInstance()))
         peer.ch.pipeline().addLast(ProtobufEncoder())
+        debugHandler?.also { peer.ch.pipeline().addLast(it) }
         peer.ch.pipeline().addLast(createStreamHandler(peer))
     }
 
@@ -139,9 +172,13 @@ abstract class AbstractRouter : PubsubRouter {
         if (msgUnseen.publishCount > 0) {
             validator.validate(msgUnseen)
             msgUnseen.publishList.forEach(msgHandler)
+            seenMessages += msg.publishList.map { MessageUID(it) }
             broadcastInbound(msgUnseen, peer)
-            seenMessages.plus(msg.publishList.map { MessageUID(it) })
         }
+    }
+
+    protected fun onPeerException(peer: StreamHandler, cause: Throwable) {
+        logger.warn("Error by peer $peer ", cause)
     }
 
     private fun handleMessageSubscriptions(peer: StreamHandler, msg: Rpc.RPC.SubOpts) {
@@ -152,9 +189,9 @@ abstract class AbstractRouter : PubsubRouter {
         }
     }
 
-    fun getTopicsPeers(topics: Collection<String>) =
+    protected fun getTopicsPeers(topics: Collection<String>) =
         peers.filter { topics.intersect(it.topics).isNotEmpty() }
-    fun getTopicPeers(topic: String) =
+    protected fun getTopicPeers(topic: String) =
         peers.filter { topic in it.topics }
 
     private fun filterSeen(msg: Rpc.RPC): Rpc.RPC =
@@ -164,7 +201,10 @@ abstract class AbstractRouter : PubsubRouter {
             .build()
 
     override fun subscribe(vararg topics: String) {
-        topics.forEach(::subscribe)
+        runOnEventThread {
+            topics.forEach(::subscribe)
+            flushAllPending()
+        }
     }
 
     protected open fun subscribe(topic: String) {
@@ -175,7 +215,10 @@ abstract class AbstractRouter : PubsubRouter {
     }
 
     override fun unsubscribe(vararg topics: String) {
-        topics.forEach(::unsubscribe)
+        runOnEventThread {
+            topics.forEach(::unsubscribe)
+            flushAllPending()
+        }
     }
 
     protected open  fun unsubscribe(topic: String) {
@@ -189,11 +232,12 @@ abstract class AbstractRouter : PubsubRouter {
         return peer.ctx.writeAndFlush(msg).toVoidCompletableFuture()
     }
 
-    override fun setHandler(handler: Consumer<Rpc.Message>) {
+    override fun setHandler(handler: (Rpc.Message) -> Unit) {
         msgHandler = handler
     }
 
     companion object {
+        private val threadFactory = ThreadFactoryBuilder().setDaemon(true).setNameFormat("pubsub-router-event-thread-%d").build()
         val logger = LogManager.getLogger(AbstractRouter::class.java)
     }
 }
