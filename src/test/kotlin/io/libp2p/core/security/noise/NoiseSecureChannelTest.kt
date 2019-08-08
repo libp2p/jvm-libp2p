@@ -1,14 +1,26 @@
 package io.libp2p.core.security.noise
 
+import com.google.protobuf.ByteString
 import com.southernstorm.noise.protocol.HandshakeState
+import com.southernstorm.noise.protocol.Noise
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.generateKeyPair
+import io.libp2p.core.security.secio.TestHandler
+import io.libp2p.core.types.toByteArray
+import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandler
+import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.embedded.EmbeddedChannel
+import io.netty.handler.logging.LogLevel
+import io.netty.handler.logging.LoggingHandler
 import org.apache.logging.log4j.LogManager
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Test
+import spipe.pb.Spipe
+import java.nio.charset.StandardCharsets
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 class NoiseSecureChannelTest {
     // tests for Noise
@@ -139,6 +151,9 @@ class NoiseSecureChannelTest {
 
         assert(s1.toByteArray().contentEquals(bcipher.copyOfRange(0,bcipherLength)))
         println("bcipher string:"+String(bcipher.copyOfRange(0,bcipherLength)))
+
+        assert(alice_hs!!.action == HandshakeState.COMPLETE)
+        assert(bob_hs!!.action == HandshakeState.COMPLETE)
     }
 
     private fun reportHSStates(aliceMsgLength: Int, aliceSendBuffer: ByteArray, bobMsgLength: Int, bobSendBuffer: ByteArray) {
@@ -168,8 +183,12 @@ class NoiseSecureChannelTest {
         val signed = privKey.sign(pubKey.bytes())
         // the signed bytes become the payload for the first handshake write message
 
+        // generate an appropriate protobuf element
+        val bs = Spipe.Exchange.newBuilder().setEpubkey(ByteString.copyFrom(pubKey.bytes()))
+                .setSignature(ByteString.copyFrom(signed)).build()
+
         val msgBuffer = ByteArray(65535)
-        val msgLength = alice_hs!!.writeMessage(msgBuffer, 0, signed, 0, signed.size)
+        val msgLength = alice_hs!!.writeMessage(msgBuffer, 0, bs.toByteArray(), 0, bs.toByteArray().size)
 
         println("msgBuffer2:" + msgBuffer.asList())
         println("msgBuffer2length:$msgLength")
@@ -177,13 +196,71 @@ class NoiseSecureChannelTest {
         assert(msgBuffer.max()?.compareTo(0) != 0)
     }
 
+    @Test 
+    fun test5() {
+        // test Noise secure channel through embedded channels
+
+        // identity
+        val (privKey1, pubKey1) = generateKeyPair(KEY_TYPE.ECDSA)
+        val (privKey2, pubKey2) = generateKeyPair(KEY_TYPE.ECDSA)
+
+        // noise keys
+        val aliceDHState = Noise.createDH("25519")
+        val bobDHState = Noise.createDH("25519")
+        aliceDHState.generateKeyPair()
+        bobDHState.generateKeyPair()
+        val ch1 = NoiseSecureChannel(privKey1, aliceDHState, bobDHState, HandshakeState.INITIATOR)
+        val ch2 = NoiseSecureChannel(privKey2, bobDHState, aliceDHState, HandshakeState.RESPONDER)
+
+        var rec1: String? = null
+        var rec2: String? = null
+        val latch = CountDownLatch(2)
+
+        val eCh1 = io.libp2p.core.security.noise.TestChannel(LoggingHandler("#1", LogLevel.ERROR), ch1.initializer().channelInitializer,
+            object : TestHandler("1") {
+                override fun channelActive(ctx: ChannelHandlerContext) {
+                    super.channelActive(ctx)
+//                    ctx.writeAndFlush("Hello World from $name".toByteArray().toByteBuf())
+                }
+
+                override fun channelRead(ctx: ChannelHandlerContext, msg: Any?) {
+                    msg as ByteBuf
+                    rec1 = msg.toByteArray().toString(StandardCharsets.UTF_8)
+                    NoiseSecureChannelTest.logger.debug("==$name== read: $rec1")
+                    latch.countDown()
+                }
+            })
+        val eCh2 = io.libp2p.core.security.noise.TestChannel(
+            LoggingHandler("#2", LogLevel.ERROR),
+            ch2.initializer().channelInitializer,
+            object : TestHandler("2") {
+                override fun channelActive(ctx: ChannelHandlerContext) {
+                    super.channelActive(ctx)
+//                    ctx.writeAndFlush("Hello World from $name".toByteArray().toByteBuf())
+                }
+
+                override fun channelRead(ctx: ChannelHandlerContext, msg: Any?) {
+                    msg as ByteBuf
+                    rec2 = msg.toByteArray().toString(StandardCharsets.UTF_8)
+                    NoiseSecureChannelTest.logger.debug("==$name== read: $rec2")
+                    latch.countDown()
+                }
+            })
+        io.libp2p.core.security.noise.interConnect(eCh1, eCh2)
+
+        latch.await(10, TimeUnit.SECONDS)
+
+//        Assertions.assertEquals("Hello World from 1", rec2)
+//        Assertions.assertEquals("Hello World from 2", rec1)
+    }
+    
     companion object {
         private val logger = LogManager.getLogger(NoiseSecureChannelTest::class.java)
     }
 }
 
 
-fun interConnect(ch1: io.libp2p.core.security.secio.TestChannel, ch2: io.libp2p.core.security.secio.TestChannel) {
+fun interConnect(ch1: io.libp2p.core.security.noise.TestChannel, ch2: io.libp2p.core.security.noise.TestChannel) {
     ch1.connect(ch2)
     ch2.connect(ch1)
 }
