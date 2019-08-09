@@ -13,6 +13,8 @@ import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
 import io.netty.handler.codec.protobuf.ProtobufDecoder
 import io.netty.handler.codec.protobuf.ProtobufEncoder
+import io.netty.handler.codec.protobuf.ProtobufVarint32FrameDecoder
+import io.netty.handler.codec.protobuf.ProtobufVarint32LengthFieldPrepender
 import org.apache.logging.log4j.LogManager
 import pubsub.pb.Rpc
 import java.util.Random
@@ -135,6 +137,8 @@ abstract class AbstractRouter : PubsubRouter, PubsubRouterDebug {
     }
 
     override fun addPeerWithDebugHandler(peer: Stream, debugHandler: ChannelHandler?) {
+        peer.ch.pipeline().addLast(ProtobufVarint32FrameDecoder())
+        peer.ch.pipeline().addLast(ProtobufVarint32LengthFieldPrepender())
         peer.ch.pipeline().addLast(ProtobufDecoder(Rpc.RPC.getDefaultInstance()))
         peer.ch.pipeline().addLast(ProtobufEncoder())
         debugHandler?.also { peer.ch.pipeline().addLast(it) }
