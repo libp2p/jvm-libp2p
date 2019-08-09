@@ -79,8 +79,8 @@ abstract class AbstractRouter : PubsubRouter, PubsubRouterDebug {
     var validator: PubsubMessageValidator = object : PubsubMessageValidator {}
     val peers = CopyOnWriteArrayList<StreamHandler>()
     val seenMessages by lazy { LRUSet.create<MessageUID>(maxSeenMessagesSizeSet) }
-    val subscribedTopics = mutableSetOf<String>()
-    val pendingRpcParts = mutableMapOf<StreamHandler, MutableList<Rpc.RPC>>()
+    val subscribedTopics = linkedSetOf<String>()
+    val pendingRpcParts = linkedMapOf<StreamHandler, MutableList<Rpc.RPC>>()
 
     override fun publish(msg: Rpc.Message): CompletableFuture<Unit> {
         return submitOnEventThread {
@@ -153,6 +153,8 @@ abstract class AbstractRouter : PubsubRouter, PubsubRouterDebug {
     // msg: validated unseen messages received from wire
     protected abstract fun broadcastInbound(msg: Rpc.RPC, receivedFrom: StreamHandler)
 
+    protected abstract fun processControl(ctrl: Rpc.ControlMessage, receivedFrom: StreamHandler)
+
     protected open fun onPeerActive(peer: StreamHandler) {
         peers += peer
         val helloPubsubMsg = Rpc.RPC.newBuilder().addAllSubscriptions(subscribedTopics.map {
@@ -168,6 +170,9 @@ abstract class AbstractRouter : PubsubRouter, PubsubRouterDebug {
 
     private fun onInbound(peer: StreamHandler, msg: Rpc.RPC) {
         msg.subscriptionsList.forEach { handleMessageSubscriptions(peer, it) }
+        if (msg.hasControl()) {
+            processControl(msg.control, peer)
+        }
         val msgUnseen = filterSeen(msg)
         if (msgUnseen.publishCount > 0) {
             validator.validate(msgUnseen)

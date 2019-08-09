@@ -34,7 +34,7 @@ class SecIoSecureChannelTest {
         var rec1: String? = null
         var rec2: String? = null
         val latch = CountDownLatch(2)
-        val eCh1 = TestChannel(LoggingHandler("#1", LogLevel.ERROR),
+        val eCh1 = TestChannel("#1", LoggingHandler("#1", LogLevel.ERROR),
             Negotiator.createInitializer(true, "/secio/1.0.0"),
             ProtocolSelect(listOf(SecIoSecureChannel(privKey1))),
             object : TestHandler("1") {
@@ -50,7 +50,7 @@ class SecIoSecureChannelTest {
                     latch.countDown()
                 }
             })
-        val eCh2 = TestChannel(
+        val eCh2 = TestChannel("#2",
             LoggingHandler("#2", LogLevel.ERROR),
             Negotiator.createInitializer(true, "/secio/1.0.0"),
             ProtocolSelect(listOf(SecIoSecureChannel(privKey2))),

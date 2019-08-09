@@ -20,6 +20,10 @@ class FloodRouter : AbstractRouter() {
         flushAllPending()
     }
 
+    override fun processControl(ctrl: Rpc.ControlMessage, receivedFrom: StreamHandler) {
+        // NOP
+    }
+
     private fun broadcast(msg: Rpc.Message, receivedFrom: StreamHandler?): CompletableFuture<Unit> {
         val sentFutures = getTopicsPeers(msg.topicIDsList)
             .filter { it != receivedFrom }

@@ -8,6 +8,7 @@ import java.util.concurrent.ScheduledExecutorService
 
 class DeterministicFuzz {
 
+    var cnt = 0
     val timeController = TimeControllerImpl()
     var randomSeed by lazyVar { 777L }
     val random by lazyVar { Random(randomSeed) }
@@ -19,7 +20,7 @@ class DeterministicFuzz {
     fun createTestRouter(routerInstance: PubsubRouterDebug): TestRouter {
         routerInstance.curTime = { timeController.time }
         routerInstance.random = this.random
-        val testRouter = TestRouter()
+        val testRouter = TestRouter("" + (cnt++))
         testRouter.routerInstance = routerInstance
         testRouter.testExecutor = createControlledExecutor()
         return testRouter

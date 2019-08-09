@@ -32,16 +32,17 @@ class TestRouter(val name: String = "" + cnt.getAndIncrement()) {
     } }
 
     private fun newChannel(
-        loggerCaption: String?,
+        channelName: String,
         wireLogs: LogLevel? = null,
         pubsubLogs: LogLevel? = null
     ) =
         TestChannel(
+            channelName,
             nettyInitializer {ch ->
-                wireLogs?.also { ch.pipeline().addFirst(LoggingHandler(loggerCaption,it)) }
+                wireLogs?.also { ch.pipeline().addFirst(LoggingHandler(channelName,it)) }
                 val conn1 = Connection(TestChannel())
                 val stream1 = Stream(ch, conn1)
-                router.addPeerWithDebugHandler(stream1, pubsubLogs?.let { LoggingHandler(loggerCaption,it) })
+                router.addPeerWithDebugHandler(stream1, pubsubLogs?.let { LoggingHandler(channelName,it) })
             }
         ).also {
             it.executor = testExecutor

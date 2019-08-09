@@ -41,9 +41,9 @@ open class GossipRouter : AbstractRouter() {
     var gossipSize by lazyVar { 3 }
     var gossipHistoryLength by lazyVar { 5 }
     var mCache by lazyVar { MCache(gossipSize, gossipHistoryLength) }
-    val fanout: MutableMap<String, MutableList<StreamHandler>> = mutableMapOf()
-    val mesh: MutableMap<String, MutableList<StreamHandler>> = mutableMapOf()
-    val lastPublished = mutableMapOf<String, Long>()
+    val fanout: MutableMap<String, MutableList<StreamHandler>> = linkedMapOf()
+    val mesh: MutableMap<String, MutableList<StreamHandler>> = linkedMapOf()
+    val lastPublished = linkedMapOf<String, Long>()
     private var inited = false
 
     private fun getGossipId(msg: Rpc.Message): String = msg.from.toByteArray().toHex() + msg.seqno.toByteArray().toHex()
@@ -85,6 +85,12 @@ open class GossipRouter : AbstractRouter() {
         }
     }
 
+    override fun processControl(ctrl: Rpc.ControlMessage, receivedFrom: StreamHandler) {
+        ctrl.run {
+            (graftList + pruneList + ihaveList + iwantList)
+        }.forEach { processControlMessage(it, receivedFrom) }
+    }
+
     override fun broadcastInbound(msg: Rpc.RPC, receivedFrom: StreamHandler) {
         msg.publishList.forEach { pubMsg ->
             pubMsg.topicIDsList
@@ -95,9 +101,6 @@ open class GossipRouter : AbstractRouter() {
                 .forEach { submitPublishMessage(it, pubMsg) }
             mCache.put(pubMsg)
         }
-        msg.control.run {
-            (graftList + pruneList + ihaveList + iwantList)
-        }.forEach { processControlMessage(it, receivedFrom) }
         flushAllPending()
     }
 
@@ -128,10 +131,10 @@ open class GossipRouter : AbstractRouter() {
             val addFromFanout = fanoutPeers.shuffled(random).take(D - meshPeers.size)
             val addFromOthers = otherPeers.shuffled(random).take(D - meshPeers.size - addFromFanout.size)
 
+            meshPeers += (addFromFanout + addFromOthers)
             (addFromFanout + addFromOthers).forEach {
                 graft(it, topic)
             }
-            meshPeers += (addFromFanout + addFromOthers)
         }
     }
 
@@ -209,5 +212,12 @@ open class GossipRouter : AbstractRouter() {
                     Rpc.ControlIHave.newBuilder().addAllMessageIDs(topics)
                 )
             ).build())
+    }
+
+    fun withDConstants(D: Int, DLow: Int = D * 2 / 3, DHigh: Int = D * 2): GossipRouter {
+        this.D = D
+        this.DLow = DLow
+        this.DHigh = DHigh
+        return this
     }
 }
