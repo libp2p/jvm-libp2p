@@ -5,3 +5,5 @@ import io.libp2p.core.Libp2pException
 open class PubsubException(message: String) : Libp2pException(message)
 
 class MessageAlreadySeenException(message: String) : PubsubException(message)
+
+class InvalidMessageException(message: String) : PubsubException(message)

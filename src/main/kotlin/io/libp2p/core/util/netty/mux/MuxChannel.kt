@@ -75,4 +75,8 @@ class MuxChannel<TData>(
 
 class RemoteWriteClosed
 
-data class MultiplexSocketAddress(val parentAddress: SocketAddress, val streamId: MuxId) : SocketAddress()
+data class MultiplexSocketAddress(val parentAddress: SocketAddress, val streamId: MuxId) : SocketAddress() {
+    override fun toString(): String {
+        return "Mux[$parentAddress-$streamId]"
+    }
+}

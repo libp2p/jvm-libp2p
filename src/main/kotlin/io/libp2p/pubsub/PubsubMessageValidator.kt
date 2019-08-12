@@ -8,5 +8,7 @@ interface PubsubMessageValidator {
         msg.publishList.forEach { validate(it) }
     }
 
-    fun validate(msg: Rpc.Message) {}
+    fun validate(msg: Rpc.Message) {
+        if (!pubsubValidate(msg)) throw InvalidMessageException(msg.toString())
+    }
 }

@@ -6,16 +6,20 @@ import java.util.concurrent.CompletableFuture
 import java.util.function.Consumer
 import kotlin.random.Random.Default.nextLong
 
+fun createPubsubApi(router: PubsubRouter) : PubsubApi = PubsubApiImpl(router)
+
 interface PubsubSubscriberApi {
 
-    fun subscribe(receiver: Consumer<MessageApi>, vararg topics: Topic)
+    fun subscribe(receiver: Consumer<MessageApi>, vararg topics: Topic): PubsubSubscription
+}
 
-    fun unsubscribe(vararg topics: Topic)
+interface PubsubSubscription {
+    fun unsubscribe()
 }
 
 interface PubsubPublisherApi {
 
-    fun publish(data: ByteBuf, vararg topics: Topic): CompletableFuture<Void>
+    fun publish(data: ByteBuf, vararg topics: Topic): CompletableFuture<Unit>
 }
 
 interface PubsubApi : PubsubSubscriberApi {
@@ -30,6 +34,4 @@ interface MessageApi {
     val topics: List<Topic>
 }
 
-interface Topic {
-    val hash: ByteArray
-}
+data class Topic(val topic: String)
