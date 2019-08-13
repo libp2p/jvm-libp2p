@@ -1,5 +1,6 @@
 package io.libp2p.core.util.netty.mux
 
+import io.libp2p.core.IS_INITIATOR
 import io.libp2p.core.Libp2pException
 import io.libp2p.core.util.netty.nettyInitializer
 import io.netty.channel.ChannelHandler
@@ -41,7 +42,7 @@ abstract class AbtractMuxHandler<TData>(var inboundInitializer: ChannelHandler? 
 
     protected fun onRemoteOpen(id: MuxId) {
         val initializer = inboundInitializer ?: throw Libp2pException("Illegal state: inbound stream handler is not set up yet")
-        val child = createChild(id, initializer)
+        val child = createChild(id, initializer, false)
         onRemoteCreated(child)
     }
 
@@ -71,8 +72,9 @@ abstract class AbtractMuxHandler<TData>(var inboundInitializer: ChannelHandler? 
     protected abstract fun onLocalClose(child: MuxChannel<TData>)
     protected abstract fun onLocalDisconnect(child: MuxChannel<TData>)
 
-    private fun createChild(id: MuxId, initializer: ChannelHandler): MuxChannel<TData> {
+    private fun createChild(id: MuxId, initializer: ChannelHandler, initiator: Boolean): MuxChannel<TData> {
         val child = MuxChannel(this, id, initializer)
+        child.attr(IS_INITIATOR).set(initiator)
         streamMap[id] = child
         ctx!!.channel().eventLoop().register(child)
         return child
@@ -87,7 +89,7 @@ abstract class AbtractMuxHandler<TData>(var inboundInitializer: ChannelHandler? 
             val child = createChild(generateNextId(), nettyInitializer {
                 onLocalOpen(it as MuxChannel<TData>)
                 it.pipeline().addLast(outboundInitializer)
-            })
+            }, true)
             child
         }, getChannelHandlerContext().channel().eventLoop())
     }

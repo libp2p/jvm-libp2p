@@ -34,13 +34,15 @@ class TestRouter(val name: String = "" + cnt.getAndIncrement()) {
     private fun newChannel(
         channelName: String,
         wireLogs: LogLevel? = null,
-        pubsubLogs: LogLevel? = null
+        pubsubLogs: LogLevel? = null,
+        initiator: Boolean
     ) =
         TestChannel(
             channelName,
+            initiator,
             nettyInitializer {ch ->
                 wireLogs?.also { ch.pipeline().addFirst(LoggingHandler(channelName,it)) }
-                val conn1 = Connection(TestChannel())
+                val conn1 = Connection(TestChannel("",false))
                 val stream1 = Stream(ch, conn1)
                 router.addPeerWithDebugHandler(stream1, pubsubLogs?.let { LoggingHandler(channelName,it) })
             }
@@ -54,8 +56,8 @@ class TestRouter(val name: String = "" + cnt.getAndIncrement()) {
         pubsubLogs: LogLevel? = null
     ): TestChannel.TestConnection {
 
-        val thisChannel = newChannel("$name=>${another.name}", wireLogs, pubsubLogs)
-        val anotherChannel = another.newChannel("${another.name}=>$name", wireLogs, pubsubLogs)
+        val thisChannel = newChannel("$name=>${another.name}", wireLogs, pubsubLogs, true)
+        val anotherChannel = another.newChannel("${another.name}=>$name", wireLogs, pubsubLogs, false)
         return TestChannel.interConnect(thisChannel, anotherChannel)
     }
 }

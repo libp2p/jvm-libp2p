@@ -80,14 +80,14 @@ class EchoSampleTest {
 
         val tcpTransport = TcpTransport(upgrader)
         val applicationProtocols = listOf(EchoProtocol())
-        val inboundStreamHandler = StreamHandler.create(Multistream.create(applicationProtocols, false))
+        val inboundStreamHandler = StreamHandler.create(Multistream.create(applicationProtocols))
         logger.info("Dialing...")
         val connFuture = tcpTransport.dial(Multiaddr("/ip4/127.0.0.1/tcp/10000"), inboundStreamHandler)
 
         val echoString = "Helooooooooooooooooooooooooo\n"
         connFuture.thenCompose {
             logger.info("Connection made")
-            val echoInitiator = Multistream.create(applicationProtocols, true)
+            val echoInitiator = Multistream.create(applicationProtocols)
             val (channelHandler, completableFuture) =
                 echoInitiator.initializer()
             logger.info("Creating stream")

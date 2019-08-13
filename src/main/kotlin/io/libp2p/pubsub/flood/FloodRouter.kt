@@ -15,16 +15,16 @@ class FloodRouter : AbstractRouter() {
     }
 
     // msg: validated unseen messages received from wire
-    override fun broadcastInbound(msg: Rpc.RPC, receivedFrom: StreamHandler) {
+    override fun broadcastInbound(msg: Rpc.RPC, receivedFrom: PeerHandler) {
         msg.publishList.forEach { broadcast(it, receivedFrom) }
         flushAllPending()
     }
 
-    override fun processControl(ctrl: Rpc.ControlMessage, receivedFrom: StreamHandler) {
+    override fun processControl(ctrl: Rpc.ControlMessage, receivedFrom: PeerHandler) {
         // NOP
     }
 
-    private fun broadcast(msg: Rpc.Message, receivedFrom: StreamHandler?): CompletableFuture<Unit> {
+    private fun broadcast(msg: Rpc.Message, receivedFrom: PeerHandler?): CompletableFuture<Unit> {
         val sentFutures = getTopicsPeers(msg.topicIDsList)
             .filter { it != receivedFrom }
             .map { submitPublishMessage(it, msg) }

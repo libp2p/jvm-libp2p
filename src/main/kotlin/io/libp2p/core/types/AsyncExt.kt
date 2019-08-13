@@ -1,7 +1,9 @@
 package io.libp2p.core.types
 
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ExecutorService
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.function.Supplier
 
 fun <C> CompletableFuture<C>.bind(result: CompletableFuture<C>) {
     result.whenComplete { res, t ->
@@ -14,6 +16,11 @@ fun <C> CompletableFuture<C>.bind(result: CompletableFuture<C>) {
 }
 
 fun <C> CompletableFuture<C>.forward(forwardTo: CompletableFuture<C>) = forwardTo.bind(this)
+
+fun <C> ExecutorService.submitAsync(func: () -> CompletableFuture<C>) : CompletableFuture<C> =
+    CompletableFuture.supplyAsync(Supplier { func() }, this).thenCompose { it }
+
+fun <C> completedExceptionally(t: Throwable) = CompletableFuture<C>().also { it.completeExceptionally(t) }
 
 class NonCompleteException(cause: Throwable?) : RuntimeException(cause)
 class NothingToCompleteException() : RuntimeException()

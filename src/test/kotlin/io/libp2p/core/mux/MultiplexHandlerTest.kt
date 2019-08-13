@@ -77,19 +77,19 @@ class MultiplexHandlerTest {
         }))
 
         val ech = EmbeddedChannel(multistreamHandler)
-        ech.writeInbound(MuxFrame(MuxId(12), OPEN))
-        ech.writeInbound(MuxFrame(MuxId(12), DATA, "22".fromHex().toByteBuf()))
+        ech.writeInbound(MuxFrame(MuxId(12, true), OPEN))
+        ech.writeInbound(MuxFrame(MuxId(12, true), DATA, "22".fromHex().toByteBuf()))
         Assertions.assertEquals(1, childHandlers.size)
         Assertions.assertEquals(1, childHandlers[0].inboundMessages.size)
         Assertions.assertEquals("22", childHandlers[0].inboundMessages[0].toByteArray().toHex())
         Assertions.assertFalse(childHandlers[0].ctx!!.channel().closeFuture().isDone)
-        ech.writeInbound(MuxFrame(MuxId(12), DATA, "23".fromHex().toByteBuf()))
+        ech.writeInbound(MuxFrame(MuxId(12, true), DATA, "23".fromHex().toByteBuf()))
         Assertions.assertEquals(1, childHandlers.size)
         Assertions.assertEquals(2, childHandlers[0].inboundMessages.size)
         Assertions.assertEquals("23", childHandlers[0].inboundMessages[1].toByteArray().toHex())
 
-        ech.writeInbound(MuxFrame(MuxId(22), OPEN))
-        ech.writeInbound(MuxFrame(MuxId(22), DATA, "33".fromHex().toByteBuf()))
+        ech.writeInbound(MuxFrame(MuxId(22, true), OPEN))
+        ech.writeInbound(MuxFrame(MuxId(22, true), DATA, "33".fromHex().toByteBuf()))
         Assertions.assertEquals(2, childHandlers.size)
         Assertions.assertEquals(1, childHandlers[1].inboundMessages.size)
         Assertions.assertEquals("33", childHandlers[1].inboundMessages[0].toByteArray().toHex())
@@ -98,20 +98,20 @@ class MultiplexHandlerTest {
             println("Channel #2 closed")
         }
 
-        ech.writeInbound(MuxFrame(MuxId(12), DATA, "24".fromHex().toByteBuf()))
+        ech.writeInbound(MuxFrame(MuxId(12, true), DATA, "24".fromHex().toByteBuf()))
         Assertions.assertEquals(2, childHandlers.size)
         Assertions.assertEquals(3, childHandlers[0].inboundMessages.size)
         Assertions.assertEquals("24", childHandlers[0].inboundMessages[2].toByteArray().toHex())
 
-        ech.writeInbound(MuxFrame(MuxId(22), DATA, "34".fromHex().toByteBuf()))
+        ech.writeInbound(MuxFrame(MuxId(22, true), DATA, "34".fromHex().toByteBuf()))
         Assertions.assertEquals(2, childHandlers.size)
         Assertions.assertEquals(2, childHandlers[1].inboundMessages.size)
         Assertions.assertEquals("34", childHandlers[1].inboundMessages[1].toByteArray().toHex())
 
-        ech.writeInbound(MuxFrame(MuxId(22), RESET))
+        ech.writeInbound(MuxFrame(MuxId(22, true), RESET))
         Assertions.assertTrue(childHandlers[1].ctx!!.channel().closeFuture().isDone)
         Assertions.assertThrows(Libp2pException::class.java) {
-            ech.writeInbound(MuxFrame(MuxId(22), DATA, "34".fromHex().toByteBuf()))
+            ech.writeInbound(MuxFrame(MuxId(22, true), DATA, "34".fromHex().toByteBuf()))
         }
 
         ech.close().await()

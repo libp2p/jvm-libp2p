@@ -8,7 +8,21 @@ interface PubsubMessageValidator {
         msg.publishList.forEach { validate(it) }
     }
 
-    fun validate(msg: Rpc.Message) {
-        if (!pubsubValidate(msg)) throw InvalidMessageException(msg.toString())
+    fun validate(msg: Rpc.Message)
+
+    companion object {
+        fun nopValidator()  = object : PubsubMessageValidator {
+            override fun validate(msg: Rpc.Message) {
+                // NOP
+            }
+        }
+
+        fun signatureValidator()  = object : PubsubMessageValidator {
+            override fun validate(msg: Rpc.Message) {
+                if (!pubsubValidate(msg)) {
+                    throw InvalidMessageException(msg.toString())
+                }
+            }
+        }
     }
 }

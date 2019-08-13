@@ -25,7 +25,6 @@ import io.netty.handler.codec.MessageToMessageCodec
  * A Netty codec implementation that converts [MplexFrame] instances to [ByteBuf] and vice-versa.
  */
 class MplexFrameCodec : MessageToMessageCodec<ByteBuf, MuxFrame>() {
-    var initiator = false
 
     /**
      * Encodes the given mplex frame into bytes and writes them into the output list.
@@ -35,12 +34,10 @@ class MplexFrameCodec : MessageToMessageCodec<ByteBuf, MuxFrame>() {
      * @param out the list to write the bytes to.
      */
     override fun encode(ctx: ChannelHandlerContext, msg: MuxFrame, out: MutableList<Any>) {
-        if (msg.flag == MuxFrame.Flag.OPEN) initiator = true
-
         out.add(
             Unpooled.wrappedBuffer(
                 Unpooled.buffer().apply {
-                    writeUvarint(msg.id.id.shl(3).or(MplexFlags.toMplexFlag(msg.flag, initiator).toLong()))
+                    writeUvarint(msg.id.id.shl(3).or(MplexFlags.toMplexFlag(msg.flag, msg.id.initiator).toLong()))
                     writeUvarint(msg.data?.readableBytes() ?: 0)
                 },
                 msg.data ?: Unpooled.EMPTY_BUFFER
@@ -63,8 +60,8 @@ class MplexFrameCodec : MessageToMessageCodec<ByteBuf, MuxFrame>() {
             val streamId = header.shr(3)
             val data = msg.readBytes(lenData.toInt())
             data.retain() // on leaving encode() the superclass handler releases the buffer but need to forward it
-            val mplexFrame = MplexFrame(streamId, streamTag, data)
-            if (mplexFrame.flag == MuxFrame.Flag.OPEN) initiator = false
+            val initiator = if (streamTag == MplexFlags.NewStream) false else !MplexFlags.isInitiator(streamTag)
+            val mplexFrame = MplexFrame(streamId, initiator, streamTag, data)
             out.add(mplexFrame)
         }
     }

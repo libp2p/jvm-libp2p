@@ -1,7 +1,9 @@
 package io.libp2p.tools
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder
+import io.libp2p.core.IS_INITIATOR
 import io.libp2p.core.types.lazyVar
+import io.libp2p.core.util.netty.nettyInitializer
 import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelId
 import io.netty.channel.embedded.EmbeddedChannel
@@ -18,8 +20,12 @@ class TestChannelId(val id: String) : ChannelId {
     override fun asLongText() = id
 }
 
-class TestChannel(id: String = "test", vararg handlers: ChannelHandler?) :
-    EmbeddedChannel(TestChannelId(id), *handlers) {
+class TestChannel(id: String = "test", initiator: Boolean, vararg handlers: ChannelHandler?) :
+    EmbeddedChannel(
+        TestChannelId(id),
+        nettyInitializer { it.attr(IS_INITIATOR).set(initiator) },
+        *handlers
+    ) {
 
     var link: TestChannel? = null
     val sentMsgCount = AtomicLong()

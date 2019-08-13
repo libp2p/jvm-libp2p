@@ -1,7 +1,7 @@
 package io.libp2p.pubsub
 
+import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.PrivKey
-import io.libp2p.core.crypto.marshalPublicKey
 import io.libp2p.core.types.toByteArray
 import io.libp2p.core.types.toByteBuf
 import io.libp2p.core.types.toBytesBigEndian
@@ -25,7 +25,7 @@ class PubsubApiImpl(val router: PubsubRouter): PubsubApi {
     }
 
     inner class PublisherImpl(val privKey: PrivKey, seqId: Long): PubsubPublisherApi {
-        val from = marshalPublicKey(privKey.publicKey()).toProtobuf()
+        val from = PeerId.fromPubKey(privKey.publicKey()).b.toProtobuf()
         val seqCounter = AtomicLong(seqId)
         override fun publish(data: ByteBuf, vararg topics: Topic): CompletableFuture<Unit> {
             val msgToSign = Rpc.Message.newBuilder()

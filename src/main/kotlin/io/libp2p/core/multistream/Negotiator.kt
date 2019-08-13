@@ -1,5 +1,6 @@
 package io.libp2p.core.multistream
 
+import io.libp2p.core.IS_INITIATOR
 import io.libp2p.core.events.ProtocolNegotiationFailed
 import io.libp2p.core.events.ProtocolNegotiationSucceeded
 import io.libp2p.core.protocol.Protocols
@@ -44,16 +45,16 @@ object Negotiator {
     private val NA = "na"
     private val LS = "ls"
 
-    fun createInitializer(initiator: Boolean, vararg protocols: String): ChannelInitializer<Channel> {
+    fun createInitializer(vararg protocols: String): ChannelInitializer<Channel> {
         return nettyInitializer {
-            initNegotiator(it, initiator, *protocols)
+            initNegotiator(it, *protocols)
         }
     }
 
     /**
      * Negotiate as an initiator.
      */
-    fun initNegotiator(ch: Channel, initiator: Boolean, vararg protocols: String) {
+    fun initNegotiator(ch: Channel, vararg protocols: String) {
         if (protocols.isEmpty()) throw ProtocolNegotiationException("No protocols provided")
 
         val prehandlers = listOf(
@@ -66,7 +67,7 @@ object Negotiator {
         )
 
         prehandlers.forEach { ch.pipeline().addLast(it) }
-
+        val initiator = ch.attr(IS_INITIATOR).get()
         ch.pipeline().addLast(object : ChannelInboundHandlerAdapter() {
             var i = 0
             var headerRead = false

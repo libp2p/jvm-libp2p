@@ -19,18 +19,19 @@ class ConnectionUpgrader(
 
     var beforeSecureHandler: ChannelHandler? = null
     var afterSecureHandler: ChannelHandler? = null
-    fun establishSecureChannel(ch: Channel, initiator: Boolean): CompletableFuture<SecureChannel.Session> {
+
+    fun establishSecureChannel(ch: Channel): CompletableFuture<SecureChannel.Session> {
         val (channelHandler, future) =
-            Multistream.create(secureChannels, initiator).initializer()
+            Multistream.create(secureChannels).initializer()
         beforeSecureHandler?.also { ch.pipeline().addLast(it) }
         ch.pipeline().addLast(channelHandler)
         afterSecureHandler?.also { ch.pipeline().addLast(it) }
         return future
     }
 
-    fun establishMuxer(ch: Channel, streamHandler: StreamHandler, isInitiator: Boolean): CompletableFuture<StreamMuxer.Session> {
+    fun establishMuxer(ch: Channel, streamHandler: StreamHandler): CompletableFuture<StreamMuxer.Session> {
         val (channelHandler, future) =
-            Multistream.create(muxers, isInitiator).initializer()
+            Multistream.create(muxers).initializer()
         future.thenAccept {
             it.streamHandler = streamHandler
         }

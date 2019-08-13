@@ -6,3 +6,4 @@ import io.netty.util.AttributeKey
 
 val MUXER_SESSION = AttributeKey.newInstance<StreamMuxer.Session>("LIBP2P_MUXER_SESSION")!!
 val SECURE_SESSION = AttributeKey.newInstance<SecureChannel.Session>("LIBP2P_SECURE_SESSION")!!
+val IS_INITIATOR = AttributeKey.newInstance<Boolean>("LIBP2P_IS_INITIATOR")!!

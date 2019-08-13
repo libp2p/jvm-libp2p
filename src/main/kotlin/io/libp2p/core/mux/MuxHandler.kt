@@ -38,7 +38,7 @@ class MuxHandler() : AbtractMuxHandler<ByteBuf>(), StreamMuxer.Session {
     }
 
     override fun onChildWrite(child: MuxChannel<ByteBuf>, data: ByteBuf): Boolean {
-        getChannelHandlerContext().writeAndFlush(MuxFrame(child.id, MuxFrame.Flag.DATA, data))
+        getChannelHandlerContext().writeAndFlush(MuxFrame(child.id, MuxFrame.Flag.DATA,  data))
         return true
     }
 
@@ -57,7 +57,7 @@ class MuxHandler() : AbtractMuxHandler<ByteBuf>(), StreamMuxer.Session {
     override fun onRemoteCreated(child: MuxChannel<ByteBuf>) {
     }
 
-    override fun generateNextId() = MuxId(idGenerator.incrementAndGet())
+    override fun generateNextId() = MuxId(idGenerator.incrementAndGet(), true)
 
     override var streamHandler: StreamHandler? = null
         set(value) {
@@ -65,8 +65,9 @@ class MuxHandler() : AbtractMuxHandler<ByteBuf>(), StreamMuxer.Session {
             inboundInitializer = value!!.channelInitializer
         }
 
-    private fun createStream(channel: MuxChannel<ByteBuf>) = Stream(channel, Connection(ctx!!.channel()))
+    private fun createStream(channel: MuxChannel<ByteBuf>) =
+        Stream(channel, Connection(ctx!!.channel()))
 
     override fun createStream(streamHandler: StreamHandler): CompletableFuture<Stream> =
-        newStream(streamHandler.channelInitializer).thenApply(::createStream)
+        newStream(streamHandler.channelInitializer).thenApply { createStream(it) }
 }

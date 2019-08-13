@@ -2,6 +2,7 @@ package io.libp2p.pubsub
 
 import io.libp2p.core.types.toBytesBigEndian
 import io.libp2p.core.types.toProtobuf
+import io.libp2p.core.util.P2PService
 import io.libp2p.pubsub.flood.FloodRouter
 import io.libp2p.pubsub.gossip.GossipRouter
 import io.libp2p.tools.TestChannel.TestConnection
@@ -32,7 +33,7 @@ class PubsubRouterTest {
         router1.connect(router2, LogLevel.ERROR, LogLevel.ERROR)
 
         val msg = newMessage("topic1", 0L, "Hello".toByteArray())
-        router1.router.publish(msg)
+        router1.router.publish(msg)//.get()
 
         Assertions.assertEquals(msg, router2.inboundMessages.poll(5, TimeUnit.SECONDS))
     }
@@ -268,11 +269,11 @@ class PubsubRouterTest {
             receiveRouters.forEach { it.inboundMessages.clear() }
         }
 
-        val handler2router: (AbstractRouter.StreamHandler) -> TestRouter = {
-            val channel = it.ctx.channel()
+        val handler2router: (P2PService.PeerHandler) -> TestRouter = {
+            val channel = it.streamHandler.stream.ch
             val connection = allConnections.find { channel == it.ch1 || channel == it.ch2 }!!
             val otherChannel = if (connection.ch1 == channel) connection.ch2 else connection.ch1
-            allRouters.find { (it.router as AbstractRouter).peers.any { it.ctx.channel() == otherChannel } }!!
+            allRouters.find { (it.router as AbstractRouter).peers.any { it.streamHandler.stream.ch == otherChannel } }!!
         }
 
 //        allRouters.forEach {tr ->

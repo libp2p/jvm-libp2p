@@ -3,7 +3,6 @@ package io.libp2p.pubsub.gossip
 import io.libp2p.core.types.LimitedList
 import io.libp2p.core.types.anyComplete
 import io.libp2p.core.types.lazyVar
-import io.libp2p.core.types.toHex
 import io.libp2p.core.types.whenTrue
 import io.libp2p.pubsub.AbstractRouter
 import pubsub.pb.Rpc
@@ -21,7 +20,7 @@ open class GossipRouter : AbstractRouter() {
             .also { it.add(mutableListOf()) }
             .also { it.onDrop { it.forEach { messages.remove(it.msgId) } } }
 
-        fun put(msg: Rpc.Message) = getGossipId(msg).also {
+        fun put(msg: Rpc.Message) = getMessageId(msg).also {
                 messages[it] = msg
                 history[0].add(CacheEntry(it, msg.topicIDsList.toSet()))
             }
@@ -41,28 +40,26 @@ open class GossipRouter : AbstractRouter() {
     var gossipSize by lazyVar { 3 }
     var gossipHistoryLength by lazyVar { 5 }
     var mCache by lazyVar { MCache(gossipSize, gossipHistoryLength) }
-    val fanout: MutableMap<String, MutableList<StreamHandler>> = linkedMapOf()
-    val mesh: MutableMap<String, MutableList<StreamHandler>> = linkedMapOf()
+    val fanout: MutableMap<String, MutableList<PeerHandler>> = linkedMapOf()
+    val mesh: MutableMap<String, MutableList<PeerHandler>> = linkedMapOf()
     val lastPublished = linkedMapOf<String, Long>()
     private var inited = false
 
-    private fun getGossipId(msg: Rpc.Message): String = msg.from.toByteArray().toHex() + msg.seqno.toByteArray().toHex()
-
-    private fun submitGossip(topic: String, peers: Collection<StreamHandler>) {
+    private fun submitGossip(topic: String, peers: Collection<PeerHandler>) {
         val ids = mCache.getMessageIds(topic)
         if (ids.isNotEmpty()) {
             (peers - (mesh[topic] ?: emptySet())).forEach { ihave(it, ids) }
         }
     }
 
-    override fun onPeerDisconnected(peer: StreamHandler) {
+    override fun onPeerDisconnected(peer: PeerHandler) {
         mesh.values.forEach { it.remove(peer) }
         fanout.values.forEach { it.remove(peer) }
         collectPeerMessage(peer) // discard them
         super.onPeerDisconnected(peer)
     }
 
-    override fun onPeerActive(peer: StreamHandler) {
+    override fun onPeerActive(peer: PeerHandler) {
         super.onPeerActive(peer)
         if (!inited) {
             heartbeat.listeners.add(::heartBeat)
@@ -70,14 +67,14 @@ open class GossipRouter : AbstractRouter() {
         }
     }
 
-    private fun processControlMessage(controlMsg: Any, receivedFrom: StreamHandler) {
+    private fun processControlMessage(controlMsg: Any, receivedFrom: PeerHandler) {
         when(controlMsg) {
             is Rpc.ControlGraft ->
                 mesh[controlMsg.topicID]?.add(receivedFrom) ?: prune(receivedFrom, controlMsg.topicID)
             is Rpc.ControlPrune ->
                 mesh[controlMsg.topicID]?.remove(receivedFrom)
             is Rpc.ControlIHave ->
-                iwant(receivedFrom, controlMsg.messageIDsList - seenMessages.map { it.getGossipID() })
+                iwant(receivedFrom, controlMsg.messageIDsList - seenMessages)
             is Rpc.ControlIWant ->
                 controlMsg.messageIDsList
                     .mapNotNull { mCache.messages[it] }
@@ -85,13 +82,13 @@ open class GossipRouter : AbstractRouter() {
         }
     }
 
-    override fun processControl(ctrl: Rpc.ControlMessage, receivedFrom: StreamHandler) {
+    override fun processControl(ctrl: Rpc.ControlMessage, receivedFrom: PeerHandler) {
         ctrl.run {
             (graftList + pruneList + ihaveList + iwantList)
         }.forEach { processControlMessage(it, receivedFrom) }
     }
 
-    override fun broadcastInbound(msg: Rpc.RPC, receivedFrom: StreamHandler) {
+    override fun broadcastInbound(msg: Rpc.RPC, receivedFrom: PeerHandler) {
         msg.publishList.forEach { pubMsg ->
             pubMsg.topicIDsList
                 .mapNotNull { mesh[it] }
@@ -174,7 +171,7 @@ open class GossipRouter : AbstractRouter() {
         flushAllPending()
     }
 
-    private fun prune(peer: StreamHandler, topic: String) = addPendingRpcPart(
+    private fun prune(peer: PeerHandler, topic: String) = addPendingRpcPart(
         peer,
         Rpc.RPC.newBuilder().setControl(
             Rpc.ControlMessage.newBuilder().addPrune(
@@ -183,7 +180,7 @@ open class GossipRouter : AbstractRouter() {
         ).build()
     )
 
-    private fun graft(peer: StreamHandler, topic: String) = addPendingRpcPart(
+    private fun graft(peer: PeerHandler, topic: String) = addPendingRpcPart(
         peer,
         Rpc.RPC.newBuilder().setControl(
             Rpc.ControlMessage.newBuilder().addGraft(
@@ -192,7 +189,7 @@ open class GossipRouter : AbstractRouter() {
         ).build()
     )
 
-    private fun iwant(peer: StreamHandler, topics: List<String>) {
+    private fun iwant(peer: PeerHandler, topics: List<String>) {
         if (topics.isNotEmpty()) {
             addPendingRpcPart(
                 peer,
@@ -204,7 +201,7 @@ open class GossipRouter : AbstractRouter() {
             )
         }
     }
-    private fun ihave(peer: StreamHandler, topics: List<String>) {
+    private fun ihave(peer: PeerHandler, topics: List<String>) {
         addPendingRpcPart(
             peer,
             Rpc.RPC.newBuilder().setControl(

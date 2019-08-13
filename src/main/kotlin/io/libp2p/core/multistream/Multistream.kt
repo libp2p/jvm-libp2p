@@ -13,13 +13,12 @@ interface Multistream<TController> {
 
     companion object {
         fun <TController> create(
-            bindings: List<ProtocolBinding<TController>>,
-            initiator: Boolean
-        ): Multistream<TController> = MultistreamImpl(bindings, initiator)
+            bindings: List<ProtocolBinding<TController>>
+        ): Multistream<TController> = MultistreamImpl(bindings)
     }
 }
 
-class MultistreamImpl<TController>(override val bindings: List<ProtocolBinding<TController>>, val initiator: Boolean) :
+class MultistreamImpl<TController>(override val bindings: List<ProtocolBinding<TController>>) :
     Multistream<TController> {
 
     override fun initializer(): Pair<ChannelHandler, CompletableFuture<TController>> {
@@ -27,7 +26,6 @@ class MultistreamImpl<TController>(override val bindings: List<ProtocolBinding<T
         val handler = nettyInitializer {
             it.pipeline().addLast(
                 Negotiator.createInitializer(
-                    initiator,
                     *bindings.map { it.announce }.toTypedArray()
                 )
             )

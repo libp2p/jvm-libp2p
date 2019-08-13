@@ -31,6 +31,8 @@ object MplexFlags {
     const val ResetReceiver = 5
     const val ResetInitiator = 6
 
+    fun isInitiator(mplexFlag: Int) = mplexFlag % 2 == 0
+
     fun toAbstractFlag(mplexFlag: Int): MuxFrame.Flag =
         when (mplexFlag) {
             NewStream -> OPEN
