@@ -50,7 +50,7 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
         return CompletableFuture.completedFuture(null) // TODO
     }
 
-    fun addPendingRpcPart(toPeer: PeerHandler, msgPart: Rpc.RPC)  {
+    fun addPendingRpcPart(toPeer: PeerHandler, msgPart: Rpc.RPC) {
         pendingRpcParts.getOrPut(toPeer, { mutableListOf() }) += msgPart
     }
 
@@ -64,7 +64,7 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
     }
 
     protected fun flushAllPending() {
-        pendingRpcParts.keys.copy().forEach {peer ->
+        pendingRpcParts.keys.copy().forEach { peer ->
             collectPeerMessage(peer)?.also { send(peer, it) }
         }
     }
@@ -83,7 +83,7 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
     }
 
     override fun initChannel(streamHandler: StreamHandler) {
-        with (streamHandler.stream.ch.pipeline()) {
+        with(streamHandler.stream.ch.pipeline()) {
             addLast(ProtobufVarint32FrameDecoder())
             addLast(ProtobufVarint32LengthFieldPrepender())
             addLast(ProtobufDecoder(Rpc.RPC.getDefaultInstance()))
@@ -172,7 +172,7 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
         }
     }
 
-    protected open  fun unsubscribe(topic: String) {
+    protected open fun unsubscribe(topic: String) {
         activePeers.forEach { addPendingRpcPart(it,
             Rpc.RPC.newBuilder().addSubscriptions(Rpc.RPC.SubOpts.newBuilder().setSubscribe(false).setTopicid(topic)).build()
         ) }

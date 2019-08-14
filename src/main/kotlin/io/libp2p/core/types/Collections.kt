@@ -19,7 +19,7 @@ class LRUSet {
     }
 }
 
-class LimitedList<C>(val maxSize: Int): LinkedList<C>() {
+class LimitedList<C>(val maxSize: Int) : LinkedList<C>() {
     var onDropCallback: ((C) -> Unit)? = null
 
     override fun add(element: C): Boolean {
@@ -39,9 +39,9 @@ class LimitedList<C>(val maxSize: Int): LinkedList<C>() {
 }
 
 // experimental
-class MultiSet<K, V>: Iterable<Map.Entry<K, MutableList<V>>>{
+class MultiSet<K, V> : Iterable<Map.Entry<K, MutableList<V>>> {
 
-    inner class MSList(val key: K): ArrayList<V>() {
+    inner class MSList(val key: K) : ArrayList<V>() {
         private fun retain() {
             if (isEmpty()) {
                 holder[key] = this

@@ -33,7 +33,7 @@ class PubsubRouterTest {
         router1.connectSemiDuplex(router2, LogLevel.ERROR, LogLevel.ERROR)
 
         val msg = newMessage("topic1", 0L, "Hello".toByteArray())
-        router1.router.publish(msg)//.get()
+        router1.router.publish(msg) // .get()
 
         Assertions.assertEquals(msg, router2.inboundMessages.poll(5, TimeUnit.SECONDS))
         Assertions.assertTrue(router1.inboundMessages.isEmpty())
@@ -60,7 +60,6 @@ class PubsubRouterTest {
 
         // 2 heartbeats for all
         fuzz.timeController.addTime(Duration.ofSeconds(2))
-
 
         val msg1 = newMessage("topic1", 0L, "Hello".toByteArray())
         router1.router.publish(msg1)
@@ -116,7 +115,7 @@ class PubsubRouterTest {
 
         val routerCenter = fuzz.createTestRouter(routerFactory())
         allRouters += routerCenter
-        for(i in 1..20) {
+        for (i in 1..20) {
             val routerEnd = fuzz.createTestRouter(routerFactory())
             allRouters += routerEnd
             routerEnd.connectSemiDuplex(routerCenter)
@@ -134,7 +133,7 @@ class PubsubRouterTest {
 
         val receiveRouters = allRouters - routerCenter
 
-        val msgCount = receiveRouters.sumBy {it.inboundMessages.size }
+        val msgCount = receiveRouters.sumBy { it.inboundMessages.size }
         println("Messages received: $msgCount")
 
         Assertions.assertEquals(receiveRouters.size, msgCount)
@@ -156,12 +155,12 @@ class PubsubRouterTest {
 
         val routerCenter = fuzz.createTestRouter(routerFactory())
         allRouters += routerCenter
-        for(i in 1..20) {
+        for (i in 1..20) {
             val routerEnd = fuzz.createTestRouter(routerFactory())
             allRouters += routerEnd
             allConnections += routerEnd.connectSemiDuplex(routerCenter)
         }
-        for(i in 0..19) {
+        for (i in 0..19) {
             allConnections += allRouters[i + 1].connectSemiDuplex(allRouters[(i + 1) % 20 + 1])
         }
 
@@ -176,7 +175,7 @@ class PubsubRouterTest {
             Assertions.assertTrue(routerCenter.inboundMessages.isEmpty())
 
             val receiveRouters = allRouters - routerCenter
-            val msgCount = receiveRouters.sumBy {it.inboundMessages.size }
+            val msgCount = receiveRouters.sumBy { it.inboundMessages.size }
             val wireMsgCount = allConnections.sumBy { it.getMessageCount().toInt() }
 
             println("Messages received: $msgCount, total wire count: $wireMsgCount")
@@ -192,7 +191,7 @@ class PubsubRouterTest {
             Assertions.assertTrue(routerCenter.inboundMessages.isEmpty())
 
             val receiveRouters = allRouters - routerCenter
-            val msgCount = receiveRouters.sumBy {it.inboundMessages.size }
+            val msgCount = receiveRouters.sumBy { it.inboundMessages.size }
             val wireMsgCount = allConnections.sumBy { it.getMessageCount().toInt() }
 
             println("Messages received: $msgCount, total wire count: $wireMsgCount")
@@ -225,11 +224,11 @@ class PubsubRouterTest {
         val nodesCount = 21
         val neighboursCount = 10
 
-        for(i in 0 until nodesCount) {
+        for (i in 0 until nodesCount) {
             val routerEnd = fuzz.createTestRouter(routerFactory())
             allRouters += routerEnd
         }
-        for(i in 0 until nodesCount) {
+        for (i in 0 until nodesCount) {
             for (j in 1..neighboursCount / 2)
             allConnections += allRouters[i].connectSemiDuplex(allRouters[(i + j) % 21]/*, pubsubLogs = LogLevel.ERROR*/)
         }
@@ -246,7 +245,7 @@ class PubsubRouterTest {
             Assertions.assertTrue(allRouters[0].inboundMessages.isEmpty())
 
             val receiveRouters = allRouters - allRouters[0]
-            val msgCount = receiveRouters.sumBy {it.inboundMessages.size }
+            val msgCount = receiveRouters.sumBy { it.inboundMessages.size }
             firstCount = allConnections.sumBy { it.getMessageCount().toInt() }
 
             Assertions.assertEquals(receiveRouters.size, msgCount)
@@ -260,7 +259,7 @@ class PubsubRouterTest {
             Assertions.assertTrue(allRouters[0].inboundMessages.isEmpty())
 
             val receiveRouters = allRouters - allRouters[0]
-            val msgCount = receiveRouters.sumBy {it.inboundMessages.size }
+            val msgCount = receiveRouters.sumBy { it.inboundMessages.size }
             val wireMsgCount = allConnections.sumBy { it.getMessageCount().toInt() }
 
             println(" Messages received: $msgCount, wire count: warm up: $firstCount, regular: ${wireMsgCount - firstCount}")

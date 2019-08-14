@@ -27,7 +27,7 @@ interface PubsubPeerRouter {
 
 interface PubsubRouter : PubsubMessageRouter, PubsubPeerRouter
 
-interface PubsubRouterDebug: PubsubRouter {
+interface PubsubRouterDebug : PubsubRouter {
 
     var executor: ScheduledExecutorService
 

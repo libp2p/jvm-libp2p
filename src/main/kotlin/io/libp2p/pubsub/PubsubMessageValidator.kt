@@ -11,13 +11,13 @@ interface PubsubMessageValidator {
     fun validate(msg: Rpc.Message)
 
     companion object {
-        fun nopValidator()  = object : PubsubMessageValidator {
+        fun nopValidator() = object : PubsubMessageValidator {
             override fun validate(msg: Rpc.Message) {
                 // NOP
             }
         }
 
-        fun signatureValidator()  = object : PubsubMessageValidator {
+        fun signatureValidator() = object : PubsubMessageValidator {
             override fun validate(msg: Rpc.Message) {
                 if (!pubsubValidate(msg)) {
                     throw InvalidMessageException(msg.toString())

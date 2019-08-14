@@ -38,7 +38,7 @@ class MuxHandler() : AbtractMuxHandler<ByteBuf>(), StreamMuxer.Session {
     }
 
     override fun onChildWrite(child: MuxChannel<ByteBuf>, data: ByteBuf): Boolean {
-        getChannelHandlerContext().writeAndFlush(MuxFrame(child.id, MuxFrame.Flag.DATA,  data))
+        getChannelHandlerContext().writeAndFlush(MuxFrame(child.id, MuxFrame.Flag.DATA, data))
         return true
     }
 

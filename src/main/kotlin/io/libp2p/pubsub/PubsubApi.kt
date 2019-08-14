@@ -6,7 +6,7 @@ import java.util.concurrent.CompletableFuture
 import java.util.function.Consumer
 import kotlin.random.Random.Default.nextLong
 
-fun createPubsubApi(router: PubsubRouter) : PubsubApi = PubsubApiImpl(router)
+fun createPubsubApi(router: PubsubRouter): PubsubApi = PubsubApiImpl(router)
 
 interface PubsubSubscriberApi {
 

@@ -13,9 +13,9 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicLong
 import java.util.function.Consumer
 
-class PubsubApiImpl(val router: PubsubRouter): PubsubApi {
+class PubsubApiImpl(val router: PubsubRouter) : PubsubApi {
 
-    inner class SubscriptionImpl(val topics: Array<out Topic>, val receiver: Consumer<MessageApi>): PubsubSubscription {
+    inner class SubscriptionImpl(val topics: Array<out Topic>, val receiver: Consumer<MessageApi>) : PubsubSubscription {
         var unsubscribed = false
         override fun unsubscribe() {
             if (unsubscribed) throw PubsubException("Already unsubscribed")
@@ -24,7 +24,7 @@ class PubsubApiImpl(val router: PubsubRouter): PubsubApi {
         }
     }
 
-    inner class PublisherImpl(val privKey: PrivKey, seqId: Long): PubsubPublisherApi {
+    inner class PublisherImpl(val privKey: PrivKey, seqId: Long) : PubsubPublisherApi {
         val from = PeerId.fromPubKey(privKey.publicKey()).b.toProtobuf()
         val seqCounter = AtomicLong(seqId)
         override fun publish(data: ByteBuf, vararg topics: Topic): CompletableFuture<Unit> {
@@ -53,7 +53,7 @@ class PubsubApiImpl(val router: PubsubRouter): PubsubApi {
         }
     }
 
-    private fun rpc2Msg(msg: Rpc.Message) : MessageApi {
+    private fun rpc2Msg(msg: Rpc.Message): MessageApi {
         return MessageImpl(
             msg.data.toByteArray().toByteBuf(),
             msg.from.toByteArray(),
@@ -81,7 +81,7 @@ class PubsubApiImpl(val router: PubsubRouter): PubsubApi {
         return subscription
     }
 
-    private fun unsubscribeImpl(sub: SubscriptionImpl){
+    private fun unsubscribeImpl(sub: SubscriptionImpl) {
         val routerToUnsubscribe = mutableListOf<String>()
 
         synchronized(this) {

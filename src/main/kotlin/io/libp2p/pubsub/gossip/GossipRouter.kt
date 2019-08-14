@@ -68,7 +68,7 @@ open class GossipRouter : AbstractRouter() {
     }
 
     private fun processControlMessage(controlMsg: Any, receivedFrom: PeerHandler) {
-        when(controlMsg) {
+        when (controlMsg) {
             is Rpc.ControlGraft ->
                 mesh[controlMsg.topicID]?.add(receivedFrom) ?: prune(receivedFrom, controlMsg.topicID)
             is Rpc.ControlPrune ->

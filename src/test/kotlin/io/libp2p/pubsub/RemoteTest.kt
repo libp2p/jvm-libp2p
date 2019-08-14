@@ -34,7 +34,7 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 
 class GossipProtocolBinding(val router: PubsubRouterDebug) : ProtocolBinding<Unit> {
-    var debugGossipHandler: ChannelHandler?  = null
+    var debugGossipHandler: ChannelHandler? = null
     override val announce = "/meshsub/1.0.0"
     override val matcher = ProtocolMatcher(Mode.STRICT, announce)
     override fun initializer(selectedProtocol: String): ProtocolBindingInitializer<Unit> {
@@ -107,7 +107,7 @@ class RemoteTest {
         println("Subscribing Go..")
         val msgQueue = pdHost.host.pubsub.subscribe("topic1").get()
         Thread {
-            while(true) {
+            while (true) {
                 val psMessage = msgQueue.take()
                 println("Message received by p2pd: $psMessage")
                 println("From: " + psMessage.from.toByteArray().toHex())
@@ -146,5 +146,4 @@ class RemoteTest {
         val vRes = pubKey.verify("libp2p-pubsub:".toByteArray() + msg.toByteArray(), sigS.fromHex())
         println("$pubKey: $vRes")
     }
-
 }

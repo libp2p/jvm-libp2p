@@ -5,7 +5,7 @@ import io.libp2p.core.types.toVoidCompletableFuture
 import io.libp2p.pubsub.PubsubException
 import java.util.concurrent.CompletableFuture
 
-abstract class P2PServiceSemiDuplex: P2PService() {
+abstract class P2PServiceSemiDuplex : P2PService() {
 
     inner class SDPeerHandler(streamHandler: StreamHandler) : PeerHandler(streamHandler) {
 

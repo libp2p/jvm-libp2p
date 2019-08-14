@@ -16,7 +16,6 @@ class DeterministicFuzz {
     fun createControlledExecutor(): ScheduledExecutorService =
         ControlledExecutorServiceImpl().also { it.setTimeController(timeController) }
 
-
     fun createTestRouter(routerInstance: PubsubRouterDebug): TestRouter {
         routerInstance.curTime = { timeController.time }
         routerInstance.random = this.random

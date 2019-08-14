@@ -79,4 +79,3 @@ class SecIoSecureChannelTest {
         private val logger = LogManager.getLogger(SecIoSecureChannelTest::class.java)
     }
 }
-
