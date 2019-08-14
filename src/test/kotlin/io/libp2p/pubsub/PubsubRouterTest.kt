@@ -30,12 +30,14 @@ class PubsubRouterTest {
         val router2 = fuzz.createTestRouter(GossipRouter())
         router2.router.subscribe("topic1")
 
-        router1.connect(router2, LogLevel.ERROR, LogLevel.ERROR)
+        router1.connectSemiDuplex(router2, LogLevel.ERROR, LogLevel.ERROR)
 
         val msg = newMessage("topic1", 0L, "Hello".toByteArray())
         router1.router.publish(msg)//.get()
 
         Assertions.assertEquals(msg, router2.inboundMessages.poll(5, TimeUnit.SECONDS))
+        Assertions.assertTrue(router1.inboundMessages.isEmpty())
+        Assertions.assertTrue(router2.inboundMessages.isEmpty())
     }
 
     @Test
@@ -51,8 +53,8 @@ class PubsubRouterTest {
         val router2 = fuzz.createTestRouter(routerFactory())
         val router3 = fuzz.createTestRouter(routerFactory())
 
-        val conn_1_2 = router1.connect(router2, pubsubLogs = LogLevel.ERROR)
-        val conn_2_3 = router2.connect(router3, pubsubLogs = LogLevel.ERROR)
+        val conn_1_2 = router1.connectSemiDuplex(router2, pubsubLogs = LogLevel.ERROR)
+        val conn_2_3 = router2.connectSemiDuplex(router3, pubsubLogs = LogLevel.ERROR)
 
         listOf(router1, router2, router3).forEach { it.router.subscribe("topic1", "topic2", "topic3") }
 
@@ -78,7 +80,7 @@ class PubsubRouterTest {
         Assertions.assertTrue(router2.inboundMessages.isEmpty())
         Assertions.assertTrue(router3.inboundMessages.isEmpty())
 
-        val conn_3_1 = router3.connect(router1, pubsubLogs = LogLevel.ERROR)
+        val conn_3_1 = router3.connectSemiDuplex(router1, pubsubLogs = LogLevel.ERROR)
 
         val msg3 = newMessage("topic3", 2L, "Hello".toByteArray())
         router2.router.publish(msg3)
@@ -117,7 +119,7 @@ class PubsubRouterTest {
         for(i in 1..20) {
             val routerEnd = fuzz.createTestRouter(routerFactory())
             allRouters += routerEnd
-            routerEnd.connect(routerCenter)
+            routerEnd.connectSemiDuplex(routerCenter)
         }
 
         allRouters.forEach { it.router.subscribe("topic1") }
@@ -157,10 +159,10 @@ class PubsubRouterTest {
         for(i in 1..20) {
             val routerEnd = fuzz.createTestRouter(routerFactory())
             allRouters += routerEnd
-            allConnections += routerEnd.connect(routerCenter)
+            allConnections += routerEnd.connectSemiDuplex(routerCenter)
         }
         for(i in 0..19) {
-            allConnections += allRouters[i + 1].connect(allRouters[(i + 1) % 20 + 1])
+            allConnections += allRouters[i + 1].connectSemiDuplex(allRouters[(i + 1) % 20 + 1])
         }
 
         allRouters.forEach { it.router.subscribe("topic1") }
@@ -229,7 +231,7 @@ class PubsubRouterTest {
         }
         for(i in 0 until nodesCount) {
             for (j in 1..neighboursCount / 2)
-            allConnections += allRouters[i].connect(allRouters[(i + j) % 21]/*, pubsubLogs = LogLevel.ERROR*/)
+            allConnections += allRouters[i].connectSemiDuplex(allRouters[(i + j) % 21]/*, pubsubLogs = LogLevel.ERROR*/)
         }
 
         allRouters.forEach { it.router.subscribe("topic1") }

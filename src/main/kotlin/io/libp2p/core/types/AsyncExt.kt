@@ -32,7 +32,7 @@ fun <C> anyComplete(vararg all: CompletableFuture<C>): CompletableFuture<C> {
     else object : CompletableFuture<C>() {
         init {
             all.forEach { it.whenComplete { v, t ->
-                if (v != null) {
+                if (t == null) {
                     complete(v)
                 } else if (counter.decrementAndGet() == 0) {
                     completeExceptionally(NonCompleteException(t))

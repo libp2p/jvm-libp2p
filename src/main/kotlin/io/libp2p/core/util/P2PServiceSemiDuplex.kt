@@ -22,24 +22,33 @@ abstract class P2PServiceSemiDuplex: P2PService() {
 
     override fun createPeerHandler(streamHandler: StreamHandler) = SDPeerHandler(streamHandler)
 
-    override fun newStream(stream: Stream) {
-        val peerHandler = peers.find { it.peerId() == stream.remotePeerId() }
-        if (peerHandler == null) {
-            super.newStream(stream)
-        } else {
-            peerHandler as SDPeerHandler
-            if (peerHandler.otherStreamHandler != null) {
-                logger.warn("Duplicate steam for peer ${peerHandler.peerId()}. Closing it silently")
-                stream.ch.close()
-                return
+    override fun addNewStream(stream: Stream) {
+        runOnEventThread {
+            val peerHandler = peers.find { it.peerId() == stream.remotePeerId() }
+            if (peerHandler == null) {
+                addNewStreamEDT(stream)
+            } else {
+                peerHandler as SDPeerHandler
+                if (peerHandler.otherStreamHandler != null) {
+                    logger.warn("Duplicate steam for peer ${peerHandler.peerId()}. Closing it silently")
+                    stream.ch.close()
+                } else if (peerHandler.streamHandler.stream.isInitiator == stream.isInitiator) {
+                    logger.warn("Duplicate stream with initiator = ${stream.isInitiator} for peer ${peerHandler.peerId()}")
+                    stream.ch.close()
+                } else {
+                    val streamHandler = StreamHandler(stream)
+                    peerHandler.otherStreamHandler = streamHandler
+                    streamHandler.peerHandler = peerHandler
+                    initChannel(streamHandler)
+                }
             }
-            if (peerHandler.streamHandler.stream.isInitiator == stream.isInitiator) {
-                logger.warn("Duplicate stream with initiator = ${stream.isInitiator} for peer ${peerHandler.peerId()}")
-            }
-            val streamHandler = StreamHandler(stream)
-            peerHandler.otherStreamHandler = streamHandler
-            streamHandler.peerHandler = peerHandler
-            initChannel(streamHandler)
+        }
+    }
+
+    override fun streamActive(stream: StreamHandler) {
+        if (stream == (stream.peerHandler as SDPeerHandler).getOutboundHandler()) {
+            // invoke streamActive only when outbound handler is activated
+            super.streamActive(stream)
         }
     }
 

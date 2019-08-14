@@ -22,27 +22,27 @@ abstract class P2PService {
 
         override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
             runOnEventThread {
-                onInbound(peerHandler, msg)
+                streamInbound(this, msg)
             }
         }
 
         override fun channelActive(ctx: ChannelHandlerContext) {
             this.ctx = ctx
             runOnEventThread {
-                peerActive(peerHandler)
+                streamActive(this)
             }
         }
         override fun channelUnregistered(ctx: ChannelHandlerContext?) {
             closed = true
             runOnEventThread {
                 this.ctx = null
-                peerDisconnected(peerHandler)
+                streamDisconnected(this)
             }
         }
 
         override fun exceptionCaught(ctx: ChannelHandlerContext?, cause: Throwable) {
             runOnEventThread {
-                onPeerException(peerHandler, cause)
+                streamException(this, cause)
             }
         }
     }
@@ -57,7 +57,9 @@ abstract class P2PService {
     val peers = mutableListOf<PeerHandler>()
     val activePeers = mutableListOf<PeerHandler>()
 
-    open fun newStream(stream: Stream) {
+    open fun addNewStream(stream: Stream) = runOnEventThread { addNewStreamEDT(stream) }
+
+    protected fun addNewStreamEDT(stream: Stream) {
         val streamHandler = StreamHandler(stream)
         val peerHandler = createPeerHandler(streamHandler)
         streamHandler.peerHandler = peerHandler
@@ -65,17 +67,26 @@ abstract class P2PService {
         peers += peerHandler
     }
 
-    open protected fun createPeerHandler(streamHandler: StreamHandler) = PeerHandler(streamHandler)
+    protected open fun createPeerHandler(streamHandler: StreamHandler) = PeerHandler(streamHandler)
 
-    open protected fun peerActive(peer: PeerHandler) {
-        activePeers += peer
-        onPeerActive(peer)
+    protected open fun streamActive(stream: StreamHandler) {
+        activePeers += stream.peerHandler
+        onPeerActive(stream.peerHandler)
     }
 
-    open protected fun peerDisconnected(peer: PeerHandler) {
-        activePeers -= peer
-        peers -= peer
-        onPeerDisconnected(peer)
+    protected open fun streamDisconnected(stream: StreamHandler) {
+        activePeers -= stream.peerHandler
+        if (peers.remove(stream.peerHandler)) {
+            onPeerDisconnected(stream.peerHandler)
+        }
+    }
+
+    protected open fun streamException(stream: StreamHandler, cause: Throwable) {
+        onPeerException(stream.peerHandler, cause)
+    }
+
+    protected open fun streamInbound(stream: StreamHandler, msg: Any) {
+        onInbound(stream.peerHandler, msg)
     }
 
     protected abstract fun initChannel(streamHandler: StreamHandler)

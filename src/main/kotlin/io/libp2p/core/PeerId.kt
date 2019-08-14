@@ -5,6 +5,7 @@ import io.libp2p.core.encode.Base58
 import io.libp2p.core.multiformats.Multihash
 import io.libp2p.core.types.toByteArray
 import io.libp2p.core.types.toByteBuf
+import kotlin.random.Random
 
 class PeerId(val b: ByteArray) {
 
@@ -39,7 +40,7 @@ class PeerId(val b: ByteArray) {
 
         @JvmStatic
         fun random(): PeerId {
-            return PeerId(ByteArray(0))
+            return PeerId(Random.nextBytes(32))
         }
     }
 }

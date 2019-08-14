@@ -23,7 +23,9 @@ class TestChannelId(val id: String) : ChannelId {
 class TestChannel(id: String = "test", initiator: Boolean, vararg handlers: ChannelHandler?) :
     EmbeddedChannel(
         TestChannelId(id),
-        nettyInitializer { it.attr(IS_INITIATOR).set(initiator) },
+        nettyInitializer {
+            it.attr(IS_INITIATOR).set(initiator)
+        },
         *handlers
     ) {
 

@@ -12,7 +12,7 @@ class PeerIdTest {
         val idHex = "1220593cd036d6ac062ca1c332c15aca7a7b8ed7c9a004b34046e58f2aa6439102b5"
         val peerId = PeerId(idHex.fromHex())
         println("Base58: " + peerId.toBase58())
-        Assertions.assertEquals("QmULzn6KtFUCKpkFymEUgUvkLtv9j2Eo4utZPELmQEebR6", peerId)
+        Assertions.assertEquals("QmULzn6KtFUCKpkFymEUgUvkLtv9j2Eo4utZPELmQEebR6", peerId.toBase58())
     }
 
     @Test

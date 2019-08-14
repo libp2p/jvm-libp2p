@@ -7,7 +7,6 @@ import io.libp2p.core.types.completedExceptionally
 import io.libp2p.core.types.copy
 import io.libp2p.core.types.lazyVar
 import io.libp2p.core.types.toHex
-import io.libp2p.core.util.P2PService
 import io.libp2p.core.util.P2PServiceSemiDuplex
 import io.netty.channel.ChannelHandler
 import io.netty.handler.codec.protobuf.ProtobufDecoder
@@ -46,12 +45,12 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
         }
     }
 
-    protected open fun submitPublishMessage(toPeer: P2PService.PeerHandler, msg: Rpc.Message): CompletableFuture<Unit> {
+    protected open fun submitPublishMessage(toPeer: PeerHandler, msg: Rpc.Message): CompletableFuture<Unit> {
         addPendingRpcPart(toPeer, Rpc.RPC.newBuilder().addPublish(msg).build())
         return CompletableFuture.completedFuture(null) // TODO
     }
 
-    fun addPendingRpcPart(toPeer: P2PService.PeerHandler, msgPart: Rpc.RPC)  {
+    fun addPendingRpcPart(toPeer: PeerHandler, msgPart: Rpc.RPC)  {
         pendingRpcParts.getOrPut(toPeer, { mutableListOf() }) += msgPart
     }
 
@@ -71,7 +70,7 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
     }
 
     override fun addPeer(peer: Stream) {
-        newStream(peer)
+        addNewStream(peer)
     }
 
     override fun addPeerWithDebugHandler(peer: Stream, debugHandler: ChannelHandler?) {
