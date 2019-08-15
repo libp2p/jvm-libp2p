@@ -92,7 +92,7 @@ kotlinter {
     allowWildcardImports = false
 }
 
-val compileKotlin: KotlinCompile by tasks
+val compileKotlin: KotlinCompile by tasks 
 compileKotlin.kotlinOptions {
     freeCompilerArgs = listOf("-XXLanguage:+InlineClasses")
 }
