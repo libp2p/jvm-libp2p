@@ -17,8 +17,8 @@ import io.libp2p.core.security.secio.SecIoSecureChannel
 import io.libp2p.core.transport.ConnectionUpgrader
 import io.libp2p.core.transport.tcp.TcpTransport
 import io.libp2p.core.types.fromHex
+import io.libp2p.core.types.toByteArray
 import io.libp2p.core.types.toByteBuf
-import io.libp2p.core.types.toHex
 import io.libp2p.core.types.toProtobuf
 import io.libp2p.core.util.netty.nettyInitializer
 import io.libp2p.pubsub.gossip.GossipRouter
@@ -27,11 +27,15 @@ import io.netty.channel.ChannelHandler
 import io.netty.handler.logging.LogLevel
 import io.netty.handler.logging.LoggingHandler
 import org.apache.logging.log4j.LogManager
+import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import pubsub.pb.Rpc
+import java.nio.charset.StandardCharsets
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
+import java.util.function.Consumer
 
 class GossipProtocolBinding(val router: PubsubRouterDebug) : ProtocolBinding<Unit> {
     var debugGossipHandler: ChannelHandler? = null
@@ -47,86 +51,90 @@ class GossipProtocolBinding(val router: PubsubRouterDebug) : ProtocolBinding<Uni
     }
 }
 
+const val libp2pdPath = "C:\\Users\\Admin\\go\\bin\\p2pd.exe"
+
 class RemoteTest {
 
     @Test
     @Disabled
     fun connect1() {
         val logger = LogManager.getLogger("test")
-        val pdHost = DaemonLauncher("C:\\Users\\Admin\\go\\bin\\p2pd.exe")
+        val pdHost = DaemonLauncher(libp2pdPath)
             .launch(45555, "-pubsub")
 
-//        Thread.sleep(1000)
-//        println("Subscribing Go..")
-//        pdHost.host.pubsub.subscribe("topic1").get()
-        val (privKey1, pubKey1) = generateKeyPair(KEY_TYPE.ECDSA)
+        try {
 
-        val gossipRouter = GossipRouter().also {
-            it.validator = PubsubMessageValidator.signatureValidator()
-        }
-        gossipRouter.subscribe("topic1")
-        val pubsubApi = createPubsubApi(gossipRouter)
-        val publisher = pubsubApi.createPublisher(privKey1, 8888)
+            val (privKey1, pubKey1) = generateKeyPair(KEY_TYPE.ECDSA)
 
-        val upgrader = ConnectionUpgrader(
-            listOf(SecIoSecureChannel(privKey1)),
-            listOf(MplexStreamMuxer().also {
-                it.intermediateFrameHandler = LoggingHandler("#3", LogLevel.INFO)
-            })
-        ).also {
-//                it.beforeSecureHandler = LoggingHandler("#1", LogLevel.INFO)
+            val gossipRouter = GossipRouter().also {
+                it.validator = PubsubMessageValidator.signatureValidator()
+            }
+            val pubsubApi = createPubsubApi(gossipRouter)
+            val publisher = pubsubApi.createPublisher(privKey1, 8888)
+
+            val upgrader = ConnectionUpgrader(
+                listOf(SecIoSecureChannel(privKey1)),
+                listOf(MplexStreamMuxer().also {
+                    it.intermediateFrameHandler = LoggingHandler("#3", LogLevel.INFO)
+                })
+            ).also {
+                //                it.beforeSecureHandler = LoggingHandler("#1", LogLevel.INFO)
                 it.afterSecureHandler = LoggingHandler("#2", LogLevel.INFO)
             }
 
-        val tcpTransport = TcpTransport(upgrader)
-        val gossipLisener = GossipProtocolBinding(gossipRouter).also {
-            it.debugGossipHandler = LoggingHandler("#4", LogLevel.INFO)
+            val tcpTransport = TcpTransport(upgrader)
+            val gossipProtocolBinding = GossipProtocolBinding(gossipRouter).also {
+                it.debugGossipHandler = LoggingHandler("#4", LogLevel.INFO)
+            }
+
+            val applicationProtocols = listOf(gossipProtocolBinding)
+            val inboundStreamHandler = StreamHandler.create(Multistream.create(applicationProtocols))
+            logger.info("Dialing...")
+            val connFuture = tcpTransport.dial(Multiaddr("/ip4/127.0.0.1/tcp/45555"), inboundStreamHandler)
+
+            connFuture.thenCompose {
+                logger.info("Connection made")
+                val initiator = Multistream.create(applicationProtocols)
+                val (channelHandler, completableFuture) = initiator.initializer()
+                logger.info("Creating stream")
+                it.muxerSession.get().createStream(StreamHandler.create(channelHandler))
+                completableFuture
+            }.thenAccept {
+                logger.info("Stream created")
+            }.get(5, TimeUnit.HOURS)
+            logger.info("Success!")
+
+            Thread.sleep(1000)
+            val javaInbound = LinkedBlockingQueue<MessageApi>()
+            println("Subscribing Java..")
+            pubsubApi.subscribe(Consumer { javaInbound += it }, Topic("topic1"))
+            println("Subscribing Go..")
+            val goInbound = pdHost.host.pubsub.subscribe("topic1").get()
+            Thread.sleep(1000)
+            println("Sending msg from Go..")
+            val msgFromGo = "Go rocks! JVM sucks!"
+            pdHost.host.pubsub.publish("topic1", msgFromGo.toByteArray()).get()
+            val msg1 = javaInbound.poll(5, TimeUnit.SECONDS)
+            Assertions.assertNotNull(msg1)
+            Assertions.assertNull(javaInbound.poll())
+            Assertions.assertEquals(msgFromGo, msg1!!.data.toByteArray().toString(StandardCharsets.UTF_8))
+
+            // draining message which Go (by mistake or by design) replays back to subscriber
+            goInbound.poll(1, TimeUnit.SECONDS)
+
+            println("Sending msg from Java..")
+            val msgFromJava = "Go suck my duke"
+            publisher.publish(msgFromJava.toByteArray().toByteBuf(), Topic("topic1"))
+            val msg2 = goInbound.poll(5, TimeUnit.SECONDS)
+            Assertions.assertNotNull(msg2)
+            Assertions.assertNull(goInbound.poll())
+            Assertions.assertEquals(msgFromJava, msg2!!.data.toByteArray().toString(StandardCharsets.UTF_8))
+
+            println("Done!")
+        } finally {
+            println("Killing p2pd process")
+            pdHost.kill()
         }
-
-        val applicationProtocols = listOf(gossipLisener)
-        val inboundStreamHandler = StreamHandler.create(Multistream.create(applicationProtocols))
-        logger.info("Dialing...")
-        val connFuture = tcpTransport.dial(Multiaddr("/ip4/127.0.0.1/tcp/45555"), inboundStreamHandler)
-
-        connFuture.thenApply {
-            logger.info("Connection made")
-            val gossipDialer = GossipProtocolBinding(gossipRouter).also {
-                it.debugGossipHandler = LoggingHandler("#4'", LogLevel.INFO)
-            }
-            val initiator = Multistream.create(listOf(gossipDialer))
-            val (channelHandler, completableFuture) = initiator.initializer()
-            logger.info("Creating stream")
-            it.muxerSession.get().createStream(StreamHandler.create(channelHandler))
-            completableFuture
-        }.thenAccept {
-            logger.info("Stream created, sending echo string...")
-        }.get(5, TimeUnit.HOURS)
-        logger.info("Success!")
-
-        Thread.sleep(2000)
-        println("Subscribing Go..")
-        val msgQueue = pdHost.host.pubsub.subscribe("topic1").get()
-        Thread {
-            while (true) {
-                val psMessage = msgQueue.take()
-                println("Message received by p2pd: $psMessage")
-                println("From: " + psMessage.from.toByteArray().toHex())
-                println("Seq: " + psMessage.seqno.toByteArray().toHex())
-                println("Sig: " + psMessage.signature.toByteArray().toHex())
-                println("Key: " + psMessage.key.toByteArray().toHex())
-            }
-        }.start()
-        Thread.sleep(2000)
-        println("Sending msg from Go..")
-        pdHost.host.pubsub.publish("topic1", ByteArray(10)).get()
-        Thread.sleep(2000)
-        println("Sending msg from Java..")
-        publisher.publish("Hello".toByteArray().toByteBuf(), Topic("topic1"))
-//        gossipRouter.publish(Rpc.Message.newBuilder().addTopicIDs("topic1").setData(ByteArray(1000).toProtobuf()).build())
-
-        println("Waiting")
-        Thread.sleep(5000)
-        pdHost.kill()
     }
 
     @Test

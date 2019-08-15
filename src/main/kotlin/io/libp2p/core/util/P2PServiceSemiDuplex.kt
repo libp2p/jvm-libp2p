@@ -1,6 +1,5 @@
 package io.libp2p.core.util
 
-import io.libp2p.core.Stream
 import io.libp2p.core.types.toVoidCompletableFuture
 import io.libp2p.pubsub.PubsubException
 import java.util.concurrent.CompletableFuture
@@ -22,24 +21,27 @@ abstract class P2PServiceSemiDuplex : P2PService() {
 
     override fun createPeerHandler(streamHandler: StreamHandler) = SDPeerHandler(streamHandler)
 
-    override fun addNewStream(stream: Stream) {
-        runOnEventThread {
-            val peerHandler = peers.find { it.peerId() == stream.remotePeerId() }
-            if (peerHandler == null) {
-                addNewStreamEDT(stream)
-            } else {
-                peerHandler as SDPeerHandler
-                if (peerHandler.otherStreamHandler != null) {
+    override fun streamAdded(streamHandler: StreamHandler) {
+        val stream = streamHandler.stream
+        val peerHandler = peers.find { it.peerId() == stream.remotePeerId() }
+        if (peerHandler == null) {
+            super.streamAdded(streamHandler)
+        } else {
+            peerHandler as SDPeerHandler
+            when {
+                peerHandler.otherStreamHandler != null -> {
                     logger.warn("Duplicate steam for peer ${peerHandler.peerId()}. Closing it silently")
                     stream.ch.close()
-                } else if (peerHandler.streamHandler.stream.isInitiator == stream.isInitiator) {
+                    throw IllegalStateException()
+                }
+                peerHandler.streamHandler.stream.isInitiator == stream.isInitiator -> {
                     logger.warn("Duplicate stream with initiator = ${stream.isInitiator} for peer ${peerHandler.peerId()}")
                     stream.ch.close()
-                } else {
-                    val streamHandler = StreamHandler(stream)
+                    throw IllegalStateException()
+                }
+                else -> {
                     peerHandler.otherStreamHandler = streamHandler
                     streamHandler.peerHandler = peerHandler
-                    initChannel(streamHandler)
                 }
             }
         }

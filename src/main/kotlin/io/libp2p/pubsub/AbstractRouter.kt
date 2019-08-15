@@ -34,7 +34,7 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
     protected fun getMessageId(msg: Rpc.Message): String = msg.from.toByteArray().toHex() + msg.seqno.toByteArray().toHex()
 
     override fun publish(msg: Rpc.Message): CompletableFuture<Unit> {
-        return submitOnEventThread {
+        return submitAsyncOnEventThread {
             if (getMessageId(msg) in seenMessages) {
                 completedExceptionally(MessageAlreadySeenException("Msg: $msg"))
             } else {
@@ -126,6 +126,7 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
             seenMessages += msg.publishList.map { getMessageId(it) }
             broadcastInbound(msgUnseen, peer)
         }
+        flushAllPending()
     }
 
     override fun onPeerDisconnected(peer: PeerHandler) {

@@ -12,6 +12,7 @@ import org.apache.logging.log4j.LogManager
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
+import java.util.function.Supplier
 
 abstract class P2PService {
 
@@ -19,6 +20,12 @@ abstract class P2PService {
         var ctx: ChannelHandlerContext? = null
         var closed = false
         lateinit var peerHandler: PeerHandler
+
+        override fun handlerAdded(ctx: ChannelHandlerContext?) {
+            runOnEventThread {
+                streamAdded(this)
+            }
+        }
 
         override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
             runOnEventThread {
@@ -57,13 +64,11 @@ abstract class P2PService {
     val peers = mutableListOf<PeerHandler>()
     val activePeers = mutableListOf<PeerHandler>()
 
-    open fun addNewStream(stream: Stream) = runOnEventThread { addNewStreamEDT(stream) }
+    open fun addNewStream(stream: Stream) = initChannel(StreamHandler(stream))
 
-    protected fun addNewStreamEDT(stream: Stream) {
-        val streamHandler = StreamHandler(stream)
+    protected open fun streamAdded(streamHandler: StreamHandler) {
         val peerHandler = createPeerHandler(streamHandler)
         streamHandler.peerHandler = peerHandler
-        initChannel(streamHandler)
         peers += peerHandler
     }
 
@@ -103,7 +108,8 @@ abstract class P2PService {
 
     fun runOnEventThread(run: () -> Unit) = executor.execute(run)
 
-    fun <C> submitOnEventThread(run: () -> CompletableFuture<C>): CompletableFuture<C> = executor.submitAsync(run)
+    fun <C> submitOnEventThread(run: () -> C): CompletableFuture<C> = CompletableFuture.supplyAsync(Supplier { run() }, executor)
+    fun <C> submitAsyncOnEventThread(run: () -> CompletableFuture<C>): CompletableFuture<C> = executor.submitAsync(run)
 
     companion object {
         private val threadFactory = ThreadFactoryBuilder().setDaemon(true).setNameFormat("pubsub-router-event-thread-%d").build()

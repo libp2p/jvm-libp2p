@@ -36,6 +36,7 @@ open class GossipRouter : AbstractRouter() {
     var D = 3
     var DLow = 2
     var DHigh = 4
+    var DGossip = 3
     var fanoutTTL = 60 * 1000L
     var gossipSize by lazyVar { 3 }
     var gossipHistoryLength by lazyVar { 5 }
@@ -141,34 +142,45 @@ open class GossipRouter : AbstractRouter() {
     }
 
     private fun heartBeat(time: Long) {
-        mesh.entries.forEach { (topic, peers) ->
-            if (peers.size < DLow) {
-                (getTopicPeers(topic) - peers).shuffled(random).take(D - peers.size).forEach { newPeer ->
-                    peers += newPeer
-                    graft(newPeer, topic)
+        try {
+            mesh.entries.forEach { (topic, peers) ->
+                if (peers.size < DLow) {
+                    (getTopicPeers(topic) - peers).shuffled(random).take(D - peers.size).forEach { newPeer ->
+                        peers += newPeer
+                        graft(newPeer, topic)
+                    }
+                } else if (peers.size > DHigh) {
+                    peers.shuffled(random).take(peers.size - D).forEach { dropPeer ->
+                        peers -= dropPeer
+                        prune(dropPeer, topic)
+                    }
                 }
-            } else if (peers.size > DHigh) {
-                peers.shuffled(random).take(peers.size - D).forEach { dropPeer ->
-                    peers -= dropPeer
-                    prune(dropPeer, topic)
+                submitGossip(topic, peers)
+            }
+            fanout.entries.forEach { (topic, peers) ->
+                peers.removeIf { it in getTopicPeers(topic) }
+                val needMore = D - peers.size
+                if (needMore > 0) {
+                    peers += (getTopicPeers(topic) - peers).shuffled(random).take(needMore)
                 }
+                submitGossip(topic, peers)
             }
-            submitGossip(topic, peers)
-        }
-        fanout.entries.forEach { (topic, peers) ->
-            peers.removeIf { it in getTopicPeers(topic) }
-            val needMore = D - peers.size
-            if (needMore > 0) {
-                peers += (getTopicPeers(topic) - peers).shuffled(random).take(needMore)
+            lastPublished.entries.removeIf { (topic, lastPub) ->
+                (time - lastPub > fanoutTTL)
+                    .whenTrue { fanout.remove(topic) }
             }
-            submitGossip(topic, peers)
-        }
-        lastPublished.entries.removeIf { (topic, lastPub) ->
-            (time - lastPub > fanoutTTL)
-                .whenTrue { fanout.remove(topic) } }
 
-        mCache.shift()
-        flushAllPending()
+            (mesh.keys.toSet() + fanout.keys).forEach { topic ->
+                val gossipPeers = (getTopicPeers(topic) - mesh[topic]!! - (fanout[topic] ?: emptyList()))
+                    .shuffled(random).take(DGossip)
+                submitGossip(topic, gossipPeers)
+            }
+
+            mCache.shift()
+            flushAllPending()
+        } catch (t: Exception) {
+            logger.warn("Exception in gossipsub heartbeat", t)
+        }
     }
 
     private fun prune(peer: PeerHandler, topic: String) = addPendingRpcPart(
@@ -211,10 +223,11 @@ open class GossipRouter : AbstractRouter() {
             ).build())
     }
 
-    fun withDConstants(D: Int, DLow: Int = D * 2 / 3, DHigh: Int = D * 2): GossipRouter {
+    fun withDConstants(D: Int, DLow: Int = D * 2 / 3, DHigh: Int = D * 2, DGossip: Int = D): GossipRouter {
         this.D = D
         this.DLow = DLow
         this.DHigh = DHigh
+        this.DGossip = DGossip
         return this
     }
 }
