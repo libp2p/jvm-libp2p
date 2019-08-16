@@ -105,7 +105,7 @@ class PubsubRouterTest {
     @Test
     fun test3() {
         scenario3_StarTopology { FloodRouter() }
-        scenario3_StarTopology { GossipRouter() }
+        scenario3_StarTopology { GossipRouter().withDConstants(3, 3, 100) }
     }
 
     fun scenario3_StarTopology(routerFactory: () -> PubsubRouterDebug) {
