@@ -40,7 +40,7 @@ class PubsubApiImpl(val router: PubsubRouter) : PubsubApi {
     }
 
     init {
-        router.setHandler { onNewMessage(it) }
+        router.initHandler { onNewMessage(it) }
     }
 
     val subscriptions: MutableMap<Topic, MutableList<SubscriptionImpl>> = mutableMapOf()

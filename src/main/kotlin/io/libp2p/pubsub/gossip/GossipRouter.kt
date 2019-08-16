@@ -9,6 +9,9 @@ import pubsub.pb.Rpc
 import java.time.Duration
 import java.util.concurrent.CompletableFuture
 
+/**
+ * Router implementing this protocol: https://github.com/libp2p/specs/tree/master/pubsub/gossipsub
+ */
 open class GossipRouter : AbstractRouter() {
 
     data class CacheEntry(val msgId: String, val topics: Set<String>)

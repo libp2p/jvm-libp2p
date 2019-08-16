@@ -1,9 +1,15 @@
 package io.libp2p.core.util
 
+import io.libp2p.core.BadPeerException
+import io.libp2p.core.InternalErrorException
 import io.libp2p.core.types.toVoidCompletableFuture
-import io.libp2p.pubsub.PubsubException
 import java.util.concurrent.CompletableFuture
 
+/**
+ * The service where communication between peers is performed via two [io.libp2p.core.Stream]s
+ * They are initiated asynchronously by each peer. Initiated stream is used solely for writing data
+ * and accepted steam is used solely for reading
+ */
 abstract class P2PServiceSemiDuplex : P2PService() {
 
     inner class SDPeerHandler(streamHandler: StreamHandler) : PeerHandler(streamHandler) {
@@ -11,7 +17,7 @@ abstract class P2PServiceSemiDuplex : P2PService() {
         var otherStreamHandler: StreamHandler? = null
 
         override fun writeAndFlush(msg: Any): CompletableFuture<Unit> =
-            getOutboundHandler()?.ctx?.writeAndFlush(msg)?.toVoidCompletableFuture() ?: throw PubsubException("No active outbound stream to write data $msg")
+            getOutboundHandler()?.ctx?.writeAndFlush(msg)?.toVoidCompletableFuture() ?: throw InternalErrorException("No active outbound stream to write data $msg")
 
         override fun isActive() = getOutboundHandler()?.ctx != null
 
@@ -30,14 +36,12 @@ abstract class P2PServiceSemiDuplex : P2PService() {
             peerHandler as SDPeerHandler
             when {
                 peerHandler.otherStreamHandler != null -> {
-                    logger.warn("Duplicate steam for peer ${peerHandler.peerId()}. Closing it silently")
                     stream.ch.close()
-                    throw IllegalStateException()
+                    throw BadPeerException("Duplicate steam for peer ${peerHandler.peerId()}. Closing it silently")
                 }
                 peerHandler.streamHandler.stream.isInitiator == stream.isInitiator -> {
-                    logger.warn("Duplicate stream with initiator = ${stream.isInitiator} for peer ${peerHandler.peerId()}")
                     stream.ch.close()
-                    throw IllegalStateException()
+                    throw BadPeerException("Duplicate stream with initiator = ${stream.isInitiator} for peer ${peerHandler.peerId()}")
                 }
                 else -> {
                     peerHandler.otherStreamHandler = streamHandler

@@ -17,6 +17,9 @@ import pubsub.pb.Rpc
 import java.util.Random
 import java.util.concurrent.CompletableFuture
 
+/**
+ * Implements common logic for pubsub routers
+ */
 abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRouterDebug {
 
     override var curTime: () -> Long by lazyVar { { System.currentTimeMillis() } }
@@ -30,6 +33,7 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
     val subscribedTopics = linkedSetOf<String>()
     val pendingRpcParts = linkedMapOf<PeerHandler, MutableList<Rpc.RPC>>()
     private var debugHandler: ChannelHandler? = null
+    private val pendingMessagePromises = MultiSet<PeerHandler, CompletableFuture<Unit>>()
 
     protected fun getMessageId(msg: Rpc.Message): String = msg.from.toByteArray().toHex() + msg.seqno.toByteArray().toHex()
 
@@ -50,10 +54,17 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
         return CompletableFuture.completedFuture(null) // TODO
     }
 
-    fun addPendingRpcPart(toPeer: PeerHandler, msgPart: Rpc.RPC) {
+    /**
+     * Submits a partial message for a peer.
+     * Later message parts for each peer are merged and sent to the wire
+     */
+    protected fun addPendingRpcPart(toPeer: PeerHandler, msgPart: Rpc.RPC) {
         pendingRpcParts.getOrPut(toPeer, { mutableListOf() }) += msgPart
     }
 
+    /**
+     * Drains all partial messages for [toPeer] and returns merged message
+     */
     protected fun collectPeerMessage(toPeer: PeerHandler): Rpc.RPC? {
         val msgs = pendingRpcParts.remove(toPeer) ?: emptyList<Rpc.RPC>()
         if (msgs.isEmpty()) return null
@@ -63,6 +74,10 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
         return bld.build()
     }
 
+    /**
+     * Flushes all pending message parts for all peers
+     * @see addPendingRpcPart
+     */
     protected fun flushAllPending() {
         pendingRpcParts.keys.copy().forEach { peer ->
             collectPeerMessage(peer)?.also { send(peer, it) }
@@ -97,12 +112,19 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
         peer.ch.close()
     }
 
-    // msg: validated unseen messages received from api
+    /**
+     * Broadcasts to peers validated unseen messages received from api
+     */
     protected abstract fun broadcastOutbound(msg: Rpc.Message): CompletableFuture<Unit>
 
-    // msg: validated unseen messages received from wire
+    /**
+     * Broadcasts to peers validated unseen messages received from another peer
+     */
     protected abstract fun broadcastInbound(msg: Rpc.RPC, receivedFrom: PeerHandler)
 
+    /**
+     * Processes Pubsub control message
+     */
     protected abstract fun processControl(ctrl: Rpc.ControlMessage, receivedFrom: PeerHandler)
 
     override fun onPeerActive(peer: PeerHandler) {
@@ -180,11 +202,11 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
         subscribedTopics -= topic
     }
 
-    protected fun send(peer: PeerHandler, msg: Rpc.RPC): CompletableFuture<Unit> {
+    private fun send(peer: PeerHandler, msg: Rpc.RPC): CompletableFuture<Unit> {
         return peer.writeAndFlush(msg)
     }
 
-    override fun setHandler(handler: (Rpc.Message) -> Unit) {
+    override fun initHandler(handler: (Rpc.Message) -> Unit) {
         msgHandler = handler
     }
 }

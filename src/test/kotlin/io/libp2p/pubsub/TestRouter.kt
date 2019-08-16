@@ -33,7 +33,7 @@ class TestRouter(val name: String = "" + cnt.getAndIncrement()) {
 
     var routerInstance: PubsubRouterDebug by lazyVar { FloodRouter() }
     var router by lazyVar { routerInstance.also {
-        it.setHandler(routerHandler)
+        it.initHandler(routerHandler)
         it.executor = testExecutor
     } }
     var keyPair = generateKeyPair(KEY_TYPE.ECDSA)

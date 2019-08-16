@@ -20,3 +20,15 @@ open class Libp2pException : RuntimeException {
 }
 
 class ConnectionClosedException(message: String) : Libp2pException(message)
+
+/**
+ * Indicates library malfunction
+ */
+class InternalErrorException(message: String) : Libp2pException(message)
+
+/**
+ * Indicates peer misbehavior, like malformed messages or protocol violation
+ */
+class BadPeerException(message: String, ex: Exception?) : Libp2pException(message, ex) {
+    constructor(message: String) : this(message, null)
+}
