@@ -100,14 +100,14 @@ class TcpTransportTest {
             bindFuture.handle { t, u -> logger.info("Bound #$i", u) }
             logger.info("Binding #$i")
         }
-        for(i in 1..50) {
+        for (i in 1..50) {
             if (tcpTransport.activeListeners.size == 6) break
             Thread.sleep(100)
         }
         assertEquals(6, tcpTransport.activeListeners.size)
 
         tcpTransport.close().get(5, SECONDS)
-        for(i in 1..50) {
+        for (i in 1..50) {
             if (tcpTransport.activeListeners.isEmpty()) break
             Thread.sleep(100)
         }
