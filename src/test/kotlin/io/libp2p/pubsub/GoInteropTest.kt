@@ -53,7 +53,7 @@ class GossipProtocolBinding(val router: PubsubRouterDebug) : ProtocolBinding<Uni
 
 const val libp2pdPath = "C:\\Users\\Admin\\go\\bin\\p2pd.exe"
 
-class RemoteTest {
+class GoInteropTest {
 
     @Test
     @Disabled
