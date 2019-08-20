@@ -80,7 +80,7 @@ class Multiaddr(val components: List<Pair<Protocol, ByteArray>>) {
             val ret: MutableList<Pair<Protocol, ByteArray>> = mutableListOf()
             while (buf.isReadable) {
                 val protocol = Protocol.getOrThrow(buf.readUvarint().toInt())
-                ret.add(protocol to protocol.readAddressBytes(buf).toByteArray())
+                ret.add(protocol to protocol.readAddressBytes(buf))
             }
             return ret
         }

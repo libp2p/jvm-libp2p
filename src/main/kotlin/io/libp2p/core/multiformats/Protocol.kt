@@ -106,7 +106,7 @@ enum class Protocol(val code: Int, val size: Int, val typeName: String) {
             else -> throw IllegalArgumentException("Unknown multiaddr type: $this")
         }
 
-    fun readAddressBytes(buf: ByteBuf) = buf.readBytes(sizeForAddress(buf))
+    fun readAddressBytes(buf: ByteBuf) = ByteArray(sizeForAddress(buf)).also { buf.readBytes(it) }
 
     fun bytesToAddress(addressBytes: ByteArray): String {
         return when (this) {

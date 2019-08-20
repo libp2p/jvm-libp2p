@@ -40,7 +40,7 @@ class MplexFrameCodec : MessageToMessageCodec<ByteBuf, MuxFrame>() {
                     writeUvarint(msg.id.id.shl(3).or(MplexFlags.toMplexFlag(msg.flag, msg.id.initiator).toLong()))
                     writeUvarint(msg.data?.readableBytes() ?: 0)
                 },
-                msg.data ?: Unpooled.EMPTY_BUFFER
+                msg.data?.retainedSlice() ?: Unpooled.EMPTY_BUFFER
             )
         )
     }
@@ -58,8 +58,8 @@ class MplexFrameCodec : MessageToMessageCodec<ByteBuf, MuxFrame>() {
             val lenData = msg.readUvarint()
             val streamTag = header.and(0x07).toInt()
             val streamId = header.shr(3)
-            val data = msg.readBytes(lenData.toInt())
-            data.retain() // on leaving encode() the superclass handler releases the buffer but need to forward it
+            val data = msg.readSlice(lenData.toInt())
+            data.retain() // MessageToMessageCodec releases original buffer, but it needs to be relayed
             val initiator = if (streamTag == MplexFlags.NewStream) false else !MplexFlags.isInitiator(streamTag)
             val mplexFrame = MplexFrame(streamId, initiator, streamTag, data)
             out.add(mplexFrame)
