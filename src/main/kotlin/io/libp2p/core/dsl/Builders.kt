@@ -3,7 +3,9 @@ package io.libp2p.core.dsl
 import io.libp2p.core.AddressBook
 import io.libp2p.core.Host
 import io.libp2p.core.Network
-import io.libp2p.core.PeerId
+import io.libp2p.core.crypto.KEY_TYPE
+import io.libp2p.core.crypto.PrivKey
+import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multistream.ProtocolBinding
 import io.libp2p.core.mux.StreamMuxer
@@ -13,7 +15,7 @@ import io.libp2p.core.transport.Transport
 
 typealias TransportCtor = (ConnectionUpgrader) -> Transport
 typealias StreamMuxerCtor = () -> StreamMuxer
-typealias SecureChannelCtor = () -> SecureChannel
+typealias SecureChannelCtor = (PrivKey) -> SecureChannel
 typealias ProtocolCtor = () -> ProtocolBinding<*>
 
 class HostConfigurationException(message: String) : RuntimeException(message)
@@ -66,16 +68,17 @@ class Builder {
         if (muxers.values.isEmpty()) throw HostConfigurationException("at least one muxer is required")
         if (transports.values.isEmpty()) throw HostConfigurationException("at least one transport is required")
 
-        val secureChannels = secureChannels.values.map { it() }
+        val privKey = identity.factory()
+
+        val secureChannels = secureChannels.values.map { it(privKey) }
         val muxers = muxers.values.map { it() }
 
         val upgrader = ConnectionUpgrader(secureChannels, muxers)
         val transports = transports.values.map { it(upgrader) }
         val addressBook = addressBook.impl
 
-        val id = identity.factory()
         val network = Network(transports, Network.Config(network.listen.map { Multiaddr(it) }))
-        return Host(id, network, addressBook)
+        return Host(privKey, network, addressBook)
     }
 }
 
@@ -86,9 +89,9 @@ class NetworkConfigBuilder {
 }
 
 class IdentityBuilder {
-    var factory: () -> PeerId = { PeerId.random() }
+    var factory: () -> PrivKey = { throw IllegalStateException("No identity builder") }
 
-    fun random(): IdentityBuilder = apply { factory = { PeerId.random() } }
+    fun random(): IdentityBuilder = apply { factory = { generateKeyPair(KEY_TYPE.ECDSA).first } }
 }
 
 class AddressBookBuilder {
@@ -99,11 +102,13 @@ class AddressBookBuilder {
 
 class ProtocolsBuilder : Enumeration<ProtocolCtor>()
 class TransportsBuilder : Enumeration<TransportCtor>()
-class SecureChannelsBuilder : Enumeration<SecureChannelCtor>()
+class SecureChannelsBuilder : Enumeration<(PrivKey)->SecureChannel>()
 class MuxersBuilder : Enumeration<StreamMuxerCtor>()
 
 open class Enumeration<T>(val values: MutableList<T> = mutableListOf()) {
     operator fun (T).unaryPlus() {
         values += this
     }
+
+    fun add(t: T) { values += t }
 }

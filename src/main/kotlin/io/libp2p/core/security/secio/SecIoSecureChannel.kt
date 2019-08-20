@@ -22,8 +22,11 @@ import org.apache.logging.log4j.LogManager
 import java.util.concurrent.CompletableFuture
 import io.netty.channel.Channel as NettyChannel
 
-class SecIoSecureChannel(val localKey: PrivKey, val remotePeerId: PeerId? = null) :
+class SecIoSecureChannel(val localKey: PrivKey, val remotePeerId: PeerId?) :
     SecureChannel {
+
+    constructor(localKey: PrivKey): this(localKey, null)
+
     private val log = LogManager.getLogger(SecIoSecureChannel::class.java)
 
     private val HandshakeHandlerName = "SecIoHandshake"

@@ -26,7 +26,7 @@ class HostTest {
                 random()
             }
             secureChannels {
-                + { SecIoSecureChannel(privKey) }
+                add(::SecIoSecureChannel)
             }
             muxers {
                 +::MplexStreamMuxer
