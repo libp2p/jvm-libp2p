@@ -42,7 +42,7 @@ implementation:
 
 - [X] multistream-select 1.0
 - [X] multiformats: [multiaddr](https://github.com/multiformats/multiaddr)
-- [X] crypto (RSA, ed25519, secp256k1?)ç
+- [X] crypto (RSA, ed25519, secp256k1)
 - [X] [secio](https://github.com/libp2p/specs/pull/106)
 - [ ] [connection bootstrapping](https://github.com/libp2p/specs/pull/168)
 - [ ] mplex as a multiplexer
