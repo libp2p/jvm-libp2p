@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import pubsub.pb.Rpc
 import java.time.Duration
+import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeUnit
 
 class PubsubRouterTest {
@@ -346,5 +347,29 @@ class PubsubRouterTest {
         // no all peers should receive the message
         Assertions.assertEquals(receiveRouters.size, msgCount1 + msgCount2)
         receiveRouters.forEach { it.inboundMessages.clear() }
+    }
+
+    @Test
+    fun test_PublishFuture() {
+        val fuzz = DeterministicFuzz()
+
+        val router1 = fuzz.createTestRouter(GossipRouter())
+
+        val msg0 = newMessage("topic1", 0L, "Hello".toByteArray())
+        val publishFut0 = router1.router.publish(msg0)
+        Assertions.assertThrows(ExecutionException::class.java, { publishFut0.get() })
+
+        val router2 = fuzz.createTestRouter(GossipRouter())
+        router2.router.subscribe("topic1")
+
+        router1.connectSemiDuplex(router2, LogLevel.ERROR, LogLevel.ERROR)
+
+        val msg = newMessage("topic1", 1L, "Hello".toByteArray())
+        val publishFut = router1.router.publish(msg)
+
+        publishFut.get(5, TimeUnit.SECONDS)
+        Assertions.assertEquals(msg, router2.inboundMessages.poll(5, TimeUnit.SECONDS))
+        Assertions.assertTrue(router1.inboundMessages.isEmpty())
+        Assertions.assertTrue(router2.inboundMessages.isEmpty())
     }
 }

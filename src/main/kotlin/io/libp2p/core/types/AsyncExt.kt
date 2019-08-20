@@ -1,6 +1,7 @@
 package io.libp2p.core.types
 
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ExecutionException
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.function.Supplier
@@ -17,6 +18,20 @@ fun <C> CompletableFuture<C>.bind(result: CompletableFuture<C>) {
 
 fun <C> CompletableFuture<C>.forward(forwardTo: CompletableFuture<C>) = forwardTo.bind(this)
 
+/**
+ * The same as [CompletableFuture.get] but unwraps [ExecutionException]
+ */
+fun <C> CompletableFuture<C>.getX(): C {
+    try {
+        return get()
+    } catch (t: Exception) {
+        when (t) {
+            is ExecutionException -> throw t.cause!!
+            else -> throw t
+        }
+    }
+}
+
 fun <C> ExecutorService.submitAsync(func: () -> CompletableFuture<C>): CompletableFuture<C> =
     CompletableFuture.supplyAsync(Supplier { func() }, this).thenCompose { it }
 
@@ -28,7 +43,7 @@ class NothingToCompleteException() : RuntimeException()
 fun <C> anyComplete(all: List<CompletableFuture<C>>): CompletableFuture<C> = anyComplete(*all.toTypedArray())
 
 fun <C> anyComplete(vararg all: CompletableFuture<C>): CompletableFuture<C> {
-    return if (all.isEmpty()) CompletableFuture<C>().also { it.completeExceptionally(NothingToCompleteException()) }
+    return if (all.isEmpty()) completedExceptionally(NothingToCompleteException())
     else object : CompletableFuture<C>() {
         init {
             all.forEach { it.whenComplete { v, t ->

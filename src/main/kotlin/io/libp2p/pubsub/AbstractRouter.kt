@@ -5,6 +5,7 @@ import io.libp2p.core.types.LRUSet
 import io.libp2p.core.types.MultiSet
 import io.libp2p.core.types.completedExceptionally
 import io.libp2p.core.types.copy
+import io.libp2p.core.types.forward
 import io.libp2p.core.types.lazyVar
 import io.libp2p.core.types.toHex
 import io.libp2p.core.util.P2PServiceSemiDuplex
@@ -51,7 +52,9 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
 
     protected open fun submitPublishMessage(toPeer: PeerHandler, msg: Rpc.Message): CompletableFuture<Unit> {
         addPendingRpcPart(toPeer, Rpc.RPC.newBuilder().addPublish(msg).build())
-        return CompletableFuture.completedFuture(null) // TODO
+        val sendPromise = CompletableFuture<Unit>()
+        pendingMessagePromises[toPeer] += sendPromise
+        return sendPromise
     }
 
     /**
@@ -79,8 +82,15 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
      * @see addPendingRpcPart
      */
     protected fun flushAllPending() {
-        pendingRpcParts.keys.copy().forEach { peer ->
-            collectPeerMessage(peer)?.also { send(peer, it) }
+        pendingRpcParts.keys.copy().forEach(::flushPending)
+    }
+
+    protected fun flushPending(peer: PeerHandler) {
+        collectPeerMessage(peer)?.also {
+            val future = send(peer, it)
+            pendingMessagePromises.removeAll(peer)?.forEach {
+                future.forward(it)
+            }
         }
     }
 
