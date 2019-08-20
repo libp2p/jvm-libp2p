@@ -102,7 +102,11 @@ class TcpTransport(
             .bind(fromMultiaddr(addr))
             .also { ch ->
                 activeListeners += addr to ch.channel()
-                ch.channel().closeFuture().addListener { activeListeners -= addr }
+                ch.channel().closeFuture().addListener {
+                    synchronized(this@TcpTransport) {
+                        activeListeners -= addr
+                    }
+                }
             }
             .toVoidCompletableFuture()
     }
