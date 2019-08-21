@@ -8,6 +8,7 @@ import io.libp2p.core.types.toVoidCompletableFuture
 import io.libp2p.pubsub.AbstractRouter
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
+import io.netty.util.ReferenceCountUtil
 import org.apache.logging.log4j.LogManager
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Executors
@@ -44,7 +45,11 @@ abstract class P2PService {
 
         override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
             runOnEventThread {
-                streamInbound(this, msg)
+                try {
+                    streamInbound(this, msg)
+                } finally {
+                    ReferenceCountUtil.release(msg)
+                }
             }
         }
 

@@ -26,6 +26,7 @@ import io.libp2p.tools.p2pd.DaemonLauncher
 import io.netty.channel.ChannelHandler
 import io.netty.handler.logging.LogLevel
 import io.netty.handler.logging.LoggingHandler
+import io.netty.util.ResourceLeakDetector
 import org.apache.logging.log4j.LogManager
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Disabled
@@ -54,6 +55,10 @@ class GossipProtocolBinding(val router: PubsubRouterDebug) : ProtocolBinding<Uni
 const val libp2pdPath = "C:\\Users\\Admin\\go\\bin\\p2pd.exe"
 
 class GoInteropTest {
+
+    init {
+        ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.PARANOID)
+    }
 
     @Test
     @Disabled
@@ -131,10 +136,23 @@ class GoInteropTest {
             Assertions.assertEquals(msgFromJava, msg2!!.data.toByteArray().toString(StandardCharsets.UTF_8))
 
             println("Done!")
+
+            // Allows to detect Netty leaks
+            System.gc()
+            Thread.sleep(500)
+            System.gc()
+            Thread.sleep(500)
+            System.gc()
         } finally {
             println("Killing p2pd process")
             pdHost.kill()
         }
+
+        // Uncomment to get more details on Netty leaks
+//        while(true) {
+//            Thread.sleep(500)
+//            System.gc()
+//        }
     }
 
     @Test

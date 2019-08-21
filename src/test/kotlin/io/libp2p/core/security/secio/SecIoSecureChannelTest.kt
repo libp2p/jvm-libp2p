@@ -13,6 +13,7 @@ import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.logging.LogLevel
 import io.netty.handler.logging.LoggingHandler
+import io.netty.util.ResourceLeakDetector
 import org.apache.logging.log4j.LogManager
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
@@ -25,6 +26,10 @@ import java.util.concurrent.TimeUnit
  */
 
 class SecIoSecureChannelTest {
+
+    init {
+        ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.PARANOID)
+    }
 
     @Test
     fun test1() {
@@ -73,6 +78,12 @@ class SecIoSecureChannelTest {
 
         Assertions.assertEquals("Hello World from 1", rec2)
         Assertions.assertEquals("Hello World from 2", rec1)
+
+        System.gc()
+        Thread.sleep(500)
+        System.gc()
+        Thread.sleep(500)
+        System.gc()
     }
 
     companion object {

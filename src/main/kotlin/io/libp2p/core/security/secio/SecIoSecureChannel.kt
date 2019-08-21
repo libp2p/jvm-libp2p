@@ -16,6 +16,7 @@ import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
 import io.netty.channel.ChannelInitializer
+import io.netty.channel.SimpleChannelInboundHandler
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder
 import io.netty.handler.codec.LengthFieldPrepender
 import org.apache.logging.log4j.LogManager
@@ -68,7 +69,7 @@ class SecIoSecureChannel(val localKey: PrivKey, val remotePeerId: PeerId? = null
         )
     }
 
-    inner class SecIoHandshake : ChannelInboundHandlerAdapter() {
+    inner class SecIoHandshake : SimpleChannelInboundHandler<ByteBuf>() {
         private var negotiator: SecioHandshake? = null
         private var activated = false
         private var secIoCodec: SecIoCodec? = null
@@ -81,11 +82,11 @@ class SecIoSecureChannel(val localKey: PrivKey, val remotePeerId: PeerId? = null
             }
         }
 
-        override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
+        override fun channelRead0(ctx: ChannelHandlerContext, msg: ByteBuf) {
             // it seems there is no guarantee from Netty that channelActive() must be called before channelRead()
             channelActive(ctx)
 
-            val keys = negotiator!!.onNewMessage(msg as ByteBuf)
+            val keys = negotiator!!.onNewMessage(msg)
 
             if (keys != null) {
                 secIoCodec = SecIoCodec(keys.first, keys.second)

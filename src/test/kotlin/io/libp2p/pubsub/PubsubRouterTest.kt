@@ -7,6 +7,7 @@ import io.libp2p.pubsub.flood.FloodRouter
 import io.libp2p.pubsub.gossip.GossipRouter
 import io.libp2p.tools.TestChannel.TestConnection
 import io.netty.handler.logging.LogLevel
+import io.netty.util.ResourceLeakDetector
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import pubsub.pb.Rpc
@@ -15,6 +16,10 @@ import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeUnit
 
 class PubsubRouterTest {
+
+    init {
+        ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.PARANOID)
+    }
 
     fun newMessage(topic: String, seqNo: Long, data: ByteArray) =
         Rpc.Message.newBuilder()
@@ -39,6 +44,12 @@ class PubsubRouterTest {
         Assertions.assertEquals(msg, router2.inboundMessages.poll(5, TimeUnit.SECONDS))
         Assertions.assertTrue(router1.inboundMessages.isEmpty())
         Assertions.assertTrue(router2.inboundMessages.isEmpty())
+
+        System.gc()
+        Thread.sleep(500)
+        System.gc()
+        Thread.sleep(500)
+        System.gc()
     }
 
     @Test
