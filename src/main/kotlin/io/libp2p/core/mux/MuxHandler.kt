@@ -1,7 +1,8 @@
 package io.libp2p.core.mux
 
-import io.libp2p.core.Connection
+import io.libp2p.core.CONNECTION
 import io.libp2p.core.MUXER_SESSION
+import io.libp2p.core.STREAM
 import io.libp2p.core.Stream
 import io.libp2p.core.StreamHandler
 import io.libp2p.core.events.MuxSessionInitialized
@@ -62,12 +63,12 @@ class MuxHandler() : AbtractMuxHandler<ByteBuf>(), StreamMuxer.Session {
     override var streamHandler: StreamHandler? = null
         set(value) {
             field = value
-            inboundInitializer = value!!.channelInitializer
+            inboundInitializer = { streamHandler!!.accept(createStream(it)) }
         }
 
     private fun createStream(channel: MuxChannel<ByteBuf>) =
-        Stream(channel, Connection(ctx!!.channel()))
+        Stream(channel, ctx!!.channel().attr(CONNECTION).get()).also { channel.attr(STREAM).set(it) }
 
     override fun createStream(streamHandler: StreamHandler): CompletableFuture<Stream> =
-        newStream(streamHandler.channelInitializer).thenApply { createStream(it) }
+        newStream { streamHandler.accept(createStream(it)) }.thenApply { it.attr(STREAM).get() }
 }

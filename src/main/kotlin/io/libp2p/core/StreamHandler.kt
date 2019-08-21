@@ -5,12 +5,13 @@ import io.netty.channel.ChannelHandler
 import java.util.function.Consumer
 
 interface StreamHandler : Consumer<Stream> {
-    val channelInitializer: ChannelHandler
 
     companion object {
+
         fun create(channelInitializer: ChannelHandler) = object : StreamHandler {
-            override val channelInitializer = channelInitializer
-            override fun accept(t: Stream) {}
+            override fun accept(stream: Stream) {
+                stream.ch.pipeline().addLast(channelInitializer)
+            }
         }
         fun create(multistream: Multistream<*>) = create(multistream.initializer().first)
     }
