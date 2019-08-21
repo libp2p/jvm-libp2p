@@ -143,7 +143,6 @@ class GoInteropTest {
             System.gc()
             Thread.sleep(500)
             System.gc()
-
         } finally {
             println("Killing p2pd process")
             pdHost.kill()
