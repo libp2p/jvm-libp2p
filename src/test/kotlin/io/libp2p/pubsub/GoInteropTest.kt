@@ -13,6 +13,8 @@ import io.libp2p.core.multistream.ProtocolBinding
 import io.libp2p.core.multistream.ProtocolBindingInitializer
 import io.libp2p.core.multistream.ProtocolMatcher
 import io.libp2p.core.mux.mplex.MplexStreamMuxer
+import io.libp2p.core.protocol.PingBinding
+import io.libp2p.core.protocol.PingProtocol
 import io.libp2p.core.security.secio.SecIoSecureChannel
 import io.libp2p.core.transport.ConnectionUpgrader
 import io.libp2p.core.transport.tcp.TcpTransport
@@ -80,7 +82,7 @@ class GoInteropTest {
             val upgrader = ConnectionUpgrader(
                 listOf(SecIoSecureChannel(privKey1)),
                 listOf(MplexStreamMuxer().also {
-                    it.intermediateFrameHandler = LoggingHandler("#3", LogLevel.INFO)
+                    it.intermediateFrameHandler = LoggingHandler("#3", LogLevel.ERROR)
                 })
             ).also {
                 //                it.beforeSecureHandler = LoggingHandler("#1", LogLevel.INFO)
@@ -98,12 +100,29 @@ class GoInteropTest {
             val connFuture = tcpTransport.dial(Multiaddr("/ip4/127.0.0.1/tcp/45555"), inboundStreamHandler)
 
             connFuture.thenCompose {
-                logger.info("Connection made")
-                val initiator = Multistream.create(applicationProtocols)
-                val (channelHandler, completableFuture) = initiator.initializer()
-                logger.info("Creating stream")
-                it.muxerSession.get().createStream(StreamHandler.create(channelHandler))
-                completableFuture
+                val ret = run {
+                    logger.info("Connection made")
+                    val initiator = Multistream.create(applicationProtocols)
+                    val (channelHandler, completableFuture) = initiator.initializer()
+                    logger.info("Creating stream")
+                    it.muxerSession.get().createStream(StreamHandler.create(channelHandler))
+                }
+
+                run {
+                    val initiator = Multistream.create(listOf(PingBinding(PingProtocol())))
+                    val (channelHandler, pingFuture) = initiator.initializer()
+                    logger.info("Creating ping stream")
+                    it.muxerSession.get().createStream(StreamHandler.create(channelHandler))
+
+                    pingFuture.thenCompose {
+                        println("Sending ping...")
+                        it.ping()
+                    }.thenAccept {
+                        println("Ping time: $it")
+                    }
+                }
+
+                ret
             }.thenAccept {
                 logger.info("Stream created")
             }.get(5, TimeUnit.HOURS)
