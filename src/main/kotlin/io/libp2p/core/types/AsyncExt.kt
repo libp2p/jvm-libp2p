@@ -6,7 +6,7 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.function.Supplier
 
-fun <C> CompletableFuture<C>.bind(result: CompletableFuture<C>) {
+fun <C> CompletableFuture<C>.bind(result: CompletableFuture<out C>) {
     result.whenComplete { res, t ->
         if (t != null) {
             completeExceptionally(t)
@@ -16,7 +16,7 @@ fun <C> CompletableFuture<C>.bind(result: CompletableFuture<C>) {
     }
 }
 
-fun <C> CompletableFuture<C>.forward(forwardTo: CompletableFuture<C>) = forwardTo.bind(this)
+fun <C> CompletableFuture<C>.forward(forwardTo: CompletableFuture<in C>) = forwardTo.bind(this)
 
 /**
  * The same as [CompletableFuture.get] but unwraps [ExecutionException]

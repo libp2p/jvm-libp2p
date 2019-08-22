@@ -5,18 +5,14 @@ import io.libp2p.core.ConnectionClosedException
 import io.libp2p.core.Libp2pException
 import io.libp2p.core.P2PAbstractChannel
 import io.libp2p.core.P2PAbstractHandler
-import io.libp2p.core.STREAM
 import io.libp2p.core.multistream.Mode
 import io.libp2p.core.multistream.ProtocolBinding
-import io.libp2p.core.multistream.ProtocolBindingInitializer
 import io.libp2p.core.multistream.ProtocolMatcher
 import io.libp2p.core.types.completedExceptionally
-import io.libp2p.core.types.forward
 import io.libp2p.core.types.lazyVar
 import io.libp2p.core.types.toByteArray
 import io.libp2p.core.types.toByteBuf
 import io.libp2p.core.types.toHex
-import io.libp2p.core.util.netty.nettyInitializer
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
@@ -36,12 +32,8 @@ class PingBinding(val ping: PingProtocol) : ProtocolBinding<PingController> {
     override val announce = "/ipfs/ping/1.0.0"
     override val matcher = ProtocolMatcher(Mode.STRICT, name = announce)
 
-    override fun initializer(selectedProtocol: String): ProtocolBindingInitializer<PingController> {
-        val fut = CompletableFuture<PingController>()
-        val initializer = nettyInitializer {
-            ping.initChannel(it.attr(STREAM).get()).forward(fut)
-        }
-        return ProtocolBindingInitializer(initializer, fut)
+    override fun initializer(selectedProtocol: String): P2PAbstractHandler<PingController> {
+        return ping
     }
 }
 

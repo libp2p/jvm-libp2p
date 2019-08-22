@@ -2,10 +2,12 @@ package io.libp2p.core.mux
 
 import io.libp2p.core.CONNECTION
 import io.libp2p.core.MUXER_SESSION
+import io.libp2p.core.P2PAbstractHandler
 import io.libp2p.core.STREAM
 import io.libp2p.core.Stream
 import io.libp2p.core.StreamHandler
 import io.libp2p.core.events.MuxSessionInitialized
+import io.libp2p.core.types.forward
 import io.libp2p.core.util.netty.mux.AbtractMuxHandler
 import io.libp2p.core.util.netty.mux.MuxChannel
 import io.libp2p.core.util.netty.mux.MuxId
@@ -69,6 +71,9 @@ class MuxHandler() : AbtractMuxHandler<ByteBuf>(), StreamMuxer.Session {
     private fun createStream(channel: MuxChannel<ByteBuf>) =
         Stream(channel, ctx!!.channel().attr(CONNECTION).get()).also { channel.attr(STREAM).set(it) }
 
-    override fun createStream(streamHandler: StreamHandler): CompletableFuture<Stream> =
-        newStream { streamHandler.accept(createStream(it)) }.thenApply { it.attr(STREAM).get() }
+    override fun <T> createStream(streamHandler: P2PAbstractHandler<T>): CompletableFuture<T> {
+        val ret = CompletableFuture<T>()
+        newStream { streamHandler.initChannel(createStream(it)).forward(ret) }
+        return ret
+    }
 }

@@ -1,7 +1,6 @@
 package io.libp2p.core
 
 import io.netty.channel.Channel
-import java.util.concurrent.CompletableFuture
 
 abstract class P2PAbstractChannel(val ch: Channel) {
     val isInitiator by lazy {
@@ -9,6 +8,3 @@ abstract class P2PAbstractChannel(val ch: Channel) {
     }
 }
 
-interface P2PAbstractHandler<TController> {
-    fun initChannel(ch: P2PAbstractChannel): CompletableFuture<TController>
-}

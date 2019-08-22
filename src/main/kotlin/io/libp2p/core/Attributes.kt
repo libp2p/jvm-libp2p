@@ -2,6 +2,7 @@ package io.libp2p.core
 
 import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.core.security.SecureChannel
+import io.netty.channel.Channel
 import io.netty.util.AttributeKey
 
 val MUXER_SESSION = AttributeKey.newInstance<StreamMuxer.Session>("LIBP2P_MUXER_SESSION")!!
@@ -9,3 +10,5 @@ val SECURE_SESSION = AttributeKey.newInstance<SecureChannel.Session>("LIBP2P_SEC
 val IS_INITIATOR = AttributeKey.newInstance<Boolean>("LIBP2P_IS_INITIATOR")!!
 val STREAM = AttributeKey.newInstance<Stream>("LIBP2P_STREAM")!!
 val CONNECTION = AttributeKey.newInstance<Connection>("LIBP2P_CONNECTION")!!
+
+fun Channel.getP2PChannel() = if (hasAttr(CONNECTION)) attr(CONNECTION).get() else attr(STREAM).get()

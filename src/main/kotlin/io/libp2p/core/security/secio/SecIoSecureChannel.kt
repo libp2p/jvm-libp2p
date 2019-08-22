@@ -1,6 +1,8 @@
 package io.libp2p.core.security.secio
 
 import io.libp2p.core.ConnectionClosedException
+import io.libp2p.core.P2PAbstractChannel
+import io.libp2p.core.P2PAbstractHandler
 import io.libp2p.core.PeerId
 import io.libp2p.core.SECURE_SESSION
 import io.libp2p.core.crypto.PrivKey
@@ -8,20 +10,16 @@ import io.libp2p.core.crypto.PubKey
 import io.libp2p.core.events.SecureChannelFailed
 import io.libp2p.core.events.SecureChannelInitialized
 import io.libp2p.core.multistream.Mode
-import io.libp2p.core.multistream.ProtocolBindingInitializer
 import io.libp2p.core.multistream.ProtocolMatcher
 import io.libp2p.core.security.SecureChannel
-import io.libp2p.core.types.replace
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
-import io.netty.channel.ChannelInitializer
 import io.netty.channel.SimpleChannelInboundHandler
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder
 import io.netty.handler.codec.LengthFieldPrepender
 import org.apache.logging.log4j.LogManager
 import java.util.concurrent.CompletableFuture
-import io.netty.channel.Channel as NettyChannel
 
 class SecIoSecureChannel(val localKey: PrivKey, val remotePeerId: PeerId? = null) :
     SecureChannel {
@@ -34,7 +32,7 @@ class SecIoSecureChannel(val localKey: PrivKey, val remotePeerId: PeerId? = null
     override val matcher =
         ProtocolMatcher(Mode.STRICT, name = "/secio/1.0.0")
 
-    override fun initializer(selectedProtocol: String): ProtocolBindingInitializer<SecureChannel.Session> {
+    override fun initializer(selectedProtocol: String): P2PAbstractHandler<SecureChannel.Session> {
         val ret = CompletableFuture<SecureChannel.Session>()
         // bridge the result of the secure channel bootstrap with the promise.
         val resultHandler = object : ChannelInboundHandlerAdapter() {
@@ -53,20 +51,17 @@ class SecIoSecureChannel(val localKey: PrivKey, val remotePeerId: PeerId? = null
                 ctx.fireUserEventTriggered(evt)
             }
         }
-        return ProtocolBindingInitializer(
-            object : ChannelInitializer<NettyChannel>() {
-                override fun initChannel(ch: NettyChannel) {
-                    ch.pipeline().replace(
-                        this, listOf(
-                            "PacketLenEncoder" to LengthFieldPrepender(4),
-                            "PacketLenDecoder" to LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0, 4, 0, 4),
-                            HandshakeHandlerName to SecIoHandshake(),
-                            "SecioNegotiationResultHandler" to resultHandler
-                        )
-                    )
-                }
-            }, ret
-        )
+        return object : P2PAbstractHandler<SecureChannel.Session> {
+            override fun initChannel(ch: P2PAbstractChannel): CompletableFuture<SecureChannel.Session> {
+                listOf(
+                    "PacketLenEncoder" to LengthFieldPrepender(4),
+                    "PacketLenDecoder" to LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0, 4, 0, 4),
+                    HandshakeHandlerName to SecIoHandshake(),
+                    "SecioNegotiationResultHandler" to resultHandler
+                ).forEach { ch.ch.pipeline().addLast(it.first, it.second) }
+                return ret
+            }
+        }
     }
 
     inner class SecIoHandshake : SimpleChannelInboundHandler<ByteBuf>() {
