@@ -21,7 +21,7 @@ open class Libp2pException : RuntimeException {
 }
 
 class ConnectionClosedException(message: String) : Libp2pException(message) {
-    constructor(): this("Connection is closed")
+    constructor() : this("Connection is closed")
 }
 
 /**

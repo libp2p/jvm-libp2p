@@ -76,7 +76,7 @@ class MultiplexHandlerTest {
                 childHandlers += handler
         }))
 
-        val ech = TestChannel("test",true, multistreamHandler)
+        val ech = TestChannel("test", true, multistreamHandler)
         ech.writeInbound(MuxFrame(MuxId(12, true), OPEN))
         ech.writeInbound(MuxFrame(MuxId(12, true), DATA, "22".fromHex().toByteBuf()))
         Assertions.assertEquals(1, childHandlers.size)

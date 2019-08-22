@@ -10,6 +10,7 @@ import io.libp2p.core.multistream.Mode
 import io.libp2p.core.multistream.ProtocolBinding
 import io.libp2p.core.multistream.ProtocolBindingInitializer
 import io.libp2p.core.multistream.ProtocolMatcher
+import io.libp2p.core.types.completedExceptionally
 import io.libp2p.core.types.forward
 import io.libp2p.core.types.lazyVar
 import io.libp2p.core.types.toByteArray
@@ -21,9 +22,9 @@ import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
 import io.netty.channel.SimpleChannelInboundHandler
 import java.time.Duration
+import java.util.Collections
 import java.util.Random
 import java.util.concurrent.CompletableFuture
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
@@ -31,10 +32,9 @@ interface PingController {
     fun ping(): CompletableFuture<Long>
 }
 
-class PingBinding(val ping: PingProtocol): ProtocolBinding<PingController> {
+class PingBinding(val ping: PingProtocol) : ProtocolBinding<PingController> {
     override val announce = "/ipfs/ping/1.0.0"
     override val matcher = ProtocolMatcher(Mode.STRICT, name = announce)
-
 
     override fun initializer(selectedProtocol: String): ProtocolBindingInitializer<PingController> {
         val fut = CompletableFuture<PingController>()
@@ -45,10 +45,10 @@ class PingBinding(val ping: PingProtocol): ProtocolBinding<PingController> {
     }
 }
 
-class PingTimeoutException: Libp2pException()
+class PingTimeoutException : Libp2pException()
 
-class PingProtocol: P2PAbstractHandler<PingController> {
-    var scheduler  by lazyVar { Executors.newSingleThreadScheduledExecutor() }
+class PingProtocol : P2PAbstractHandler<PingController> {
+    var scheduler by lazyVar { Executors.newSingleThreadScheduledExecutor() }
     var curTime: () -> Long = { System.currentTimeMillis() }
     var random = Random()
     var pingSize = 32
@@ -66,7 +66,7 @@ class PingProtocol: P2PAbstractHandler<PingController> {
         }
     }
 
-    inner class PingResponderChannelHandler: ChannelInboundHandlerAdapter(), PingController {
+    inner class PingResponderChannelHandler : ChannelInboundHandlerAdapter(), PingController {
         override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
             ctx.writeAndFlush(msg)
         }
@@ -76,10 +76,11 @@ class PingProtocol: P2PAbstractHandler<PingController> {
         }
     }
 
-    inner class PingInitiatorChannelHandler: SimpleChannelInboundHandler<ByteBuf>(), PingController {
+    inner class PingInitiatorChannelHandler : SimpleChannelInboundHandler<ByteBuf>(), PingController {
         val activeFuture = CompletableFuture<Unit>()
-        val requests = ConcurrentHashMap<String, Pair<Long, CompletableFuture<Long>>>()
+        val requests = Collections.synchronizedMap(mutableMapOf<String, Pair<Long, CompletableFuture<Long>>>())
         lateinit var ctx: ChannelHandlerContext
+        var closed = false
 
         override fun channelRead0(ctx: ChannelHandlerContext, msg: ByteBuf) {
             val dataS = msg.toByteArray().toHex()
@@ -89,7 +90,12 @@ class PingProtocol: P2PAbstractHandler<PingController> {
         }
 
         override fun channelUnregistered(ctx: ChannelHandlerContext) {
+            closed = true
             activeFuture.completeExceptionally(ConnectionClosedException())
+            synchronized(requests) {
+                requests.values.forEach { it.second.completeExceptionally(ConnectionClosedException()) }
+                requests.clear()
+            }
             super.channelUnregistered(ctx)
         }
 
@@ -99,12 +105,13 @@ class PingProtocol: P2PAbstractHandler<PingController> {
         }
 
         override fun ping(): CompletableFuture<Long> {
+            if (closed) return completedExceptionally(ConnectionClosedException())
             val ret = CompletableFuture<Long>()
             val data = ByteArray(pingSize)
             random.nextBytes(data)
             val dataS = data.toHex()
             requests[dataS] = curTime() to ret
-            scheduler.schedule( {
+            scheduler.schedule({
                 requests.remove(dataS)?.second?.completeExceptionally(PingTimeoutException())
             }, pingTimeout.toMillis(), TimeUnit.MILLISECONDS)
             ctx.writeAndFlush(data.toByteBuf())
