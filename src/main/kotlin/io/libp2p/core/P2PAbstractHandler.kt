@@ -49,7 +49,7 @@ abstract class SimpleClientHandler : SimpleChannelInboundHandler<ByteBuf>(ByteBu
     }
 }
 
-class SimpleClientProtocol<TController: SimpleClientHandler>(
+class SimpleClientProtocol<TController : SimpleClientHandler>(
     val handlerCtor: () -> TController
 ) : P2PAbstractHandler<TController> {
 

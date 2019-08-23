@@ -44,7 +44,6 @@ class SecIoSecureChannelTest {
 
         val protocolSelect1 = ProtocolSelect(listOf(SecIoSecureChannel(privKey1)))
         protocolSelect1.selectedFuture.thenAccept {
-
         }
         val eCh1 = TestChannel("#1", true, LoggingHandler("#1", LogLevel.ERROR),
             Negotiator.createInitializer("/secio/1.0.0"),

@@ -86,12 +86,12 @@ class GoInteropTest {
                 it.debugGossipHandler = LoggingHandler("#4", LogLevel.INFO)
             }
 
-            val applicationProtocols = listOf(ProtocolBinding.createSimple( "/meshsub/1.0.0", gossip))
+            val applicationProtocols = listOf(ProtocolBinding.createSimple("/meshsub/1.0.0", gossip))
             val inboundStreamHandler = StreamHandler.create(Multistream.create(applicationProtocols))
             logger.info("Dialing...")
             val connFuture = tcpTransport.dial(Multiaddr("/ip4/127.0.0.1/tcp/45555"), inboundStreamHandler)
 
-            var pingRes:Long? = null
+            var pingRes: Long? = null
             connFuture.thenCompose {
                 logger.info("Connection made")
                 val ret =

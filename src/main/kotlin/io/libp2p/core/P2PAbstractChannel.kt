@@ -7,4 +7,3 @@ abstract class P2PAbstractChannel(val ch: Channel) {
         ch.attr(IS_INITIATOR)?.get() ?: throw Libp2pException("Internal error: missing channel attribute IS_INITIATOR")
     }
 }
-

@@ -29,7 +29,7 @@ interface ProtocolBinding<out TController> {
     fun initializer(selectedProtocol: String): P2PAbstractHandler<TController>
 
     companion object {
-        fun <T> createSimple(protocolName: String, handler: P2PAbstractHandler<T>) : ProtocolBinding<T> {
+        fun <T> createSimple(protocolName: String, handler: P2PAbstractHandler<T>): ProtocolBinding<T> {
             return object : ProtocolBinding<T> {
                 override val announce = protocolName
                 override val matcher = ProtocolMatcher(Mode.STRICT, announce)
@@ -37,7 +37,7 @@ interface ProtocolBinding<out TController> {
             }
         }
 
-        fun <T : SimpleClientHandler> createSimple(protocolName: String, handlerCtor: () -> T) : ProtocolBinding<T> =
+        fun <T : SimpleClientHandler> createSimple(protocolName: String, handlerCtor: () -> T): ProtocolBinding<T> =
                     createSimple(protocolName, P2PAbstractHandler.createSimpleHandler(handlerCtor))
     }
 }

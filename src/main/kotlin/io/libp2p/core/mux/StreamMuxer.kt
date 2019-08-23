@@ -11,7 +11,7 @@ interface StreamMuxer : ProtocolBinding<StreamMuxer.Session> {
 
     interface Session {
         var streamHandler: StreamHandler?
-        fun <T>createStream(streamHandler: P2PAbstractHandler<T>): CompletableFuture<T>
+        fun <T> createStream(streamHandler: P2PAbstractHandler<T>): CompletableFuture<T>
         fun close(): Unit = TODO()
     }
 }
