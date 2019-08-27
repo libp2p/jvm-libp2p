@@ -1,20 +1,21 @@
 package io.libp2p.core
 
 import io.netty.channel.ChannelHandler
-import java.util.function.Consumer
 
-interface StreamHandler : Consumer<Stream> {
+interface StreamHandler {
+
+    fun handleStream(stream: Stream)
 
     companion object {
 
         fun create(channelInitializer: ChannelHandler) = object : StreamHandler {
-            override fun accept(stream: Stream) {
+            override fun handleStream(stream: Stream) {
                 stream.ch.pipeline().addLast(channelInitializer)
             }
         }
 
         fun create(channelHandler: P2PAbstractHandler<*>) = object : StreamHandler {
-            override fun accept(stream: Stream) {
+            override fun handleStream(stream: Stream) {
                 channelHandler.initChannel(stream)
             }
         }

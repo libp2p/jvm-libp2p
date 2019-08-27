@@ -2,15 +2,18 @@ package io.libp2p.pubsub
 
 import io.libp2p.core.P2PAbstractChannel
 import io.libp2p.core.P2PAbstractHandler
+import io.libp2p.core.PeerId
 import io.libp2p.core.Stream
 import io.libp2p.core.StreamHandler
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.crypto.unmarshalPublicKey
+import io.libp2p.core.dsl.host
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multistream.Multistream
 import io.libp2p.core.multistream.ProtocolBinding
 import io.libp2p.core.mux.mplex.MplexStreamMuxer
+import io.libp2p.core.protocol.Ping
 import io.libp2p.core.protocol.PingBinding
 import io.libp2p.core.protocol.PingProtocol
 import io.libp2p.core.security.secio.SecIoSecureChannel
@@ -20,6 +23,7 @@ import io.libp2p.core.types.fromHex
 import io.libp2p.core.types.toByteArray
 import io.libp2p.core.types.toByteBuf
 import io.libp2p.core.types.toProtobuf
+import io.libp2p.pubsub.gossip.Gossip
 import io.libp2p.pubsub.gossip.GossipRouter
 import io.libp2p.tools.p2pd.DaemonLauncher
 import io.netty.channel.ChannelHandler
@@ -74,7 +78,7 @@ class GoInteropTest {
             val upgrader = ConnectionUpgrader(
                 listOf(SecIoSecureChannel(privKey1)),
                 listOf(MplexStreamMuxer().also {
-                    it.intermediateFrameHandler = LoggingHandler("#3", LogLevel.ERROR)
+                    it.muxFramesDebugHandler = LoggingHandler("#3", LogLevel.ERROR)
                 })
             ).also {
                 //                it.beforeSecureHandler = LoggingHandler("#1", LogLevel.INFO)
@@ -95,11 +99,11 @@ class GoInteropTest {
             connFuture.thenCompose {
                 logger.info("Connection made")
                 val ret =
-                it.muxerSession.get().createStream(Multistream.create(applicationProtocols))
+                it.muxerSession.createStream(Multistream.create(applicationProtocols))
 
                 val initiator = Multistream.create(listOf(PingBinding(PingProtocol())))
                     logger.info("Creating ping stream")
-                it.muxerSession.get().createStream(initiator)
+                it.muxerSession.createStream(initiator)
                     .thenCompose {
                         println("Sending ping...")
                         it.ping()
@@ -140,6 +144,99 @@ class GoInteropTest {
             Assertions.assertNull(goInbound.poll())
             Assertions.assertEquals(msgFromJava, msg2!!.data.toByteArray().toString(StandardCharsets.UTF_8))
             Assertions.assertNotNull(pingRes)
+
+            println("Done!")
+
+            // Allows to detect Netty leaks
+            System.gc()
+            Thread.sleep(500)
+            System.gc()
+            Thread.sleep(500)
+            System.gc()
+        } finally {
+            println("Killing p2pd process")
+            pdHost.kill()
+        }
+
+        // Uncomment to get more details on Netty leaks
+//        while(true) {
+//            Thread.sleep(500)
+//            System.gc()
+//        }
+    }
+
+    @Test
+    @Disabled
+    fun hostTest() {
+        val logger = LogManager.getLogger("test")
+        val pdHost = DaemonLauncher(libp2pdPath)
+            .launch(45555, "-pubsub")
+
+        try {
+
+            val gossip = Gossip()
+
+            // Let's create a host! This is a fluent builder.
+            val host = host {
+                identity {
+                    random()
+                }
+                transports {
+                    +::TcpTransport
+                }
+                secureChannels {
+                    add(::SecIoSecureChannel)
+                }
+                muxers {
+                    +::MplexStreamMuxer
+                }
+                addressBook {
+                    memory()
+                }
+                network {
+                    listen("/ip4/0.0.0.0/tcp/4001")
+                }
+                protocols {
+                    +Ping()
+                    +gossip
+                }
+            }
+
+            host.start().get(5, TimeUnit.SECONDS)
+            println("Host started")
+
+            val connFuture = host.network.connect(PeerId.random(), Multiaddr("/ip4/127.0.0.1/tcp/45555"))
+
+            connFuture.thenAccept {
+                logger.info("Connection made")
+            }.get(5, TimeUnit.HOURS)
+
+            Thread.sleep(1000)
+            val javaInbound = LinkedBlockingQueue<MessageApi>()
+            println("Subscribing Java..")
+            gossip.subscribe(Consumer { javaInbound += it }, Topic("topic1"))
+            println("Subscribing Go..")
+            val goInbound = pdHost.host.pubsub.subscribe("topic1").get()
+            Thread.sleep(1000)
+            println("Sending msg from Go..")
+            val msgFromGo = "Go rocks! JVM sucks!"
+            pdHost.host.pubsub.publish("topic1", msgFromGo.toByteArray()).get()
+            val msg1 = javaInbound.poll(5, TimeUnit.SECONDS)
+            Assertions.assertNotNull(msg1)
+            Assertions.assertNull(javaInbound.poll())
+            Assertions.assertEquals(msgFromGo, msg1!!.data.toByteArray().toString(StandardCharsets.UTF_8))
+
+            // draining message which Go (by mistake or by design) replays back to subscriber
+            goInbound.poll(1, TimeUnit.SECONDS)
+
+            println("Sending msg from Java..")
+            val msgFromJava = "Go suck my duke"
+            val publisher = gossip.createPublisher(host.privKey, 8888)
+            publisher.publish(msgFromJava.toByteArray().toByteBuf(), Topic("topic1"))
+            val msg2 = goInbound.poll(5, TimeUnit.SECONDS)
+            Assertions.assertNotNull(msg2)
+            Assertions.assertNull(goInbound.poll())
+            Assertions.assertEquals(msgFromJava, msg2!!.data.toByteArray().toString(StandardCharsets.UTF_8))
 
             println("Done!")
 

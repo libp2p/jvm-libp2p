@@ -9,6 +9,12 @@ import java.util.concurrent.CompletableFuture
 interface P2PAbstractHandler<out TController> {
     fun initChannel(ch: P2PAbstractChannel): CompletableFuture<out TController>
 
+    fun toStreamHandler() = object : StreamHandler {
+        override fun handleStream(stream: Stream) {
+            initChannel(stream)
+        }
+    }
+
     companion object {
         fun <T : SimpleClientHandler> createSimpleHandler(handlerCtor: () -> T) =
             SimpleClientProtocol(handlerCtor)

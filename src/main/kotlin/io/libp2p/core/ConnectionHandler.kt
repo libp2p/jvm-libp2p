@@ -1,5 +1,15 @@
 package io.libp2p.core
 
-import java.util.function.Consumer
+interface ConnectionHandler {
+    fun handleConnection(conn: Connection)
 
-abstract class ConnectionHandler : Consumer<Connection>
+    companion object {
+        fun createBroadcast(handlers: List<ConnectionHandler>): ConnectionHandler {
+            return object : ConnectionHandler {
+                override fun handleConnection(conn: Connection) {
+                    handlers.forEach { it.handleConnection(conn) }
+                }
+            }
+        }
+    }
+}

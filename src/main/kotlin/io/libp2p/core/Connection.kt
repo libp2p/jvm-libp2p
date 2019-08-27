@@ -8,6 +8,6 @@ import io.netty.channel.Channel
  * It exposes libp2p components and semantics via methods and properties.
  */
 class Connection(ch: Channel) : P2PAbstractChannel(ch) {
-    val muxerSession by lazy { ch.attr(MUXER_SESSION) }
-    val secureSession by lazy { ch.attr(SECURE_SESSION) }
+    val muxerSession by lazy { ch.attr(MUXER_SESSION).get() }
+    val secureSession by lazy { ch.attr(SECURE_SESSION).get() }
 }

@@ -28,7 +28,9 @@ interface PingController {
     fun ping(): CompletableFuture<Long>
 }
 
-class PingBinding(val ping: PingProtocol) : ProtocolBinding<PingController> {
+class Ping : PingBinding(PingProtocol())
+
+open class PingBinding(val ping: PingProtocol) : ProtocolBinding<PingController> {
     override val announce = "/ipfs/ping/1.0.0"
     override val matcher = ProtocolMatcher(Mode.STRICT, name = announce)
 

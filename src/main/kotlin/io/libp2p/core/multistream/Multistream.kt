@@ -12,6 +12,9 @@ interface Multistream<TController> : P2PAbstractHandler<TController> {
 
     companion object {
         fun <TController> create(
+            vararg bindings: ProtocolBinding<TController>
+        ): Multistream<TController> = MultistreamImpl(listOf(*bindings))
+        fun <TController> create(
             bindings: List<ProtocolBinding<TController>>
         ): Multistream<TController> = MultistreamImpl(bindings)
     }

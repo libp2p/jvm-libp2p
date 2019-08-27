@@ -9,23 +9,24 @@ import io.libp2p.core.multistream.Mode
 import io.libp2p.core.multistream.ProtocolMatcher
 import io.libp2p.core.mux.MuxHandler
 import io.libp2p.core.mux.StreamMuxer
+import io.libp2p.core.mux.StreamMuxerDebug
 import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
 import java.util.concurrent.CompletableFuture
 
-class MplexStreamMuxer : StreamMuxer {
+class MplexStreamMuxer : StreamMuxer, StreamMuxerDebug {
     override val announce = "/mplex/6.7.0"
     override val matcher: ProtocolMatcher =
         ProtocolMatcher(Mode.STRICT, announce)
-    var intermediateFrameHandler: ChannelHandler? = null
+    override var muxFramesDebugHandler: ChannelHandler? = null
 
     override fun initializer(selectedProtocol: String): P2PAbstractHandler<StreamMuxer.Session> {
         return object : P2PAbstractHandler<StreamMuxer.Session> {
             override fun initChannel(ch: P2PAbstractChannel): CompletableFuture<StreamMuxer.Session> {
                 val muxSessionFuture = CompletableFuture<StreamMuxer.Session>()
                 ch.ch.pipeline().addLast(MplexFrameCodec())
-                intermediateFrameHandler?.also { ch.ch.pipeline().addLast(it) }
+                muxFramesDebugHandler?.also { ch.ch.pipeline().addLast(it) }
                 ch.ch.pipeline().addLast("MuxerSessionTracker", object : ChannelInboundHandlerAdapter() {
                     override fun userEventTriggered(ctx: ChannelHandlerContext, evt: Any) {
                         when (evt) {

@@ -63,8 +63,8 @@ class TcpTransportTest {
         )
 
         val tcpTransport = TcpTransport(upgrader)
-        val connHandler: ConnectionHandler = object : ConnectionHandler() {
-            override fun accept(t: Connection) {
+        val connHandler: ConnectionHandler = object : ConnectionHandler {
+            override fun handleConnection(conn: Connection) {
             }
         }
 
@@ -123,13 +123,6 @@ class TcpTransportTest {
     }
 
     @Test
-    fun testDialClose_() {
-        while (true) {
-            println("Testing...")
-            testDialClose()
-        }
-    }
-
     fun testDialClose() {
         val logger = LogManager.getLogger("test")
 
@@ -141,8 +134,8 @@ class TcpTransportTest {
 
         val tcpTransportServer = TcpTransport(upgrader)
         val serverConnections = mutableListOf<Connection>()
-        val connHandler: ConnectionHandler = object : ConnectionHandler() {
-            override fun accept(conn: Connection) {
+        val connHandler: ConnectionHandler = object : ConnectionHandler {
+            override fun handleConnection(conn: Connection) {
                 logger.info("Inbound connection: $conn")
                 serverConnections += conn
             }

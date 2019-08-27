@@ -97,7 +97,7 @@ class TcpTransport(
                 registerChannel(ch)
                 val (channelHandler, connFuture) = createConnectionHandler(streamHandler, false)
                 ch.pipeline().addLast(channelHandler)
-                connFuture.thenAccept { connHandler.accept(it) }
+                connFuture.thenAccept { connHandler.handleConnection(it) }
             })
             .bind(fromMultiaddr(addr))
             .also { ch ->

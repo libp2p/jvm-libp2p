@@ -65,7 +65,7 @@ class MuxHandler() : AbtractMuxHandler<ByteBuf>(), StreamMuxer.Session {
     override var streamHandler: StreamHandler? = null
         set(value) {
             field = value
-            inboundInitializer = { streamHandler!!.accept(createStream(it)) }
+            inboundInitializer = { streamHandler!!.handleStream(createStream(it)) }
         }
 
     private fun createStream(channel: MuxChannel<ByteBuf>) =

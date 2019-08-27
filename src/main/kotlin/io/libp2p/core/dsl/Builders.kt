@@ -1,17 +1,25 @@
 package io.libp2p.core.dsl
 
 import io.libp2p.core.AddressBook
+import io.libp2p.core.ConnectionHandler
 import io.libp2p.core.Host
+import io.libp2p.core.MemoryAddressBook
 import io.libp2p.core.Network
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.multiformats.Multiaddr
+import io.libp2p.core.multistream.Multistream
 import io.libp2p.core.multistream.ProtocolBinding
 import io.libp2p.core.mux.StreamMuxer
+import io.libp2p.core.mux.StreamMuxerDebug
 import io.libp2p.core.security.SecureChannel
 import io.libp2p.core.transport.ConnectionUpgrader
 import io.libp2p.core.transport.Transport
+import io.libp2p.core.types.lazyVar
+import io.netty.channel.ChannelHandler
+import io.netty.handler.logging.LogLevel
+import io.netty.handler.logging.LoggingHandler
 
 typealias TransportCtor = (ConnectionUpgrader) -> Transport
 typealias StreamMuxerCtor = () -> StreamMuxer
@@ -33,6 +41,7 @@ class Builder {
     private val addressBook = AddressBookBuilder()
     private val protocols = ProtocolsBuilder()
     private val network = NetworkConfigBuilder()
+    private val debug = DebugBuilder()
 
     /**
      * Sets an identity for this host. If unset, libp2p will default to a random identity.
@@ -60,6 +69,8 @@ class Builder {
 
     fun network(fn: NetworkConfigBuilder.() -> Unit): Builder = apply { fn(network) }
 
+    fun debug(fn: DebugBuilder.() -> Unit): Builder = apply { fn(debug) }
+
     /**
      * Constructs the Host with the provided parameters.
      */
@@ -73,11 +84,22 @@ class Builder {
         val secureChannels = secureChannels.values.map { it(privKey) }
         val muxers = muxers.values.map { it() }
 
-        val upgrader = ConnectionUpgrader(secureChannels, muxers)
+        muxers.mapNotNull { it as? StreamMuxerDebug }.forEach { it.muxFramesDebugHandler = debug.muxFramesHandler.handler }
+
+        val upgrader = ConnectionUpgrader(secureChannels, muxers).apply {
+            beforeSecureHandler = debug.beforeSecureHandler.handler
+            afterSecureHandler = debug.afterSecureHandler.handler
+        }
+
         val transports = transports.values.map { it(upgrader) }
         val addressBook = addressBook.impl
 
         val network = Network(transports, Network.Config(network.listen.map { Multiaddr(it) }))
+
+        val connHandlerProtocols = protocols.values.mapNotNull { it as? ConnectionHandler }
+        network.connectionHandler = ConnectionHandler.createBroadcast(connHandlerProtocols)
+        network.streamHandler = Multistream.create(protocols.values).toStreamHandler()
+
         return Host(privKey, network, addressBook)
     }
 }
@@ -85,7 +107,7 @@ class Builder {
 class NetworkConfigBuilder {
     val listen = mutableListOf<String>()
 
-    fun listen(vararg addrs: String): NetworkConfigBuilder = apply { addrs.forEach { listen += it } }
+    fun listen(vararg addrs: String): NetworkConfigBuilder = apply { listen += addrs }
 }
 
 class IdentityBuilder {
@@ -95,15 +117,29 @@ class IdentityBuilder {
 }
 
 class AddressBookBuilder {
-    var impl: AddressBook = TODO()
+    var impl: AddressBook by lazyVar { MemoryAddressBook() }
 
-    fun memory(): AddressBookBuilder = apply { TODO() }
+    fun memory(): AddressBookBuilder = apply { impl = MemoryAddressBook() }
 }
 
-class ProtocolsBuilder : Enumeration<ProtocolCtor>()
 class TransportsBuilder : Enumeration<TransportCtor>()
-class SecureChannelsBuilder : Enumeration<(PrivKey)->SecureChannel>()
+class SecureChannelsBuilder : Enumeration<SecureChannelCtor>()
 class MuxersBuilder : Enumeration<StreamMuxerCtor>()
+class ProtocolsBuilder : Enumeration<ProtocolBinding<*>>()
+
+class DebugBuilder {
+    val beforeSecureHandler = DebugHandlerBuilder("wire.sec.before")
+    val afterSecureHandler = DebugHandlerBuilder("wire.sec.after")
+    val muxFramesHandler = DebugHandlerBuilder("wire.mux.frames")
+}
+
+class DebugHandlerBuilder(var name: String) {
+    var handler: ChannelHandler? = null
+
+    fun setLogger(level: LogLevel, loggerName: String = name) {
+        handler = LoggingHandler(name, level)
+    }
+}
 
 open class Enumeration<T>(val values: MutableList<T> = mutableListOf()) {
     operator fun (T).unaryPlus() {

@@ -53,7 +53,7 @@ class EchoSampleTest {
         val upgrader = ConnectionUpgrader(
             listOf(SecIoSecureChannel(privKey1)),
             listOf(MplexStreamMuxer().also {
-                it.intermediateFrameHandler = LoggingHandler("#3", LogLevel.INFO) })
+                it.muxFramesDebugHandler = LoggingHandler("#3", LogLevel.INFO) })
         ).also {
                 it.beforeSecureHandler = LoggingHandler("#1", LogLevel.INFO)
                 it.afterSecureHandler = LoggingHandler("#2", LogLevel.INFO)
@@ -68,7 +68,7 @@ class EchoSampleTest {
         val echoString = "Helooooooooooooooooooooooooo\n"
         connFuture.thenCompose {
             logger.info("Connection made")
-            it.muxerSession.get().createStream(Multistream.create(applicationProtocols))
+            it.muxerSession.createStream(Multistream.create(applicationProtocols))
         }.thenCompose {
             logger.info("Stream created, sending echo string...")
             it.echo(echoString)

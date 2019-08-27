@@ -1,29 +1,28 @@
 package io.libp2p.core
 
-import io.libp2p.core.crypto.KEY_TYPE
-import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.dsl.host
-import io.libp2p.core.multistream.DummyProtocolBinding
+import io.libp2p.core.multiformats.Multiaddr
+import io.libp2p.core.multistream.Multistream
 import io.libp2p.core.mux.mplex.MplexStreamMuxer
+import io.libp2p.core.protocol.Ping
 import io.libp2p.core.security.secio.SecIoSecureChannel
 import io.libp2p.core.transport.tcp.TcpTransport
-import org.junit.jupiter.api.Disabled
+import io.netty.handler.logging.LogLevel
 import org.junit.jupiter.api.Test
+import java.util.concurrent.TimeUnit
 
 class HostTest {
 
-    @Disabled
     @Test
     fun testHost() {
 
-        val (privKey, pubKey) = generateKeyPair(KEY_TYPE.ECDSA)
-
-        val id = PeerId.fromPubKey(pubKey)
-
         // Let's create a host! This is a fluent builder.
-        val host = host {
+        val host1 = host {
             identity {
                 random()
+            }
+            transports {
+                +::TcpTransport
             }
             secureChannels {
                 add(::SecIoSecureChannel)
@@ -31,19 +30,59 @@ class HostTest {
             muxers {
                 +::MplexStreamMuxer
             }
+            protocols {
+                +Ping()
+            }
+            debug {
+                beforeSecureHandler.setLogger(LogLevel.ERROR)
+                afterSecureHandler.setLogger(LogLevel.ERROR)
+                muxFramesHandler.setLogger(LogLevel.ERROR)
+            }
+        }
+
+        val host2 = host {
+            identity {
+                random()
+            }
             transports {
                 +::TcpTransport
             }
-            addressBook {
-                memory()
+            secureChannels {
+                add(::SecIoSecureChannel)
             }
-            protocols {
-                +::DummyProtocolBinding
+            muxers {
+                +::MplexStreamMuxer
             }
             network {
-                listen("/ip4/0.0.0.0/tcp/4001")
+                listen("/ip4/0.0.0.0/tcp/40002")
+            }
+            protocols {
+                +Ping()
             }
         }
+
+        val start1 = host1.start()
+        val start2 = host2.start()
+        start1.get(5, TimeUnit.SECONDS)
+        println("Host #1 started")
+        start2.get(5, TimeUnit.SECONDS)
+        println("Host #2 started")
+
+        val pingCtr =
+            host1.network.connect(host2.peerId, Multiaddr("/ip4/127.0.0.1/tcp/40002"))
+                .thenCompose { it.muxerSession.createStream(Multistream.create(Ping())) }
+                .get(5, TimeUnit.SECONDS)
+        println("Ping controller created")
+
+        for (i in 1..10) {
+            val latency = pingCtr.ping().get(1, TimeUnit.SECONDS)
+            println("Ping is $latency")
+        }
+
+        host1.stop().get(5, TimeUnit.SECONDS)
+        println("Host #1 stopped")
+        host2.stop().get(5, TimeUnit.SECONDS)
+        println("Host #2 stopped")
 
         // // What is the status of this peer? Are we connected to it? Do we know them (i.e. have addresses for them?)
         // host.peer(id).status()

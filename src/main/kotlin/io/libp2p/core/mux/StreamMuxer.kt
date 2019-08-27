@@ -3,6 +3,7 @@ package io.libp2p.core.mux
 import io.libp2p.core.P2PAbstractHandler
 import io.libp2p.core.StreamHandler
 import io.libp2p.core.multistream.ProtocolBinding
+import io.netty.channel.ChannelHandler
 import java.util.concurrent.CompletableFuture
 
 interface StreamMuxer : ProtocolBinding<StreamMuxer.Session> {
@@ -14,4 +15,8 @@ interface StreamMuxer : ProtocolBinding<StreamMuxer.Session> {
         fun <T> createStream(streamHandler: P2PAbstractHandler<T>): CompletableFuture<T>
         fun close(): Unit = TODO()
     }
+}
+
+interface StreamMuxerDebug {
+    var muxFramesDebugHandler: ChannelHandler?
 }

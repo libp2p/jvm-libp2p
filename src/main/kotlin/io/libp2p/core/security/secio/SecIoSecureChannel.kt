@@ -24,7 +24,7 @@ import java.util.concurrent.CompletableFuture
 class SecIoSecureChannel(val localKey: PrivKey, val remotePeerId: PeerId?) :
     SecureChannel {
 
-    constructor(localKey: PrivKey): this(localKey, null)
+    constructor(localKey: PrivKey) : this(localKey, null)
 
     private val log = LogManager.getLogger(SecIoSecureChannel::class.java)
 
