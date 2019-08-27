@@ -1,18 +1,18 @@
 package io.libp2p.pubsub
 
-import io.libp2p.core.Connection
+import io.libp2p.core.P2PAbstractChannel
+import io.libp2p.core.P2PAbstractHandler
 import io.libp2p.core.Stream
 import io.libp2p.core.StreamHandler
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.crypto.unmarshalPublicKey
 import io.libp2p.core.multiformats.Multiaddr
-import io.libp2p.core.multistream.Mode
 import io.libp2p.core.multistream.Multistream
 import io.libp2p.core.multistream.ProtocolBinding
-import io.libp2p.core.multistream.ProtocolBindingInitializer
-import io.libp2p.core.multistream.ProtocolMatcher
 import io.libp2p.core.mux.mplex.MplexStreamMuxer
+import io.libp2p.core.protocol.PingBinding
+import io.libp2p.core.protocol.PingProtocol
 import io.libp2p.core.security.secio.SecIoSecureChannel
 import io.libp2p.core.transport.ConnectionUpgrader
 import io.libp2p.core.transport.tcp.TcpTransport
@@ -20,12 +20,12 @@ import io.libp2p.core.types.fromHex
 import io.libp2p.core.types.toByteArray
 import io.libp2p.core.types.toByteBuf
 import io.libp2p.core.types.toProtobuf
-import io.libp2p.core.util.netty.nettyInitializer
 import io.libp2p.pubsub.gossip.GossipRouter
 import io.libp2p.tools.p2pd.DaemonLauncher
 import io.netty.channel.ChannelHandler
 import io.netty.handler.logging.LogLevel
 import io.netty.handler.logging.LoggingHandler
+import io.netty.util.ResourceLeakDetector
 import org.apache.logging.log4j.LogManager
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Disabled
@@ -37,23 +37,22 @@ import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 import java.util.function.Consumer
 
-class GossipProtocolBinding(val router: PubsubRouterDebug) : ProtocolBinding<Unit> {
+class GossipProtocol(val router: PubsubRouterDebug) : P2PAbstractHandler<Unit> {
     var debugGossipHandler: ChannelHandler? = null
-    override val announce = "/meshsub/1.0.0"
-    override val matcher = ProtocolMatcher(Mode.STRICT, announce)
-    override fun initializer(selectedProtocol: String): ProtocolBindingInitializer<Unit> {
-        val future = CompletableFuture<Unit>()
-        val pubsubInitializer = nettyInitializer { ch ->
-            router.addPeerWithDebugHandler(Stream(ch, Connection(ch.parent())), debugGossipHandler)
-            future.complete(null)
-        }
-        return ProtocolBindingInitializer(pubsubInitializer, future)
+
+    override fun initChannel(ch: P2PAbstractChannel): CompletableFuture<out Unit> {
+        router.addPeerWithDebugHandler(ch as Stream, debugGossipHandler)
+        return CompletableFuture.completedFuture(Unit)
     }
 }
 
 const val libp2pdPath = "C:\\Users\\Admin\\go\\bin\\p2pd.exe"
 
 class GoInteropTest {
+
+    init {
+        ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.PARANOID)
+    }
 
     @Test
     @Disabled
@@ -75,7 +74,7 @@ class GoInteropTest {
             val upgrader = ConnectionUpgrader(
                 listOf(SecIoSecureChannel(privKey1)),
                 listOf(MplexStreamMuxer().also {
-                    it.intermediateFrameHandler = LoggingHandler("#3", LogLevel.INFO)
+                    it.intermediateFrameHandler = LoggingHandler("#3", LogLevel.ERROR)
                 })
             ).also {
                 //                it.beforeSecureHandler = LoggingHandler("#1", LogLevel.INFO)
@@ -83,22 +82,33 @@ class GoInteropTest {
             }
 
             val tcpTransport = TcpTransport(upgrader)
-            val gossipProtocolBinding = GossipProtocolBinding(gossipRouter).also {
+            val gossip = GossipProtocol(gossipRouter).also {
                 it.debugGossipHandler = LoggingHandler("#4", LogLevel.INFO)
             }
 
-            val applicationProtocols = listOf(gossipProtocolBinding)
+            val applicationProtocols = listOf(ProtocolBinding.createSimple("/meshsub/1.0.0", gossip))
             val inboundStreamHandler = StreamHandler.create(Multistream.create(applicationProtocols))
             logger.info("Dialing...")
             val connFuture = tcpTransport.dial(Multiaddr("/ip4/127.0.0.1/tcp/45555"), inboundStreamHandler)
 
+            var pingRes: Long? = null
             connFuture.thenCompose {
                 logger.info("Connection made")
-                val initiator = Multistream.create(applicationProtocols)
-                val (channelHandler, completableFuture) = initiator.initializer()
-                logger.info("Creating stream")
-                it.muxerSession.get().createStream(StreamHandler.create(channelHandler))
-                completableFuture
+                val ret =
+                it.muxerSession.get().createStream(Multistream.create(applicationProtocols))
+
+                val initiator = Multistream.create(listOf(PingBinding(PingProtocol())))
+                    logger.info("Creating ping stream")
+                it.muxerSession.get().createStream(initiator)
+                    .thenCompose {
+                        println("Sending ping...")
+                        it.ping()
+                    }.thenAccept {
+                        println("Ping time: $it")
+                        pingRes = it
+                    }
+
+                ret
             }.thenAccept {
                 logger.info("Stream created")
             }.get(5, TimeUnit.HOURS)
@@ -129,12 +139,26 @@ class GoInteropTest {
             Assertions.assertNotNull(msg2)
             Assertions.assertNull(goInbound.poll())
             Assertions.assertEquals(msgFromJava, msg2!!.data.toByteArray().toString(StandardCharsets.UTF_8))
+            Assertions.assertNotNull(pingRes)
 
             println("Done!")
+
+            // Allows to detect Netty leaks
+            System.gc()
+            Thread.sleep(500)
+            System.gc()
+            Thread.sleep(500)
+            System.gc()
         } finally {
             println("Killing p2pd process")
             pdHost.kill()
         }
+
+        // Uncomment to get more details on Netty leaks
+//        while(true) {
+//            Thread.sleep(500)
+//            System.gc()
+//        }
     }
 
     @Test

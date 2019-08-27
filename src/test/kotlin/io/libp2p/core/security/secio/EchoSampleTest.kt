@@ -1,14 +1,13 @@
 package io.libp2p.core.security.secio
 
+import io.libp2p.core.Connection
+import io.libp2p.core.SimpleClientHandler
 import io.libp2p.core.StreamHandler
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.multiformats.Multiaddr
-import io.libp2p.core.multistream.Mode
 import io.libp2p.core.multistream.Multistream
 import io.libp2p.core.multistream.ProtocolBinding
-import io.libp2p.core.multistream.ProtocolBindingInitializer
-import io.libp2p.core.multistream.ProtocolMatcher
 import io.libp2p.core.mux.mplex.MplexStreamMuxer
 import io.libp2p.core.transport.ConnectionUpgrader
 import io.libp2p.core.transport.tcp.TcpTransport
@@ -16,7 +15,6 @@ import io.libp2p.core.types.toByteArray
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 import io.netty.channel.ChannelHandlerContext
-import io.netty.channel.ChannelInboundHandlerAdapter
 import io.netty.handler.logging.LogLevel
 import io.netty.handler.logging.LoggingHandler
 import org.apache.logging.log4j.LogManager
@@ -26,33 +24,16 @@ import org.junit.jupiter.api.Test
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 
-class EchoController : ChannelInboundHandlerAdapter() {
-    var ctx: ChannelHandlerContext? = null
-    val respFuture = CompletableFuture<String>()
-    val activeFuture = CompletableFuture<EchoController>()
+class EchoProtocol : SimpleClientHandler() {
+    private val respFuture = CompletableFuture<String>()
 
     fun echo(str: String): CompletableFuture<String> {
-        ctx!!.writeAndFlush(Unpooled.copiedBuffer(str.toByteArray()))
+        writeAndFlush(Unpooled.copiedBuffer(str.toByteArray()))
         return respFuture
     }
 
-    override fun channelActive(ctx: ChannelHandlerContext) {
-        this.ctx = ctx
-        activeFuture.complete(this)
-    }
-
-    override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
-        msg as ByteBuf
+    override fun messageReceived(ctx: ChannelHandlerContext, msg: ByteBuf) {
         respFuture.complete(String(msg.toByteArray()))
-    }
-}
-
-class EchoProtocol : ProtocolBinding<EchoController> {
-    override val announce = "/echo/1.0.0"
-    override val matcher = ProtocolMatcher(Mode.STRICT, announce)
-    override fun initializer(selectedProtocol: String): ProtocolBindingInitializer<EchoController> {
-        val controller = EchoController()
-        return ProtocolBindingInitializer(controller, controller.activeFuture)
     }
 }
 
@@ -79,20 +60,15 @@ class EchoSampleTest {
             }
 
         val tcpTransport = TcpTransport(upgrader)
-        val applicationProtocols = listOf(EchoProtocol())
+        val applicationProtocols = listOf(ProtocolBinding.createSimple("/echo/1.0.0") { EchoProtocol() })
         val inboundStreamHandler = StreamHandler.create(Multistream.create(applicationProtocols))
         logger.info("Dialing...")
-        val connFuture = tcpTransport.dial(Multiaddr("/ip4/127.0.0.1/tcp/10000"), inboundStreamHandler)
+        val connFuture: CompletableFuture<Connection> = tcpTransport.dial(Multiaddr("/ip4/127.0.0.1/tcp/10000"), inboundStreamHandler)
 
         val echoString = "Helooooooooooooooooooooooooo\n"
         connFuture.thenCompose {
             logger.info("Connection made")
-            val echoInitiator = Multistream.create(applicationProtocols)
-            val (channelHandler, completableFuture) =
-                echoInitiator.initializer()
-            logger.info("Creating stream")
-            it.muxerSession.get().createStream(StreamHandler.create(channelHandler))
-            completableFuture
+            it.muxerSession.get().createStream(Multistream.create(applicationProtocols))
         }.thenCompose {
             logger.info("Stream created, sending echo string...")
             it.echo(echoString)

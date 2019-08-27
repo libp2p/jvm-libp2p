@@ -1,15 +1,14 @@
 package io.libp2p.core.multistream
 
-import io.libp2p.core.types.forward
-import io.libp2p.core.util.netty.nettyInitializer
-import io.netty.channel.ChannelHandler
+import io.libp2p.core.P2PAbstractChannel
+import io.libp2p.core.P2PAbstractHandler
 import java.util.concurrent.CompletableFuture
 
-interface Multistream<TController> {
+interface Multistream<TController> : P2PAbstractHandler<TController> {
 
     val bindings: List<ProtocolBinding<TController>>
 
-    fun initializer(): Pair<ChannelHandler, CompletableFuture<TController>>
+    override fun initChannel(ch: P2PAbstractChannel): CompletableFuture<TController>
 
     companion object {
         fun <TController> create(
@@ -21,19 +20,16 @@ interface Multistream<TController> {
 class MultistreamImpl<TController>(override val bindings: List<ProtocolBinding<TController>>) :
     Multistream<TController> {
 
-    override fun initializer(): Pair<ChannelHandler, CompletableFuture<TController>> {
-        val fut = CompletableFuture<TController>()
-        val handler = nettyInitializer {
-            it.pipeline().addLast(
+    override fun initChannel(ch: P2PAbstractChannel): CompletableFuture<TController> {
+        return with(ch.ch) {
+            pipeline().addLast(
                 Negotiator.createInitializer(
                     *bindings.map { it.announce }.toTypedArray()
                 )
             )
             val protocolSelect = ProtocolSelect(bindings)
-            protocolSelect.selectedFuture.forward(fut)
-            it.pipeline().addLast(protocolSelect)
+            pipeline().addLast(protocolSelect)
+            protocolSelect.selectedFuture
         }
-
-        return handler to fut
     }
 }

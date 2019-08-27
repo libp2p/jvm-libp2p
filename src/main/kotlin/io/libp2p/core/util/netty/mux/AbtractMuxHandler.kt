@@ -9,7 +9,10 @@ import io.netty.channel.ChannelInboundHandlerAdapter
 import java.util.concurrent.CompletableFuture
 import java.util.function.Function
 
-abstract class AbtractMuxHandler<TData>(var inboundInitializer: ChannelHandler? = null) : ChannelInboundHandlerAdapter() {
+typealias MuxChannelInitializer<TData> = (MuxChannel<TData>) -> Unit
+
+abstract class AbtractMuxHandler<TData>(var inboundInitializer: MuxChannelInitializer<TData>? = null) :
+    ChannelInboundHandlerAdapter() {
 
     private val streamMap: MutableMap<MuxId, MuxChannel<TData>> = mutableMapOf()
     var ctx: ChannelHandlerContext? = null
@@ -42,7 +45,9 @@ abstract class AbtractMuxHandler<TData>(var inboundInitializer: ChannelHandler? 
 
     protected fun onRemoteOpen(id: MuxId) {
         val initializer = inboundInitializer ?: throw Libp2pException("Illegal state: inbound stream handler is not set up yet")
-        val child = createChild(id, initializer, false)
+        val child = createChild(id, nettyInitializer {
+            initializer(it as MuxChannel<TData>)
+        }, false)
         onRemoteCreated(child)
     }
 
@@ -84,11 +89,13 @@ abstract class AbtractMuxHandler<TData>(var inboundInitializer: ChannelHandler? 
 
     protected abstract fun generateNextId(): MuxId
 
-    fun newStream(outboundInitializer: ChannelHandler): CompletableFuture<MuxChannel<TData>> {
+    fun newStream(outboundInitializer: MuxChannelInitializer<TData>): CompletableFuture<MuxChannel<TData>> {
         return activeFuture.thenApplyAsync(Function {
             val child = createChild(generateNextId(), nettyInitializer {
-                onLocalOpen(it as MuxChannel<TData>)
-                it.pipeline().addLast(outboundInitializer)
+                it as MuxChannel<TData>
+                onLocalOpen(it)
+                outboundInitializer(it)
+//                it.pipeline().addLast(outboundInitializer)
             }, true)
             child
         }, getChannelHandlerContext().channel().eventLoop())

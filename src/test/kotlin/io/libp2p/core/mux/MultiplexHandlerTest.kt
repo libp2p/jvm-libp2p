@@ -11,10 +11,10 @@ import io.libp2p.core.types.toByteBuf
 import io.libp2p.core.types.toHex
 import io.libp2p.core.util.netty.mux.MuxId
 import io.libp2p.core.util.netty.nettyInitializer
+import io.libp2p.tools.TestChannel
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
-import io.netty.channel.embedded.EmbeddedChannel
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 
@@ -76,7 +76,7 @@ class MultiplexHandlerTest {
                 childHandlers += handler
         }))
 
-        val ech = EmbeddedChannel(multistreamHandler)
+        val ech = TestChannel("test", true, multistreamHandler)
         ech.writeInbound(MuxFrame(MuxId(12, true), OPEN))
         ech.writeInbound(MuxFrame(MuxId(12, true), DATA, "22".fromHex().toByteBuf()))
         Assertions.assertEquals(1, childHandlers.size)

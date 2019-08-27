@@ -10,9 +10,12 @@ import io.libp2p.tools.TestChannel
 import io.libp2p.tools.TestChannel.Companion.interConnect
 import io.libp2p.tools.TestHandler
 import io.netty.buffer.ByteBuf
+import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelHandlerContext
+import io.netty.channel.ChannelInboundHandlerAdapter
 import io.netty.handler.logging.LogLevel
 import io.netty.handler.logging.LoggingHandler
+import io.netty.util.ResourceLeakDetector
 import org.apache.logging.log4j.LogManager
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
@@ -26,6 +29,10 @@ import java.util.concurrent.TimeUnit
 
 class SecIoSecureChannelTest {
 
+    init {
+        ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.PARANOID)
+    }
+
     @Test
     fun test1() {
         val (privKey1, pubKey1) = generateKeyPair(KEY_TYPE.ECDSA)
@@ -34,13 +41,21 @@ class SecIoSecureChannelTest {
         var rec1: String? = null
         var rec2: String? = null
         val latch = CountDownLatch(2)
+
+        val protocolSelect1 = ProtocolSelect(listOf(SecIoSecureChannel(privKey1)))
+        protocolSelect1.selectedFuture.thenAccept {
+        }
         val eCh1 = TestChannel("#1", true, LoggingHandler("#1", LogLevel.ERROR),
             Negotiator.createInitializer("/secio/1.0.0"),
-            ProtocolSelect(listOf(SecIoSecureChannel(privKey1))),
-            object : TestHandler("1") {
+            protocolSelect1,
+            addLastWhenActive(object : TestHandler("1") {
                 override fun channelActive(ctx: ChannelHandlerContext) {
                     super.channelActive(ctx)
                     ctx.writeAndFlush("Hello World from $name".toByteArray().toByteBuf())
+                }
+
+                override fun channelWritabilityChanged(ctx: ChannelHandlerContext?) {
+                    super.channelWritabilityChanged(ctx)
                 }
 
                 override fun channelRead(ctx: ChannelHandlerContext, msg: Any?) {
@@ -49,12 +64,13 @@ class SecIoSecureChannelTest {
                     logger.debug("==$name== read: $rec1")
                     latch.countDown()
                 }
-            })
+            }))
+
         val eCh2 = TestChannel("#2", false,
             LoggingHandler("#2", LogLevel.ERROR),
             Negotiator.createInitializer("/secio/1.0.0"),
             ProtocolSelect(listOf(SecIoSecureChannel(privKey2))),
-            object : TestHandler("2") {
+            addLastWhenActive(object : TestHandler("2") {
                 override fun channelActive(ctx: ChannelHandlerContext) {
                     super.channelActive(ctx)
                     ctx.writeAndFlush("Hello World from $name".toByteArray().toByteBuf())
@@ -66,13 +82,29 @@ class SecIoSecureChannelTest {
                     logger.debug("==$name== read: $rec2")
                     latch.countDown()
                 }
-            })
+            }))
+
         interConnect(eCh1, eCh2)
 
         latch.await(10, TimeUnit.SECONDS)
 
         Assertions.assertEquals("Hello World from 1", rec2)
         Assertions.assertEquals("Hello World from 2", rec1)
+
+        System.gc()
+        Thread.sleep(500)
+        System.gc()
+        Thread.sleep(500)
+        System.gc()
+    }
+
+    fun addLastWhenActive(h: ChannelHandler): ChannelHandler {
+        return object : ChannelInboundHandlerAdapter() {
+            override fun channelActive(ctx: ChannelHandlerContext) {
+                ctx.pipeline().remove(this)
+                ctx.pipeline().addLast(h)
+            }
+        }
     }
 
     companion object {

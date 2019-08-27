@@ -1,7 +1,7 @@
 package io.libp2p.core.multistream
 
-import io.netty.channel.ChannelHandler
-import java.util.concurrent.CompletableFuture
+import io.libp2p.core.P2PAbstractHandler
+import io.libp2p.core.SimpleClientHandler
 
 /**
  * A ProtocolBinding represents the entrypoint to a protocol.
@@ -11,7 +11,7 @@ import java.util.concurrent.CompletableFuture
  * A protocol can act on a Connection (as is the case of StreamMuxers and SecureChannels), or it can be deployed on a
  * Stream (e.g. user-land protocols such as pubsub, DHT, etc.)
  */
-interface ProtocolBinding<TController> {
+interface ProtocolBinding<out TController> {
     /**
      * The protocol ID with which we'll announce this protocol to peers.
      */
@@ -25,18 +25,27 @@ interface ProtocolBinding<TController> {
     /**
      * Returns initializer for this protocol on the provided channel, together with an optional controller object.
      */
-    fun initializer(selectedProtocol: String): ProtocolBindingInitializer<TController>
-}
 
-class ProtocolBindingInitializer<TController>(
-    val channelInitializer: ChannelHandler,
-    val controller: CompletableFuture<TController>
-)
+    fun initializer(selectedProtocol: String): P2PAbstractHandler<TController>
+
+    companion object {
+        fun <T> createSimple(protocolName: String, handler: P2PAbstractHandler<T>): ProtocolBinding<T> {
+            return object : ProtocolBinding<T> {
+                override val announce = protocolName
+                override val matcher = ProtocolMatcher(Mode.STRICT, announce)
+                override fun initializer(selectedProtocol: String): P2PAbstractHandler<T> = handler
+            }
+        }
+
+        fun <T : SimpleClientHandler> createSimple(protocolName: String, handlerCtor: () -> T): ProtocolBinding<T> =
+                    createSimple(protocolName, P2PAbstractHandler.createSimpleHandler(handlerCtor))
+    }
+}
 
 class DummyProtocolBinding : ProtocolBinding<Nothing> {
     override val announce: String = "/dummy/0.0.0"
     override val matcher: ProtocolMatcher =
         ProtocolMatcher(Mode.NEVER)
 
-    override fun initializer(selectedProtocol: String): ProtocolBindingInitializer<Nothing> = TODO("not implemented")
+    override fun initializer(selectedProtocol: String): P2PAbstractHandler<Nothing> = TODO("not implemented")
 }

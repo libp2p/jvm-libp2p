@@ -123,6 +123,13 @@ class TcpTransportTest {
     }
 
     @Test
+    fun testDialClose_() {
+        while (true) {
+            println("Testing...")
+            testDialClose()
+        }
+    }
+
     fun testDialClose() {
         val logger = LogManager.getLogger("test")
 
@@ -163,6 +170,9 @@ class TcpTransportTest {
         logger.info("The first negotiation succeeded. Closing now...")
 
         tcpTransportClient.close().get(5, SECONDS)
+        logger.info("Client transport closed")
+        tcpTransportServer.close().get(5, SECONDS)
+        logger.info("Server transport closed")
 
         // checking that all dial futures are complete (successfully or not)
         val dialCompletions = dialFutures.map { it.handle { t, u -> t to u } }
