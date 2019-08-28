@@ -2,7 +2,6 @@ package io.libp2p.core.security.secio
 
 import io.libp2p.core.ConnectionClosedException
 import io.libp2p.core.P2PAbstractChannel
-import io.libp2p.core.P2PAbstractHandler
 import io.libp2p.core.PeerId
 import io.libp2p.core.SECURE_SESSION
 import io.libp2p.core.crypto.PrivKey
@@ -35,9 +34,8 @@ class SecIoSecureChannel(val localKey: PrivKey, val remotePeerId: PeerId?) :
     override val matcher =
         ProtocolMatcher(Mode.STRICT, name = "/secio/1.0.0")
 
-    override fun initializer(selectedProtocol: String): P2PAbstractHandler<SecureChannel.Session> {
+    override fun initChannel(ch: P2PAbstractChannel, selectedProtocol: String): CompletableFuture<SecureChannel.Session> {
         val ret = CompletableFuture<SecureChannel.Session>()
-        // bridge the result of the secure channel bootstrap with the promise.
         val resultHandler = object : ChannelInboundHandlerAdapter() {
             override fun userEventTriggered(ctx: ChannelHandlerContext, evt: Any) {
                 when (evt) {
@@ -54,17 +52,13 @@ class SecIoSecureChannel(val localKey: PrivKey, val remotePeerId: PeerId?) :
                 ctx.fireUserEventTriggered(evt)
             }
         }
-        return object : P2PAbstractHandler<SecureChannel.Session> {
-            override fun initChannel(ch: P2PAbstractChannel): CompletableFuture<SecureChannel.Session> {
-                listOf(
-                    "PacketLenEncoder" to LengthFieldPrepender(4),
-                    "PacketLenDecoder" to LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0, 4, 0, 4),
-                    HandshakeHandlerName to SecIoHandshake(),
-                    "SecioNegotiationResultHandler" to resultHandler
-                ).forEach { ch.ch.pipeline().addLast(it.first, it.second) }
-                return ret
-            }
-        }
+        listOf(
+            "PacketLenEncoder" to LengthFieldPrepender(4),
+            "PacketLenDecoder" to LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0, 4, 0, 4),
+            HandshakeHandlerName to SecIoHandshake(),
+            "SecioNegotiationResultHandler" to resultHandler
+        ).forEach { ch.ch.pipeline().addLast(it.first, it.second) }
+        return ret
     }
 
     inner class SecIoHandshake : SimpleChannelInboundHandler<ByteBuf>() {

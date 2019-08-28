@@ -1,7 +1,9 @@
 package io.libp2p.core.multistream
 
+import io.libp2p.core.P2PAbstractChannel
 import io.libp2p.core.P2PAbstractHandler
 import io.libp2p.core.SimpleClientHandler
+import java.util.concurrent.CompletableFuture
 
 /**
  * A ProtocolBinding represents the entrypoint to a protocol.
@@ -26,14 +28,16 @@ interface ProtocolBinding<out TController> {
      * Returns initializer for this protocol on the provided channel, together with an optional controller object.
      */
 
-    fun initializer(selectedProtocol: String): P2PAbstractHandler<TController>
+    fun initChannel(ch: P2PAbstractChannel, selectedProtocol: String): CompletableFuture<out TController>
 
     companion object {
         fun <T> createSimple(protocolName: String, handler: P2PAbstractHandler<T>): ProtocolBinding<T> {
             return object : ProtocolBinding<T> {
                 override val announce = protocolName
                 override val matcher = ProtocolMatcher(Mode.STRICT, announce)
-                override fun initializer(selectedProtocol: String): P2PAbstractHandler<T> = handler
+                override fun initChannel(ch: P2PAbstractChannel, selectedProtocol: String): CompletableFuture<out T> {
+                    return handler.initChannel(ch)
+                }
             }
         }
 
@@ -47,5 +51,5 @@ class DummyProtocolBinding : ProtocolBinding<Nothing> {
     override val matcher: ProtocolMatcher =
         ProtocolMatcher(Mode.NEVER)
 
-    override fun initializer(selectedProtocol: String): P2PAbstractHandler<Nothing> = TODO("not implemented")
+    override fun initChannel(ch: P2PAbstractChannel, selectedProtocol: String) = TODO()
 }

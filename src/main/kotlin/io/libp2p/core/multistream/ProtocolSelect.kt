@@ -24,9 +24,8 @@ class ProtocolSelect<TController>(val protocols: List<ProtocolBinding<TControlle
             is ProtocolNegotiationSucceeded -> {
                 val protocolBinding = protocols.find { it.matcher.matches(evt.proto) }
                     ?: throw Libp2pException("Protocol negotiation failed: not supported protocol ${evt.proto}")
-                val bindingInitializer = protocolBinding.initializer(evt.proto)
                 ctx.pipeline().replace(this, "ProtocolBindingInitializer", nettyInitializer {
-                    bindingInitializer.initChannel(it.getP2PChannel()).forward(selectedFuture)
+                    protocolBinding.initChannel(it.getP2PChannel(), evt.proto).forward(selectedFuture)
                 })
             }
             is ProtocolNegotiationFailed -> throw Libp2pException("ProtocolNegotiationFailed: $evt")

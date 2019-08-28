@@ -32,21 +32,9 @@ const val protoAdd = "/add"
 const val protoMul = "/mul"
 
 class RpcProtocol(override val announce: String = "NOP") : ProtocolBinding<OpController> {
-
     override val matcher = ProtocolMatcher(Mode.PREFIX, protoPrefix)
 
-    override fun initializer(selectedProtocol: String): P2PAbstractHandler<OpController> {
-        return OpStreamHandler(selectedProtocol)
-    }
-}
-
-interface OpController {
-    fun calculate(a: Long, b: Long): CompletableFuture<Long> = throw NotImplementedError()
-}
-
-class OpStreamHandler(val proto: String): P2PAbstractHandler<OpController> {
-
-    override fun initChannel(ch: P2PAbstractChannel): CompletableFuture<out OpController> {
+    override fun initChannel(ch: P2PAbstractChannel, proto: String): CompletableFuture<out OpController> {
         val ret = CompletableFuture<OpController>()
         val handler = if (ch.isInitiator) {
             OpClientHandler(ch as Stream, ret)
@@ -62,6 +50,10 @@ class OpStreamHandler(val proto: String): P2PAbstractHandler<OpController> {
         ch.ch.pipeline().addLast(handler)
         return ret
     }
+}
+
+interface OpController {
+    fun calculate(a: Long, b: Long): CompletableFuture<Long> = throw NotImplementedError()
 }
 
 abstract class OpHandler: SimpleChannelInboundHandler<ByteBuf>(), OpController

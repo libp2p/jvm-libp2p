@@ -3,7 +3,6 @@ package io.libp2p.pubsub.gossip
 import io.libp2p.core.Connection
 import io.libp2p.core.ConnectionHandler
 import io.libp2p.core.P2PAbstractChannel
-import io.libp2p.core.P2PAbstractHandler
 import io.libp2p.core.Stream
 import io.libp2p.core.multistream.Mode
 import io.libp2p.core.multistream.Multistream
@@ -28,12 +27,8 @@ class Gossip(
         conn.muxerSession.createStream(Multistream.create(listOf(this)))
     }
 
-    override fun initializer(selectedProtocol: String): P2PAbstractHandler<Unit> {
-        return object : P2PAbstractHandler<Unit> {
-            override fun initChannel(ch: P2PAbstractChannel): CompletableFuture<out Unit> {
-                router.addPeerWithDebugHandler(ch as Stream, debugGossipHandler)
-                return CompletableFuture.completedFuture(Unit)
-            }
-        }
+    override fun initChannel(ch: P2PAbstractChannel, selectedProtocol: String): CompletableFuture<out Unit> {
+        router.addPeerWithDebugHandler(ch as Stream, debugGossipHandler)
+        return CompletableFuture.completedFuture(Unit)
     }
 }

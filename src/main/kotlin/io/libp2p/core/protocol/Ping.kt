@@ -34,8 +34,8 @@ open class PingBinding(val ping: PingProtocol) : ProtocolBinding<PingController>
     override val announce = "/ipfs/ping/1.0.0"
     override val matcher = ProtocolMatcher(Mode.STRICT, name = announce)
 
-    override fun initializer(selectedProtocol: String): P2PAbstractHandler<PingController> {
-        return ping
+    override fun initChannel(ch: P2PAbstractChannel, selectedProtocol: String): CompletableFuture<out PingController> {
+        return ping.initChannel(ch)
     }
 }
 
