@@ -45,48 +45,55 @@ class SecIoSecureChannelTest {
         val latch = CountDownLatch(2)
 
         val protocolSelect1 = ProtocolSelect(listOf(SecIoSecureChannel(privKey1)))
-        protocolSelect1.selectedFuture.thenAccept {
-        }
+        val protocolSelect2 = ProtocolSelect(listOf(SecIoSecureChannel(privKey2)))
+
         val eCh1 = TestChannel("#1", true, LoggingHandler("#1", LogLevel.ERROR),
             Negotiator.createRequesterInitializer("/secio/1.0.0"),
-            protocolSelect1,
-            object : TestHandler("1") {
-                override fun channelActive(ctx: ChannelHandlerContext) {
-                    super.channelActive(ctx)
-                    ctx.writeAndFlush("Hello World from $name".toByteArray().toByteBuf())
-                }
-
-                override fun channelWritabilityChanged(ctx: ChannelHandlerContext?) {
-                    super.channelWritabilityChanged(ctx)
-                }
-
-                override fun channelRead(ctx: ChannelHandlerContext, msg: Any?) {
-                    msg as ByteBuf
-                    rec1 = msg.toByteArray().toString(StandardCharsets.UTF_8)
-                    logger.debug("==$name== read: $rec1")
-                    latch.countDown()
-                }
-            })
+            protocolSelect1)
 
         val eCh2 = TestChannel("#2", false,
             LoggingHandler("#2", LogLevel.ERROR),
             Negotiator.createResponderInitializer(listOf(ProtocolMatcher(Mode.STRICT, "/secio/1.0.0"))),
-            ProtocolSelect(listOf(SecIoSecureChannel(privKey2))),
-            object : TestHandler("2") {
-                override fun channelActive(ctx: ChannelHandlerContext) {
-                    super.channelActive(ctx)
-                    ctx.writeAndFlush("Hello World from $name".toByteArray().toByteBuf())
-                }
+            protocolSelect2)
 
-                override fun channelRead(ctx: ChannelHandlerContext, msg: Any?) {
-                    msg as ByteBuf
-                    rec2 = msg.toByteArray().toString(StandardCharsets.UTF_8)
-                    logger.debug("==$name== read: $rec2")
-                    latch.countDown()
-                }
-            })
-
+        println("Connecting channels...")
         interConnect(eCh1, eCh2)
+
+
+        println("Waiting for secio negotiation to complete...")
+        protocolSelect1.selectedFuture.get(5, TimeUnit.SECONDS)
+        protocolSelect2.selectedFuture.get(5, TimeUnit.SECONDS)
+        println("Secured!")
+
+        eCh1.pipeline().addLast(object : TestHandler("1") {
+            override fun channelActive(ctx: ChannelHandlerContext) {
+                super.channelActive(ctx)
+                ctx.writeAndFlush("Hello World from $name".toByteArray().toByteBuf())
+            }
+
+            override fun channelRead(ctx: ChannelHandlerContext, msg: Any?) {
+                msg as ByteBuf
+                rec1 = msg.toByteArray().toString(StandardCharsets.UTF_8)
+                logger.debug("==$name== read: $rec1")
+                latch.countDown()
+            }
+        })
+
+        eCh2.pipeline().addLast(object : TestHandler("2") {
+            override fun channelActive(ctx: ChannelHandlerContext) {
+                super.channelActive(ctx)
+                ctx.writeAndFlush("Hello World from $name".toByteArray().toByteBuf())
+            }
+
+            override fun channelRead(ctx: ChannelHandlerContext, msg: Any?) {
+                msg as ByteBuf
+                rec2 = msg.toByteArray().toString(StandardCharsets.UTF_8)
+                logger.debug("==$name== read: $rec2")
+                latch.countDown()
+            }
+        })
+        eCh1.pipeline().fireChannelActive()
+        eCh2.pipeline().fireChannelActive()
 
         latch.await(10, TimeUnit.SECONDS)
 
