@@ -26,9 +26,11 @@ class MultistreamImpl<TController>(override val bindings: List<ProtocolBinding<T
     override fun initChannel(ch: P2PAbstractChannel): CompletableFuture<TController> {
         return with(ch.ch) {
             pipeline().addLast(
-                Negotiator.createInitializer(
-                    *bindings.map { it.announce }.toTypedArray()
-                )
+                if (ch.isInitiator) {
+                    Negotiator.createRequesterInitializer(*bindings.map { it.announce }.toTypedArray())
+                } else {
+                    Negotiator.createResponderInitializer(bindings.map { it.matcher })
+                }
             )
             val protocolSelect = ProtocolSelect(bindings)
             pipeline().addLast(protocolSelect)

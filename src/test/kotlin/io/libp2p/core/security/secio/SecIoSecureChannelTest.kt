@@ -2,7 +2,9 @@ package io.libp2p.core.security.secio
 
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.generateKeyPair
+import io.libp2p.core.multistream.Mode
 import io.libp2p.core.multistream.Negotiator
+import io.libp2p.core.multistream.ProtocolMatcher
 import io.libp2p.core.multistream.ProtocolSelect
 import io.libp2p.core.types.toByteArray
 import io.libp2p.core.types.toByteBuf
@@ -46,9 +48,9 @@ class SecIoSecureChannelTest {
         protocolSelect1.selectedFuture.thenAccept {
         }
         val eCh1 = TestChannel("#1", true, LoggingHandler("#1", LogLevel.ERROR),
-            Negotiator.createInitializer("/secio/1.0.0"),
+            Negotiator.createRequesterInitializer("/secio/1.0.0"),
             protocolSelect1,
-            addLastWhenActive(object : TestHandler("1") {
+            object : TestHandler("1") {
                 override fun channelActive(ctx: ChannelHandlerContext) {
                     super.channelActive(ctx)
                     ctx.writeAndFlush("Hello World from $name".toByteArray().toByteBuf())
@@ -64,13 +66,13 @@ class SecIoSecureChannelTest {
                     logger.debug("==$name== read: $rec1")
                     latch.countDown()
                 }
-            }))
+            })
 
         val eCh2 = TestChannel("#2", false,
             LoggingHandler("#2", LogLevel.ERROR),
-            Negotiator.createInitializer("/secio/1.0.0"),
+            Negotiator.createResponderInitializer(listOf(ProtocolMatcher(Mode.STRICT, "/secio/1.0.0"))),
             ProtocolSelect(listOf(SecIoSecureChannel(privKey2))),
-            addLastWhenActive(object : TestHandler("2") {
+            object : TestHandler("2") {
                 override fun channelActive(ctx: ChannelHandlerContext) {
                     super.channelActive(ctx)
                     ctx.writeAndFlush("Hello World from $name".toByteArray().toByteBuf())
@@ -82,7 +84,7 @@ class SecIoSecureChannelTest {
                     logger.debug("==$name== read: $rec2")
                     latch.countDown()
                 }
-            }))
+            })
 
         interConnect(eCh1, eCh2)
 
