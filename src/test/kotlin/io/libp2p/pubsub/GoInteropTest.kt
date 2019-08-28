@@ -14,8 +14,6 @@ import io.libp2p.core.multistream.Multistream
 import io.libp2p.core.multistream.ProtocolBinding
 import io.libp2p.core.mux.mplex.MplexStreamMuxer
 import io.libp2p.core.protocol.Ping
-import io.libp2p.core.protocol.PingBinding
-import io.libp2p.core.protocol.PingProtocol
 import io.libp2p.core.security.secio.SecIoSecureChannel
 import io.libp2p.core.transport.ConnectionUpgrader
 import io.libp2p.core.transport.tcp.TcpTransport
@@ -98,13 +96,12 @@ class GoInteropTest {
             var pingRes: Long? = null
             connFuture.thenCompose {
                 logger.info("Connection made")
-                val ret =
-                it.muxerSession.createStream(Multistream.create(applicationProtocols))
+                val ret = it.muxerSession.createStream(Multistream.create(applicationProtocols)).controler
 
-                val initiator = Multistream.create(listOf(PingBinding(PingProtocol())))
-                    logger.info("Creating ping stream")
+                val initiator = Multistream.create(Ping())
+                logger.info("Creating ping stream")
                 it.muxerSession.createStream(initiator)
-                    .thenCompose {
+                    .controler.thenCompose {
                         println("Sending ping...")
                         it.ping()
                     }.thenAccept {

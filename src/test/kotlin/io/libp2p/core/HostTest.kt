@@ -8,7 +8,9 @@ import io.libp2p.core.protocol.Ping
 import io.libp2p.core.security.secio.SecIoSecureChannel
 import io.libp2p.core.transport.tcp.TcpTransport
 import io.netty.handler.logging.LogLevel
+import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
+import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeUnit
 
 class HostTest {
@@ -68,15 +70,24 @@ class HostTest {
         start2.get(5, TimeUnit.SECONDS)
         println("Host #2 started")
 
-        val pingCtr =
+        val ping =
             host1.network.connect(host2.peerId, Multiaddr("/ip4/127.0.0.1/tcp/40002"))
-                .thenCompose { it.muxerSession.createStream(Multistream.create(Ping())) }
+                .thenApply { it.muxerSession.createStream(Multistream.create(Ping())) }
                 .get(5, TimeUnit.SECONDS)
+        val pingStream = ping.stream.get(5, TimeUnit.SECONDS)
+        println("Ping stream created")
+        val pingCtr = ping.controler.get(5, TimeUnit.SECONDS)
         println("Ping controller created")
 
         for (i in 1..10) {
             val latency = pingCtr.ping().get(1, TimeUnit.SECONDS)
             println("Ping is $latency")
+        }
+        pingStream.ch.close().await(5, TimeUnit.SECONDS)
+        println("Ping stream closed")
+
+        Assertions.assertThrows(ExecutionException::class.java) {
+            pingCtr.ping().get(5, TimeUnit.SECONDS)
         }
 
         host1.stop().get(5, TimeUnit.SECONDS)

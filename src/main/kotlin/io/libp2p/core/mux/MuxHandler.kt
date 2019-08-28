@@ -21,7 +21,7 @@ class MuxHandler() : AbtractMuxHandler<ByteBuf>(), StreamMuxer.Session {
     private val idGenerator = AtomicLong(0xF)
 
     constructor(streamHandler: StreamHandler) : this() {
-        this.streamHandler = streamHandler
+        this.inboundStreamHandler = streamHandler
     }
 
     override fun handlerAdded(ctx: ChannelHandlerContext) {
@@ -62,18 +62,19 @@ class MuxHandler() : AbtractMuxHandler<ByteBuf>(), StreamMuxer.Session {
 
     override fun generateNextId() = MuxId(idGenerator.incrementAndGet(), true)
 
-    override var streamHandler: StreamHandler? = null
+    override var inboundStreamHandler: StreamHandler? = null
         set(value) {
             field = value
-            inboundInitializer = { streamHandler!!.handleStream(createStream(it)) }
+            inboundInitializer = { inboundStreamHandler!!.handleStream(createStream(it)) }
         }
 
     private fun createStream(channel: MuxChannel<ByteBuf>) =
         Stream(channel, ctx!!.channel().attr(CONNECTION).get()).also { channel.attr(STREAM).set(it) }
 
-    override fun <T> createStream(streamHandler: P2PAbstractHandler<T>): CompletableFuture<T> {
-        val ret = CompletableFuture<T>()
-        newStream { streamHandler.initChannel(createStream(it)).forward(ret) }
-        return ret
+    override fun <T> createStream(streamHandler: P2PAbstractHandler<T>): StreamPromise<T> {
+        val controller = CompletableFuture<T>()
+        val stream = newStream { streamHandler.initChannel(createStream(it)).forward(controller) }
+            .thenApply { it.attr(STREAM).get() }
+        return StreamPromise(stream, controller)
     }
 }

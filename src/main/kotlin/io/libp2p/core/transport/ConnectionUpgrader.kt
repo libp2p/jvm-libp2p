@@ -33,7 +33,7 @@ class ConnectionUpgrader(
 
         val multistream = Multistream.create(muxers)
         return multistream.initChannel(ch.getP2PChannel()).thenApply {
-            it.streamHandler = streamHandler
+            it.inboundStreamHandler = streamHandler
             it
         }
     }
