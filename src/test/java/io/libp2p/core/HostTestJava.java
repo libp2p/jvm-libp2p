@@ -28,7 +28,9 @@ public class HostTestJava {
             b.getSecureChannels().add(SecIoSecureChannel::new);
             b.getMuxers().add(MplexStreamMuxer::new);
             b.getProtocols().add(new Ping());
-            b.getDebug().getMuxFramesHandler().setLogger(LogLevel.ERROR, "host-1");
+            b.getDebug().getMuxFramesHandler().setLogger(LogLevel.ERROR, "host-1-MUX");
+            b.getDebug().getBeforeSecureHandler().setLogger(LogLevel.ERROR, "host-1-BS");
+            b.getDebug().getAfterSecureHandler().setLogger(LogLevel.ERROR, "host-1-AS");
         });
 
         HostImpl host2 = BuildersJKt.hostJ(b -> {

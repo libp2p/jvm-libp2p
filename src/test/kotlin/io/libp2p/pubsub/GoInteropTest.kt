@@ -1,5 +1,6 @@
 package io.libp2p.pubsub
 
+import io.libp2p.core.ConnectionHandler
 import io.libp2p.core.P2PAbstractChannel
 import io.libp2p.core.P2PAbstractHandler
 import io.libp2p.core.PeerId
@@ -91,7 +92,10 @@ class GoInteropTest {
             val applicationProtocols = listOf(ProtocolBinding.createSimple("/meshsub/1.0.0", gossip))
             val inboundStreamHandler = StreamHandler.create(Multistream.create(applicationProtocols))
             logger.info("Dialing...")
-            val connFuture = tcpTransport.dial(Multiaddr("/ip4/127.0.0.1/tcp/45555"), inboundStreamHandler)
+            val connFuture = tcpTransport.dial(
+                Multiaddr("/ip4/127.0.0.1/tcp/45555"),
+                ConnectionHandler.createStreamHandlerInitializer(inboundStreamHandler)
+            )
 
             var pingRes: Long? = null
             connFuture.thenCompose {

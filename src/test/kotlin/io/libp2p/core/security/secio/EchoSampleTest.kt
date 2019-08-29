@@ -1,6 +1,7 @@
 package io.libp2p.core.security.secio
 
 import io.libp2p.core.Connection
+import io.libp2p.core.ConnectionHandler
 import io.libp2p.core.SimpleClientHandler
 import io.libp2p.core.StreamHandler
 import io.libp2p.core.crypto.KEY_TYPE
@@ -62,8 +63,9 @@ class EchoSampleTest {
         val tcpTransport = TcpTransport(upgrader)
         val applicationProtocols = listOf(ProtocolBinding.createSimple("/echo/1.0.0") { EchoProtocol() })
         val inboundStreamHandler = StreamHandler.create(Multistream.create(applicationProtocols))
+        val connectionHandler = ConnectionHandler.createStreamHandlerInitializer(inboundStreamHandler)
         logger.info("Dialing...")
-        val connFuture: CompletableFuture<Connection> = tcpTransport.dial(Multiaddr("/ip4/127.0.0.1/tcp/10000"), inboundStreamHandler)
+        val connFuture: CompletableFuture<Connection> = tcpTransport.dial(Multiaddr("/ip4/127.0.0.1/tcp/10000"), connectionHandler)
 
         val echoString = "Helooooooooooooooooooooooooo\n"
         connFuture.thenCompose {

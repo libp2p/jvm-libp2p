@@ -3,7 +3,6 @@ package io.libp2p.core.transport.tcp
 import io.libp2p.core.Connection
 import io.libp2p.core.ConnectionHandler
 import io.libp2p.core.Libp2pException
-import io.libp2p.core.StreamHandler
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multiformats.Protocol.DNSADDR
 import io.libp2p.core.multiformats.Protocol.IP4
@@ -90,14 +89,13 @@ class TcpTransport(
     }
 
     @Synchronized
-    override fun listen(addr: Multiaddr, connHandler: ConnectionHandler, streamHandler: StreamHandler): CompletableFuture<Unit> {
+    override fun listen(addr: Multiaddr, connHandler: ConnectionHandler): CompletableFuture<Unit> {
         if (closed) throw Libp2pException("Transport is closed")
         return server.clone()
             .childHandler(nettyInitializer { ch ->
                 registerChannel(ch)
-                val (channelHandler, connFuture) = createConnectionHandler(streamHandler, false)
+                val (channelHandler, connFuture) = createConnectionHandler(connHandler, false)
                 ch.pipeline().addLast(channelHandler)
-                connFuture.thenAccept { connHandler.handleConnection(it) }
             })
             .bind(fromMultiaddr(addr))
             .also { ch ->
@@ -118,9 +116,9 @@ class TcpTransport(
     }
 
     @Synchronized
-    override fun dial(addr: Multiaddr, streamHandler: StreamHandler): CompletableFuture<Connection> {
+    override fun dial(addr: Multiaddr, connHandler: ConnectionHandler): CompletableFuture<Connection> {
         if (closed) throw Libp2pException("Transport is closed")
-        val (channelHandler, connFuture) = createConnectionHandler(streamHandler, true)
+        val (channelHandler, connFuture) = createConnectionHandler(connHandler, true)
         return client.clone()
             .handler(channelHandler)
             .connect(fromMultiaddr(addr))

@@ -1,6 +1,5 @@
 package io.libp2p.core.transport
 
-import io.libp2p.core.StreamHandler
 import io.libp2p.core.getP2PChannel
 import io.libp2p.core.multistream.Multistream
 import io.libp2p.core.mux.StreamMuxer
@@ -29,12 +28,13 @@ class ConnectionUpgrader(
         return ret
     }
 
-    fun establishMuxer(ch: Channel, streamHandler: StreamHandler): CompletableFuture<StreamMuxer.Session> {
+    fun establishMuxer(ch: Channel): CompletableFuture<StreamMuxer.Session> {
 
         val multistream = Multistream.create(muxers)
-        return multistream.initChannel(ch.getP2PChannel()).thenApply {
-            it.inboundStreamHandler = streamHandler
-            it
-        }
+        return multistream.initChannel(ch.getP2PChannel())
+//            .thenApply {
+//            it.inboundStreamHandler = streamHandler
+//            it
+//        }
     }
 }

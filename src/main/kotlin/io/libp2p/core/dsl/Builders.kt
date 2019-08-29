@@ -96,9 +96,10 @@ open class Builder {
 
         val network = NetworkImpl(transports, NetworkImpl.Config(network.listen.map { Multiaddr(it) }))
 
+        val streamHandler = Multistream.create(protocols.values).toStreamHandler()
         val connHandlerProtocols = protocols.values.mapNotNull { it as? ConnectionHandler }
-        network.connectionHandler = ConnectionHandler.createBroadcast(connHandlerProtocols)
-        network.streamHandler = Multistream.create(protocols.values).toStreamHandler()
+        network.connectionHandler = ConnectionHandler.createBroadcast(
+            listOf(ConnectionHandler.createStreamHandlerInitializer(streamHandler)) + connHandlerProtocols)
 
         return HostImpl(privKey, network, addressBook)
     }

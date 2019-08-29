@@ -12,14 +12,18 @@ import java.util.concurrent.ConcurrentHashMap
 interface Network {
     val transports: List<Transport>
     val connectionHandler: ConnectionHandler
-    val streamHandler: StreamHandler
 
     val connections: List<Connection>
 
     fun listen(addr: Multiaddr): CompletableFuture<Unit>
     fun unlisten(addr: Multiaddr): CompletableFuture<Unit>
 
-    fun connect(id: PeerId, vararg addrs: Multiaddr): CompletableFuture<Connection>
+    fun connect(
+        id: PeerId,
+        vararg addrs: Multiaddr,
+        connHandler: ConnectionHandler = connectionHandler
+    ): CompletableFuture<Connection>
+
     fun disconnect(conn: Connection): CompletableFuture<Unit>
 }
 
@@ -31,7 +35,6 @@ class NetworkImpl(
      * The connection table.
      */
     lateinit var connectionHandler: ConnectionHandler
-    lateinit var streamHandler: StreamHandler
 
     val connections: MutableMap<PeerId, Connection> = ConcurrentHashMap()
 
@@ -48,7 +51,7 @@ class NetworkImpl(
             // find the appropriate transport.
             val transport = transports.firstOrNull { tpt -> tpt.handles(addr) }
                 ?: throw RuntimeException("no transport to handle addr: $addr")
-            futs += transport.listen(addr, connectionHandler, streamHandler)
+            futs += transport.listen(addr, connectionHandler)
         }
         return CompletableFuture.allOf(*futs.toTypedArray()).thenApply { }
     }
@@ -58,7 +61,11 @@ class NetworkImpl(
         return CompletableFuture.allOf(*futs.toTypedArray()).thenApply { }
     }
 
-    fun connect(id: PeerId, vararg addrs: Multiaddr): CompletableFuture<Connection> {
+    fun connect(
+        id: PeerId,
+        vararg addrs: Multiaddr,
+        connHandler: ConnectionHandler = connectionHandler
+    ): CompletableFuture<Connection> {
 
         // we already have a connection for this peer, short circuit.
         connections[id]?.apply { return CompletableFuture.completedFuture(this) }
@@ -71,12 +78,11 @@ class NetworkImpl(
         val connectionFuts = addrs.mapNotNull { addr ->
             transports.firstOrNull { tpt -> tpt.handles(addr) }?.let { addr to it }
         }.map {
-            it.second.dial(it.first, streamHandler)
+            it.second.dial(it.first, connHandler)
         }
         return anyComplete(connectionFuts)
             .thenApply {
                 connections[id] = it
-                connectionHandler.handleConnection(it)
                 it
             }
     }

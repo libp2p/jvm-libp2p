@@ -3,14 +3,12 @@ package io.libp2p.core.transport.tcp
 import io.libp2p.core.Connection
 import io.libp2p.core.ConnectionHandler
 import io.libp2p.core.Libp2pException
-import io.libp2p.core.StreamHandler
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.mux.mplex.MplexStreamMuxer
 import io.libp2p.core.security.secio.SecIoSecureChannel
 import io.libp2p.core.transport.ConnectionUpgrader
-import io.libp2p.core.util.netty.nettyInitializer
 import org.apache.logging.log4j.LogManager
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
@@ -71,8 +69,7 @@ class TcpTransportTest {
         for (i in 0..5) {
             val bindFuture = tcpTransport.listen(
                 Multiaddr("/ip4/0.0.0.0/tcp/${20000 + i}"),
-                connHandler,
-                StreamHandler.create(nettyInitializer { })
+                connHandler
             )
             bindFuture.handle { t, u -> logger.info("Bound #$i", u) }
             logger.info("Binding #$i")
@@ -94,9 +91,7 @@ class TcpTransportTest {
         for (i in 0..5) {
             val bindFuture = tcpTransport.listen(
                 Multiaddr("/ip4/0.0.0.0/tcp/${20000 + i}"),
-                connHandler,
-                StreamHandler.create(nettyInitializer { })
-            )
+                connHandler)
             bindFuture.handle { t, u -> logger.info("Bound #$i", u) }
             logger.info("Binding #$i")
         }
@@ -116,8 +111,7 @@ class TcpTransportTest {
         assertThrows(Libp2pException::class.java) {
             tcpTransport.listen(
                 Multiaddr("/ip4/0.0.0.0/tcp/20000"),
-                connHandler,
-                StreamHandler.create(nettyInitializer { }))
+                connHandler)
                 .get(5, SECONDS)
         }
     }
@@ -143,8 +137,7 @@ class TcpTransportTest {
 
         tcpTransportServer.listen(
             Multiaddr("/ip4/0.0.0.0/tcp/20000"),
-            connHandler,
-            StreamHandler.create(nettyInitializer { })
+            connHandler
         ).get(5, SECONDS)
         logger.info("Server is listening")
 
@@ -154,7 +147,7 @@ class TcpTransportTest {
         for (i in 0..50) {
             logger.info("Connecting #$i")
             dialFutures +=
-                tcpTransportClient.dial(Multiaddr("/ip4/127.0.0.1/tcp/20000"), StreamHandler.create(nettyInitializer { }))
+                tcpTransportClient.dial(Multiaddr("/ip4/127.0.0.1/tcp/20000"), ConnectionHandler.create {  })
             dialFutures.last().whenComplete { t, u -> logger.info("Connected #$i: $t ($u)") }
         }
         logger.info("Active channels: ${tcpTransportClient.activeChannels.size}")
