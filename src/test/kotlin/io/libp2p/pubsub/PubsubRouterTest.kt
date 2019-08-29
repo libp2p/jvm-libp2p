@@ -283,10 +283,10 @@ class PubsubRouterTest {
         }
 
         val handler2router: (P2PService.PeerHandler) -> TestRouter = {
-            val channel = it.streamHandler.stream.ch
+            val channel = it.streamHandler.stream.nettyChannel
             val connection = allConnections.find { channel == it.ch1 || channel == it.ch2 }!!
             val otherChannel = if (connection.ch1 == channel) connection.ch2 else connection.ch1
-            allRouters.find { (it.router as AbstractRouter).peers.any { it.streamHandler.stream.ch == otherChannel } }!!
+            allRouters.find { (it.router as AbstractRouter).peers.any { it.streamHandler.stream.nettyChannel == otherChannel } }!!
         }
 
 //        allRouters.forEach {tr ->

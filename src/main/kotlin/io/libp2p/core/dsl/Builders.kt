@@ -2,9 +2,9 @@ package io.libp2p.core.dsl
 
 import io.libp2p.core.AddressBook
 import io.libp2p.core.ConnectionHandler
-import io.libp2p.core.Host
+import io.libp2p.core.HostImpl
 import io.libp2p.core.MemoryAddressBook
-import io.libp2p.core.Network
+import io.libp2p.core.NetworkImpl
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.crypto.generateKeyPair
@@ -33,15 +33,15 @@ class HostConfigurationException(message: String) : RuntimeException(message)
  */
 fun host(fn: Builder.() -> Unit) = Builder().apply(fn).build()
 
-class Builder {
-    private var identity = IdentityBuilder()
-    private val secureChannels = SecureChannelsBuilder()
-    private val muxers = MuxersBuilder()
-    private val transports = TransportsBuilder()
-    private val addressBook = AddressBookBuilder()
-    private val protocols = ProtocolsBuilder()
-    private val network = NetworkConfigBuilder()
-    private val debug = DebugBuilder()
+open class Builder {
+    protected open val identity = IdentityBuilder()
+    protected open val secureChannels = SecureChannelsBuilder()
+    protected open val muxers = MuxersBuilder()
+    protected open val transports = TransportsBuilder()
+    protected open val addressBook = AddressBookBuilder()
+    protected open val protocols = ProtocolsBuilder()
+    protected open val network = NetworkConfigBuilder()
+    protected open val debug = DebugBuilder()
 
     /**
      * Sets an identity for this host. If unset, libp2p will default to a random identity.
@@ -74,7 +74,7 @@ class Builder {
     /**
      * Constructs the Host with the provided parameters.
      */
-    fun build(): Host {
+    fun build(): HostImpl {
         if (secureChannels.values.isEmpty()) throw HostConfigurationException("at least one secure channel is required")
         if (muxers.values.isEmpty()) throw HostConfigurationException("at least one muxer is required")
         if (transports.values.isEmpty()) throw HostConfigurationException("at least one transport is required")
@@ -94,13 +94,13 @@ class Builder {
         val transports = transports.values.map { it(upgrader) }
         val addressBook = addressBook.impl
 
-        val network = Network(transports, Network.Config(network.listen.map { Multiaddr(it) }))
+        val network = NetworkImpl(transports, NetworkImpl.Config(network.listen.map { Multiaddr(it) }))
 
         val connHandlerProtocols = protocols.values.mapNotNull { it as? ConnectionHandler }
         network.connectionHandler = ConnectionHandler.createBroadcast(connHandlerProtocols)
         network.streamHandler = Multistream.create(protocols.values).toStreamHandler()
 
-        return Host(privKey, network, addressBook)
+        return HostImpl(privKey, network, addressBook)
     }
 }
 

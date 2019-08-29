@@ -47,7 +47,7 @@ class RpcProtocol(override val announce: String = "NOP") : ProtocolBinding<OpCon
             OpServerHandler(op)
         }
 
-        ch.ch.pipeline().addLast(handler)
+        ch.nettyChannel.pipeline().addLast(handler)
         return ret
     }
 }
@@ -74,7 +74,7 @@ class OpClientHandler(val stream: Stream, val activationFut: CompletableFuture<O
     }
 
     override fun calculate(a: Long, b: Long): CompletableFuture<Long> {
-        stream.ch.writeAndFlush(Unpooled.buffer().writeLong(a).writeLong(b))
+        stream.nettyChannel.writeAndFlush(Unpooled.buffer().writeLong(a).writeLong(b))
         return resFuture
     }
     override fun channelRead0(ctx: ChannelHandlerContext, msg: ByteBuf) {

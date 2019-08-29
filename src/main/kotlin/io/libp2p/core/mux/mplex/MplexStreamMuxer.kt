@@ -22,9 +22,9 @@ class MplexStreamMuxer : StreamMuxer, StreamMuxerDebug {
 
     override fun initChannel(ch: P2PAbstractChannel, selectedProtocol: String): CompletableFuture<out StreamMuxer.Session> {
         val muxSessionFuture = CompletableFuture<StreamMuxer.Session>()
-        ch.ch.pipeline().addLast(MplexFrameCodec())
-        muxFramesDebugHandler?.also { ch.ch.pipeline().addLast(it) }
-        ch.ch.pipeline().addLast("MuxerSessionTracker", object : ChannelInboundHandlerAdapter() {
+        ch.nettyChannel.pipeline().addLast(MplexFrameCodec())
+        muxFramesDebugHandler?.also { ch.nettyChannel.pipeline().addLast(it) }
+        ch.nettyChannel.pipeline().addLast("MuxerSessionTracker", object : ChannelInboundHandlerAdapter() {
             override fun userEventTriggered(ctx: ChannelHandlerContext, evt: Any) {
                 when (evt) {
                     is MuxSessionInitialized -> {
@@ -39,7 +39,7 @@ class MplexStreamMuxer : StreamMuxer, StreamMuxerDebug {
                 }
             }
         })
-        ch.ch.pipeline().addBefore("MuxerSessionTracker", "MuxHandler", MuxHandler())
+        ch.nettyChannel.pipeline().addBefore("MuxerSessionTracker", "MuxHandler", MuxHandler())
         return muxSessionFuture
     }
 }

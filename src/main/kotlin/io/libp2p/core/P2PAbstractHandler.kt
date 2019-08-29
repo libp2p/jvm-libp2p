@@ -62,7 +62,7 @@ class SimpleClientProtocol<TController : SimpleClientHandler>(
     override fun initChannel(ch: P2PAbstractChannel): CompletableFuture<TController> {
         val handler = handlerCtor()
         handler.initStream(ch as Stream)
-        ch.ch.pipeline().addLast(handler)
+        ch.nettyChannel.pipeline().addLast(handler)
         return handler.activeFuture.thenApply { handler }
     }
 }

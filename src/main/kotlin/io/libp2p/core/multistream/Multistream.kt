@@ -11,9 +11,11 @@ interface Multistream<TController> : P2PAbstractHandler<TController> {
     override fun initChannel(ch: P2PAbstractChannel): CompletableFuture<TController>
 
     companion object {
+        @JvmStatic
         fun <TController> create(
             vararg bindings: ProtocolBinding<TController>
         ): Multistream<TController> = MultistreamImpl(listOf(*bindings))
+        @JvmStatic
         fun <TController> create(
             bindings: List<ProtocolBinding<TController>>
         ): Multistream<TController> = MultistreamImpl(bindings)
@@ -24,7 +26,7 @@ class MultistreamImpl<TController>(override val bindings: List<ProtocolBinding<T
     Multistream<TController> {
 
     override fun initChannel(ch: P2PAbstractChannel): CompletableFuture<TController> {
-        return with(ch.ch) {
+        return with(ch.nettyChannel) {
             pipeline().addLast(
                 if (ch.isInitiator) {
                     Negotiator.createRequesterInitializer(*bindings.map { it.announce }.toTypedArray())

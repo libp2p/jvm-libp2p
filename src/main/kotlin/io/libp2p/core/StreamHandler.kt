@@ -10,7 +10,7 @@ interface StreamHandler {
 
         fun create(channelInitializer: ChannelHandler) = object : StreamHandler {
             override fun handleStream(stream: Stream) {
-                stream.ch.pipeline().addLast(channelInitializer)
+                stream.nettyChannel.pipeline().addLast(channelInitializer)
             }
         }
 

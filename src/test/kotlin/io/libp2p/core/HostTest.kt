@@ -83,7 +83,7 @@ class HostTest {
             val latency = pingCtr.ping().get(1, TimeUnit.SECONDS)
             println("Ping is $latency")
         }
-        pingStream.ch.close().await(5, TimeUnit.SECONDS)
+        pingStream.nettyChannel.close().await(5, TimeUnit.SECONDS)
         println("Ping stream closed")
 
         Assertions.assertThrows(ExecutionException::class.java) {
