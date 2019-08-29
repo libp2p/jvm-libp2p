@@ -27,7 +27,7 @@ interface Host {
     fun removeConnectionHandler(handler: ConnectionHandler): Unit = TODO()
 
     fun newStream(conn: Connection, protocol: String): CompletableFuture<Stream> = TODO()
-    fun newStream(addr: Multiaddr, protocol: String): CompletableFuture<Stream> = TODO()
+    fun newStream(peer: PeerId, addr: Multiaddr, protocol: String): CompletableFuture<Stream> = TODO()
 }
 
 
