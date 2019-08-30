@@ -9,9 +9,9 @@ import java.util.concurrent.CompletableFuture
 interface P2PAbstractHandler<out TController> {
     fun initChannel(ch: P2PAbstractChannel): CompletableFuture<out TController>
 
-    fun toStreamHandler() = object : StreamHandler {
-        override fun handleStream(stream: Stream) {
-            initChannel(stream)
+    fun toStreamHandler(): StreamHandler<out TController> = object : StreamHandler<TController> {
+        override fun handleStream(stream: Stream): CompletableFuture<out TController> {
+            return initChannel(stream)
         }
     }
 

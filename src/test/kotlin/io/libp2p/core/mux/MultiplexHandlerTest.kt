@@ -1,6 +1,7 @@
 package io.libp2p.core.mux
 
 import io.libp2p.core.Libp2pException
+import io.libp2p.core.Stream
 import io.libp2p.core.StreamHandler
 import io.libp2p.core.mux.MuxFrame.Flag.DATA
 import io.libp2p.core.mux.MuxFrame.Flag.OPEN
@@ -13,10 +14,12 @@ import io.libp2p.core.util.netty.mux.MuxId
 import io.libp2p.core.util.netty.nettyInitializer
 import io.libp2p.tools.TestChannel
 import io.netty.buffer.ByteBuf
+import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
+import java.util.concurrent.CompletableFuture
 
 /**
  * Created by Anton Nashatyrev on 09.07.2019.
@@ -68,7 +71,7 @@ class MultiplexHandlerTest {
             }
         }
         val childHandlers = mutableListOf<TestHandler>()
-        val multistreamHandler = MuxHandler(StreamHandler.create(
+        val multistreamHandler = MuxHandler(createStreamHandler(
             nettyInitializer {
                 println("New child channel created")
                 val handler = TestHandler()
@@ -117,5 +120,12 @@ class MultiplexHandlerTest {
         ech.close().await()
 
         Assertions.assertTrue(childHandlers[0].ctx!!.channel().closeFuture().isDone)
+    }
+
+    fun createStreamHandler(channelInitializer: ChannelHandler) = object : StreamHandler<Unit> {
+        override fun handleStream(stream: Stream): CompletableFuture<out Unit> {
+            stream.nettyChannel.pipeline().addLast(channelInitializer)
+            return CompletableFuture.completedFuture(Unit)
+        }
     }
 }

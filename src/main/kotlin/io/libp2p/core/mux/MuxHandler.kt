@@ -2,10 +2,10 @@ package io.libp2p.core.mux
 
 import io.libp2p.core.CONNECTION
 import io.libp2p.core.MUXER_SESSION
-import io.libp2p.core.P2PAbstractHandler
 import io.libp2p.core.STREAM
 import io.libp2p.core.Stream
 import io.libp2p.core.StreamHandler
+import io.libp2p.core.StreamPromise
 import io.libp2p.core.events.MuxSessionInitialized
 import io.libp2p.core.types.forward
 import io.libp2p.core.util.netty.mux.AbtractMuxHandler
@@ -20,7 +20,7 @@ class MuxHandler() : AbtractMuxHandler<ByteBuf>(), StreamMuxer.Session {
 
     private val idGenerator = AtomicLong(0xF)
 
-    constructor(streamHandler: StreamHandler) : this() {
+    constructor(streamHandler: StreamHandler<*>) : this() {
         this.inboundStreamHandler = streamHandler
     }
 
@@ -62,7 +62,7 @@ class MuxHandler() : AbtractMuxHandler<ByteBuf>(), StreamMuxer.Session {
 
     override fun generateNextId() = MuxId(idGenerator.incrementAndGet(), true)
 
-    override var inboundStreamHandler: StreamHandler? = null
+    override var inboundStreamHandler: StreamHandler<*>? = null
         set(value) {
             field = value
             inboundInitializer = { inboundStreamHandler!!.handleStream(createStream(it)) }
@@ -71,9 +71,9 @@ class MuxHandler() : AbtractMuxHandler<ByteBuf>(), StreamMuxer.Session {
     private fun createStream(channel: MuxChannel<ByteBuf>) =
         Stream(channel, ctx!!.channel().attr(CONNECTION).get()).also { channel.attr(STREAM).set(it) }
 
-    override fun <T> createStream(streamHandler: P2PAbstractHandler<T>): StreamPromise<T> {
+    override fun <T> createStream(streamHandler: StreamHandler<T>): StreamPromise<T> {
         val controller = CompletableFuture<T>()
-        val stream = newStream { streamHandler.initChannel(createStream(it)).forward(controller) }
+        val stream = newStream { streamHandler.handleStream(createStream(it)).forward(controller) }
             .thenApply { it.attr(STREAM).get() }
         return StreamPromise(stream, controller)
     }

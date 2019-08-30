@@ -3,8 +3,9 @@ package io.libp2p.core
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.transport.Transport
 import io.libp2p.core.types.anyComplete
+import io.libp2p.core.types.toVoidCompletableFuture
 import java.util.concurrent.CompletableFuture
-import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CopyOnWriteArrayList
 
 /**
  * The networkConfig component handles all networkConfig affairs, particularly listening on endpoints and dialing peers.
@@ -18,57 +19,61 @@ interface Network {
     fun listen(addr: Multiaddr): CompletableFuture<Unit>
     fun unlisten(addr: Multiaddr): CompletableFuture<Unit>
 
-    fun connect(
-        id: PeerId,
-        vararg addrs: Multiaddr,
-        connHandler: ConnectionHandler = connectionHandler
-    ): CompletableFuture<Connection>
-
+    fun connect(id: PeerId, vararg addrs: Multiaddr): CompletableFuture<Connection>
     fun disconnect(conn: Connection): CompletableFuture<Unit>
+
+    fun close(): CompletableFuture<Unit>
 }
 
 class NetworkImpl(
-    private val transports: List<Transport>,
-    private val config: Config
-) {
+    override val transports: List<Transport>,
+    override val connectionHandler: ConnectionHandler
+) : Network {
+
     /**
      * The connection table.
      */
-    lateinit var connectionHandler: ConnectionHandler
-
-    val connections: MutableMap<PeerId, Connection> = ConcurrentHashMap()
-
-    data class Config(val listenAddrs: List<Multiaddr>)
+    override val connections = CopyOnWriteArrayList<Connection>()
 
     init {
         transports.forEach(Transport::initialize)
     }
 
-    fun start(): CompletableFuture<Unit> {
-        val futs = mutableListOf<CompletableFuture<Unit>>()
-        // start listening on all specified addresses.
-        config.listenAddrs.forEach { addr ->
-            // find the appropriate transport.
-            val transport = transports.firstOrNull { tpt -> tpt.handles(addr) }
-                ?: throw RuntimeException("no transport to handle addr: $addr")
-            futs += transport.listen(addr, connectionHandler)
-        }
-        return CompletableFuture.allOf(*futs.toTypedArray()).thenApply { }
-    }
-
-    fun close(): CompletableFuture<Unit> {
+    override fun close(): CompletableFuture<Unit> {
         val futs = transports.map(Transport::close)
-        return CompletableFuture.allOf(*futs.toTypedArray()).thenApply { }
+        return CompletableFuture.allOf(*futs.toTypedArray())
+            .thenCompose {
+                val connCloseFuts = connections.map { it.nettyChannel.close().toVoidCompletableFuture() }
+                CompletableFuture.allOf(*connCloseFuts.toTypedArray())
+            }.thenApply {  }
     }
 
-    fun connect(
+    override fun listen(addr: Multiaddr): CompletableFuture<Unit> =
+        getTransport(addr).listen(addr, createHookedConnHandler(connectionHandler))
+    override fun unlisten(addr: Multiaddr): CompletableFuture<Unit> = getTransport(addr).unlisten(addr)
+    override fun disconnect(conn: Connection): CompletableFuture<Unit> =
+        conn.nettyChannel.close().toVoidCompletableFuture()
+
+    private fun getTransport(addr: Multiaddr) =
+        transports.firstOrNull { tpt -> tpt.handles(addr) }
+            ?: throw RuntimeException("no transport to handle addr: $addr")
+
+    private fun createHookedConnHandler(handler: ConnectionHandler) =
+        ConnectionHandler.createBroadcast(listOf(
+            handler,
+            ConnectionHandler.create { conn ->
+                connections += conn
+                conn.closeFuture().thenAccept { connections -= conn }
+            }
+        ))
+
+    override fun connect(
         id: PeerId,
-        vararg addrs: Multiaddr,
-        connHandler: ConnectionHandler = connectionHandler
-    ): CompletableFuture<Connection> {
+        vararg addrs: Multiaddr): CompletableFuture<Connection> {
 
         // we already have a connection for this peer, short circuit.
-        connections[id]?.apply { return CompletableFuture.completedFuture(this) }
+        connections.find { it.secureSession.remoteId == id }
+            ?.apply { return CompletableFuture.completedFuture(this) }
 
         // 1. check that some transport can dial at least one addr.
         // 2. trigger dials in parallel via all transports.
@@ -78,12 +83,8 @@ class NetworkImpl(
         val connectionFuts = addrs.mapNotNull { addr ->
             transports.firstOrNull { tpt -> tpt.handles(addr) }?.let { addr to it }
         }.map {
-            it.second.dial(it.first, connHandler)
+            it.second.dial(it.first, createHookedConnHandler(connectionHandler))
         }
         return anyComplete(connectionFuts)
-            .thenApply {
-                connections[id] = it
-                it
-            }
     }
 }

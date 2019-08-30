@@ -27,8 +27,18 @@ interface ProtocolBinding<out TController> {
     /**
      * Returns initializer for this protocol on the provided channel, together with an optional controller object.
      */
-
     fun initChannel(ch: P2PAbstractChannel, selectedProtocol: String): CompletableFuture<out TController>
+
+
+    fun toInitiator(protocol: String): ProtocolBinding<TController> {
+        val srcBinding = this
+        return object : ProtocolBinding<TController> {
+            override val announce = protocol
+            override val matcher = ProtocolMatcher(Mode.STRICT, announce)
+            override fun initChannel(ch: P2PAbstractChannel, selectedProtocol: String): CompletableFuture<out TController> =
+                srcBinding.initChannel(ch, selectedProtocol)
+        }
+    }
 
     companion object {
         fun <T> createSimple(protocolName: String, handler: P2PAbstractHandler<T>): ProtocolBinding<T> {
@@ -43,13 +53,6 @@ interface ProtocolBinding<out TController> {
 
         fun <T : SimpleClientHandler> createSimple(protocolName: String, handlerCtor: () -> T): ProtocolBinding<T> =
                     createSimple(protocolName, P2PAbstractHandler.createSimpleHandler(handlerCtor))
+
     }
-}
-
-class DummyProtocolBinding : ProtocolBinding<Nothing> {
-    override val announce: String = "/dummy/0.0.0"
-    override val matcher: ProtocolMatcher =
-        ProtocolMatcher(Mode.NEVER)
-
-    override fun initChannel(ch: P2PAbstractChannel, selectedProtocol: String) = TODO()
 }

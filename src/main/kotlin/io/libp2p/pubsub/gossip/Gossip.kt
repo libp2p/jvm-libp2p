@@ -24,7 +24,7 @@ class Gossip(
     override val matcher = ProtocolMatcher(Mode.STRICT, announce)
 
     override fun handleConnection(conn: Connection) {
-        conn.muxerSession.createStream(Multistream.create(listOf(this)))
+        conn.muxerSession.createStream(Multistream.create(listOf(this)).toStreamHandler())
     }
 
     override fun initChannel(ch: P2PAbstractChannel, selectedProtocol: String): CompletableFuture<out Unit> {

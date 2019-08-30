@@ -3,7 +3,6 @@ package io.libp2p.core
 import io.libp2p.core.dsl.host
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multistream.Mode
-import io.libp2p.core.multistream.Multistream
 import io.libp2p.core.multistream.ProtocolBinding
 import io.libp2p.core.multistream.ProtocolMatcher
 import io.libp2p.core.mux.mplex.MplexStreamMuxer
@@ -113,7 +112,7 @@ class RpcHandlerTest {
                 +RpcProtocol()
             }
             debug {
-                muxFramesHandler.setLogger(LogLevel.ERROR)
+                muxFramesHandler.setLogger(LogLevel.ERROR, "Host-1")
             }
         }
 
@@ -137,7 +136,7 @@ class RpcHandlerTest {
                 listen("/ip4/0.0.0.0/tcp/40002")
             }
             debug {
-                muxFramesHandler.setLogger(LogLevel.ERROR)
+                muxFramesHandler.setLogger(LogLevel.ERROR, "Host-2")
             }
         }
 
@@ -148,34 +147,63 @@ class RpcHandlerTest {
         start2.get(5, TimeUnit.SECONDS)
         println("Host #2 started")
 
+        var streamCounter1 = 0
+        host1.addStreamHandler(StreamHandler.create {
+            streamCounter1++
+        } )
+        var streamCounter2 = 0
+        host2.addStreamHandler(StreamHandler.create {
+            streamCounter2++
+        } )
+
         run {
-            val ctr =
-                host1.network.connect(host2.peerId, Multiaddr("/ip4/127.0.0.1/tcp/40002"))
-                    .thenCompose {
-                        it.muxerSession.createStream(Multistream.create(RpcProtocol(protoPrefix + protoAdd))).controler
-                    }
-                    .get(5, TimeUnit.SECONDS)
+            val ctr = host1.newStream<OpController>(protoPrefix + protoAdd, host2.peerId, Multiaddr("/ip4/127.0.0.1/tcp/40002"))
+                .controler.get(5, TimeUnit.SECONDS)
             println("Controller created")
             val res = ctr.calculate(100, 10).get(5, TimeUnit.SECONDS)
             println("Calculated plus: $res")
             Assertions.assertEquals(110, res)
         }
+
+        Assertions.assertEquals(1, host1.network.connections.size)
+        Assertions.assertEquals(1, host2.network.connections.size)
+        Assertions.assertEquals(1, streamCounter2)
+        Assertions.assertEquals(1, streamCounter1)
+        for (i in 1 .. 100) {
+            if (host1.streams.isNotEmpty() || host2.streams.isNotEmpty()) Thread.sleep(10)
+            else break
+        }
+        Assertions.assertEquals(0, host1.streams.size)
+        Assertions.assertEquals(0, host2.streams.size)
+        val connection = host1.network.connections[0]
+
         run {
-            val ctr =
-                host1.network.connect(host2.peerId, Multiaddr("/ip4/127.0.0.1/tcp/40002"))
-                    .thenCompose {
-                        it.muxerSession.createStream(Multistream.create(RpcProtocol(protoPrefix + protoMul))).controler
-                    }
-                    .get(5, TimeUnit.SECONDS)
+            val ctr = host1.newStream<OpController>(protoPrefix + protoMul, host2.peerId, Multiaddr("/ip4/127.0.0.1/tcp/40002"))
+                .controler.get(5, TimeUnit.SECONDS)
             println("Controller created")
             val res = ctr.calculate(100, 10).get(5, TimeUnit.SECONDS)
             println("Calculated mul: $res")
             Assertions.assertEquals(1000, res)
         }
 
+        Assertions.assertEquals(1, host1.network.connections.size)
+        Assertions.assertEquals(1, host2.network.connections.size)
+        Assertions.assertEquals(connection, host1.network.connections[0])
+        Assertions.assertEquals(2, streamCounter1)
+        Assertions.assertEquals(2, streamCounter2)
+        for (i in 1 .. 100) {
+            if (host1.streams.isNotEmpty() || host2.streams.isNotEmpty()) Thread.sleep(10)
+            else break
+        }
+        Assertions.assertEquals(0, host1.streams.size)
+        Assertions.assertEquals(0, host2.streams.size)
+
         host1.stop().get(5, TimeUnit.SECONDS)
         println("Host #1 stopped")
         host2.stop().get(5, TimeUnit.SECONDS)
         println("Host #2 stopped")
+
+        Assertions.assertEquals(0, host1.network.connections.size)
+        Assertions.assertEquals(0, host2.network.connections.size)
     }
 }

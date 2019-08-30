@@ -2,9 +2,9 @@ package io.libp2p.core
 
 import io.libp2p.core.dsl.host
 import io.libp2p.core.multiformats.Multiaddr
-import io.libp2p.core.multistream.Multistream
 import io.libp2p.core.mux.mplex.MplexStreamMuxer
 import io.libp2p.core.protocol.Ping
+import io.libp2p.core.protocol.PingController
 import io.libp2p.core.security.secio.SecIoSecureChannel
 import io.libp2p.core.transport.tcp.TcpTransport
 import io.netty.handler.logging.LogLevel
@@ -70,10 +70,9 @@ class HostTest {
         start2.get(5, TimeUnit.SECONDS)
         println("Host #2 started")
 
-        val ping =
-            host1.network.connect(host2.peerId, Multiaddr("/ip4/127.0.0.1/tcp/40002"))
-                .thenApply { it.muxerSession.createStream(Multistream.create(Ping())) }
-                .get(5, TimeUnit.SECONDS)
+        val ping = host1.newStream<PingController>("/ipfs/ping/1.0.0", host2.peerId, Multiaddr("/ip4/127.0.0.1/tcp/40002"))
+//                .thenApply { it.muxerSession.createStream(Multistream.create(Ping())) }
+//                .get(5, TimeUnit.SECONDS)
         val pingStream = ping.stream.get(5, TimeUnit.SECONDS)
         println("Ping stream created")
         val pingCtr = ping.controler.get(5, TimeUnit.SECONDS)

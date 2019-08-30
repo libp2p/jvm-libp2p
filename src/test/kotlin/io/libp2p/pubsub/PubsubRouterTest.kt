@@ -218,8 +218,8 @@ class PubsubRouterTest {
         println("10NeighborsTopology  FloodRouter:")
         scenario4_10NeighborsTopology { FloodRouter() }
         println("10NeighborsTopology  GossipRouter:")
-        for (d in 3..10) {
-            for (seed in 0..20) {
+        for (d in 3..6) {
+            for (seed in 0..10) {
                 print("D=$d, seed=$seed  ")
                 scenario4_10NeighborsTopology(seed) { GossipRouter().withDConstants(d, d, d) }
             }

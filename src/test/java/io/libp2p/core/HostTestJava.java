@@ -3,7 +3,6 @@ package io.libp2p.core;
 import io.libp2p.core.dsl.BuildersJKt;
 import io.libp2p.core.multiformats.Multiaddr;
 import io.libp2p.core.multistream.Multistream;
-import io.libp2p.core.mux.StreamPromise;
 import io.libp2p.core.mux.mplex.MplexStreamMuxer;
 import io.libp2p.core.protocol.Ping;
 import io.libp2p.core.protocol.PingController;
@@ -50,7 +49,7 @@ public class HostTestJava {
         System.out.println("Host #2 started");
 
         StreamPromise<PingController> ping = host1.getNetwork().connect(host2.getPeerId(), new Multiaddr("/ip4/127.0.0.1/tcp/40002"))
-                .thenApply(it -> it.getMuxerSession().createStream(Multistream.create(new Ping())))
+                .thenApply(it -> it.getMuxerSession().createStream(Multistream.create(new Ping()).toStreamHandler()))
                 .get(5, TimeUnit.SECONDS);
         Stream pingStream = ping.getStream().get(5, TimeUnit.SECONDS);
         System.out.println("Ping stream created");

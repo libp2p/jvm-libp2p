@@ -25,7 +25,7 @@ class ProtocolSelect<TController>(val protocols: List<ProtocolBinding<TControlle
             is ProtocolNegotiationSucceeded -> {
                 val protocolBinding = protocols.find { it.matcher.matches(evt.proto) }
                     ?: throw Libp2pException("Protocol negotiation failed: not supported protocol ${evt.proto}")
-                ctx.channel().attr(PROTOCOL).get().complete(evt.proto)
+                ctx.channel().attr(PROTOCOL).get()?.complete(evt.proto)
                 ctx.pipeline().replace(this, "ProtocolBindingInitializer", nettyInitializer {
                     protocolBinding.initChannel(it.getP2PChannel(), evt.proto).forward(selectedFuture)
                 })
@@ -36,13 +36,13 @@ class ProtocolSelect<TController>(val protocols: List<ProtocolBinding<TControlle
     }
 
     override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable?) {
-        ctx.channel().attr(PROTOCOL).get().completeExceptionally(cause)
+        ctx.channel().attr(PROTOCOL).get()?.completeExceptionally(cause)
         ctx.close()
     }
 
     override fun channelUnregistered(ctx: ChannelHandlerContext) {
         val exception = ConnectionClosedException("Channel closed ${ctx.channel()}")
         selectedFuture.completeExceptionally(exception)
-        ctx.channel().attr(PROTOCOL).get().completeExceptionally(exception)
+        ctx.channel().attr(PROTOCOL).get()?.completeExceptionally(exception)
     }
 }

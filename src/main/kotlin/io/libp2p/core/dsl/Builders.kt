@@ -5,6 +5,7 @@ import io.libp2p.core.ConnectionHandler
 import io.libp2p.core.HostImpl
 import io.libp2p.core.MemoryAddressBook
 import io.libp2p.core.NetworkImpl
+import io.libp2p.core.StreamHandler
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.crypto.generateKeyPair
@@ -94,14 +95,18 @@ open class Builder {
         val transports = transports.values.map { it(upgrader) }
         val addressBook = addressBook.impl
 
-        val network = NetworkImpl(transports, NetworkImpl.Config(network.listen.map { Multiaddr(it) }))
+        val protocolsMultistream: Multistream<Any> = Multistream.create(protocols.values)
+        val broadcastStreamHandler = StreamHandler.createBroadcast()
+        val allStreamHandlers = StreamHandler.createBroadcast(
+            protocolsMultistream.toStreamHandler(), broadcastStreamHandler)
 
-        val streamHandler = Multistream.create(protocols.values).toStreamHandler()
         val connHandlerProtocols = protocols.values.mapNotNull { it as? ConnectionHandler }
-        network.connectionHandler = ConnectionHandler.createBroadcast(
-            listOf(ConnectionHandler.createStreamHandlerInitializer(streamHandler)) + connHandlerProtocols)
+        var broadcastConnHandler = ConnectionHandler.createBroadcast(
+            listOf(ConnectionHandler.createStreamHandlerInitializer(allStreamHandlers)) + connHandlerProtocols
+        )
+        val networkImpl = NetworkImpl(transports, broadcastConnHandler)
 
-        return HostImpl(privKey, network, addressBook)
+        return HostImpl(privKey, networkImpl, addressBook, network.listen.map { Multiaddr(it) }, protocolsMultistream, broadcastConnHandler, broadcastStreamHandler)
     }
 }
 
@@ -126,7 +131,7 @@ class AddressBookBuilder {
 class TransportsBuilder : Enumeration<TransportCtor>()
 class SecureChannelsBuilder : Enumeration<SecureChannelCtor>()
 class MuxersBuilder : Enumeration<StreamMuxerCtor>()
-class ProtocolsBuilder : Enumeration<ProtocolBinding<*>>()
+class ProtocolsBuilder : Enumeration<ProtocolBinding<Any>>()
 
 class DebugBuilder {
     val beforeSecureHandler = DebugHandlerBuilder("wire.sec.before")
@@ -138,7 +143,7 @@ class DebugHandlerBuilder(var name: String) {
     var handler: ChannelHandler? = null
 
     fun setLogger(level: LogLevel, loggerName: String = name) {
-        handler = LoggingHandler(name, level)
+        handler = LoggingHandler(loggerName, level)
     }
 }
 
