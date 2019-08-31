@@ -1,7 +1,7 @@
 package io.libp2p.core
 
+import io.libp2p.etc.BroadcastStreamHandler
 import java.util.concurrent.CompletableFuture
-import java.util.concurrent.CopyOnWriteArrayList
 
 data class StreamPromise<T>(
     val stream: CompletableFuture<Stream> = CompletableFuture(),
@@ -30,15 +30,6 @@ interface StreamHandler<out TController> {
         fun createBroadcast(vararg handlers: StreamHandler<*>) =
             BroadcastStreamHandler().also { it += handlers }
     }
-}
 
-class BroadcastStreamHandler(
-    private val handlers: MutableList<StreamHandler<*>> = CopyOnWriteArrayList()
-) : StreamHandler<Any>, MutableList<StreamHandler<*>> by handlers {
-    override fun handleStream(stream: Stream): CompletableFuture<out Any> {
-        handlers.forEach {
-            it.handleStream(stream)
-        }
-        return CompletableFuture.completedFuture(Any())
-    }
+    interface Broadcast : StreamHandler<Any>, MutableList<StreamHandler<*>>
 }

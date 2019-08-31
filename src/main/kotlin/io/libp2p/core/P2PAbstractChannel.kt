@@ -1,6 +1,6 @@
 package io.libp2p.core
 
-import io.libp2p.core.types.toVoidCompletableFuture
+import io.libp2p.etc.types.toVoidCompletableFuture
 import io.netty.channel.Channel
 
 abstract class P2PAbstractChannel(val nettyChannel: Channel) {

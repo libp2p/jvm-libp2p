@@ -5,9 +5,9 @@ import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multistream.Mode
 import io.libp2p.core.multistream.ProtocolBinding
 import io.libp2p.core.multistream.ProtocolMatcher
-import io.libp2p.core.mux.mplex.MplexStreamMuxer
-import io.libp2p.core.security.secio.SecIoSecureChannel
-import io.libp2p.core.transport.tcp.TcpTransport
+import io.libp2p.mux.mplex.MplexStreamMuxer
+import io.libp2p.security.secio.SecIoSecureChannel
+import io.libp2p.transport.tcp.TcpTransport
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 import io.netty.channel.ChannelHandlerContext

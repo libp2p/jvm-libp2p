@@ -2,11 +2,11 @@ package io.libp2p.core
 
 import io.libp2p.core.dsl.host
 import io.libp2p.core.multiformats.Multiaddr
-import io.libp2p.core.mux.mplex.MplexStreamMuxer
-import io.libp2p.core.protocol.Ping
-import io.libp2p.core.protocol.PingController
-import io.libp2p.core.security.secio.SecIoSecureChannel
-import io.libp2p.core.transport.tcp.TcpTransport
+import io.libp2p.mux.mplex.MplexStreamMuxer
+import io.libp2p.protocol.Ping
+import io.libp2p.protocol.PingController
+import io.libp2p.security.secio.SecIoSecureChannel
+import io.libp2p.transport.tcp.TcpTransport
 import io.netty.handler.logging.LogLevel
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test

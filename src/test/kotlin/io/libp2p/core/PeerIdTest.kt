@@ -1,7 +1,7 @@
 package io.libp2p.core
 
 import io.libp2p.core.crypto.unmarshalPublicKey
-import io.libp2p.core.types.fromHex
+import io.libp2p.etc.types.fromHex
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 

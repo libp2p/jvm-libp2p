@@ -35,3 +35,5 @@ class InternalErrorException(message: String) : Libp2pException(message)
 class BadPeerException(message: String, ex: Exception?) : Libp2pException(message, ex) {
     constructor(message: String) : this(message, null)
 }
+
+class BadKeyTypeException : Exception("Invalid or unsupported key type")

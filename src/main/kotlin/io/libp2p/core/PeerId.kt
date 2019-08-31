@@ -1,10 +1,10 @@
 package io.libp2p.core
 
 import io.libp2p.core.crypto.PubKey
-import io.libp2p.core.encode.Base58
 import io.libp2p.core.multiformats.Multihash
-import io.libp2p.core.types.toByteArray
-import io.libp2p.core.types.toByteBuf
+import io.libp2p.etc.encode.Base58
+import io.libp2p.etc.types.toByteArray
+import io.libp2p.etc.types.toByteBuf
 import kotlin.random.Random
 
 class PeerId(val b: ByteArray) {

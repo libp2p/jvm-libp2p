@@ -1,6 +1,6 @@
 package io.libp2p.core.dsl
 
-import io.libp2p.core.HostImpl
+import io.libp2p.host.HostImpl
 import java.util.function.Consumer
 
 fun hostJ(fn: Consumer<BuilderJ>): HostImpl {

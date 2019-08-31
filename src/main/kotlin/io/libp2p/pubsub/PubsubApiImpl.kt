@@ -2,11 +2,16 @@ package io.libp2p.pubsub
 
 import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.PrivKey
-import io.libp2p.core.types.toByteArray
-import io.libp2p.core.types.toByteBuf
-import io.libp2p.core.types.toBytesBigEndian
-import io.libp2p.core.types.toLongBigEndian
-import io.libp2p.core.types.toProtobuf
+import io.libp2p.core.pubsub.MessageApi
+import io.libp2p.core.pubsub.PubsubApi
+import io.libp2p.core.pubsub.PubsubPublisherApi
+import io.libp2p.core.pubsub.PubsubSubscription
+import io.libp2p.core.pubsub.Topic
+import io.libp2p.etc.types.toByteArray
+import io.libp2p.etc.types.toByteBuf
+import io.libp2p.etc.types.toBytesBigEndian
+import io.libp2p.etc.types.toLongBigEndian
+import io.libp2p.etc.types.toProtobuf
 import io.netty.buffer.ByteBuf
 import pubsub.pb.Rpc
 import java.util.concurrent.CompletableFuture
@@ -15,7 +20,8 @@ import java.util.function.Consumer
 
 class PubsubApiImpl(val router: PubsubRouter) : PubsubApi {
 
-    inner class SubscriptionImpl(val topics: Array<out Topic>, val receiver: Consumer<MessageApi>) : PubsubSubscription {
+    inner class SubscriptionImpl(val topics: Array<out Topic>, val receiver: Consumer<MessageApi>) :
+        PubsubSubscription {
         var unsubscribed = false
         override fun unsubscribe() {
             if (unsubscribed) throw PubsubException("Already unsubscribed")

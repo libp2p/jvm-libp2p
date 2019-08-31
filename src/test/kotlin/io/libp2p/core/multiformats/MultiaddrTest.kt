@@ -1,7 +1,7 @@
 package io.libp2p.core.multiformats
 
-import io.libp2p.core.types.fromHex
-import io.libp2p.core.types.toHex
+import io.libp2p.etc.types.fromHex
+import io.libp2p.etc.types.toHex
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals

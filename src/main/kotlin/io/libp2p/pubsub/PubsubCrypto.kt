@@ -3,7 +3,7 @@ package io.libp2p.pubsub
 import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.crypto.marshalPublicKey
 import io.libp2p.core.crypto.unmarshalPublicKey
-import io.libp2p.core.types.toProtobuf
+import io.libp2p.etc.types.toProtobuf
 import pubsub.pb.Rpc
 
 val SignPrefix = "libp2p-pubsub:".toByteArray()

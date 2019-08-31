@@ -1,6 +1,6 @@
 package io.libp2p.core
 
-import io.libp2p.core.types.toVoidCompletableFuture
+import io.libp2p.etc.types.toVoidCompletableFuture
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.SimpleChannelInboundHandler
@@ -16,7 +16,7 @@ interface P2PAbstractHandler<out TController> {
     }
 
     companion object {
-        fun <T : SimpleClientHandler> createSimpleHandler(handlerCtor: () -> T) =
+        fun <T : SimpleClientHandler> createSimpleHandler(handlerCtor: () -> T): P2PAbstractHandler<T> =
             SimpleClientProtocol(handlerCtor)
     }
 }

@@ -2,9 +2,6 @@ package io.libp2p.core.dsl
 
 import io.libp2p.core.AddressBook
 import io.libp2p.core.ConnectionHandler
-import io.libp2p.core.HostImpl
-import io.libp2p.core.MemoryAddressBook
-import io.libp2p.core.NetworkImpl
 import io.libp2p.core.StreamHandler
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.PrivKey
@@ -15,9 +12,12 @@ import io.libp2p.core.multistream.ProtocolBinding
 import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.core.mux.StreamMuxerDebug
 import io.libp2p.core.security.SecureChannel
-import io.libp2p.core.transport.ConnectionUpgrader
 import io.libp2p.core.transport.Transport
-import io.libp2p.core.types.lazyVar
+import io.libp2p.etc.types.lazyVar
+import io.libp2p.host.HostImpl
+import io.libp2p.host.MemoryAddressBook
+import io.libp2p.network.NetworkImpl
+import io.libp2p.transport.ConnectionUpgrader
 import io.netty.channel.ChannelHandler
 import io.netty.handler.logging.LogLevel
 import io.netty.handler.logging.LoggingHandler
@@ -106,7 +106,15 @@ open class Builder {
         )
         val networkImpl = NetworkImpl(transports, broadcastConnHandler)
 
-        return HostImpl(privKey, networkImpl, addressBook, network.listen.map { Multiaddr(it) }, protocolsMultistream, broadcastConnHandler, broadcastStreamHandler)
+        return HostImpl(
+            privKey,
+            networkImpl,
+            addressBook,
+            network.listen.map { Multiaddr(it) },
+            protocolsMultistream,
+            broadcastConnHandler,
+            broadcastStreamHandler
+        )
     }
 }
 
