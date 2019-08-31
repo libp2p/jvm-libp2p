@@ -59,7 +59,6 @@ class SecIoSecureChannelTest {
         println("Connecting channels...")
         interConnect(eCh1, eCh2)
 
-
         println("Waiting for secio negotiation to complete...")
         protocolSelect1.selectedFuture.get(5, TimeUnit.SECONDS)
         protocolSelect2.selectedFuture.get(5, TimeUnit.SECONDS)

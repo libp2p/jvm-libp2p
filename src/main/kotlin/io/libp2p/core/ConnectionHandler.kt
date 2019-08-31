@@ -23,6 +23,6 @@ interface ConnectionHandler {
 
 class BroadcastConnectionHandler(
     private val handlers: MutableList<ConnectionHandler> = CopyOnWriteArrayList()
-): ConnectionHandler, MutableList<ConnectionHandler> by handlers {
+) : ConnectionHandler, MutableList<ConnectionHandler> by handlers {
     override fun handleConnection(conn: Connection) = handlers.forEach { it.handleConnection(conn) }
 }

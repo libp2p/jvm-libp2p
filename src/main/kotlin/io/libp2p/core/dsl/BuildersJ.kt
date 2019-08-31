@@ -9,7 +9,7 @@ fun hostJ(fn: Consumer<BuilderJ>): HostImpl {
     return builder.build()
 }
 
-class BuilderJ: Builder() {
+class BuilderJ : Builder() {
     public override val identity = super.identity
     public override val secureChannels = super.secureChannels
     public override val muxers = super.muxers

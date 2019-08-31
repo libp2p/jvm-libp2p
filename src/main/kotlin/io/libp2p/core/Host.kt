@@ -36,7 +36,6 @@ interface Host {
     fun <TController> newStream(protocol: String, peer: PeerId, vararg addr: Multiaddr): StreamPromise<TController>
 }
 
-
 class HostImpl(
     override val privKey: PrivKey,
     override val network: NetworkImpl,
@@ -114,7 +113,7 @@ class HostImpl(
             protocolHandlers.bindings.find { it.matcher.matches(protocol) } as? ProtocolBinding<TController>
             ?: throw Libp2pException("Protocol handler not found: $protocol")
 
-        val multistream: Multistream<TController>  = Multistream.create(binding.toInitiator(protocol))
+        val multistream: Multistream<TController> = Multistream.create(binding.toInitiator(protocol))
         return conn.muxerSession.createStream(object : StreamHandler<TController> {
             override fun handleStream(stream: Stream): CompletableFuture<out TController> {
                 val ret = multistream.toStreamHandler().handleStream(stream)

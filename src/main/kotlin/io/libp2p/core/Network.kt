@@ -45,7 +45,7 @@ class NetworkImpl(
             .thenCompose {
                 val connCloseFuts = connections.map { it.nettyChannel.close().toVoidCompletableFuture() }
                 CompletableFuture.allOf(*connCloseFuts.toTypedArray())
-            }.thenApply {  }
+            }.thenApply { }
     }
 
     override fun listen(addr: Multiaddr): CompletableFuture<Unit> =
@@ -69,7 +69,8 @@ class NetworkImpl(
 
     override fun connect(
         id: PeerId,
-        vararg addrs: Multiaddr): CompletableFuture<Connection> {
+        vararg addrs: Multiaddr
+    ): CompletableFuture<Connection> {
 
         // we already have a connection for this peer, short circuit.
         connections.find { it.secureSession.remoteId == id }

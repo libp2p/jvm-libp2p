@@ -147,7 +147,7 @@ class TcpTransportTest {
         for (i in 0..50) {
             logger.info("Connecting #$i")
             dialFutures +=
-                tcpTransportClient.dial(Multiaddr("/ip4/127.0.0.1/tcp/20000"), ConnectionHandler.create {  })
+                tcpTransportClient.dial(Multiaddr("/ip4/127.0.0.1/tcp/20000"), ConnectionHandler.create { })
             dialFutures.last().whenComplete { t, u -> logger.info("Connected #$i: $t ($u)") }
         }
         logger.info("Active channels: ${tcpTransportClient.activeChannels.size}")

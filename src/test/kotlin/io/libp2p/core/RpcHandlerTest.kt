@@ -55,7 +55,7 @@ interface OpController {
     fun calculate(a: Long, b: Long): CompletableFuture<Long> = throw NotImplementedError()
 }
 
-abstract class OpHandler: SimpleChannelInboundHandler<ByteBuf>(), OpController
+abstract class OpHandler : SimpleChannelInboundHandler<ByteBuf>(), OpController
 
 class OpServerHandler(val op: (a: Long, b: Long) -> Long) : OpHandler() {
     override fun channelRead0(ctx: ChannelHandlerContext, msg: ByteBuf) {
@@ -65,7 +65,7 @@ class OpServerHandler(val op: (a: Long, b: Long) -> Long) : OpHandler() {
     }
 }
 
-class OpClientHandler(val stream: Stream, val activationFut: CompletableFuture<OpController>): OpHandler() {
+class OpClientHandler(val stream: Stream, val activationFut: CompletableFuture<OpController>) : OpHandler() {
     private val resFuture = CompletableFuture<Long>()
 
     override fun channelActive(ctx: ChannelHandlerContext?) {
@@ -150,11 +150,11 @@ class RpcHandlerTest {
         var streamCounter1 = 0
         host1.addStreamHandler(StreamHandler.create {
             streamCounter1++
-        } )
+        })
         var streamCounter2 = 0
         host2.addStreamHandler(StreamHandler.create {
             streamCounter2++
-        } )
+        })
 
         run {
             val ctr = host1.newStream<OpController>(protoPrefix + protoAdd, host2.peerId, Multiaddr("/ip4/127.0.0.1/tcp/40002"))
@@ -169,7 +169,7 @@ class RpcHandlerTest {
         Assertions.assertEquals(1, host2.network.connections.size)
         Assertions.assertEquals(1, streamCounter2)
         Assertions.assertEquals(1, streamCounter1)
-        for (i in 1 .. 100) {
+        for (i in 1..100) {
             if (host1.streams.isNotEmpty() || host2.streams.isNotEmpty()) Thread.sleep(10)
             else break
         }
@@ -191,7 +191,7 @@ class RpcHandlerTest {
         Assertions.assertEquals(connection, host1.network.connections[0])
         Assertions.assertEquals(2, streamCounter1)
         Assertions.assertEquals(2, streamCounter2)
-        for (i in 1 .. 100) {
+        for (i in 1..100) {
             if (host1.streams.isNotEmpty() || host2.streams.isNotEmpty()) Thread.sleep(10)
             else break
         }

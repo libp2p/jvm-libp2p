@@ -14,7 +14,7 @@ interface StreamHandler<out TController> {
 
     companion object {
 
-        fun create(fn : (Stream) -> Unit) = object : StreamHandler<Unit> {
+        fun create(fn: (Stream) -> Unit) = object : StreamHandler<Unit> {
             override fun handleStream(stream: Stream): CompletableFuture<out Unit> {
                 fn(stream)
                 return CompletableFuture.completedFuture(Unit)
@@ -34,7 +34,7 @@ interface StreamHandler<out TController> {
 
 class BroadcastStreamHandler(
     private val handlers: MutableList<StreamHandler<*>> = CopyOnWriteArrayList()
-): StreamHandler<Any>, MutableList<StreamHandler<*>> by handlers {
+) : StreamHandler<Any>, MutableList<StreamHandler<*>> by handlers {
     override fun handleStream(stream: Stream): CompletableFuture<out Any> {
         handlers.forEach {
             it.handleStream(stream)

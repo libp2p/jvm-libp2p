@@ -47,7 +47,6 @@ object Negotiator {
     fun createRequesterInitializer(vararg protocols: String): ChannelInitializer<Channel> {
         return nettyInitializer {
             initNegotiator(it, RequesterHandler(listOf(*protocols)))
-
         }
     }
 
@@ -62,7 +61,7 @@ object Negotiator {
         ch.pipeline().addLast(handler)
     }
 
-    abstract class GenericHandler: SimpleChannelInboundHandler<String>() {
+    abstract class GenericHandler : SimpleChannelInboundHandler<String>() {
         open val initialProtocolAnnounce: String? = null
 
         val prehandlers = listOf(
@@ -87,7 +86,7 @@ object Negotiator {
                 if (!headerRead) headerRead = true else
                     throw ProtocolNegotiationException("Received multistream header more than once")
             } else {
-                processMsg(ctx, msg)?.also {completeEvent ->
+                processMsg(ctx, msg)?.also { completeEvent ->
                     // first fire event to setup a handler for selected protocol
                     ctx.pipeline().fireUserEventTriggered(completeEvent)
                     ctx.pipeline().remove(this@GenericHandler)
@@ -103,7 +102,7 @@ object Negotiator {
         protected abstract fun processMsg(ctx: ChannelHandlerContext, msg: String): Any?
     }
 
-    class RequesterHandler(val protocols: List<String>): GenericHandler() {
+    class RequesterHandler(val protocols: List<String>) : GenericHandler() {
         override val initialProtocolAnnounce = protocols[0]
         var i = 0
 
@@ -119,7 +118,7 @@ object Negotiator {
         }
     }
 
-    class ResponderHandler(val protocols: List<ProtocolMatcher>): GenericHandler() {
+    class ResponderHandler(val protocols: List<ProtocolMatcher>) : GenericHandler() {
         override fun processMsg(ctx: ChannelHandlerContext, msg: String): Any? {
             return when {
                 protocols.any { it.matches(msg) } -> {
