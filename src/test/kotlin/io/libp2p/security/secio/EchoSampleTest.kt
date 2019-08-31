@@ -2,13 +2,13 @@ package io.libp2p.security.secio
 
 import io.libp2p.core.Connection
 import io.libp2p.core.ConnectionHandler
-import io.libp2p.core.SimpleClientHandler
 import io.libp2p.core.StreamHandler
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multistream.Multistream
-import io.libp2p.core.multistream.ProtocolBinding
+import io.libp2p.etc.SimpleClientHandler
+import io.libp2p.etc.createSimpleBinding
 import io.libp2p.etc.types.toByteArray
 import io.libp2p.mux.mplex.MplexStreamMuxer
 import io.libp2p.transport.ConnectionUpgrader
@@ -62,7 +62,7 @@ class EchoSampleTest {
             }
 
         val tcpTransport = TcpTransport(upgrader)
-        val applicationProtocols = listOf(ProtocolBinding.createSimple("/echo/1.0.0") { EchoProtocol() })
+        val applicationProtocols = listOf(createSimpleBinding("/echo/1.0.0") { EchoProtocol() })
         val inboundStreamHandler = StreamHandler.create(Multistream.create(applicationProtocols))
         val connectionHandler = ConnectionHandler.createStreamHandlerInitializer(inboundStreamHandler)
         logger.info("Dialing...")

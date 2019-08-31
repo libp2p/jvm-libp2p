@@ -64,12 +64,33 @@ open class Builder {
      */
     fun transports(fn: TransportsBuilder.() -> Unit): Builder = apply { fn(transports) }
 
+    /**
+     * [AddressBook] implementation
+     */
     fun addressBook(fn: AddressBookBuilder.() -> Unit): Builder = apply { fn(addressBook) }
 
+    /**
+     * Available protocols as implementations of [ProtocolBinding] interface
+     * These protocols would be available when acting as a stream responder, and
+     * could be actively created by calling [io.libp2p.core.Host.newStream]
+     *
+     * If the protocol class also implements the [ConnectionHandler] interface
+     * it is automatically added as a connection handler
+     *
+     * The protocol may implement the [ConnectionHandler] interface if it wishes to
+     * actively open an outbound stream for every new [io.libp2p.core.Connection].
+     */
     fun protocols(fn: ProtocolsBuilder.() -> Unit): Builder = apply { fn(protocols) }
 
+    /**
+     * Manipulates network configuration
+     */
     fun network(fn: NetworkConfigBuilder.() -> Unit): Builder = apply { fn(network) }
 
+    /**
+     * Can be used for debug/logging purposes to inject debug handlers
+     * to different pipeline points
+     */
     fun debug(fn: DebugBuilder.() -> Unit): Builder = apply { fn(debug) }
 
     /**
@@ -142,8 +163,20 @@ class MuxersBuilder : Enumeration<StreamMuxerCtor>()
 class ProtocolsBuilder : Enumeration<ProtocolBinding<Any>>()
 
 class DebugBuilder {
+    /**
+     * Injects the [ChannelHandler] to the wire closest point.
+     * Could be primarily useful for security handshake debugging/monitoring
+     */
     val beforeSecureHandler = DebugHandlerBuilder("wire.sec.before")
+    /**
+     * Injects the [ChannelHandler] right after the connection cipher
+     * to handle plain wire messages
+     */
     val afterSecureHandler = DebugHandlerBuilder("wire.sec.after")
+    /**
+     * Injects the [ChannelHandler] right after the [StreamMuxer] pipeline handler
+     * It intercepts [io.libp2p.mux.MuxFrame] instances
+     */
     val muxFramesHandler = DebugHandlerBuilder("wire.mux.frames")
 }
 

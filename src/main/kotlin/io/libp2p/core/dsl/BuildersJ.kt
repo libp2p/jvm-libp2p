@@ -3,6 +3,9 @@ package io.libp2p.core.dsl
 import io.libp2p.host.HostImpl
 import java.util.function.Consumer
 
+/**
+ * Creates Java friendly [io.libp2p.core.Host] builder
+ */
 fun hostJ(fn: Consumer<BuilderJ>): HostImpl {
     val builder = BuilderJ()
     fn.accept(builder)

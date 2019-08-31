@@ -1,12 +1,12 @@
 package io.libp2p.mux
 
-import io.libp2p.core.CONNECTION
-import io.libp2p.core.MUXER_SESSION
-import io.libp2p.core.STREAM
 import io.libp2p.core.Stream
 import io.libp2p.core.StreamHandler
 import io.libp2p.core.StreamPromise
 import io.libp2p.core.mux.StreamMuxer
+import io.libp2p.etc.CONNECTION
+import io.libp2p.etc.MUXER_SESSION
+import io.libp2p.etc.STREAM
 import io.libp2p.etc.events.MuxSessionInitialized
 import io.libp2p.etc.types.forward
 import io.libp2p.etc.util.netty.mux.AbtractMuxHandler

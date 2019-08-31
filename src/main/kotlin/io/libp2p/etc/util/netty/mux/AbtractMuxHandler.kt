@@ -1,7 +1,7 @@
 package io.libp2p.etc.util.netty.mux
 
-import io.libp2p.core.IS_INITIATOR
 import io.libp2p.core.Libp2pException
+import io.libp2p.etc.IS_INITIATOR
 import io.libp2p.etc.util.netty.nettyInitializer
 import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelHandlerContext

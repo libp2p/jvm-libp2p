@@ -2,11 +2,11 @@ package io.libp2p.pubsub
 
 import io.libp2p.core.Connection
 import io.libp2p.core.PeerId
-import io.libp2p.core.SECURE_SESSION
 import io.libp2p.core.Stream
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.security.SecureChannel
+import io.libp2p.etc.SECURE_SESSION
 import io.libp2p.etc.types.lazyVar
 import io.libp2p.etc.util.netty.nettyInitializer
 import io.libp2p.pubsub.flood.FloodRouter

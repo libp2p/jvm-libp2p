@@ -82,7 +82,7 @@ class HostImpl(
                     ret.stream.completeExceptionally(t)
                     ret.controler.completeExceptionally(t)
                 } else {
-                    val (stream, controler) = newStream<TController>(r, protocol)
+                    val (stream, controler) = newStream<TController>(protocol, r)
                     stream.forward(ret.stream)
                     controler.forward(ret.controler)
                 }
@@ -90,7 +90,7 @@ class HostImpl(
         return ret
     }
 
-    override fun <TController> newStream(conn: Connection, protocol: String): StreamPromise<TController> {
+    override fun <TController> newStream(protocol: String, conn: Connection): StreamPromise<TController> {
         val binding =
             protocolHandlers.bindings.find { it.matcher.matches(protocol) } as? ProtocolBinding<TController>
             ?: throw Libp2pException("Protocol handler not found: $protocol")

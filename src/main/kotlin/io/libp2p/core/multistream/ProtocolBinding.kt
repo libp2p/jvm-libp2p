@@ -2,7 +2,6 @@ package io.libp2p.core.multistream
 
 import io.libp2p.core.P2PAbstractChannel
 import io.libp2p.core.P2PAbstractHandler
-import io.libp2p.core.SimpleClientHandler
 import java.util.concurrent.CompletableFuture
 
 /**
@@ -49,8 +48,5 @@ interface ProtocolBinding<out TController> {
                 }
             }
         }
-
-        fun <T : SimpleClientHandler> createSimple(protocolName: String, handlerCtor: () -> T): ProtocolBinding<T> =
-                    createSimple(protocolName, P2PAbstractHandler.createSimpleHandler(handlerCtor))
     }
 }

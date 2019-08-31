@@ -1,8 +1,12 @@
 package io.libp2p.core
 
+import io.libp2p.etc.PROTOCOL
 import io.netty.channel.Channel
 import java.util.concurrent.CompletableFuture
 
+/**
+ * Represents a multiplexed stream over wire connection
+ */
 class Stream(ch: Channel, val conn: Connection) : P2PAbstractChannel(ch) {
 
     init {

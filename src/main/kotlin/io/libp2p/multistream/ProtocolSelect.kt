@@ -2,11 +2,11 @@ package io.libp2p.multistream
 
 import io.libp2p.core.ConnectionClosedException
 import io.libp2p.core.Libp2pException
-import io.libp2p.core.PROTOCOL
-import io.libp2p.core.getP2PChannel
 import io.libp2p.core.multistream.ProtocolBinding
+import io.libp2p.etc.PROTOCOL
 import io.libp2p.etc.events.ProtocolNegotiationFailed
 import io.libp2p.etc.events.ProtocolNegotiationSucceeded
+import io.libp2p.etc.getP2PChannel
 import io.libp2p.etc.types.forward
 import io.libp2p.etc.util.netty.nettyInitializer
 import io.netty.channel.ChannelHandlerContext

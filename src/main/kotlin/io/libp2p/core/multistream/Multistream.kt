@@ -5,6 +5,11 @@ import io.libp2p.core.P2PAbstractHandler
 import io.libp2p.multistream.MultistreamImpl
 import java.util.concurrent.CompletableFuture
 
+/**
+ * Represents 'multistream' concept: https://github.com/multiformats/multistream-select
+ *
+ *
+ */
 interface Multistream<TController> : P2PAbstractHandler<TController> {
 
     val bindings: MutableList<ProtocolBinding<TController>>

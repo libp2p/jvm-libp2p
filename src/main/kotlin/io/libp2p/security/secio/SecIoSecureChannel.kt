@@ -3,12 +3,12 @@ package io.libp2p.security.secio
 import io.libp2p.core.ConnectionClosedException
 import io.libp2p.core.P2PAbstractChannel
 import io.libp2p.core.PeerId
-import io.libp2p.core.SECURE_SESSION
 import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.crypto.PubKey
 import io.libp2p.core.multistream.Mode
 import io.libp2p.core.multistream.ProtocolMatcher
 import io.libp2p.core.security.SecureChannel
+import io.libp2p.etc.SECURE_SESSION
 import io.libp2p.etc.events.SecureChannelFailed
 import io.libp2p.etc.events.SecureChannelInitialized
 import io.netty.buffer.ByteBuf

@@ -1,10 +1,10 @@
 package io.libp2p.transport
 
-import io.libp2p.core.CONNECTION
 import io.libp2p.core.Connection
 import io.libp2p.core.ConnectionHandler
-import io.libp2p.core.IS_INITIATOR
 import io.libp2p.core.transport.Transport
+import io.libp2p.etc.CONNECTION
+import io.libp2p.etc.IS_INITIATOR
 import io.libp2p.etc.types.forward
 import io.libp2p.etc.util.netty.nettyInitializer
 import io.netty.channel.ChannelHandler

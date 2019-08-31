@@ -1,9 +1,9 @@
 package io.libp2p.transport
 
-import io.libp2p.core.getP2PChannel
 import io.libp2p.core.multistream.Multistream
 import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.core.security.SecureChannel
+import io.libp2p.etc.getP2PChannel
 import io.netty.channel.Channel
 import io.netty.channel.ChannelHandler
 import java.util.concurrent.CompletableFuture
