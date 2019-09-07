@@ -41,6 +41,7 @@ open class Builder {
     protected open val transports = TransportsBuilder()
     protected open val addressBook = AddressBookBuilder()
     protected open val protocols = ProtocolsBuilder()
+    protected open val connectionHandlers = ConnectionHandlerBuilder()
     protected open val network = NetworkConfigBuilder()
     protected open val debug = DebugBuilder()
 
@@ -82,6 +83,8 @@ open class Builder {
      */
     fun protocols(fn: ProtocolsBuilder.() -> Unit): Builder = apply { fn(protocols) }
 
+    fun connectionHandlers(fn: ConnectionHandlerBuilder.() -> Unit): Builder = apply { fn(connectionHandlers) }
+
     /**
      * Manipulates network configuration
      */
@@ -122,8 +125,10 @@ open class Builder {
             protocolsMultistream.toStreamHandler(), broadcastStreamHandler)
 
         val connHandlerProtocols = protocols.values.mapNotNull { it as? ConnectionHandler }
-        var broadcastConnHandler = ConnectionHandler.createBroadcast(
-            listOf(ConnectionHandler.createStreamHandlerInitializer(allStreamHandlers)) + connHandlerProtocols
+        val broadcastConnHandler = ConnectionHandler.createBroadcast(
+            listOf(ConnectionHandler.createStreamHandlerInitializer(allStreamHandlers)) +
+                    connHandlerProtocols +
+                    connectionHandlers.values
         )
         val networkImpl = NetworkImpl(transports, broadcastConnHandler)
 
@@ -161,6 +166,7 @@ class TransportsBuilder : Enumeration<TransportCtor>()
 class SecureChannelsBuilder : Enumeration<SecureChannelCtor>()
 class MuxersBuilder : Enumeration<StreamMuxerCtor>()
 class ProtocolsBuilder : Enumeration<ProtocolBinding<Any>>()
+class ConnectionHandlerBuilder : Enumeration<ConnectionHandler>()
 
 class DebugBuilder {
     /**
@@ -188,10 +194,8 @@ class DebugHandlerBuilder(var name: String) {
     }
 }
 
-open class Enumeration<T>(val values: MutableList<T> = mutableListOf()) {
+open class Enumeration<T>(val values: MutableList<T> = mutableListOf()) : MutableList<T> by values {
     operator fun (T).unaryPlus() {
         values += this
     }
-
-    fun add(t: T) { values += t }
 }

@@ -28,6 +28,7 @@ interface ProtocolBinding<out TController> {
      */
     fun initChannel(ch: P2PAbstractChannel, selectedProtocol: String): CompletableFuture<out TController>
 
+    @JvmDefault
     fun toInitiator(protocol: String): ProtocolBinding<TController> {
         val srcBinding = this
         return object : ProtocolBinding<TController> {

@@ -19,6 +19,7 @@ class BuilderJ : Builder() {
     public override val transports = super.transports
     public override val addressBook = super.addressBook
     public override val protocols = super.protocols
+    public override val connectionHandlers = super.connectionHandlers
     public override val network = super.network
     public override val debug = super.debug
 }

@@ -114,6 +114,7 @@ abstract class PubKey(override val keyType: Crypto.KeyType) : Key {
  * @param type the type key to be generated.
  * @param bits the number of bits desired for the key (only applicable for RSA).
  */
+@JvmOverloads
 fun generateKeyPair(type: KEY_TYPE, bits: Int = 0): Pair<PrivKey, PubKey> {
 
     return when (type) {
