@@ -1,8 +1,8 @@
 package io.libp2p.core.multiformats
 
-import io.libp2p.core.types.readUvarint
-import io.libp2p.core.types.toByteArray
-import io.libp2p.core.types.writeUvarint
+import io.libp2p.etc.types.readUvarint
+import io.libp2p.etc.types.toByteArray
+import io.libp2p.etc.types.writeUvarint
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 import org.bouncycastle.jcajce.provider.digest.SHA3

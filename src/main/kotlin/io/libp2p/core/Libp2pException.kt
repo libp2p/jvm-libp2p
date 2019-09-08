@@ -12,9 +12,28 @@
  */
 package io.libp2p.core
 
-class Libp2pException : RuntimeException {
+open class Libp2pException : RuntimeException {
 
     constructor(message: String, ex: Exception?) : super(message, ex) {}
     constructor(message: String) : super(message) {}
     constructor(ex: Exception) : super(ex) {}
+    constructor() : super("") {}
 }
+
+class ConnectionClosedException(message: String) : Libp2pException(message) {
+    constructor() : this("Connection is closed")
+}
+
+/**
+ * Indicates library malfunction
+ */
+class InternalErrorException(message: String) : Libp2pException(message)
+
+/**
+ * Indicates peer misbehavior, like malformed messages or protocol violation
+ */
+class BadPeerException(message: String, ex: Exception?) : Libp2pException(message, ex) {
+    constructor(message: String) : this(message, null)
+}
+
+class BadKeyTypeException : Exception("Invalid or unsupported key type")

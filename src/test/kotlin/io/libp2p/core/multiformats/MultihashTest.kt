@@ -1,7 +1,7 @@
 package io.libp2p.core.multiformats
 
 import com.google.common.io.BaseEncoding
-import io.libp2p.core.types.toByteBuf
+import io.libp2p.etc.types.toByteBuf
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments

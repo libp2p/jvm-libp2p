@@ -2,10 +2,10 @@ package io.libp2p.core.multiformats
 
 import io.ipfs.cid.Cid
 import io.ipfs.multiaddr.Base32
-import io.libp2p.core.types.readUvarint
-import io.libp2p.core.types.toByteArray
-import io.libp2p.core.types.toByteBuf
-import io.libp2p.core.types.writeUvarint
+import io.libp2p.etc.types.readUvarint
+import io.libp2p.etc.types.toByteArray
+import io.libp2p.etc.types.toByteBuf
+import io.libp2p.etc.types.writeUvarint
 import io.netty.buffer.ByteBuf
 import java.net.Inet4Address
 import java.net.Inet6Address
@@ -106,7 +106,7 @@ enum class Protocol(val code: Int, val size: Int, val typeName: String) {
             else -> throw IllegalArgumentException("Unknown multiaddr type: $this")
         }
 
-    fun readAddressBytes(buf: ByteBuf) = buf.readBytes(sizeForAddress(buf))
+    fun readAddressBytes(buf: ByteBuf) = ByteArray(sizeForAddress(buf)).also { buf.readBytes(it) }
 
     fun bytesToAddress(addressBytes: ByteArray): String {
         return when (this) {
