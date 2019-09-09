@@ -23,7 +23,7 @@ interface Network {
                 ?: throw Libp2pException("Multiaddress should contain /p2p/<peerId> component")
         }.toSet()
         if (peerIdSet.size != 1) throw Libp2pException("All multiaddresses should nave the same peerId")
-        return connect(PeerId.fromBase58(peerIdSet.first()))
+        return connect(PeerId.fromBase58(peerIdSet.first()), *addrs)
     }
 
     fun connect(id: PeerId, vararg addrs: Multiaddr): CompletableFuture<Connection>

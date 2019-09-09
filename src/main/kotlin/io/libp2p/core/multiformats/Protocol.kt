@@ -119,7 +119,11 @@ enum class Protocol(val code: Int, val size: Int, val typeName: String) {
                     .toString().substring(1)
             }
             TCP, UDP, DCCP, SCTP -> addressBytes.toByteBuf().readUnsignedShort().toString()
-            IPFS, P2P -> PeerId(addressBytes).toBase58()
+            IPFS, P2P -> {
+                val addrBuf = addressBytes.toByteBuf()
+                addrBuf.readUvarint()
+                PeerId(addrBuf.toByteArray()).toBase58()
+            }
             ONION -> {
                 val byteBuf = addressBytes.toByteBuf()
                 val host = byteBuf.readBytes(10).toByteArray()
