@@ -162,11 +162,10 @@ fun unmarshalSecp256k1PublicKey(data: ByteArray): PubKey =
         )
     )
 
-fun secp256k1PublicKeyFromCoordinates(x: BigInteger, y: BigInteger) : PubKey =
+fun secp256k1PublicKeyFromCoordinates(x: BigInteger, y: BigInteger): PubKey =
     Secp256k1PublicKey(
         ECPublicKeyParameters(
             CURVE.curve.createPoint(x, y),
             CURVE
         )
     )
-
