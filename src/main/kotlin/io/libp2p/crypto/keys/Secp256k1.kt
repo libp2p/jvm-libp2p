@@ -16,6 +16,7 @@ import crypto.pb.Crypto
 import io.libp2p.core.Libp2pException
 import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.crypto.PubKey
+import io.libp2p.core.crypto.sha256
 import io.libp2p.crypto.SECP_256K1_ALGORITHM
 import org.bouncycastle.asn1.ASN1InputStream
 import org.bouncycastle.asn1.ASN1Integer
@@ -46,6 +47,9 @@ private val CURVE: ECDomainParameters = CURVE_PARAMS.let {
     ECDomainParameters(CURVE_PARAMS.curve, CURVE_PARAMS.g, CURVE_PARAMS.n, CURVE_PARAMS.h)
 }
 
+private val S_UPPER_BOUND = BigInteger("7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0", 16)
+private val S_FIXER_VALUE = BigInteger("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141", 16)
+
 /**
  * @param privateKey the private key backing this instance.
  */
@@ -58,15 +62,17 @@ class Secp256k1PrivateKey(private val privateKey: ECPrivateKeyParameters) : Priv
     override fun sign(data: ByteArray): ByteArray {
         val (r, s) = with(ECDSASigner()) {
             init(true, ParametersWithRandom(privateKey, SecureRandom()))
-            generateSignature(data).let {
+            generateSignature(sha256(data)).let {
                 Pair(it[0], it[1])
             }
         }
 
+        val s_ = if (s <= S_UPPER_BOUND) s else S_FIXER_VALUE - s
+
         return with(ByteArrayOutputStream()) {
             DERSequenceGenerator(this).run {
                 addObject(ASN1Integer(r))
-                addObject(ASN1Integer(s))
+                addObject(ASN1Integer(s_))
                 close()
                 toByteArray()
             }
@@ -111,7 +117,7 @@ class Secp256k1PublicKey(private val pub: ECPublicKeyParameters) : PubKey(Crypto
 
         val r = (asn1Encodables[0].toASN1Primitive() as ASN1Integer).value
         val s = (asn1Encodables[1].toASN1Primitive() as ASN1Integer).value
-        return signer.verifySignature(data, r.abs(), s.abs())
+        return signer.verifySignature(sha256(data), r.abs(), s.abs())
     }
 
     override fun hashCode(): Int = pub.hashCode()
@@ -155,3 +161,12 @@ fun unmarshalSecp256k1PublicKey(data: ByteArray): PubKey =
             CURVE
         )
     )
+
+fun secp256k1PublicKeyFromCoordinates(x: BigInteger, y: BigInteger) : PubKey =
+    Secp256k1PublicKey(
+        ECPublicKeyParameters(
+            CURVE.curve.createPoint(x, y),
+            CURVE
+        )
+    )
+
