@@ -1,6 +1,7 @@
 package io.libp2p.core
 
 import io.libp2p.core.crypto.PubKey
+import io.libp2p.core.crypto.marshalPublicKey
 import io.libp2p.core.multiformats.Multihash
 import io.libp2p.etc.encode.Base58
 import io.libp2p.etc.types.fromHex
@@ -42,7 +43,13 @@ class PeerId(val b: ByteArray) {
 
         @JvmStatic
         fun fromPubKey(pubKey: PubKey): PeerId {
-            val mh = Multihash.digest(Multihash.Descriptor(Multihash.Digest.SHA2, 256), pubKey.bytes().toByteBuf())
+            val pubKeyBytes = marshalPublicKey(pubKey)
+            val descriptor = when {
+                pubKeyBytes.size <= 42 -> Multihash.Descriptor(Multihash.Digest.Identity)
+                else -> Multihash.Descriptor(Multihash.Digest.SHA2, 256)
+            }
+
+            val mh = Multihash.digest(descriptor, pubKeyBytes.toByteBuf())
             return PeerId(mh.bytes.toByteArray())
         }
 

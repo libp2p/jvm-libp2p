@@ -101,6 +101,11 @@ buildScan {
     termsOfServiceAgree = "yes"
 }
 
+val sourcesJar by tasks.registering(Jar::class) {
+    classifier = "sources"
+    from(sourceSets.main.get().allSource)
+}
+
 publishing {
     repositories {
         maven {
@@ -111,6 +116,7 @@ publishing {
     publications {
         register("mavenJava", MavenPublication::class) {
             from(components["java"])
+            artifact(sourcesJar.get())
         }
     }
 }

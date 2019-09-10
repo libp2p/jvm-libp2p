@@ -1,7 +1,7 @@
 package io.libp2p.core.multiformats
 
-import io.ipfs.cid.Cid
 import io.ipfs.multiaddr.Base32
+import io.libp2p.core.PeerId
 import io.libp2p.etc.types.readUvarint
 import io.libp2p.etc.types.toByteArray
 import io.libp2p.etc.types.toByteBuf
@@ -66,7 +66,7 @@ enum class Protocol(val code: Int, val size: Int, val typeName: String) {
                 byteBuf(2).writeShort(x).toByteArray()
             }
             IPFS, P2P -> {
-                val hashBytes = Cid.decode(addr).toBytes()
+                val hashBytes = PeerId.fromBase58(addr).b
                 byteBuf(32)
                     .writeUvarint(hashBytes.size)
                     .writeBytes(hashBytes)
@@ -119,7 +119,11 @@ enum class Protocol(val code: Int, val size: Int, val typeName: String) {
                     .toString().substring(1)
             }
             TCP, UDP, DCCP, SCTP -> addressBytes.toByteBuf().readUnsignedShort().toString()
-            IPFS, P2P -> Cid.cast(addressBytes).toString()
+            IPFS, P2P -> {
+                val addrBuf = addressBytes.toByteBuf()
+                addrBuf.readUvarint()
+                PeerId(addrBuf.toByteArray()).toBase58()
+            }
             ONION -> {
                 val byteBuf = addressBytes.toByteBuf()
                 val host = byteBuf.readBytes(10).toByteArray()
