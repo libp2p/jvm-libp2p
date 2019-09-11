@@ -3,10 +3,10 @@ package io.libp2p.core.security.noise
 import com.google.protobuf.ByteString
 import com.southernstorm.noise.protocol.HandshakeState
 import com.southernstorm.noise.protocol.Noise
+import io.libp2p.core.Connection
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.generateKeyPair
-import io.libp2p.core.security.secio.TestHandler
-import io.libp2p.core.types.toByteArray
+import io.libp2p.tools.TestHandler
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelHandlerContext
@@ -14,21 +14,20 @@ import io.netty.channel.embedded.EmbeddedChannel
 import io.netty.handler.logging.LogLevel
 import io.netty.handler.logging.LoggingHandler
 import org.apache.logging.log4j.LogManager
+import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import spipe.pb.Spipe
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 class NoiseSecureChannelTest {
     // tests for Noise
 
-    // TODO
-    // protocol matcher and announcer
-    // TestChannel usage
-    // read and write message
     var alice_hs: HandshakeState? = null
     var bob_hs: HandshakeState? = null
 
@@ -36,21 +35,12 @@ class NoiseSecureChannelTest {
     fun test1() {
         // test1
         // Noise framework initialization
-        // initiator keys
-        // responder keys
-
-        // check that 'peers' started successfully
 
         alice_hs = HandshakeState("Noise_IK_25519_ChaChaPoly_SHA256", HandshakeState.INITIATOR)
         bob_hs = HandshakeState("Noise_IK_25519_ChaChaPoly_SHA256", HandshakeState.RESPONDER)
 
         assertNotNull(alice_hs)
         assertNotNull(bob_hs)
-
-        // depends on protocol being executed
-
-        // - initiator public key and private key
-        // - responder public key
 
         if (alice_hs!!.needsLocalKeyPair()) {
             val localKeyPair = alice_hs!!.localKeyPair
@@ -60,9 +50,6 @@ class NoiseSecureChannelTest {
             val puk = ByteArray(localKeyPair.publicKeyLength)
             localKeyPair.getPrivateKey(prk, 0)
             localKeyPair.getPublicKey(puk, 0)
-
-            println("prk:" + prk.toList())
-            println("puk:" + puk.toList())
 
             assert(prk.max()?.compareTo(0) != 0)
             assert(puk.max()?.compareTo(0) != 0)
@@ -80,9 +67,7 @@ class NoiseSecureChannelTest {
             assert(alice_hs!!.hasRemotePublicKey())
             assert(bob_hs!!.hasRemotePublicKey())
         }
-
     }
-
 
     @Test
     fun test2() {
@@ -94,8 +79,6 @@ class NoiseSecureChannelTest {
 
         assert(alice_hs!!.action != HandshakeState.FAILED)
         assert(bob_hs!!.action != HandshakeState.FAILED)
-
-        println("handshakes started...")
     }
 
     @Test
@@ -110,63 +93,34 @@ class NoiseSecureChannelTest {
         // after a successful communication of responder information
         // need to construct DH parameters of form se and ee
 
-        var iteration = 0;
-
         val aliceSendBuffer = ByteArray(65535)
-        var aliceMsgLength = 0
+        val aliceMsgLength: Int
 
         val bobSendBuffer = ByteArray(65535)
-        var bobMsgLength = 0
+        val bobMsgLength: Int
 
         val payload = ByteArray(65535)
 
-
-        reportHSStates(aliceMsgLength, aliceSendBuffer, bobMsgLength, bobSendBuffer)
         aliceMsgLength = alice_hs!!.writeMessage(aliceSendBuffer, 0, payload, 0, 0)
-        reportHSStates(aliceMsgLength, aliceSendBuffer, bobMsgLength, bobSendBuffer)
-
         bob_hs!!.readMessage(aliceSendBuffer, 0, aliceMsgLength, payload, 0)
-        reportHSStates(aliceMsgLength, aliceSendBuffer, bobMsgLength, bobSendBuffer)
-
         bobMsgLength = bob_hs!!.writeMessage(bobSendBuffer, 0, payload, 0, 0)
-        reportHSStates(aliceMsgLength, aliceSendBuffer, bobMsgLength, bobSendBuffer)
-
         alice_hs!!.readMessage(bobSendBuffer, 0, bobMsgLength, payload, 0)
-        reportHSStates(aliceMsgLength, aliceSendBuffer, bobMsgLength, bobSendBuffer)
 
         // at split state
         val aliceSplit = alice_hs!!.split()
         val bobSplit = bob_hs!!.split()
 
         val acipher = ByteArray(65535)
-        var acipherLength = 0
+        val acipherLength: Int
         val bcipher = ByteArray(65535)
-        var bcipherLength = 0
+        val bcipherLength: Int
         val s1 = "Hello World!"
-        val s2 = "hello world"
-        println(s1.toByteArray().asList())
         acipherLength = aliceSplit.sender.encryptWithAd(null, s1.toByteArray(), 0, acipher, 0, s1.length)
         bcipherLength = bobSplit.receiver.decryptWithAd(null, acipher, 0, bcipher, 0, acipherLength)
-        println("bcipher:" + bcipher.copyOfRange(0,bcipherLength).asList())
 
-        assert(s1.toByteArray().contentEquals(bcipher.copyOfRange(0,bcipherLength)))
-        println("bcipher string:"+String(bcipher.copyOfRange(0,bcipherLength)))
-
+        assert(s1.toByteArray().contentEquals(bcipher.copyOfRange(0, bcipherLength)))
         assert(alice_hs!!.action == HandshakeState.COMPLETE)
         assert(bob_hs!!.action == HandshakeState.COMPLETE)
-    }
-
-    private fun reportHSStates(aliceMsgLength: Int, aliceSendBuffer: ByteArray, bobMsgLength: Int, bobSendBuffer: ByteArray) {
-        println("-")
-        println("a_msgLength:$aliceMsgLength")
-        println("a_msg:" + aliceSendBuffer.asList())
-        println("b_msgLength:$bobMsgLength")
-        println("b_msg:" + bobSendBuffer.asList())
-
-        println("1a:" + alice_hs!!.action)
-        println("1b:" + bob_hs!!.action)
-
-        println("---")
     }
 
     @Test
@@ -176,7 +130,6 @@ class NoiseSecureChannelTest {
         // use it for encoding and decoding peer identities from the wire
         // this identity is intended to be sent as a Noise transport payload
         val (privKey, pubKey) = generateKeyPair(KEY_TYPE.ECDSA)
-        println("pubkey:" + pubKey.bytes().asList())
         assert(pubKey.bytes().max()?.compareTo(0) != 0)
 
         // sign the identity using the identity's private key
@@ -185,24 +138,22 @@ class NoiseSecureChannelTest {
 
         // generate an appropriate protobuf element
         val bs = Spipe.Exchange.newBuilder().setEpubkey(ByteString.copyFrom(pubKey.bytes()))
-                .setSignature(ByteString.copyFrom(signed)).build()
+            .setSignature(ByteString.copyFrom(signed)).build()
 
         val msgBuffer = ByteArray(65535)
         val msgLength = alice_hs!!.writeMessage(msgBuffer, 0, bs.toByteArray(), 0, bs.toByteArray().size)
 
-        println("msgBuffer2:" + msgBuffer.asList())
-        println("msgBuffer2length:$msgLength")
         assert(msgLength > 0)
         assert(msgBuffer.max()?.compareTo(0) != 0)
     }
 
-    @Test 
-    fun test5() {
+    @Test
+    fun testNoiseChannelThroughEmbedded() {
         // test Noise secure channel through embedded channels
 
         // identity
-        val (privKey1, pubKey1) = generateKeyPair(KEY_TYPE.ECDSA)
-        val (privKey2, pubKey2) = generateKeyPair(KEY_TYPE.ECDSA)
+        val (privKey1, _) = generateKeyPair(KEY_TYPE.ECDSA)
+        val (privKey2, _) = generateKeyPair(KEY_TYPE.ECDSA)
 
         // noise keys
         val aliceDHState = Noise.createDH("25519")
@@ -212,55 +163,69 @@ class NoiseSecureChannelTest {
         val ch1 = NoiseSecureChannel(privKey1, aliceDHState, bobDHState, HandshakeState.INITIATOR)
         val ch2 = NoiseSecureChannel(privKey2, bobDHState, aliceDHState, HandshakeState.RESPONDER)
 
-        var rec1: String? = null
-        var rec2: String? = null
+        var rec1: String? = ""
+        var rec2: String? = ""
         val latch = CountDownLatch(2)
 
-        val eCh1 = io.libp2p.core.security.noise.TestChannel(LoggingHandler("#1", LogLevel.ERROR), ch1.initializer().channelInitializer,
+
+        val eCh1 = TestChannel(LoggingHandler("#1", LogLevel.ERROR),
             object : TestHandler("1") {
-                override fun channelActive(ctx: ChannelHandlerContext) {
-                    super.channelActive(ctx)
-//                    ctx.writeAndFlush("Hello World from $name".toByteArray().toByteBuf())
-                }
-
                 override fun channelRead(ctx: ChannelHandlerContext, msg: Any?) {
                     msg as ByteBuf
-                    rec1 = msg.toByteArray().toString(StandardCharsets.UTF_8)
-                    NoiseSecureChannelTest.logger.debug("==$name== read: $rec1")
+//                    rec1 = msg.toByteArray().toString(StandardCharsets.UTF_8)
+                    rec1 = ctx.channel().attr(NoiseSecureChannel.dataAttribute).toString()
+                    logger.debug("==$name== read111: $rec1")
                     latch.countDown()
                 }
             })
-        val eCh2 = io.libp2p.core.security.noise.TestChannel(
-            LoggingHandler("#2", LogLevel.ERROR),
-            ch2.initializer().channelInitializer,
+        val eCh2 = TestChannel(LoggingHandler("#2", LogLevel.ERROR),
             object : TestHandler("2") {
-                override fun channelActive(ctx: ChannelHandlerContext) {
-                    super.channelActive(ctx)
-//                    ctx.writeAndFlush("Hello World from $name".toByteArray().toByteBuf())
-                }
-
                 override fun channelRead(ctx: ChannelHandlerContext, msg: Any?) {
                     msg as ByteBuf
-                    rec2 = msg.toByteArray().toString(StandardCharsets.UTF_8)
-                    NoiseSecureChannelTest.logger.debug("==$name== read: $rec2")
+                    rec2 = msg.toString(StandardCharsets.UTF_8)
+                    logger.debug("==$name== read: $rec2")
                     latch.countDown()
                 }
             })
-        io.libp2p.core.security.noise.interConnect(eCh1, eCh2)
+        ch1.initChannel(Connection(eCh1));
+        ch2.initChannel(Connection(eCh2));
+        interConnect(eCh1, eCh2)
+        eCh2.write("test".toByteArray())
 
         latch.await(10, TimeUnit.SECONDS)
 
-//        Assertions.assertEquals("Hello World from 1", rec2)
-//        Assertions.assertEquals("Hello World from 2", rec1)
+        Assertions.assertEquals("Hello World", rec2)
+        Assertions.assertEquals("Hello World", rec1)
     }
-    
+
+    @Test
+    fun testAnnounceAndMatch() {
+        val (privKey1, _) = generateKeyPair(KEY_TYPE.ECDSA)
+
+        // noise keys
+        val aliceDHState = Noise.createDH("25519")
+        val bobDHState = Noise.createDH("25519")
+        aliceDHState.generateKeyPair()
+        bobDHState.generateKeyPair()
+        val ch1 = NoiseSecureChannel(privKey1, aliceDHState, bobDHState, HandshakeState.INITIATOR)
+
+        val announce = ch1.announce
+        val matcher = ch1.matcher
+        assertTrue(matcher.matches(announce))
+    }
+
+    @Test
+    fun testFallbackProtocol() {
+        // TODO
+    }
+
     companion object {
         private val logger = LogManager.getLogger(NoiseSecureChannelTest::class.java)
     }
 }
 
 
-fun interConnect(ch1: io.libp2p.core.security.noise.TestChannel, ch2: io.libp2p.core.security.noise.TestChannel) {
+fun interConnect(ch1: TestChannel, ch2: TestChannel) {
     ch1.connect(ch2)
     ch2.connect(ch1)
 }
