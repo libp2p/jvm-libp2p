@@ -19,7 +19,7 @@ interface Network {
 
     fun connect(vararg addrs: Multiaddr): CompletableFuture<Connection> {
         val peerIdSet = addrs.map {
-            it.getStringComponents().find { it.first == Protocol.P2P }?.second
+            it.getStringComponent(Protocol.P2P)
                 ?: throw Libp2pException("Multiaddress should contain /p2p/<peerId> component")
         }.toSet()
         if (peerIdSet.size != 1) throw Libp2pException("All multiaddresses should nave the same peerId")

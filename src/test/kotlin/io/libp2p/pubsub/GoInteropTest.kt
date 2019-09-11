@@ -65,11 +65,15 @@ class GoInteropTest {
     fun connect1() {
         val logger = LogManager.getLogger("test")
         val pdHost = DaemonLauncher(libp2pdPath)
-            .launch(45555, "-pubsub")
+            .launch(45555, "-pubsub", "-id", "E:\\ws\\jvm-libp2p-minimal\\p2pd.key")
+        val pdPeerId = PeerId(pdHost.host.myId.idBytes)
+        println("Remote peerID: $pdPeerId")
 
         try {
 
-            val (privKey1, pubKey1) = generateKeyPair(KEY_TYPE.ECDSA)
+            val (privKey1, pubKey1) = generateKeyPair(KEY_TYPE.SECP256K1)
+
+            println("Local peerID: " + PeerId.fromPubKey(pubKey1).toBase58())
 
             val gossipRouter = GossipRouter().also {
                 it.validator = PubsubMessageValidator.signatureValidator()
@@ -96,7 +100,7 @@ class GoInteropTest {
             val inboundStreamHandler = StreamHandler.create(Multistream.create(applicationProtocols))
             logger.info("Dialing...")
             val connFuture = tcpTransport.dial(
-                Multiaddr("/ip4/127.0.0.1/tcp/45555"),
+                Multiaddr("/ip4/127.0.0.1/tcp/45555" + "/p2p/$pdPeerId"),
                 ConnectionHandler.createStreamHandlerInitializer(inboundStreamHandler)
             )
 

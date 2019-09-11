@@ -3,7 +3,9 @@ package io.libp2p.transport.tcp
 import io.libp2p.core.Connection
 import io.libp2p.core.ConnectionHandler
 import io.libp2p.core.Libp2pException
+import io.libp2p.core.PeerId
 import io.libp2p.core.multiformats.Multiaddr
+import io.libp2p.core.multiformats.Protocol
 import io.libp2p.core.multiformats.Protocol.DNSADDR
 import io.libp2p.core.multiformats.Protocol.IP4
 import io.libp2p.core.multiformats.Protocol.IP6
@@ -67,8 +69,7 @@ class TcpTransport(
 
     // Checks if this transport can handle this multiaddr. It should return true for multiaddrs containing `tcp` atoms.
     override fun handles(addr: Multiaddr): Boolean {
-        return addr.components
-            .any { pair -> pair.first == TCP }
+        return addr.getComponent(TCP) != null
     }
 
     // Closes this transport entirely, aborting all ongoing connections and shutting down any listeners.
@@ -118,7 +119,8 @@ class TcpTransport(
     @Synchronized
     override fun dial(addr: Multiaddr, connHandler: ConnectionHandler): CompletableFuture<Connection> {
         if (closed) throw Libp2pException("Transport is closed")
-        val (channelHandler, connFuture) = createConnectionHandler(connHandler, true)
+        val remotePeerId = addr.getStringComponent(Protocol.P2P)?.let { PeerId.fromBase58(it) }
+        val (channelHandler, connFuture) = createConnectionHandler(connHandler, true, remotePeerId)
         return client.clone()
             .handler(channelHandler)
             .connect(fromMultiaddr(addr))
@@ -138,9 +140,9 @@ class TcpTransport(
     }
 
     private fun fromMultiaddr(addr: Multiaddr): InetSocketAddress {
-        val host = addr.getStringComponents().find { p -> p.first in arrayOf(IP4, IP6, DNSADDR) }
+        val host = addr.filterStringComponents().find { p -> p.first in arrayOf(IP4, IP6, DNSADDR) }
             ?.second ?: throw Libp2pException("Missing IP4/IP6/DNSADDR in multiaddress $addr")
-        val port = addr.getStringComponents().find { p -> p.first == TCP }
+        val port = addr.filterStringComponents().find { p -> p.first == TCP }
             ?.second ?: throw Libp2pException("Missing TCP in multiaddress $addr")
         return InetSocketAddress(host, port.toInt())
     }
