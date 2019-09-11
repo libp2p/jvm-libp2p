@@ -8,6 +8,7 @@ import io.libp2p.core.crypto.PubKey
 import io.libp2p.core.multistream.Mode
 import io.libp2p.core.multistream.ProtocolMatcher
 import io.libp2p.core.security.SecureChannel
+import io.libp2p.etc.REMOTE_PEER_ID
 import io.libp2p.etc.SECURE_SESSION
 import io.libp2p.etc.events.SecureChannelFailed
 import io.libp2p.etc.events.SecureChannelInitialized
@@ -20,10 +21,8 @@ import io.netty.handler.codec.LengthFieldPrepender
 import org.apache.logging.log4j.LogManager
 import java.util.concurrent.CompletableFuture
 
-class SecIoSecureChannel(val localKey: PrivKey, val remotePeerId: PeerId?) :
+class SecIoSecureChannel(val localKey: PrivKey) :
     SecureChannel {
-
-    constructor(localKey: PrivKey) : this(localKey, null)
 
     private val log = LogManager.getLogger(SecIoSecureChannel::class.java)
 
@@ -69,6 +68,7 @@ class SecIoSecureChannel(val localKey: PrivKey, val remotePeerId: PeerId?) :
         override fun channelActive(ctx: ChannelHandlerContext) {
             if (!activated) {
                 activated = true
+                val remotePeerId = ctx.channel().attr(REMOTE_PEER_ID).get()
                 negotiator =
                     SecioHandshake({ buf -> writeAndFlush(ctx, buf) }, localKey, remotePeerId)
                 negotiator!!.start()

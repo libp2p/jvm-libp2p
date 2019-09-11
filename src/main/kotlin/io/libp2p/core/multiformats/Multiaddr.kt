@@ -35,12 +35,20 @@ class Multiaddr(val components: List<Pair<Protocol, ByteArray>>) {
      */
     constructor(bytes: ByteArray) : this(parseBytes(bytes.toByteBuf()))
 
-    /**
+    fun filterComponents(vararg proto: Protocol): List<Pair<Protocol, ByteArray>> = components.filter { proto.contains(it.first) }
+
+    fun getComponent(proto: Protocol): ByteArray? = filterComponents(proto).firstOrNull()?.second
+
+            /**
      * Returns [components] in a human readable form where each protocol value
      * is deserialized and represented as String
      */
-    fun getStringComponents(): List<Pair<Protocol, String?>> =
+    fun filterStringComponents(): List<Pair<Protocol, String?>> =
         components.map { p -> p.first to if (p.first.size == 0) null else p.first.bytesToAddress(p.second) }
+
+    fun filterStringComponents(vararg proto: Protocol): List<Pair<Protocol, String?>> = filterStringComponents().filter { proto.contains(it.first) }
+
+    fun getStringComponent(proto: Protocol): String? = filterStringComponents(proto).firstOrNull()?.second
 
     /**
      * Serializes this instance to supplied [ByteBuf]
@@ -63,7 +71,7 @@ class Multiaddr(val components: List<Pair<Protocol, ByteArray>>) {
      * Note that `Multiaddress(strAddr).toString` is not always equal to `strAddr`
      * (e.g. `/ip6/::1` can be converted to `/ip6/0:0:0:0:0:0:0:1`)
      */
-    override fun toString(): String = getStringComponents().joinToString(separator = "") { p ->
+    override fun toString(): String = filterStringComponents().joinToString(separator = "") { p ->
         "/" + p.first.typeName + if (p.second != null) "/" + p.second else "" }
 
     override fun equals(other: Any?): Boolean {

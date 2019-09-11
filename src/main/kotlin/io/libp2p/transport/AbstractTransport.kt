@@ -2,6 +2,7 @@ package io.libp2p.transport
 
 import io.libp2p.core.Connection
 import io.libp2p.core.ConnectionHandler
+import io.libp2p.core.PeerId
 import io.libp2p.core.transport.Transport
 import io.libp2p.etc.CONNECTION
 import io.libp2p.etc.IS_INITIATOR
@@ -15,15 +16,15 @@ abstract class AbstractTransport(val upgrader: ConnectionUpgrader) :
 
     protected fun createConnectionHandler(
         connHandler: ConnectionHandler,
-        initiator: Boolean
+        initiator: Boolean,
+        remotePeerId: PeerId? = null
     ): Pair<ChannelHandler, CompletableFuture<Connection>> {
-
         val connFuture = CompletableFuture<Connection>()
         return nettyInitializer { ch ->
             val connection = Connection(ch)
             ch.attr(IS_INITIATOR).set(initiator)
             ch.attr(CONNECTION).set(connection)
-            upgrader.establishSecureChannel(ch)
+            upgrader.establishSecureChannel(ch, remotePeerId)
                 .thenCompose {
                     upgrader.establishMuxer(ch)
                 }.thenApply {
