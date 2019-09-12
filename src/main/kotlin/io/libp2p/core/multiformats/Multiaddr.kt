@@ -56,7 +56,7 @@ class Multiaddr(val components: List<Pair<Protocol, ByteArray>>) {
     fun writeBytes(buf: ByteBuf): ByteBuf {
         for (component in components) {
             buf.writeBytes(component.first.encoded)
-            buf.writeBytes(component.second)
+            component.first.writeAddressBytes(buf, component.second)
         }
         return buf
     }

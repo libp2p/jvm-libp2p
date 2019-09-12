@@ -68,7 +68,6 @@ enum class Protocol(val code: Int, val size: Int, val typeName: String) {
             IPFS, P2P -> {
                 val hashBytes = PeerId.fromBase58(addr).b
                 byteBuf(32)
-                    .writeUvarint(hashBytes.size)
                     .writeBytes(hashBytes)
                     .toByteArray()
             }
@@ -92,21 +91,28 @@ enum class Protocol(val code: Int, val size: Int, val typeName: String) {
                 val addr1 = if (addr.startsWith("/")) addr.substring(1) else addr
                 val path = addr1.toByteArray(StandardCharsets.UTF_8)
                 byteBuf(path.size + 8)
-                    .writeUvarint(path.size)
                     .writeBytes(path)
                     .toByteArray()
             }
             DNS4, DNS6, DNSADDR, IP6ZONE -> {
                 val strBytes = addr.toByteArray(StandardCharsets.UTF_8)
                 byteBuf(strBytes.size + 8)
-                    .writeUvarint(strBytes.size)
                     .writeBytes(strBytes)
                     .toByteArray()
             }
             else -> throw IllegalArgumentException("Unknown multiaddr type: $this")
         }
 
-    fun readAddressBytes(buf: ByteBuf) = ByteArray(sizeForAddress(buf)).also { buf.readBytes(it) }
+    fun readAddressBytes(buf: ByteBuf): ByteArray {
+        val size = if (size != LENGTH_PREFIXED_VAR_SIZE) size / 8 else buf.readUvarint().toInt()
+        val bb = ByteArray(size)
+        buf.readBytes(bb)
+        return bb
+    }
+    fun writeAddressBytes(buf: ByteBuf, bytes: ByteArray) {
+        if (size == LENGTH_PREFIXED_VAR_SIZE) buf.writeUvarint(bytes.size)
+        buf.writeBytes(bytes)
+    }
 
     fun bytesToAddress(addressBytes: ByteArray): String {
         return when (this) {
@@ -121,7 +127,6 @@ enum class Protocol(val code: Int, val size: Int, val typeName: String) {
             TCP, UDP, DCCP, SCTP -> addressBytes.toByteBuf().readUnsignedShort().toString()
             IPFS, P2P -> {
                 val addrBuf = addressBytes.toByteBuf()
-                addrBuf.readUvarint()
                 PeerId(addrBuf.toByteArray()).toBase58()
             }
             ONION -> {
@@ -136,9 +141,6 @@ enum class Protocol(val code: Int, val size: Int, val typeName: String) {
             else -> throw IllegalStateException("Unimplemented protocol type: $this")
         }
     }
-
-    private fun sizeForAddress(buf: ByteBuf) =
-        if (size != LENGTH_PREFIXED_VAR_SIZE) size / 8 else buf.readUvarint().toInt()
 
     companion object {
         private val byCode = values().associate { p -> p.code to p }
