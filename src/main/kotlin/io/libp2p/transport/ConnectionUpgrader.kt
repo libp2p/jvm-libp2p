@@ -26,9 +26,11 @@ class ConnectionUpgrader(
         remotePeerId?.also { ch.attr(REMOTE_PEER_ID).set(it) }
         val multistream = Multistream.create(secureChannels)
         beforeSecureHandler?.also { ch.pipeline().addLast(it) }
-        val ret = multistream.initChannel(ch.getP2PChannel())
-        afterSecureHandler?.also { ch.pipeline().addLast(it) }
-        return ret
+        return multistream.initChannel(ch.getP2PChannel())
+            .thenApply {
+                afterSecureHandler?.also { ch.pipeline().addLast(it) }
+                it
+            }
     }
 
     fun establishMuxer(ch: Channel): CompletableFuture<StreamMuxer.Session> {
