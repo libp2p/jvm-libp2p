@@ -3,6 +3,7 @@ package io.libp2p.etc.types
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.ExecutorService
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.function.Supplier
 
@@ -24,6 +25,20 @@ fun <C> CompletableFuture<C>.forward(forwardTo: CompletableFuture<in C>) = forwa
 fun <C> CompletableFuture<C>.getX(): C {
     try {
         return get()
+    } catch (t: Exception) {
+        when (t) {
+            is ExecutionException -> throw t.cause!!
+            else -> throw t
+        }
+    }
+}
+
+/**
+ * The same as [CompletableFuture.get] but unwraps [ExecutionException]
+ */
+fun <C> CompletableFuture<C>.getX(timeoutSec: Double): C {
+    try {
+        return get((timeoutSec * 1000).toLong(), TimeUnit.MILLISECONDS)
     } catch (t: Exception) {
         when (t) {
             is ExecutionException -> throw t.cause!!
