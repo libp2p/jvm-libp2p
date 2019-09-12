@@ -12,6 +12,10 @@ import kotlin.random.Random
 
 class PeerId(val b: ByteArray) {
 
+    init {
+        if (b.size < 32 || b.size > 50) throw IllegalArgumentException("Invalid peerId length: ${b.size}")
+    }
+
     fun toBase58() = Base58.encode(b)
     fun toHex() = b.toHex()
 
