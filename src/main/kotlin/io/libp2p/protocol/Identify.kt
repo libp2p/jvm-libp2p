@@ -13,6 +13,8 @@ import io.netty.channel.ChannelInboundHandler
 import io.netty.channel.SimpleChannelInboundHandler
 import io.netty.handler.codec.protobuf.ProtobufDecoder
 import io.netty.handler.codec.protobuf.ProtobufEncoder
+import io.netty.handler.codec.protobuf.ProtobufVarint32FrameDecoder
+import io.netty.handler.codec.protobuf.ProtobufVarint32LengthFieldPrepender
 import java.util.concurrent.CompletableFuture
 
 interface IdentifyController {
@@ -43,6 +45,8 @@ class IdentifyProtocol : P2PAbstractHandler<IdentifyController> {
         }
 
         with(ch.nettyChannel.pipeline()) {
+            addLast(ProtobufVarint32FrameDecoder())
+            addLast(ProtobufVarint32LengthFieldPrepender())
             addLast(ProtobufDecoder(IdentifyOuterClass.Identify.getDefaultInstance()))
             addLast(ProtobufEncoder())
         }
@@ -56,7 +60,7 @@ class IdentifyProtocol : P2PAbstractHandler<IdentifyController> {
 
         override fun channelActive(ctx: ChannelHandlerContext) {
             val msg = IdentifyOuterClass.Identify.newBuilder()
-                .setAgentVersion("identify-stub")
+                .setAgentVersion("Java-Harmony-0.1.0")
                 .build()
             ctx.writeAndFlush(msg)
             ctx.close()
