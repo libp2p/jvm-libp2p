@@ -21,7 +21,7 @@ interface IdentifyController {
     fun id(): CompletableFuture<IdentifyOuterClass.Identify>
 }
 
-class Identify : IdentifyBinding(IdentifyProtocol())
+class Identify(idMessage: IdentifyOuterClass.Identify? = null) : IdentifyBinding(IdentifyProtocol(idMessage))
 
 open class IdentifyBinding(val ping: IdentifyProtocol) : ProtocolBinding<IdentifyController> {
     override val announce = "/ipfs/id/1.0.0"
@@ -35,7 +35,7 @@ open class IdentifyBinding(val ping: IdentifyProtocol) : ProtocolBinding<Identif
     }
 }
 
-class IdentifyProtocol : P2PAbstractHandler<IdentifyController> {
+class IdentifyProtocol(val idMessage: IdentifyOuterClass.Identify? = null) : P2PAbstractHandler<IdentifyController> {
 
     override fun initChannel(ch: P2PAbstractChannel): CompletableFuture<IdentifyController> {
         val handler: Handler = if (ch.isInitiator) {
@@ -59,7 +59,7 @@ class IdentifyProtocol : P2PAbstractHandler<IdentifyController> {
     inner class IdentifyResponderChannelHandler : SimpleChannelInboundHandler<IdentifyOuterClass.Identify>(), Handler {
 
         override fun channelActive(ctx: ChannelHandlerContext) {
-            val msg = IdentifyOuterClass.Identify.newBuilder()
+            val msg = idMessage ?: IdentifyOuterClass.Identify.newBuilder()
                 .setAgentVersion("Java-Harmony-0.1.0")
                 .build()
             ctx.writeAndFlush(msg)
