@@ -52,11 +52,12 @@ abstract class AbtractMuxHandler<TData>(var inboundInitializer: MuxChannelInitia
     }
 
     protected fun onRemoteDisconnect(id: MuxId) {
-        val child = streamMap[id] ?: throw Libp2pException("Channel with id $id not opened")
-        child.onRemoteDisconnected()
+        // the channel could be RESET locally, so ignore remote CLOSE
+        streamMap[id]?.onRemoteDisconnected()
     }
 
     protected fun onRemoteClose(id: MuxId) {
+        // the channel could be RESET locally, so ignore remote RESET
         streamMap[id]?.closeImpl()
     }
 
