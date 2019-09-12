@@ -78,7 +78,7 @@ abstract class AbtractMuxHandler<TData>(var inboundInitializer: MuxChannelInitia
         streamMap.remove(child.id)
     }
 
-    abstract override fun channelRead(ctx: ChannelHandlerContext, msg: Any);
+    abstract override fun channelRead(ctx: ChannelHandlerContext, msg: Any)
     protected open fun onRemoteCreated(child: MuxChannel<TData>) {}
     protected abstract fun onLocalOpen(child: MuxChannel<TData>)
     protected abstract fun onLocalClose(child: MuxChannel<TData>)
