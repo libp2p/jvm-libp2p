@@ -1,7 +1,9 @@
 package io.libp2p.etc.util.netty.mux
 
+import io.libp2p.core.ConnectionClosedException
 import io.libp2p.core.Libp2pException
 import io.libp2p.etc.IS_INITIATOR
+import io.libp2p.etc.types.completedExceptionally
 import io.libp2p.etc.util.netty.nettyInitializer
 import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelHandlerContext
@@ -17,19 +19,22 @@ abstract class AbtractMuxHandler<TData>(var inboundInitializer: MuxChannelInitia
     private val streamMap: MutableMap<MuxId, MuxChannel<TData>> = mutableMapOf()
     var ctx: ChannelHandlerContext? = null
     private val activeFuture = CompletableFuture<Void>()
+    private var closed = false
 
     override fun handlerAdded(ctx: ChannelHandlerContext) {
         super.handlerAdded(ctx)
-//    }
-//
-//    override fun channelRegistered(ctx: ChannelHandlerContext) {
-//        super.channelRegistered(ctx)
         this.ctx = ctx
     }
 
     override fun channelActive(ctx: ChannelHandlerContext?) {
         activeFuture.complete(null)
         super.channelActive(ctx)
+    }
+
+    override fun channelUnregistered(ctx: ChannelHandlerContext?) {
+        activeFuture.completeExceptionally(ConnectionClosedException())
+        closed = true
+        super.channelUnregistered(ctx)
     }
 
     fun getChannelHandlerContext(): ChannelHandlerContext {
@@ -73,6 +78,7 @@ abstract class AbtractMuxHandler<TData>(var inboundInitializer: MuxChannelInitia
         streamMap.remove(child.id)
     }
 
+    abstract override fun channelRead(ctx: ChannelHandlerContext, msg: Any);
     protected open fun onRemoteCreated(child: MuxChannel<TData>) {}
     protected abstract fun onLocalOpen(child: MuxChannel<TData>)
     protected abstract fun onLocalClose(child: MuxChannel<TData>)
@@ -91,14 +97,21 @@ abstract class AbtractMuxHandler<TData>(var inboundInitializer: MuxChannelInitia
     protected abstract fun generateNextId(): MuxId
 
     fun newStream(outboundInitializer: MuxChannelInitializer<TData>): CompletableFuture<MuxChannel<TData>> {
-        return activeFuture.thenApplyAsync(Function {
-            val child = createChild(generateNextId(), nettyInitializer {
-                it as MuxChannel<TData>
-                onLocalOpen(it)
-                outboundInitializer(it)
-//                it.pipeline().addLast(outboundInitializer)
-            }, true)
-            child
-        }, getChannelHandlerContext().channel().eventLoop())
+        try {
+            checkClosed() // if already closed then event loop is already down and async task may never execute
+            return activeFuture.thenApplyAsync(Function {
+                checkClosed() // close may happen after above check and before this point
+                val child = createChild(generateNextId(), nettyInitializer {
+                    it as MuxChannel<TData>
+                    onLocalOpen(it)
+                    outboundInitializer(it)
+                }, true)
+                child
+            }, getChannelHandlerContext().channel().eventLoop())
+        } catch (e: Exception) {
+            return completedExceptionally(e)
+        }
     }
+
+    private fun checkClosed() = if (closed) throw ConnectionClosedException("Can't create a new stream: connection was closed: " + ctx!!.channel()) else Unit
 }

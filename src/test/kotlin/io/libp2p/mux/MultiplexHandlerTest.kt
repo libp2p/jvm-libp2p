@@ -1,9 +1,11 @@
 package io.libp2p.mux
 
+import io.libp2p.core.ConnectionClosedException
 import io.libp2p.core.Libp2pException
 import io.libp2p.core.Stream
 import io.libp2p.core.StreamHandler
 import io.libp2p.etc.types.fromHex
+import io.libp2p.etc.types.getX
 import io.libp2p.etc.types.toByteArray
 import io.libp2p.etc.types.toByteBuf
 import io.libp2p.etc.types.toHex
@@ -17,6 +19,8 @@ import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
+import io.netty.handler.logging.LogLevel
+import io.netty.handler.logging.LoggingHandler
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import java.util.concurrent.CompletableFuture
@@ -81,7 +85,7 @@ class MultiplexHandlerTest {
                 })
         )
 
-        val ech = TestChannel("test", true, multistreamHandler)
+        val ech = TestChannel("test", true, LoggingHandler(LogLevel.ERROR), multistreamHandler)
         ech.writeInbound(MuxFrame(MuxId(12, true), OPEN))
         ech.writeInbound(MuxFrame(MuxId(12, true), DATA, "22".fromHex().toByteBuf()))
         Assertions.assertEquals(1, childHandlers.size)
@@ -122,6 +126,11 @@ class MultiplexHandlerTest {
         ech.close().await()
 
         Assertions.assertTrue(childHandlers[0].ctx!!.channel().closeFuture().isDone)
+
+        val staleStream =
+            multistreamHandler.createStream(StreamHandler.create { println("This shouldn't be displayed: parent stream is closed") })
+
+        Assertions.assertThrows(ConnectionClosedException::class.java) { staleStream.stream.getX(3.0) }
     }
 
     fun createStreamHandler(channelInitializer: ChannelHandler) = object : StreamHandler<Unit> {
