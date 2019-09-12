@@ -63,7 +63,7 @@ class IdentifyProtocol : P2PAbstractHandler<IdentifyController> {
                 .setAgentVersion("Java-Harmony-0.1.0")
                 .build()
             ctx.writeAndFlush(msg)
-            ctx.close()
+            ctx.disconnect()
         }
 
         override fun channelRead0(ctx: ChannelHandlerContext?, msg: IdentifyOuterClass.Identify?) {
