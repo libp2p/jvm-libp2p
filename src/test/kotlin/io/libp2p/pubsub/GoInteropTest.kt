@@ -19,16 +19,23 @@ import io.libp2p.core.pubsub.createPubsubApi
 import io.libp2p.etc.types.fromHex
 import io.libp2p.etc.types.toByteArray
 import io.libp2p.etc.types.toByteBuf
+import io.libp2p.etc.types.toHex
 import io.libp2p.etc.types.toProtobuf
+import io.libp2p.etc.util.netty.fromLogHandler
 import io.libp2p.mux.mplex.MplexStreamMuxer
 import io.libp2p.protocol.Ping
 import io.libp2p.pubsub.gossip.Gossip
 import io.libp2p.pubsub.gossip.GossipRouter
 import io.libp2p.security.secio.SecIoSecureChannel
+import io.libp2p.tools.TestChannel
 import io.libp2p.tools.p2pd.DaemonLauncher
 import io.libp2p.transport.ConnectionUpgrader
 import io.libp2p.transport.tcp.TcpTransport
 import io.netty.channel.ChannelHandler
+import io.netty.handler.codec.protobuf.ProtobufDecoder
+import io.netty.handler.codec.protobuf.ProtobufEncoder
+import io.netty.handler.codec.protobuf.ProtobufVarint32FrameDecoder
+import io.netty.handler.codec.protobuf.ProtobufVarint32LengthFieldPrepender
 import io.netty.handler.logging.LogLevel
 import io.netty.handler.logging.LoggingHandler
 import io.netty.util.ResourceLeakDetector
@@ -283,5 +290,90 @@ class GoInteropTest {
 
         val vRes = pubKey.verify("libp2p-pubsub:".toByteArray() + msg.toByteArray(), sigS.fromHex())
         println("$pubKey: $vRes")
+    }
+
+    @Test
+    @Disabled
+    fun jsInteropTest() {
+        val testChannel = TestChannel(
+            "test", true,
+            LoggingHandler("wire", LogLevel.ERROR),
+            ProtobufVarint32FrameDecoder(),
+            ProtobufVarint32LengthFieldPrepender(),
+            ProtobufDecoder(Rpc.RPC.getDefaultInstance()),
+            ProtobufEncoder(),
+            LoggingHandler("gossip", LogLevel.ERROR)
+        )
+
+        val dump = """
++--------+-------------------------------------------------+----------------+
+|00000000| 8f 07 12 8c 07 0a 27 00 25 08 02 12 21 02 63 48 |......'.%...!.cH|
+|00000010| 28 39 da 35 80 fa f9 32 72 80 82 28 4f e2 1b 83 |(9.5...2r..(O...|
+|00000020| b6 cd 5f 1f 65 2e 4e fd da ed c1 2d a1 30 12 c2 |.._.e.N....-.0..|
+|00000030| 05 01 00 00 00 00 00 00 00 2f cc 13 e8 d5 44 e7 |........./....D.|
+|00000040| 61 76 cc 22 e3 62 7f 79 16 0f 7d 77 25 35 e3 20 |av.".b.y..}w%5. |
+|00000050| 09 ac 63 19 b0 80 18 14 f7 d2 54 dd 22 a5 cb 5e |..c.......T."..^|
+|00000060| 0c 65 66 f8 3e 58 4a 23 d9 a2 9e 82 08 2b 3d d5 |.ef.>XJ#.....+=.|
+|00000070| 2c 41 ad b1 4a a1 a6 e6 f1 ac 00 00 00 84 cc bd |,A..J...........|
+|00000080| 20 d2 f5 d8 98 b3 7d 74 78 59 69 7a 8d e2 c5 54 | .....}txYiz...T|
+|00000090| 04 7f 33 c9 e9 ce 7c 5f 80 c3 1a f8 ed 44 70 49 |..3...|_.....DpI|
+|000000a0| a9 cf bb 64 1c 5c 84 2a 84 54 47 95 ef 01 51 e4 |...d.\.*.TG...Q.|
+|000000b0| 90 82 3b 86 5d 81 ed 9c 29 f0 a9 06 16 5e 82 06 |..;.]...)....^..|
+|000000c0| 79 f1 7c de f2 d4 60 79 bd 44 29 3f 2d 73 c6 91 |y.|...`y.D)?-s..|
+|000000d0| e7 da d9 e7 31 af 3e f1 ae 9b 5f 35 ad ae 76 67 |....1.>..._5..vg|
+|000000e0| ff 68 3a e9 ef a5 ae 5d a4 ce 32 a8 6a d7 74 e4 |.h:....]..2.j.t.|
+|000000f0| 69 72 5d 87 3c 71 7d 34 58 22 fb 76 af 2f b2 d3 |ir].<q}4X".v./..|
+|00000100| 2c 65 4b f8 96 cf 5d 4b 7b d5 fa 2f 83 06 4d 1d |,eK...]K{../..M.|
+|00000110| c3 79 f7 e6 b6 8b 7e 26 29 7b a2 69 a6 49 df fb |.y....~&){.i.I..|
+|00000120| f6 df 96 6e 42 a8 3b 18 5e 43 38 48 4c 56 f1 e8 |...nB.;.^C8HLV..|
+|00000130| 73 e4 f5 f3 e2 83 72 69 90 b7 0c c8 06 9a f4 15 |s.....ri........|
+|00000140| 8d 9f 94 72 1a 17 49 f3 27 6e d1 1b 12 a4 f4 4a |...r..I.'n.....J|
+|00000150| 4c 3d 91 bd 35 85 ae e4 ad 09 30 a3 59 08 00 00 |L=..5.....0.Y...|
+|00000160| 00 00 00 00 00 2b 32 db 6c 2c 0a 62 35 fb 13 97 |.....+2.l,.b5...|
+|00000170| e8 22 5e a8 5e 0f 0e 6e 8c 7b 12 6d 00 16 cc bd |."^.^..n.{.m....|
+|00000180| e0 e6 67 15 1e 00 00 00 00 00 00 00 00 00 00 00 |..g.............|
+|00000190| 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |................|
+|000001a0| 00 00 00 00 00 e0 00 00 00 e0 00 00 00 e0 00 00 |................|
+|000001b0| 00 16 02 00 00 16 02 00 00 16 02 00 00 04 00 00 |................|
+|000001c0| 00 30 01 00 00 2f cc 13 e8 d5 44 e7 61 76 cc 22 |.0.../....D.av."|
+|000001d0| e3 62 7f 79 16 0f 7d 77 25 35 e3 20 09 ac 63 19 |.b.y..}w%5. ..c.|
+|000001e0| b0 80 18 14 f7 00 00 00 00 00 00 00 00 00 00 00 |................|
+|000001f0| 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |................|
+|00000200| 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |................|
+|00000210| 00 00 00 00 00 2f cc 13 e8 d5 44 e7 61 76 cc 22 |...../....D.av."|
+|00000220| e3 62 7f 79 16 0f 7d 77 25 35 e3 20 09 ac 63 19 |.b.y..}w%5. ..c.|
+|00000230| b0 80 18 14 f7 00 00 00 00 00 00 00 00 c7 80 09 |................|
+|00000240| fd f0 7f c5 6a 11 f1 22 37 06 58 a3 53 aa a5 42 |....j.."7.X.S..B|
+|00000250| ed 63 e4 4c 4b c1 5f f4 cd 10 5a b3 3c 00 00 00 |.c.LK._...Z.<...|
+|00000260| 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |................|
+|00000270| 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |................|
+|00000280| 00 00 00 00 00 00 00 00 00 00 00 00 00 31 01 00 |.............1..|
+|00000290| 00 96 bd 3d 74 bc eb 6b 34 e4 41 16 52 ad 2f 16 |...=t..k4.A.R./.|
+|000002a0| b0 24 5b 92 c2 12 7c 54 65 90 e8 78 04 6c ed b7 |.${'$'}[...|Te..x.l..|
+|000002b0| 92 4c 62 4f 75 5b 9a ad 9c 4f fe 83 d0 1d e9 5d |.LbOu[...O.....]|
+|000002c0| 44 17 6f 1e 2e 4d e0 6b 85 76 f2 94 11 c5 e7 eb |D.o..M.k.v......|
+|000002d0| 06 ae a5 07 10 fb 99 d1 17 df ab 7d 31 20 e4 b2 |...........}1 ..|
+|000002e0| 39 55 de a9 53 ce 6f b0 1c 3d 18 31 09 37 32 22 |9U..S.o..=.1.72"|
+|000002f0| ab 03 02 1a 14 14 b2 67 6d 0c 65 c3 3c 5a 46 81 |.......gm.e.<ZF.|
+|00000300| 3f 37 2c 14 88 33 45 6e 5c 22 16 2f 65 74 68 32 |?7,..3En\"./eth2|
+|00000310| 2f 62 65 61 63 6f 6e 5f 62 6c 6f 63 6b 2f 73 73 |/beacon_block/ss|
+|00000320| 7a 2a 47 30 45 02 21 00 da 23 b9 94 bd 87 2d 43 |z*G0E.!..#....-C|
+|00000330| 42 47 f7 ce 36 f0 a9 93 30 05 9b 82 04 c4 69 88 |BG..6...0.....i.|
+|00000340| 75 19 66 cc 22 8d 83 9f 02 20 1b 4b 72 9c df e8 |u.f.".... .Kr...|
+|00000350| 86 40 64 49 7e 5a 0c 6f 13 48 44 e9 e9 28 66 2e |.@dI~Z.o.HD..(f.|
+|00000360| 89 64 53 a6 1b f8 e1 c9 94 77 32 25 08 02 12 21 |.dS......w2%...!|
+|00000370| 02 63 48 28 39 da 35 80 fa f9 32 72 80 82 28 4f |.cH(9.5...2r..(O|
+|00000380| e2 1b 83 b6 cd 5f 1f 65 2e 4e fd da ed c1 2d a1 |....._.e.N....-.|
+|00000390| 30                                              |0               |
++--------+-------------------------------------------------+----------------+
+        """.trimIndent()
+
+        val bytes = dump.fromLogHandler()
+        testChannel.writeInbound(bytes.toByteBuf())
+        val psMsg = testChannel.readInbound<Rpc.RPC>()
+        PubsubMessageValidator.signatureValidator().validate(psMsg)
+        val seqNo = psMsg.publishList[0].seqno
+
+        println(psMsg.publishList[0].data.toByteArray().toHex())
     }
 }
