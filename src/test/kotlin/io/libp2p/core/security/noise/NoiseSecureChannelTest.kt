@@ -3,14 +3,21 @@ package io.libp2p.core.security.noise
 import com.google.protobuf.ByteString
 import com.southernstorm.noise.protocol.HandshakeState
 import com.southernstorm.noise.protocol.Noise
-import io.libp2p.core.Connection
+import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.generateKeyPair
+import io.libp2p.core.multistream.Mode
+import io.libp2p.core.multistream.ProtocolMatcher
+import io.libp2p.etc.SECURE_SESSION
+import io.libp2p.etc.types.toByteArray
+import io.libp2p.etc.types.toByteBuf
+import io.libp2p.multistream.Negotiator
+import io.libp2p.multistream.ProtocolSelect
+import io.libp2p.tools.TestChannel
+import io.libp2p.tools.TestChannel.Companion.interConnect
 import io.libp2p.tools.TestHandler
 import io.netty.buffer.ByteBuf
-import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelHandlerContext
-import io.netty.channel.embedded.EmbeddedChannel
 import io.netty.handler.logging.LogLevel
 import io.netty.handler.logging.LoggingHandler
 import org.apache.logging.log4j.LogManager
@@ -20,9 +27,8 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import spipe.pb.Spipe
 import java.nio.charset.StandardCharsets
+import java.util.Arrays
 import java.util.concurrent.CountDownLatch
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 class NoiseSecureChannelTest {
@@ -150,52 +156,306 @@ class NoiseSecureChannelTest {
     @Test
     fun testNoiseChannelThroughEmbedded() {
         // test Noise secure channel through embedded channels
+        logger.debug("Beginning embedded test");
 
-        // identity
-        val (privKey1, _) = generateKeyPair(KEY_TYPE.ECDSA)
-        val (privKey2, _) = generateKeyPair(KEY_TYPE.ECDSA)
+        // node keys
+        val (privKey1, pubKey1) = generateKeyPair(KEY_TYPE.ECDSA)
+        val (privKey2, pubKey2) = generateKeyPair(KEY_TYPE.ECDSA)
+
+        // identities
+        val localId = PeerId.fromPubKey(pubKey1)
+        val remoteId = PeerId.fromPubKey(pubKey2)
 
         // noise keys
         val aliceDHState = Noise.createDH("25519")
         val bobDHState = Noise.createDH("25519")
         aliceDHState.generateKeyPair()
         bobDHState.generateKeyPair()
-        val ch1 = NoiseSecureChannel(privKey1, aliceDHState, bobDHState, HandshakeState.INITIATOR)
-        val ch2 = NoiseSecureChannel(privKey2, bobDHState, aliceDHState, HandshakeState.RESPONDER)
+        val ch1 = NoiseXXSecureChannel(privKey1, aliceDHState, bobDHState, HandshakeState.INITIATOR)
+        val ch2 = NoiseXXSecureChannel(privKey2, bobDHState, aliceDHState, HandshakeState.RESPONDER)
+
+        val protocolSelect1 = ProtocolSelect(listOf(ch1))
+        val protocolSelect2 = ProtocolSelect(listOf(ch2))
+
+        val eCh1 = io.libp2p.tools.TestChannel("#1", true, LoggingHandler("#1", LogLevel.ERROR),
+            Negotiator.createRequesterInitializer(NoiseXXSecureChannel.announce),
+            protocolSelect1)
+
+        val eCh2 = io.libp2p.tools.TestChannel("#2", false,
+            LoggingHandler("#2", LogLevel.ERROR),
+            Negotiator.createResponderInitializer(listOf(ProtocolMatcher(Mode.STRICT, NoiseXXSecureChannel.announce))),
+            protocolSelect2)
+
+        logger.debug("Connecting initial channels");
+        interConnect(eCh1, eCh2)
+
+        logger.debug("Waiting for negotiation to complete...")
+        protocolSelect1.selectedFuture.get(10, TimeUnit.SECONDS)
+        protocolSelect2.selectedFuture.get(10, TimeUnit.SECONDS)
+        logger.debug("Secured!")
+
 
         var rec1: String? = ""
         var rec2: String? = ""
         val latch = CountDownLatch(2)
+//
+//        eCh1.pipeline().addFirst(object: ChannelInboundHandlerAdapter() {
+//            override fun channelRead(ctx: ChannelHandlerContext?, msg: Any?) {
+//                logger.debug("Reading from first handler")
+//                super.channelRead(ctx, msg)
+//            }
+//        })
+//
+//        eCh1.pipeline().addFirst(object: ChannelOutboundHandlerAdapter() {
+//            override fun write(ctx: ChannelHandlerContext?, msg: Any?, promise: ChannelPromise?) {
+//                logger.debug("Writing from first handler")
+//                super.write(ctx, msg, promise)
+//            }
+//        })
+
+//        eCh1.pipeline().addLast(object: ChannelOutboundHandlerAdapter() {
+//            override fun write(ctx: ChannelHandlerContext?, msg: Any?, promise: ChannelPromise?) {
+//                logger.debug("Writing from last handler")
+//                super.write(ctx, msg, promise)
+//            }
+//        })
+
+        // Setup alice's pipeline. TestHandler handles inbound data, so chanelActive() is used to write to the context
+        eCh1.pipeline().addLast(object : TestHandler("1") {
+            override fun channelRegistered(ctx: ChannelHandlerContext?) {
+                channelActive(ctx!!)
+                super.channelRegistered(ctx)
+            }
+
+            override fun channelActive(ctx: ChannelHandlerContext) {
+                super.channelActive(ctx)
+                val get: NoiseSecureChannelSession = ctx.channel().attr(SECURE_SESSION).get() as NoiseSecureChannelSession
+                var additionalData = ByteArray(65535)
+                var cipherText = ByteArray(65535)
+                var plaintext = "Hello World from $name".toByteArray()
+                var length = get.aliceCipher.encryptWithAd(additionalData, plaintext, 0, cipherText, 2, plaintext.size)
+                logger.debug("encrypt length:" + length)
+                ctx.writeAndFlush(Arrays.copyOf(cipherText, length + 2).toByteBuf().setShort(0, length))
+            }
 
 
-        val eCh1 = TestChannel(LoggingHandler("#1", LogLevel.ERROR),
-            object : TestHandler("1") {
-                override fun channelRead(ctx: ChannelHandlerContext, msg: Any?) {
-                    msg as ByteBuf
-//                    rec1 = msg.toByteArray().toString(StandardCharsets.UTF_8)
-                    rec1 = ctx.channel().attr(NoiseSecureChannel.dataAttribute).toString()
-                    logger.debug("==$name== read111: $rec1")
-                    latch.countDown()
-                }
-            })
-        val eCh2 = TestChannel(LoggingHandler("#2", LogLevel.ERROR),
-            object : TestHandler("2") {
-                override fun channelRead(ctx: ChannelHandlerContext, msg: Any?) {
-                    msg as ByteBuf
-                    rec2 = msg.toString(StandardCharsets.UTF_8)
-                    logger.debug("==$name== read: $rec2")
-                    latch.countDown()
-                }
-            })
-        ch1.initChannel(Connection(eCh1));
-        ch2.initChannel(Connection(eCh2));
-        interConnect(eCh1, eCh2)
-        eCh2.write("test".toByteArray())
+            override fun channelRead(ctx: ChannelHandlerContext, msg: Any?) {
+                msg as ByteBuf
+
+                val get: NoiseSecureChannelSession = ctx.channel().attr(SECURE_SESSION).get() as NoiseSecureChannelSession
+                var additionalData = ByteArray(65535)
+                var plainText = ByteArray(65535)
+                var cipherText = msg.toByteArray()
+                var length = msg.getShort(0).toInt()
+                logger.debug("decrypt length:" + length)
+                var l = get.bobCipher.decryptWithAd(additionalData, cipherText, 2, plainText, 0, length)
+                rec1 = plainText.copyOf(l).toString(StandardCharsets.UTF_8)
+                logger.debug("==$name== read: $rec1")
+                latch.countDown()
+            }
+        })
+
+        // Setup bob's pipeline
+        eCh2.pipeline().addLast(object : TestHandler("2") {
+            override fun channelRegistered(ctx: ChannelHandlerContext?) {
+                channelActive(ctx!!)
+                super.channelRegistered(ctx)
+            }
+
+            override fun channelActive(ctx: ChannelHandlerContext) {
+                val get: NoiseSecureChannelSession = ctx.channel().attr(SECURE_SESSION).get() as NoiseSecureChannelSession
+                var additionalData = ByteArray(65535)
+                var cipherText = ByteArray(65535)
+                var plaintext = "Hello World from $name".toByteArray()
+                var length = get.aliceCipher.encryptWithAd(additionalData, plaintext, 0, cipherText, 2, plaintext.size)
+                logger.debug("encrypt length:" + length)
+                ctx.writeAndFlush(Arrays.copyOf(cipherText, length + 2).toByteBuf().setShort(0, length))
+            }
+
+            override fun channelRead(ctx: ChannelHandlerContext, msg: Any?) {
+                msg as ByteBuf
+
+                val get: NoiseSecureChannelSession = ctx.channel().attr(SECURE_SESSION).get() as NoiseSecureChannelSession
+                var additionalData = ByteArray(65535)
+                var plainText = ByteArray(65535)
+                var cipherText = msg.toByteArray()
+                var length = msg.getShort(0).toInt()
+                logger.debug("decrypt length:" + length)
+                var l = get.bobCipher.decryptWithAd(additionalData, cipherText, 2, plainText, 0, length)
+                rec2 = plainText.copyOf(l).toString(StandardCharsets.UTF_8)
+                logger.debug("==$name== read: $rec2")
+                latch.countDown()
+            }
+        })
+
+        eCh1.pipeline().fireChannelRegistered()
+        eCh2.pipeline().fireChannelRegistered()
 
         latch.await(10, TimeUnit.SECONDS)
 
-        Assertions.assertEquals("Hello World", rec2)
-        Assertions.assertEquals("Hello World", rec1)
+
+        Assertions.assertEquals("Hello World from 1", rec2)
+        Assertions.assertEquals("Hello World from 2", rec1)
+
+
+        System.gc()
+        Thread.sleep(500)
+        System.gc()
+        Thread.sleep(500)
+        System.gc()
+    }
+
+
+    @Test
+    fun testNoiseChannelThroughEmbeddedFallBack() {
+        // test Noise secure channel through embedded channels
+        logger.debug("Beginning embedded test");
+
+        // node keys
+        val (privKey1, pubKey1) = generateKeyPair(KEY_TYPE.ECDSA)
+        val (privKey2, pubKey2) = generateKeyPair(KEY_TYPE.ECDSA)
+
+        // identities
+        val localId = PeerId.fromPubKey(pubKey1)
+        val remoteId = PeerId.fromPubKey(pubKey2)
+
+        // noise keys
+        val aliceDHState = Noise.createDH("25519")
+        val bobDHState = Noise.createDH("25519")
+        aliceDHState.generateKeyPair()
+        bobDHState.generateKeyPair()
+        val ch1 = NoiseXXSecureChannel(privKey1, aliceDHState, bobDHState, HandshakeState.INITIATOR)
+        val ch2 = NoiseXXSecureChannel(privKey2, bobDHState, aliceDHState, HandshakeState.RESPONDER)
+
+        val protocolSelect1 = ProtocolSelect(listOf(ch1))
+        val protocolSelect2 = ProtocolSelect(listOf(ch2))
+
+        val eCh1 = TestChannel("#1", true, LoggingHandler("#1", LogLevel.ERROR),
+            Negotiator.createRequesterInitializer(NoiseXXSecureChannel.announce),
+            protocolSelect1)
+
+        val eCh2 = TestChannel("#2", false,
+            LoggingHandler("#2", LogLevel.ERROR),
+            Negotiator.createResponderInitializer(listOf(ProtocolMatcher(Mode.STRICT, NoiseXXSecureChannel.announce))),
+            protocolSelect2)
+
+        logger.debug("Connecting initial channels");
+        interConnect(eCh1, eCh2)
+
+        logger.debug("Waiting for negotiation to complete...")
+        protocolSelect1.selectedFuture.get(10, TimeUnit.SECONDS)
+        protocolSelect2.selectedFuture.get(10, TimeUnit.SECONDS)
+        logger.debug("Secured!")
+
+
+        var rec1: String? = ""
+        var rec2: String? = ""
+        val latch = CountDownLatch(2)
+//
+//        eCh1.pipeline().addFirst(object: ChannelInboundHandlerAdapter() {
+//            override fun channelRead(ctx: ChannelHandlerContext?, msg: Any?) {
+//                logger.debug("Reading from first handler")
+//                super.channelRead(ctx, msg)
+//            }
+//        })
+//
+//        eCh1.pipeline().addFirst(object: ChannelOutboundHandlerAdapter() {
+//            override fun write(ctx: ChannelHandlerContext?, msg: Any?, promise: ChannelPromise?) {
+//                logger.debug("Writing from first handler")
+//                super.write(ctx, msg, promise)
+//            }
+//        })
+
+//        eCh1.pipeline().addLast(object: ChannelOutboundHandlerAdapter() {
+//            override fun write(ctx: ChannelHandlerContext?, msg: Any?, promise: ChannelPromise?) {
+//                logger.debug("Writing from last handler")
+//                super.write(ctx, msg, promise)
+//            }
+//        })
+
+        // Setup alice's pipeline. TestHandler handles inbound data, so chanelActive() is used to write to the context
+        eCh1.pipeline().addLast(object : TestHandler("1") {
+            override fun channelRegistered(ctx: ChannelHandlerContext?) {
+                channelActive(ctx!!)
+                super.channelRegistered(ctx)
+            }
+
+            override fun channelActive(ctx: ChannelHandlerContext) {
+                super.channelActive(ctx)
+                val get: NoiseSecureChannelSession = ctx.channel().attr(SECURE_SESSION).get() as NoiseSecureChannelSession
+                var additionalData = ByteArray(65535)
+                var cipherText = ByteArray(65535)
+                var plaintext = "Hello World from $name".toByteArray()
+                var length = get.aliceCipher.encryptWithAd(additionalData, plaintext, 0, cipherText, 2, plaintext.size)
+                logger.debug("encrypt length:" + length)
+                ctx.writeAndFlush(Arrays.copyOf(cipherText, length + 2).toByteBuf().setShort(0, length))
+            }
+
+
+            override fun channelRead(ctx: ChannelHandlerContext, msg: Any?) {
+                msg as ByteBuf
+
+                val get: NoiseSecureChannelSession = ctx.channel().attr(SECURE_SESSION).get() as NoiseSecureChannelSession
+                var additionalData = ByteArray(65535)
+                var plainText = ByteArray(65535)
+                var cipherText = msg.toByteArray()
+                var length = msg.getShort(0).toInt()
+                logger.debug("decrypt length:" + length)
+                var l = get.bobCipher.decryptWithAd(additionalData, cipherText, 2, plainText, 0, length)
+                rec1 = plainText.copyOf(l).toString(StandardCharsets.UTF_8)
+                logger.debug("==$name== read: $rec1")
+                latch.countDown()
+            }
+        })
+
+        // Setup bob's pipeline
+        eCh2.pipeline().addLast(object : TestHandler("2") {
+            override fun channelRegistered(ctx: ChannelHandlerContext?) {
+                channelActive(ctx!!)
+                super.channelRegistered(ctx)
+            }
+
+            override fun channelActive(ctx: ChannelHandlerContext) {
+                val get: NoiseSecureChannelSession = ctx.channel().attr(SECURE_SESSION).get() as NoiseSecureChannelSession
+                var additionalData = ByteArray(65535)
+                var cipherText = ByteArray(65535)
+                var plaintext = "Hello World from $name".toByteArray()
+                var length = get.aliceCipher.encryptWithAd(additionalData, plaintext, 0, cipherText, 2, plaintext.size)
+                logger.debug("encrypt length:" + length)
+                ctx.writeAndFlush(Arrays.copyOf(cipherText, length + 2).toByteBuf().setShort(0, length))
+            }
+
+            override fun channelRead(ctx: ChannelHandlerContext, msg: Any?) {
+                msg as ByteBuf
+
+                val get: NoiseSecureChannelSession = ctx.channel().attr(SECURE_SESSION).get() as NoiseSecureChannelSession
+                var additionalData = ByteArray(65535)
+                var plainText = ByteArray(65535)
+                var cipherText = msg.toByteArray()
+                var length = msg.getShort(0).toInt()
+                logger.debug("decrypt length:" + length)
+                var l = get.bobCipher.decryptWithAd(additionalData, cipherText, 2, plainText, 0, length)
+                rec2 = plainText.copyOf(l).toString(StandardCharsets.UTF_8)
+                logger.debug("==$name== read: $rec2")
+                latch.countDown()
+            }
+        })
+
+        eCh1.pipeline().fireChannelRegistered()
+        eCh2.pipeline().fireChannelRegistered()
+
+        latch.await(10, TimeUnit.SECONDS)
+
+
+        Assertions.assertEquals("Hello World from 1", rec2)
+        Assertions.assertEquals("Hello World from 2", rec1)
+
+
+        System.gc()
+        Thread.sleep(500)
+        System.gc()
+        Thread.sleep(500)
+        System.gc()
     }
 
     @Test
@@ -207,7 +467,7 @@ class NoiseSecureChannelTest {
         val bobDHState = Noise.createDH("25519")
         aliceDHState.generateKeyPair()
         bobDHState.generateKeyPair()
-        val ch1 = NoiseSecureChannel(privKey1, aliceDHState, bobDHState, HandshakeState.INITIATOR)
+        val ch1 = NoiseXXSecureChannel(privKey1, aliceDHState, bobDHState, HandshakeState.INITIATOR)
 
         val announce = ch1.announce
         val matcher = ch1.matcher
@@ -222,40 +482,41 @@ class NoiseSecureChannelTest {
     companion object {
         private val logger = LogManager.getLogger(NoiseSecureChannelTest::class.java)
     }
+
 }
 
-
-fun interConnect(ch1: TestChannel, ch2: TestChannel) {
-    ch1.connect(ch2)
-    ch2.connect(ch1)
-}
-
-class TestChannel(vararg handlers: ChannelHandler?) : EmbeddedChannel(*handlers) {
-    var link: TestChannel? = null
-    val executor = Executors.newSingleThreadExecutor()
-
-    @Synchronized
-    fun connect(other: TestChannel) {
-        link = other
-        outboundMessages().forEach(this::send)
-    }
-
-    @Synchronized
-    override fun handleOutboundMessage(msg: Any?) {
-        super.handleOutboundMessage(msg)
-        if (link != null) {
-            send(msg!!)
-        }
-    }
-
-    fun send(msg: Any) {
-        executor.execute {
-            logger.debug("---- link!!.writeInbound")
-            link!!.writeInbound(msg)
-        }
-    }
-
-    companion object {
-        private val logger = LogManager.getLogger(TestChannel::class.java)
-    }
-}
+//
+//fun interConnect(ch1: TestChannel, ch2: TestChannel) {
+//    ch1.connect(ch2)
+//    ch2.connect(ch1)
+//}
+//
+//class TestChannel22(vararg handlers: ChannelHandler?) : EmbeddedChannel(*handlers) {
+//    var link: TestChannel? = null
+//    val executor = Executors.newSingleThreadExecutor()
+//
+//    @Synchronized
+//    fun connect(other: TestChannel) {
+//        link = other
+//        outboundMessages().forEach(this::send)
+//    }
+//
+//    @Synchronized
+//    override fun handleOutboundMessage(msg: Any?) {
+//        super.handleOutboundMessage(msg)
+//        if (link != null) {
+//            send(msg!!)
+//        }
+//    }
+//
+//    fun send(msg: Any) {
+//        executor.execute {
+//            logger.debug("---- link!!.writeInbound")
+//            link!!.writeInbound(msg)
+//        }
+//    }
+//
+//    companion object {
+//        private val logger = LogManager.getLogger(TestChannel::class.java)
+//    }
+//}
