@@ -1,7 +1,5 @@
 package io.libp2p.core
 
-import io.libp2p.core.crypto.KEY_TYPE
-import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.crypto.unmarshalPublicKey
 import io.libp2p.etc.types.fromHex
 import org.junit.jupiter.api.Assertions
@@ -31,9 +29,11 @@ class PeerIdTest {
 
     @Test
     fun testSecp() {
-        val (privKey, pubKey) = generateKeyPair(KEY_TYPE.SECP256K1)
+//        val (privKey, pubKey) = generateKeyPair(KEY_TYPE.SECP256K1)
+        val pubKey =
+            unmarshalPublicKey("08021221030995d3b6ca88154681092a6772b26de6418eaa01672775bfe9642b33d1f97227".fromHex())
         val peerId = PeerId.fromPubKey(pubKey)
         println("PeerID: " + peerId.toBase58())
-        Assertions.assertEquals("16Uiu2HAmFNXiEY9pAKmiXyRxiNbMXE4E4NxFcjFHt1hHWzeP8erS", peerId.toBase58())
+        Assertions.assertEquals("16Uiu2HAmDJQXZM39z5TzoZN7Sw8tbwjR6Evg9CFmiWhLbnSFGADL", peerId.toBase58())
     }
 }

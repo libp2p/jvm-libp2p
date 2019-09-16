@@ -4,7 +4,7 @@ import io.libp2p.core.AddressBook
 import io.libp2p.core.Connection
 import io.libp2p.core.ConnectionHandler
 import io.libp2p.core.Host
-import io.libp2p.core.Libp2pException
+import io.libp2p.core.NoSuchLocalProtocolException
 import io.libp2p.core.PeerId
 import io.libp2p.core.Stream
 import io.libp2p.core.StreamHandler
@@ -13,7 +13,6 @@ import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multistream.Multistream
 import io.libp2p.core.multistream.ProtocolBinding
-import io.libp2p.etc.types.forward
 import io.libp2p.network.NetworkImpl
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CopyOnWriteArrayList
@@ -75,25 +74,15 @@ class HostImpl(
     }
 
     override fun <TController> newStream(protocol: String, peer: PeerId, vararg addr: Multiaddr): StreamPromise<TController> {
-        val ret = StreamPromise<TController>()
-        network.connect(peer, *addr)
-            .handle { r, t ->
-                if (t != null) {
-                    ret.stream.completeExceptionally(t)
-                    ret.controler.completeExceptionally(t)
-                } else {
-                    val (stream, controler) = newStream<TController>(protocol, r)
-                    stream.forward(ret.stream)
-                    controler.forward(ret.controler)
-                }
-            }
-        return ret
+        val retF = network.connect(peer, *addr)
+            .thenApply { newStream<TController>(protocol, it) }
+        return StreamPromise(retF.thenCompose { it.stream }, retF.thenCompose { it.controler })
     }
 
     override fun <TController> newStream(protocol: String, conn: Connection): StreamPromise<TController> {
         val binding =
             protocolHandlers.bindings.find { it.matcher.matches(protocol) } as? ProtocolBinding<TController>
-            ?: throw Libp2pException("Protocol handler not found: $protocol")
+            ?: throw NoSuchLocalProtocolException("Protocol handler not found: $protocol")
 
         val multistream: Multistream<TController> =
             Multistream.create(binding.toInitiator(protocol))

@@ -94,6 +94,7 @@ class GoInteropTest {
             val tcpTransport = TcpTransport(upgrader)
             val gossip = GossipProtocol(gossipRouter).also {
                 it.debugGossipHandler = LoggingHandler("#4", LogLevel.INFO)
+                (it.router as GossipRouter).validator = PubsubMessageValidator.nopValidator()
             }
 
             val applicationProtocols = listOf(ProtocolBinding.createSimple("/meshsub/1.0.0", gossip))

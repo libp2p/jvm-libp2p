@@ -1,7 +1,8 @@
 package io.libp2p.multistream
 
 import io.libp2p.core.ConnectionClosedException
-import io.libp2p.core.Libp2pException
+import io.libp2p.core.NoSuchLocalProtocolException
+import io.libp2p.core.NoSuchRemoteProtocolException
 import io.libp2p.core.multistream.ProtocolBinding
 import io.libp2p.etc.PROTOCOL
 import io.libp2p.etc.events.ProtocolNegotiationFailed
@@ -25,19 +26,20 @@ class ProtocolSelect<TController>(val protocols: List<ProtocolBinding<TControlle
         when (evt) {
             is ProtocolNegotiationSucceeded -> {
                 val protocolBinding = protocols.find { it.matcher.matches(evt.proto) }
-                    ?: throw Libp2pException("Protocol negotiation failed: not supported protocol ${evt.proto}")
+                    ?: throw NoSuchLocalProtocolException("Protocol negotiation failed: not supported protocol ${evt.proto}")
                 ctx.channel().attr(PROTOCOL).get()?.complete(evt.proto)
                 ctx.pipeline().replace(this, "ProtocolBindingInitializer", nettyInitializer {
                     protocolBinding.initChannel(it.getP2PChannel(), evt.proto).forward(selectedFuture)
                 })
             }
-            is ProtocolNegotiationFailed -> throw Libp2pException("ProtocolNegotiationFailed: $evt")
+            is ProtocolNegotiationFailed -> throw NoSuchRemoteProtocolException("ProtocolNegotiationFailed: $evt")
         }
         super.userEventTriggered(ctx, evt)
     }
 
     override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable?) {
         ctx.channel().attr(PROTOCOL).get()?.completeExceptionally(cause)
+        selectedFuture.completeExceptionally(cause)
         ctx.close()
     }
 

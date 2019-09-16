@@ -63,7 +63,7 @@ class PubsubApiImpl(val router: PubsubRouter) : PubsubApi {
         return MessageImpl(
             msg.data.toByteArray().toByteBuf(),
             msg.from.toByteArray(),
-            msg.seqno.toByteArray().toLongBigEndian(),
+            msg.seqno.toByteArray().copyOfRange(0, 8).toLongBigEndian(),
             msg.topicIDsList.map { Topic(it) }
         )
     }
