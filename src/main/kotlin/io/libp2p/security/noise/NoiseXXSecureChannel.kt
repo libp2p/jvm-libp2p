@@ -1,4 +1,4 @@
-package io.libp2p.core.security.noise
+package io.libp2p.security.noise
 
 import com.google.protobuf.ByteString
 import com.southernstorm.noise.protocol.CipherState
@@ -191,13 +191,14 @@ class NoiseXXSecureChannel(val localKey: PrivKey, val localDHState: DHState, val
                 logger.debug("Split complete")
 
                 // put alice and bob security sessions into the context and trigger the next action
-                val secureChannelInitialized = SecureChannelInitialized(NoiseSecureChannelSession(
-                    PeerId.fromPubKey(localKey.publicKey()),
-                    PeerId.random(),
-                    localKey.publicKey(),
-                    aliceSplit!!,
-                    bobSplit!!
-                ) as SecureChannel.Session)
+                val secureChannelInitialized = SecureChannelInitialized(
+                    NoiseSecureChannelSession(
+                        PeerId.fromPubKey(localKey.publicKey()),
+                        PeerId.random(),
+                        localKey.publicKey(),
+                        aliceSplit!!,
+                        bobSplit!!
+                    ) as SecureChannel.Session)
                 ctx.fireUserEventTriggered(secureChannelInitialized)
                 return
             }

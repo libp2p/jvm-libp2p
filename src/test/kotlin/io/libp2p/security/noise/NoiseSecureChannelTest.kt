@@ -1,4 +1,4 @@
-package io.libp2p.core.security.noise
+package io.libp2p.security.noise
 
 import com.google.protobuf.ByteString
 import com.southernstorm.noise.protocol.HandshakeState
@@ -171,8 +171,10 @@ class NoiseSecureChannelTest {
         val bobDHState = Noise.createDH("25519")
         aliceDHState.generateKeyPair()
         bobDHState.generateKeyPair()
-        val ch1 = NoiseXXSecureChannel(privKey1, aliceDHState, bobDHState, HandshakeState.INITIATOR)
-        val ch2 = NoiseXXSecureChannel(privKey2, bobDHState, aliceDHState, HandshakeState.RESPONDER)
+        val ch1 =
+            NoiseXXSecureChannel(privKey1, aliceDHState, bobDHState, HandshakeState.INITIATOR)
+        val ch2 =
+            NoiseXXSecureChannel(privKey2, bobDHState, aliceDHState, HandshakeState.RESPONDER)
 
         val protocolSelect1 = ProtocolSelect(listOf(ch1))
         val protocolSelect2 = ProtocolSelect(listOf(ch2))
@@ -319,8 +321,10 @@ class NoiseSecureChannelTest {
         val bobDHState = Noise.createDH("25519")
         aliceDHState.generateKeyPair()
         bobDHState.generateKeyPair()
-        val ch1 = NoiseXXSecureChannel(privKey1, aliceDHState, bobDHState, HandshakeState.INITIATOR)
-        val ch2 = NoiseXXSecureChannel(privKey2, bobDHState, aliceDHState, HandshakeState.RESPONDER)
+        val ch1 =
+            NoiseXXSecureChannel(privKey1, aliceDHState, bobDHState, HandshakeState.INITIATOR)
+        val ch2 =
+            NoiseXXSecureChannel(privKey2, bobDHState, aliceDHState, HandshakeState.RESPONDER)
 
         val protocolSelect1 = ProtocolSelect(listOf(ch1))
         val protocolSelect2 = ProtocolSelect(listOf(ch2))
@@ -458,7 +462,8 @@ class NoiseSecureChannelTest {
         val bobDHState = Noise.createDH("25519")
         aliceDHState.generateKeyPair()
         bobDHState.generateKeyPair()
-        val ch1 = NoiseXXSecureChannel(privKey1, aliceDHState, bobDHState, HandshakeState.INITIATOR)
+        val ch1 =
+            NoiseXXSecureChannel(privKey1, aliceDHState, bobDHState, HandshakeState.INITIATOR)
 
         val announce = ch1.announce
         val matcher = ch1.matcher

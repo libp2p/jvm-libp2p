@@ -1,4 +1,4 @@
-package io.libp2p.core.security.noise
+package io.libp2p.security.noise
 
 import com.southernstorm.noise.protocol.CipherState
 import io.libp2p.core.PeerId
