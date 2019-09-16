@@ -36,7 +36,6 @@ class NoiseXXSecureChannel(val localKey: PrivKey, val localDHState: DHState, val
         const val announce = "/noise/$protocolName/0.1.0"
     }
 
-
     override val announce = Companion.announce
     override val matcher = ProtocolMatcher(Mode.PREFIX, name = "/noise/$protocolName/0.1.0")
 
@@ -140,7 +139,6 @@ class NoiseXXSecureChannel(val localKey: PrivKey, val localDHState: DHState, val
                 msg1
             } else {
                 (msg1 as ByteBuf).array()
-
             }
 
             channelActive(ctx)

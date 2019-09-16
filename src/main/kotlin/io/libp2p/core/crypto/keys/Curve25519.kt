@@ -17,21 +17,15 @@ import com.southernstorm.noise.protocol.Noise
 import crypto.pb.Crypto
 import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.crypto.PubKey
-import org.bouncycastle.crypto.generators.Ed25519KeyPairGenerator
-import org.bouncycastle.crypto.params.Ed25519KeyGenerationParameters
-import org.bouncycastle.crypto.params.Ed25519PrivateKeyParameters
-import org.bouncycastle.crypto.params.Ed25519PublicKeyParameters
-import org.bouncycastle.crypto.signers.Ed25519Signer
-import java.security.SecureRandom
 
 /**
  * @param priv the private key backing this instance.
  */
-class Curve25519PrivateKey(private val state:DHState) : PrivKey(Crypto.KeyType.Curve25519) {
+class Curve25519PrivateKey(private val state: DHState) : PrivKey(Crypto.KeyType.Curve25519) {
 
     override fun raw(): ByteArray {
         val ba = ByteArray(state.privateKeyLength)
-        state.getPrivateKey(ba,0)
+        state.getPrivateKey(ba, 0)
         return ba
     }
 
@@ -42,7 +36,7 @@ class Curve25519PrivateKey(private val state:DHState) : PrivKey(Crypto.KeyType.C
     override fun publicKey(): PubKey {
         val ba = ByteArray(state.publicKeyLength)
         state.getPublicKey(ba, 0)
-        return Curve25519PublicKey(state);
+        return Curve25519PublicKey(state)
     }
 
     override fun hashCode(): Int = raw().contentHashCode()
@@ -51,15 +45,15 @@ class Curve25519PrivateKey(private val state:DHState) : PrivKey(Crypto.KeyType.C
 /**
  * @param pub the public key backing this instance.
  */
-class Curve25519PublicKey(private val state:DHState) : PubKey(Crypto.KeyType.Curve25519) {
+class Curve25519PublicKey(private val state: DHState) : PubKey(Crypto.KeyType.Curve25519) {
 
     override fun raw(): ByteArray {
         val ba = ByteArray(state.publicKeyLength)
-        state.getPublicKey(ba,0)
+        state.getPublicKey(ba, 0)
         return ba
     }
 
-    override fun verify(data: ByteArray, signature: ByteArray): Boolean  {
+    override fun verify(data: ByteArray, signature: ByteArray): Boolean {
         throw NotImplementedError("Verifying with Curve25519 public key currently unsupported.")
     }
 
@@ -70,7 +64,7 @@ class Curve25519PublicKey(private val state:DHState) : PubKey(Crypto.KeyType.Cur
  * @return a newly-generated Curve25519 private and public key pair.
  */
 fun generateCurve25519KeyPair(): Pair<PrivKey, PubKey> {
-    val k =  Noise.createDH("25519")
+    val k = Noise.createDH("25519")
     k.generateKeyPair()
 
     val prk = Curve25519PrivateKey(k)
@@ -85,7 +79,7 @@ fun generateCurve25519KeyPair(): Pair<PrivKey, PubKey> {
  */
 fun unmarshalCurve25519PrivateKey(keyBytes: ByteArray): PrivKey {
     val dh = Noise.createDH("25519")
-    dh.setPrivateKey(keyBytes,0)
+    dh.setPrivateKey(keyBytes, 0)
     return Curve25519PrivateKey(dh)
 }
 
@@ -96,6 +90,6 @@ fun unmarshalCurve25519PrivateKey(keyBytes: ByteArray): PrivKey {
  */
 fun unmarshalCurve25519PublicKey(keyBytes: ByteArray): PubKey {
     val dh = Noise.createDH("25519")
-    dh.setPrivateKey(keyBytes,0)
+    dh.setPrivateKey(keyBytes, 0)
     return Curve25519PublicKey(dh)
 }

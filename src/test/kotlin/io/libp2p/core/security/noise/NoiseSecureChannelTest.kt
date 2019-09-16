@@ -156,7 +156,7 @@ class NoiseSecureChannelTest {
     @Test
     fun testNoiseChannelThroughEmbedded() {
         // test Noise secure channel through embedded channels
-        logger.debug("Beginning embedded test");
+        logger.debug("Beginning embedded test")
 
         // node keys
         val (privKey1, pubKey1) = generateKeyPair(KEY_TYPE.ECDSA)
@@ -186,14 +186,13 @@ class NoiseSecureChannelTest {
             Negotiator.createResponderInitializer(listOf(ProtocolMatcher(Mode.STRICT, NoiseXXSecureChannel.announce))),
             protocolSelect2)
 
-        logger.debug("Connecting initial channels");
+        logger.debug("Connecting initial channels")
         interConnect(eCh1, eCh2)
 
         logger.debug("Waiting for negotiation to complete...")
         protocolSelect1.selectedFuture.get(10, TimeUnit.SECONDS)
         protocolSelect2.selectedFuture.get(10, TimeUnit.SECONDS)
         logger.debug("Secured!")
-
 
         var rec1: String? = ""
         var rec2: String? = ""
@@ -237,7 +236,6 @@ class NoiseSecureChannelTest {
                 logger.debug("encrypt length:" + length)
                 ctx.writeAndFlush(Arrays.copyOf(cipherText, length + 2).toByteBuf().setShort(0, length))
             }
-
 
             override fun channelRead(ctx: ChannelHandlerContext, msg: Any?) {
                 msg as ByteBuf
@@ -293,10 +291,8 @@ class NoiseSecureChannelTest {
 
         latch.await(10, TimeUnit.SECONDS)
 
-
         Assertions.assertEquals("Hello World from 1", rec2)
         Assertions.assertEquals("Hello World from 2", rec1)
-
 
         System.gc()
         Thread.sleep(500)
@@ -305,11 +301,10 @@ class NoiseSecureChannelTest {
         System.gc()
     }
 
-
     @Test
     fun testNoiseChannelThroughEmbeddedFallBack() {
         // test Noise secure channel through embedded channels
-        logger.debug("Beginning embedded test");
+        logger.debug("Beginning embedded test")
 
         // node keys
         val (privKey1, pubKey1) = generateKeyPair(KEY_TYPE.ECDSA)
@@ -339,14 +334,13 @@ class NoiseSecureChannelTest {
             Negotiator.createResponderInitializer(listOf(ProtocolMatcher(Mode.STRICT, NoiseXXSecureChannel.announce))),
             protocolSelect2)
 
-        logger.debug("Connecting initial channels");
+        logger.debug("Connecting initial channels")
         interConnect(eCh1, eCh2)
 
         logger.debug("Waiting for negotiation to complete...")
         protocolSelect1.selectedFuture.get(10, TimeUnit.SECONDS)
         protocolSelect2.selectedFuture.get(10, TimeUnit.SECONDS)
         logger.debug("Secured!")
-
 
         var rec1: String? = ""
         var rec2: String? = ""
@@ -390,7 +384,6 @@ class NoiseSecureChannelTest {
                 logger.debug("encrypt length:" + length)
                 ctx.writeAndFlush(Arrays.copyOf(cipherText, length + 2).toByteBuf().setShort(0, length))
             }
-
 
             override fun channelRead(ctx: ChannelHandlerContext, msg: Any?) {
                 msg as ByteBuf
@@ -446,10 +439,8 @@ class NoiseSecureChannelTest {
 
         latch.await(10, TimeUnit.SECONDS)
 
-
         Assertions.assertEquals("Hello World from 1", rec2)
         Assertions.assertEquals("Hello World from 2", rec1)
-
 
         System.gc()
         Thread.sleep(500)
@@ -482,16 +473,15 @@ class NoiseSecureChannelTest {
     companion object {
         private val logger = LogManager.getLogger(NoiseSecureChannelTest::class.java)
     }
-
 }
 
 //
-//fun interConnect(ch1: TestChannel, ch2: TestChannel) {
+// fun interConnect(ch1: TestChannel, ch2: TestChannel) {
 //    ch1.connect(ch2)
 //    ch2.connect(ch1)
-//}
+// }
 //
-//class TestChannel22(vararg handlers: ChannelHandler?) : EmbeddedChannel(*handlers) {
+// class TestChannel22(vararg handlers: ChannelHandler?) : EmbeddedChannel(*handlers) {
 //    var link: TestChannel? = null
 //    val executor = Executors.newSingleThreadExecutor()
 //
@@ -519,4 +509,4 @@ class NoiseSecureChannelTest {
 //    companion object {
 //        private val logger = LogManager.getLogger(TestChannel::class.java)
 //    }
-//}
+// }
