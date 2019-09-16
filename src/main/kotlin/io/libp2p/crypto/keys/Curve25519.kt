@@ -10,7 +10,7 @@
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
  */
-package io.libp2p.core.crypto.keys
+package io.libp2p.crypto.keys
 
 import com.southernstorm.noise.protocol.DHState
 import com.southernstorm.noise.protocol.Noise
