@@ -190,7 +190,7 @@ class GoInteropTest {
     }
 
     @Test
-    fun hostTest() = defer {d ->
+    fun hostTest() = defer { d ->
         val logger = LogManager.getLogger("test")
         val daemonLauncher = P2pdRunner().launcher() ?: run {
             println("p2pd executable not found. Skipping this test")
