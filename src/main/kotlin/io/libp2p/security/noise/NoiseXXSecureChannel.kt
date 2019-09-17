@@ -163,8 +163,6 @@ open class NoiseXXSecureChannel(val localKey: PrivKey, val privateKey25519: Byte
         }
 
         override fun channelRegistered(ctx: ChannelHandlerContext?) {
-            super.channelRegistered(ctx)
-
             if (activated) {
                 return
             }
@@ -194,7 +192,6 @@ open class NoiseXXSecureChannel(val localKey: PrivKey, val privateKey25519: Byte
 
         override fun channelActive(ctx: ChannelHandlerContext?) {
             logger.debug("Activation starting")
-            super.channelActive(ctx)
             channelRegistered(ctx)
             logger.debug("Activation complete")
         }
