@@ -35,19 +35,31 @@ class Multiaddr(val components: List<Pair<Protocol, ByteArray>>) {
      */
     constructor(bytes: ByteArray) : this(parseBytes(bytes.toByteBuf()))
 
+    /**
+     * Returns only components matching any of supplied protocols
+     */
     fun filterComponents(vararg proto: Protocol): List<Pair<Protocol, ByteArray>> = components.filter { proto.contains(it.first) }
 
+    /**
+     * Returns the first found protocol value. [null] if the protocol not found
+     */
     fun getComponent(proto: Protocol): ByteArray? = filterComponents(proto).firstOrNull()?.second
 
-            /**
+    /**
      * Returns [components] in a human readable form where each protocol value
      * is deserialized and represented as String
      */
     fun filterStringComponents(): List<Pair<Protocol, String?>> =
         components.map { p -> p.first to if (p.first.size == 0) null else p.first.bytesToAddress(p.second) }
 
+    /**
+     * Returns only components (String representation) matching any of supplied protocols
+     */
     fun filterStringComponents(vararg proto: Protocol): List<Pair<Protocol, String?>> = filterStringComponents().filter { proto.contains(it.first) }
 
+    /**
+     * Returns the first found protocol String value representation . [null] if the protocol not found
+     */
     fun getStringComponent(proto: Protocol): String? = filterStringComponents(proto).firstOrNull()?.second
 
     /**

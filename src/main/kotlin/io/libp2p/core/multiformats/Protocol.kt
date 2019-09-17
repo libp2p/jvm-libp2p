@@ -15,6 +15,7 @@ import io.netty.buffer.Unpooled.buffer as byteBuf
 private const val LENGTH_PREFIXED_VAR_SIZE = -1
 
 /**
+ * Enumeration of protocols supported by [Multiaddr]
  * Partially translated from https://github.com/multiformats/java-multiaddr
  */
 enum class Protocol(val code: Int, val size: Int, val typeName: String) {

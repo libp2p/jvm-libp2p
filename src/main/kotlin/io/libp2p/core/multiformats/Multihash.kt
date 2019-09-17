@@ -14,6 +14,9 @@ class InvalidMultihashException(message: String) : Exception(message)
 
 fun MessageDigest.digest(bytes: ByteBuf): ByteBuf = Unpooled.wrappedBuffer(this.digest(bytes.toByteArray()))
 
+/**
+ * Implements Multihash spec: https://github.com/multiformats/multihash
+ */
 class Multihash(val bytes: ByteBuf, val desc: Descriptor, val lengthBits: Int, val value: ByteBuf) {
 
     @Throws(InvalidMultihashException::class)
