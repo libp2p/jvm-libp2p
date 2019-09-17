@@ -1,5 +1,6 @@
 package io.libp2p.core.dsl
 
+import identify.pb.IdentifyOuterClass
 import io.libp2p.core.AddressBook
 import io.libp2p.core.ConnectionHandler
 import io.libp2p.core.StreamHandler
@@ -14,9 +15,11 @@ import io.libp2p.core.mux.StreamMuxerDebug
 import io.libp2p.core.security.SecureChannel
 import io.libp2p.core.transport.Transport
 import io.libp2p.etc.types.lazyVar
+import io.libp2p.etc.types.toProtobuf
 import io.libp2p.host.HostImpl
 import io.libp2p.host.MemoryAddressBook
 import io.libp2p.network.NetworkImpl
+import io.libp2p.protocol.IdentifyBinding
 import io.libp2p.transport.ConnectionUpgrader
 import io.netty.channel.ChannelHandler
 import io.netty.handler.logging.LogLevel
@@ -118,6 +121,19 @@ open class Builder {
 
         val transports = transports.values.map { it(upgrader) }
         val addressBook = addressBook.impl
+
+        protocols.values.mapNotNull { (it as? IdentifyBinding) }.map { it.protocol }.find { it.idMessage == null }?.apply {
+            // initializing Identify with appropriate values
+            IdentifyOuterClass.Identify.newBuilder().apply {
+                agentVersion = "jvm/0.1"
+                protocolVersion = "p2p/0.1"
+                publicKey = privKey.publicKey().bytes().toProtobuf()
+                addAllListenAddrs(network.listen.map { Multiaddr(it).getBytes().toProtobuf() })
+                addAllProtocols(protocols.map { it.announce })
+            }.build().also {
+                this.idMessage = it
+            }
+        }
 
         val protocolsMultistream: Multistream<Any> = Multistream.create(protocols.values)
         val broadcastStreamHandler = StreamHandler.createBroadcast()
