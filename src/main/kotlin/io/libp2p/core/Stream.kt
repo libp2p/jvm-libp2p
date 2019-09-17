@@ -13,6 +13,10 @@ class Stream(ch: Channel, val conn: Connection) : P2PAbstractChannel(ch) {
         nettyChannel.attr(PROTOCOL).set(CompletableFuture())
     }
 
+    /**
+     * Returns the [PeerId] of the remote peer [Connection] which this
+     * [Stream] created on
+     */
     fun remotePeerId() = conn.secureSession.remoteId
 
     /**

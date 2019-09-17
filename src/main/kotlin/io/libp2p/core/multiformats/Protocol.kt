@@ -67,7 +67,7 @@ enum class Protocol(val code: Int, val size: Int, val typeName: String) {
                 byteBuf(2).writeShort(x).toByteArray()
             }
             IPFS, P2P -> {
-                val hashBytes = PeerId.fromBase58(addr).b
+                val hashBytes = PeerId.fromBase58(addr).bytes
                 byteBuf(32)
                     .writeBytes(hashBytes)
                     .toByteArray()

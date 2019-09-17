@@ -10,24 +10,35 @@ import io.libp2p.etc.types.toByteBuf
 import io.libp2p.etc.types.toHex
 import kotlin.random.Random
 
-class PeerId(val b: ByteArray) {
+/**
+ * Represents the peer identity which is basically derived from the peer public key
+ * @property bytes The peer id bytes which size should be  >= 32 and <= 50
+ */
+class PeerId(val bytes: ByteArray) {
 
     init {
-        if (b.size < 32 || b.size > 50) throw IllegalArgumentException("Invalid peerId length: ${b.size}")
+        if (bytes.size < 32 || bytes.size > 50) throw IllegalArgumentException("Invalid peerId length: ${bytes.size}")
     }
 
-    fun toBase58() = Base58.encode(b)
-    fun toHex() = b.toHex()
+    /**
+     * The common [PeerId] string representation, which is just base58 of PeerId bytes
+     */
+    fun toBase58() = Base58.encode(bytes)
+
+    /**
+     * PeerId as Hex string
+     */
+    fun toHex() = bytes.toHex()
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
         other as PeerId
-        return b.contentEquals(other.b)
+        return bytes.contentEquals(other.bytes)
     }
 
     override fun hashCode(): Int {
-        return b.contentHashCode()
+        return bytes.contentHashCode()
     }
 
     override fun toString(): String {
@@ -35,16 +46,25 @@ class PeerId(val b: ByteArray) {
     }
 
     companion object {
+        /**
+         * Creates [PeerId] from common base58 string representation
+         */
         @JvmStatic
         fun fromBase58(str: String): PeerId {
             return PeerId(Base58.decode(str))
         }
 
+        /**
+         * Creates [PeerId] from Hex string representation
+         */
         @JvmStatic
         fun fromHex(str: String): PeerId {
             return PeerId(str.fromHex())
         }
 
+        /**
+         * Creates [PeerId] from the Peer's public key
+         */
         @JvmStatic
         fun fromPubKey(pubKey: PubKey): PeerId {
             val pubKeyBytes = marshalPublicKey(pubKey)
@@ -57,6 +77,10 @@ class PeerId(val b: ByteArray) {
             return PeerId(mh.bytes.toByteArray())
         }
 
+        /**
+         * Generates random [PeerId].
+         * Useful for testing purposes only since doesn't generate any private keys
+         */
         @JvmStatic
         fun random(): PeerId {
             return PeerId(Random.nextBytes(32))
