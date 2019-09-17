@@ -45,4 +45,7 @@ interface Transport {
      * Dials the specified multiaddr and returns a promise of a Connection.
      */
     fun dial(addr: Multiaddr, connHandler: ConnectionHandler): CompletableFuture<Connection>
+
+    fun remoteAddress(connection: Connection): Multiaddr
+    fun localAddress(connection: Connection): Multiaddr
 }

@@ -2,6 +2,7 @@ package io.libp2p.core
 
 import io.libp2p.etc.MUXER_SESSION
 import io.libp2p.etc.SECURE_SESSION
+import io.libp2p.etc.TRANSPORT
 import io.netty.channel.Channel
 
 /**
@@ -20,4 +21,9 @@ class Connection(ch: Channel) : P2PAbstractChannel(ch) {
      * security attributes of this connection
      */
     val secureSession by lazy { ch.attr(SECURE_SESSION).get() }
+
+    val transport by lazy { ch.attr(TRANSPORT).get() }
+
+    fun remoteAddress() = transport.remoteAddress(this)
+    fun localAddress() = transport.localAddress(this)
 }
