@@ -5,6 +5,7 @@ import com.southernstorm.noise.protocol.CipherState
 import com.southernstorm.noise.protocol.CipherStatePair
 import com.southernstorm.noise.protocol.DHState
 import com.southernstorm.noise.protocol.HandshakeState
+import com.southernstorm.noise.protocol.Noise
 import io.libp2p.core.P2PAbstractChannel
 import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.PrivKey
@@ -15,6 +16,7 @@ import io.libp2p.core.security.SecureChannel
 import io.libp2p.etc.SECURE_SESSION
 import io.libp2p.etc.events.SecureChannelFailed
 import io.libp2p.etc.events.SecureChannelInitialized
+import io.libp2p.etc.types.toByteBuf
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
@@ -25,9 +27,11 @@ import org.apache.logging.log4j.core.config.Configurator
 import spipe.pb.Spipe
 import java.util.concurrent.CompletableFuture
 
-class NoiseXXSecureChannel(val localKey: PrivKey, val localDHState: DHState, val remoteDHState: DHState, val role: Int) :
+open class NoiseXXSecureChannel(val localKey: PrivKey, val privateKey25519: ByteArray) :
     SecureChannel {
-    private val logger = LogManager.getLogger(NoiseXXSecureChannel::class.java.name + ":" + role)
+    private var role: Int = HandshakeState.RESPONDER
+    private val logger = LogManager.getLogger(NoiseXXSecureChannel::class.java.name)
+    private lateinit var localDHState: DHState
 
     private val handshakeHandlerName = "NoiseHandshake"
 
@@ -40,7 +44,7 @@ class NoiseXXSecureChannel(val localKey: PrivKey, val localDHState: DHState, val
     override val matcher = ProtocolMatcher(Mode.PREFIX, name = "/noise/$protocolName/0.1.0")
 
     init {
-        Configurator.setLevel(NoiseXXSecureChannel::class.java.name + ":" + role, Level.DEBUG)
+        Configurator.setLevel(NoiseXXSecureChannel::class.java.name, Level.DEBUG)
     }
 
     fun initChannel(ch: P2PAbstractChannel): CompletableFuture<SecureChannel.Session> {
@@ -48,6 +52,13 @@ class NoiseXXSecureChannel(val localKey: PrivKey, val localDHState: DHState, val
     }
 
     override fun initChannel(ch: P2PAbstractChannel, selectedProtocol: String): CompletableFuture<SecureChannel.Session> {
+        role = if (ch.isInitiator) HandshakeState.INITIATOR else HandshakeState.RESPONDER
+
+        // configure the localDHState with the private
+        // which will automatically generate the corresponding public key
+        localDHState = Noise.createDH("25519")
+        localDHState.setPrivateKey(privateKey25519, 0)
+
         val ret = CompletableFuture<SecureChannel.Session>()
         val resultHandler = object : ChannelInboundHandlerAdapter() {
             override fun userEventTriggered(ctx: ChannelHandlerContext, evt: Any) {
@@ -83,63 +94,10 @@ class NoiseXXSecureChannel(val localKey: PrivKey, val localDHState: DHState, val
             logger.debug("Starting handshake")
         }
 
-        override fun channelRead0(ctx: ChannelHandlerContext?, msg: ByteBuf?) {
-            channelRead(ctx!!, msg as Any)
-            super.channelRead(ctx, msg)
-        }
-
-        override fun channelRegistered(ctx: ChannelHandlerContext?) {
-            super.channelRegistered(ctx)
-
-            if (activated) {
-                return
-            }
-            logger.debug("Registration starting")
-            activated = true
-
-            if (role == HandshakeState.INITIATOR) {
-                val msgBuffer = ByteArray(65535)
-
-                // TODO : include data fields into protobuf struct to match spec
-                // alice needs to put signed peer id public key into message
-                val signed = localKey.sign(localKey.publicKey().bytes())
-
-                // generate an appropriate protobuf element
-                val bs = Spipe.Exchange.newBuilder().setEpubkey(ByteString.copyFrom(localKey.publicKey().bytes()))
-                    .setSignature(ByteString.copyFrom(signed)).build()
-
-                // create the message
-                // also create assign the signed payload
-                val msgLength = handshakestate.writeMessage(msgBuffer, 0, bs.toByteArray(), 0, bs.toByteArray().size)
-
-                // put the message frame which also contains the payload onto the wire
-                val writeAndFlush = ctx?.writeAndFlush(msgBuffer.copyOfRange(0, msgLength))
-                writeAndFlush?.await()
-            }
-            logger.debug("Registration complete")
-        }
-
-        override fun channelActive(ctx: ChannelHandlerContext?) {
-            logger.debug("Activation starting")
-            super.channelActive(ctx)
-            channelRegistered(ctx)
-            logger.debug("Activation complete")
-        }
-
-        private var activated = false
-        private var flagRemoteVerified = false
-        private var flagRemoteVerifiedPassed = false
-        private var aliceSplit: CipherState? = null
-        private var bobSplit: CipherState? = null
-        private var cipherStatePair: CipherStatePair? = null
-
-        override fun channelRead(ctx: ChannelHandlerContext, msg1: Any) {
+        override fun channelRead0(ctx1: ChannelHandlerContext?, msg1: ByteBuf?) {
             logger.debug("Starting channelRead0")
-            val msg = if (msg1 is ByteArray) {
-                msg1
-            } else {
-                (msg1 as ByteBuf).array()
-            }
+            val msg = msg1!!.array()
+            val ctx = ctx1!!
 
             channelActive(ctx)
 
@@ -181,7 +139,7 @@ class NoiseXXSecureChannel(val localKey: PrivKey, val localDHState: DHState, val
                 val sndmessage = ByteArray(65535)
                 val sndmessageLength: Int
                 sndmessageLength = handshakestate.writeMessage(sndmessage, 0, null, 0, 0)
-                ctx.writeAndFlush(sndmessage.copyOfRange(0, sndmessageLength))
+                ctx.writeAndFlush(sndmessage.copyOfRange(0, sndmessageLength).toByteBuf())
             }
 
             if (handshakestate.action == HandshakeState.SPLIT) {
@@ -202,7 +160,50 @@ class NoiseXXSecureChannel(val localKey: PrivKey, val localDHState: DHState, val
                 ctx.fireUserEventTriggered(secureChannelInitialized)
                 return
             }
-            super.channelRead(ctx, msg1)
         }
+
+        override fun channelRegistered(ctx: ChannelHandlerContext?) {
+            super.channelRegistered(ctx)
+
+            if (activated) {
+                return
+            }
+            logger.debug("Registration starting")
+            activated = true
+
+            if (role == HandshakeState.INITIATOR) {
+                val msgBuffer = ByteArray(65535)
+
+                // TODO : include data fields into protobuf struct to match spec
+                // alice needs to put signed peer id public key into message
+                val signed = localKey.sign(localKey.publicKey().bytes())
+
+                // generate an appropriate protobuf element
+                val bs = Spipe.Exchange.newBuilder().setEpubkey(ByteString.copyFrom(localKey.publicKey().bytes()))
+                    .setSignature(ByteString.copyFrom(signed)).build()
+
+                // create the message
+                // also create assign the signed payload
+                val msgLength = handshakestate.writeMessage(msgBuffer, 0, bs.toByteArray(), 0, bs.toByteArray().size)
+
+                // put the message frame which also contains the payload onto the wire
+                ctx?.writeAndFlush(msgBuffer.copyOfRange(0, msgLength).toByteBuf())
+            }
+            logger.debug("Registration complete")
+        }
+
+        override fun channelActive(ctx: ChannelHandlerContext?) {
+            logger.debug("Activation starting")
+            super.channelActive(ctx)
+            channelRegistered(ctx)
+            logger.debug("Activation complete")
+        }
+
+        private var activated = false
+        private var flagRemoteVerified = false
+        private var flagRemoteVerifiedPassed = false
+        private var aliceSplit: CipherState? = null
+        private var bobSplit: CipherState? = null
+        private var cipherStatePair: CipherStatePair? = null
     }
 }
