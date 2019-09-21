@@ -267,8 +267,8 @@ class NoiseSecureChannelTest {
 //            }
         })
 
-        eCh1.pipeline().fireChannelRegistered()
-        eCh2.pipeline().fireChannelRegistered()
+//        eCh1.pipeline().fireChannelRegistered()
+//        eCh2.pipeline().fireChannelRegistered()
         eCh1.pipeline().firstContext().writeAndFlush("Hello World from 1")
         eCh2.pipeline().firstContext().writeAndFlush("Hello World from 2")
 
