@@ -7,12 +7,11 @@ import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.multistream.Mode
 import io.libp2p.core.multistream.ProtocolMatcher
-import io.libp2p.etc.SECURE_SESSION
-import io.libp2p.etc.types.toByteBuf
 import io.libp2p.multistream.Negotiator
 import io.libp2p.multistream.ProtocolSelect
 import io.libp2p.tools.TestChannel.Companion.interConnect
 import io.libp2p.tools.TestHandler
+import io.netty.buffer.Unpooled
 import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.logging.LogLevel
 import io.netty.handler.logging.LoggingHandler
@@ -24,7 +23,6 @@ import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import spipe.pb.Spipe
-import java.util.Arrays
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
@@ -210,8 +208,8 @@ class NoiseSecureChannelTest {
             }
         })
 
-        eCh1.pipeline().firstContext().writeAndFlush("Hello World from 1")
-        eCh2.pipeline().firstContext().writeAndFlush("Hello World from 2")
+        eCh1.writeAndFlush(Unpooled.wrappedBuffer("Hello World from 1".toByteArray()))
+        eCh2.writeAndFlush(Unpooled.wrappedBuffer("Hello World from 2".toByteArray()))
 
         latch.await(5, TimeUnit.SECONDS)
 

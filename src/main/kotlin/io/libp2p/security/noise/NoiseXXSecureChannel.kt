@@ -75,7 +75,10 @@ open class NoiseXXSecureChannel(val localKey: PrivKey, val privateKey25519: Byte
 
                         ctx.channel().attr(SECURE_SESSION).set(evt.session)
 
-                        ctx.pipeline().addLast(object : SimpleChannelInboundHandler<ByteBuf>() {
+                        ctx.pipeline().remove(handshakeHandlerName)
+                        ctx.pipeline().remove(this)
+
+                        ctx.pipeline().addFirst(object : SimpleChannelInboundHandler<ByteBuf>() {
                             override fun channelRead0(ctx: ChannelHandlerContext, msg: ByteBuf) {
                                 msg as ByteBuf
 
@@ -90,7 +93,7 @@ open class NoiseXXSecureChannel(val localKey: PrivKey, val privateKey25519: Byte
                                 ctx.pipeline().fireChannelRead(rec2)
                             }
                         })
-                        ctx.pipeline().addLast(object: ChannelOutboundHandlerAdapter() {
+                        ctx.pipeline().addFirst(object: ChannelOutboundHandlerAdapter() {
                             override fun write(ctx: ChannelHandlerContext, msg: Any, promise: ChannelPromise?) {
                                 msg as ByteBuf
                                 val get: NoiseSecureChannelSession = ctx.channel().attr(SECURE_SESSION).get() as NoiseSecureChannelSession
@@ -104,8 +107,6 @@ open class NoiseXXSecureChannel(val localKey: PrivKey, val privateKey25519: Byte
                                 logger.debug("channel outbound handler write: "+msg)
                             }
                         })
-                        ctx.pipeline().remove(handshakeHandlerName)
-                        ctx.pipeline().remove(this)
 
                         ret.complete(evt.session)
 
