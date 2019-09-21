@@ -269,12 +269,10 @@ class NoiseSecureChannelTest {
 //            }
         })
 
-//        eCh1.pipeline().fireChannelRegistered()
-//        eCh2.pipeline().fireChannelRegistered()
         eCh1.pipeline().firstContext().writeAndFlush("Hello World from 1")
         eCh2.pipeline().firstContext().writeAndFlush("Hello World from 2")
 
-        latch.await(10, TimeUnit.SECONDS)
+        latch.await(5, TimeUnit.SECONDS)
 
         Assertions.assertEquals("Hello World from 1", rec2)
         Assertions.assertEquals("Hello World from 2", rec1)
