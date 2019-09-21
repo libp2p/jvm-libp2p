@@ -29,7 +29,7 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.core.config.Configurator
 import spipe.pb.Spipe
 import java.nio.charset.StandardCharsets
-import java.util.*
+import java.util.Arrays
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicInteger
 
