@@ -8,13 +8,11 @@ import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.multistream.Mode
 import io.libp2p.core.multistream.ProtocolMatcher
 import io.libp2p.etc.SECURE_SESSION
-import io.libp2p.etc.types.toByteArray
 import io.libp2p.etc.types.toByteBuf
 import io.libp2p.multistream.Negotiator
 import io.libp2p.multistream.ProtocolSelect
 import io.libp2p.tools.TestChannel.Companion.interConnect
 import io.libp2p.tools.TestHandler
-import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.logging.LogLevel
 import io.netty.handler.logging.LoggingHandler
@@ -24,7 +22,6 @@ import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import spipe.pb.Spipe
-import java.nio.charset.StandardCharsets
 import java.util.Arrays
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -233,19 +230,24 @@ class NoiseSecureChannelTest {
             }
 
             override fun channelRead(ctx: ChannelHandlerContext, msg: Any?) {
-                msg as ByteBuf
-
-                val get: NoiseSecureChannelSession = ctx.channel().attr(SECURE_SESSION).get() as NoiseSecureChannelSession
-                var additionalData = ByteArray(65535)
-                var plainText = ByteArray(65535)
-                var cipherText = msg.toByteArray()
-                var length = msg.getShort(0).toInt()
-                logger.debug("decrypt length:" + length)
-                var l = get.bobCipher.decryptWithAd(additionalData, cipherText, 2, plainText, 0, length)
-                rec1 = plainText.copyOf(l).toString(StandardCharsets.UTF_8)
-                logger.debug("==$name== read: $rec1")
+                rec1=msg as String
+                logger.debug("==$name== read: $msg")
                 latch.countDown()
             }
+//            override fun channelRead(ctx: ChannelHandlerContext, msg: Any?) {
+//                msg as ByteBuf
+//
+//                val get: NoiseSecureChannelSession = ctx.channel().attr(SECURE_SESSION).get() as NoiseSecureChannelSession
+//                var additionalData = ByteArray(65535)
+//                var plainText = ByteArray(65535)
+//                var cipherText = msg.toByteArray()
+//                var length = msg.getShort(0).toInt()
+//                logger.debug("decrypt length:" + length)
+//                var l = get.bobCipher.decryptWithAd(additionalData, cipherText, 2, plainText, 0, length)
+//                rec1 = plainText.copyOf(l).toString(StandardCharsets.UTF_8)
+//                logger.debug("==$name== read: $rec1")
+//                latch.countDown()
+//            }
         })
 
         // Setup bob's pipeline
@@ -266,19 +268,25 @@ class NoiseSecureChannelTest {
             }
 
             override fun channelRead(ctx: ChannelHandlerContext, msg: Any?) {
-                msg as ByteBuf
-
-                val get: NoiseSecureChannelSession = ctx.channel().attr(SECURE_SESSION).get() as NoiseSecureChannelSession
-                var additionalData = ByteArray(65535)
-                var plainText = ByteArray(65535)
-                var cipherText = msg.toByteArray()
-                var length = msg.getShort(0).toInt()
-                logger.debug("decrypt length:" + length)
-                var l = get.bobCipher.decryptWithAd(additionalData, cipherText, 2, plainText, 0, length)
-                rec2 = plainText.copyOf(l).toString(StandardCharsets.UTF_8)
-                logger.debug("==$name== read: $rec2")
+                rec2 = msg as String
+                logger.debug("==$name== read: $msg")
                 latch.countDown()
             }
+
+//            override fun channelRead(ctx: ChannelHandlerContext, msg: Any?) {
+//                msg as ByteBuf
+//
+//                val get: NoiseSecureChannelSession = ctx.channel().attr(SECURE_SESSION).get() as NoiseSecureChannelSession
+//                var additionalData = ByteArray(65535)
+//                var plainText = ByteArray(65535)
+//                var cipherText = msg.toByteArray()
+//                var length = msg.getShort(0).toInt()
+//                logger.debug("decrypt length:" + length)
+//                var l = get.bobCipher.decryptWithAd(additionalData, cipherText, 2, plainText, 0, length)
+//                rec2 = plainText.copyOf(l).toString(StandardCharsets.UTF_8)
+//                logger.debug("==$name== read: $rec2")
+//                latch.countDown()
+//            }
         })
 
         eCh1.pipeline().fireChannelRegistered()

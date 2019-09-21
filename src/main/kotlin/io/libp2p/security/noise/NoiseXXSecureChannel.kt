@@ -16,21 +16,28 @@ import io.libp2p.core.security.SecureChannel
 import io.libp2p.etc.SECURE_SESSION
 import io.libp2p.etc.events.SecureChannelFailed
 import io.libp2p.etc.events.SecureChannelInitialized
+import io.libp2p.etc.types.toByteArray
 import io.libp2p.etc.types.toByteBuf
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
+import io.netty.channel.ChannelOutboundHandlerAdapter
+import io.netty.channel.ChannelPromise
 import io.netty.channel.SimpleChannelInboundHandler
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.core.config.Configurator
 import spipe.pb.Spipe
+import java.nio.charset.StandardCharsets
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.atomic.AtomicInteger
 
 open class NoiseXXSecureChannel(val localKey: PrivKey, val privateKey25519: ByteArray) :
     SecureChannel {
-    private var role: Int = HandshakeState.RESPONDER
+
     private val logger = LogManager.getLogger(NoiseXXSecureChannel::class.java.name)
+
+    private lateinit var role: AtomicInteger
     private lateinit var localDHState: DHState
 
     private val handshakeHandlerName = "NoiseHandshake"
@@ -52,7 +59,7 @@ open class NoiseXXSecureChannel(val localKey: PrivKey, val privateKey25519: Byte
     }
 
     override fun initChannel(ch: P2PAbstractChannel, selectedProtocol: String): CompletableFuture<SecureChannel.Session> {
-        role = if (ch.isInitiator) HandshakeState.INITIATOR else HandshakeState.RESPONDER
+        role = if (ch.isInitiator) AtomicInteger(HandshakeState.INITIATOR) else AtomicInteger(HandshakeState.RESPONDER)
 
         // configure the localDHState with the private
         // which will automatically generate the corresponding public key
@@ -64,10 +71,35 @@ open class NoiseXXSecureChannel(val localKey: PrivKey, val privateKey25519: Byte
             override fun userEventTriggered(ctx: ChannelHandlerContext, evt: Any) {
                 when (evt) {
                     is SecureChannelInitialized -> {
+
                         ctx.channel().attr(SECURE_SESSION).set(evt.session)
-                        ret.complete(evt.session)
+
+                        ctx.pipeline().addLast(object : SimpleChannelInboundHandler<ByteBuf>() {
+                            override fun channelRead0(ctx: ChannelHandlerContext, msg: ByteBuf) {
+                                msg as ByteBuf
+
+                                val get: NoiseSecureChannelSession = ctx.channel().attr(SECURE_SESSION).get() as NoiseSecureChannelSession
+                                var additionalData = ByteArray(65535)
+                                var plainText = ByteArray(65535)
+                                var cipherText = msg.toByteArray()
+                                var length = msg.getShort(0).toInt()
+                                logger.debug("decrypt length:" + length)
+                                var l = get.bobCipher.decryptWithAd(additionalData, cipherText, 2, plainText, 0, length)
+                                var rec2 = plainText.copyOf(l).toString(StandardCharsets.UTF_8)
+                                ctx.pipeline().fireChannelRead(rec2)
+                            }
+                        })
+                        ctx.pipeline().addLast(object: ChannelOutboundHandlerAdapter() {
+                            override fun write(ctx: ChannelHandlerContext?, msg: Any, promise: ChannelPromise?) {
+                                logger.debug("channel outbound handler write: "+msg)
+                                super.write(ctx, msg, promise)
+                            }
+                        })
                         ctx.pipeline().remove(handshakeHandlerName)
                         ctx.pipeline().remove(this)
+
+                        ret.complete(evt.session)
+
                         logger.debug("Reporting secure channel initialized")
                     }
                     is SecureChannelFailed -> {
@@ -86,7 +118,7 @@ open class NoiseXXSecureChannel(val localKey: PrivKey, val privateKey25519: Byte
     }
 
     inner class NoiseIoHandshake : SimpleChannelInboundHandler<ByteBuf>() {
-        private val handshakestate: HandshakeState = HandshakeState(protocolName, role)
+        private val handshakestate: HandshakeState = HandshakeState(protocolName, role.get())
 
         init {
             handshakestate.localKeyPair.copyFrom(localDHState)
@@ -94,14 +126,13 @@ open class NoiseXXSecureChannel(val localKey: PrivKey, val privateKey25519: Byte
             logger.debug("Starting handshake")
         }
 
-        override fun channelRead0(ctx1: ChannelHandlerContext?, msg1: ByteBuf?) {
+        override fun channelRead0(ctx: ChannelHandlerContext, msg1: ByteBuf) {
             logger.debug("Starting channelRead0")
-            val msg = msg1!!.array()
-            val ctx = ctx1!!
+            val msg = msg1.array()
 
             channelActive(ctx)
 
-            if (role == HandshakeState.RESPONDER && flagRemoteVerified && !flagRemoteVerifiedPassed) {
+            if (role.get() == HandshakeState.RESPONDER && flagRemoteVerified && !flagRemoteVerifiedPassed) {
                 logger.error("Responder verification of Remote peer id has failed")
                 throw Exception("Responder verification of Remote peer id has failed")
             }
@@ -115,7 +146,7 @@ open class NoiseXXSecureChannel(val localKey: PrivKey, val privateKey25519: Byte
                 payloadLength = handshakestate.readMessage(msg, 0, msg.size, payload, 0)
             }
 
-            if (role == HandshakeState.RESPONDER && !flagRemoteVerified) {
+            if (role.get() == HandshakeState.RESPONDER && !flagRemoteVerified) {
                 // the self-signed remote pubkey and signature would be retrieved from the first Noise payload
                 val inp = Spipe.Exchange.parseFrom(payload.copyOfRange(0, payloadLength))
                 // validate the signature
@@ -162,14 +193,14 @@ open class NoiseXXSecureChannel(val localKey: PrivKey, val privateKey25519: Byte
             }
         }
 
-        override fun channelRegistered(ctx: ChannelHandlerContext?) {
+        override fun channelRegistered(ctx: ChannelHandlerContext) {
             if (activated) {
                 return
             }
             logger.debug("Registration starting")
             activated = true
 
-            if (role == HandshakeState.INITIATOR) {
+            if (role.get() == HandshakeState.INITIATOR) {
                 val msgBuffer = ByteArray(65535)
 
                 // TODO : include data fields into protobuf struct to match spec
@@ -190,7 +221,7 @@ open class NoiseXXSecureChannel(val localKey: PrivKey, val privateKey25519: Byte
             logger.debug("Registration complete")
         }
 
-        override fun channelActive(ctx: ChannelHandlerContext?) {
+        override fun channelActive(ctx: ChannelHandlerContext) {
             logger.debug("Activation starting")
             channelRegistered(ctx)
             logger.debug("Activation complete")
