@@ -16,7 +16,9 @@ import io.libp2p.tools.TestHandler
 import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.logging.LogLevel
 import io.netty.handler.logging.LoggingHandler
+import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.core.config.Configurator
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -300,6 +302,10 @@ class NoiseSecureChannelTest {
     }
 
     companion object {
-        private val logger = LogManager.getLogger(NoiseSecureChannelTest::class.java)
+        private val logger = LogManager.getLogger(NoiseSecureChannelTest::class.java.name)
+    }
+
+    init {
+        Configurator.setLevel(NoiseSecureChannelTest::class.java.name, Level.DEBUG)
     }
 }
