@@ -15,6 +15,7 @@ import io.netty.buffer.Unpooled.buffer as byteBuf
 private const val LENGTH_PREFIXED_VAR_SIZE = -1
 
 /**
+ * Enumeration of protocols supported by [Multiaddr]
  * Partially translated from https://github.com/multiformats/java-multiaddr
  */
 enum class Protocol(val code: Int, val size: Int, val typeName: String) {
@@ -66,7 +67,7 @@ enum class Protocol(val code: Int, val size: Int, val typeName: String) {
                 byteBuf(2).writeShort(x).toByteArray()
             }
             IPFS, P2P -> {
-                val hashBytes = PeerId.fromBase58(addr).b
+                val hashBytes = PeerId.fromBase58(addr).bytes
                 byteBuf(32)
                     .writeBytes(hashBytes)
                     .toByteArray()

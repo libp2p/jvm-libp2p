@@ -1,5 +1,6 @@
 package io.libp2p.core.multistream
 
+import io.libp2p.core.Libp2pException
 import io.libp2p.core.P2PAbstractChannel
 import io.libp2p.core.P2PAbstractHandler
 import java.util.concurrent.CompletableFuture
@@ -28,8 +29,14 @@ interface ProtocolBinding<out TController> {
      */
     fun initChannel(ch: P2PAbstractChannel, selectedProtocol: String): CompletableFuture<out TController>
 
+    /**
+     * If the [matcher] of this binding is not [Mode.STRICT] then it can't play initiator role since
+     * it doesn't know the exact protocol ids. This method converts this binding to
+     * _initiator_ binding with explicit protocol id
+     */
     @JvmDefault
     fun toInitiator(protocol: String): ProtocolBinding<TController> {
+        if (!matcher.matches(protocol)) throw Libp2pException("This binding doesn't support $protocol")
         val srcBinding = this
         return object : ProtocolBinding<TController> {
             override val announce = protocol
@@ -40,6 +47,9 @@ interface ProtocolBinding<out TController> {
     }
 
     companion object {
+        /**
+         * Creates a [ProtocolBinding] instance with [Mode.STRICT] [matcher] and specified [handler]
+         */
         fun <T> createSimple(protocolName: String, handler: P2PAbstractHandler<T>): ProtocolBinding<T> {
             return object : ProtocolBinding<T> {
                 override val announce = protocolName

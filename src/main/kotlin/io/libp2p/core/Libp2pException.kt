@@ -54,3 +54,9 @@ class NoSuchLocalProtocolException(message: String) : NoSuchProtocolException(me
  * Indicates that the protocol is not known by the remote party
  */
 class NoSuchRemoteProtocolException(message: String) : NoSuchProtocolException(message)
+
+/**
+ * Indicates that connecting a [io.libp2p.core.multiformats.Multiaddr] is not possible since
+ * the desired transport is not supported
+ */
+open class TransportNotSupportedException(message: String) : Libp2pException(message)

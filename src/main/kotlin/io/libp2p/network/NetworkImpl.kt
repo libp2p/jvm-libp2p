@@ -4,6 +4,7 @@ import io.libp2p.core.Connection
 import io.libp2p.core.ConnectionHandler
 import io.libp2p.core.Network
 import io.libp2p.core.PeerId
+import io.libp2p.core.TransportNotSupportedException
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.transport.Transport
 import io.libp2p.etc.types.anyComplete
@@ -42,7 +43,7 @@ class NetworkImpl(
 
     private fun getTransport(addr: Multiaddr) =
         transports.firstOrNull { tpt -> tpt.handles(addr) }
-            ?: throw RuntimeException("no transport to handle addr: $addr")
+            ?: throw TransportNotSupportedException("no transport to handle addr: $addr")
 
     private fun createHookedConnHandler(handler: ConnectionHandler) =
         ConnectionHandler.createBroadcast(listOf(

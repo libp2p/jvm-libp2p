@@ -2,6 +2,9 @@ package io.libp2p.core
 
 import io.libp2p.etc.BroadcastConnectionHandler
 
+/**
+ * The same as [P2PAbstractHandler] with the [Connection] specialized [P2PAbstractChannel]
+ */
 interface ConnectionHandler {
 
     fun handleConnection(conn: Connection)

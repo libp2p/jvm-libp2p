@@ -6,6 +6,7 @@ import io.libp2p.core.PeerId
 import io.libp2p.core.transport.Transport
 import io.libp2p.etc.CONNECTION
 import io.libp2p.etc.IS_INITIATOR
+import io.libp2p.etc.TRANSPORT
 import io.libp2p.etc.types.forward
 import io.libp2p.etc.util.netty.nettyInitializer
 import io.netty.channel.ChannelHandler
@@ -24,6 +25,7 @@ abstract class AbstractTransport(val upgrader: ConnectionUpgrader) :
             val connection = Connection(ch)
             ch.attr(IS_INITIATOR).set(initiator)
             ch.attr(CONNECTION).set(connection)
+            ch.attr(TRANSPORT).set(this)
             upgrader.establishSecureChannel(ch, remotePeerId)
                 .thenCompose {
                     upgrader.establishMuxer(ch)

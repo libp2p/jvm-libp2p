@@ -5,9 +5,12 @@ import io.libp2p.core.ConnectionClosedException
 import io.libp2p.core.Libp2pException
 import io.libp2p.core.P2PAbstractChannel
 import io.libp2p.core.P2PAbstractHandler
+import io.libp2p.core.Stream
+import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multistream.Mode
 import io.libp2p.core.multistream.ProtocolBinding
 import io.libp2p.core.multistream.ProtocolMatcher
+import io.libp2p.etc.types.toProtobuf
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandler
 import io.netty.channel.SimpleChannelInboundHandler
@@ -23,7 +26,7 @@ interface IdentifyController {
 
 class Identify(idMessage: IdentifyOuterClass.Identify? = null) : IdentifyBinding(IdentifyProtocol(idMessage))
 
-open class IdentifyBinding(val ping: IdentifyProtocol) : ProtocolBinding<IdentifyController> {
+open class IdentifyBinding(val protocol: IdentifyProtocol) : ProtocolBinding<IdentifyController> {
     override val announce = "/ipfs/id/1.0.0"
     override val matcher = ProtocolMatcher(Mode.STRICT, name = announce)
 
@@ -31,17 +34,17 @@ open class IdentifyBinding(val ping: IdentifyProtocol) : ProtocolBinding<Identif
         ch: P2PAbstractChannel,
         selectedProtocol: String
     ): CompletableFuture<out IdentifyController> {
-        return ping.initChannel(ch)
+        return protocol.initChannel(ch)
     }
 }
 
-class IdentifyProtocol(val idMessage: IdentifyOuterClass.Identify? = null) : P2PAbstractHandler<IdentifyController> {
+class IdentifyProtocol(var idMessage: IdentifyOuterClass.Identify? = null) : P2PAbstractHandler<IdentifyController> {
 
     override fun initChannel(ch: P2PAbstractChannel): CompletableFuture<IdentifyController> {
         val handler: Handler = if (ch.isInitiator) {
             IdentifyRequesterChannelHandler()
         } else {
-            IdentifyResponderChannelHandler()
+            IdentifyResponderChannelHandler((ch as Stream).conn.remoteAddress())
         }
 
         with(ch.nettyChannel.pipeline()) {
@@ -56,13 +59,16 @@ class IdentifyProtocol(val idMessage: IdentifyOuterClass.Identify? = null) : P2P
 
     interface Handler : ChannelInboundHandler, IdentifyController
 
-    inner class IdentifyResponderChannelHandler : SimpleChannelInboundHandler<IdentifyOuterClass.Identify>(), Handler {
+    inner class IdentifyResponderChannelHandler(val remoteAddr: Multiaddr) : SimpleChannelInboundHandler<IdentifyOuterClass.Identify>(), Handler {
 
         override fun channelActive(ctx: ChannelHandlerContext) {
             val msg = idMessage ?: IdentifyOuterClass.Identify.newBuilder()
-                .setAgentVersion("Java-Harmony-0.1.0")
+                .setAgentVersion("jvm/0.1")
                 .build()
-            ctx.writeAndFlush(msg)
+
+            val msgWithAddr = msg.toBuilder().setObservedAddr(remoteAddr.getBytes().toProtobuf()).build()
+
+            ctx.writeAndFlush(msgWithAddr)
             ctx.disconnect()
         }
 

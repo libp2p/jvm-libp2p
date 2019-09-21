@@ -31,7 +31,7 @@ class PubsubApiImpl(val router: PubsubRouter) : PubsubApi {
     }
 
     inner class PublisherImpl(val privKey: PrivKey, seqId: Long) : PubsubPublisherApi {
-        val from = PeerId.fromPubKey(privKey.publicKey()).b.toProtobuf()
+        val from = PeerId.fromPubKey(privKey.publicKey()).bytes.toProtobuf()
         val seqCounter = AtomicLong(seqId)
         override fun publish(data: ByteBuf, vararg topics: Topic): CompletableFuture<Unit> {
             val msgToSign = Rpc.Message.newBuilder()
