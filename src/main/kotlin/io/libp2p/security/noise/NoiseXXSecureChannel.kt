@@ -80,8 +80,6 @@ open class NoiseXXSecureChannel(val localKey: PrivKey, val privateKey25519: Byte
 
                         ctx.pipeline().addFirst(object : SimpleChannelInboundHandler<ByteBuf>() {
                             override fun channelRead0(ctx: ChannelHandlerContext, msg: ByteBuf) {
-                                msg as ByteBuf
-
                                 val get: NoiseSecureChannelSession = ctx.channel().attr(SECURE_SESSION).get() as NoiseSecureChannelSession
                                 var additionalData = ByteArray(65535)
                                 var plainText = ByteArray(65535)
@@ -94,7 +92,7 @@ open class NoiseXXSecureChannel(val localKey: PrivKey, val privateKey25519: Byte
                             }
                         })
                         ctx.pipeline().addFirst(object: ChannelOutboundHandlerAdapter() {
-                            override fun write(ctx: ChannelHandlerContext, msg: Any, promise: ChannelPromise?) {
+                            override fun write(ctx: ChannelHandlerContext, msg: Any, promise: ChannelPromise) {
                                 msg as ByteBuf
                                 val get: NoiseSecureChannelSession = ctx.channel().attr(SECURE_SESSION).get() as NoiseSecureChannelSession
                                 var additionalData = ByteArray(65535)
@@ -103,7 +101,6 @@ open class NoiseXXSecureChannel(val localKey: PrivKey, val privateKey25519: Byte
                                 var length = get.aliceCipher.encryptWithAd(additionalData, plaintext, 0, cipherText, 2, plaintext.size)
                                 logger.debug("encrypt length:" + length)
                                 ctx.write(Arrays.copyOf(cipherText, length + 2).toByteBuf().setShort(0, length))
-
                                 logger.debug("channel outbound handler write: "+msg)
                             }
                         })
@@ -185,8 +182,8 @@ open class NoiseXXSecureChannel(val localKey: PrivKey, val privateKey25519: Byte
 
             if (handshakestate.action == HandshakeState.SPLIT) {
                 cipherStatePair = handshakestate.split()
-                aliceSplit = cipherStatePair?.sender
-                bobSplit = cipherStatePair?.receiver
+                aliceSplit = cipherStatePair.sender
+                bobSplit = cipherStatePair.receiver
                 logger.debug("Split complete")
 
                 // put alice and bob security sessions into the context and trigger the next action
@@ -195,8 +192,8 @@ open class NoiseXXSecureChannel(val localKey: PrivKey, val privateKey25519: Byte
                         PeerId.fromPubKey(localKey.publicKey()),
                         PeerId.random(),
                         localKey.publicKey(),
-                        aliceSplit!!,
-                        bobSplit!!
+                        aliceSplit,
+                        bobSplit
                     ) as SecureChannel.Session)
                 ctx.fireUserEventTriggered(secureChannelInitialized)
                 return
@@ -226,7 +223,7 @@ open class NoiseXXSecureChannel(val localKey: PrivKey, val privateKey25519: Byte
                 val msgLength = handshakestate.writeMessage(msgBuffer, 0, bs.toByteArray(), 0, bs.toByteArray().size)
 
                 // put the message frame which also contains the payload onto the wire
-                ctx?.writeAndFlush(msgBuffer.copyOfRange(0, msgLength).toByteBuf())
+                ctx.writeAndFlush(msgBuffer.copyOfRange(0, msgLength).toByteBuf())
             }
             logger.debug("Registration complete")
         }
@@ -240,8 +237,8 @@ open class NoiseXXSecureChannel(val localKey: PrivKey, val privateKey25519: Byte
         private var activated = false
         private var flagRemoteVerified = false
         private var flagRemoteVerifiedPassed = false
-        private var aliceSplit: CipherState? = null
-        private var bobSplit: CipherState? = null
-        private var cipherStatePair: CipherStatePair? = null
+        private lateinit var aliceSplit: CipherState
+        private lateinit var bobSplit: CipherState
+        private lateinit var cipherStatePair: CipherStatePair
     }
 }

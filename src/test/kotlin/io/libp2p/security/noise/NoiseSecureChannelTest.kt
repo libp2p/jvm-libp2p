@@ -190,7 +190,7 @@ class NoiseSecureChannelTest {
         var rec2: String? = ""
         val latch = CountDownLatch(2)
 
-        // Setup alice's pipeline. TestHandler handles inbound data, so chanelActive() is used to write to the context
+        // Setup alice's pipeline
         eCh1.pipeline().addLast(object : TestHandler("1") {
             override fun channelRead(ctx: ChannelHandlerContext, msg: Any?) {
                 rec1=msg as String
