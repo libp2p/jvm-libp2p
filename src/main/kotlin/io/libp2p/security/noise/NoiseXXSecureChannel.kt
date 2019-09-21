@@ -29,11 +29,10 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.core.config.Configurator
 import spipe.pb.Spipe
 import java.nio.charset.StandardCharsets
-import java.util.Arrays
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicInteger
 
-open class NoiseXXSecureChannel(val localKey: PrivKey, val privateKey25519: ByteArray) :
+open class NoiseXXSecureChannel(private val localKey: PrivKey, private val privateKey25519: ByteArray) :
     SecureChannel {
 
     private val logger = LogManager.getLogger(NoiseXXSecureChannel::class.java.name)
@@ -81,27 +80,27 @@ open class NoiseXXSecureChannel(val localKey: PrivKey, val privateKey25519: Byte
                         ctx.pipeline().addFirst(object : SimpleChannelInboundHandler<ByteBuf>() {
                             override fun channelRead0(ctx: ChannelHandlerContext, msg: ByteBuf) {
                                 val get: NoiseSecureChannelSession = ctx.channel().attr(SECURE_SESSION).get() as NoiseSecureChannelSession
-                                var additionalData = ByteArray(65535)
-                                var plainText = ByteArray(65535)
-                                var cipherText = msg.toByteArray()
-                                var length = msg.getShort(0).toInt()
-                                logger.debug("decrypt length:" + length)
-                                var l = get.bobCipher.decryptWithAd(additionalData, cipherText, 2, plainText, 0, length)
-                                var rec2 = plainText.copyOf(l).toString(StandardCharsets.UTF_8)
+                                val additionalData = ByteArray(65535)
+                                val plainText = ByteArray(65535)
+                                val cipherText = msg.toByteArray()
+                                val length = msg.getShort(0).toInt()
+                                logger.debug("decrypt length:$length")
+                                val l = get.bobCipher.decryptWithAd(additionalData, cipherText, 2, plainText, 0, length)
+                                val rec2 = plainText.copyOf(l).toString(StandardCharsets.UTF_8)
                                 ctx.pipeline().fireChannelRead(rec2)
                             }
                         })
-                        ctx.pipeline().addFirst(object: ChannelOutboundHandlerAdapter() {
+                        ctx.pipeline().addFirst(object : ChannelOutboundHandlerAdapter() {
                             override fun write(ctx: ChannelHandlerContext, msg: Any, promise: ChannelPromise) {
                                 msg as ByteBuf
                                 val get: NoiseSecureChannelSession = ctx.channel().attr(SECURE_SESSION).get() as NoiseSecureChannelSession
-                                var additionalData = ByteArray(65535)
-                                var cipherText = ByteArray(65535)
-                                var plaintext = msg.toByteArray()
-                                var length = get.aliceCipher.encryptWithAd(additionalData, plaintext, 0, cipherText, 2, plaintext.size)
-                                logger.debug("encrypt length:" + length)
-                                ctx.write(Arrays.copyOf(cipherText, length + 2).toByteBuf().setShort(0, length))
-                                logger.debug("channel outbound handler write: "+msg)
+                                val additionalData = ByteArray(65535)
+                                val cipherText = ByteArray(65535)
+                                val plaintext = msg.toByteArray()
+                                val length = get.aliceCipher.encryptWithAd(additionalData, plaintext, 0, cipherText, 2, plaintext.size)
+                                logger.debug("encrypt length:$length")
+                                ctx.write(cipherText.copyOf(length + 2).toByteBuf().setShort(0, length))
+                                logger.debug("channel outbound handler write: $msg")
                             }
                         })
 

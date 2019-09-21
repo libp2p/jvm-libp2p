@@ -29,22 +29,22 @@ import java.util.concurrent.TimeUnit
 class NoiseSecureChannelTest {
     // tests for Noise
 
-    var alice_hs: HandshakeState? = null
-    var bob_hs: HandshakeState? = null
+    private lateinit var aliceHS: HandshakeState
+    private lateinit var bobHS: HandshakeState
 
     @Test
     fun test1() {
         // test1
         // Noise framework initialization
 
-        alice_hs = HandshakeState("Noise_IK_25519_ChaChaPoly_SHA256", HandshakeState.INITIATOR)
-        bob_hs = HandshakeState("Noise_IK_25519_ChaChaPoly_SHA256", HandshakeState.RESPONDER)
+        aliceHS = HandshakeState("Noise_IK_25519_ChaChaPoly_SHA256", HandshakeState.INITIATOR)
+        bobHS = HandshakeState("Noise_IK_25519_ChaChaPoly_SHA256", HandshakeState.RESPONDER)
 
-        assertNotNull(alice_hs)
-        assertNotNull(bob_hs)
+        assertNotNull(aliceHS)
+        assertNotNull(bobHS)
 
-        if (alice_hs!!.needsLocalKeyPair()) {
-            val localKeyPair = alice_hs!!.localKeyPair
+        if (aliceHS.needsLocalKeyPair()) {
+            val localKeyPair = aliceHS.localKeyPair
             localKeyPair.generateKeyPair()
 
             val prk = ByteArray(localKeyPair.privateKeyLength)
@@ -54,19 +54,19 @@ class NoiseSecureChannelTest {
 
             assert(prk.max()?.compareTo(0) != 0)
             assert(puk.max()?.compareTo(0) != 0)
-            assert(alice_hs!!.hasLocalKeyPair())
+            assert(aliceHS.hasLocalKeyPair())
         }
 
-        if (bob_hs!!.needsLocalKeyPair()) {
-            bob_hs!!.localKeyPair.generateKeyPair()
+        if (bobHS.needsLocalKeyPair()) {
+            bobHS.localKeyPair.generateKeyPair()
         }
 
-        if (alice_hs!!.needsRemotePublicKey() || bob_hs!!.needsRemotePublicKey()) {
-            alice_hs!!.remotePublicKey.copyFrom(bob_hs!!.localKeyPair)
-            bob_hs!!.remotePublicKey.copyFrom(alice_hs!!.localKeyPair)
+        if (aliceHS.needsRemotePublicKey() || bobHS.needsRemotePublicKey()) {
+            aliceHS.remotePublicKey.copyFrom(bobHS.localKeyPair)
+            bobHS.remotePublicKey.copyFrom(aliceHS.localKeyPair)
 
-            assert(alice_hs!!.hasRemotePublicKey())
-            assert(bob_hs!!.hasRemotePublicKey())
+            assert(aliceHS.hasRemotePublicKey())
+            assert(bobHS.hasRemotePublicKey())
         }
     }
 
@@ -75,11 +75,11 @@ class NoiseSecureChannelTest {
         // protocol starts and respective resulting state
         test1()
 
-        alice_hs!!.start()
-        bob_hs!!.start()
+        aliceHS.start()
+        bobHS.start()
 
-        assert(alice_hs!!.action != HandshakeState.FAILED)
-        assert(bob_hs!!.action != HandshakeState.FAILED)
+        assert(aliceHS.action != HandshakeState.FAILED)
+        assert(bobHS.action != HandshakeState.FAILED)
     }
 
     @Test
@@ -102,14 +102,14 @@ class NoiseSecureChannelTest {
 
         val payload = ByteArray(65535)
 
-        aliceMsgLength = alice_hs!!.writeMessage(aliceSendBuffer, 0, payload, 0, 0)
-        bob_hs!!.readMessage(aliceSendBuffer, 0, aliceMsgLength, payload, 0)
-        bobMsgLength = bob_hs!!.writeMessage(bobSendBuffer, 0, payload, 0, 0)
-        alice_hs!!.readMessage(bobSendBuffer, 0, bobMsgLength, payload, 0)
+        aliceMsgLength = aliceHS.writeMessage(aliceSendBuffer, 0, payload, 0, 0)
+        bobHS.readMessage(aliceSendBuffer, 0, aliceMsgLength, payload, 0)
+        bobMsgLength = bobHS.writeMessage(bobSendBuffer, 0, payload, 0, 0)
+        aliceHS.readMessage(bobSendBuffer, 0, bobMsgLength, payload, 0)
 
         // at split state
-        val aliceSplit = alice_hs!!.split()
-        val bobSplit = bob_hs!!.split()
+        val aliceSplit = aliceHS.split()
+        val bobSplit = bobHS.split()
 
         val acipher = ByteArray(65535)
         val acipherLength: Int
@@ -120,8 +120,8 @@ class NoiseSecureChannelTest {
         bcipherLength = bobSplit.receiver.decryptWithAd(null, acipher, 0, bcipher, 0, acipherLength)
 
         assert(s1.toByteArray().contentEquals(bcipher.copyOfRange(0, bcipherLength)))
-        assert(alice_hs!!.action == HandshakeState.COMPLETE)
-        assert(bob_hs!!.action == HandshakeState.COMPLETE)
+        assert(aliceHS.action == HandshakeState.COMPLETE)
+        assert(bobHS.action == HandshakeState.COMPLETE)
     }
 
     @Test
@@ -142,7 +142,7 @@ class NoiseSecureChannelTest {
             .setSignature(ByteString.copyFrom(signed)).build()
 
         val msgBuffer = ByteArray(65535)
-        val msgLength = alice_hs!!.writeMessage(msgBuffer, 0, bs.toByteArray(), 0, bs.toByteArray().size)
+        val msgLength = aliceHS.writeMessage(msgBuffer, 0, bs.toByteArray(), 0, bs.toByteArray().size)
 
         assert(msgLength > 0)
         assert(msgBuffer.max()?.compareTo(0) != 0)
@@ -154,17 +154,17 @@ class NoiseSecureChannelTest {
         logger.debug("Beginning embedded test")
 
         // node keys
-        val (privKey1, _) = generateKeyPair(KEY_TYPE.ECDSA)
-        val (privKey2, _) = generateKeyPair(KEY_TYPE.ECDSA)
+        val (privKeyAlicePeer, _) = generateKeyPair(KEY_TYPE.ECDSA)
+        val (privKeyBobPeer, _) = generateKeyPair(KEY_TYPE.ECDSA)
 
-        val privateKey25519_1 = ByteArray(32)
-        Noise.random(privateKey25519_1)
-        val privateKey25519_2 = ByteArray(32)
-        Noise.random(privateKey25519_2)
+        val privateKey25519Alice = ByteArray(32)
+        Noise.random(privateKey25519Alice)
+        val privateKey25519Bob = ByteArray(32)
+        Noise.random(privateKey25519Bob)
 
         // noise keys
-        val ch1 = NoiseXXSecureChannel(privKey1, privateKey25519_1)
-        val ch2 = NoiseXXSecureChannel(privKey2, privateKey25519_2)
+        val ch1 = NoiseXXSecureChannel(privKeyAlicePeer, privateKey25519Alice)
+        val ch2 = NoiseXXSecureChannel(privKeyBobPeer, privateKey25519Bob)
 
         val protocolSelect1 = ProtocolSelect(listOf(ch1))
         val protocolSelect2 = ProtocolSelect(listOf(ch2))
@@ -193,7 +193,7 @@ class NoiseSecureChannelTest {
         // Setup alice's pipeline
         eCh1.pipeline().addLast(object : TestHandler("1") {
             override fun channelRead(ctx: ChannelHandlerContext, msg: Any?) {
-                rec1=msg as String
+                rec1 = msg as String
                 logger.debug("==$name== read: $msg")
                 latch.countDown()
             }
@@ -227,10 +227,10 @@ class NoiseSecureChannelTest {
     fun testAnnounceAndMatch() {
         val (privKey1, _) = generateKeyPair(KEY_TYPE.ECDSA)
 
-        val privateKey25519_1 = ByteArray(32)
-        Noise.random(privateKey25519_1)
+        val privateKey25519 = ByteArray(32)
+        Noise.random(privateKey25519)
 
-        val ch1 = NoiseXXSecureChannel(privKey1, privateKey25519_1)
+        val ch1 = NoiseXXSecureChannel(privKey1, privateKey25519)
 
         val announce = ch1.announce
         val matcher = ch1.matcher
