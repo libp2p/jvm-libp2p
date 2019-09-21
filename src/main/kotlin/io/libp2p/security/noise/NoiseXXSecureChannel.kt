@@ -29,6 +29,7 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.core.config.Configurator
 import spipe.pb.Spipe
 import java.nio.charset.StandardCharsets
+import java.util.*
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -90,9 +91,17 @@ open class NoiseXXSecureChannel(val localKey: PrivKey, val privateKey25519: Byte
                             }
                         })
                         ctx.pipeline().addLast(object: ChannelOutboundHandlerAdapter() {
-                            override fun write(ctx: ChannelHandlerContext?, msg: Any, promise: ChannelPromise?) {
+                            override fun write(ctx: ChannelHandlerContext, msg: Any, promise: ChannelPromise?) {
+                                msg as ByteBuf
+                                val get: NoiseSecureChannelSession = ctx.channel().attr(SECURE_SESSION).get() as NoiseSecureChannelSession
+                                var additionalData = ByteArray(65535)
+                                var cipherText = ByteArray(65535)
+                                var plaintext = msg.toByteArray()
+                                var length = get.aliceCipher.encryptWithAd(additionalData, plaintext, 0, cipherText, 2, plaintext.size)
+                                logger.debug("encrypt length:" + length)
+                                ctx.write(Arrays.copyOf(cipherText, length + 2).toByteBuf().setShort(0, length))
+
                                 logger.debug("channel outbound handler write: "+msg)
-                                super.write(ctx, msg, promise)
                             }
                         })
                         ctx.pipeline().remove(handshakeHandlerName)

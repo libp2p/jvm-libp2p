@@ -189,45 +189,22 @@ class NoiseSecureChannelTest {
         var rec1: String? = ""
         var rec2: String? = ""
         val latch = CountDownLatch(2)
-//
-//        eCh1.pipeline().addFirst(object: ChannelInboundHandlerAdapter() {
-//            override fun channelRead(ctx: ChannelHandlerContext?, msg: Any?) {
-//                logger.debug("Reading from first handler")
-//                super.channelRead(ctx, msg)
-//            }
-//        })
-//
-//        eCh1.pipeline().addFirst(object: ChannelOutboundHandlerAdapter() {
-//            override fun write(ctx: ChannelHandlerContext?, msg: Any?, promise: ChannelPromise?) {
-//                logger.debug("Writing from first handler")
-//                super.write(ctx, msg, promise)
-//            }
-//        })
-
-//        eCh1.pipeline().addLast(object: ChannelOutboundHandlerAdapter() {
-//            override fun write(ctx: ChannelHandlerContext?, msg: Any?, promise: ChannelPromise?) {
-//                logger.debug("Writing from last handler")
-//                super.write(ctx, msg, promise)
-//            }
-//        })
 
         // Setup alice's pipeline. TestHandler handles inbound data, so chanelActive() is used to write to the context
         eCh1.pipeline().addLast(object : TestHandler("1") {
-            override fun channelRegistered(ctx: ChannelHandlerContext?) {
-                channelActive(ctx!!)
-                super.channelRegistered(ctx)
-            }
-
-            override fun channelActive(ctx: ChannelHandlerContext) {
-                super.channelActive(ctx)
-                val get: NoiseSecureChannelSession = ctx.channel().attr(SECURE_SESSION).get() as NoiseSecureChannelSession
-                var additionalData = ByteArray(65535)
-                var cipherText = ByteArray(65535)
-                var plaintext = "Hello World from $name".toByteArray()
-                var length = get.aliceCipher.encryptWithAd(additionalData, plaintext, 0, cipherText, 2, plaintext.size)
-                logger.debug("encrypt length:" + length)
-                ctx.writeAndFlush(Arrays.copyOf(cipherText, length + 2).toByteBuf().setShort(0, length))
-            }
+//            override fun channelRegistered(ctx: ChannelHandlerContext?) {
+//                channelActive(ctx!!)
+//            }
+//
+//            override fun channelActive(ctx: ChannelHandlerContext) {
+//                val get: NoiseSecureChannelSession = ctx.channel().attr(SECURE_SESSION).get() as NoiseSecureChannelSession
+//                var additionalData = ByteArray(65535)
+//                var cipherText = ByteArray(65535)
+//                var plaintext = "Hello World from $name".toByteArray()
+//                var length = get.aliceCipher.encryptWithAd(additionalData, plaintext, 0, cipherText, 2, plaintext.size)
+//                logger.debug("encrypt length:" + length)
+//                ctx.writeAndFlush(Arrays.copyOf(cipherText, length + 2).toByteBuf().setShort(0, length))
+//            }
 
             override fun channelRead(ctx: ChannelHandlerContext, msg: Any?) {
                 rec1=msg as String
@@ -252,20 +229,21 @@ class NoiseSecureChannelTest {
 
         // Setup bob's pipeline
         eCh2.pipeline().addLast(object : TestHandler("2") {
-            override fun channelRegistered(ctx: ChannelHandlerContext?) {
-                channelActive(ctx!!)
-                super.channelRegistered(ctx)
-            }
+//            override fun channelRegistered(ctx: ChannelHandlerContext?) {
+//                channelActive(ctx!!)
+//                super.channelRegistered(ctx)
+//            }
+//
+//            override fun channelActive(ctx: ChannelHandlerContext) {
+//                val get: NoiseSecureChannelSession = ctx.channel().attr(SECURE_SESSION).get() as NoiseSecureChannelSession
+//                var additionalData = ByteArray(65535)
+//                var cipherText = ByteArray(65535)
+//                var plaintext = "Hello World from $name".toByteArray()
+//                var length = get.aliceCipher.encryptWithAd(additionalData, plaintext, 0, cipherText, 2, plaintext.size)
+//                logger.debug("encrypt length:" + length)
+//                ctx.writeAndFlush(Arrays.copyOf(cipherText, length + 2).toByteBuf().setShort(0, length))
+//            }
 
-            override fun channelActive(ctx: ChannelHandlerContext) {
-                val get: NoiseSecureChannelSession = ctx.channel().attr(SECURE_SESSION).get() as NoiseSecureChannelSession
-                var additionalData = ByteArray(65535)
-                var cipherText = ByteArray(65535)
-                var plaintext = "Hello World from $name".toByteArray()
-                var length = get.aliceCipher.encryptWithAd(additionalData, plaintext, 0, cipherText, 2, plaintext.size)
-                logger.debug("encrypt length:" + length)
-                ctx.writeAndFlush(Arrays.copyOf(cipherText, length + 2).toByteBuf().setShort(0, length))
-            }
 
             override fun channelRead(ctx: ChannelHandlerContext, msg: Any?) {
                 rec2 = msg as String
@@ -291,6 +269,8 @@ class NoiseSecureChannelTest {
 
         eCh1.pipeline().fireChannelRegistered()
         eCh2.pipeline().fireChannelRegistered()
+        eCh1.pipeline().firstContext().writeAndFlush("Hello World from 1")
+        eCh2.pipeline().firstContext().writeAndFlush("Hello World from 2")
 
         latch.await(10, TimeUnit.SECONDS)
 
