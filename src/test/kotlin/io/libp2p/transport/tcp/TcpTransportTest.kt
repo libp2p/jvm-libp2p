@@ -52,30 +52,32 @@ class TcpTransportTest {
 
     @Test
     fun `listeners can be bound and unbound`() {
+        val listeners = 5
         val tcpTransport = TcpTransport(noOpUpgrader)
 
-        bindListeners(tcpTransport, 5)
-        val unbindFuts = unbindListeners(tcpTransport, 5)
+        bindListeners(tcpTransport, listeners)
+        waitOn(
+            unbindListeners(tcpTransport, listeners)
+        )
 
-        CompletableFuture.allOf(*unbindFuts.toTypedArray())
-            .get(5, SECONDS)
         assertEquals(0, tcpTransport.activeListeners.size)
-
     }
 
     @Test
     fun `unbind listeners on transport close`() {
+        val listeners = 5
         val tcpTransport = TcpTransport(noOpUpgrader)
 
-        bindListeners(tcpTransport, 5)
+        bindListeners(tcpTransport, listeners)
 
         for (i in 1..50) {
-            if (tcpTransport.activeListeners.size == 6) break
+            if (tcpTransport.activeListeners.size == listeners) break
             Thread.sleep(100)
         }
-        assertEquals(6, tcpTransport.activeListeners.size)
+        assertEquals(listeners, tcpTransport.activeListeners.size)
 
-        tcpTransport.close().get(5, SECONDS)
+        waitOn(tcpTransport.close())
+
         for (i in 1..50) {
             if (tcpTransport.activeListeners.isEmpty()) break
             Thread.sleep(100)
@@ -87,20 +89,26 @@ class TcpTransportTest {
     fun `can not listen on closed transport`() {
         val tcpTransport = TcpTransport(noOpUpgrader)
 
-        tcpTransport.close().get(5, SECONDS)
+        waitOn(tcpTransport.close())
 
         assertThrows(Libp2pException::class.java) {
             bindListeners(tcpTransport)
 
-            // shouldn't read this, but clean up anyway
+            // shouldn't reach this, but clean ups
+            // in the event the listen doesn't throw
             unbindListeners(tcpTransport)
         }
     }
 
+    fun <T> waitOn(f : CompletableFuture<T>) = f.get(5, SECONDS)
+
+    fun listenAddress(index: Int) =
+        Multiaddr("/ip4/0.0.0.0/tcp/${20000 + index}")
+
     fun bindListeners(tcpTransport: TcpTransport, count: Int = 1) {
-        for (i in 0..count) {
+        for (i in 1..count) {
             val bindFuture = tcpTransport.listen(
-                Multiaddr("/ip4/0.0.0.0/tcp/${20000 + i}"),
+                listenAddress(i),
                 ConnectionHandler.create { }
             )
             bindFuture.handle { t, u -> logger.info("Bound #$i", u) }
@@ -108,17 +116,15 @@ class TcpTransportTest {
         }
     }
 
-    fun unbindListeners(tcpTransport: TcpTransport, count: Int = 1) : List<CompletableFuture<Unit>> {
-        val unbindFuts = mutableListOf<CompletableFuture<Unit>>()
-        for (i in 0..count) {
-            val unbindFuture = tcpTransport.unlisten(
-                Multiaddr("/ip4/0.0.0.0/tcp/${20000 + i}")
-            )
+    fun unbindListeners(tcpTransport: TcpTransport, count: Int = 1) : CompletableFuture<Void> {
+        val unbinding = mutableListOf<CompletableFuture<Unit>>()
+        for (i in 1..count) {
+            val unbindFuture = tcpTransport.unlisten(listenAddress(i))
             unbindFuture.handle { t, u -> logger.info("Unbound #$i", u) }
-            unbindFuts += unbindFuture
+            unbinding += unbindFuture
             logger.info("Unbinding #$i")
         }
-        return unbindFuts
+        return CompletableFuture.allOf(*unbinding.toTypedArray())
     }
 
     @Test
