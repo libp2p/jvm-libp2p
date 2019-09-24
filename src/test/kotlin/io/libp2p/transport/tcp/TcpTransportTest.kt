@@ -34,31 +34,25 @@ class TcpTransportTest {
         val logger = LogManager.getLogger("test")
     }
 
-    private val upgrader = ConnectionUpgrader(emptyList(), emptyList())
+    private val noOpUpgrader = ConnectionUpgrader(emptyList(), emptyList())
 
     @ParameterizedTest
     @MethodSource("validMultiaddrs")
     fun `handles(addr) succeeds when addr is a tcp protocol`(addr: Multiaddr) {
-        val tcp = TcpTransport(upgrader)
+        val tcp = TcpTransport(noOpUpgrader)
         assertTrue(tcp.handles(addr))
     }
 
     @ParameterizedTest
     @MethodSource("invalidMultiaddrs")
     fun `handles(addr) fails when addr is not a tcp protocol`(addr: Multiaddr) {
-        val tcp = TcpTransport(upgrader)
+        val tcp = TcpTransport(noOpUpgrader)
         assertFalse(tcp.handles(addr))
     }
 
     @Test
     fun testListenClose() {
-        val (privKey1, pubKey1) = generateKeyPair(KEY_TYPE.ECDSA)
-        val upgrader = ConnectionUpgrader(
-            listOf(SecIoSecureChannel(privKey1)),
-            listOf(MplexStreamMuxer())
-        )
-
-        val tcpTransport = TcpTransport(upgrader)
+        val tcpTransport = TcpTransport(noOpUpgrader)
 
         bindListeners(tcpTransport, 5)
         val unbindFuts = unbindListeners(tcpTransport, 5)
@@ -66,7 +60,6 @@ class TcpTransportTest {
         CompletableFuture.allOf(*unbindFuts.toTypedArray())
             .get(5, SECONDS)
         assertEquals(0, tcpTransport.activeListeners.size)
-
 
         bindListeners(tcpTransport, 5)
 
