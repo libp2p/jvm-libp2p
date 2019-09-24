@@ -11,6 +11,7 @@ import io.libp2p.security.secio.SecIoSecureChannel
 import io.libp2p.transport.ConnectionUpgrader
 import org.apache.logging.log4j.LogManager
 import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
@@ -128,6 +129,7 @@ class TcpTransportTest {
     }
 
     @Test
+    @Disabled
     fun testDialClose() {
         val (privKey1, pubKey1) = generateKeyPair(KEY_TYPE.ECDSA)
         val upgrader = ConnectionUpgrader(
