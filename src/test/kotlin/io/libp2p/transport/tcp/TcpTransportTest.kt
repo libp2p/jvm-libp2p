@@ -10,8 +10,7 @@ import io.libp2p.mux.mplex.MplexStreamMuxer
 import io.libp2p.security.secio.SecIoSecureChannel
 import io.libp2p.transport.ConnectionUpgrader
 import org.apache.logging.log4j.LogManager
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
@@ -38,16 +37,16 @@ class TcpTransportTest {
 
     @ParameterizedTest
     @MethodSource("validMultiaddrs")
-    fun `handles(addr) returns true if addr contains tcp protocol`(addr: Multiaddr) {
-//        val tcp = TcpTransport(upgrader)
-//        assert(tcp.handles(addr))
+    fun `handles(addr) succeeds when addr is a tcp protocol`(addr: Multiaddr) {
+        val tcp = TcpTransport(upgrader)
+        assertTrue(tcp.handles(addr))
     }
 
     @ParameterizedTest
     @MethodSource("invalidMultiaddrs")
-    fun `handles(addr) returns false if addr does not contain tcp protocol`(addr: Multiaddr) {
-//        val tcp = TcpTransport(upgrader)
-//        assert(!tcp.handles(addr))
+    fun `handles(addr) fails when addr is not a tcp protocol`(addr: Multiaddr) {
+        val tcp = TcpTransport(upgrader)
+        assertFalse(tcp.handles(addr))
     }
 
     @Test
