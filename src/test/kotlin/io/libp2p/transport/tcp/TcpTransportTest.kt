@@ -31,6 +31,8 @@ class TcpTransportTest {
             "/ip4/1.2.3.4/udp/42",
             "/unix/a/file/named/tcp"
         ).map { Multiaddr(it) }
+
+        val logger = LogManager.getLogger("test")
     }
 
     private val upgrader = ConnectionUpgrader(emptyList(), emptyList())
@@ -51,8 +53,6 @@ class TcpTransportTest {
 
     @Test
     fun testListenClose() {
-        val logger = LogManager.getLogger("test")
-
         val (privKey1, pubKey1) = generateKeyPair(KEY_TYPE.ECDSA)
         val upgrader = ConnectionUpgrader(
             listOf(SecIoSecureChannel(privKey1)),
@@ -117,8 +117,6 @@ class TcpTransportTest {
 
     @Test
     fun testDialClose() {
-        val logger = LogManager.getLogger("test")
-
         val (privKey1, pubKey1) = generateKeyPair(KEY_TYPE.ECDSA)
         val upgrader = ConnectionUpgrader(
             listOf(SecIoSecureChannel(privKey1)),
