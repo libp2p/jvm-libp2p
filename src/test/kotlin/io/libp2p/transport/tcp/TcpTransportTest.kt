@@ -12,120 +12,141 @@ import io.libp2p.transport.ConnectionUpgrader
 import org.apache.logging.log4j.LogManager
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Disabled
+import org.junit.jupiter.api.DisplayName
+import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit.SECONDS
 
+@DisplayName("TcpTransport Tests")
 class TcpTransportTest {
     companion object {
-        @JvmStatic
-        fun validMultiaddrs() = listOf(
-            "/ip4/1.2.3.4/tcp/1234",
-            "/ip6/fe80::6f77:b303:aa6e:a16/tcp/42"
-        ).map { Multiaddr(it) }
-
-        @JvmStatic
-        fun invalidMultiaddrs() = listOf(
-            "/ip4/1.2.3.4/udp/42",
-            "/unix/a/file/named/tcp"
-        ).map { Multiaddr(it) }
-
         val logger = LogManager.getLogger("test")
-    }
+        val noOpUpgrader = ConnectionUpgrader(emptyList(), emptyList())
 
-    private val noOpUpgrader = ConnectionUpgrader(emptyList(), emptyList())
+        fun <T> waitOn(f : CompletableFuture<T>) = f.get(5, SECONDS)
 
-    @ParameterizedTest
-    @MethodSource("validMultiaddrs")
-    fun `handles(addr) succeeds when addr is a tcp protocol`(addr: Multiaddr) {
-        val tcp = TcpTransport(noOpUpgrader)
-        assertTrue(tcp.handles(addr))
-    }
+        fun localAddress(index: Int) =
+            Multiaddr("/ip4/0.0.0.0/tcp/${20000 + index}")
 
-    @ParameterizedTest
-    @MethodSource("invalidMultiaddrs")
-    fun `handles(addr) fails when addr is not a tcp protocol`(addr: Multiaddr) {
-        val tcp = TcpTransport(noOpUpgrader)
-        assertFalse(tcp.handles(addr))
-    }
-
-    @Test
-    fun `listeners can be bound and unbound`() {
-        val listeners = 5
-        val tcpTransport = TcpTransport(noOpUpgrader)
-
-        bindListeners(tcpTransport, listeners)
-        waitOn(
-            unbindListeners(tcpTransport, listeners)
-        )
-
-        assertEquals(0, tcpTransport.activeListeners.size)
-    }
-
-    @Test
-    fun `unbind listeners on transport close`() {
-        val listeners = 5
-        val tcpTransport = TcpTransport(noOpUpgrader)
-
-        bindListeners(tcpTransport, listeners)
-
-        for (i in 1..50) {
-            if (tcpTransport.activeListeners.size == listeners) break
-            Thread.sleep(100)
-        }
-        assertEquals(listeners, tcpTransport.activeListeners.size)
-
-        waitOn(tcpTransport.close())
-
-        for (i in 1..50) {
-            if (tcpTransport.activeListeners.isEmpty()) break
-            Thread.sleep(100)
-        }
-        assertEquals(0, tcpTransport.activeListeners.size)
-    }
-
-    @Test
-    fun `can not listen on closed transport`() {
-        val tcpTransport = TcpTransport(noOpUpgrader)
-
-        waitOn(tcpTransport.close())
-
-        assertThrows(Libp2pException::class.java) {
-            bindListeners(tcpTransport)
-
-            // shouldn't reach this, but clean ups
-            // in the event the listen doesn't throw
-            unbindListeners(tcpTransport)
-        }
-    }
-
-    fun <T> waitOn(f : CompletableFuture<T>) = f.get(5, SECONDS)
-
-    fun listenAddress(index: Int) =
-        Multiaddr("/ip4/0.0.0.0/tcp/${20000 + index}")
-
-    fun bindListeners(tcpTransport: TcpTransport, count: Int = 1) {
-        for (i in 1..count) {
-            val bindFuture = tcpTransport.listen(
-                listenAddress(i),
-                ConnectionHandler.create { }
+        fun bindListeners(tcpTransport: TcpTransport, count: Int = 1) : CompletableFuture<Void> {
+            val connectionHandler = ConnectionHandler.create { }
+            return transportActions(
+                { addr: Multiaddr -> tcpTransport.listen(addr, connectionHandler) },
+                count,
+                "Binding",
+                "Bound"
             )
-            bindFuture.handle { t, u -> logger.info("Bound #$i", u) }
-            logger.info("Binding #$i")
+        }
+
+        fun unbindListeners(tcpTransport: TcpTransport, count: Int = 1) : CompletableFuture<Void> {
+            return transportActions(
+                { addr: Multiaddr -> tcpTransport.unlisten(addr) },
+                count,
+                "Unbinding",
+                "Unbound"
+            )
+        }
+
+        fun transportActions(
+            action: (addr: Multiaddr) -> CompletableFuture<Unit>,
+            count: Int,
+            startedLabel: String,
+            completeLabel: String) : CompletableFuture<Void> {
+            val results = mutableListOf<CompletableFuture<Unit>>()
+            for (i in 1..count) {
+                val actionFuture = action(localAddress(i))
+                actionFuture.handle { _, u -> logger.info("$completeLabel #$i", u) }
+                results += actionFuture
+                logger.info("$startedLabel #$i")
+            }
+            return CompletableFuture.allOf(*results.toTypedArray())
         }
     }
 
-    fun unbindListeners(tcpTransport: TcpTransport, count: Int = 1) : CompletableFuture<Void> {
-        val unbinding = mutableListOf<CompletableFuture<Unit>>()
-        for (i in 1..count) {
-            val unbindFuture = tcpTransport.unlisten(listenAddress(i))
-            unbindFuture.handle { t, u -> logger.info("Unbound #$i", u) }
-            unbinding += unbindFuture
-            logger.info("Unbinding #$i")
+    @Nested
+    @DisplayName("TcpTransport handles tests")
+    class HandlesTests {
+        @ParameterizedTest
+        @MethodSource("validMultiaddrs")
+        fun `handles(addr) succeeds when addr is a tcp protocol`(addr: Multiaddr) {
+            val tcp = TcpTransport(noOpUpgrader)
+            assertTrue(tcp.handles(addr))
         }
-        return CompletableFuture.allOf(*unbinding.toTypedArray())
+
+        @ParameterizedTest
+        @MethodSource("invalidMultiaddrs")
+        fun `handles(addr) fails when addr is not a tcp protocol`(addr: Multiaddr) {
+            val tcp = TcpTransport(noOpUpgrader)
+            assertFalse(tcp.handles(addr))
+        }
+
+        companion object {
+            @JvmStatic
+            fun validMultiaddrs() = listOf(
+                "/ip4/1.2.3.4/tcp/1234",
+                "/ip6/fe80::6f77:b303:aa6e:a16/tcp/42"
+            ).map { Multiaddr(it) }
+
+            @JvmStatic
+            fun invalidMultiaddrs() = listOf(
+                "/ip4/1.2.3.4/udp/42",
+                "/unix/a/file/named/tcp"
+            ).map { Multiaddr(it) }
+        }
+    }
+
+    @Nested
+    @DisplayName("TcpTransport listen tests")
+    class ListenTests {
+        @Test
+        fun `listeners can be bound and unbound`() {
+            val listeners = 50
+            val tcpTransport = TcpTransport(noOpUpgrader)
+
+            waitOn(
+                bindListeners(tcpTransport, listeners)
+            )
+            assertEquals(listeners, tcpTransport.activeListeners.size)
+
+            waitOn(
+                unbindListeners(tcpTransport, listeners)
+            )
+            assertEquals(0, tcpTransport.activeListeners.size)
+        }
+
+        @Test
+        fun `unbind listeners on transport close`() {
+            val listeners = 50
+            val tcpTransport = TcpTransport(noOpUpgrader)
+
+            waitOn(
+                bindListeners(tcpTransport, listeners)
+            )
+            assertEquals(listeners, tcpTransport.activeListeners.size)
+
+            waitOn(
+                tcpTransport.close()
+            )
+            assertEquals(0, tcpTransport.activeListeners.size)
+        }
+
+        @Test
+        fun `can not listen on closed transport`() {
+            val tcpTransport = TcpTransport(noOpUpgrader)
+
+            waitOn(tcpTransport.close())
+
+            assertThrows(Libp2pException::class.java) {
+                bindListeners(tcpTransport)
+
+                // shouldn't reach this, but clean ups
+                // in the event the listen doesn't throw
+                unbindListeners(tcpTransport)
+            }
+        }
     }
 
     @Test
