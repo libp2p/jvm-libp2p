@@ -31,8 +31,11 @@ class TcpTransportTest {
         fun localAddress(index: Int) =
             Multiaddr("/ip4/0.0.0.0/tcp/${20000 + index}")
 
-        fun bindListeners(tcpTransport: TcpTransport, count: Int = 1) : CompletableFuture<Void> {
-            val connectionHandler = ConnectionHandler.create { }
+        fun bindListeners(
+            tcpTransport: TcpTransport,
+            count: Int = 1,
+            connectionHandler: ConnectionHandler = ConnectionHandler.create { }
+        ) : CompletableFuture<Void> {
             return transportActions(
                 { addr: Multiaddr -> tcpTransport.listen(addr, connectionHandler) },
                 count,
@@ -50,12 +53,24 @@ class TcpTransportTest {
             )
         }
 
-        fun transportActions(
-            action: (addr: Multiaddr) -> CompletableFuture<Unit>,
+        fun dial(tcpTransport: TcpTransport, count: Int = 1) : CompletableFuture<Void> {
+            val connectionHandler = ConnectionHandler.create { }
+            return transportActions(
+                { addr: Multiaddr -> tcpTransport.dial(addr, connectionHandler) },
+                count,
+                "Dialing",
+                "Dialed"
+            )
+        }
+
+        fun <T> transportActions(
+            action: (addr: Multiaddr) -> CompletableFuture<T>,
             count: Int,
             startedLabel: String,
-            completeLabel: String) : CompletableFuture<Void> {
-            val results = mutableListOf<CompletableFuture<Unit>>()
+            completeLabel: String
+        ) : CompletableFuture<Void>
+        {
+            val results = mutableListOf<CompletableFuture<T>>()
             for (i in 1..count) {
                 val actionFuture = action(localAddress(i))
                 actionFuture.handle { _, u -> logger.info("$completeLabel #$i", u) }
@@ -149,51 +164,66 @@ class TcpTransportTest {
         }
     }
 
-    @Test
-    @Disabled
-    fun testDialClose() {
-        val (privKey1, pubKey1) = generateKeyPair(KEY_TYPE.ECDSA)
-        val upgrader = ConnectionUpgrader(
-            listOf(SecIoSecureChannel(privKey1)),
-            listOf(MplexStreamMuxer())
-        )
+    @Nested
+    @DisplayName("TcpTransport dial tests")
+    class DialTests {
+        @Test
+        fun `can not dial on a closed transport`() {
+            val tcpTransport = TcpTransport(noOpUpgrader)
 
-        val tcpTransportServer = TcpTransport(upgrader)
-        val serverConnections = mutableListOf<Connection>()
-        val connHandler: ConnectionHandler = object : ConnectionHandler {
-            override fun handleConnection(conn: Connection) {
-                logger.info("Inbound connection: $conn")
-                serverConnections += conn
+            waitOn(tcpTransport.close())
+
+            assertThrows(Libp2pException::class.java) {
+                dial(tcpTransport)
             }
         }
 
-        tcpTransportServer.listen(
-            Multiaddr("/ip4/0.0.0.0/tcp/20000"),
-            connHandler
-        ).get(5, SECONDS)
-        logger.info("Server is listening")
+        @Test
+        @Disabled
+        fun testDialClose() {
+            val (privKey1, pubKey1) = generateKeyPair(KEY_TYPE.ECDSA)
+            val upgrader = ConnectionUpgrader(
+                listOf(SecIoSecureChannel(privKey1)),
+                listOf(MplexStreamMuxer())
+            )
 
-        val tcpTransportClient = TcpTransport(upgrader)
+            val tcpTransportServer = TcpTransport(upgrader)
+            val serverConnections = mutableListOf<Connection>()
+            val connHandler: ConnectionHandler = object : ConnectionHandler {
+                override fun handleConnection(conn: Connection) {
+                    logger.info("Inbound connection: $conn")
+                    serverConnections += conn
+                }
+            }
 
-        val dialFutures = mutableListOf<CompletableFuture<Connection>>()
-        for (i in 0..50) {
-            logger.info("Connecting #$i")
-            dialFutures +=
-                tcpTransportClient.dial(Multiaddr("/ip4/127.0.0.1/tcp/20000"), ConnectionHandler.create { })
-            dialFutures.last().whenComplete { t, u -> logger.info("Connected #$i: $t ($u)") }
+            tcpTransportServer.listen(
+                Multiaddr("/ip4/0.0.0.0/tcp/20000"),
+                connHandler
+            ).get(5, SECONDS)
+            logger.info("Server is listening")
+
+            val tcpTransportClient = TcpTransport(upgrader)
+
+            val dialFutures = mutableListOf<CompletableFuture<Connection>>()
+            for (i in 0..50) {
+                logger.info("Connecting #$i")
+                dialFutures +=
+                    tcpTransportClient.dial(Multiaddr("/ip4/127.0.0.1/tcp/20000"), ConnectionHandler.create { })
+                dialFutures.last().whenComplete { t, u -> logger.info("Connected #$i: $t ($u)") }
+            }
+            logger.info("Active channels: ${tcpTransportClient.activeChannels.size}")
+
+            CompletableFuture.anyOf(*dialFutures.toTypedArray()).get(5, SECONDS)
+            logger.info("The first negotiation succeeded. Closing now...")
+
+            tcpTransportClient.close().get(5, SECONDS)
+            logger.info("Client transport closed")
+            tcpTransportServer.close().get(5, SECONDS)
+            logger.info("Server transport closed")
+
+            // checking that all dial futures are complete (successfully or not)
+            val dialCompletions = dialFutures.map { it.handle { t, u -> t to u } }
+            CompletableFuture.allOf(*dialCompletions.toTypedArray()).get(5, SECONDS)
         }
-        logger.info("Active channels: ${tcpTransportClient.activeChannels.size}")
-
-        CompletableFuture.anyOf(*dialFutures.toTypedArray()).get(5, SECONDS)
-        logger.info("The first negotiation succeeded. Closing now...")
-
-        tcpTransportClient.close().get(5, SECONDS)
-        logger.info("Client transport closed")
-        tcpTransportServer.close().get(5, SECONDS)
-        logger.info("Server transport closed")
-
-        // checking that all dial futures are complete (successfully or not)
-        val dialCompletions = dialFutures.map { it.handle { t, u -> t to u } }
-        CompletableFuture.allOf(*dialCompletions.toTypedArray()).get(5, SECONDS)
     }
 }
