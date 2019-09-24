@@ -18,7 +18,6 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit.SECONDS
 
 class TcpTransportTest {
-
     companion object {
         @JvmStatic
         fun validMultiaddrs() = listOf(
@@ -60,26 +59,14 @@ class TcpTransportTest {
         )
 
         val tcpTransport = TcpTransport(upgrader)
-        val connHandler: ConnectionHandler = object : ConnectionHandler {
-            override fun handleConnection(conn: Connection) {
-            }
-        }
 
         bindListeners(tcpTransport, 5)
-
-        val unbindFuts = mutableListOf<CompletableFuture<Unit>>()
-        for (i in 0..5) {
-            val unbindFuture = tcpTransport.unlisten(
-                Multiaddr("/ip4/0.0.0.0/tcp/${20000 + i}")
-            )
-            unbindFuture.handle { t, u -> logger.info("Unbound #$i", u) }
-            unbindFuts += unbindFuture
-            logger.info("Unbinding #$i")
-        }
+        val unbindFuts = unbindListeners(tcpTransport, 5)
 
         CompletableFuture.allOf(*unbindFuts.toTypedArray())
             .get(5, SECONDS)
         assertEquals(0, tcpTransport.activeListeners.size)
+
 
         bindListeners(tcpTransport, 5)
 
@@ -99,7 +86,7 @@ class TcpTransportTest {
         assertThrows(Libp2pException::class.java) {
             tcpTransport.listen(
                 Multiaddr("/ip4/0.0.0.0/tcp/20000"),
-                connHandler)
+                ConnectionHandler.create { })
                 .get(5, SECONDS)
         }
     }
@@ -113,6 +100,19 @@ class TcpTransportTest {
             bindFuture.handle { t, u -> logger.info("Bound #$i", u) }
             logger.info("Binding #$i")
         }
+    }
+
+    fun unbindListeners(tcpTransport: TcpTransport, count: Int) : List<CompletableFuture<Unit>> {
+        val unbindFuts = mutableListOf<CompletableFuture<Unit>>()
+        for (i in 0..count) {
+            val unbindFuture = tcpTransport.unlisten(
+                Multiaddr("/ip4/0.0.0.0/tcp/${20000 + i}")
+            )
+            unbindFuture.handle { t, u -> logger.info("Unbound #$i", u) }
+            unbindFuts += unbindFuture
+            logger.info("Unbinding #$i")
+        }
+        return unbindFuts
     }
 
     @Test
