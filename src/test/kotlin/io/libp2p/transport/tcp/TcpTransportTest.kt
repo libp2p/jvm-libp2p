@@ -24,12 +24,15 @@ import java.util.concurrent.TimeUnit.SECONDS
 class TcpTransportTest {
     companion object {
         val logger = LogManager.getLogger("test")
-        val noOpUpgrader = ConnectionUpgrader(emptyList(), emptyList())
+        val noOpUpgrader = ConnectionUpgrader(
+            emptyList(),
+            emptyList()
+        )
 
         fun <T> waitOn(f : CompletableFuture<T>) = f.get(5, SECONDS)
 
         fun localAddress(index: Int) =
-            Multiaddr("/ip4/0.0.0.0/tcp/${20000 + index}")
+            Multiaddr("/ip4/127.0.0.1/tcp/${20000 + index}")
 
         fun bindListeners(
             tcpTransport: TcpTransport,
@@ -175,6 +178,49 @@ class TcpTransportTest {
 
             assertThrows(Libp2pException::class.java) {
                 dial(tcpTransport)
+            }
+        }
+
+        @Test
+        fun `disconnect dialed connection on transport close`() {
+            val (privKey1, _) = generateKeyPair(KEY_TYPE.ECDSA)
+            val upgrader = ConnectionUpgrader(
+                listOf(SecIoSecureChannel(privKey1)),
+                listOf(MplexStreamMuxer())
+            )
+
+            val tcpListener = TcpTransport(upgrader)
+            val tcpClient = TcpTransport(upgrader)
+            try {
+                var incomingConnections = 0
+                val handler = ConnectionHandler.create {
+                    ++incomingConnections
+                    logger.info("Inbound connection: $incomingConnections")
+                }
+                waitOn(
+                    bindListeners(tcpListener, connectionHandler = handler)
+                )
+                logger.info("Server is listening")
+
+                val connectionsToDial = 1
+                val connections = dial(tcpClient, connectionsToDial)
+                val outgoingConnections = tcpClient.activeChannels.size
+                waitOn(
+                    connections
+                )
+                logger.info("Negotiation succeeded.")
+
+                assertEquals(connectionsToDial, outgoingConnections)
+                assertEquals(connectionsToDial, incomingConnections)
+            } finally {
+                waitOn(
+                    tcpClient.close()
+                )
+                logger.info("Client transport closed")
+                waitOn(
+                    tcpListener.close()
+                )
+                logger.info("Server transport closed")
             }
         }
 
