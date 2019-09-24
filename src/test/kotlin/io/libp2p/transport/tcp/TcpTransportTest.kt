@@ -65,14 +65,8 @@ class TcpTransportTest {
             }
         }
 
-        for (i in 0..5) {
-            val bindFuture = tcpTransport.listen(
-                Multiaddr("/ip4/0.0.0.0/tcp/${20000 + i}"),
-                connHandler
-            )
-            bindFuture.handle { t, u -> logger.info("Bound #$i", u) }
-            logger.info("Binding #$i")
-        }
+        bindListeners(tcpTransport, 5)
+
         val unbindFuts = mutableListOf<CompletableFuture<Unit>>()
         for (i in 0..5) {
             val unbindFuture = tcpTransport.unlisten(
@@ -87,13 +81,8 @@ class TcpTransportTest {
             .get(5, SECONDS)
         assertEquals(0, tcpTransport.activeListeners.size)
 
-        for (i in 0..5) {
-            val bindFuture = tcpTransport.listen(
-                Multiaddr("/ip4/0.0.0.0/tcp/${20000 + i}"),
-                connHandler)
-            bindFuture.handle { t, u -> logger.info("Bound #$i", u) }
-            logger.info("Binding #$i")
-        }
+        bindListeners(tcpTransport, 5)
+
         for (i in 1..50) {
             if (tcpTransport.activeListeners.size == 6) break
             Thread.sleep(100)
@@ -112,6 +101,17 @@ class TcpTransportTest {
                 Multiaddr("/ip4/0.0.0.0/tcp/20000"),
                 connHandler)
                 .get(5, SECONDS)
+        }
+    }
+
+    fun bindListeners(tcpTransport: TcpTransport, count: Int) {
+        for (i in 0..count) {
+            val bindFuture = tcpTransport.listen(
+                Multiaddr("/ip4/0.0.0.0/tcp/${20000 + i}"),
+                ConnectionHandler.create { }
+            )
+            bindFuture.handle { t, u -> logger.info("Bound #$i", u) }
+            logger.info("Binding #$i")
         }
     }
 
