@@ -19,6 +19,7 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit.SECONDS
+import java.util.concurrent.atomic.AtomicInteger
 
 @DisplayName("TcpTransport Tests")
 class TcpTransportTest {
@@ -43,7 +44,7 @@ class TcpTransportTest {
             count: Int = 1,
             connectionHandler: ConnectionHandler = ConnectionHandler.create { }
         ) : CompletableFuture<Void> {
-            return transportActions(
+            return transportActionsAsVoidFuture(
                 { addr: Multiaddr -> tcpTransport.listen(addr, connectionHandler) },
                 count,
                 "Binding",
@@ -52,7 +53,7 @@ class TcpTransportTest {
         }
 
         fun unbindListeners(tcpTransport: TcpTransport, count: Int = 1) : CompletableFuture<Void> {
-            return transportActions(
+            return transportActionsAsVoidFuture(
                 { addr: Multiaddr -> tcpTransport.unlisten(addr) },
                 count,
                 "Unbinding",
@@ -60,10 +61,11 @@ class TcpTransportTest {
             )
         }
 
-        fun dial(tcpTransport: TcpTransport, count: Int = 1) : CompletableFuture<Void> {
+        fun dial(tcpTransport: TcpTransport, count: Int = 1) : List<CompletableFuture<Connection>> {
             val connectionHandler = ConnectionHandler.create { }
+            val dialAddress = localAddress(1)
             return transportActions(
-                { addr: Multiaddr -> tcpTransport.dial(addr, connectionHandler) },
+                { _ -> tcpTransport.dial(dialAddress, connectionHandler) },
                 count,
                 "Dialing",
                 "Dialed"
@@ -71,6 +73,23 @@ class TcpTransportTest {
         }
 
         fun <T> transportActions(
+            action: (addr: Multiaddr) -> CompletableFuture<T>,
+            count: Int,
+            startedLabel: String,
+            completeLabel: String
+        ) : List<CompletableFuture<T>>
+        {
+            val results = mutableListOf<CompletableFuture<T>>()
+            for (i in 1..count) {
+                val actionFuture = action(localAddress(i))
+                actionFuture.handle { _, u -> logger.info("$completeLabel #$i", u) }
+                results += actionFuture
+                logger.info("$startedLabel #$i")
+            }
+            return results
+        }
+
+        fun <T> transportActionsAsVoidFuture(
             action: (addr: Multiaddr) -> CompletableFuture<T>,
             count: Int,
             startedLabel: String,
@@ -86,6 +105,7 @@ class TcpTransportTest {
             }
             return CompletableFuture.allOf(*results.toTypedArray())
         }
+
     }
 
     @Nested
@@ -186,30 +206,29 @@ class TcpTransportTest {
         @Test
         fun `disconnect dialed connection on client close`() {
             val (tcpListener, handler) = startListener()
-            var outgoingConnections = -1
-            var connectionsAfterClientClosed = -1
+            val dialledConnections : DialledConnections
 
-            val connectionsToDial = 1
+            val connectionsToDial = 10
             val tcpClient = TcpTransport(secMuxUpgrader)
             try {
-                outgoingConnections = dialConnections(tcpClient, connectionsToDial)
+                dialledConnections = dialConnections(tcpClient, connectionsToDial)
             } finally {
                 waitOn(
                     tcpClient.close()
                 )
                 logger.info("Client transport closed")
-                connectionsAfterClientClosed = tcpClient.activeChannels.size
 
                 waitOn(
                     tcpListener.close()
                 )
                 logger.info("Server transport closed")
-
             }
 
-            assertEquals(connectionsToDial, outgoingConnections)
             assertEquals(connectionsToDial, handler.connectionsEstablished)
-            assertEquals(0, connectionsAfterClientClosed)
+            assertEquals(connectionsToDial, dialledConnections.size)
+            waitOn( // all dialled connections are closed
+                dialledConnections.allClosed
+            )
         }
 
         data class ListenSetup(val tcpListener: TcpTransport, val handler: CountingConnectionHandler)
@@ -223,15 +242,19 @@ class TcpTransportTest {
 
             return ListenSetup(tcpListener, handler)
         }
-        fun dialConnections(tcpDialler: TcpTransport, connectionsToDial: Int) : Int {
+        data class DialledConnections(val size: Int, val allClosed : CompletableFuture<Void>)
+        fun dialConnections(tcpDialler: TcpTransport, connectionsToDial: Int) : DialledConnections {
             val connections = dial(tcpDialler, connectionsToDial)
-            val outgoingConnections = tcpDialler.activeChannels.size
             waitOn(
-                connections
+                CompletableFuture.allOf(*connections.toTypedArray())
             )
             logger.info("Negotiation succeeded.")
 
-            return outgoingConnections
+            val closeCompletions = connections.map { it.get().closeFuture() }
+            return DialledConnections(
+                connections.size,
+                CompletableFuture.allOf(*closeCompletions.toTypedArray())
+            )
         }
 
         class CountingConnectionHandler : ConnectionHandler {
