@@ -60,7 +60,7 @@ class SecioHandshake(
 
     private var state = State.Initial
 
-    val random: SecureRandom = SecureRandom.getInstanceStrong()
+    val random = SecureRandom()
     val nonceSize = 16
     val ciphers = linkedSetOf("AES-128", "AES-256")
     val hashes = linkedSetOf("SHA256", "SHA512")
