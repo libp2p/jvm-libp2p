@@ -258,11 +258,12 @@ class TcpTransportTest {
         }
 
         class CountingConnectionHandler : ConnectionHandler {
-            var connectionsEstablished = 0
+            private var connectionsCount = AtomicInteger(0)
+            val connectionsEstablished : Int get() = connectionsCount.get()
 
             override fun handleConnection(conn: Connection) {
-                ++connectionsEstablished
-                logger.info("Inbound connection: $connectionsEstablished")
+                val count = connectionsCount.incrementAndGet()
+                logger.info("Inbound connection: $count")
             }
         }
 
