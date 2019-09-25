@@ -28,6 +28,10 @@ class TcpTransportTest {
             emptyList(),
             emptyList()
         )
+        val secMuxUpgrader = ConnectionUpgrader(
+            listOf(SecIoSecureChannel(generateKeyPair(KEY_TYPE.ECDSA).first)),
+            listOf(MplexStreamMuxer())
+        )
 
         fun <T> waitOn(f : CompletableFuture<T>) = f.get(5, SECONDS)
 
@@ -180,48 +184,63 @@ class TcpTransportTest {
         }
 
         @Test
-        fun `disconnect dialed connection on transport close`() {
-            val (privKey1, _) = generateKeyPair(KEY_TYPE.ECDSA)
-            val upgrader = ConnectionUpgrader(
-                listOf(SecIoSecureChannel(privKey1)),
-                listOf(MplexStreamMuxer())
-            )
-            var establishedConnections = 0
-            var outgoingConnections = 0
+        fun `disconnect dialed connection on client close`() {
+            val (tcpListener, handler) = startListener()
+            var outgoingConnections = -1
+            var connectionsAfterClientClosed = -1
+
             val connectionsToDial = 1
-
-            val tcpListener = TcpTransport(upgrader)
-            val tcpClient = TcpTransport(upgrader)
+            val tcpClient = TcpTransport(secMuxUpgrader)
             try {
-                val handler = ConnectionHandler.create {
-                    ++establishedConnections
-                    logger.info("Inbound connection: $establishedConnections")
-                }
-                waitOn(
-                    bindListeners(tcpListener, connectionHandler = handler)
-                )
-                logger.info("Server is listening")
-
-                val connections = dial(tcpClient, connectionsToDial)
-                outgoingConnections = tcpClient.activeChannels.size
-                waitOn(
-                    connections
-                )
-                logger.info("Negotiation succeeded.")
+                outgoingConnections = dialConnections(tcpClient, connectionsToDial)
             } finally {
                 waitOn(
                     tcpClient.close()
                 )
                 logger.info("Client transport closed")
+                connectionsAfterClientClosed = tcpClient.activeChannels.size
+
                 waitOn(
                     tcpListener.close()
                 )
                 logger.info("Server transport closed")
+
             }
 
             assertEquals(connectionsToDial, outgoingConnections)
-            assertEquals(connectionsToDial, establishedConnections)
-            assertEquals(0, tcpClient.activeChannels.size)
+            assertEquals(connectionsToDial, handler.connectionsEstablished)
+            assertEquals(0, connectionsAfterClientClosed)
+        }
+
+        data class ListenSetup(val tcpListener: TcpTransport, val handler: CountingConnectionHandler)
+        fun startListener() : ListenSetup {
+            val handler = CountingConnectionHandler()
+            val tcpListener = TcpTransport(secMuxUpgrader)
+            waitOn(
+                bindListeners(tcpListener, connectionHandler = handler)
+            )
+            logger.info("Server is listening")
+
+            return ListenSetup(tcpListener, handler)
+        }
+        fun dialConnections(tcpDialler: TcpTransport, connectionsToDial: Int) : Int {
+            val connections = dial(tcpDialler, connectionsToDial)
+            val outgoingConnections = tcpDialler.activeChannels.size
+            waitOn(
+                connections
+            )
+            logger.info("Negotiation succeeded.")
+
+            return outgoingConnections
+        }
+
+        class CountingConnectionHandler : ConnectionHandler {
+            var connectionsEstablished = 0
+
+            override fun handleConnection(conn: Connection) {
+                ++connectionsEstablished
+                logger.info("Inbound connection: $connectionsEstablished")
+            }
         }
 
         @Test
