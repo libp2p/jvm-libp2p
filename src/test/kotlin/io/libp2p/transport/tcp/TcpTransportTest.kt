@@ -231,6 +231,34 @@ class TcpTransportTest {
             )
         }
 
+        @Test
+        fun `disconnect dialed connection on server close`() {
+            val (tcpListener, handler) = startListener()
+            val dialledConnections : DialledConnections
+
+            val connectionsToDial = 10
+            val tcpClient = TcpTransport(secMuxUpgrader)
+            try {
+                dialledConnections = dialConnections(tcpClient, connectionsToDial)
+            } finally {
+                waitOn(
+                    tcpListener.close()
+                )
+                logger.info("Server transport closed")
+            }
+
+            assertEquals(connectionsToDial, handler.connectionsEstablished)
+            assertEquals(connectionsToDial, dialledConnections.size)
+            waitOn( // all dialled connections are closed
+                dialledConnections.allClosed
+            )
+
+            waitOn(
+                tcpClient.close()
+            )
+            logger.info("Client transport closed")
+        }
+
         data class ListenSetup(val tcpListener: TcpTransport, val handler: CountingConnectionHandler)
         fun startListener() : ListenSetup {
             val handler = CountingConnectionHandler()
@@ -265,54 +293,6 @@ class TcpTransportTest {
                 val count = connectionsCount.incrementAndGet()
                 logger.info("Inbound connection: $count")
             }
-        }
-
-        @Test
-        @Disabled
-        fun testDialClose() {
-            val (privKey1, pubKey1) = generateKeyPair(KEY_TYPE.ECDSA)
-            val upgrader = ConnectionUpgrader(
-                listOf(SecIoSecureChannel(privKey1)),
-                listOf(MplexStreamMuxer())
-            )
-
-            val tcpTransportServer = TcpTransport(upgrader)
-            val serverConnections = mutableListOf<Connection>()
-            val connHandler: ConnectionHandler = object : ConnectionHandler {
-                override fun handleConnection(conn: Connection) {
-                    logger.info("Inbound connection: $conn")
-                    serverConnections += conn
-                }
-            }
-
-            tcpTransportServer.listen(
-                Multiaddr("/ip4/0.0.0.0/tcp/20000"),
-                connHandler
-            ).get(5, SECONDS)
-            logger.info("Server is listening")
-
-            val tcpTransportClient = TcpTransport(upgrader)
-
-            val dialFutures = mutableListOf<CompletableFuture<Connection>>()
-            for (i in 0..50) {
-                logger.info("Connecting #$i")
-                dialFutures +=
-                    tcpTransportClient.dial(Multiaddr("/ip4/127.0.0.1/tcp/20000"), ConnectionHandler.create { })
-                dialFutures.last().whenComplete { t, u -> logger.info("Connected #$i: $t ($u)") }
-            }
-            logger.info("Active channels: ${tcpTransportClient.activeChannels.size}")
-
-            CompletableFuture.anyOf(*dialFutures.toTypedArray()).get(5, SECONDS)
-            logger.info("The first negotiation succeeded. Closing now...")
-
-            tcpTransportClient.close().get(5, SECONDS)
-            logger.info("Client transport closed")
-            tcpTransportServer.close().get(5, SECONDS)
-            logger.info("Server transport closed")
-
-            // checking that all dial futures are complete (successfully or not)
-            val dialCompletions = dialFutures.map { it.handle { t, u -> t to u } }
-            CompletableFuture.allOf(*dialCompletions.toTypedArray()).get(5, SECONDS)
         }
     }
 }
