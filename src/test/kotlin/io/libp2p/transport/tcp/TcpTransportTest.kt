@@ -127,11 +127,12 @@ class TcpTransportTest {
             waitOn(
                 bindListeners(tcpTransport, listeners)
             )
-            assertEquals(listeners, tcpTransport.activeListeners.size)
+            val openedListeners = tcpTransport.activeListeners.size
 
             waitOn(
                 unbindListeners(tcpTransport, listeners)
             )
+            assertEquals(listeners, openedListeners)
             assertEquals(0, tcpTransport.activeListeners.size)
         }
 
@@ -143,11 +144,12 @@ class TcpTransportTest {
             waitOn(
                 bindListeners(tcpTransport, listeners)
             )
-            assertEquals(listeners, tcpTransport.activeListeners.size)
+            val openedListeners = tcpTransport.activeListeners.size
 
             waitOn(
                 tcpTransport.close()
             )
+            assertEquals(listeners, openedListeners)
             assertEquals(0, tcpTransport.activeListeners.size)
         }
 
@@ -159,10 +161,6 @@ class TcpTransportTest {
 
             assertThrows(Libp2pException::class.java) {
                 bindListeners(tcpTransport)
-
-                // shouldn't reach this, but clean ups
-                // in the event the listen doesn't throw
-                unbindListeners(tcpTransport)
             }
         }
     }
@@ -188,30 +186,28 @@ class TcpTransportTest {
                 listOf(SecIoSecureChannel(privKey1)),
                 listOf(MplexStreamMuxer())
             )
+            var establishedConnections = 0
+            var outgoingConnections = 0
+            val connectionsToDial = 1
 
             val tcpListener = TcpTransport(upgrader)
             val tcpClient = TcpTransport(upgrader)
             try {
-                var incomingConnections = 0
                 val handler = ConnectionHandler.create {
-                    ++incomingConnections
-                    logger.info("Inbound connection: $incomingConnections")
+                    ++establishedConnections
+                    logger.info("Inbound connection: $establishedConnections")
                 }
                 waitOn(
                     bindListeners(tcpListener, connectionHandler = handler)
                 )
                 logger.info("Server is listening")
 
-                val connectionsToDial = 1
                 val connections = dial(tcpClient, connectionsToDial)
-                val outgoingConnections = tcpClient.activeChannels.size
+                outgoingConnections = tcpClient.activeChannels.size
                 waitOn(
                     connections
                 )
                 logger.info("Negotiation succeeded.")
-
-                assertEquals(connectionsToDial, outgoingConnections)
-                assertEquals(connectionsToDial, incomingConnections)
             } finally {
                 waitOn(
                     tcpClient.close()
@@ -222,6 +218,10 @@ class TcpTransportTest {
                 )
                 logger.info("Server transport closed")
             }
+
+            assertEquals(connectionsToDial, outgoingConnections)
+            assertEquals(connectionsToDial, establishedConnections)
+            assertEquals(0, tcpClient.activeChannels.size)
         }
 
         @Test
