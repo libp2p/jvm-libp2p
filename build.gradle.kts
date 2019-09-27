@@ -87,9 +87,10 @@ tasks.test {
         events("PASSED", "FAILED", "SKIPPED")
     }
 
+    // disabling the parallel test runs for the time being due to port collisions
     // If GRADLE_MAX_TEST_FORKS is not set, use half the available processors
-    maxParallelForks = (System.getenv("GRADLE_MAX_TEST_FORKS")?.toInt() ?:
-    Runtime.getRuntime().availableProcessors().div(2))
+//    maxParallelForks = (System.getenv("GRADLE_MAX_TEST_FORKS")?.toInt() ?:
+//    Runtime.getRuntime().availableProcessors().div(2))
 }
 
 kotlinter {
