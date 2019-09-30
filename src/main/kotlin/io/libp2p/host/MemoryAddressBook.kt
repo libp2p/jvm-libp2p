@@ -19,9 +19,9 @@ class MemoryAddressBook : AddressBook {
         return CompletableFuture.completedFuture(null)
     }
 
-    override fun addAddrs(id: PeerId, ttl: Long, vararg newAddrs: Multiaddr): CompletableFuture<Void> {
-        map.compute(id) { _, addrs ->
-            (addrs ?: emptyList()) + listOf(*newAddrs)
+    override fun addAddrs(id: PeerId, ttl: Long, vararg addrs: Multiaddr): CompletableFuture<Void> {
+        map.compute(id) { _, existingAddrs ->
+            (existingAddrs ?: emptyList()) + listOf(*addrs)
         }
         return CompletableFuture.completedFuture(null)
     }
