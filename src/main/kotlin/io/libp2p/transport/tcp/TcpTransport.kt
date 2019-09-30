@@ -2,7 +2,6 @@ package io.libp2p.transport.tcp
 
 import io.libp2p.core.Connection
 import io.libp2p.core.ConnectionHandler
-import io.libp2p.core.InternalErrorException
 import io.libp2p.core.Libp2pException
 import io.libp2p.core.PeerId
 import io.libp2p.core.multiformats.Multiaddr
@@ -29,8 +28,6 @@ import io.netty.channel.ChannelOption
 import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.nio.NioServerSocketChannel
 import io.netty.channel.socket.nio.NioSocketChannel
-import java.net.Inet4Address
-import java.net.Inet6Address
 import java.net.InetSocketAddress
 import java.time.Duration
 import java.util.concurrent.CompletableFuture
@@ -147,12 +144,6 @@ class TcpTransport(
         return ch
     }
 
-    override fun remoteAddress(connection: Connection): Multiaddr =
-        toMultiaddr(connection.nettyChannel.remoteAddress() as InetSocketAddress)
-
-    override fun localAddress(connection: Connection): Multiaddr =
-        toMultiaddr(connection.nettyChannel.localAddress() as InetSocketAddress)
-
     private fun createConnectionHandler(
         connHandler: ConnectionHandler,
         initiator: Boolean,
@@ -173,18 +164,6 @@ class TcpTransport(
                 }
                 .forward(connFuture)
         } to connFuture
-    }
-
-    private fun toMultiaddr(addr: InetSocketAddress): Multiaddr {
-        val proto = when (addr.address) {
-            is Inet4Address -> IP4
-            is Inet6Address -> IP6
-            else -> throw InternalErrorException("Unknow address type $addr")
-        }
-        return Multiaddr(listOf(
-            proto to proto.addressToBytes(addr.address.hostAddress),
-            TCP to TCP.addressToBytes(addr.port.toString())
-        ))
     }
 
     private fun fromMultiaddr(addr: Multiaddr): InetSocketAddress {
