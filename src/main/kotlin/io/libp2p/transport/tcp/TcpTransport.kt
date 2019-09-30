@@ -11,15 +11,20 @@ import io.libp2p.core.multiformats.Protocol.DNSADDR
 import io.libp2p.core.multiformats.Protocol.IP4
 import io.libp2p.core.multiformats.Protocol.IP6
 import io.libp2p.core.multiformats.Protocol.TCP
+import io.libp2p.core.transport.Transport
+import io.libp2p.etc.CONNECTION
+import io.libp2p.etc.IS_INITIATOR
+import io.libp2p.etc.TRANSPORT
+import io.libp2p.etc.types.forward
 import io.libp2p.etc.types.lazyVar
 import io.libp2p.etc.types.toCompletableFuture
 import io.libp2p.etc.types.toVoidCompletableFuture
 import io.libp2p.etc.util.netty.nettyInitializer
-import io.libp2p.transport.AbstractTransport
 import io.libp2p.transport.ConnectionUpgrader
 import io.netty.bootstrap.Bootstrap
 import io.netty.bootstrap.ServerBootstrap
 import io.netty.channel.Channel
+import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelOption
 import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.nio.NioServerSocketChannel
@@ -37,8 +42,8 @@ import java.util.concurrent.CompletableFuture
  * shim those capabilities via dynamic negotiation.
  */
 class TcpTransport(
-    upgrader: ConnectionUpgrader
-) : AbstractTransport(upgrader) {
+    val upgrader: ConnectionUpgrader
+) : Transport {
 
     var workerGroup by lazyVar { NioEventLoopGroup() }
     var bossGroup by lazyVar { workerGroup }
@@ -147,6 +152,28 @@ class TcpTransport(
 
     override fun localAddress(connection: Connection): Multiaddr =
         toMultiaddr(connection.nettyChannel.localAddress() as InetSocketAddress)
+
+    private fun createConnectionHandler(
+        connHandler: ConnectionHandler,
+        initiator: Boolean,
+        remotePeerId: PeerId? = null
+    ): Pair<ChannelHandler, CompletableFuture<Connection>> {
+        val connFuture = CompletableFuture<Connection>()
+        return nettyInitializer { ch ->
+            val connection = Connection(ch)
+            ch.attr(IS_INITIATOR).set(initiator)
+            ch.attr(CONNECTION).set(connection)
+            ch.attr(TRANSPORT).set(this)
+            upgrader.establishSecureChannel(ch, remotePeerId)
+                .thenCompose {
+                    upgrader.establishMuxer(ch)
+                }.thenApply {
+                    connHandler.handleConnection(connection)
+                    connection
+                }
+                .forward(connFuture)
+        } to connFuture
+    }
 
     private fun toMultiaddr(addr: InetSocketAddress): Multiaddr {
         val proto = when (addr.address) {
