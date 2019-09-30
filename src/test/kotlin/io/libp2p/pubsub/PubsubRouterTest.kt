@@ -64,7 +64,7 @@ class PubsubRouterTest {
         val router2 = fuzz.createTestRouter(routerFactory())
         val router3 = fuzz.createTestRouter(routerFactory())
 
-//        val conn_1_2 = router1.connectSemiDuplex(router2, pubsubLogs = LogLevel.ERROR)
+        val conn_1_2 = router1.connectSemiDuplex(router2, pubsubLogs = LogLevel.ERROR)
         val conn_2_3 = router2.connectSemiDuplex(router3, pubsubLogs = LogLevel.ERROR)
 
         listOf(router1, router2, router3).forEach { it.router.subscribe("topic1", "topic2", "topic3") }
@@ -111,6 +111,8 @@ class PubsubRouterTest {
         Assertions.assertTrue(router1.inboundMessages.isEmpty())
         Assertions.assertTrue(router2.inboundMessages.isEmpty())
         Assertions.assertTrue(router3.inboundMessages.isEmpty())
+
+        conn_1_2.disconnect()
     }
 
     @Test
