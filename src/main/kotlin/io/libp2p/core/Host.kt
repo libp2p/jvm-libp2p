@@ -3,7 +3,6 @@ package io.libp2p.core
 import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multistream.ProtocolBinding
-import io.libp2p.network.NetworkImpl
 import java.util.concurrent.CompletableFuture
 
 /**
@@ -22,7 +21,7 @@ interface Host {
     /**
      * [Network] implementation
      */
-    val network: NetworkImpl
+    val network: Network
     /**
      * [AddressBook] implementation
      */
