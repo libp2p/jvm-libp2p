@@ -4,6 +4,7 @@ import io.libp2p.core.AddressBook
 import io.libp2p.core.Connection
 import io.libp2p.core.ConnectionHandler
 import io.libp2p.core.Host
+import io.libp2p.core.Network
 import io.libp2p.core.NoSuchLocalProtocolException
 import io.libp2p.core.PeerId
 import io.libp2p.core.Stream
@@ -13,13 +14,12 @@ import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multistream.Multistream
 import io.libp2p.core.multistream.ProtocolBinding
-import io.libp2p.network.NetworkImpl
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CopyOnWriteArrayList
 
 class HostImpl(
     override val privKey: PrivKey,
-    override val network: NetworkImpl,
+    override val network: Network,
     override val addressBook: AddressBook,
     private val listenAddrs: List<Multiaddr>,
     private val protocolHandlers: Multistream<Any>,
