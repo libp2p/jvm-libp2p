@@ -76,7 +76,7 @@ class HostImpl(
     override fun <TController> newStream(protocol: String, peer: PeerId, vararg addr: Multiaddr): StreamPromise<TController> {
         val retF = network.connect(peer, *addr)
             .thenApply { newStream<TController>(protocol, it) }
-        return StreamPromise(retF.thenCompose { it.stream }, retF.thenCompose { it.controler })
+        return StreamPromise(retF.thenCompose { it.stream }, retF.thenCompose { it.controller })
     }
 
     override fun <TController> newStream(protocol: String, conn: Connection): StreamPromise<TController> {
