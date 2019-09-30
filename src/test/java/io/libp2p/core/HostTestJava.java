@@ -61,7 +61,7 @@ class HostTestJava {
                 .get(5, TimeUnit.SECONDS);
         Stream pingStream = ping.getStream().get(5, TimeUnit.SECONDS);
         System.out.println("Ping stream created");
-        PingController pingCtr = ping.getControler().get(5, TimeUnit.SECONDS);
+        PingController pingCtr = ping.getController().get(5, TimeUnit.SECONDS);
         System.out.println("Ping controller created");
 
         for (int i = 0; i < 10; i++) {

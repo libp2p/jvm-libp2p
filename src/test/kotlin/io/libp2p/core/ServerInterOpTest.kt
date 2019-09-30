@@ -125,7 +125,7 @@ abstract class ServerInterOpTest(
             serverMultiAddress
         )
         assertThrows(NoSuchProtocolException::class.java) { badProtocol.stream.getX(5.0) }
-        assertThrows(NoSuchProtocolException::class.java) { badProtocol.controler.getX(5.0) }
+        assertThrows(NoSuchProtocolException::class.java) { badProtocol.controller.getX(5.0) }
     }
 
     @Test
@@ -137,7 +137,7 @@ abstract class ServerInterOpTest(
         )
         val pingStream = ping.stream.get(5, TimeUnit.SECONDS)
         println("Ping stream created")
-        val pingCtr = ping.controler.get(10, TimeUnit.SECONDS)
+        val pingCtr = ping.controller.get(10, TimeUnit.SECONDS)
         println("Ping controller created")
 
         for (i in 1..10) {
