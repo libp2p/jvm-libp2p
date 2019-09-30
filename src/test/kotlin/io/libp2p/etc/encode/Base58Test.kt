@@ -25,8 +25,8 @@ class Base58Test {
     fun `Base58 circular encoding - decoding works`(
         @Suppress("UNUSED_PARAMETER")name: String,
         bytes: ByteArray,
-        encoded: String)
-    {
+        encoded: String
+    ) {
         val (enc, dec) = Pair(Base58.encode(bytes), Base58.decode(encoded))
         assertArrayEquals(bytes, dec, "expected decoded value to parameter")
         assertEquals(encoded, enc, "expected encoded value to match parameter")
