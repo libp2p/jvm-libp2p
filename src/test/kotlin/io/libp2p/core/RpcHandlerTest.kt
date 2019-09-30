@@ -158,7 +158,7 @@ class RpcHandlerTest {
 
         run {
             val ctr = host1.newStream<OpController>(protoPrefix + protoAdd, host2.peerId, Multiaddr("/ip4/127.0.0.1/tcp/40002"))
-                .controler.get(5, TimeUnit.SECONDS)
+                .controller.get(5, TimeUnit.SECONDS)
             println("Controller created")
             val res = ctr.calculate(100, 10).get(5, TimeUnit.SECONDS)
             println("Calculated plus: $res")
@@ -179,7 +179,7 @@ class RpcHandlerTest {
 
         run {
             val ctr = host1.newStream<OpController>(protoPrefix + protoMul, host2.peerId, Multiaddr("/ip4/127.0.0.1/tcp/40002"))
-                .controler.get(5, TimeUnit.SECONDS)
+                .controller.get(5, TimeUnit.SECONDS)
             println("Controller created")
             val res = ctr.calculate(100, 10).get(5, TimeUnit.SECONDS)
             println("Calculated mul: $res")

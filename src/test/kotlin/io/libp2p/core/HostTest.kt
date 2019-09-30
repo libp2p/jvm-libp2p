@@ -74,7 +74,7 @@ class HostTest {
         // invalid protocol name
         val streamPromise1 = host1.newStream<PingController>("/__no_such_protocol/1.0.0", host2.peerId, Multiaddr("/ip4/127.0.0.1/tcp/40002"))
         Assertions.assertThrows(NoSuchProtocolException::class.java) { streamPromise1.stream.getX(5.0) }
-        Assertions.assertThrows(NoSuchProtocolException::class.java) { streamPromise1.controler.getX(5.0) }
+        Assertions.assertThrows(NoSuchProtocolException::class.java) { streamPromise1.controller.getX(5.0) }
 
         // remote party doesn't support the protocol
         val streamPromise2 = host1.newStream<PingController>("/ipfs/id/1.0.0", host2.peerId, Multiaddr("/ip4/127.0.0.1/tcp/40002"))
@@ -82,12 +82,12 @@ class HostTest {
         streamPromise2.stream.get()
         println("Stream created")
         // ... though protocol controller should fail
-        Assertions.assertThrows(NoSuchProtocolException::class.java) { streamPromise2.controler.getX() }
+        Assertions.assertThrows(NoSuchProtocolException::class.java) { streamPromise2.controller.getX() }
 
         val ping = host1.newStream<PingController>("/ipfs/ping/1.0.0", host2.peerId, Multiaddr("/ip4/127.0.0.1/tcp/40002"))
         val pingStream = ping.stream.get(5, TimeUnit.SECONDS)
         println("Ping stream created")
-        val pingCtr = ping.controler.get(5, TimeUnit.SECONDS)
+        val pingCtr = ping.controller.get(5, TimeUnit.SECONDS)
         println("Ping controller created")
 
         for (i in 1..10) {
