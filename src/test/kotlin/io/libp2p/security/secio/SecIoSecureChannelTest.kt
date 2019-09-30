@@ -37,8 +37,8 @@ class SecIoSecureChannelTest {
 
     @Test
     fun test1() {
-        val (privKey1, pubKey1) = generateKeyPair(KEY_TYPE.ECDSA)
-        val (privKey2, pubKey2) = generateKeyPair(KEY_TYPE.ECDSA)
+        val (privKey1, _) = generateKeyPair(KEY_TYPE.ECDSA)
+        val (privKey2, _) = generateKeyPair(KEY_TYPE.ECDSA)
 
         var rec1: String? = null
         var rec2: String? = null
