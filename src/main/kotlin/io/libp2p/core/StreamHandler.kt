@@ -20,7 +20,7 @@ data class StreamPromise<T>(
 )
 
 /**
- * The same as [P2PAbstractHandler] with the [Stream] specialized [P2PChannel]
+ * The same as [P2PChannelHandler] with the [Stream] specialized [P2PChannel]
  */
 interface StreamHandler<out TController> {
 
@@ -35,7 +35,7 @@ interface StreamHandler<out TController> {
             }
         }
 
-        fun <T> create(channelHandler: P2PAbstractHandler<T>) = object : StreamHandler<T> {
+        fun <T> create(channelHandler: P2PChannelHandler<T>) = object : StreamHandler<T> {
             override fun handleStream(stream: Stream): CompletableFuture<out T> {
                 return channelHandler.initChannel(stream)
             }

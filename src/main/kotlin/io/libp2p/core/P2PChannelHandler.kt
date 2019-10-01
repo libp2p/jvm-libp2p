@@ -5,7 +5,7 @@ import java.util.concurrent.CompletableFuture
 /**
  * The central entry point for every protocol which is responsible for initializing [P2PChannel]
  */
-interface P2PAbstractHandler<out TController> {
+interface P2PChannelHandler<out TController> {
 
     /**
      * Should initialize the underlying Netty [io.netty.channel.Channel] **synchronously**

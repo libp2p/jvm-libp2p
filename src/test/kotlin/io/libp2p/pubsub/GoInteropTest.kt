@@ -2,7 +2,7 @@ package io.libp2p.pubsub
 
 import io.libp2p.core.ConnectionHandler
 import io.libp2p.core.P2PChannel
-import io.libp2p.core.P2PAbstractHandler
+import io.libp2p.core.P2PChannelHandler
 import io.libp2p.core.PeerId
 import io.libp2p.core.Stream
 import io.libp2p.core.StreamHandler
@@ -52,7 +52,7 @@ import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 import java.util.function.Consumer
 
-class GossipProtocol(val router: PubsubRouterDebug) : P2PAbstractHandler<Unit> {
+class GossipProtocol(val router: PubsubRouterDebug) : P2PChannelHandler<Unit> {
     var debugGossipHandler: ChannelHandler? = null
 
     override fun initChannel(ch: P2PChannel): CompletableFuture<out Unit> {
