@@ -39,14 +39,7 @@ abstract class P2PAbstractChannel(protected val nettyChannel: Channel) {
         nettyChannel.writeAndFlush(msg)
     }
 
-    /**
-     * Closes the channel. Returns a [CompletableFuture] which completes when the
-     * channel has closed
-     */
     fun close() = nettyChannel.close().toVoidCompletableFuture()
 
-    /**
-     * Returns the [CompletableFuture] which is completed when this channel is closed
-     */
     fun closeFuture() = nettyChannel.closeFuture().toVoidCompletableFuture()
 }
