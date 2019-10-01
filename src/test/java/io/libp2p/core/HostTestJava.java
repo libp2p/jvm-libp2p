@@ -68,7 +68,7 @@ class HostTestJava {
             long latency = pingCtr.ping().get(1, TimeUnit.SECONDS);
             System.out.println("Ping is " + latency);
         }
-        pingStream.getNettyChannel().close().await(5, TimeUnit.SECONDS);
+        pingStream.close().get(5, TimeUnit.SECONDS);
         System.out.println("Ping stream closed");
 
         Assertions.assertThrows(ExecutionException.class, () ->

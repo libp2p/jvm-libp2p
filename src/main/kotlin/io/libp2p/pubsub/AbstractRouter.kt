@@ -112,18 +112,18 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
     }
 
     override fun initChannel(streamHandler: StreamHandler) {
-        with(streamHandler.stream.nettyChannel.pipeline()) {
-            addLast(ProtobufVarint32FrameDecoder())
-            addLast(ProtobufVarint32LengthFieldPrepender())
-            addLast(ProtobufDecoder(Rpc.RPC.getDefaultInstance()))
-            addLast(ProtobufEncoder())
-            debugHandler?.also { addLast(it) }
-            addLast(streamHandler)
+        with(streamHandler.stream) {
+            pushHandler(ProtobufVarint32FrameDecoder())
+            pushHandler(ProtobufVarint32LengthFieldPrepender())
+            pushHandler(ProtobufDecoder(Rpc.RPC.getDefaultInstance()))
+            pushHandler(ProtobufEncoder())
+            debugHandler?.also { pushHandler(it) }
+            pushHandler(streamHandler)
         }
     }
 
     override fun removePeer(peer: Stream) {
-        peer.nettyChannel.close()
+        peer.close()
     }
 
     /**
