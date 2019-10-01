@@ -1,7 +1,7 @@
 package io.libp2p.etc
 
 import io.libp2p.core.ConnectionClosedException
-import io.libp2p.core.P2PAbstractChannel
+import io.libp2p.core.P2PChannel
 import io.libp2p.core.P2PAbstractHandler
 import io.libp2p.core.Stream
 import io.libp2p.core.multistream.ProtocolBinding
@@ -55,7 +55,7 @@ class SimpleClientProtocol<TController : SimpleClientHandler>(
     val handlerCtor: () -> TController
 ) : P2PAbstractHandler<TController> {
 
-    override fun initChannel(ch: P2PAbstractChannel): CompletableFuture<TController> {
+    override fun initChannel(ch: P2PChannel): CompletableFuture<TController> {
         val handler = handlerCtor()
         handler.initStream(ch as Stream)
         ch.pushHandler(handler)

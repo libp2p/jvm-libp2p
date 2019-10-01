@@ -33,7 +33,7 @@ const val protoMul = "/mul"
 class RpcProtocol(override val announce: String = "NOP") : ProtocolBinding<OpController> {
     override val matcher = ProtocolMatcher(Mode.PREFIX, protoPrefix)
 
-    override fun initChannel(ch: P2PAbstractChannel, selectedProtocol: String): CompletableFuture<out OpController> {
+    override fun initChannel(ch: P2PChannel, selectedProtocol: String): CompletableFuture<out OpController> {
         val ret = CompletableFuture<OpController>()
         val handler = if (ch.isInitiator) {
             OpClientHandler(ch as Stream, ret)

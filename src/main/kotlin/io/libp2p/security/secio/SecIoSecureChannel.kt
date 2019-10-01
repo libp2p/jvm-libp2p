@@ -1,7 +1,7 @@
 package io.libp2p.security.secio
 
 import io.libp2p.core.ConnectionClosedException
-import io.libp2p.core.P2PAbstractChannel
+import io.libp2p.core.P2PChannel
 import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.crypto.PubKey
@@ -33,7 +33,7 @@ class SecIoSecureChannel(val localKey: PrivKey) :
     override val matcher =
         ProtocolMatcher(Mode.STRICT, name = "/secio/1.0.0")
 
-    override fun initChannel(ch: P2PAbstractChannel, selectedProtocol: String): CompletableFuture<SecureChannel.Session> {
+    override fun initChannel(ch: P2PChannel, selectedProtocol: String): CompletableFuture<SecureChannel.Session> {
         val ret = CompletableFuture<SecureChannel.Session>()
         val resultHandler = object : ChannelInboundHandlerAdapter() {
             override fun userEventTriggered(ctx: ChannelHandlerContext, evt: Any) {

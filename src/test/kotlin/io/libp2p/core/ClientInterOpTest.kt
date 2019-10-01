@@ -101,12 +101,12 @@ abstract class ClientInterOpTest(
 class CountingPingProtocol : PingProtocol() {
     var pingsReceived: Int = 0
 
-    override fun initChannel(ch: P2PAbstractChannel): CompletableFuture<PingController> {
+    override fun initChannel(ch: P2PChannel): CompletableFuture<PingController> {
         return if (ch.isInitiator) {
             super.initChannel(ch)
         } else {
             val handler = CountingPingResponderChannelHandler()
-            ch.nettyChannel.pipeline().addLast(handler)
+            ch.pushHandler(handler)
             CompletableFuture.completedFuture(handler)
         }
     }

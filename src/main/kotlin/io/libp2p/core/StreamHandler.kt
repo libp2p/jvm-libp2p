@@ -20,7 +20,7 @@ data class StreamPromise<T>(
 )
 
 /**
- * The same as [P2PAbstractHandler] with the [Stream] specialized [P2PAbstractChannel]
+ * The same as [P2PAbstractHandler] with the [Stream] specialized [P2PChannel]
  */
 interface StreamHandler<out TController> {
 
