@@ -3,6 +3,7 @@ package io.libp2p.core
 import io.libp2p.etc.IS_INITIATOR
 import io.libp2p.etc.types.toVoidCompletableFuture
 import io.netty.channel.Channel
+import io.netty.channel.ChannelHandler
 
 /**
  * The central class of the library which represents a channel where all communication
@@ -12,7 +13,7 @@ import io.netty.channel.Channel
  *
  * @param nettyChannel the underlying Netty channel
  */
-abstract class P2PAbstractChannel(val nettyChannel: Channel) {
+abstract class P2PAbstractChannel(protected val nettyChannel: Channel) {
 
     /**
      * Indicates whether this peer is ether _initiator_ or _responder_ of the underlying channel
@@ -22,6 +23,38 @@ abstract class P2PAbstractChannel(val nettyChannel: Channel) {
     val isInitiator by lazy {
         nettyChannel.attr(IS_INITIATOR)?.get() ?: throw InternalErrorException("Internal error: missing channel attribute IS_INITIATOR")
     }
+
+    /**
+     * Inserts [ChannelHandler]s at the last position of this pipeline.
+     */
+    fun pushHandler(vararg handlers: ChannelHandler) {
+        nettyChannel.pipeline().addLast(*handlers)
+    }
+
+    /**
+     * Appends a [ChannelHandler] at the last position of this pipeline.
+     */
+    fun pushHandler(name: String, handler: ChannelHandler) {
+        nettyChannel.pipeline().addLast(name, handler)
+    }
+
+    /**
+     * Inserts a [ChannelHandler] before an existing handler of this
+     * pipeline.
+     */
+    fun addHandlerBefore(baseName: String, name: String, handler: ChannelHandler) {
+        nettyChannel.pipeline().addBefore(baseName, name, handler)
+    }
+
+    fun writeAndFlush(msg: Any) {
+        nettyChannel.writeAndFlush(msg)
+    }
+
+    /**
+     * Closes the channel. Returns a [CompletableFuture] which completes when the
+     * channel has closed
+     */
+    fun close() = nettyChannel.close().toVoidCompletableFuture()
 
     /**
      * Returns the [CompletableFuture] which is completed when this channel is closed

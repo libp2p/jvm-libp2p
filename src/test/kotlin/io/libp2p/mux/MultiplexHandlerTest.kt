@@ -135,7 +135,7 @@ class MultiplexHandlerTest {
 
     fun createStreamHandler(channelInitializer: ChannelHandler) = object : StreamHandler<Unit> {
         override fun handleStream(stream: Stream): CompletableFuture<out Unit> {
-            stream.nettyChannel.pipeline().addLast(channelInitializer)
+            stream.pushHandler(channelInitializer)
             return CompletableFuture.completedFuture(Unit)
         }
     }

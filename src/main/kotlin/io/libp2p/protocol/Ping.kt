@@ -51,11 +51,11 @@ class PingProtocol : P2PAbstractHandler<PingController> {
     override fun initChannel(ch: P2PAbstractChannel): CompletableFuture<PingController> {
         return if (ch.isInitiator) {
             val handler = PingInitiatorChannelHandler()
-            ch.nettyChannel.pipeline().addLast(handler)
+            ch.pushHandler(handler)
             handler.activeFuture.thenApply { handler }
         } else {
             val handler = PingResponderChannelHandler()
-            ch.nettyChannel.pipeline().addLast(handler)
+            ch.pushHandler(handler)
             CompletableFuture.completedFuture(handler)
         }
     }
