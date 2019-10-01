@@ -1,6 +1,6 @@
 package io.libp2p.pubsub
 
-import io.libp2p.core.Connection
+import io.libp2p.core.ConnectionOverNetty
 import io.libp2p.core.StreamOverNetty
 import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.KEY_TYPE
@@ -63,7 +63,7 @@ class TestRouter(val name: String = "" + cnt.getAndIncrement()) {
                 )
             )
         })
-        val connection = Connection(parentChannel)
+        val connection = ConnectionOverNetty(parentChannel)
 
         return TestChannel(
             channelName,
