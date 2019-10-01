@@ -7,7 +7,7 @@ import java.util.concurrent.CompletableFuture
 /**
  * Represents a multiplexed stream over wire connection
  */
-class Stream(ch: Channel, val conn: Connection) : P2PAbstractChannel(ch) {
+class Stream(ch: Channel, val conn: Connection) : P2PAbstractChannel(ch), P2PChannel {
 
     init {
         nettyChannel.attr(PROTOCOL).set(CompletableFuture())
