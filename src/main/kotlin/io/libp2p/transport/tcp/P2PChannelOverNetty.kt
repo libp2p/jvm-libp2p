@@ -1,5 +1,6 @@
-package io.libp2p.core
+package io.libp2p.transport.tcp
 
+import io.libp2p.core.InternalErrorException
 import io.libp2p.etc.IS_INITIATOR
 import io.libp2p.etc.types.toVoidCompletableFuture
 import io.netty.channel.Channel
@@ -13,7 +14,7 @@ import io.netty.channel.ChannelHandler
  *
  * @param nettyChannel the underlying Netty channel
  */
-abstract class P2PAbstractChannel(protected val nettyChannel: Channel) {
+abstract class P2PChannelOverNetty(protected val nettyChannel: Channel) {
 
     /**
      * Indicates whether this peer is ether _initiator_ or _responder_ of the underlying channel
