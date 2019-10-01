@@ -15,7 +15,7 @@ import java.net.InetSocketAddress
  *
  * It exposes libp2p components and semantics via methods and properties.
  */
-class Connection(ch: Channel) : P2PAbstractChannel(ch) {
+class Connection(ch: Channel) : P2PAbstractChannel(ch), P2PChannel {
     /**
      * Returns the [io.libp2p.core.mux.StreamMuxer.Session] which is capable of creating
      * new [Stream]s
