@@ -2,7 +2,6 @@ package io.libp2p.transport.tcp
 
 import io.libp2p.core.Connection
 import io.libp2p.core.ConnectionHandler
-import io.libp2p.core.ConnectionOverNetty
 import io.libp2p.core.PeerId
 import io.libp2p.core.Libp2pException
 import io.libp2p.core.multiformats.Multiaddr
