@@ -1,12 +1,9 @@
 package io.libp2p.transport
 
-import io.libp2p.core.PeerId
+import io.libp2p.core.Connection
 import io.libp2p.core.multistream.Multistream
 import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.core.security.SecureChannel
-import io.libp2p.etc.REMOTE_PEER_ID
-import io.libp2p.etc.getP2PChannel
-import io.netty.channel.Channel
 import io.netty.channel.ChannelHandler
 import java.util.concurrent.CompletableFuture
 
@@ -18,24 +15,21 @@ class ConnectionUpgrader(
     private val secureChannels: List<SecureChannel>,
     private val muxers: List<StreamMuxer>
 ) {
-
     var beforeSecureHandler: ChannelHandler? = null
     var afterSecureHandler: ChannelHandler? = null
 
-    fun establishSecureChannel(ch: Channel, remotePeerId: PeerId?): CompletableFuture<SecureChannel.Session> {
-        remotePeerId?.also { ch.attr(REMOTE_PEER_ID).set(it) }
+    fun establishSecureChannel(connection: Connection): CompletableFuture<SecureChannel.Session> {
         val multistream = Multistream.create(secureChannels)
-        beforeSecureHandler?.also { ch.pipeline().addLast(it) }
-        return multistream.initChannel(ch.getP2PChannel())
+        beforeSecureHandler?.also { connection.pushHandler(it) }
+        return multistream.initChannel(connection)
             .thenApply {
-                afterSecureHandler?.also { ch.pipeline().addLast(it) }
+                afterSecureHandler?.also { connection.pushHandler(it) }
                 it
             }
     }
 
-    fun establishMuxer(ch: Channel): CompletableFuture<StreamMuxer.Session> {
-
+    fun establishMuxer(connection: Connection): CompletableFuture<StreamMuxer.Session> {
         val multistream = Multistream.create(muxers)
-        return multistream.initChannel(ch.getP2PChannel())
+        return multistream.initChannel(connection)
     }
 }
