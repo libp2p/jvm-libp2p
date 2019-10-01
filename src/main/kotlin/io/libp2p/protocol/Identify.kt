@@ -44,7 +44,7 @@ class IdentifyProtocol(var idMessage: IdentifyOuterClass.Identify? = null) : P2P
         val handler: Handler = if (ch.isInitiator) {
             IdentifyRequesterChannelHandler()
         } else {
-            IdentifyResponderChannelHandler((ch as Stream).conn.remoteAddress())
+            IdentifyResponderChannelHandler((ch as Stream).connection.remoteAddress())
         }
 
         with(ch) {
