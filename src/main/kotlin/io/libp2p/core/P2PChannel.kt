@@ -1,6 +1,7 @@
 package io.libp2p.core
 
 import io.netty.channel.ChannelHandler
+import java.util.concurrent.CompletableFuture
 
 interface P2PChannel {
     val isInitiator: Boolean
@@ -20,4 +21,15 @@ interface P2PChannel {
      * pipeline.
      */
     fun addHandlerBefore(baseName: String, name: String, handler: ChannelHandler)
+
+    /**
+     * Closes the channel. Returns a [CompletableFuture] which completes when the
+     * channel has closed
+     */
+    fun close(): CompletableFuture<Unit>
+
+    /**
+     * Returns the [CompletableFuture] which is completed when this channel is closed
+     */
+    fun closeFuture(): CompletableFuture<Unit>
 }
