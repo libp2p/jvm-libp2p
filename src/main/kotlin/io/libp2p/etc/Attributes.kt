@@ -1,6 +1,7 @@
 package io.libp2p.etc
 
 import io.libp2p.core.Connection
+import io.libp2p.core.P2PChannel
 import io.libp2p.core.PeerId
 import io.libp2p.core.Stream
 import io.libp2p.core.mux.StreamMuxer
@@ -19,4 +20,4 @@ val PROTOCOL = AttributeKey.newInstance<CompletableFuture<String>>("LIBP2P_PROTO
 val REMOTE_PEER_ID = AttributeKey.newInstance<PeerId>("LIBP2P_REMOTE_PEER_ID")!!
 val TRANSPORT = AttributeKey.newInstance<Transport>("LIBP2P_TRANSPORT")!!
 
-fun Channel.getP2PChannel() = if (hasAttr(CONNECTION)) attr(CONNECTION).get() else attr(STREAM).get()
+fun Channel.getP2PChannel(): P2PChannel = if (hasAttr(CONNECTION)) attr(CONNECTION).get() else attr(STREAM).get()
