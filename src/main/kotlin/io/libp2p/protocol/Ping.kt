@@ -4,7 +4,7 @@ import io.libp2p.core.BadPeerException
 import io.libp2p.core.ConnectionClosedException
 import io.libp2p.core.Libp2pException
 import io.libp2p.core.P2PChannel
-import io.libp2p.core.P2PAbstractHandler
+import io.libp2p.core.P2PChannelHandler
 import io.libp2p.core.multistream.Mode
 import io.libp2p.core.multistream.ProtocolBinding
 import io.libp2p.core.multistream.ProtocolMatcher
@@ -41,7 +41,7 @@ open class PingBinding(val ping: PingProtocol) : ProtocolBinding<PingController>
 
 class PingTimeoutException : Libp2pException()
 
-open class PingProtocol : P2PAbstractHandler<PingController> {
+open class PingProtocol : P2PChannelHandler<PingController> {
     var scheduler by lazyVar { Executors.newSingleThreadScheduledExecutor() }
     var curTime: () -> Long = { System.currentTimeMillis() }
     var random = Random()

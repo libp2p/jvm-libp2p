@@ -4,7 +4,7 @@ import identify.pb.IdentifyOuterClass
 import io.libp2p.core.ConnectionClosedException
 import io.libp2p.core.Libp2pException
 import io.libp2p.core.P2PChannel
-import io.libp2p.core.P2PAbstractHandler
+import io.libp2p.core.P2PChannelHandler
 import io.libp2p.core.Stream
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multistream.Mode
@@ -38,7 +38,7 @@ open class IdentifyBinding(val protocol: IdentifyProtocol) : ProtocolBinding<Ide
     }
 }
 
-class IdentifyProtocol(var idMessage: IdentifyOuterClass.Identify? = null) : P2PAbstractHandler<IdentifyController> {
+class IdentifyProtocol(var idMessage: IdentifyOuterClass.Identify? = null) : P2PChannelHandler<IdentifyController> {
 
     override fun initChannel(ch: P2PChannel): CompletableFuture<IdentifyController> {
         val handler: Handler = if (ch.isInitiator) {
