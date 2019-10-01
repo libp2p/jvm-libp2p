@@ -12,6 +12,7 @@ import io.libp2p.core.multiformats.Protocol.IP6
 import io.libp2p.core.multiformats.Protocol.TCP
 import io.libp2p.core.transport.Transport
 import io.libp2p.etc.CONNECTION
+import io.libp2p.etc.REMOTE_PEER_ID
 import io.libp2p.etc.TRANSPORT
 import io.libp2p.etc.types.forward
 import io.libp2p.etc.types.lazyVar
@@ -153,9 +154,10 @@ class TcpTransport(
             val connection = ConnectionOverNetty(ch, initiator)
             ch.attr(CONNECTION).set(connection)
             ch.attr(TRANSPORT).set(this)
-            upgrader.establishSecureChannel(ch, remotePeerId)
+            remotePeerId?.also { ch.attr(REMOTE_PEER_ID).set(it) }
+            upgrader.establishSecureChannel(connection)
                 .thenCompose {
-                    upgrader.establishMuxer(ch)
+                    upgrader.establishMuxer(connection)
                 }.thenApply {
                     connHandler.handleConnection(connection)
                     connection
