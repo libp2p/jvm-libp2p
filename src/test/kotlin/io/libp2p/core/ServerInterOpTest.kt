@@ -144,7 +144,7 @@ abstract class ServerInterOpTest(
             val latency = pingCtr.ping().get(1, TimeUnit.SECONDS)
             println("Ping is $latency")
         }
-        pingStream.nettyChannel.close().await(5, TimeUnit.SECONDS)
+        pingStream.close().get(5, TimeUnit.SECONDS)
         println("Ping stream closed")
 
         // stream is closed, the call should fail correctly

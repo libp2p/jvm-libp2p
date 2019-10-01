@@ -1,6 +1,6 @@
 package io.libp2p.core.mux
 
-import io.libp2p.core.P2PAbstractChannel
+import io.libp2p.core.P2PChannel
 import io.libp2p.core.StreamHandler
 import io.libp2p.core.StreamPromise
 import io.libp2p.core.multistream.ProtocolBinding
@@ -27,7 +27,7 @@ import java.util.concurrent.CompletableFuture
  */
 interface StreamMuxer : ProtocolBinding<StreamMuxer.Session> {
 
-    override fun initChannel(ch: P2PAbstractChannel, selectedProtocol: String): CompletableFuture<out Session>
+    override fun initChannel(ch: P2PChannel, selectedProtocol: String): CompletableFuture<out Session>
 
     /**
      * The Multiplexer controller which is capable of opening new Streams

@@ -13,36 +13,25 @@ import io.netty.channel.ChannelHandler
  *
  * @param nettyChannel the underlying Netty channel
  */
-abstract class P2PAbstractChannel(protected val nettyChannel: Channel) {
+abstract class P2PAbstractChannel(protected val nettyChannel: Channel) : P2PChannel {
 
     /**
      * Indicates whether this peer is ether _initiator_ or _responder_ of the underlying channel
      * Most of the protocols behave either as a _client_ or _server_ correspondingly depending
      * on this flag
      */
-    val isInitiator by lazy {
+    override val isInitiator by lazy {
         nettyChannel.attr(IS_INITIATOR)?.get() ?: throw InternalErrorException("Internal error: missing channel attribute IS_INITIATOR")
     }
 
-    /**
-     * Inserts [ChannelHandler]s at the last position of this pipeline.
-     */
-    fun pushHandler(vararg handlers: ChannelHandler) {
+    override fun pushHandler(vararg handlers: ChannelHandler) {
         nettyChannel.pipeline().addLast(*handlers)
     }
-
-    /**
-     * Appends a [ChannelHandler] at the last position of this pipeline.
-     */
-    fun pushHandler(name: String, handler: ChannelHandler) {
+    override fun pushHandler(name: String, handler: ChannelHandler) {
         nettyChannel.pipeline().addLast(name, handler)
     }
 
-    /**
-     * Inserts a [ChannelHandler] before an existing handler of this
-     * pipeline.
-     */
-    fun addHandlerBefore(baseName: String, name: String, handler: ChannelHandler) {
+    override fun addHandlerBefore(baseName: String, name: String, handler: ChannelHandler) {
         nettyChannel.pipeline().addBefore(baseName, name, handler)
     }
 

@@ -1,6 +1,6 @@
 package io.libp2p.mux.mplex
 
-import io.libp2p.core.P2PAbstractChannel
+import io.libp2p.core.P2PChannel
 import io.libp2p.core.mplex.MplexFrameCodec
 import io.libp2p.core.multistream.Mode
 import io.libp2p.core.multistream.ProtocolMatcher
@@ -20,7 +20,7 @@ class MplexStreamMuxer : StreamMuxer, StreamMuxerDebug {
         ProtocolMatcher(Mode.STRICT, announce)
     override var muxFramesDebugHandler: ChannelHandler? = null
 
-    override fun initChannel(ch: P2PAbstractChannel, selectedProtocol: String): CompletableFuture<out StreamMuxer.Session> {
+    override fun initChannel(ch: P2PChannel, selectedProtocol: String): CompletableFuture<out StreamMuxer.Session> {
         val muxSessionFuture = CompletableFuture<StreamMuxer.Session>()
         ch.pushHandler(MplexFrameCodec())
         muxFramesDebugHandler?.also { ch.pushHandler(it) }

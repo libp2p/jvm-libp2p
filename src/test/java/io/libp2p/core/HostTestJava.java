@@ -26,7 +26,29 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
-class HostTestJava {
+public class HostTestJava {
+    static class A implements ProtocolBinding<String> {
+        @NotNull
+        @Override
+        public String getAnnounce() {
+            return null;
+        }
+
+        @NotNull
+        @Override
+        public ProtocolMatcher getMatcher() {
+            return null;
+        }
+
+        @NotNull
+        @Override
+        public CompletableFuture<? extends String> initChannel(@NotNull P2PChannel ch, @NotNull String selectedProtocol) {
+            this.toInitiator("aa");
+            return null;
+        }
+
+    }
+
     @Test
     void ping() throws Exception {
         HostImpl clientHost = BuildersJKt.hostJ(b -> {

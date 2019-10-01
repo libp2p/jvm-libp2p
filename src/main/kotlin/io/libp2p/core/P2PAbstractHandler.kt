@@ -3,7 +3,7 @@ package io.libp2p.core
 import java.util.concurrent.CompletableFuture
 
 /**
- * The central entry point for every protocol which is responsible for initializing [P2PAbstractChannel]
+ * The central entry point for every protocol which is responsible for initializing [P2PChannel]
  */
 interface P2PAbstractHandler<out TController> {
 
@@ -13,7 +13,7 @@ interface P2PAbstractHandler<out TController> {
      * Returns the [Future] which is completed with the protocol [TController]
      * when all necessary protocol negotiations are done.
      */
-    fun initChannel(ch: P2PAbstractChannel): CompletableFuture<out TController>
+    fun initChannel(ch: P2PChannel): CompletableFuture<out TController>
 
     fun toStreamHandler(): StreamHandler<TController> = object : StreamHandler<TController> {
         override fun handleStream(stream: Stream): CompletableFuture<out TController> {
