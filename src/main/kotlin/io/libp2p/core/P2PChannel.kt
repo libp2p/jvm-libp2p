@@ -14,7 +14,7 @@ interface P2PChannel {
     /**
      * Inserts [ChannelHandler]s at the last position of this pipeline.
      */
-    fun pushHandler(vararg handlers: ChannelHandler)
+    fun pushHandler(handler: ChannelHandler)
 
     /**
      * Appends a [ChannelHandler] at the last position of this pipeline.
