@@ -4,11 +4,30 @@ import io.libp2p.etc.PROTOCOL
 import io.netty.channel.Channel
 import java.util.concurrent.CompletableFuture
 
+interface Stream : P2PChannel {
+    val connection: Connection
+
+    /**
+     * Returns the [PeerId] of the remote peer [Connection] which this
+     * [Stream] created on
+     */
+    fun remotePeerId(): PeerId
+
+    /**
+     * @return negotiated protocol
+     */
+    fun getProtocol(): CompletableFuture<String>
+
+    fun writeAndFlush(msg: Any)
+}
+
 /**
  * Represents a multiplexed stream over wire connection
  */
-class Stream(ch: Channel, val conn: Connection) : P2PAbstractChannel(ch), P2PChannel {
-
+class StreamOverNetty(
+    ch: Channel,
+    override val connection: Connection
+) : Stream, P2PAbstractChannel(ch) {
     init {
         nettyChannel.attr(PROTOCOL).set(CompletableFuture())
     }
@@ -17,14 +36,14 @@ class Stream(ch: Channel, val conn: Connection) : P2PAbstractChannel(ch), P2PCha
      * Returns the [PeerId] of the remote peer [Connection] which this
      * [Stream] created on
      */
-    fun remotePeerId() = conn.secureSession.remoteId
+    override fun remotePeerId() = connection.secureSession.remoteId
 
     /**
      * @return negotiated protocol
      */
-    fun getProtocol(): CompletableFuture<String> = nettyChannel.attr(PROTOCOL).get()
+    override fun getProtocol(): CompletableFuture<String> = nettyChannel.attr(PROTOCOL).get()
 
-    fun writeAndFlush(msg: Any) {
+    override fun writeAndFlush(msg: Any) {
         nettyChannel.writeAndFlush(msg)
     }
 }
