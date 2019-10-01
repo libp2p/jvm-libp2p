@@ -56,7 +56,7 @@ class SecIoSecureChannel(val localKey: PrivKey) :
             "PacketLenDecoder" to LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0, 4, 0, 4),
             HandshakeHandlerName to SecIoHandshake(),
             "SecioNegotiationResultHandler" to resultHandler
-        ).forEach { ch.nettyChannel.pipeline().addLast(it.first, it.second) }
+        ).forEach { ch.pushHandler(it.first, it.second) }
         return ret
     }
 

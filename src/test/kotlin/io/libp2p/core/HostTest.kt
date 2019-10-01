@@ -132,7 +132,7 @@ abstract class HostTest(val secureChannelCtor: SecureChannelCtor) {
             val latency = pingCtr.ping().get(1, TimeUnit.SECONDS)
             println("Ping $i is ${latency}ms")
         }
-        pingStream.nettyChannel.close().await(5, TimeUnit.SECONDS)
+        pingStream.close().get(5, TimeUnit.SECONDS)
         println("Ping stream closed")
 
         // stream is closed, the call should fail correctly

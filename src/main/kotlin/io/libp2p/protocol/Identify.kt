@@ -47,13 +47,13 @@ class IdentifyProtocol(var idMessage: IdentifyOuterClass.Identify? = null) : P2P
             IdentifyResponderChannelHandler((ch as Stream).conn.remoteAddress())
         }
 
-        with(ch.nettyChannel.pipeline()) {
-            addLast(ProtobufVarint32FrameDecoder())
-            addLast(ProtobufVarint32LengthFieldPrepender())
-            addLast(ProtobufDecoder(IdentifyOuterClass.Identify.getDefaultInstance()))
-            addLast(ProtobufEncoder())
+        with(ch) {
+            pushHandler(ProtobufVarint32FrameDecoder())
+            pushHandler(ProtobufVarint32LengthFieldPrepender())
+            pushHandler(ProtobufDecoder(IdentifyOuterClass.Identify.getDefaultInstance()))
+            pushHandler(ProtobufEncoder())
         }
-        ch.nettyChannel.pipeline().addLast(handler)
+        ch.pushHandler(handler)
         return CompletableFuture.completedFuture(handler)
     }
 

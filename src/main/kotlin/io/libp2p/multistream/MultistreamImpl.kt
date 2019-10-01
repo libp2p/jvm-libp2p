@@ -13,8 +13,8 @@ class MultistreamImpl<TController>(initList: List<ProtocolBinding<TController>> 
         CopyOnWriteArrayList(initList)
 
     override fun initChannel(ch: P2PAbstractChannel): CompletableFuture<TController> {
-        return with(ch.nettyChannel) {
-            pipeline().addLast(
+        return with(ch) {
+            pushHandler(
                 if (ch.isInitiator) {
                     Negotiator.createRequesterInitializer(*bindings.map { it.announce }.toTypedArray())
                 } else {
@@ -22,7 +22,7 @@ class MultistreamImpl<TController>(initList: List<ProtocolBinding<TController>> 
                 }
             )
             val protocolSelect = ProtocolSelect(bindings)
-            pipeline().addLast(protocolSelect)
+            pushHandler(protocolSelect)
             protocolSelect.selectedFuture
         }
     }

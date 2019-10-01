@@ -32,7 +32,7 @@ class HostImpl(
 
     private val internalStreamHandler = StreamHandler.create { stream ->
         streams += stream
-        stream.nettyChannel.closeFuture().addListener { streams -= stream }
+        stream.closeFuture().thenAccept { streams -= stream }
     }
 
     init {
