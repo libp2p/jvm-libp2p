@@ -15,8 +15,8 @@ import io.netty.channel.ChannelHandler
 abstract class P2PChannelOverNetty(
     protected val nettyChannel: Channel
 ) {
-    fun pushHandler(vararg handlers: ChannelHandler) {
-        nettyChannel.pipeline().addLast(*handlers)
+    fun pushHandler(handler: ChannelHandler) {
+        nettyChannel.pipeline().addLast(handler)
     }
     fun pushHandler(name: String, handler: ChannelHandler) {
         nettyChannel.pipeline().addLast(name, handler)
