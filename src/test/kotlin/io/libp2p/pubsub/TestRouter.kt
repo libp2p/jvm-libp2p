@@ -63,7 +63,7 @@ class TestRouter(val name: String = "" + cnt.getAndIncrement()) {
                 )
             )
         })
-        val connection = ConnectionOverNetty(parentChannel)
+        val connection = ConnectionOverNetty(parentChannel, initiator)
 
         return TestChannel(
             channelName,
