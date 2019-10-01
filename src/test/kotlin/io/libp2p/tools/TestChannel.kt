@@ -1,7 +1,7 @@
 package io.libp2p.tools
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder
-import io.libp2p.core.Connection
+import io.libp2p.core.ConnectionOverNetty
 import io.libp2p.etc.CONNECTION
 import io.libp2p.etc.IS_INITIATOR
 import io.libp2p.etc.types.lazyVar
@@ -27,7 +27,7 @@ class TestChannel(id: String = "test", initiator: Boolean, vararg handlers: Chan
         TestChannelId(id),
         nettyInitializer {
             it.attr(IS_INITIATOR).set(initiator)
-            it.attr(CONNECTION).set(Connection(it))
+            it.attr(CONNECTION).set(ConnectionOverNetty(it))
         },
         *handlers
     ) {
