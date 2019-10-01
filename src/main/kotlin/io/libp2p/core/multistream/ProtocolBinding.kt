@@ -2,7 +2,7 @@ package io.libp2p.core.multistream
 
 import io.libp2p.core.Libp2pException
 import io.libp2p.core.P2PChannel
-import io.libp2p.core.P2PAbstractHandler
+import io.libp2p.core.P2PChannelHandler
 import java.util.concurrent.CompletableFuture
 
 /**
@@ -50,7 +50,7 @@ interface ProtocolBinding<out TController> {
         /**
          * Creates a [ProtocolBinding] instance with [Mode.STRICT] [matcher] and specified [handler]
          */
-        fun <T> createSimple(protocolName: String, handler: P2PAbstractHandler<T>): ProtocolBinding<T> {
+        fun <T> createSimple(protocolName: String, handler: P2PChannelHandler<T>): ProtocolBinding<T> {
             return object : ProtocolBinding<T> {
                 override val announce = protocolName
                 override val matcher = ProtocolMatcher(Mode.STRICT, announce)
