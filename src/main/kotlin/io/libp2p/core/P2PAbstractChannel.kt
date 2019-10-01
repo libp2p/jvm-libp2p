@@ -35,10 +35,6 @@ abstract class P2PAbstractChannel(protected val nettyChannel: Channel) {
         nettyChannel.pipeline().addBefore(baseName, name, handler)
     }
 
-    fun writeAndFlush(msg: Any) {
-        nettyChannel.writeAndFlush(msg)
-    }
-
     fun close() = nettyChannel.close().toVoidCompletableFuture()
 
     fun closeFuture() = nettyChannel.closeFuture().toVoidCompletableFuture()
