@@ -2,7 +2,7 @@ package io.libp2p.pubsub.gossip
 
 import io.libp2p.core.Connection
 import io.libp2p.core.ConnectionHandler
-import io.libp2p.core.P2PAbstractChannel
+import io.libp2p.core.P2PChannel
 import io.libp2p.core.Stream
 import io.libp2p.core.multistream.Mode
 import io.libp2p.core.multistream.Multistream
@@ -27,7 +27,7 @@ class Gossip @JvmOverloads constructor(
         conn.muxerSession.createStream(Multistream.create(listOf(this)).toStreamHandler())
     }
 
-    override fun initChannel(ch: P2PAbstractChannel, selectedProtocol: String): CompletableFuture<out Unit> {
+    override fun initChannel(ch: P2PChannel, selectedProtocol: String): CompletableFuture<out Unit> {
         router.addPeerWithDebugHandler(ch as Stream, debugGossipHandler)
         return CompletableFuture.completedFuture(Unit)
     }

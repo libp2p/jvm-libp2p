@@ -6,7 +6,7 @@ import com.southernstorm.noise.protocol.CipherStatePair
 import com.southernstorm.noise.protocol.DHState
 import com.southernstorm.noise.protocol.HandshakeState
 import com.southernstorm.noise.protocol.Noise
-import io.libp2p.core.P2PAbstractChannel
+import io.libp2p.core.P2PChannel
 import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.crypto.unmarshalPublicKey
@@ -54,11 +54,11 @@ open class NoiseXXSecureChannel(private val localKey: PrivKey, private val priva
         Configurator.setLevel(NoiseXXSecureChannel::class.java.name, Level.DEBUG)
     }
 
-    fun initChannel(ch: P2PAbstractChannel): CompletableFuture<SecureChannel.Session> {
+    fun initChannel(ch: P2PChannel): CompletableFuture<SecureChannel.Session> {
         return initChannel(ch, "")
     }
 
-    override fun initChannel(ch: P2PAbstractChannel, selectedProtocol: String): CompletableFuture<SecureChannel.Session> {
+    override fun initChannel(ch: P2PChannel, selectedProtocol: String): CompletableFuture<SecureChannel.Session> {
         role = if (ch.isInitiator) AtomicInteger(HandshakeState.INITIATOR) else AtomicInteger(HandshakeState.RESPONDER)
 
         // configure the localDHState with the private

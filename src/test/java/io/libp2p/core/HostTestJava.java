@@ -43,7 +43,7 @@ public class HostTestJava {
 
         @NotNull
         @Override
-        public CompletableFuture<? extends String> initChannel(@NotNull P2PAbstractChannel ch, @NotNull String selectedProtocol) {
+        public CompletableFuture<? extends String> initChannel(@NotNull P2PChannel ch, @NotNull String selectedProtocol) {
             this.toInitiator("aa");
             return null;
         }

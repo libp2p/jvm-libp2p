@@ -1,7 +1,7 @@
 package io.libp2p.pubsub
 
 import io.libp2p.core.ConnectionHandler
-import io.libp2p.core.P2PAbstractChannel
+import io.libp2p.core.P2PChannel
 import io.libp2p.core.P2PAbstractHandler
 import io.libp2p.core.PeerId
 import io.libp2p.core.Stream
@@ -55,7 +55,7 @@ import java.util.function.Consumer
 class GossipProtocol(val router: PubsubRouterDebug) : P2PAbstractHandler<Unit> {
     var debugGossipHandler: ChannelHandler? = null
 
-    override fun initChannel(ch: P2PAbstractChannel): CompletableFuture<out Unit> {
+    override fun initChannel(ch: P2PChannel): CompletableFuture<out Unit> {
         router.addPeerWithDebugHandler(ch as Stream, debugGossipHandler)
         return CompletableFuture.completedFuture(Unit)
     }

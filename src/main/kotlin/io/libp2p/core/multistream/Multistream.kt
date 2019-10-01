@@ -1,6 +1,6 @@
 package io.libp2p.core.multistream
 
-import io.libp2p.core.P2PAbstractChannel
+import io.libp2p.core.P2PChannel
 import io.libp2p.core.P2PAbstractHandler
 import io.libp2p.multistream.MultistreamImpl
 import java.util.concurrent.CompletableFuture
@@ -30,7 +30,7 @@ interface Multistream<TController> : P2PAbstractHandler<TController> {
      */
     val bindings: MutableList<ProtocolBinding<TController>>
 
-    override fun initChannel(ch: P2PAbstractChannel): CompletableFuture<TController>
+    override fun initChannel(ch: P2PChannel): CompletableFuture<TController>
 
     companion object {
         /**

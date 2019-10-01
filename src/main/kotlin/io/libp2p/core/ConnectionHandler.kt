@@ -3,7 +3,7 @@ package io.libp2p.core
 import io.libp2p.etc.BroadcastConnectionHandler
 
 /**
- * The same as [P2PAbstractHandler] with the [Connection] specialized [P2PAbstractChannel]
+ * The same as [P2PAbstractHandler] with the [Connection] specialized [P2PChannel]
  */
 interface ConnectionHandler {
 

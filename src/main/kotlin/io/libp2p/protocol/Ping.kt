@@ -3,7 +3,7 @@ package io.libp2p.protocol
 import io.libp2p.core.BadPeerException
 import io.libp2p.core.ConnectionClosedException
 import io.libp2p.core.Libp2pException
-import io.libp2p.core.P2PAbstractChannel
+import io.libp2p.core.P2PChannel
 import io.libp2p.core.P2PAbstractHandler
 import io.libp2p.core.multistream.Mode
 import io.libp2p.core.multistream.ProtocolBinding
@@ -34,7 +34,7 @@ open class PingBinding(val ping: PingProtocol) : ProtocolBinding<PingController>
     override val announce = "/ipfs/ping/1.0.0"
     override val matcher = ProtocolMatcher(Mode.STRICT, name = announce)
 
-    override fun initChannel(ch: P2PAbstractChannel, selectedProtocol: String): CompletableFuture<out PingController> {
+    override fun initChannel(ch: P2PChannel, selectedProtocol: String): CompletableFuture<out PingController> {
         return ping.initChannel(ch)
     }
 }
@@ -48,7 +48,7 @@ class PingProtocol : P2PAbstractHandler<PingController> {
     var pingSize = 32
     var pingTimeout = Duration.ofSeconds(10)
 
-    override fun initChannel(ch: P2PAbstractChannel): CompletableFuture<PingController> {
+    override fun initChannel(ch: P2PChannel): CompletableFuture<PingController> {
         return if (ch.isInitiator) {
             val handler = PingInitiatorChannelHandler()
             ch.pushHandler(handler)
