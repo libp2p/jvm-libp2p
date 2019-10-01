@@ -17,7 +17,10 @@ import java.net.InetSocketAddress
  *
  * It exposes libp2p components and semantics via methods and properties.
  */
-class ConnectionOverNetty(ch: Channel) : Connection, P2PChannelOverNetty(ch) {
+class ConnectionOverNetty(
+    ch: Channel,
+    override val isInitiator: Boolean
+) : Connection, P2PChannelOverNetty(ch) {
     override val muxerSession by lazy { ch.attr(MUXER_SESSION).get() }
     override val secureSession by lazy { ch.attr(SECURE_SESSION).get() }
     override val transport by lazy { ch.attr(TRANSPORT).get() }

@@ -15,6 +15,8 @@ class StreamOverNetty(
         nettyChannel.attr(PROTOCOL).set(CompletableFuture())
     }
 
+    override val isInitiator = connection.isInitiator
+
     /**
      * Returns the [PeerId] of the remote peer [Connection] which this
      * [Stream] created on

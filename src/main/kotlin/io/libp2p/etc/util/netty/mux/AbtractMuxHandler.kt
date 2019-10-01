@@ -2,7 +2,6 @@ package io.libp2p.etc.util.netty.mux
 
 import io.libp2p.core.ConnectionClosedException
 import io.libp2p.core.Libp2pException
-import io.libp2p.etc.IS_INITIATOR
 import io.libp2p.etc.types.completedExceptionally
 import io.libp2p.etc.util.netty.nettyInitializer
 import io.netty.channel.ChannelHandler
@@ -85,14 +84,13 @@ abstract class AbtractMuxHandler<TData>(var inboundInitializer: MuxChannelInitia
     protected abstract fun onLocalDisconnect(child: MuxChannel<TData>)
 
     private fun createChild(id: MuxId, initializer: ChannelHandler, initiator: Boolean): MuxChannel<TData> {
-        val child = MuxChannel(this, id, initializer)
-        child.attr(IS_INITIATOR).set(initiator)
+        val child = MuxChannel(this, id, initializer, initiator)
         streamMap[id] = child
         ctx!!.channel().eventLoop().register(child)
         return child
     }
 
-    protected open fun createChannel(id: MuxId, initializer: ChannelHandler) = MuxChannel(this, id, initializer)
+    // protected open fun createChannel(id: MuxId, initializer: ChannelHandler) = MuxChannel(this, id, initializer)
 
     protected abstract fun generateNextId(): MuxId
 

@@ -12,7 +12,6 @@ import io.libp2p.core.multiformats.Protocol.IP6
 import io.libp2p.core.multiformats.Protocol.TCP
 import io.libp2p.core.transport.Transport
 import io.libp2p.etc.CONNECTION
-import io.libp2p.etc.IS_INITIATOR
 import io.libp2p.etc.TRANSPORT
 import io.libp2p.etc.types.forward
 import io.libp2p.etc.types.lazyVar
@@ -151,8 +150,7 @@ class TcpTransport(
     ): Pair<ChannelHandler, CompletableFuture<Connection>> {
         val connFuture = CompletableFuture<Connection>()
         return nettyInitializer { ch ->
-            val connection = ConnectionOverNetty(ch)
-            ch.attr(IS_INITIATOR).set(initiator)
+            val connection = ConnectionOverNetty(ch, initiator)
             ch.attr(CONNECTION).set(connection)
             ch.attr(TRANSPORT).set(this)
             upgrader.establishSecureChannel(ch, remotePeerId)
