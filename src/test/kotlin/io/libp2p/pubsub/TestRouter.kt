@@ -1,7 +1,7 @@
 package io.libp2p.pubsub
 
-import io.libp2p.core.ConnectionOverNetty
-import io.libp2p.core.StreamOverNetty
+import io.libp2p.transport.tcp.ConnectionOverNetty
+import io.libp2p.transport.tcp.StreamOverNetty
 import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.generateKeyPair

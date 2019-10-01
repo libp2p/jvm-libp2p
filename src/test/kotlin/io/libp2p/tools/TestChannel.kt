@@ -1,7 +1,7 @@
 package io.libp2p.tools
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder
-import io.libp2p.core.ConnectionOverNetty
+import io.libp2p.transport.tcp.ConnectionOverNetty
 import io.libp2p.etc.CONNECTION
 import io.libp2p.etc.IS_INITIATOR
 import io.libp2p.etc.types.lazyVar
