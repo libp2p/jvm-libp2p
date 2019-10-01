@@ -23,4 +23,8 @@ class Stream(ch: Channel, val conn: Connection) : P2PAbstractChannel(ch), P2PCha
      * @return negotiated protocol
      */
     fun getProtocol(): CompletableFuture<String> = nettyChannel.attr(PROTOCOL).get()
+
+    fun writeAndFlush(msg: Any) {
+        nettyChannel.writeAndFlush(msg)
+    }
 }
