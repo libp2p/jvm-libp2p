@@ -7,6 +7,7 @@ import io.libp2p.mux.mplex.MplexStreamMuxer
 import io.libp2p.protocol.Identify
 import io.libp2p.protocol.Ping
 import io.libp2p.protocol.PingController
+import io.libp2p.security.noise.NoiseXXSecureChannel
 import io.libp2p.security.secio.SecIoSecureChannel
 import io.libp2p.transport.tcp.TcpTransport
 import io.netty.handler.logging.LogLevel
@@ -28,7 +29,8 @@ class HostTest {
                 +::TcpTransport
             }
             secureChannels {
-                add(::SecIoSecureChannel)
+//                add(::SecIoSecureChannel)
+                add(::NoiseXXSecureChannel)
             }
             muxers {
                 +::MplexStreamMuxer
@@ -51,7 +53,8 @@ class HostTest {
                 +::TcpTransport
             }
             secureChannels {
-                add(::SecIoSecureChannel)
+//                add(::SecIoSecureChannel)
+                add(::NoiseXXSecureChannel)
             }
             muxers {
                 +::MplexStreamMuxer

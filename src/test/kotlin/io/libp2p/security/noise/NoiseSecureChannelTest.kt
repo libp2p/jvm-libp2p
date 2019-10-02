@@ -159,14 +159,9 @@ class NoiseSecureChannelTest {
         val (privKeyAlicePeer, _) = generateKeyPair(KEY_TYPE.ECDSA)
         val (privKeyBobPeer, _) = generateKeyPair(KEY_TYPE.ECDSA)
 
-        val privateKey25519Alice = ByteArray(32)
-        Noise.random(privateKey25519Alice)
-        val privateKey25519Bob = ByteArray(32)
-        Noise.random(privateKey25519Bob)
-
         // noise keys
-        val ch1 = NoiseXXSecureChannel(privKeyAlicePeer, privateKey25519Alice)
-        val ch2 = NoiseXXSecureChannel(privKeyBobPeer, privateKey25519Bob)
+        val ch1 = NoiseXXSecureChannel(privKeyAlicePeer)
+        val ch2 = NoiseXXSecureChannel(privKeyBobPeer)
 
         val protocolSelect1 = ProtocolSelect(listOf(ch1))
         val protocolSelect2 = ProtocolSelect(listOf(ch2))
@@ -231,10 +226,7 @@ class NoiseSecureChannelTest {
     fun testAnnounceAndMatch() {
         val (privKey1, _) = generateKeyPair(KEY_TYPE.ECDSA)
 
-        val privateKey25519 = ByteArray(32)
-        Noise.random(privateKey25519)
-
-        val ch1 = NoiseXXSecureChannel(privKey1, privateKey25519)
+        val ch1 = NoiseXXSecureChannel(privKey1)
 
         val announce = ch1.announce
         val matcher = ch1.matcher

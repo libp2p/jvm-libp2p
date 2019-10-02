@@ -28,7 +28,7 @@ import spipe.pb.Spipe
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicInteger
 
-open class NoiseXXSecureChannel(private val localKey: PrivKey, private val privateKey25519: ByteArray) :
+open class NoiseXXSecureChannel(private val localKey: PrivKey) :
     SecureChannel {
 
     private val logger = LogManager.getLogger(NoiseXXSecureChannel::class.java.name)
@@ -41,6 +41,7 @@ open class NoiseXXSecureChannel(private val localKey: PrivKey, private val priva
     companion object {
         const val protocolName = "Noise_XX_25519_ChaChaPoly_SHA256"
         const val announce = "/noise/$protocolName/0.1.0"
+        val privateKey25519: ByteArray = ByteArray(32)
     }
 
     override val announce = Companion.announce
@@ -48,6 +49,7 @@ open class NoiseXXSecureChannel(private val localKey: PrivKey, private val priva
 
     init {
         Configurator.setLevel(NoiseXXSecureChannel::class.java.name, Level.DEBUG)
+        Noise.random(privateKey25519)
     }
 
     fun initChannel(ch: P2PAbstractChannel): CompletableFuture<SecureChannel.Session> {
