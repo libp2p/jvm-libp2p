@@ -2,11 +2,16 @@ package io.libp2p.pubsub
 
 import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.PrivKey
-import io.libp2p.core.types.toByteArray
-import io.libp2p.core.types.toByteBuf
-import io.libp2p.core.types.toBytesBigEndian
-import io.libp2p.core.types.toLongBigEndian
-import io.libp2p.core.types.toProtobuf
+import io.libp2p.core.pubsub.MessageApi
+import io.libp2p.core.pubsub.PubsubApi
+import io.libp2p.core.pubsub.PubsubPublisherApi
+import io.libp2p.core.pubsub.PubsubSubscription
+import io.libp2p.core.pubsub.Topic
+import io.libp2p.etc.types.toByteArray
+import io.libp2p.etc.types.toByteBuf
+import io.libp2p.etc.types.toBytesBigEndian
+import io.libp2p.etc.types.toLongBigEndian
+import io.libp2p.etc.types.toProtobuf
 import io.netty.buffer.ByteBuf
 import pubsub.pb.Rpc
 import java.util.concurrent.CompletableFuture
@@ -15,7 +20,8 @@ import java.util.function.Consumer
 
 class PubsubApiImpl(val router: PubsubRouter) : PubsubApi {
 
-    inner class SubscriptionImpl(val topics: Array<out Topic>, val receiver: Consumer<MessageApi>) : PubsubSubscription {
+    inner class SubscriptionImpl(val topics: Array<out Topic>, val receiver: Consumer<MessageApi>) :
+        PubsubSubscription {
         var unsubscribed = false
         override fun unsubscribe() {
             if (unsubscribed) throw PubsubException("Already unsubscribed")
@@ -25,7 +31,7 @@ class PubsubApiImpl(val router: PubsubRouter) : PubsubApi {
     }
 
     inner class PublisherImpl(val privKey: PrivKey, seqId: Long) : PubsubPublisherApi {
-        val from = PeerId.fromPubKey(privKey.publicKey()).b.toProtobuf()
+        val from = PeerId.fromPubKey(privKey.publicKey()).bytes.toProtobuf()
         val seqCounter = AtomicLong(seqId)
         override fun publish(data: ByteBuf, vararg topics: Topic): CompletableFuture<Unit> {
             val msgToSign = Rpc.Message.newBuilder()
@@ -57,7 +63,7 @@ class PubsubApiImpl(val router: PubsubRouter) : PubsubApi {
         return MessageImpl(
             msg.data.toByteArray().toByteBuf(),
             msg.from.toByteArray(),
-            msg.seqno.toByteArray().toLongBigEndian(),
+            msg.seqno.toByteArray().copyOfRange(0, 8).toLongBigEndian(),
             msg.topicIDsList.map { Topic(it) }
         )
     }

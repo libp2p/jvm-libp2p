@@ -1,14 +1,14 @@
 package io.libp2p.pubsub
 
 import io.libp2p.core.Stream
-import io.libp2p.core.types.LRUSet
-import io.libp2p.core.types.MultiSet
-import io.libp2p.core.types.completedExceptionally
-import io.libp2p.core.types.copy
-import io.libp2p.core.types.forward
-import io.libp2p.core.types.lazyVar
-import io.libp2p.core.types.toHex
-import io.libp2p.core.util.P2PServiceSemiDuplex
+import io.libp2p.etc.types.LRUSet
+import io.libp2p.etc.types.MultiSet
+import io.libp2p.etc.types.completedExceptionally
+import io.libp2p.etc.types.copy
+import io.libp2p.etc.types.forward
+import io.libp2p.etc.types.lazyVar
+import io.libp2p.etc.types.toHex
+import io.libp2p.etc.util.P2PServiceSemiDuplex
 import io.netty.channel.ChannelHandler
 import io.netty.handler.codec.protobuf.ProtobufDecoder
 import io.netty.handler.codec.protobuf.ProtobufEncoder
@@ -108,7 +108,7 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
     }
 
     override fun initChannel(streamHandler: StreamHandler) {
-        with(streamHandler.stream.ch.pipeline()) {
+        with(streamHandler.stream.nettyChannel.pipeline()) {
             addLast(ProtobufVarint32FrameDecoder())
             addLast(ProtobufVarint32LengthFieldPrepender())
             addLast(ProtobufDecoder(Rpc.RPC.getDefaultInstance()))
@@ -119,7 +119,7 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
     }
 
     override fun removePeer(peer: Stream) {
-        peer.ch.close()
+        peer.nettyChannel.close()
     }
 
     /**

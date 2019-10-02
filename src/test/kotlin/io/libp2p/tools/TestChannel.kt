@@ -1,9 +1,11 @@
 package io.libp2p.tools
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder
-import io.libp2p.core.IS_INITIATOR
-import io.libp2p.core.types.lazyVar
-import io.libp2p.core.util.netty.nettyInitializer
+import io.libp2p.core.Connection
+import io.libp2p.etc.CONNECTION
+import io.libp2p.etc.IS_INITIATOR
+import io.libp2p.etc.types.lazyVar
+import io.libp2p.etc.util.netty.nettyInitializer
 import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelId
 import io.netty.channel.embedded.EmbeddedChannel
@@ -25,6 +27,7 @@ class TestChannel(id: String = "test", initiator: Boolean, vararg handlers: Chan
         TestChannelId(id),
         nettyInitializer {
             it.attr(IS_INITIATOR).set(initiator)
+            it.attr(CONNECTION).set(Connection(it))
         },
         *handlers
     ) {
