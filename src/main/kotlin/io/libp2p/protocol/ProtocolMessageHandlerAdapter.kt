@@ -11,7 +11,7 @@ class ProtocolMessageHandlerAdapter<TMessage>(
     private val pmh: ProtocolMessageHandler<TMessage>
 ) : SimpleChannelInboundHandler<ByteBuf>() { // This ByteBuf is a horrible hack just to get me going for now
     override fun channelActive(ctx: ChannelHandlerContext) {
-        super.channelActive(ctx)
+        pmh.onActivated(stream)
     }
 
     override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
@@ -38,11 +38,11 @@ class ProtocolMessageHandlerAdapter<TMessage>(
     }
 
     override fun channelUnregistered(ctx: ChannelHandlerContext?) {
-        super.channelUnregistered(ctx)
+        pmh.onClosed(stream)
     }
 
     override fun exceptionCaught(ctx: ChannelHandlerContext?, cause: Throwable?) {
-        super.exceptionCaught(ctx, cause)
+        pmh.onException(stream)
     }
 
     // ///////////////////////
