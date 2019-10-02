@@ -4,9 +4,9 @@ import io.libp2p.core.Connection
 import io.libp2p.core.InternalErrorException
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multiformats.Protocol
+import io.libp2p.core.transport.Transport
 import io.libp2p.etc.MUXER_SESSION
 import io.libp2p.etc.SECURE_SESSION
-import io.libp2p.etc.TRANSPORT
 import io.netty.channel.Channel
 import java.net.Inet4Address
 import java.net.Inet6Address
@@ -19,11 +19,11 @@ import java.net.InetSocketAddress
  */
 class ConnectionOverNetty(
     ch: Channel,
+    override val transport: Transport,
     override val isInitiator: Boolean
 ) : Connection, P2PChannelOverNetty(ch) {
     override val muxerSession by lazy { ch.attr(MUXER_SESSION).get() }
     override val secureSession by lazy { ch.attr(SECURE_SESSION).get() }
-    override val transport by lazy { ch.attr(TRANSPORT).get() }
 
     override fun localAddress(): Multiaddr =
         toMultiaddr(nettyChannel.localAddress() as InetSocketAddress)

@@ -10,6 +10,7 @@ import io.libp2p.etc.SECURE_SESSION
 import io.libp2p.etc.types.lazyVar
 import io.libp2p.etc.util.netty.nettyInitializer
 import io.libp2p.pubsub.flood.FloodRouter
+import io.libp2p.tools.NullTransport
 import io.libp2p.tools.TestChannel
 import io.netty.handler.logging.LogLevel
 import io.netty.handler.logging.LoggingHandler
@@ -57,7 +58,7 @@ class TestRouter(val name: String = "" + cnt.getAndIncrement()) {
                 )
             )
         })
-        val connection = ConnectionOverNetty(parentChannel, initiator)
+        val connection = ConnectionOverNetty(parentChannel, NullTransport(), initiator)
 
         return TestChannel(
             channelName,
