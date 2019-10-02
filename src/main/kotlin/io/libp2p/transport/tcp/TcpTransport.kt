@@ -13,7 +13,6 @@ import io.libp2p.core.multiformats.Protocol.TCP
 import io.libp2p.core.transport.Transport
 import io.libp2p.etc.CONNECTION
 import io.libp2p.etc.REMOTE_PEER_ID
-import io.libp2p.etc.TRANSPORT
 import io.libp2p.etc.types.forward
 import io.libp2p.etc.types.lazyVar
 import io.libp2p.etc.types.toCompletableFuture
@@ -41,7 +40,6 @@ import java.util.concurrent.CompletableFuture
 class TcpTransport(
     val upgrader: ConnectionUpgrader
 ) : Transport {
-
     var workerGroup by lazyVar { NioEventLoopGroup() }
     var bossGroup by lazyVar { workerGroup }
     var connectTimeout = Duration.ofSeconds(15)
@@ -151,9 +149,8 @@ class TcpTransport(
     ): Pair<ChannelHandler, CompletableFuture<Connection>> {
         val connFuture = CompletableFuture<Connection>()
         return nettyInitializer { ch ->
-            val connection = ConnectionOverNetty(ch, initiator)
+            val connection = ConnectionOverNetty(ch, this, initiator)
             ch.attr(CONNECTION).set(connection)
-            ch.attr(TRANSPORT).set(this)
             remotePeerId?.also { ch.attr(REMOTE_PEER_ID).set(it) }
             upgrader.establishSecureChannel(connection)
                 .thenCompose {

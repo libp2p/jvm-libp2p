@@ -25,7 +25,7 @@ class TestChannel(id: String = "test", initiator: Boolean, vararg handlers: Chan
     EmbeddedChannel(
         TestChannelId(id),
         nettyInitializer {
-            it.attr(CONNECTION).set(ConnectionOverNetty(it, initiator))
+            it.attr(CONNECTION).set(ConnectionOverNetty(it, NullTransport(), initiator))
         },
         *handlers
     ) {
