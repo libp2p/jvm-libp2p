@@ -16,19 +16,15 @@ import io.libp2p.core.security.SecureChannel
 import io.libp2p.etc.SECURE_SESSION
 import io.libp2p.etc.events.SecureChannelFailed
 import io.libp2p.etc.events.SecureChannelInitialized
-import io.libp2p.etc.types.toByteArray
 import io.libp2p.etc.types.toByteBuf
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
-import io.netty.channel.ChannelOutboundHandlerAdapter
-import io.netty.channel.ChannelPromise
 import io.netty.channel.SimpleChannelInboundHandler
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.core.config.Configurator
 import spipe.pb.Spipe
-import java.nio.charset.StandardCharsets
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -71,40 +67,15 @@ open class NoiseXXSecureChannel(private val localKey: PrivKey, private val priva
             override fun userEventTriggered(ctx: ChannelHandlerContext, evt: Any) {
                 when (evt) {
                     is SecureChannelInitialized -> {
-
-                        ctx.channel().attr(SECURE_SESSION).set(evt.session)
+                        val session = evt.session as NoiseSecureChannelSession
+                        ctx.channel().attr(SECURE_SESSION).set(session)
 
                         ctx.pipeline().remove(handshakeHandlerName)
                         ctx.pipeline().remove(this)
 
-                        ctx.pipeline().addFirst(object : SimpleChannelInboundHandler<ByteBuf>() {
-                            override fun channelRead0(ctx: ChannelHandlerContext, msg: ByteBuf) {
-                                val get: NoiseSecureChannelSession = ctx.channel().attr(SECURE_SESSION).get() as NoiseSecureChannelSession
-                                val additionalData = ByteArray(65535)
-                                val plainText = ByteArray(65535)
-                                val cipherText = msg.toByteArray()
-                                val length = msg.getShort(0).toInt()
-                                logger.debug("decrypt length:$length")
-                                val l = get.bobCipher.decryptWithAd(additionalData, cipherText, 2, plainText, 0, length)
-                                val rec2 = plainText.copyOf(l).toString(StandardCharsets.UTF_8)
-                                ctx.pipeline().fireChannelRead(rec2)
-                            }
-                        })
-                        ctx.pipeline().addFirst(object : ChannelOutboundHandlerAdapter() {
-                            override fun write(ctx: ChannelHandlerContext, msg: Any, promise: ChannelPromise) {
-                                msg as ByteBuf
-                                val get: NoiseSecureChannelSession = ctx.channel().attr(SECURE_SESSION).get() as NoiseSecureChannelSession
-                                val additionalData = ByteArray(65535)
-                                val cipherText = ByteArray(65535)
-                                val plaintext = msg.toByteArray()
-                                val length = get.aliceCipher.encryptWithAd(additionalData, plaintext, 0, cipherText, 2, plaintext.size)
-                                logger.debug("encrypt length:$length")
-                                ctx.write(cipherText.copyOf(length + 2).toByteBuf().setShort(0, length))
-                                logger.debug("channel outbound handler write: $msg")
-                            }
-                        })
+                        ctx.pipeline().addLast(NoiseXXCodec(session.aliceCipher, session.bobCipher))
 
-                        ret.complete(evt.session)
+                        ret.complete(session)
 
                         logger.debug("Reporting secure channel initialized")
                     }
