@@ -15,8 +15,10 @@ import io.netty.handler.logging.LogLevel
 import org.junit.jupiter.api.*
 import java.util.concurrent.TimeUnit
 
+@Tag("secure-channel")
 class SecioTest : HostTest(::SecIoSecureChannel)
 
+@Tag("secure-channel")
 class NoiseXXTest : HostTest(::NoiseXXSecureChannel)
 
 abstract class HostTest(val secureChannelCtor: SecureChannelCtor) {
