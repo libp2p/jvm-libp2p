@@ -2,7 +2,6 @@ package io.libp2p.security.noise
 
 import com.google.protobuf.ByteString
 import com.southernstorm.noise.protocol.HandshakeState
-import com.southernstorm.noise.protocol.Noise
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.multistream.Mode

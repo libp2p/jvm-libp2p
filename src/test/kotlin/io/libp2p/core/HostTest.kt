@@ -18,9 +18,9 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.util.concurrent.TimeUnit
 
-class SecioTest : HostTest(::SecIoSecureChannel) { }
+class SecioTest : HostTest(::SecIoSecureChannel)
 
-class NoiseXXTest: HostTest(::NoiseXXSecureChannel) { }
+class NoiseXXTest : HostTest(::NoiseXXSecureChannel)
 
 open class HostTest(val secureChannelCtor: SecureChannelCtor) {
     val clientHost = host {

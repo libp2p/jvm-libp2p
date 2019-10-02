@@ -1,0 +1,85 @@
+package io.libp2p.spike
+
+import io.libp2p.core.dsl.host
+import io.libp2p.core.multiformats.Multiaddr
+import io.libp2p.mux.mplex.MplexStreamMuxer
+import io.libp2p.protocol.Identify
+import io.libp2p.protocol.Ping
+import io.libp2p.protocol.PingController
+import io.libp2p.security.secio.SecIoSecureChannel
+import io.libp2p.transport.tcp.TcpTransport
+import org.junit.jupiter.api.Test
+import java.util.concurrent.TimeUnit
+
+class Spike {
+
+    @Test
+    fun testHost() {
+
+        // Let's create a host! This is a fluent builder.
+        val clientHost = host {
+            identity {
+                random()
+            }
+            transports {
+                +::TcpTransport
+            }
+            secureChannels {
+                add(::SecIoSecureChannel)
+            }
+            muxers {
+                +::MplexStreamMuxer
+            }
+            protocols {
+                +Ping()
+                +Identify()
+            }
+        }
+
+        val serverHost = host {
+            identity {
+                random()
+            }
+            transports {
+                +::TcpTransport
+            }
+            secureChannels {
+                add(::SecIoSecureChannel)
+            }
+            muxers {
+                +::MplexStreamMuxer
+            }
+            network {
+                listen("/ip4/0.0.0.0/tcp/40002")
+            }
+            protocols {
+                +Ping()
+            }
+        }
+
+        val client = clientHost.start()
+        val server = serverHost.start()
+        client.get(5, TimeUnit.SECONDS)
+        println("Client started")
+        server.get(5, TimeUnit.SECONDS)
+        println("Server started")
+
+        val ping = clientHost.newStream<PingController>("/ipfs/ping/1.0.0", serverHost.peerId, Multiaddr("/ip4/127.0.0.1/tcp/40002"))
+        val pingStream = ping.stream.get(5, TimeUnit.SECONDS)
+        println("Ping stream created")
+        val pingCtr = ping.controller.get(5, TimeUnit.SECONDS)
+        println("Ping controller created")
+
+        for (i in 1..10) {
+            val latency = pingCtr.ping().get(1, TimeUnit.SECONDS)
+            println("Ping is $latency")
+        }
+        pingStream.close().get(5, TimeUnit.SECONDS)
+        println("Ping stream closed")
+
+        clientHost.stop().get(5, TimeUnit.SECONDS)
+        println("Client host stopped")
+        serverHost.stop().get(5, TimeUnit.SECONDS)
+        println("Server host stopped")
+    }
+}
