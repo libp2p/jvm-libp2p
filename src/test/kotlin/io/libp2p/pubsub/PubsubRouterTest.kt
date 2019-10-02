@@ -1,8 +1,8 @@
 package io.libp2p.pubsub
 
-import io.libp2p.core.types.toBytesBigEndian
-import io.libp2p.core.types.toProtobuf
-import io.libp2p.core.util.P2PService
+import io.libp2p.etc.types.toBytesBigEndian
+import io.libp2p.etc.types.toProtobuf
+import io.libp2p.etc.util.P2PService
 import io.libp2p.pubsub.flood.FloodRouter
 import io.libp2p.pubsub.gossip.GossipRouter
 import io.libp2p.tools.TestChannel.TestConnection
@@ -218,8 +218,8 @@ class PubsubRouterTest {
         println("10NeighborsTopology  FloodRouter:")
         scenario4_10NeighborsTopology { FloodRouter() }
         println("10NeighborsTopology  GossipRouter:")
-        for (d in 3..10) {
-            for (seed in 0..20) {
+        for (d in 3..6) {
+            for (seed in 0..10) {
                 print("D=$d, seed=$seed  ")
                 scenario4_10NeighborsTopology(seed) { GossipRouter().withDConstants(d, d, d) }
             }
@@ -283,10 +283,10 @@ class PubsubRouterTest {
         }
 
         val handler2router: (P2PService.PeerHandler) -> TestRouter = {
-            val channel = it.streamHandler.stream.ch
+            val channel = it.streamHandler.stream.nettyChannel
             val connection = allConnections.find { channel == it.ch1 || channel == it.ch2 }!!
             val otherChannel = if (connection.ch1 == channel) connection.ch2 else connection.ch1
-            allRouters.find { (it.router as AbstractRouter).peers.any { it.streamHandler.stream.ch == otherChannel } }!!
+            allRouters.find { (it.router as AbstractRouter).peers.any { it.streamHandler.stream.nettyChannel == otherChannel } }!!
         }
 
 //        allRouters.forEach {tr ->

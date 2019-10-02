@@ -1,6 +1,6 @@
 package io.libp2p.pubsub.flood
 
-import io.libp2p.core.types.anyComplete
+import io.libp2p.etc.types.anyComplete
 import io.libp2p.pubsub.AbstractRouter
 import pubsub.pb.Rpc
 import java.util.concurrent.CompletableFuture

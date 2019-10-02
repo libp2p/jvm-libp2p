@@ -1,8 +1,8 @@
 package io.libp2p.core.multiformats
 
-import io.libp2p.core.types.readUvarint
-import io.libp2p.core.types.toByteArray
-import io.libp2p.core.types.writeUvarint
+import io.libp2p.etc.types.readUvarint
+import io.libp2p.etc.types.toByteArray
+import io.libp2p.etc.types.writeUvarint
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 import org.bouncycastle.jcajce.provider.digest.SHA3
@@ -14,6 +14,9 @@ class InvalidMultihashException(message: String) : Exception(message)
 
 fun MessageDigest.digest(bytes: ByteBuf): ByteBuf = Unpooled.wrappedBuffer(this.digest(bytes.toByteArray()))
 
+/**
+ * Implements Multihash spec: https://github.com/multiformats/multihash
+ */
 class Multihash(val bytes: ByteBuf, val desc: Descriptor, val lengthBits: Int, val value: ByteBuf) {
 
     @Throws(InvalidMultihashException::class)

@@ -1,7 +1,7 @@
 package io.libp2p.tools
 
-import io.libp2p.core.types.toByteArray
-import io.libp2p.core.types.toHex
+import io.libp2p.etc.types.toByteArray
+import io.libp2p.etc.types.toHex
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter

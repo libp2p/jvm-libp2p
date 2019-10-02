@@ -1,7 +1,7 @@
 package io.libp2p.core.multiformats
 
-import io.libp2p.core.types.readUvarint
-import io.libp2p.core.types.toByteBuf
+import io.libp2p.etc.types.readUvarint
+import io.libp2p.etc.types.toByteBuf
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 

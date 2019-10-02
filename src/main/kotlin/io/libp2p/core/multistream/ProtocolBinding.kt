@@ -1,7 +1,9 @@
 package io.libp2p.core.multistream
 
+import io.libp2p.core.Libp2pException
+import io.libp2p.core.P2PAbstractChannel
 import io.libp2p.core.P2PAbstractHandler
-import io.libp2p.core.SimpleClientHandler
+import java.util.concurrent.CompletableFuture
 
 /**
  * A ProtocolBinding represents the entrypoint to a protocol.
@@ -25,27 +27,37 @@ interface ProtocolBinding<out TController> {
     /**
      * Returns initializer for this protocol on the provided channel, together with an optional controller object.
      */
+    fun initChannel(ch: P2PAbstractChannel, selectedProtocol: String): CompletableFuture<out TController>
 
-    fun initializer(selectedProtocol: String): P2PAbstractHandler<TController>
+    /**
+     * If the [matcher] of this binding is not [Mode.STRICT] then it can't play initiator role since
+     * it doesn't know the exact protocol ids. This method converts this binding to
+     * _initiator_ binding with explicit protocol id
+     */
+    @JvmDefault
+    fun toInitiator(protocol: String): ProtocolBinding<TController> {
+        if (!matcher.matches(protocol)) throw Libp2pException("This binding doesn't support $protocol")
+        val srcBinding = this
+        return object : ProtocolBinding<TController> {
+            override val announce = protocol
+            override val matcher = ProtocolMatcher(Mode.STRICT, announce)
+            override fun initChannel(ch: P2PAbstractChannel, selectedProtocol: String): CompletableFuture<out TController> =
+                srcBinding.initChannel(ch, selectedProtocol)
+        }
+    }
 
     companion object {
+        /**
+         * Creates a [ProtocolBinding] instance with [Mode.STRICT] [matcher] and specified [handler]
+         */
         fun <T> createSimple(protocolName: String, handler: P2PAbstractHandler<T>): ProtocolBinding<T> {
             return object : ProtocolBinding<T> {
                 override val announce = protocolName
                 override val matcher = ProtocolMatcher(Mode.STRICT, announce)
-                override fun initializer(selectedProtocol: String): P2PAbstractHandler<T> = handler
+                override fun initChannel(ch: P2PAbstractChannel, selectedProtocol: String): CompletableFuture<out T> {
+                    return handler.initChannel(ch)
+                }
             }
         }
-
-        fun <T : SimpleClientHandler> createSimple(protocolName: String, handlerCtor: () -> T): ProtocolBinding<T> =
-                    createSimple(protocolName, P2PAbstractHandler.createSimpleHandler(handlerCtor))
     }
-}
-
-class DummyProtocolBinding : ProtocolBinding<Nothing> {
-    override val announce: String = "/dummy/0.0.0"
-    override val matcher: ProtocolMatcher =
-        ProtocolMatcher(Mode.NEVER)
-
-    override fun initializer(selectedProtocol: String): P2PAbstractHandler<Nothing> = TODO("not implemented")
 }

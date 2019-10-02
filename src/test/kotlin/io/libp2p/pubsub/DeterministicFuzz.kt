@@ -1,6 +1,6 @@
 package io.libp2p.pubsub
 
-import io.libp2p.core.types.lazyVar
+import io.libp2p.etc.types.lazyVar
 import io.libp2p.tools.schedulers.ControlledExecutorServiceImpl
 import io.libp2p.tools.schedulers.TimeControllerImpl
 import java.util.Random

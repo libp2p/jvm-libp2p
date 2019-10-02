@@ -2,13 +2,12 @@ package io.libp2p.core.transport
 
 import io.libp2p.core.Connection
 import io.libp2p.core.ConnectionHandler
-import io.libp2p.core.StreamHandler
 import io.libp2p.core.multiformats.Multiaddr
 import java.util.concurrent.CompletableFuture
 
 /**
  * A Transport represents an adapter to integrate (typically) a L2, L3 or L7 protocol into libp2p, to allow incoming
- * and outgoing connections to be established. A Transport
+ * and outgoing connections to be established.
  *
  * TODO:
  *   * Expose transport qualities/attributes (dial only, listen only, reliable, connectionful, costly, etc.)
@@ -33,7 +32,7 @@ interface Transport {
     /**
      * Makes this transport listen on this multiaddr. The future completes once the endpoint is effectively listening.
      */
-    fun listen(addr: Multiaddr, connHandler: ConnectionHandler, streamHandler: StreamHandler): CompletableFuture<Unit>
+    fun listen(addr: Multiaddr, connHandler: ConnectionHandler): CompletableFuture<Unit>
 
     /**
      * Makes this transport stop listening on this multiaddr. Any connections maintained from this source host and port
@@ -45,5 +44,15 @@ interface Transport {
     /**
      * Dials the specified multiaddr and returns a promise of a Connection.
      */
-    fun dial(addr: Multiaddr, streamHandler: StreamHandler): CompletableFuture<Connection>
+    fun dial(addr: Multiaddr, connHandler: ConnectionHandler): CompletableFuture<Connection>
+
+    /**
+     * Returns the remote [Multiaddr] of the specified [Connection]
+     */
+    fun remoteAddress(connection: Connection): Multiaddr
+
+    /**
+     * Returns the local [Multiaddr] of the specified [Connection]
+     */
+    fun localAddress(connection: Connection): Multiaddr
 }

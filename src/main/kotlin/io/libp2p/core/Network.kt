@@ -1,51 +1,80 @@
 package io.libp2p.core
 
 import io.libp2p.core.multiformats.Multiaddr
+import io.libp2p.core.multiformats.Protocol
 import io.libp2p.core.transport.Transport
 import java.util.concurrent.CompletableFuture
-import java.util.concurrent.ConcurrentHashMap
 
 /**
  * The networkConfig component handles all networkConfig affairs, particularly listening on endpoints and dialing peers.
  */
-class Network(private val transports: List<Transport>, private val config: Config) {
+interface Network {
+
     /**
-     * The connection table.
+     * Transports supported by this network
      */
-    private val connections: Map<PeerId, Connection> = ConcurrentHashMap()
+    val transports: List<Transport>
 
-    data class Config(val listenAddrs: List<Multiaddr>)
+    /**
+     * The handler which all established connections are initialized with
+     */
+    val connectionHandler: ConnectionHandler
 
-    init {
-        transports.forEach(Transport::initialize)
+    /**
+     * The list of active connections
+     */
+    val connections: List<Connection>
+
+    /**
+     * Starts listening on specified address. The returned future asynchronously
+     * notifies on success or error
+     * All the incoming connections are handled with [connectionHandler]
+     */
+    fun listen(addr: Multiaddr): CompletableFuture<Unit>
+
+    /**
+     * Stops listening on specified address. The returned future asynchronously
+     * notifies on success or error
+     */
+    fun unlisten(addr: Multiaddr): CompletableFuture<Unit>
+
+    /**
+     * Connects to a remote peer
+     * This is a shortcut to [connect(PeerId, Multiaddr)] for the
+     * cases when [Multiaddr] contains [/p2p] component which contains remote [PeerId]
+     *
+     * @throws Libp2pException if [/p2p] component is missing or addresses has different [/p2p] values
+     * @throws TransportNotSupportedException if any of [addrs] represents the transport which is not supported
+     */
+    fun connect(vararg addrs: Multiaddr): CompletableFuture<Connection> {
+        val peerIdSet = addrs.map {
+            it.getStringComponent(Protocol.P2P)
+                ?: throw Libp2pException("Multiaddress should contain /p2p/<peerId> component")
+        }.toSet()
+        if (peerIdSet.size != 1) throw Libp2pException("All multiaddresses should nave the same peerId")
+        return connect(PeerId.fromBase58(peerIdSet.first()), *addrs)
     }
 
-    fun start(): CompletableFuture<Void> {
-        val futs = mutableListOf<CompletableFuture<Void>>()
-        // start listening on all specified addresses.
-        config.listenAddrs.forEach { addr ->
-            // find the appropriate transport.
-            val dialTpt = transports.firstOrNull { tpt -> tpt.handles(addr) }
-                ?: throw RuntimeException("no transport to handle addr: $addr")
-//            futs += dialTpt.listen(addr)
-        }
-        return CompletableFuture.allOf(*futs.toTypedArray())
-    }
+    /**
+     * Tries ot connect to the remote peer with [id] PeerId by specified addresses
+     * If connection to this peer already exist, returns existing connection
+     * Else tries to connect the peer by all supplied addresses in parallel
+     * and completes the returned [Future] when any of connections succeeds
+     *
+     * If the connection is established it is handled by [connectionHandler]
+     *
+     * @throws TransportNotSupportedException if any of [addrs] represents the transport which is not supported
+     */
+    fun connect(id: PeerId, vararg addrs: Multiaddr): CompletableFuture<Connection>
 
-    fun close(): CompletableFuture<Void> {
-        val futs = transports.map(Transport::close)
-        return CompletableFuture.allOf(*futs.toTypedArray())
-    }
+    /**
+     * Closes the specified [Connection]
+     */
+    fun disconnect(conn: Connection): CompletableFuture<Unit>
 
-    fun connect(id: PeerId, addrs: List<Multiaddr>): CompletableFuture<Connection> {
-        // we already have a connection for this peer, short circuit.
-        connections[id]?.apply { return CompletableFuture.completedFuture(this) }
-
-        // 1. check that some transport can dial at least one addr.
-        // 2. trigger dials in parallel via all transports.
-        // 3. when the first dial succeeds, cancel all pending dials and return the connection.
-        // 4. if no emitted dial succeeds, or if we time out, fail the future. make sure to cancel
-        //    pending dials to avoid leaking.
-        return CompletableFuture()
-    }
+    /**
+     * Closes all listening endpoints
+     * Closes all active connections
+     */
+    fun close(): CompletableFuture<Unit>
 }

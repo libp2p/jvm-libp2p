@@ -1,11 +1,11 @@
 package io.libp2p.core.multiformats
 
-import io.ipfs.cid.Cid
 import io.ipfs.multiaddr.Base32
-import io.libp2p.core.types.readUvarint
-import io.libp2p.core.types.toByteArray
-import io.libp2p.core.types.toByteBuf
-import io.libp2p.core.types.writeUvarint
+import io.libp2p.core.PeerId
+import io.libp2p.etc.types.readUvarint
+import io.libp2p.etc.types.toByteArray
+import io.libp2p.etc.types.toByteBuf
+import io.libp2p.etc.types.writeUvarint
 import io.netty.buffer.ByteBuf
 import java.net.Inet4Address
 import java.net.Inet6Address
@@ -15,6 +15,7 @@ import io.netty.buffer.Unpooled.buffer as byteBuf
 private const val LENGTH_PREFIXED_VAR_SIZE = -1
 
 /**
+ * Enumeration of protocols supported by [Multiaddr]
  * Partially translated from https://github.com/multiformats/java-multiaddr
  */
 enum class Protocol(val code: Int, val size: Int, val typeName: String) {
@@ -66,9 +67,8 @@ enum class Protocol(val code: Int, val size: Int, val typeName: String) {
                 byteBuf(2).writeShort(x).toByteArray()
             }
             IPFS, P2P -> {
-                val hashBytes = Cid.decode(addr).toBytes()
+                val hashBytes = PeerId.fromBase58(addr).bytes
                 byteBuf(32)
-                    .writeUvarint(hashBytes.size)
                     .writeBytes(hashBytes)
                     .toByteArray()
             }
@@ -92,21 +92,28 @@ enum class Protocol(val code: Int, val size: Int, val typeName: String) {
                 val addr1 = if (addr.startsWith("/")) addr.substring(1) else addr
                 val path = addr1.toByteArray(StandardCharsets.UTF_8)
                 byteBuf(path.size + 8)
-                    .writeUvarint(path.size)
                     .writeBytes(path)
                     .toByteArray()
             }
             DNS4, DNS6, DNSADDR, IP6ZONE -> {
                 val strBytes = addr.toByteArray(StandardCharsets.UTF_8)
                 byteBuf(strBytes.size + 8)
-                    .writeUvarint(strBytes.size)
                     .writeBytes(strBytes)
                     .toByteArray()
             }
             else -> throw IllegalArgumentException("Unknown multiaddr type: $this")
         }
 
-    fun readAddressBytes(buf: ByteBuf) = ByteArray(sizeForAddress(buf)).also { buf.readBytes(it) }
+    fun readAddressBytes(buf: ByteBuf): ByteArray {
+        val size = if (size != LENGTH_PREFIXED_VAR_SIZE) size / 8 else buf.readUvarint().toInt()
+        val bb = ByteArray(size)
+        buf.readBytes(bb)
+        return bb
+    }
+    fun writeAddressBytes(buf: ByteBuf, bytes: ByteArray) {
+        if (size == LENGTH_PREFIXED_VAR_SIZE) buf.writeUvarint(bytes.size)
+        buf.writeBytes(bytes)
+    }
 
     fun bytesToAddress(addressBytes: ByteArray): String {
         return when (this) {
@@ -119,7 +126,10 @@ enum class Protocol(val code: Int, val size: Int, val typeName: String) {
                     .toString().substring(1)
             }
             TCP, UDP, DCCP, SCTP -> addressBytes.toByteBuf().readUnsignedShort().toString()
-            IPFS, P2P -> Cid.cast(addressBytes).toString()
+            IPFS, P2P -> {
+                val addrBuf = addressBytes.toByteBuf()
+                PeerId(addrBuf.toByteArray()).toBase58()
+            }
             ONION -> {
                 val byteBuf = addressBytes.toByteBuf()
                 val host = byteBuf.readBytes(10).toByteArray()
@@ -132,9 +142,6 @@ enum class Protocol(val code: Int, val size: Int, val typeName: String) {
             else -> throw IllegalStateException("Unimplemented protocol type: $this")
         }
     }
-
-    private fun sizeForAddress(buf: ByteBuf) =
-        if (size != LENGTH_PREFIXED_VAR_SIZE) size / 8 else buf.readUvarint().toInt()
 
     companion object {
         private val byCode = values().associate { p -> p.code to p }

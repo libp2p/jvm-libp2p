@@ -1,5 +1,28 @@
 package io.libp2p.core
 
-import java.util.function.Consumer
+import io.libp2p.etc.BroadcastConnectionHandler
 
-abstract class ConnectionHandler : Consumer<Connection>
+/**
+ * The same as [P2PAbstractHandler] with the [Connection] specialized [P2PAbstractChannel]
+ */
+interface ConnectionHandler {
+
+    fun handleConnection(conn: Connection)
+
+    companion object {
+        fun create(handler: (Connection) -> Unit): ConnectionHandler {
+            return object : ConnectionHandler {
+                override fun handleConnection(conn: Connection) {
+                    handler(conn)
+                }
+            }
+        }
+        fun createBroadcast(handlers: List<ConnectionHandler> = listOf()): Broadcast =
+            BroadcastConnectionHandler().also { it += handlers }
+
+        fun createStreamHandlerInitializer(streamHandler: StreamHandler<*>) =
+            create { it.muxerSession.inboundStreamHandler = streamHandler }
+    }
+
+    interface Broadcast : ConnectionHandler, MutableList<ConnectionHandler>
+}
