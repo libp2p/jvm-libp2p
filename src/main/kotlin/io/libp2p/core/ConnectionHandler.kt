@@ -1,8 +1,12 @@
 package io.libp2p.core
 
-import java.util.concurrent.CopyOnWriteArrayList
+import io.libp2p.etc.BroadcastConnectionHandler
 
+/**
+ * The same as [P2PAbstractHandler] with the [Connection] specialized [P2PAbstractChannel]
+ */
 interface ConnectionHandler {
+
     fun handleConnection(conn: Connection)
 
     companion object {
@@ -13,16 +17,12 @@ interface ConnectionHandler {
                 }
             }
         }
-        fun createBroadcast(handlers: List<ConnectionHandler> = listOf()) =
+        fun createBroadcast(handlers: List<ConnectionHandler> = listOf()): Broadcast =
             BroadcastConnectionHandler().also { it += handlers }
 
         fun createStreamHandlerInitializer(streamHandler: StreamHandler<*>) =
             create { it.muxerSession.inboundStreamHandler = streamHandler }
     }
-}
 
-class BroadcastConnectionHandler(
-    private val handlers: MutableList<ConnectionHandler> = CopyOnWriteArrayList()
-) : ConnectionHandler, MutableList<ConnectionHandler> by handlers {
-    override fun handleConnection(conn: Connection) = handlers.forEach { it.handleConnection(conn) }
+    interface Broadcast : ConnectionHandler, MutableList<ConnectionHandler>
 }

@@ -1,91 +1,80 @@
 package io.libp2p.core
 
 import io.libp2p.core.multiformats.Multiaddr
+import io.libp2p.core.multiformats.Protocol
 import io.libp2p.core.transport.Transport
-import io.libp2p.core.types.anyComplete
-import io.libp2p.core.types.toVoidCompletableFuture
 import java.util.concurrent.CompletableFuture
-import java.util.concurrent.CopyOnWriteArrayList
 
 /**
  * The networkConfig component handles all networkConfig affairs, particularly listening on endpoints and dialing peers.
  */
 interface Network {
-    val transports: List<Transport>
-    val connectionHandler: ConnectionHandler
-
-    val connections: List<Connection>
-
-    fun listen(addr: Multiaddr): CompletableFuture<Unit>
-    fun unlisten(addr: Multiaddr): CompletableFuture<Unit>
-
-    fun connect(id: PeerId, vararg addrs: Multiaddr): CompletableFuture<Connection>
-    fun disconnect(conn: Connection): CompletableFuture<Unit>
-
-    fun close(): CompletableFuture<Unit>
-}
-
-class NetworkImpl(
-    override val transports: List<Transport>,
-    override val connectionHandler: ConnectionHandler
-) : Network {
 
     /**
-     * The connection table.
+     * Transports supported by this network
      */
-    override val connections = CopyOnWriteArrayList<Connection>()
+    val transports: List<Transport>
 
-    init {
-        transports.forEach(Transport::initialize)
+    /**
+     * The handler which all established connections are initialized with
+     */
+    val connectionHandler: ConnectionHandler
+
+    /**
+     * The list of active connections
+     */
+    val connections: List<Connection>
+
+    /**
+     * Starts listening on specified address. The returned future asynchronously
+     * notifies on success or error
+     * All the incoming connections are handled with [connectionHandler]
+     */
+    fun listen(addr: Multiaddr): CompletableFuture<Unit>
+
+    /**
+     * Stops listening on specified address. The returned future asynchronously
+     * notifies on success or error
+     */
+    fun unlisten(addr: Multiaddr): CompletableFuture<Unit>
+
+    /**
+     * Connects to a remote peer
+     * This is a shortcut to [connect(PeerId, Multiaddr)] for the
+     * cases when [Multiaddr] contains [/p2p] component which contains remote [PeerId]
+     *
+     * @throws Libp2pException if [/p2p] component is missing or addresses has different [/p2p] values
+     * @throws TransportNotSupportedException if any of [addrs] represents the transport which is not supported
+     */
+    fun connect(vararg addrs: Multiaddr): CompletableFuture<Connection> {
+        val peerIdSet = addrs.map {
+            it.getStringComponent(Protocol.P2P)
+                ?: throw Libp2pException("Multiaddress should contain /p2p/<peerId> component")
+        }.toSet()
+        if (peerIdSet.size != 1) throw Libp2pException("All multiaddresses should nave the same peerId")
+        return connect(PeerId.fromBase58(peerIdSet.first()), *addrs)
     }
 
-    override fun close(): CompletableFuture<Unit> {
-        val futs = transports.map(Transport::close)
-        return CompletableFuture.allOf(*futs.toTypedArray())
-            .thenCompose {
-                val connCloseFuts = connections.map { it.nettyChannel.close().toVoidCompletableFuture() }
-                CompletableFuture.allOf(*connCloseFuts.toTypedArray())
-            }.thenApply { }
-    }
+    /**
+     * Tries ot connect to the remote peer with [id] PeerId by specified addresses
+     * If connection to this peer already exist, returns existing connection
+     * Else tries to connect the peer by all supplied addresses in parallel
+     * and completes the returned [Future] when any of connections succeeds
+     *
+     * If the connection is established it is handled by [connectionHandler]
+     *
+     * @throws TransportNotSupportedException if any of [addrs] represents the transport which is not supported
+     */
+    fun connect(id: PeerId, vararg addrs: Multiaddr): CompletableFuture<Connection>
 
-    override fun listen(addr: Multiaddr): CompletableFuture<Unit> =
-        getTransport(addr).listen(addr, createHookedConnHandler(connectionHandler))
-    override fun unlisten(addr: Multiaddr): CompletableFuture<Unit> = getTransport(addr).unlisten(addr)
-    override fun disconnect(conn: Connection): CompletableFuture<Unit> =
-        conn.nettyChannel.close().toVoidCompletableFuture()
+    /**
+     * Closes the specified [Connection]
+     */
+    fun disconnect(conn: Connection): CompletableFuture<Unit>
 
-    private fun getTransport(addr: Multiaddr) =
-        transports.firstOrNull { tpt -> tpt.handles(addr) }
-            ?: throw RuntimeException("no transport to handle addr: $addr")
-
-    private fun createHookedConnHandler(handler: ConnectionHandler) =
-        ConnectionHandler.createBroadcast(listOf(
-            handler,
-            ConnectionHandler.create { conn ->
-                connections += conn
-                conn.closeFuture().thenAccept { connections -= conn }
-            }
-        ))
-
-    override fun connect(
-        id: PeerId,
-        vararg addrs: Multiaddr
-    ): CompletableFuture<Connection> {
-
-        // we already have a connection for this peer, short circuit.
-        connections.find { it.secureSession.remoteId == id }
-            ?.apply { return CompletableFuture.completedFuture(this) }
-
-        // 1. check that some transport can dial at least one addr.
-        // 2. trigger dials in parallel via all transports.
-        // 3. when the first dial succeeds, cancel all pending dials and return the connection. // TODO cancel
-        // 4. if no emitted dial succeeds, or if we time out, fail the future. make sure to cancel
-        //    pending dials to avoid leaking.
-        val connectionFuts = addrs.mapNotNull { addr ->
-            transports.firstOrNull { tpt -> tpt.handles(addr) }?.let { addr to it }
-        }.map {
-            it.second.dial(it.first, createHookedConnHandler(connectionHandler))
-        }
-        return anyComplete(connectionFuts)
-    }
+    /**
+     * Closes all listening endpoints
+     * Closes all active connections
+     */
+    fun close(): CompletableFuture<Unit>
 }

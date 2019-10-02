@@ -1,8 +1,8 @@
 package io.libp2p.pubsub
 
-import io.libp2p.core.types.toBytesBigEndian
-import io.libp2p.core.types.toProtobuf
-import io.libp2p.core.util.P2PService
+import io.libp2p.etc.types.toBytesBigEndian
+import io.libp2p.etc.types.toProtobuf
+import io.libp2p.etc.util.P2PService
 import io.libp2p.pubsub.flood.FloodRouter
 import io.libp2p.pubsub.gossip.GossipRouter
 import io.libp2p.tools.TestChannel.TestConnection

@@ -8,12 +8,12 @@ import io.libp2p.core.multistream.Mode
 import io.libp2p.core.multistream.Multistream
 import io.libp2p.core.multistream.ProtocolBinding
 import io.libp2p.core.multistream.ProtocolMatcher
-import io.libp2p.pubsub.PubsubApi
+import io.libp2p.core.pubsub.PubsubApi
 import io.libp2p.pubsub.PubsubApiImpl
 import io.netty.channel.ChannelHandler
 import java.util.concurrent.CompletableFuture
 
-class Gossip(
+class Gossip @JvmOverloads constructor(
     val router: GossipRouter = GossipRouter(),
     val api: PubsubApi = PubsubApiImpl(router),
     val debugGossipHandler: ChannelHandler? = null

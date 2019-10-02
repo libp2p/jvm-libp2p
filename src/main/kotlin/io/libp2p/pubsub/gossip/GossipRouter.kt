@@ -1,9 +1,9 @@
 package io.libp2p.pubsub.gossip
 
-import io.libp2p.core.types.LimitedList
-import io.libp2p.core.types.anyComplete
-import io.libp2p.core.types.lazyVar
-import io.libp2p.core.types.whenTrue
+import io.libp2p.etc.types.LimitedList
+import io.libp2p.etc.types.anyComplete
+import io.libp2p.etc.types.lazyVar
+import io.libp2p.etc.types.whenTrue
 import io.libp2p.pubsub.AbstractRouter
 import pubsub.pb.Rpc
 import java.time.Duration

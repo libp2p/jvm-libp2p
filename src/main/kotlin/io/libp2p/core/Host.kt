@@ -2,124 +2,81 @@ package io.libp2p.core
 
 import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.multiformats.Multiaddr
-import io.libp2p.core.multistream.Multistream
 import io.libp2p.core.multistream.ProtocolBinding
-import io.libp2p.core.types.forward
+import io.libp2p.network.NetworkImpl
 import java.util.concurrent.CompletableFuture
-import java.util.concurrent.CopyOnWriteArrayList
 
 /**
  * The Host is the libp2p entrypoint. It is tightly coupled with all its inner components right now; in the near future
  * it should use some kind of dependency injection to wire itself.
  */
 interface Host {
+    /**
+     * Our private key which can be used by different protocols to sign messages
+     */
     val privKey: PrivKey
+    /**
+     * Our [PeerId] which is normally derived from [privKey]
+     */
     val peerId: PeerId
+    /**
+     * [Network] implementation
+     */
     val network: NetworkImpl
+    /**
+     * [AddressBook] implementation
+     */
     val addressBook: AddressBook
 
+    /**
+     * List of all streams opened at the moment across all the [Connection]s
+     * Please note that this list is updated asynchronously so the streams upon receiving
+     * of this list can be already closed or not yet completely initialized
+     * To be synchronously notified on stream creation use [addStreamHandler] and
+     * use [Stream.closeFuture] to be synchronously notified on stream close
+     */
     val streams: List<Stream>
 
+    /**
+     * Starts all services of this host (like listening transports, etc)
+     * The returned future is completed when all stuff up and working or
+     * has completes with exception in case of any problems during start up
+     */
     fun start(): CompletableFuture<Unit>
+
+    /**
+     * Stops all the services of this host
+     */
     fun stop(): CompletableFuture<Unit>
 
+    /**
+     * Adds a handler which is notified when a new [Stream] is created
+     * Note that this is just a hook to be informed on a stream creation
+     * and no actual [Stream.nettyChannel] initialization should happen here.
+     * Refer to [addProtocolHandler] to setup a specific protocol handler
+     */
     fun addStreamHandler(handler: StreamHandler<*>)
+
+    /**
+     * Removes the handler added with [addStreamHandler]
+     */
     fun removeStreamHandler(handler: StreamHandler<*>)
 
+    /**
+     * Adds a new supported protocol 'on the fly'
+     * After the protocol is added it would handle inbound requests
+     * and be actively started up with [newStream] method
+     */
     fun addProtocolHandler(protocolBinding: ProtocolBinding<Any>)
+
+    /**
+     * Removes the handler added with [addProtocolHandler]
+     */
     fun removeProtocolHandler(protocolBinding: ProtocolBinding<Any>)
 
     fun addConnectionHandler(handler: ConnectionHandler)
     fun removeConnectionHandler(handler: ConnectionHandler)
 
-    fun <TController> newStream(conn: Connection, protocol: String): StreamPromise<TController>
+    fun <TController> newStream(protocol: String, conn: Connection): StreamPromise<TController>
     fun <TController> newStream(protocol: String, peer: PeerId, vararg addr: Multiaddr): StreamPromise<TController>
-}
-
-class HostImpl(
-    override val privKey: PrivKey,
-    override val network: NetworkImpl,
-    override val addressBook: AddressBook,
-    private val listenAddrs: List<Multiaddr>,
-    private val protocolHandlers: Multistream<Any>,
-    private val connectionHandlers: BroadcastConnectionHandler,
-    private val streamHandlers: BroadcastStreamHandler
-) : Host {
-
-    override val peerId = PeerId.fromPubKey(privKey.publicKey())
-    override val streams = CopyOnWriteArrayList<Stream>()
-
-    private val internalStreamHandler = StreamHandler.create { stream ->
-        streams += stream
-        stream.nettyChannel.closeFuture().addListener { streams -= stream }
-    }
-
-    init {
-        streamHandlers += internalStreamHandler
-    }
-
-    override fun start(): CompletableFuture<Unit> {
-        return CompletableFuture.allOf(
-            *listenAddrs.map { network.listen(it) }.toTypedArray()
-        ).thenApply { }
-    }
-
-    override fun stop(): CompletableFuture<Unit> {
-        return network.close()
-    }
-
-    override fun addStreamHandler(handler: StreamHandler<*>) {
-        streamHandlers += handler
-    }
-
-    override fun removeStreamHandler(handler: StreamHandler<*>) {
-        streamHandlers -= handler
-    }
-
-    override fun addProtocolHandler(protocolBinding: ProtocolBinding<Any>) {
-        protocolHandlers.bindings += protocolBinding
-    }
-
-    override fun removeProtocolHandler(protocolBinding: ProtocolBinding<Any>) {
-        protocolHandlers.bindings -= protocolBinding
-    }
-
-    override fun addConnectionHandler(handler: ConnectionHandler) {
-        connectionHandlers += handler
-    }
-
-    override fun removeConnectionHandler(handler: ConnectionHandler) {
-        connectionHandlers += handler
-    }
-
-    override fun <TController> newStream(protocol: String, peer: PeerId, vararg addr: Multiaddr): StreamPromise<TController> {
-        val ret = StreamPromise<TController>()
-        network.connect(peer, *addr)
-            .handle { r, t ->
-                if (t != null) {
-                    ret.stream.completeExceptionally(t)
-                    ret.controler.completeExceptionally(t)
-                } else {
-                    val (stream, controler) = newStream<TController>(r, protocol)
-                    stream.forward(ret.stream)
-                    controler.forward(ret.controler)
-                }
-            }
-        return ret
-    }
-
-    override fun <TController> newStream(conn: Connection, protocol: String): StreamPromise<TController> {
-        val binding =
-            protocolHandlers.bindings.find { it.matcher.matches(protocol) } as? ProtocolBinding<TController>
-            ?: throw Libp2pException("Protocol handler not found: $protocol")
-
-        val multistream: Multistream<TController> = Multistream.create(binding.toInitiator(protocol))
-        return conn.muxerSession.createStream(object : StreamHandler<TController> {
-            override fun handleStream(stream: Stream): CompletableFuture<out TController> {
-                val ret = multistream.toStreamHandler().handleStream(stream)
-                streamHandlers.handleStream(stream)
-                return ret
-            }
-        })
-    }
 }

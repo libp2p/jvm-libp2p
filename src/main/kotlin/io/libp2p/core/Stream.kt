@@ -1,14 +1,22 @@
 package io.libp2p.core
 
+import io.libp2p.etc.PROTOCOL
 import io.netty.channel.Channel
 import java.util.concurrent.CompletableFuture
 
+/**
+ * Represents a multiplexed stream over wire connection
+ */
 class Stream(ch: Channel, val conn: Connection) : P2PAbstractChannel(ch) {
 
     init {
         nettyChannel.attr(PROTOCOL).set(CompletableFuture())
     }
 
+    /**
+     * Returns the [PeerId] of the remote peer [Connection] which this
+     * [Stream] created on
+     */
     fun remotePeerId() = conn.secureSession.remoteId
 
     /**

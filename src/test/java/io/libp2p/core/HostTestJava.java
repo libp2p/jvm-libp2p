@@ -1,15 +1,24 @@
 package io.libp2p.core;
 
+import io.libp2p.core.crypto.KEY_TYPE;
+import io.libp2p.core.crypto.KeyKt;
+import io.libp2p.core.crypto.PrivKey;
+import io.libp2p.core.crypto.PubKey;
 import io.libp2p.core.dsl.BuildersJKt;
 import io.libp2p.core.multiformats.Multiaddr;
 import io.libp2p.core.multistream.Multistream;
-import io.libp2p.core.mux.mplex.MplexStreamMuxer;
-import io.libp2p.core.protocol.Ping;
-import io.libp2p.core.protocol.PingController;
-import io.libp2p.core.security.secio.SecIoSecureChannel;
-import io.libp2p.core.transport.tcp.TcpTransport;
+import io.libp2p.core.multistream.ProtocolBinding;
+import io.libp2p.core.multistream.ProtocolMatcher;
+import io.libp2p.host.HostImpl;
+import io.libp2p.mux.mplex.MplexStreamMuxer;
+import io.libp2p.protocol.Ping;
+import io.libp2p.protocol.PingController;
+import io.libp2p.security.secio.SecIoSecureChannel;
+import io.libp2p.transport.tcp.TcpTransport;
 import io.netty.handler.logging.LogLevel;
+import kotlin.Pair;
 import kotlin.Unit;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -18,6 +27,28 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 public class HostTestJava {
+
+    static class A implements ProtocolBinding<String> {
+        @NotNull
+        @Override
+        public String getAnnounce() {
+            return null;
+        }
+
+        @NotNull
+        @Override
+        public ProtocolMatcher getMatcher() {
+            return null;
+        }
+
+        @NotNull
+        @Override
+        public CompletableFuture<? extends String> initChannel(@NotNull P2PAbstractChannel ch, @NotNull String selectedProtocol) {
+            this.toInitiator("aa");
+            return null;
+        }
+
+    }
 
     @Test
     public void test1() throws Exception {
@@ -70,5 +101,13 @@ public class HostTestJava {
         System.out.println("Host #1 stopped");
         host2.stop().get(5, TimeUnit.SECONDS);
         System.out.println("Host #2 stopped");
+    }
+
+    @Test
+    void test2() {
+        Pair<PrivKey, PubKey> pair = KeyKt.generateKeyPair(KEY_TYPE.SECP256K1);
+        PeerId peerId = PeerId.fromPubKey(pair.component2());
+        System.out.println("PeerId: " + peerId.toHex());
+
     }
 }
