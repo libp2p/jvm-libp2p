@@ -12,17 +12,14 @@ import io.libp2p.security.noise.NoiseXXSecureChannel
 import io.libp2p.security.secio.SecIoSecureChannel
 import io.libp2p.transport.tcp.TcpTransport
 import io.netty.handler.logging.LogLevel
-import org.junit.jupiter.api.Assertions
-import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.*
 import java.util.concurrent.TimeUnit
 
 class SecioTest : HostTest(::SecIoSecureChannel)
 
 class NoiseXXTest : HostTest(::NoiseXXSecureChannel)
 
-open class HostTest(val secureChannelCtor: SecureChannelCtor) {
+abstract class HostTest(val secureChannelCtor: SecureChannelCtor) {
     val clientHost = host {
         identity {
             random()
