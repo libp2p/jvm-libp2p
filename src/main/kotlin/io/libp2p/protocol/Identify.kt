@@ -7,9 +7,7 @@ import io.libp2p.core.P2PChannel
 import io.libp2p.core.P2PChannelHandler
 import io.libp2p.core.Stream
 import io.libp2p.core.multiformats.Multiaddr
-import io.libp2p.core.multistream.Mode
-import io.libp2p.core.multistream.ProtocolBinding
-import io.libp2p.core.multistream.ProtocolMatcher
+import io.libp2p.core.multistream.StrictProtocolBinding
 import io.libp2p.etc.types.toProtobuf
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandler
@@ -26,16 +24,8 @@ interface IdentifyController {
 
 class Identify(idMessage: IdentifyOuterClass.Identify? = null) : IdentifyBinding(IdentifyProtocol(idMessage))
 
-open class IdentifyBinding(val protocol: IdentifyProtocol) : ProtocolBinding<IdentifyController> {
+open class IdentifyBinding(override val protocol: IdentifyProtocol) : StrictProtocolBinding<IdentifyController>(protocol) {
     override val announce = "/ipfs/id/1.0.0"
-    override val matcher = ProtocolMatcher(Mode.STRICT, name = announce)
-
-    override fun initChannel(
-        ch: P2PChannel,
-        selectedProtocol: String
-    ): CompletableFuture<out IdentifyController> {
-        return protocol.initChannel(ch)
-    }
 }
 
 class IdentifyProtocol(var idMessage: IdentifyOuterClass.Identify? = null) : P2PChannelHandler<IdentifyController> {
