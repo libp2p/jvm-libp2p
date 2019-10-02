@@ -11,8 +11,6 @@ import io.libp2p.etc.types.toByteArray
 import io.libp2p.etc.types.toByteBuf
 import io.libp2p.etc.types.toHex
 import io.netty.buffer.ByteBuf
-import io.netty.channel.ChannelHandlerContext
-import io.netty.channel.SimpleChannelInboundHandler
 import java.time.Duration
 import java.util.Collections
 import java.util.Random
@@ -40,18 +38,18 @@ open class PingProtocol : ProtocolHandler<PingController>() {
     var pingTimeout = Duration.ofSeconds(10)
 
     override fun onStartInitiator(stream: Stream): CompletableFuture<PingController> {
-        val handler = PingInitiatorChannelHandler()
+        val handler = PingInitiator()
         stream.pushHandler(handler)
         return handler.activeFuture
     }
 
     override fun onStartResponder(stream: Stream): CompletableFuture<PingController> {
-        val handler = PingResponderChannelHandler()
+        val handler = PingResponder()
         stream.pushHandler(handler)
         return CompletableFuture.completedFuture(handler)
     }
 
-    inner class PingResponderChannelHandler : ProtocolMessageHandler<ByteBuf>, PingController {
+    inner class PingResponder : ProtocolMessageHandler<ByteBuf>, PingController {
         override fun onMessage(stream: Stream, msg: ByteBuf) {
             stream.writeAndFlush(msg)
         }
@@ -61,33 +59,31 @@ open class PingProtocol : ProtocolHandler<PingController>() {
         }
     }
 
-    inner class PingInitiatorChannelHandler : SimpleChannelInboundHandler<ByteBuf>(),
-        PingController {
+    inner class PingInitiator : ProtocolMessageHandler<ByteBuf>, PingController {
         val activeFuture = CompletableFuture<PingController>()
         val requests = Collections.synchronizedMap(mutableMapOf<String, Pair<Long, CompletableFuture<Long>>>())
-        lateinit var ctx: ChannelHandlerContext
+        lateinit var stream: Stream
         var closed = false
 
-        override fun channelRead0(ctx: ChannelHandlerContext, msg: ByteBuf) {
+        override fun onActivated(stream: Stream) {
+            this.stream = stream
+            activeFuture.complete(this)
+        }
+
+        override fun onMessage(stream: Stream, msg: ByteBuf) {
             val dataS = msg.toByteArray().toHex()
             val (sentT, future) = requests.remove(dataS)
                 ?: throw BadPeerException("Unknown or expired ping data in response: $dataS")
             future.complete(curTime() - sentT)
         }
 
-        override fun channelUnregistered(ctx: ChannelHandlerContext) {
+        override fun onClosed(stream: Stream) {
             closed = true
             activeFuture.completeExceptionally(ConnectionClosedException())
             synchronized(requests) {
                 requests.values.forEach { it.second.completeExceptionally(ConnectionClosedException()) }
                 requests.clear()
             }
-            super.channelUnregistered(ctx)
-        }
-
-        override fun channelActive(ctx: ChannelHandlerContext) {
-            this.ctx = ctx
-            activeFuture.complete(this)
         }
 
         override fun ping(): CompletableFuture<Long> {
@@ -100,7 +96,7 @@ open class PingProtocol : ProtocolHandler<PingController>() {
             scheduler.schedule({
                 requests.remove(dataS)?.second?.completeExceptionally(PingTimeoutException())
             }, pingTimeout.toMillis(), TimeUnit.MILLISECONDS)
-            ctx.writeAndFlush(data.toByteBuf())
+            stream.writeAndFlush(data.toByteBuf())
             return ret
         }
     }
