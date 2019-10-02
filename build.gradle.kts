@@ -2,7 +2,9 @@ import com.google.protobuf.gradle.proto
 import com.google.protobuf.gradle.protobuf
 import com.google.protobuf.gradle.protoc
 import com.jfrog.bintray.gradle.BintrayExtension
+import org.jetbrains.dokka.gradle.DokkaTask
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import java.net.URL
 
 // To publish the release artifact to JFrog Bintray repo run the following :
 // ./gradlew bintrayUpload -PbintrayUser=<user> -PbintrayApiKey=<api-key>
@@ -21,9 +23,11 @@ plugins {
 
     `maven-publish`
     id("com.jfrog.bintray") version "1.8.1"
+    id("org.jetbrains.dokka") version "0.9.18"
 }
 
 repositories {
+    jcenter()
     mavenCentral()
     maven("https://jitpack.io")
 }
@@ -110,6 +114,24 @@ val sourcesJar by tasks.registering(Jar::class) {
     from(sourceSets.main.get().allSource)
 }
 
+val dokka by tasks.getting(DokkaTask::class) {
+    outputFormat = "html"
+    outputDirectory = "$buildDir/dokka"
+    jdkVersion = 8
+    reportUndocumented = false
+    externalDocumentationLink {
+        url = URL("https://netty.io/4.1/api/")
+    }
+}
+
+val dokkaJar by tasks.creating(Jar::class) {
+    group = JavaBasePlugin.DOCUMENTATION_GROUP
+    description = "Assembles Kotlin docs with Dokka"
+    archiveClassifier.set("javadoc")
+    from(tasks.dokka)
+    dependsOn(tasks.dokka)
+}
+
 publishing {
     repositories {
         maven {
@@ -121,6 +143,7 @@ publishing {
         register("mavenJava", MavenPublication::class) {
             from(components["java"])
             artifact(sourcesJar.get())
+            artifact(dokkaJar)
         }
     }
 }
