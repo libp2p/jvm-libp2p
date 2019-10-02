@@ -1,10 +1,14 @@
 import com.google.protobuf.gradle.proto
 import com.google.protobuf.gradle.protobuf
 import com.google.protobuf.gradle.protoc
+import com.jfrog.bintray.gradle.BintrayExtension
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
+// To publish the release artifact to JFrog Bintray repo run the following :
+// ./gradlew bintrayUpload -PbintrayUser=<user> -PbintrayApiKey=<api-key>
+
 group = "io.libp2p"
-version = "0.0.1-SNAPSHOT"
+version = "0.1.0-RELEASE"
 description = "a minimal implementation of libp2p for the jvm"
 
 plugins {
@@ -16,6 +20,7 @@ plugins {
     `build-scan`
 
     `maven-publish`
+    id("com.jfrog.bintray") version "1.8.1"
 }
 
 repositories {
@@ -118,4 +123,21 @@ publishing {
             artifact(sourcesJar.get())
         }
     }
+}
+
+fun findProperty(s: String) = project.findProperty(s) as String?
+
+bintray {
+    user = findProperty("bintrayUser")
+    key = findProperty("bintrayApiKey")
+    publish = true
+    setPublications("mavenJava")
+    setConfigurations("archives")
+    pkg(delegateClosureOf<BintrayExtension.PackageConfig> {
+        userOrg = "libp2p"
+        repo = "jvm-libp2p"
+        name = "io.libp2p"
+        setLicenses("Apache-2.0", "MIT")
+        vcsUrl = "https://github.com/libp2p/jvm-libp2p"
+    })
 }
