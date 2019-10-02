@@ -16,6 +16,7 @@ import io.libp2p.core.security.SecureChannel
 import io.libp2p.etc.SECURE_SESSION
 import io.libp2p.etc.events.SecureChannelFailed
 import io.libp2p.etc.events.SecureChannelInitialized
+import io.libp2p.etc.types.toByteArray
 import io.libp2p.etc.types.toByteBuf
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
@@ -107,7 +108,7 @@ open class NoiseXXSecureChannel(private val localKey: PrivKey) :
 
         override fun channelRead0(ctx: ChannelHandlerContext, msg1: ByteBuf) {
             logger.debug("Starting channelRead0")
-            val msg = msg1.array()
+            val msg = msg1.toByteArray()
 
             channelActive(ctx)
 
