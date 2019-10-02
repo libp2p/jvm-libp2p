@@ -45,7 +45,7 @@ open class PingProtocol : P2PChannelHandler<PingController> {
         return if (ch.isInitiator) {
             val handler = PingInitiatorChannelHandler()
             ch.pushHandler(handler)
-            handler.activeFuture.thenApply { handler }
+            handler.activeFuture
         } else {
             val handler = PingResponderChannelHandler()
             ch.pushHandler(handler)
@@ -65,7 +65,7 @@ open class PingProtocol : P2PChannelHandler<PingController> {
 
     inner class PingInitiatorChannelHandler : SimpleChannelInboundHandler<ByteBuf>(),
         PingController {
-        val activeFuture = CompletableFuture<Unit>()
+        val activeFuture = CompletableFuture<PingController>()
         val requests = Collections.synchronizedMap(mutableMapOf<String, Pair<Long, CompletableFuture<Long>>>())
         lateinit var ctx: ChannelHandlerContext
         var closed = false
@@ -89,7 +89,7 @@ open class PingProtocol : P2PChannelHandler<PingController> {
 
         override fun channelActive(ctx: ChannelHandlerContext) {
             this.ctx = ctx
-            activeFuture.complete(null)
+            activeFuture.complete(this)
         }
 
         override fun ping(): CompletableFuture<Long> {
