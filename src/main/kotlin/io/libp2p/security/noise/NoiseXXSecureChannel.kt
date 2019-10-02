@@ -73,12 +73,10 @@ open class NoiseXXSecureChannel(private val localKey: PrivKey) :
                         val session = evt.session as NoiseSecureChannelSession
                         ctx.channel().attr(SECURE_SESSION).set(session)
 
-                        ctx.pipeline().remove(handshakeHandlerName)
-                        ctx.pipeline().remove(this)
-
                         ctx.pipeline().addLast(NoiseXXCodec(session.aliceCipher, session.bobCipher))
 
                         ret.complete(session)
+                        ctx.pipeline().remove(this)
 
                         logger.debug("Reporting secure channel initialized")
                     }
@@ -169,6 +167,8 @@ open class NoiseXXSecureChannel(private val localKey: PrivKey) :
                         bobSplit
                     ) as SecureChannel.Session)
                 ctx.fireUserEventTriggered(secureChannelInitialized)
+                ctx.fireChannelActive()
+                ctx.channel().pipeline().remove(handshakeHandlerName)
                 return
             }
         }
