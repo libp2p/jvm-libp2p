@@ -62,9 +62,8 @@ do not impact the ability to hold communications with other libp2p processes.
    repositories {
        jcenter()
        maven { url "https://jitpack.io" }
-       maven { url "https://dl.bintray.com/libp2p/jvm-libp2p" }
    }
-  implementation 'io.libp2p:jvm-libp2p-minimal:0.1.0-RELEASE'
+   implementation 'io.libp2p:jvm-libp2p-minimal:0.1.0-RELEASE'
 ```
 
 
