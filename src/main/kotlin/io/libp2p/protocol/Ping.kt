@@ -3,8 +3,7 @@ package io.libp2p.protocol
 import io.libp2p.core.BadPeerException
 import io.libp2p.core.ConnectionClosedException
 import io.libp2p.core.Libp2pException
-import io.libp2p.core.P2PChannel
-import io.libp2p.core.P2PChannelHandler
+import io.libp2p.core.Stream
 import io.libp2p.core.multistream.StrictProtocolBinding
 import io.libp2p.etc.types.completedExceptionally
 import io.libp2p.etc.types.lazyVar
@@ -34,23 +33,23 @@ open class PingBinding(ping: PingProtocol) : StrictProtocolBinding<PingControlle
 
 class PingTimeoutException : Libp2pException()
 
-class PingProtocol : P2PChannelHandler<PingController> {
+class PingProtocol : ProtocolHandler<PingController>() {
     var scheduler by lazyVar { Executors.newSingleThreadScheduledExecutor() }
     var curTime: () -> Long = { System.currentTimeMillis() }
     var random = Random()
     var pingSize = 32
     var pingTimeout = Duration.ofSeconds(10)
 
-    override fun initChannel(ch: P2PChannel): CompletableFuture<PingController> {
-        return if (ch.isInitiator) {
-            val handler = PingInitiatorChannelHandler()
-            ch.pushHandler(handler)
-            handler.activeFuture
-        } else {
-            val handler = PingResponderChannelHandler()
-            ch.pushHandler(handler)
-            CompletableFuture.completedFuture(handler)
-        }
+    override fun onStartInitiator(stream: Stream): CompletableFuture<PingController> {
+        val handler = PingInitiatorChannelHandler()
+        stream.pushHandler(handler)
+        return handler.activeFuture
+    }
+
+    override fun onStartResponder(stream: Stream): CompletableFuture<PingController> {
+        val handler = PingResponderChannelHandler()
+        stream.pushHandler(handler)
+        return CompletableFuture.completedFuture(handler)
     }
 
     inner class PingResponderChannelHandler : ChannelInboundHandlerAdapter(), PingController {
