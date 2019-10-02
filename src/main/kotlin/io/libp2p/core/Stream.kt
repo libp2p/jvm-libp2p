@@ -1,5 +1,7 @@
 package io.libp2p.core
 
+import io.libp2p.protocol.ProtocolMessageHandler
+import io.libp2p.protocol.ProtocolMessageHandlerAdapter
 import java.util.concurrent.CompletableFuture
 
 /**
@@ -18,6 +20,10 @@ interface Stream : P2PChannel {
      * @return negotiated protocol
      */
     fun getProtocol(): CompletableFuture<String>
+
+    fun <TMessage> pushHandler(protocolHandler: ProtocolMessageHandler<TMessage>) {
+        pushHandler(ProtocolMessageHandlerAdapter(this, protocolHandler))
+    }
 
     fun writeAndFlush(msg: Any)
 }

@@ -12,7 +12,6 @@ import io.libp2p.etc.types.toByteBuf
 import io.libp2p.etc.types.toHex
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
-import io.netty.channel.ChannelInboundHandlerAdapter
 import io.netty.channel.SimpleChannelInboundHandler
 import java.time.Duration
 import java.util.Collections
@@ -52,9 +51,9 @@ open class PingProtocol : ProtocolHandler<PingController>() {
         return CompletableFuture.completedFuture(handler)
     }
 
-    inner class PingResponderChannelHandler : ChannelInboundHandlerAdapter(), PingController {
-        override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
-            ctx.writeAndFlush(msg)
+    inner class PingResponderChannelHandler : ProtocolMessageHandler<ByteBuf>, PingController {
+        override fun onMessage(stream: Stream, msg: ByteBuf) {
+            stream.writeAndFlush(msg)
         }
 
         override fun ping(): CompletableFuture<Long> {
