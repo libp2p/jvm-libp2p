@@ -73,10 +73,9 @@ open class NoiseXXSecureChannel(private val localKey: PrivKey) :
                         val session = evt.session as NoiseSecureChannelSession
                         ctx.channel().attr(SECURE_SESSION).set(session)
 
-                        ctx.pipeline().addLast(NoiseXXCodec(session.aliceCipher, session.bobCipher))
-
                         ret.complete(session)
                         ctx.pipeline().remove(this)
+                        ctx.pipeline().addLast(NoiseXXCodec(session.aliceCipher, session.bobCipher))
 
                         logger.debug("Reporting secure channel initialized")
                     }
