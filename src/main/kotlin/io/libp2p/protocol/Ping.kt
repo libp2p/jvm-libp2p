@@ -5,9 +5,7 @@ import io.libp2p.core.ConnectionClosedException
 import io.libp2p.core.Libp2pException
 import io.libp2p.core.P2PChannel
 import io.libp2p.core.P2PChannelHandler
-import io.libp2p.core.multistream.Mode
-import io.libp2p.core.multistream.ProtocolBinding
-import io.libp2p.core.multistream.ProtocolMatcher
+import io.libp2p.core.multistream.StrictProtocolBinding
 import io.libp2p.etc.types.completedExceptionally
 import io.libp2p.etc.types.lazyVar
 import io.libp2p.etc.types.toByteArray
@@ -30,13 +28,8 @@ interface PingController {
 
 class Ping : PingBinding(PingProtocol())
 
-open class PingBinding(val ping: PingProtocol) : ProtocolBinding<PingController> {
+open class PingBinding(ping: PingProtocol) : StrictProtocolBinding<PingController>(ping) {
     override val announce = "/ipfs/ping/1.0.0"
-    override val matcher = ProtocolMatcher(Mode.STRICT, name = announce)
-
-    override fun initChannel(ch: P2PChannel, selectedProtocol: String): CompletableFuture<out PingController> {
-        return ping.initChannel(ch)
-    }
 }
 
 class PingTimeoutException : Libp2pException()
