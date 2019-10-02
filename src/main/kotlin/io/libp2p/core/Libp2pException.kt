@@ -17,6 +17,46 @@ open class Libp2pException : RuntimeException {
     constructor(message: String, ex: Exception?) : super(message, ex) {}
     constructor(message: String) : super(message) {}
     constructor(ex: Exception) : super(ex) {}
+    constructor() : super("") {}
 }
 
-class ConnectionClosedException(message: String) : Libp2pException(message)
+/**
+ * Is thrown when any operation is attempted on a closed stream
+ */
+class ConnectionClosedException(message: String) : Libp2pException(message) {
+    constructor() : this("Connection is closed")
+}
+
+/**
+ * Indicates library malfunction
+ */
+class InternalErrorException(message: String) : Libp2pException(message)
+
+/**
+ * Indicates peer misbehavior, like malformed messages or protocol violation
+ */
+class BadPeerException(message: String, ex: Exception?) : Libp2pException(message, ex) {
+    constructor(message: String) : this(message, null)
+}
+
+class BadKeyTypeException : Exception("Invalid or unsupported key type")
+
+/**
+ * Indicates that the protocol is not registered at local or remote side
+ */
+open class NoSuchProtocolException(message: String) : Libp2pException(message)
+
+/**
+ * Indicates that the protocol is not registered at local configuration
+ */
+class NoSuchLocalProtocolException(message: String) : NoSuchProtocolException(message)
+/**
+ * Indicates that the protocol is not known by the remote party
+ */
+class NoSuchRemoteProtocolException(message: String) : NoSuchProtocolException(message)
+
+/**
+ * Indicates that connecting a [io.libp2p.core.multiformats.Multiaddr] is not possible since
+ * the desired transport is not supported
+ */
+open class TransportNotSupportedException(message: String) : Libp2pException(message)

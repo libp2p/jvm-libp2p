@@ -1,32 +1,89 @@
 package io.libp2p.core.multiformats
 
-import io.libp2p.core.types.readUvarint
-import io.libp2p.core.types.toByteArray
-import io.libp2p.core.types.toByteBuf
+import io.libp2p.etc.types.readUvarint
+import io.libp2p.etc.types.toByteArray
+import io.libp2p.etc.types.toByteBuf
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 
+/**
+ * Class implements Multiaddress concept: https://github.com/multiformats/multiaddr
+ *
+ * Multiaddress is basically the chain of components like `protocol: value` pairs
+ * (value is optional)
+ *
+ * It's string representation is `/protocol/value/protocol/value/...`
+ * E.g. `/ip4/127.0.0.1/tcp/1234` which means TCP socket on port `1234` on local host
+ *
+ * @param components: generic Multiaddress representation which is a chain of 'components'
+ * represented as a known [Protocol] and its value (if any) serialized to bytes according
+ * to this protocol rule
+ */
 class Multiaddr(val components: List<Pair<Protocol, ByteArray>>) {
 
+    /**
+     * Creates instance from the string representation
+     */
     constructor(addr: String) : this(parseString(addr))
 
+    /**
+     * Creates instance from serialized form from [ByteBuf]
+     */
     constructor(bytes: ByteBuf) : this(parseBytes(bytes))
+    /**
+     * Creates instance from serialized form from [ByteBuf]
+     */
     constructor(bytes: ByteArray) : this(parseBytes(bytes.toByteBuf()))
 
-    fun getStringComponents(): List<Pair<Protocol, String?>> =
+    /**
+     * Returns only components matching any of supplied protocols
+     */
+    fun filterComponents(vararg proto: Protocol): List<Pair<Protocol, ByteArray>> = components.filter { proto.contains(it.first) }
+
+    /**
+     * Returns the first found protocol value. [null] if the protocol not found
+     */
+    fun getComponent(proto: Protocol): ByteArray? = filterComponents(proto).firstOrNull()?.second
+
+    /**
+     * Returns [components] in a human readable form where each protocol value
+     * is deserialized and represented as String
+     */
+    fun filterStringComponents(): List<Pair<Protocol, String?>> =
         components.map { p -> p.first to if (p.first.size == 0) null else p.first.bytesToAddress(p.second) }
 
+    /**
+     * Returns only components (String representation) matching any of supplied protocols
+     */
+    fun filterStringComponents(vararg proto: Protocol): List<Pair<Protocol, String?>> = filterStringComponents().filter { proto.contains(it.first) }
+
+    /**
+     * Returns the first found protocol String value representation . [null] if the protocol not found
+     */
+    fun getStringComponent(proto: Protocol): String? = filterStringComponents(proto).firstOrNull()?.second
+
+    /**
+     * Serializes this instance to supplied [ByteBuf]
+     */
     fun writeBytes(buf: ByteBuf): ByteBuf {
         for (component in components) {
             buf.writeBytes(component.first.encoded)
-            buf.writeBytes(component.second)
+            component.first.writeAddressBytes(buf, component.second)
         }
         return buf
     }
 
+    /**
+     * Returns serialized form as [ByteArray]
+     */
     fun getBytes(): ByteArray = writeBytes(Unpooled.buffer()).toByteArray()
 
-    override fun toString(): String = getStringComponents().joinToString(separator = "") { p ->
+    /**
+     * Returns the string representation of this multiaddress
+     * Note that `Multiaddress(strAddr).toString` is not always equal to `strAddr`
+     * (e.g. `/ip6/::1` can be converted to `/ip6/0:0:0:0:0:0:0:1`)
+     */
+    override fun toString(): String = filterStringComponents().joinToString(separator = "") { p ->
         "/" + p.first.typeName + if (p.second != null) "/" + p.second else "" }
 
     override fun equals(other: Any?): Boolean {
@@ -80,7 +137,7 @@ class Multiaddr(val components: List<Pair<Protocol, ByteArray>>) {
             val ret: MutableList<Pair<Protocol, ByteArray>> = mutableListOf()
             while (buf.isReadable) {
                 val protocol = Protocol.getOrThrow(buf.readUvarint().toInt())
-                ret.add(protocol to protocol.readAddressBytes(buf).toByteArray())
+                ret.add(protocol to protocol.readAddressBytes(buf))
             }
             return ret
         }

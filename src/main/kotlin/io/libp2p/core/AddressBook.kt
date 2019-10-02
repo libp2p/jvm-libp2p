@@ -11,7 +11,7 @@ interface AddressBook {
     /**
      * Equivalent to getAddrs(id).
      */
-    operator fun get(id: PeerId): CompletableFuture<Collection<Multiaddr>?>
+    operator fun get(id: PeerId): CompletableFuture<Collection<Multiaddr>?> = getAddrs(id)
 
     /**
      * Returns the addresses we know for a given peer, or nil if we know zero.

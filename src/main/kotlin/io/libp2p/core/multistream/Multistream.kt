@@ -1,41 +1,64 @@
 package io.libp2p.core.multistream
 
-import io.libp2p.core.types.forward
-import io.libp2p.core.util.netty.nettyInitializer
-import io.netty.channel.ChannelHandler
+import io.libp2p.core.P2PAbstractChannel
+import io.libp2p.core.P2PAbstractHandler
+import io.libp2p.multistream.MultistreamImpl
 import java.util.concurrent.CompletableFuture
 
-interface Multistream<TController> {
+/**
+ * Represents 'multistream' concept: https://github.com/multiformats/multistream-select
+ *
+ * This is a handler which can be applied to either [io.libp2p.core.Connection] or [io.libp2p.core.Stream]
+ * performs the negotiation with remote party on supported protocol and sets up the corresponding
+ * protocol handler.
+ *
+ * The distinction should be made between _initiator_ and _responder_ [Multistream] roles.
+ *
+ * The _initiator_ [Multistream] basically has only a single [bindings] entry with desired protocol or
+ * a set of bindings for different protocol versions. The first matching protocol is initiated and
+ * the protocol [TController] is supplied to the client for further actions
+ *
+ * The _responder_ [Multistream] basically contains the list of all supported protocols.
+ * The protocol is instantiated by a remote request
+ */
+interface Multistream<TController> : P2PAbstractHandler<TController> {
 
-    val bindings: List<ProtocolBinding<TController>>
+    /**
+     * For _responder_ role this is the list of all supported protocols for this peer
+     * For _initiator_ role this is the list of protocols the initiator wants to instantiate.
+     * Basically this is either a single protocol or a protocol versions
+     */
+    val bindings: MutableList<ProtocolBinding<TController>>
 
-    fun initializer(): Pair<ChannelHandler, CompletableFuture<TController>>
+    override fun initChannel(ch: P2PAbstractChannel): CompletableFuture<TController>
 
     companion object {
+        /**
+         * Creates empty [Multistream] implementation
+         */
+        @JvmStatic
+        fun <TController> create(): Multistream<TController> = MultistreamImpl()
+
+        /**
+         * Creates [Multistream] implementation with a list of protocol bindings
+         */
+        @JvmStatic
         fun <TController> create(
-            bindings: List<ProtocolBinding<TController>>,
-            initiator: Boolean
-        ): Multistream<TController> = MultistreamImpl(bindings, initiator)
-    }
-}
+            vararg bindings: ProtocolBinding<TController>
+        ): Multistream<TController> = MultistreamImpl(listOf(*bindings))
+        /**
+         * Creates [Multistream] implementation with a list of protocol bindings
+         */
+        @JvmStatic
+        fun <TController> create(
+            bindings: List<ProtocolBinding<TController>>
+        ): Multistream<TController> = MultistreamImpl(bindings)
 
-class MultistreamImpl<TController>(override val bindings: List<ProtocolBinding<TController>>, val initiator: Boolean) :
-    Multistream<TController> {
-
-    override fun initializer(): Pair<ChannelHandler, CompletableFuture<TController>> {
-        val fut = CompletableFuture<TController>()
-        val handler = nettyInitializer {
-            it.pipeline().addLast(
-                Negotiator.createInitializer(
-                    initiator,
-                    *bindings.map { it.announce }.toTypedArray()
-                )
-            )
-            val protocolSelect = ProtocolSelect(bindings)
-            protocolSelect.selectedFuture.forward(fut)
-            it.pipeline().addLast(protocolSelect)
-        }
-
-        return handler to fut
+        /**
+         * Creates an _initiator_ [Multistream] with specified [protocol] and [handler]
+         */
+        @JvmStatic
+        fun <TController> initiator(protocol: String, handler: P2PAbstractHandler<TController>): Multistream<TController> =
+            create(ProtocolBinding.createSimple(protocol, handler))
     }
 }
