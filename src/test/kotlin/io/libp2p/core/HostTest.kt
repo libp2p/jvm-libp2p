@@ -12,7 +12,11 @@ import io.libp2p.security.noise.NoiseXXSecureChannel
 import io.libp2p.security.secio.SecIoSecureChannel
 import io.libp2p.transport.tcp.TcpTransport
 import io.netty.handler.logging.LogLevel
-import org.junit.jupiter.api.*
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Tag
+import org.junit.jupiter.api.Test
 import java.util.concurrent.TimeUnit
 
 @Tag("secure-channel")
@@ -91,8 +95,8 @@ abstract class HostTest(val secureChannelCtor: SecureChannelCtor) {
             serverHost.peerId,
             Multiaddr("/ip4/127.0.0.1/tcp/40002")
         )
-        Assertions.assertThrows(NoSuchProtocolException::class.java) { badProtocol.stream.getX(5.0) }
-        Assertions.assertThrows(NoSuchProtocolException::class.java) { badProtocol.controler.getX(5.0) }
+        assertThrows(NoSuchProtocolException::class.java) { badProtocol.stream.getX(5.0) }
+        assertThrows(NoSuchProtocolException::class.java) { badProtocol.controler.getX(5.0) }
     }
 
     @Test
@@ -107,7 +111,7 @@ abstract class HostTest(val secureChannelCtor: SecureChannelCtor) {
         unsupportedProtocol.stream.get()
         println("Stream created")
         // ... though protocol controller should fail
-        Assertions.assertThrows(NoSuchProtocolException::class.java) { unsupportedProtocol.controler.getX() }
+        assertThrows(NoSuchProtocolException::class.java) { unsupportedProtocol.controler.getX() }
     }
 
     @Test
@@ -130,7 +134,7 @@ abstract class HostTest(val secureChannelCtor: SecureChannelCtor) {
         println("Ping stream closed")
 
         // stream is closed, the call should fail correctly
-        Assertions.assertThrows(ConnectionClosedException::class.java) {
+        assertThrows(ConnectionClosedException::class.java) {
             pingCtr.ping().getX(5.0)
         }
     }
