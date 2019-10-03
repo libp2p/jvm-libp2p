@@ -1,7 +1,7 @@
 package io.libp2p.tools.p2pd;
 
 import com.google.protobuf.ByteString;
-import io.ipfs.multiaddr.MultiAddress;
+import io.libp2p.core.multiformats.Multiaddr;
 import io.libp2p.tools.p2pd.libp2pj.DHT;
 import io.libp2p.tools.p2pd.libp2pj.Host;
 import io.libp2p.tools.p2pd.libp2pj.Peer;
@@ -58,10 +58,10 @@ public class P2PDHost implements Host {
     }
 
     @Override
-    public List<MultiAddress> getListenAddresses() {
+    public List<Multiaddr> getListenAddresses() {
         try {
             return identify().get().getAddrsList().stream()
-                    .map(bs -> new MultiAddress(bs.toByteArray()))
+                    .map(bs -> new Multiaddr(bs.toByteArray()))
                     .collect(Collectors.toList());
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -78,7 +78,7 @@ public class P2PDHost implements Host {
     }
 
     @Override
-    public CompletableFuture<Void> connect(List<MultiAddress> peerAddresses, Peer peerId) {
+    public CompletableFuture<Void> connect(List<Multiaddr> peerAddresses, Peer peerId) {
         return daemonExecutor.executeWithDaemon(handler -> {
             CompletableFuture<P2Pd.Response> resp = handler.call(P2Pd.Request.newBuilder()
                             .setType(P2Pd.Request.Type.CONNECT)
@@ -135,19 +135,19 @@ public class P2PDHost implements Host {
 
     @Override
     public CompletableFuture<Closeable> listen(MuxerAdress muxerAdress, Supplier<StreamHandler<MuxerAdress>> handlerFactory) {
-        MultiAddress listenMultiaddr;
+        Multiaddr listenMultiaddr;
         SocketAddress listenAddr;
         ControlConnector connector;
         if (daemonExecutor.getAddress() instanceof InetSocketAddress) {
             connector = new TCPControlConnector();
             int port = 46666 + counter.incrementAndGet();
             listenAddr = new InetSocketAddress("127.0.0.1", port);
-            listenMultiaddr = new MultiAddress("/ip4/127.0.0.1/tcp/46666");
+            listenMultiaddr = new Multiaddr("/ip4/127.0.0.1/tcp/46666");
         } else if (daemonExecutor.getAddress() instanceof DomainSocketAddress) {
             connector = new UnixSocketControlConnector();
             String path = "/tmp/p2pd.client." + counter.incrementAndGet();
             listenAddr = new DomainSocketAddress(path);
-            listenMultiaddr = new MultiAddress("/unix" + path);
+            listenMultiaddr = new Multiaddr("/unix" + path);
 
         } else {
             throw new IllegalStateException();

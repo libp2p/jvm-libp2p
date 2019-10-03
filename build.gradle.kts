@@ -29,7 +29,6 @@ plugins {
 repositories {
     jcenter()
     mavenCentral()
-    maven("https://jitpack.io")
 }
 
 val log4j2Version = "2.11.2"
@@ -41,13 +40,11 @@ dependencies {
     compile("com.google.guava:guava:27.1-jre")
     compile("org.bouncycastle:bcprov-jdk15on:1.61")
     compile("org.bouncycastle:bcpkix-jdk15on:1.61")
-    compile("com.github.multiformats:java-multiaddr:v1.3.1")
     compile("com.google.protobuf:protobuf-java:3.6.1")
-    compile("com.google.protobuf:protobuf-java:3.6.1")
+    compile("commons-codec:commons-codec:1.13")
 
     compile("org.apache.logging.log4j:log4j-api:${log4j2Version}")
     compile("org.apache.logging.log4j:log4j-core:${log4j2Version}")
-
 
     testCompile("org.junit.jupiter:junit-jupiter-api:5.4.2")
     testCompile("org.junit.jupiter:junit-jupiter-params:5.4.2")

@@ -1,6 +1,6 @@
 package io.libp2p.tools.p2pd.libp2pj;
 
-import io.ipfs.cid.Cid;
+import io.libp2p.tools.p2pd.libp2pj.util.Cid;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -9,6 +9,7 @@ import java.util.concurrent.CompletableFuture;
  * Created by Anton Nashatyrev on 21.12.2018.
  */
 public interface DHT {
+
 
     CompletableFuture<PeerInfo> findPeer(Peer peerId);
 
