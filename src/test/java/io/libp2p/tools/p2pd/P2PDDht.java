@@ -1,11 +1,11 @@
 package io.libp2p.tools.p2pd;
 
 import com.google.protobuf.ByteString;
-import io.ipfs.cid.Cid;
-import io.ipfs.multiaddr.MultiAddress;
+import io.libp2p.core.multiformats.Multiaddr;
 import io.libp2p.tools.p2pd.libp2pj.DHT;
 import io.libp2p.tools.p2pd.libp2pj.Peer;
 import io.libp2p.tools.p2pd.libp2pj.PeerInfo;
+import io.libp2p.tools.p2pd.libp2pj.util.Cid;
 import p2pd.pb.P2Pd;
 
 import java.util.List;
@@ -142,7 +142,7 @@ public class P2PDDht implements DHT {
     private static PeerInfo fromResp(P2Pd.PeerInfo pi) {
         return new PeerInfo(new Peer(pi.getId().toByteArray()),
                 pi.getAddrsList().stream()
-                        .map(addr -> new MultiAddress(addr.toByteArray()))
+                        .map(addr -> new Multiaddr(addr.toByteArray()))
                         .collect(Collectors.toList()));
     }
 

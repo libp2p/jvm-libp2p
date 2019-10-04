@@ -44,16 +44,28 @@ implementation:
 - [X] multiformats: [multiaddr](https://github.com/multiformats/multiaddr)
 - [X] crypto (RSA, ed25519, secp256k1)
 - [X] [secio](https://github.com/libp2p/specs/pull/106)
-- [ ] [connection bootstrapping](https://github.com/libp2p/specs/pull/168)
-- [ ] mplex as a multiplexer
-- [ ] stream multiplexing
-- [ ] TCP transport (dialing and listening)
-- [ ] identify protocol
-- [ ] [peer ID](https://github.com/libp2p/specs/pull/100)
+- [X] [connection bootstrapping](https://github.com/libp2p/specs/pull/168)
+- [X] mplex as a multiplexer
+- [X] stream multiplexing
+- [X] TCP transport (dialing and listening)
+- [X] Identify protocol
+- [X] Ping protocol
+- [X] [peer ID](https://github.com/libp2p/specs/pull/100)
 
 We are explicitly leaving out the peerstore, DHT, pubsub, connection manager,
 etc. and other subsystems or concepts that are internal to implementations and
 do not impact the ability to hold communications with other libp2p processes.
+
+## Adding as a dependency to your Gradle project:
+
+```
+   repositories {
+       jcenter()
+   }
+
+   implementation 'io.libp2p:jvm-libp2p-minimal:0.1.0-RELEASE'
+```
+
 
 ## License
 

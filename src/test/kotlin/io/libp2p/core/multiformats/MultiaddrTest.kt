@@ -101,9 +101,8 @@ class MultiaddrTest {
         fun toBytesParams() = listOf(
             Arguments.of("/ip4/127.0.0.1/udp/1234", "047f000001910204d2".fromHex()),
             Arguments.of("/ip4/127.0.0.1/tcp/4321", "047f0000010610e1".fromHex()),
-            Arguments.of("/ip4/127.0.0.1/udp/1234/ip4/127.0.0.1/tcp/4321", "047f000001910204d2047f0000010610e1".fromHex())
-            // TODO below fails due to Base32.decode() bug
-//            Arguments.of("/onion/aaimaq4ygg2iegci:80", "bc030010c0439831b48218480050".fromHex())
+            Arguments.of("/ip4/127.0.0.1/udp/1234/ip4/127.0.0.1/tcp/4321", "047f000001910204d2047f0000010610e1".fromHex()),
+            Arguments.of("/onion/aaimaq4ygg2iegci:80", "bc030010c0439831b48218480050".fromHex())
         )
     }
 
