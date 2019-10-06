@@ -20,8 +20,6 @@ import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.core.config.Configurator
 import org.junit.jupiter.api.Assertions
-import org.junit.jupiter.api.Assertions.assertNotNull
-import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import spipe.pb.Spipe
 import java.util.concurrent.CountDownLatch
@@ -41,8 +39,8 @@ class NoiseSecureChannelTest {
         aliceHS = HandshakeState("Noise_IK_25519_ChaChaPoly_SHA256", HandshakeState.INITIATOR)
         bobHS = HandshakeState("Noise_IK_25519_ChaChaPoly_SHA256", HandshakeState.RESPONDER)
 
-        assertNotNull(aliceHS)
-        assertNotNull(bobHS)
+        Assertions.assertNotNull(aliceHS)
+        Assertions.assertNotNull(bobHS)
 
         if (aliceHS.needsLocalKeyPair()) {
             val localKeyPair = aliceHS.localKeyPair
@@ -139,8 +137,12 @@ class NoiseSecureChannelTest {
         // the signed bytes become the payload for the first handshake write message
 
         // generate an appropriate protobuf element
-        val bs = Spipe.Exchange.newBuilder().setEpubkey(ByteString.copyFrom(pubKey.bytes()))
-            .setSignature(ByteString.copyFrom(signed)).build()
+        val bs = Spipe.NoiseHandshakePayload.newBuilder()
+            .setLibp2PKey(ByteString.copyFrom(pubKey.bytes()))
+            .setNoiseStaticKeySignature(ByteString.copyFrom(signed))
+            .setLibp2PData(ByteString.EMPTY)
+            .setLibp2PDataSignature(ByteString.EMPTY)
+            .build()
 
         val msgBuffer = ByteArray(65535)
         val msgLength = aliceHS.writeMessage(msgBuffer, 0, bs.toByteArray(), 0, bs.toByteArray().size)
@@ -165,14 +167,18 @@ class NoiseSecureChannelTest {
         val protocolSelect1 = ProtocolSelect(listOf(ch1))
         val protocolSelect2 = ProtocolSelect(listOf(ch2))
 
-        val eCh1 = io.libp2p.tools.TestChannel("#1", true, LoggingHandler("#1", LogLevel.ERROR),
+        val eCh1 = io.libp2p.tools.TestChannel(
+            "#1", true, LoggingHandler("#1", LogLevel.ERROR),
             Negotiator.createRequesterInitializer(NoiseXXSecureChannel.announce),
-            protocolSelect1)
+            protocolSelect1
+        )
 
-        val eCh2 = io.libp2p.tools.TestChannel("#2", false,
+        val eCh2 = io.libp2p.tools.TestChannel(
+            "#2", false,
             LoggingHandler("#2", LogLevel.ERROR),
             Negotiator.createResponderInitializer(listOf(ProtocolMatcher(Mode.STRICT, NoiseXXSecureChannel.announce))),
-            protocolSelect2)
+            protocolSelect2
+        )
 
         logger.debug("Connecting initial channels")
         interConnect(eCh1, eCh2)
@@ -229,7 +235,22 @@ class NoiseSecureChannelTest {
 
         val announce = ch1.announce
         val matcher = ch1.matcher
-        assertTrue(matcher.matches(announce))
+        Assertions.assertTrue(matcher.matches(announce))
+    }
+
+    @Test
+    fun testStaticNoiseKeyPerProcess() {
+        System.out.println("Starting static key test")
+        val (privKey1, _) = generateKeyPair(KEY_TYPE.ECDSA)
+        NoiseXXSecureChannel(privKey1)
+        val b1 = NoiseXXSecureChannel.privateKey25519.copyOf()
+
+        val (privKey2, _) = generateKeyPair(KEY_TYPE.ECDSA)
+        NoiseXXSecureChannel(privKey2)
+        val b2 = NoiseXXSecureChannel.privateKey25519.copyOf()
+
+        Assertions.assertTrue(b1.contentEquals(b2), "NoiseXX static keys are not maintained between sessions.")
+        System.out.println("Finished static key test")
     }
 
     companion object {

@@ -14,3 +14,10 @@ message Exchange {
 	optional bytes epubkey = 1;
 	optional bytes signature = 2;
 }
+
+message NoiseHandshakePayload {
+	optional bytes libp2p_key = 1;
+	optional bytes noise_static_key_signature = 2;
+    optional bytes libp2p_data = 3;
+	optional bytes libp2p_data_signature = 4;
+}

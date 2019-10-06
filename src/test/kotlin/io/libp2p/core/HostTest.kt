@@ -108,10 +108,10 @@ abstract class HostTest(val secureChannelCtor: SecureChannelCtor) {
             Multiaddr("/ip4/127.0.0.1/tcp/40002")
         )
         // stream should be created
-        unsupportedProtocol.stream.get()
+        unsupportedProtocol.stream.get(5, TimeUnit.SECONDS)
         println("Stream created")
         // ... though protocol controller should fail
-        assertThrows(NoSuchProtocolException::class.java) { unsupportedProtocol.controler.getX() }
+        assertThrows(NoSuchProtocolException::class.java) { unsupportedProtocol.controler.getX(15.0) }
     }
 
     @Test
@@ -123,7 +123,7 @@ abstract class HostTest(val secureChannelCtor: SecureChannelCtor) {
         )
         val pingStream = ping.stream.get(5, TimeUnit.SECONDS)
         println("Ping stream created")
-        val pingCtr = ping.controler.get(5, TimeUnit.SECONDS)
+        val pingCtr = ping.controler.get(10, TimeUnit.SECONDS)
         println("Ping controller created")
 
         for (i in 1..10) {
