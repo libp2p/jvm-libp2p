@@ -215,7 +215,7 @@ class NoiseXXSecureChannel(private val localKey: PrivKey) :
             val localNoisePubKey = ByteArray(localNoiseState.publicKeyLength)
             localNoiseState.getPublicKey(localNoisePubKey, 0)
 
-            val localNoiseStaticKeySignature = localKey.sign(localNoisePubKey)
+            val localNoiseStaticKeySignature = localKey.sign("noise-libp2p-static-key:".toByteArray()+localNoisePubKey)
 
             // generate an appropriate protobuf element
             val identityPublicKey: ByteArray = marshalPublicKey(localKey.publicKey())
@@ -256,7 +256,7 @@ class NoiseXXSecureChannel(private val localKey: PrivKey) :
             val remotePubKeyFromMessage = unmarshalPublicKey(data)
             val remoteSignatureFromMessage = inp.noiseStaticKeySignature.toByteArray()
 
-            flagRemoteVerifiedPassed = remotePubKeyFromMessage.verify(remotePublicKey, remoteSignatureFromMessage)
+            flagRemoteVerifiedPassed = remotePubKeyFromMessage.verify("noise-libp2p-static-key:".toByteArray()+remotePublicKey, remoteSignatureFromMessage)
 
             if (flagRemoteVerifiedPassed) {
                 logger.debug("Remote verification passed")
