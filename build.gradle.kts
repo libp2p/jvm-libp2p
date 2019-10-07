@@ -99,12 +99,13 @@ tasks.test {
 
 val testResourceDir = sourceSets.test.get().resources.sourceDirectories.singleFile
 val jsPingServer = File(testResourceDir, "js/ping-server")
+val goPingServer = File(testResourceDir, "go/ping-server")
 
 task("interopTest", Test::class) {
     group = "Verification"
     description = "Runs the interoperation tests."
 
-    dependsOn("nodeDependencies")
+    dependsOn("nodeDependencies", "buildGo")
 
     useJUnitPlatform {
         includeTags("interop")
@@ -115,11 +116,16 @@ task("interopTest", Test::class) {
     }
 
     environment("JS_PING_SERVER", jsPingServer.toString())
+    environment("GO_PING_SERVER", goPingServer.toString())
 }
 
 task("nodeDependencies", Exec::class) {
     workingDir = jsPingServer
     commandLine = "npm install".split(" ")
+}
+task("buildGo", Exec::class) {
+    workingDir = goPingServer
+    commandLine = "go build".split(" ")
 }
 
 kotlinter {
