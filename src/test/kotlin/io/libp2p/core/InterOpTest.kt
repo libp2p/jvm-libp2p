@@ -82,7 +82,8 @@ abstract class InterOpTest(
         Thread.sleep(1000)
         val available = server.inputStream.available()
         if (available != 0) {
-            val bytes = server.inputStream.readNBytes(available)
+            val bytes = ByteArray(available)
+            server.inputStream.read(bytes)
             val peerId = String(bytes).trim().split("/").last()
             serverPeerId = PeerId.fromBase58(peerId)
         }
