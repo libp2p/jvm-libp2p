@@ -8,33 +8,38 @@ import io.libp2p.mux.mplex.MplexStreamMuxer
 import io.libp2p.protocol.Identify
 import io.libp2p.protocol.Ping
 import io.libp2p.protocol.PingController
-import io.libp2p.security.noise.NoiseXXSecureChannel
 import io.libp2p.security.secio.SecIoSecureChannel
 import io.libp2p.transport.tcp.TcpTransport
-import io.netty.handler.logging.LogLevel
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable
 import java.io.File
 import java.util.concurrent.TimeUnit
 
-@Tag("secure-channel")
-class SecioJsInterOpTest : InterOpTest(::SecIoSecureChannel, JsServer)
+@EnabledIfEnvironmentVariable(named = "ENABLE_GO_INTEROP", matches = "true")
+class SecioGoInterOpTest : InterOpTest(::SecIoSecureChannel, GoPingServer)
 
-@Tag("secure-channel")
-class SecioGoInterOpTest : InterOpTest(::SecIoSecureChannel, GoServer)
+@EnabledIfEnvironmentVariable(named = "ENABLE_JS_INTEROP", matches = "true")
+class SecioJsInterOpTest : InterOpTest(::SecIoSecureChannel, JsPingServer)
 
 data class ExternalServer(
-    val command: String,
-    val pathEnvVar: String
+    val serverCommand: String,
+    val serverDirEnvVar: String
 )
 
-val GoServer = ExternalServer("./ping-server", "GO_PING_SERVER")
-val JsServer = ExternalServer("node lib/index.js", "JS_PING_SERVER")
+val GoPingServer = ExternalServer(
+    "./ping-server",
+    "GO_PING_SERVER"
+)
+val JsPingServer = ExternalServer(
+    "node lib/index.js",
+    "JS_PING_SERVER"
+)
 
 @Tag("interop")
 abstract class InterOpTest(
     val secureChannelCtor: SecureChannelCtor,
-    val externalServer: ExternalServer
+    external: ExternalServer
 ) {
     val clientHost = host {
         identity {
@@ -59,8 +64,8 @@ abstract class InterOpTest(
         }*/
     }
 
-    val serverHost = ProcessBuilder(*externalServer.command.split(" ").toTypedArray())
-        .directory(File(System.getenv(externalServer.pathEnvVar)))
+    val serverHost = ProcessBuilder(*external.serverCommand.split(" ").toTypedArray())
+        .directory(File(System.getenv(external.serverDirEnvVar)))
         .redirectOutput(ProcessBuilder.Redirect.PIPE)
         .redirectError(ProcessBuilder.Redirect.INHERIT)
 
