@@ -18,10 +18,24 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 
 @Tag("secure-channel")
-class SecioInterOpTest : InterOpTest(::SecIoSecureChannel)
+class SecioJsInterOpTest : InterOpTest(::SecIoSecureChannel, JsServer)
+
+@Tag("secure-channel")
+class SecioGoInterOpTest : InterOpTest(::SecIoSecureChannel, GoServer)
+
+data class ExternalServer(
+    val command: String,
+    val pathEnvVar: String
+)
+
+val GoServer = ExternalServer("./ping-server", "GO_PING_SERVER")
+val JsServer = ExternalServer("node lib/index.js", "JS_PING_SERVER")
 
 @Tag("interop")
-abstract class InterOpTest(val secureChannelCtor: SecureChannelCtor) {
+abstract class InterOpTest(
+    val secureChannelCtor: SecureChannelCtor,
+    val externalServer: ExternalServer
+) {
     val clientHost = host {
         identity {
             random()
@@ -45,8 +59,8 @@ abstract class InterOpTest(val secureChannelCtor: SecureChannelCtor) {
         }*/
     }
 
-    val serverHost = ProcessBuilder(*"node lib/index.js".split(" ").toTypedArray())
-        .directory(File(System.getenv("JS_PING_SERVER")))
+    val serverHost = ProcessBuilder(*externalServer.command.split(" ").toTypedArray())
+        .directory(File(System.getenv(externalServer.pathEnvVar)))
         .redirectOutput(ProcessBuilder.Redirect.PIPE)
         .redirectError(ProcessBuilder.Redirect.INHERIT)
 
@@ -60,8 +74,8 @@ abstract class InterOpTest(val secureChannelCtor: SecureChannelCtor) {
         Thread.sleep(1000)
         val available = server.inputStream.available()
         if (available != 0) {
-            val bytes = server.inputStream.readNBytes(available!!)
-            val peerId = String(bytes!!).trim().split("/").last()
+            val bytes = server.inputStream.readNBytes(available)
+            val peerId = String(bytes).trim().split("/").last()
             serverPeerId = PeerId.fromBase58(peerId)
         }
     }
