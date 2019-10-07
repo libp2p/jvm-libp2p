@@ -56,8 +56,7 @@ createPingServer((err, server) => {
   server.start(err => {
     if (err) throw err
 
-    const addresses = server.peerInfo.multiaddrs.toArray()
-    console.log('Ping server started.\n  Listening on addresses:')
-    addresses.forEach(addr => console.log(`    ${addr}`))
+    const address = server.peerInfo.multiaddrs.toArray()[0]
+    console.log(address.toString())
   })
 })
