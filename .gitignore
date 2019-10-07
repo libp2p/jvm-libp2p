@@ -233,3 +233,7 @@ $RECYCLE.BIN/
 /.idea/modules.xml
 /.idea/codeStyles/Project.xml
 /.idea/vcs.xml
+
+# Node
+node_modules
+package-lock.json
