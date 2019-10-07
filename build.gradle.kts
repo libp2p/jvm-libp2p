@@ -103,6 +103,10 @@ task("interopTest", Test::class) {
     testLogging {
         events("PASSED", "FAILED", "SKIPPED")
     }
+
+    val testResourceDir = sourceSets.test.get().resources.sourceDirectories.singleFile
+    val jsPingServer = File(testResourceDir, "js/ping-server")
+    environment("JS_PING_SERVER", jsPingServer.toString())
 }
 
 kotlinter {

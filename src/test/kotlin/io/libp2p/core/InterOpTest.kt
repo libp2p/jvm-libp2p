@@ -20,6 +20,7 @@ import java.util.concurrent.TimeUnit
 @Tag("secure-channel")
 class SecioInterOpTest : InterOpTest(::SecIoSecureChannel)
 
+@Tag("interop")
 abstract class InterOpTest(val secureChannelCtor: SecureChannelCtor) {
     val clientHost = host {
         identity {
@@ -45,7 +46,7 @@ abstract class InterOpTest(val secureChannelCtor: SecureChannelCtor) {
     }
 
     val serverHost = ProcessBuilder(*"node lib/index.js".split(" ").toTypedArray())
-        .directory(File("/home/jez/work/web3labs/jvm-libp2p/src/test/js/ping-server"))
+        .directory(File(System.getenv("JS_PING_SERVER")))
         .redirectOutput(ProcessBuilder.Redirect.PIPE)
         .redirectError(ProcessBuilder.Redirect.INHERIT)
 
