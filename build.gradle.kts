@@ -81,6 +81,8 @@ tasks.withType<KotlinCompile> {
 
 // Parallel build execution
 tasks.test {
+    description = "Runs the unit tests."
+
     useJUnitPlatform{
         excludeTags("interop")
     }
@@ -95,7 +97,15 @@ tasks.test {
 //    Runtime.getRuntime().availableProcessors().div(2))
 }
 
+val testResourceDir = sourceSets.test.get().resources.sourceDirectories.singleFile
+val jsPingServer = File(testResourceDir, "js/ping-server")
+
 task("interopTest", Test::class) {
+    group = "Verification"
+    description = "Runs the interoperation tests."
+
+    dependsOn("nodeDependencies")
+
     useJUnitPlatform {
         includeTags("interop")
     }
@@ -104,9 +114,12 @@ task("interopTest", Test::class) {
         events("PASSED", "FAILED", "SKIPPED")
     }
 
-    val testResourceDir = sourceSets.test.get().resources.sourceDirectories.singleFile
-    val jsPingServer = File(testResourceDir, "js/ping-server")
     environment("JS_PING_SERVER", jsPingServer.toString())
+}
+
+task("nodeDependencies", Exec::class) {
+    workingDir = jsPingServer
+    commandLine = "npm install".split(" ")
 }
 
 kotlinter {
