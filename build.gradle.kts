@@ -81,7 +81,9 @@ tasks.withType<KotlinCompile> {
 
 // Parallel build execution
 tasks.test {
-    useJUnitPlatform()
+    useJUnitPlatform{
+        excludeTags("interop")
+    }
 
     testLogging {
         events("PASSED", "FAILED", "SKIPPED")
@@ -91,6 +93,16 @@ tasks.test {
     // If GRADLE_MAX_TEST_FORKS is not set, use half the available processors
 //    maxParallelForks = (System.getenv("GRADLE_MAX_TEST_FORKS")?.toInt() ?:
 //    Runtime.getRuntime().availableProcessors().div(2))
+}
+
+task("interopTest", Test::class) {
+    useJUnitPlatform {
+        includeTags("interop")
+    }
+
+    testLogging {
+        events("PASSED", "FAILED", "SKIPPED")
+    }
 }
 
 kotlinter {
