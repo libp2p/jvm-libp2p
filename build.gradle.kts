@@ -2,6 +2,8 @@ import com.google.protobuf.gradle.proto
 import com.google.protobuf.gradle.protobuf
 import com.google.protobuf.gradle.protoc
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import java.nio.file.Paths
+import java.nio.file.Files
 
 group = "io.libp2p"
 version = "0.0.1-SNAPSHOT"
@@ -97,6 +99,14 @@ tasks.test {
 //    Runtime.getRuntime().availableProcessors().div(2))
 }
 
+fun findOnPath(executable: String): Boolean {
+    return System.getenv("PATH").split(File.pathSeparator)
+        .map { Paths.get(it) }
+        .any { Files.exists(it.resolve(executable)) }
+}
+val goOnPath = findOnPath("go")
+val nodeOnPath = findOnPath("node")
+
 val testResourceDir = sourceSets.test.get().resources.sourceDirectories.singleFile
 val jsPingServer = File(testResourceDir, "js/ping-server")
 val goPingServer = File(testResourceDir, "go/ping-server")
@@ -105,7 +115,10 @@ task("interopTest", Test::class) {
     group = "Verification"
     description = "Runs the interoperation tests."
 
-    dependsOn("nodeDependencies", "buildGo")
+    val dependencies = ArrayList<String>()
+    if (goOnPath) dependencies.add("buildGo")
+    if (nodeOnPath) dependencies.add("nodeDependencies")
+    dependsOn(dependencies)
 
     useJUnitPlatform {
         includeTags("interop")
@@ -115,6 +128,8 @@ task("interopTest", Test::class) {
         events("PASSED", "FAILED", "SKIPPED")
     }
 
+    environment("ENABLE_GO_INTEROP", goOnPath)
+    environment("ENABLE_JS_INTEROP", nodeOnPath)
     environment("JS_PING_SERVER", jsPingServer.toString())
     environment("GO_PING_SERVER", goPingServer.toString())
 }
