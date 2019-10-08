@@ -4,19 +4,25 @@ import io.libp2p.core.dsl.SecureChannelCtor
 import io.libp2p.core.dsl.host
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.etc.types.getX
+import io.libp2p.etc.types.lazyVar
 import io.libp2p.mux.mplex.MplexStreamMuxer
-import io.libp2p.protocol.Identify
-import io.libp2p.protocol.Ping
-import io.libp2p.protocol.PingController
+import io.libp2p.protocol.*
 import io.libp2p.security.secio.SecIoSecureChannel
 import io.libp2p.transport.tcp.TcpTransport
+import io.netty.channel.ChannelHandlerContext
+import io.netty.channel.ChannelInboundHandlerAdapter
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable
 import java.io.File
+import java.time.Duration
+import java.util.*
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 @EnabledIfEnvironmentVariable(named = "ENABLE_GO_INTEROP", matches = "true")
@@ -44,6 +50,7 @@ abstract class ClientInterOpTest(
     val secureChannelCtor: SecureChannelCtor,
     val external: ExternalClient
 ) {
+    var countedPingResponder = CountingPingProtocol()
     val serverHost = host {
         identity {
             random()
@@ -61,7 +68,7 @@ abstract class ClientInterOpTest(
             listen("/ip4/0.0.0.0/tcp/40002")
         }
         protocols {
-            +Ping()
+            +PingBinding(countedPingResponder)
         }
     }
 
@@ -81,6 +88,7 @@ abstract class ClientInterOpTest(
     @Test
     fun listenForPings() {
         startClient("/ip4/0.0.0.0/tcp/40002/ipfs/${serverHost.peerId}")
+        assertEquals(5, countedPingResponder.pingsReceived)
     }
 
     fun startClient(serverAddress: String) {
@@ -90,6 +98,32 @@ abstract class ClientInterOpTest(
             .redirectOutput(ProcessBuilder.Redirect.INHERIT)
             .redirectError(ProcessBuilder.Redirect.INHERIT)
         clientProcess.start().waitFor()
+    }
+
+}
+
+class CountingPingProtocol : PingProtocol() {
+    var pingsReceived: Int = 0
+
+    override fun initChannel(ch: P2PAbstractChannel): CompletableFuture<PingController> {
+        return if (ch.isInitiator) {
+            super.initChannel(ch)
+        } else {
+            val handler = CountingPingResponderChannelHandler()
+            ch.nettyChannel.pipeline().addLast(handler)
+            CompletableFuture.completedFuture(handler)
+        }
+    }
+
+    inner class CountingPingResponderChannelHandler : ChannelInboundHandlerAdapter(), PingController {
+        override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
+            ++pingsReceived;
+            ctx.writeAndFlush(msg)
+        }
+
+        override fun ping(): CompletableFuture<Long> {
+            throw Libp2pException("This is ping responder only")
+        }
     }
 
 }

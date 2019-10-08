@@ -43,8 +43,8 @@ func main() {
 		}
 		fmt.Println("sending 5 ping messages to", addr)
 		ch := pingService.Ping(ctx, peer.ID)
-		for i := 0; i < 5; i++ {
-			res := <-ch
+		for i := 1; i < 5; i++ {
+			res := <-ch // first call here sends two pings
 			fmt.Println("pinged", addr, "in", res.RTT)
 		}
 	}

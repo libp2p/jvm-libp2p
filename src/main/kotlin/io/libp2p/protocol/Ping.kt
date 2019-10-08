@@ -41,7 +41,7 @@ open class PingBinding(val ping: PingProtocol) : ProtocolBinding<PingController>
 
 class PingTimeoutException : Libp2pException()
 
-class PingProtocol : P2PAbstractHandler<PingController> {
+open class PingProtocol : P2PAbstractHandler<PingController> {
     var scheduler by lazyVar { Executors.newSingleThreadScheduledExecutor() }
     var curTime: () -> Long = { System.currentTimeMillis() }
     var random = Random()
