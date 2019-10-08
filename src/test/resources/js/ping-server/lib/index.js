@@ -33,7 +33,7 @@ function createPingServer(callback) {
   PeerInfo.create((err, peerInfo) => {
     if (err) return callback(err)
 
-    const listenAddress = multiaddr('/ip4/127.0.0.1/tcp/40000')
+    const listenAddress = multiaddr('/ip4/127.0.0.1/tcp/0')
     peerInfo.multiaddrs.add(listenAddress)
 
     const server = new Libp2p(defaultsDeep(

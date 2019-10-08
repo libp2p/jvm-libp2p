@@ -72,19 +72,27 @@ abstract class InterOpTest(
         .redirectOutput(ProcessBuilder.Redirect.PIPE)
         .redirectError(ProcessBuilder.Redirect.INHERIT)
 
-    lateinit var serverPeerId: PeerId
     lateinit var server: Process
+    lateinit var serverMultiAddress: Multiaddr
+    lateinit var serverPeerId: PeerId
 
     @BeforeEach
     fun startServer() {
         server = serverHost.start()
-        println("Server started")
         Thread.sleep(1000)
         val available = server.inputStream.available()
         if (available != 0) {
             val bytes = ByteArray(available)
             server.inputStream.read(bytes)
-            val peerId = String(bytes).trim().split("/").last()
+
+            val publishedAddress = String(bytes).trim()
+            println("Server started on $publishedAddress")
+
+            val addressParts = publishedAddress.split("/")
+            val serverAddress = addressParts.subList(0, 5).joinToString("/")
+            val peerId = addressParts.last()
+
+            serverMultiAddress = Multiaddr(serverAddress)
             serverPeerId = PeerId.fromBase58(peerId)
         }
     }
@@ -113,7 +121,7 @@ abstract class InterOpTest(
         val badProtocol = clientHost.newStream<PingController>(
             "/__no_such_protocol/1.0.0",
             serverPeerId,
-            Multiaddr("/ip4/127.0.0.1/tcp/40000")
+            serverMultiAddress
         )
         assertThrows(NoSuchProtocolException::class.java) { badProtocol.stream.getX(5.0) }
         assertThrows(NoSuchProtocolException::class.java) { badProtocol.controler.getX(5.0) }
@@ -124,7 +132,7 @@ abstract class InterOpTest(
         val ping = clientHost.newStream<PingController>(
             "/ipfs/ping/1.0.0",
             serverPeerId,
-            Multiaddr("/ip4/127.0.0.1/tcp/40000")
+            serverMultiAddress
         )
         val pingStream = ping.stream.get(5, TimeUnit.SECONDS)
         println("Ping stream created")
