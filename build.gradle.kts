@@ -108,16 +108,31 @@ val goOnPath = findOnPath("go")
 val nodeOnPath = findOnPath("node")
 
 val testResourceDir = sourceSets.test.get().resources.sourceDirectories.singleFile
-val jsPingServer = File(testResourceDir, "js/ping-server")
 val goPingServer = File(testResourceDir, "go/ping-server")
+val goPingClient = File(testResourceDir, "go/ping-client")
+val jsPinger = File(testResourceDir, "js/pinger")
+
+val goTargets = listOf(goPingServer, goPingClient).map { target ->
+    val name = "go-build-${target.name}"
+    task(name, Exec::class) {
+        workingDir = target
+        commandLine = "go build".split(" ")
+    }
+    name
+}
+
+task("npm-install-pinger", Exec::class) {
+    workingDir = jsPinger
+    commandLine = "npm install".split(" ")
+}
 
 task("interopTest", Test::class) {
     group = "Verification"
     description = "Runs the interoperation tests."
 
     val dependencies = ArrayList<String>()
-    if (goOnPath) dependencies.add("buildGo")
-    if (nodeOnPath) dependencies.add("nodeDependencies")
+    if (goOnPath) dependencies.addAll(goTargets)
+    if (nodeOnPath) dependencies.add("npm-install-pinger")
     dependsOn(dependencies)
 
     useJUnitPlatform {
@@ -128,19 +143,11 @@ task("interopTest", Test::class) {
         events("PASSED", "FAILED", "SKIPPED")
     }
 
-    environment("ENABLE_GO_INTEROP", goOnPath)
     environment("ENABLE_JS_INTEROP", nodeOnPath)
-    environment("JS_PING_SERVER", jsPingServer.toString())
+    environment("JS_PINGER", jsPinger.toString())
+    environment("ENABLE_GO_INTEROP", goOnPath)
     environment("GO_PING_SERVER", goPingServer.toString())
-}
-
-task("nodeDependencies", Exec::class) {
-    workingDir = jsPingServer
-    commandLine = "npm install".split(" ")
-}
-task("buildGo", Exec::class) {
-    workingDir = goPingServer
-    commandLine = "go build".split(" ")
+    environment("GO_PING_CLIENT", goPingClient.toString())
 }
 
 kotlinter {

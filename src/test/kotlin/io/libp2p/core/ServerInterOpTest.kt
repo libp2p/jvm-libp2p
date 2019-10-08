@@ -35,8 +35,8 @@ val GoPingServer = ExternalServer(
     "GO_PING_SERVER"
 )
 val JsPingServer = ExternalServer(
-    "node lib/index.js",
-    "JS_PING_SERVER"
+    "node lib/ping-server.js",
+    "JS_PINGER"
 )
 
 @Tag("interop")

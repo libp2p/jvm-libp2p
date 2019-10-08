@@ -15,8 +15,7 @@ func main() {
 	// create a background context (i.e. one that never cancels)
 	ctx := context.Background()
 
-	// start a libp2p node that listens on a random local TCP port,
-	// but without running the built-in ping protocol
+	// build a libp2p node
 	node, err := libp2p.New(ctx,
 		libp2p.Ping(false),
 	)

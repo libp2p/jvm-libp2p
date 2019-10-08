@@ -35,8 +35,8 @@ val GoPingClient = ExternalClient(
     "GO_PING_CLIENT"
 )
 val JsPingClient = ExternalClient(
-    "node lib/index.js",
-    "JS_PING_SERVER"
+    "node lib/ping-client.js",
+    "JS_PINGER"
 )
 
 @Tag("interop")
