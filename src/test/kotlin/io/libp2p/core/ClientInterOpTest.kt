@@ -2,11 +2,10 @@ package io.libp2p.core
 
 import io.libp2p.core.dsl.SecureChannelCtor
 import io.libp2p.core.dsl.host
-import io.libp2p.core.multiformats.Multiaddr
-import io.libp2p.etc.types.getX
-import io.libp2p.etc.types.lazyVar
 import io.libp2p.mux.mplex.MplexStreamMuxer
-import io.libp2p.protocol.*
+import io.libp2p.protocol.PingBinding
+import io.libp2p.protocol.PingController
+import io.libp2p.protocol.PingProtocol
 import io.libp2p.security.secio.SecIoSecureChannel
 import io.libp2p.transport.tcp.TcpTransport
 import io.netty.channel.ChannelHandlerContext
@@ -16,13 +15,9 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable
 import java.io.File
-import java.time.Duration
-import java.util.*
 import java.util.concurrent.CompletableFuture
-import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 @EnabledIfEnvironmentVariable(named = "ENABLE_GO_INTEROP", matches = "true")
@@ -99,7 +94,6 @@ abstract class ClientInterOpTest(
             .redirectError(ProcessBuilder.Redirect.INHERIT)
         clientProcess.start().waitFor()
     }
-
 }
 
 class CountingPingProtocol : PingProtocol() {
@@ -117,7 +111,7 @@ class CountingPingProtocol : PingProtocol() {
 
     inner class CountingPingResponderChannelHandler : ChannelInboundHandlerAdapter(), PingController {
         override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
-            ++pingsReceived;
+            ++pingsReceived
             ctx.writeAndFlush(msg)
         }
 
@@ -125,5 +119,4 @@ class CountingPingProtocol : PingProtocol() {
             throw Libp2pException("This is ping responder only")
         }
     }
-
 }
