@@ -128,7 +128,7 @@ abstract class HostTest(val secureChannelCtor: SecureChannelCtor) {
 
         for (i in 1..10) {
             val latency = pingCtr.ping().get(1, TimeUnit.SECONDS)
-            println("Ping is $latency")
+            println("Ping $i is ${latency}ms")
         }
         pingStream.nettyChannel.close().await(5, TimeUnit.SECONDS)
         println("Ping stream closed")
