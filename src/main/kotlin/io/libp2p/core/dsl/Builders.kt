@@ -169,7 +169,7 @@ class NetworkConfigBuilder {
 class IdentityBuilder {
     var factory: () -> PrivKey = { throw IllegalStateException("No identity builder") }
 
-    fun random(): IdentityBuilder = apply { factory = { generateKeyPair(KEY_TYPE.ECDSA).first } }
+    fun random(): IdentityBuilder = apply { factory = { generateKeyPair(KEY_TYPE.RSA).first } }
 }
 
 class AddressBookBuilder {
