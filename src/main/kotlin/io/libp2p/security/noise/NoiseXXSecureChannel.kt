@@ -102,6 +102,7 @@ class NoiseXXSecureChannel(private val localKey: PrivKey) :
                     }
                 }
                 ctx.fireUserEventTriggered(evt)
+                ctx.fireChannelActive()
             }
         }
         ch.nettyChannel.pipeline().addLast(handshakeHandlerName + chid, NoiseIoHandshake())
