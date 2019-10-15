@@ -243,11 +243,11 @@ class NoiseSecureChannelTest {
         System.out.println("Starting static key test")
         val (privKey1, _) = generateKeyPair(KEY_TYPE.ECDSA)
         NoiseXXSecureChannel(privKey1)
-        val b1 = NoiseXXSecureChannel.privateKey25519.copyOf()
+        val b1 = NoiseXXSecureChannel.localStaticPrivateKey25519.copyOf()
 
         val (privKey2, _) = generateKeyPair(KEY_TYPE.ECDSA)
         NoiseXXSecureChannel(privKey2)
-        val b2 = NoiseXXSecureChannel.privateKey25519.copyOf()
+        val b2 = NoiseXXSecureChannel.localStaticPrivateKey25519.copyOf()
 
         Assertions.assertTrue(b1.contentEquals(b2), "NoiseXX static keys are not maintained between sessions.")
         System.out.println("Finished static key test")
