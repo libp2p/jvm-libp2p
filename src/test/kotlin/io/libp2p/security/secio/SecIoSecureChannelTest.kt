@@ -30,18 +30,15 @@ import java.util.concurrent.TimeUnit
  */
 
 class SecIoSecureChannelTest {
-
     init {
         ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.PARANOID)
     }
 
     @Test
-    fun test1() {
+    fun secioInterconnect() {
         val (privKey1, _) = generateKeyPair(KEY_TYPE.ECDSA)
         val (privKey2, _) = generateKeyPair(KEY_TYPE.ECDSA)
 
-        var rec1: String? = null
-        var rec2: String? = null
         val latch = CountDownLatch(2)
 
         val protocolSelect1 = ProtocolSelect(listOf(SecIoSecureChannel(privKey1)))
@@ -64,40 +61,19 @@ class SecIoSecureChannelTest {
         protocolSelect2.selectedFuture.get(5, TimeUnit.SECONDS)
         println("Secured!")
 
-        eCh1.pipeline().addLast(object : TestHandler("1") {
-            override fun channelActive(ctx: ChannelHandlerContext) {
-                super.channelActive(ctx)
-                ctx.writeAndFlush("Hello World from $name".toByteArray().toByteBuf())
-            }
+        val handler1 = SecioTestHandler("1", latch)
+        val handler2 = SecioTestHandler("2", latch)
 
-            override fun channelRead(ctx: ChannelHandlerContext, msg: Any?) {
-                msg as ByteBuf
-                rec1 = msg.toByteArray().toString(StandardCharsets.UTF_8)
-                logger.debug("==$name== read: $rec1")
-                latch.countDown()
-            }
-        })
+        eCh1.pipeline().addLast(handler1)
+        eCh2.pipeline().addLast(handler2)
 
-        eCh2.pipeline().addLast(object : TestHandler("2") {
-            override fun channelActive(ctx: ChannelHandlerContext) {
-                super.channelActive(ctx)
-                ctx.writeAndFlush("Hello World from $name".toByteArray().toByteBuf())
-            }
-
-            override fun channelRead(ctx: ChannelHandlerContext, msg: Any?) {
-                msg as ByteBuf
-                rec2 = msg.toByteArray().toString(StandardCharsets.UTF_8)
-                logger.debug("==$name== read: $rec2")
-                latch.countDown()
-            }
-        })
         eCh1.pipeline().fireChannelActive()
         eCh2.pipeline().fireChannelActive()
 
         latch.await(10, TimeUnit.SECONDS)
 
-        Assertions.assertEquals("Hello World from 1", rec2)
-        Assertions.assertEquals("Hello World from 2", rec1)
+        Assertions.assertEquals("Hello World from 1", handler2.received)
+        Assertions.assertEquals("Hello World from 2", handler1.received)
 
         System.gc()
         Thread.sleep(500)
@@ -106,12 +82,19 @@ class SecIoSecureChannelTest {
         System.gc()
     }
 
-    fun addLastWhenActive(h: ChannelHandler): ChannelHandler {
-        return object : ChannelInboundHandlerAdapter() {
-            override fun channelActive(ctx: ChannelHandlerContext) {
-                ctx.pipeline().remove(this)
-                ctx.pipeline().addLast(h)
-            }
+    class SecioTestHandler(name: String, val latch: CountDownLatch): TestHandler(name) {
+        lateinit var received : String
+
+        override fun channelActive(ctx: ChannelHandlerContext) {
+            super.channelActive(ctx)
+            ctx.writeAndFlush("Hello World from $name".toByteArray().toByteBuf())
+        }
+
+        override fun channelRead(ctx: ChannelHandlerContext, msg: Any?) {
+            msg as ByteBuf
+            received = msg.toByteArray().toString(StandardCharsets.UTF_8)
+            logger.debug("==$name== read: $received")
+            latch.countDown()
         }
     }
 
