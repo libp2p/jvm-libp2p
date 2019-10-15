@@ -12,9 +12,7 @@ import io.libp2p.tools.TestChannel
 import io.libp2p.tools.TestChannel.Companion.interConnect
 import io.libp2p.tools.TestHandler
 import io.netty.buffer.ByteBuf
-import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelHandlerContext
-import io.netty.channel.ChannelInboundHandlerAdapter
 import io.netty.handler.logging.LogLevel
 import io.netty.handler.logging.LoggingHandler
 import io.netty.util.ResourceLeakDetector
@@ -82,8 +80,8 @@ class SecIoSecureChannelTest {
         System.gc()
     }
 
-    class SecioTestHandler(name: String, val latch: CountDownLatch): TestHandler(name) {
-        lateinit var received : String
+    class SecioTestHandler(name: String, val latch: CountDownLatch) : TestHandler(name) {
+        lateinit var received: String
 
         override fun channelActive(ctx: ChannelHandlerContext) {
             super.channelActive(ctx)

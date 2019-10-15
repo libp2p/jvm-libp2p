@@ -51,7 +51,6 @@ import org.junit.jupiter.api.extension.ExecutionCondition
 import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.api.extension.ExtensionContext
 import pubsub.pb.Rpc
-import java.lang.annotation.RetentionPolicy
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.LinkedBlockingQueue
@@ -70,9 +69,9 @@ class GossipProtocol(val router: PubsubRouterDebug) : P2PAbstractHandler<Unit> {
 class AssumeP2PDAvailableCondition : ExecutionCondition {
     override fun evaluateExecutionCondition(context: ExtensionContext?): ConditionEvaluationResult {
         return if (P2pdRunner().launcher() != null) {
-            ConditionEvaluationResult.enabled("p2pd executable is available");
+            ConditionEvaluationResult.enabled("p2pd executable is available")
         } else {
-            ConditionEvaluationResult.disabled("p2pd executable is not available");
+            ConditionEvaluationResult.disabled("p2pd executable is not available")
         }
     }
 }
