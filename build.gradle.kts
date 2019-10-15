@@ -10,7 +10,7 @@ import java.net.URL
 // ./gradlew bintrayUpload -PbintrayUser=<user> -PbintrayApiKey=<api-key>
 
 group = "io.libp2p"
-version = "0.1.0-RELEASE"
+version = "0.2.0-SNAPSHOT"
 description = "a minimal implementation of libp2p for the jvm"
 
 plugins {
