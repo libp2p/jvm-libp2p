@@ -1,5 +1,6 @@
 package io.libp2p.core
 
+import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.dsl.SecureChannelCtor
 import io.libp2p.core.dsl.host
 import io.libp2p.mux.mplex.MplexStreamMuxer
@@ -48,7 +49,7 @@ abstract class ClientInterOpTest(
     var countedPingResponder = CountingPingProtocol()
     val serverHost = host {
         identity {
-            random()
+            random(KEY_TYPE.RSA)
         }
         transports {
             +::TcpTransport

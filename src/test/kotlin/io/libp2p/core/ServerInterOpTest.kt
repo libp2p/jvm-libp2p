@@ -1,5 +1,6 @@
 package io.libp2p.core
 
+import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.dsl.SecureChannelCtor
 import io.libp2p.core.dsl.host
 import io.libp2p.core.multiformats.Multiaddr
@@ -46,7 +47,7 @@ abstract class ServerInterOpTest(
 ) {
     val clientHost = host {
         identity {
-            random()
+            random(KEY_TYPE.RSA)
         }
         transports {
             +::TcpTransport
