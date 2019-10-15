@@ -23,8 +23,8 @@ import java.util.concurrent.TimeUnit
 @EnabledIfEnvironmentVariable(named = "ENABLE_GO_INTEROP", matches = "true")
 class SecioGoServerInterOpTest : ServerInterOpTest(::SecIoSecureChannel, GoPingServer)
 
-@EnabledIfEnvironmentVariable(named = "ENABLE_JS_INTEROP", matches = "true")
-class SecioJsServerInterOpTest : ServerInterOpTest(::SecIoSecureChannel, JsPingServer)
+// @EnabledIfEnvironmentVariable(named = "ENABLE_JS_INTEROP", matches = "true")
+// class SecioJsServerInterOpTest : ServerInterOpTest(::SecIoSecureChannel, JsPingServer)
 
 data class ExternalServer(
     val serverCommand: String,
