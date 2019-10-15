@@ -1,6 +1,5 @@
 package io.libp2p.tools.p2pd.libp2pj;
 
-
 import io.libp2p.core.multiformats.Multiaddr;
 
 import java.util.List;

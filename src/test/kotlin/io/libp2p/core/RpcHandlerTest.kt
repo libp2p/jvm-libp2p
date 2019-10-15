@@ -33,15 +33,15 @@ const val protoMul = "/mul"
 class RpcProtocol(override val announce: String = "NOP") : ProtocolBinding<OpController> {
     override val matcher = ProtocolMatcher(Mode.PREFIX, protoPrefix)
 
-    override fun initChannel(ch: P2PAbstractChannel, proto: String): CompletableFuture<out OpController> {
+    override fun initChannel(ch: P2PAbstractChannel, selectedProtocol: String): CompletableFuture<out OpController> {
         val ret = CompletableFuture<OpController>()
         val handler = if (ch.isInitiator) {
             OpClientHandler(ch as Stream, ret)
         } else {
             val op: (a: Long, b: Long) -> Long = when {
-                proto.indexOf(protoAdd) >= 0 -> { a, b -> a + b }
-                proto.indexOf(protoMul) >= 0 -> { a, b -> a * b }
-                else -> throw IllegalArgumentException("Unknown op: $proto")
+                selectedProtocol.indexOf(protoAdd) >= 0 -> { a, b -> a + b }
+                selectedProtocol.indexOf(protoMul) >= 0 -> { a, b -> a * b }
+                else -> throw IllegalArgumentException("Unknown op: $selectedProtocol")
             }
             OpServerHandler(op)
         }

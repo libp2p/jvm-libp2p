@@ -54,8 +54,8 @@ class SecioHandshakeTest {
 
         Assertions.assertArrayEquals(plainMsg, tmp)
 
-        SecIoCodec.createCipher(keys2!!.first).processBytes(plainMsg, 0, plainMsg.size, tmp, 0)
-        SecIoCodec.createCipher(keys1!!.second).processBytes(tmp, 0, tmp.size, tmp, 0)
+        SecIoCodec.createCipher(keys2.first).processBytes(plainMsg, 0, plainMsg.size, tmp, 0)
+        SecIoCodec.createCipher(keys1.second).processBytes(tmp, 0, tmp.size, tmp, 0)
 
         Assertions.assertArrayEquals(plainMsg, tmp)
     }

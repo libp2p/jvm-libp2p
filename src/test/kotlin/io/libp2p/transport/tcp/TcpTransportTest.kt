@@ -54,7 +54,7 @@ class TcpTransportTest {
     fun testListenClose() {
         val logger = LogManager.getLogger("test")
 
-        val (privKey1, pubKey1) = generateKeyPair(KEY_TYPE.ECDSA)
+        val (privKey1, _) = generateKeyPair(KEY_TYPE.ECDSA)
         val upgrader = ConnectionUpgrader(
             listOf(SecIoSecureChannel(privKey1)),
             listOf(MplexStreamMuxer())
@@ -71,7 +71,7 @@ class TcpTransportTest {
                 Multiaddr("/ip4/0.0.0.0/tcp/${20000 + i}"),
                 connHandler
             )
-            bindFuture.handle { t, u -> logger.info("Bound #$i", u) }
+            bindFuture.handle { _, u -> logger.info("Bound #$i", u) }
             logger.info("Binding #$i")
         }
         val unbindFuts = mutableListOf<CompletableFuture<Unit>>()
@@ -79,7 +79,7 @@ class TcpTransportTest {
             val unbindFuture = tcpTransport.unlisten(
                 Multiaddr("/ip4/0.0.0.0/tcp/${20000 + i}")
             )
-            unbindFuture.handle { t, u -> logger.info("Unbound #$i", u) }
+            unbindFuture.handle { _, u -> logger.info("Unbound #$i", u) }
             unbindFuts += unbindFuture
             logger.info("Unbinding #$i")
         }

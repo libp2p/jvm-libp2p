@@ -2,7 +2,6 @@ package io.libp2p.pubsub
 
 import io.libp2p.etc.types.toBytesBigEndian
 import io.libp2p.etc.types.toProtobuf
-import io.libp2p.etc.util.P2PService
 import io.libp2p.pubsub.flood.FloodRouter
 import io.libp2p.pubsub.gossip.GossipRouter
 import io.libp2p.tools.TestChannel.TestConnection
@@ -112,6 +111,8 @@ class PubsubRouterTest {
         Assertions.assertTrue(router1.inboundMessages.isEmpty())
         Assertions.assertTrue(router2.inboundMessages.isEmpty())
         Assertions.assertTrue(router3.inboundMessages.isEmpty())
+
+        conn_1_2.disconnect()
     }
 
     @Test
@@ -275,19 +276,19 @@ class PubsubRouterTest {
             val wireMsgCount = allConnections.sumBy { it.getMessageCount().toInt() }
 
             println(" Messages received: $msgCount, wire count: warm up: $firstCount, regular: ${wireMsgCount - firstCount}")
-            val missingRouters = receiveRouters.filter { it.inboundMessages.isEmpty() }
-//            println(" Routers missing: " + missingRouters.joinToString(", ") { it.name })
+//           val missingRouters = receiveRouters.filter { it.inboundMessages.isEmpty() }
+//           println(" Routers missing: " + missingRouters.joinToString(", ") { it.name })
 
             Assertions.assertEquals(receiveRouters.size, msgCount)
             receiveRouters.forEach { it.inboundMessages.clear() }
         }
 
-        val handler2router: (P2PService.PeerHandler) -> TestRouter = {
-            val channel = it.streamHandler.stream.nettyChannel
-            val connection = allConnections.find { channel == it.ch1 || channel == it.ch2 }!!
-            val otherChannel = if (connection.ch1 == channel) connection.ch2 else connection.ch1
-            allRouters.find { (it.router as AbstractRouter).peers.any { it.streamHandler.stream.nettyChannel == otherChannel } }!!
-        }
+//        val handler2router: (P2PService.PeerHandler) -> TestRouter = {
+//            val channel = it.streamHandler.stream.nettyChannel
+//            val connection = allConnections.find { channel == it.ch1 || channel == it.ch2 }!!
+//            val otherChannel = if (connection.ch1 == channel) connection.ch2 else connection.ch1
+//            allRouters.find { (it.router as AbstractRouter).peers.any { it.streamHandler.stream.nettyChannel == otherChannel } }!!
+//        }
 
 //        allRouters.forEach {tr ->
 //            (tr.router as? GossipRouter)?.also {

@@ -31,5 +31,4 @@ public interface Transport extends Connector<Transport.Listener, Multiaddr> {
             return CompletableFuture.completedFuture(getLocalMultiaddress());
         }
     }
-
 }

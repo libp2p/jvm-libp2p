@@ -86,9 +86,9 @@ class Multihash(val bytes: ByteBuf, val desc: Descriptor, val lengthBits: Int, v
         @JvmStatic
         fun wrap(desc: Descriptor, lengthBits: Int, digest: ByteBuf, code: Long? = null): Multihash {
             val lengthBytes = lengthBits.div(8)
-            val code = code ?: REGISTRY[desc]?.code ?: throw InvalidMultihashException("Unrecognised multihash descriptor")
+            val mhCode = code ?: REGISTRY[desc]?.code ?: throw InvalidMultihashException("Unrecognised multihash descriptor")
             with(Unpooled.buffer(lengthBytes + 10)) {
-                writeUvarint(code)
+                writeUvarint(mhCode)
                 writeUvarint(lengthBytes)
                 writeBytes(digest.slice(0, lengthBytes))
                 return Multihash(this, desc, lengthBits, digest)

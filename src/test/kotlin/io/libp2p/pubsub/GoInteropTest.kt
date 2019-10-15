@@ -391,7 +391,7 @@ class GoInteropTest {
         testChannel.writeInbound(bytes.toByteBuf())
         val psMsg = testChannel.readInbound<Rpc.RPC>()
         PubsubMessageValidator.signatureValidator().validate(psMsg)
-        val seqNo = psMsg.publishList[0].seqno
+//        val seqNo = psMsg.publishList[0].seqno
 
         println(psMsg.publishList[0].data.toByteArray().toHex())
     }
