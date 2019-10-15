@@ -20,11 +20,15 @@ import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.core.config.Configurator
 import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.MethodOrderer.OrderAnnotation
+import org.junit.jupiter.api.Order
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestMethodOrder
 import spipe.pb.Spipe
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
+@TestMethodOrder(OrderAnnotation::class)
 class NoiseSecureChannelTest {
     // tests for Noise
 
@@ -32,10 +36,10 @@ class NoiseSecureChannelTest {
     private lateinit var bobHS: HandshakeState
 
     @Test
-    fun test1() {
+    @Order(1)
+    fun setUpKeys() {
         // test1
         // Noise framework initialization
-
         aliceHS = HandshakeState("Noise_IK_25519_ChaChaPoly_SHA256", HandshakeState.INITIATOR)
         bobHS = HandshakeState("Noise_IK_25519_ChaChaPoly_SHA256", HandshakeState.RESPONDER)
 
@@ -70,10 +74,11 @@ class NoiseSecureChannelTest {
     }
 
     @Test
-    fun test2() {
-        // protocol starts and respective resulting state
-        test1()
+    @Order(2)
+    fun startHandshake() {
+        setUpKeys()
 
+        // protocol starts and respective resulting state
         aliceHS.start()
         bobHS.start()
 
@@ -82,8 +87,9 @@ class NoiseSecureChannelTest {
     }
 
     @Test
-    fun test3() {
-        test2()
+    @Order(3)
+    fun completeHandshake() {
+        startHandshake()
         // - creation of initiator ephemeral key
 
         // ephemeral keys become part of the Noise protocol instance
@@ -124,8 +130,9 @@ class NoiseSecureChannelTest {
     }
 
     @Test
-    fun test4() {
-        test2()
+    @Order(4)
+    fun `create peer identity`() {
+        startHandshake()
         // generate a Peer Identity protobuf object
         // use it for encoding and decoding peer identities from the wire
         // this identity is intended to be sent as a Noise transport payload
