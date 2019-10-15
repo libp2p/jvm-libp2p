@@ -17,11 +17,13 @@ import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable
 import java.util.concurrent.TimeUnit
 
 @Tag("secure-channel")
 class SecioTest : HostTest(::SecIoSecureChannel)
 
+@DisabledIfEnvironmentVariable(named = "TRAVIS", matches = "true")
 @Tag("secure-channel")
 class NoiseXXTest : HostTest(::NoiseXXSecureChannel)
 
