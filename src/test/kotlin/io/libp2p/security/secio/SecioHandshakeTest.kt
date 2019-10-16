@@ -3,21 +3,16 @@ package io.libp2p.security.secio
 import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.generateKeyPair
-import io.libp2p.core.crypto.unmarshalPrivateKey
-import io.libp2p.crypto.keys.secp256k1PublicKeyFromCoordinates
-import io.libp2p.etc.types.fromHex
 import io.netty.buffer.ByteBuf
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
-import java.math.BigInteger
 
 /**
  * Created by Anton Nashatyrev on 18.06.2019.
  */
-
 class SecioHandshakeTest {
     @Test
-    fun test1() {
+    fun handshake() {
         val (privKey1, pubKey1) = generateKeyPair(KEY_TYPE.ECDSA)
         val (privKey2, pubKey2) = generateKeyPair(KEY_TYPE.ECDSA)
         var bb1: ByteBuf? = null
@@ -31,8 +26,8 @@ class SecioHandshakeTest {
 
         Assertions.assertTrue(bb1 != null)
         Assertions.assertTrue(bb2 != null)
-        var msgFor1 = bb2!!
-        var msgFor2 = bb1!!
+        val msgFor1 = bb2!!
+        val msgFor2 = bb1!!
         bb1 = null
         bb2 = null
 
@@ -58,28 +53,5 @@ class SecioHandshakeTest {
         SecIoCodec.createCipher(keys1.second).processBytes(tmp, 0, tmp.size, tmp, 0)
 
         Assertions.assertArrayEquals(plainMsg, tmp)
-    }
-
-    @Test
-    fun testSecpPub() {
-        val pubKey = secp256k1PublicKeyFromCoordinates(
-            BigInteger("29868384252041196073668708557917617583643409287860779134116445706780092854384"),
-            BigInteger("32121030900263138255369578555559933217781286061089165917390620197021766129989")
-        )
-        val peerId = PeerId.fromPubKey(pubKey)
-        Assertions.assertEquals("16Uiu2HAmH6m8pE7pXsfzXHg3Z5kLzgwJ5PWSYELaKXc75Bs2utZM", peerId.toBase58())
-
-        val serializedGoKey = """
-            08 02 12 20 6F D7 AF 84 82 36 61 AE 4F 0F DB 05
-            D8 3B D5 56 9B 42 70 FE 94 C8 AD 79 CC B7 E3 F8
-            43 DE FC B1
-        """.trimIndent()
-            .replace(" ", "")
-            .replace("\n", "")
-
-        val privKey = unmarshalPrivateKey(serializedGoKey.fromHex())
-        println()
-        Assertions.assertEquals("16Uiu2HAmH6m8pE7pXsfzXHg3Z5kLzgwJ5PWSYELaKXc75Bs2utZM",
-            PeerId.fromPubKey(privKey.publicKey()).toBase58())
     }
 }
