@@ -21,11 +21,11 @@ import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable
 import java.util.concurrent.TimeUnit
 
 @Tag("secure-channel")
-class SecioTest : HostTest(::SecIoSecureChannel)
+class SecioHostTest : HostTest(::SecIoSecureChannel)
 
 @DisabledIfEnvironmentVariable(named = "TRAVIS", matches = "true")
 @Tag("secure-channel")
-class NoiseXXTest : HostTest(::NoiseXXSecureChannel)
+class NoiseXXHostTest : HostTest(::NoiseXXSecureChannel)
 
 abstract class HostTest(val secureChannelCtor: SecureChannelCtor) {
     val clientHost = host {
