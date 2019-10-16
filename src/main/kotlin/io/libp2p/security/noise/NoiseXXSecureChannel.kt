@@ -70,8 +70,8 @@ class NoiseXXSecureChannel(private val localKey: PrivKey) :
     }
 
     override fun initChannel(
-            ch: P2PAbstractChannel,
-            selectedProtocol: String
+        ch: P2PAbstractChannel,
+        selectedProtocol: String
     ): CompletableFuture<SecureChannel.Session> {
         role = if (ch.isInitiator) AtomicInteger(HandshakeState.INITIATOR) else AtomicInteger(HandshakeState.RESPONDER)
 
@@ -273,10 +273,10 @@ class NoiseXXSecureChannel(private val localKey: PrivKey) :
         }
 
         private fun verifyPayload(
-                ctx: ChannelHandlerContext,
-                payload: ByteArray,
-                payloadLength: Int,
-                remotePublicKey: ByteArray
+            ctx: ChannelHandlerContext,
+            payload: ByteArray,
+            payloadLength: Int,
+            remotePublicKey: ByteArray
         ) {
             logger2.debug("Verifying noise static key payload")
             flagRemoteVerified = true
