@@ -49,13 +49,13 @@ abstract class SecureChannelTest(
         val eCh1 = makeChannel("#1", true, protocolSelect1)
         val eCh2 = makeChannel("#2", false, protocolSelect2)
 
-        println("Connecting channels...")
+        logger.debug("Connecting channels...")
         interConnect(eCh1, eCh2)
 
-        println("Waiting for secio negotiation to complete...")
-        protocolSelect1.selectedFuture.get(5, TimeUnit.SECONDS)
-        protocolSelect2.selectedFuture.get(5, TimeUnit.SECONDS)
-        println("Secured!")
+        logger.debug("Waiting for negotiation to complete...")
+        protocolSelect1.selectedFuture.get(10, TimeUnit.SECONDS)
+        protocolSelect2.selectedFuture.get(10, TimeUnit.SECONDS)
+        logger.debug("Secured!")
 
         val handler1 = SecureChannelTestHandler("1", latch)
         val handler2 = SecureChannelTestHandler("2", latch)
