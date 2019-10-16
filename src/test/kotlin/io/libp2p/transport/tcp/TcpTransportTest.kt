@@ -36,18 +36,18 @@ class TcpTransportTest {
 
     private val upgrader = ConnectionUpgrader(emptyList(), emptyList())
 
-    @ParameterizedTest
+    @ParameterizedTest(name = "{0}")
     @MethodSource("validMultiaddrs")
-    fun `handles(addr) returns true if addr contains tcp protocol`(addr: Multiaddr) {
-//        val tcp = TcpTransport(upgrader)
-//        assert(tcp.handles(addr))
+    fun `TcpTransport supports`(addr: Multiaddr) {
+        val tcp = TcpTransport(upgrader)
+        assert(tcp.handles(addr))
     }
 
-    @ParameterizedTest
+    @ParameterizedTest(name = "{0}")
     @MethodSource("invalidMultiaddrs")
-    fun `handles(addr) returns false if addr does not contain tcp protocol`(addr: Multiaddr) {
-//        val tcp = TcpTransport(upgrader)
-//        assert(!tcp.handles(addr))
+    fun `TcpTransport does not suport`(addr: Multiaddr) {
+        val tcp = TcpTransport(upgrader)
+        assert(!tcp.handles(addr))
     }
 
     @Test
@@ -120,7 +120,7 @@ class TcpTransportTest {
     fun testDialClose() {
         val logger = LogManager.getLogger("test")
 
-        val (privKey1, pubKey1) = generateKeyPair(KEY_TYPE.ECDSA)
+        val (privKey1, _) = generateKeyPair(KEY_TYPE.ECDSA)
         val upgrader = ConnectionUpgrader(
             listOf(SecIoSecureChannel(privKey1)),
             listOf(MplexStreamMuxer())
@@ -152,8 +152,8 @@ class TcpTransportTest {
         }
         logger.info("Active channels: ${tcpTransportClient.activeChannels.size}")
 
-        CompletableFuture.anyOf(*dialFutures.toTypedArray()).get(5, SECONDS)
-        logger.info("The first negotiation succeeded. Closing now...")
+        CompletableFuture.allOf(*dialFutures.toTypedArray()).get(5, SECONDS)
+        logger.info("The negotiations succeeded. Closing now...")
 
         tcpTransportClient.close().get(5, SECONDS)
         logger.info("Client transport closed")
