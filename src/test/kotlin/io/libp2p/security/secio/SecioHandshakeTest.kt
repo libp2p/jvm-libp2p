@@ -5,11 +5,13 @@ import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.generateKeyPair
 import io.netty.buffer.ByteBuf
 import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 
 /**
  * Created by Anton Nashatyrev on 18.06.2019.
  */
+@Tag("secure-channel")
 class SecioHandshakeTest {
     @Test
     fun handshake() {

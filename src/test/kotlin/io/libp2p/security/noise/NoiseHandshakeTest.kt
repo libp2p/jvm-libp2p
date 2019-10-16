@@ -5,13 +5,15 @@ import com.southernstorm.noise.protocol.HandshakeState
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.generateKeyPair
 import org.junit.jupiter.api.Assertions
-import org.junit.jupiter.api.MethodOrderer.OrderAnnotation
 import org.junit.jupiter.api.Order
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestMethodOrder
+import org.junit.jupiter.api.MethodOrderer.OrderAnnotation
 import spipe.pb.Spipe
 
 @TestMethodOrder(OrderAnnotation::class)
+@Tag("secure-channel")
 class NoiseHandshakeTest {
     // tests for Noise
     private lateinit var aliceHS: HandshakeState
