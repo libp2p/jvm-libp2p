@@ -30,7 +30,7 @@ open class PingBinding(ping: PingProtocol) : StrictProtocolBinding<PingControlle
 
 class PingTimeoutException : Libp2pException()
 
-class PingProtocol : ProtocolHandler<PingController>() {
+open class PingProtocol : ProtocolHandler<PingController>() {
     var scheduler by lazyVar { Executors.newSingleThreadScheduledExecutor() }
     var curTime: () -> Long = { System.currentTimeMillis() }
     var random = Random()

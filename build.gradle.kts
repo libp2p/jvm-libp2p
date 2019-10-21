@@ -1,10 +1,18 @@
 import com.google.protobuf.gradle.proto
 import com.google.protobuf.gradle.protobuf
 import com.google.protobuf.gradle.protoc
+import com.jfrog.bintray.gradle.BintrayExtension
+import org.jetbrains.dokka.gradle.DokkaTask
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import java.net.URL
+import java.nio.file.Paths
+import java.nio.file.Files
+
+// To publish the release artifact to JFrog Bintray repo run the following :
+// ./gradlew bintrayUpload -PbintrayUser=<user> -PbintrayApiKey=<api-key>
 
 group = "io.libp2p"
-version = "0.0.1-SNAPSHOT"
+version = "0.2.0-SNAPSHOT"
 description = "a minimal implementation of libp2p for the jvm"
 
 plugins {
@@ -16,11 +24,13 @@ plugins {
     `build-scan`
 
     `maven-publish`
+    id("com.jfrog.bintray") version "1.8.1"
+    id("org.jetbrains.dokka") version "0.9.18"
 }
 
 repositories {
+    jcenter()
     mavenCentral()
-    maven("https://jitpack.io")
 }
 
 val log4j2Version = "2.11.2"
@@ -32,19 +42,16 @@ dependencies {
     compile("com.google.guava:guava:27.1-jre")
     compile("org.bouncycastle:bcprov-jdk15on:1.61")
     compile("org.bouncycastle:bcpkix-jdk15on:1.61")
-    compile("com.github.multiformats:java-multiaddr:v1.3.1")
     compile("com.google.protobuf:protobuf-java:3.6.1")
-    compile("com.google.protobuf:protobuf-java:3.6.1")
+    compile("commons-codec:commons-codec:1.13")
 
     compile("org.apache.logging.log4j:log4j-api:${log4j2Version}")
     compile("org.apache.logging.log4j:log4j-core:${log4j2Version}")
-
     compile("javax.xml.bind:jaxb-api:2.3.1")
 
     testCompile("org.junit.jupiter:junit-jupiter-api:5.4.2")
     testCompile("org.junit.jupiter:junit-jupiter-params:5.4.2")
     testRuntime("org.junit.jupiter:junit-jupiter-engine:5.4.2")
-
 }
 
 sourceSets {
@@ -81,7 +88,11 @@ tasks.withType<KotlinCompile> {
 
 // Parallel build execution
 tasks.test {
-    useJUnitPlatform()
+    description = "Runs the unit tests."
+
+    useJUnitPlatform{
+        excludeTags("interop")
+    }
 
     testLogging {
         events("PASSED", "FAILED", "SKIPPED")
@@ -92,6 +103,59 @@ tasks.test {
 //    maxParallelForks = (System.getenv("GRADLE_MAX_TEST_FORKS")?.toInt() ?:
 //    Runtime.getRuntime().availableProcessors().div(2))
 }
+
+// Interop Tests
+fun findOnPath(executable: String): Boolean {
+    return System.getenv("PATH").split(File.pathSeparator)
+        .map { Paths.get(it) }
+        .any { Files.exists(it.resolve(executable)) }
+}
+val goOnPath = findOnPath("go")
+val nodeOnPath = findOnPath("node")
+
+val testResourceDir = sourceSets.test.get().resources.sourceDirectories.singleFile
+val goPingServer = File(testResourceDir, "go/ping-server")
+val goPingClient = File(testResourceDir, "go/ping-client")
+val jsPinger = File(testResourceDir, "js/pinger")
+
+val goTargets = listOf(goPingServer, goPingClient).map { target ->
+    val name = "go-build-${target.name}"
+    task(name, Exec::class) {
+        workingDir = target
+        commandLine = "go build".split(" ")
+    }
+    name
+}
+
+task("npm-install-pinger", Exec::class) {
+    workingDir = jsPinger
+    commandLine = "npm install".split(" ")
+}
+
+task("interopTest", Test::class) {
+    group = "Verification"
+    description = "Runs the interoperation tests."
+
+    val dependencies = ArrayList<String>()
+    if (goOnPath) dependencies.addAll(goTargets)
+    if (nodeOnPath) dependencies.add("npm-install-pinger")
+    dependsOn(dependencies)
+
+    useJUnitPlatform {
+        includeTags("interop")
+    }
+
+    testLogging {
+        events("PASSED", "FAILED", "SKIPPED")
+    }
+
+    environment("ENABLE_JS_INTEROP", nodeOnPath)
+    environment("JS_PINGER", jsPinger.toString())
+    environment("ENABLE_GO_INTEROP", goOnPath)
+    environment("GO_PING_SERVER", goPingServer.toString())
+    environment("GO_PING_CLIENT", goPingClient.toString())
+}
+// End Interop Tests
 
 kotlinter {
     allowWildcardImports = false
@@ -107,6 +171,24 @@ val sourcesJar by tasks.registering(Jar::class) {
     from(sourceSets.main.get().allSource)
 }
 
+val dokka by tasks.getting(DokkaTask::class) {
+    outputFormat = "html"
+    outputDirectory = "$buildDir/dokka"
+    jdkVersion = 8
+    reportUndocumented = false
+    externalDocumentationLink {
+        url = URL("https://netty.io/4.1/api/")
+    }
+}
+
+val dokkaJar by tasks.creating(Jar::class) {
+    group = JavaBasePlugin.DOCUMENTATION_GROUP
+    description = "Assembles Kotlin docs with Dokka"
+    archiveClassifier.set("javadoc")
+    from(tasks.dokka)
+    dependsOn(tasks.dokka)
+}
+
 publishing {
     repositories {
         maven {
@@ -118,6 +200,24 @@ publishing {
         register("mavenJava", MavenPublication::class) {
             from(components["java"])
             artifact(sourcesJar.get())
+            artifact(dokkaJar)
         }
     }
+}
+
+fun findProperty(s: String) = project.findProperty(s) as String?
+
+bintray {
+    user = findProperty("bintrayUser")
+    key = findProperty("bintrayApiKey")
+    publish = true
+    setPublications("mavenJava")
+    setConfigurations("archives")
+    pkg(delegateClosureOf<BintrayExtension.PackageConfig> {
+        userOrg = "libp2p"
+        repo = "jvm-libp2p"
+        name = "io.libp2p"
+        setLicenses("Apache-2.0", "MIT")
+        vcsUrl = "https://github.com/libp2p/jvm-libp2p"
+    })
 }

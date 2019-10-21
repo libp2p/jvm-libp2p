@@ -9,6 +9,7 @@ import com.southernstorm.noise.protocol.Noise
 import io.libp2p.core.P2PChannel
 import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.PrivKey
+import io.libp2p.core.crypto.marshalPublicKey
 import io.libp2p.core.crypto.unmarshalPublicKey
 import io.libp2p.core.multistream.Mode
 import io.libp2p.core.multistream.ProtocolMatcher
@@ -21,169 +22,184 @@ import io.libp2p.etc.types.toByteBuf
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
-import io.netty.channel.ChannelOutboundHandlerAdapter
-import io.netty.channel.ChannelPromise
 import io.netty.channel.SimpleChannelInboundHandler
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
 import org.apache.logging.log4j.core.config.Configurator
 import spipe.pb.Spipe
-import java.nio.charset.StandardCharsets
+import java.util.Arrays
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicInteger
 
-open class NoiseXXSecureChannel(private val localKey: PrivKey, private val privateKey25519: ByteArray) :
+class NoiseXXSecureChannel(private val localKey: PrivKey) :
     SecureChannel {
-
-    private val logger = LogManager.getLogger(NoiseXXSecureChannel::class.java.name)
-
-    private lateinit var role: AtomicInteger
-    private lateinit var localDHState: DHState
-
-    private val handshakeHandlerName = "NoiseHandshake"
 
     companion object {
         const val protocolName = "Noise_XX_25519_ChaChaPoly_SHA256"
         const val announce = "/noise/$protocolName/0.1.0"
+
+        @JvmStatic
+        var localStaticPrivateKey25519: ByteArray = ByteArray(32)
+
+        init {
+            // initialize static Noise key
+            Noise.random(localStaticPrivateKey25519)
+        }
     }
+
+    private var logger: Logger
+    private var loggerNameParent: String = NoiseXXSecureChannel::class.java.name + this.hashCode()
+    private lateinit var chid: String
+
+    private lateinit var role: AtomicInteger
+
+    private val handshakeHandlerName = "NoiseHandshake"
 
     override val announce = Companion.announce
     override val matcher = ProtocolMatcher(Mode.PREFIX, name = "/noise/$protocolName/0.1.0")
 
     init {
-        Configurator.setLevel(NoiseXXSecureChannel::class.java.name, Level.DEBUG)
+        logger = LogManager.getLogger(loggerNameParent)
+        Configurator.setLevel(loggerNameParent, Level.DEBUG)
     }
 
+    // simplified constructor
     fun initChannel(ch: P2PChannel): CompletableFuture<SecureChannel.Session> {
         return initChannel(ch, "")
     }
 
-    override fun initChannel(ch: P2PChannel, selectedProtocol: String): CompletableFuture<SecureChannel.Session> {
+    override fun initChannel(
+        ch: P2PChannel,
+        selectedProtocol: String
+    ): CompletableFuture<SecureChannel.Session> {
         role = if (ch.isInitiator) AtomicInteger(HandshakeState.INITIATOR) else AtomicInteger(HandshakeState.RESPONDER)
 
-        // configure the localDHState with the private
-        // which will automatically generate the corresponding public key
-        localDHState = Noise.createDH("25519")
-        localDHState.setPrivateKey(privateKey25519, 0)
+        // chid = "ch=" + ch.id().asShortText() + "-" + ch.localAddress() + "-" + ch.remoteAddress()
+        chid = "ch=${this.hashCode()}"
+        logger.debug(chid)
 
         val ret = CompletableFuture<SecureChannel.Session>()
         val resultHandler = object : ChannelInboundHandlerAdapter() {
             override fun userEventTriggered(ctx: ChannelHandlerContext, evt: Any) {
                 when (evt) {
                     is SecureChannelInitialized -> {
+                        val session = evt.session as NoiseSecureChannelSession
+                        ctx.channel().attr(SECURE_SESSION).set(session)
 
-                        ctx.channel().attr(SECURE_SESSION).set(evt.session)
-
-                        ctx.pipeline().remove(handshakeHandlerName)
+                        ret.complete(session)
                         ctx.pipeline().remove(this)
-
-                        ctx.pipeline().addFirst(object : SimpleChannelInboundHandler<ByteBuf>() {
-                            override fun channelRead0(ctx: ChannelHandlerContext, msg: ByteBuf) {
-                                val get: NoiseSecureChannelSession = ctx.channel().attr(SECURE_SESSION).get() as NoiseSecureChannelSession
-                                val additionalData = ByteArray(65535)
-                                val plainText = ByteArray(65535)
-                                val cipherText = msg.toByteArray()
-                                val length = msg.getShort(0).toInt()
-                                logger.debug("decrypt length:$length")
-                                val l = get.bobCipher.decryptWithAd(additionalData, cipherText, 2, plainText, 0, length)
-                                val rec2 = plainText.copyOf(l).toString(StandardCharsets.UTF_8)
-                                ctx.pipeline().fireChannelRead(rec2)
-                            }
-                        })
-                        ctx.pipeline().addFirst(object : ChannelOutboundHandlerAdapter() {
-                            override fun write(ctx: ChannelHandlerContext, msg: Any, promise: ChannelPromise) {
-                                msg as ByteBuf
-                                val get: NoiseSecureChannelSession = ctx.channel().attr(SECURE_SESSION).get() as NoiseSecureChannelSession
-                                val additionalData = ByteArray(65535)
-                                val cipherText = ByteArray(65535)
-                                val plaintext = msg.toByteArray()
-                                val length = get.aliceCipher.encryptWithAd(additionalData, plaintext, 0, cipherText, 2, plaintext.size)
-                                logger.debug("encrypt length:$length")
-                                ctx.write(cipherText.copyOf(length + 2).toByteBuf().setShort(0, length))
-                                logger.debug("channel outbound handler write: $msg")
-                            }
-                        })
-
-                        ret.complete(evt.session)
+                        ctx.pipeline().addLast(NoiseXXCodec(session.aliceCipher, session.bobCipher))
 
                         logger.debug("Reporting secure channel initialized")
                     }
                     is SecureChannelFailed -> {
                         ret.completeExceptionally(evt.exception)
-                        ctx.pipeline().remove(handshakeHandlerName)
+
+                        ctx.pipeline().remove(handshakeHandlerName + chid)
                         ctx.pipeline().remove(this)
+
                         logger.debug("Reporting secure channel failed")
                     }
                 }
                 ctx.fireUserEventTriggered(evt)
+                ctx.fireChannelActive()
             }
         }
-        ch.pushHandler(handshakeHandlerName, NoiseIoHandshake())
-        ch.pushHandler(handshakeHandlerName + "ResultHandler", resultHandler)
+        ch.pushHandler(handshakeHandlerName + chid, NoiseIoHandshake())
+        ch.pushHandler(handshakeHandlerName + chid + "ResultHandler", resultHandler)
         return ret
     }
 
-    inner class NoiseIoHandshake : SimpleChannelInboundHandler<ByteBuf>() {
+    inner class NoiseIoHandshake() : SimpleChannelInboundHandler<ByteBuf>() {
+
         private val handshakestate: HandshakeState = HandshakeState(protocolName, role.get())
+        private var loggerName: String
+        private var logger2: Logger
+
+        private var localNoiseState: DHState
+        private var sentNoiseKeyPayload = false
+
+        private val instancePayload = ByteArray(65535)
+        private var instancePayloadLength = 0
 
         init {
-            handshakestate.localKeyPair.copyFrom(localDHState)
+            val roleString = if (role.get() == HandshakeState.INITIATOR) "INIT" else "RESP"
+//            loggerName = loggerNameParent + "." + this.hashCode().toString().substring(5)
+            loggerName = roleString + "|" + chid + "|" + loggerNameParent
+            loggerName = loggerName.replace(".", "_")
+//            System.out.println("loggerName:"+loggerName)
+
+            logger2 = LogManager.getLogger(loggerName)
+            Configurator.setLevel(loggerName, Level.DEBUG)
+
+            logger2.debug("Starting handshake")
+
+            // configure the localDHState with the private
+            // which will automatically generate the corresponding public key
+            localNoiseState = Noise.createDH("25519")
+            localNoiseState.setPrivateKey(localStaticPrivateKey25519, 0)
+            handshakestate.localKeyPair.copyFrom(localNoiseState)
             handshakestate.start()
-            logger.debug("Starting handshake")
         }
 
         override fun channelRead0(ctx: ChannelHandlerContext, msg1: ByteBuf) {
-            logger.debug("Starting channelRead0")
-            val msg = msg1.array()
+            val msg = msg1.toByteArray()
 
             channelActive(ctx)
 
             if (role.get() == HandshakeState.RESPONDER && flagRemoteVerified && !flagRemoteVerifiedPassed) {
-                logger.error("Responder verification of Remote peer id has failed")
-                throw Exception("Responder verification of Remote peer id has failed")
+                logger2.error("Responder verification of Remote peer id has failed")
+                ctx.fireUserEventTriggered(SecureChannelFailed(Exception("Responder verification of Remote peer id has failed")))
+                return
             }
 
-            // if we are here, we are still in handshake setup phase
-
             // we always read from the wire when it's the next action to take
+            // capture any payloads
             val payload = ByteArray(65535)
             var payloadLength = 0
             if (handshakestate.action == HandshakeState.READ_MESSAGE) {
-                payloadLength = handshakestate.readMessage(msg, 0, msg.size, payload, 0)
-            }
-
-            if (role.get() == HandshakeState.RESPONDER && !flagRemoteVerified) {
-                // the self-signed remote pubkey and signature would be retrieved from the first Noise payload
-                val inp = Spipe.Exchange.parseFrom(payload.copyOfRange(0, payloadLength))
-                // validate the signature
-                val inpub = unmarshalPublicKey(inp.epubkey.toByteArray())
-                val verification = inpub.verify(inp.epubkey.toByteArray(), inp.signature.toByteArray())
-
-                flagRemoteVerified = true
-                if (verification) {
-                    logger.debug("Remote verification passed")
-                    flagRemoteVerifiedPassed = true
-                } else {
-                    logger.error("Remote verification failed")
-                    flagRemoteVerifiedPassed = false // being explicit about it
-                    throw Exception("Responder verification of Remote peer id has failed")
-                    // throwing exception for early exit of protocol and for application to handle
+                logger2.debug("Noise handshake READ_MESSAGE")
+                try {
+                    payloadLength = handshakestate.readMessage(msg, 0, msg.size, payload, 0)
+                } catch (e: Exception) {
+                    logger2.debug("Exception e:" + e.toString())
+                    ctx.fireUserEventTriggered(SecureChannelFailed(e))
+                    return
                 }
             }
 
+            val remotePublicKeyState: DHState = handshakestate.remotePublicKey
+            val remotePublicKey = ByteArray(remotePublicKeyState.publicKeyLength)
+            remotePublicKeyState.getPublicKey(remotePublicKey, 0)
+
+            if (payloadLength > 0 && instancePayloadLength == 0) {
+                // currently, only allow storing a single payload for verification (this should maybe be changed to a queue)
+                payload.copyInto(instancePayload, 0, 0, payloadLength)
+                instancePayloadLength = payloadLength
+            }
+
+            // verify the signature of the remote's noise static public key once the remote public key has been provided by the XX protocol
+            if (!Arrays.equals(remotePublicKey, ByteArray(remotePublicKeyState.publicKeyLength))) {
+                verifyPayload(ctx, instancePayload, instancePayloadLength, remotePublicKey)
+            }
+
             // after reading messages and setting up state, write next message onto the wire
-            if (handshakestate.action == HandshakeState.WRITE_MESSAGE) {
+            if (role.get() == HandshakeState.RESPONDER && handshakestate.action == HandshakeState.WRITE_MESSAGE) {
+                sendNoiseStaticKeyAsPayload(ctx)
+            } else if (handshakestate.action == HandshakeState.WRITE_MESSAGE) {
                 val sndmessage = ByteArray(65535)
                 val sndmessageLength: Int
+                logger2.debug("Noise handshake WRITE_MESSAGE")
                 sndmessageLength = handshakestate.writeMessage(sndmessage, 0, null, 0, 0)
                 ctx.writeAndFlush(sndmessage.copyOfRange(0, sndmessageLength).toByteBuf())
             }
 
-            if (handshakestate.action == HandshakeState.SPLIT) {
+            if (handshakestate.action == HandshakeState.SPLIT && flagRemoteVerifiedPassed) {
                 cipherStatePair = handshakestate.split()
                 aliceSplit = cipherStatePair.sender
                 bobSplit = cipherStatePair.receiver
-                logger.debug("Split complete")
+                logger2.debug("Split complete")
 
                 // put alice and bob security sessions into the context and trigger the next action
                 val secureChannelInitialized = SecureChannelInitialized(
@@ -193,44 +209,101 @@ open class NoiseXXSecureChannel(private val localKey: PrivKey, private val priva
                         localKey.publicKey(),
                         aliceSplit,
                         bobSplit
-                    ) as SecureChannel.Session)
+                    ) as SecureChannel.Session
+                )
                 ctx.fireUserEventTriggered(secureChannelInitialized)
-                return
+//                ctx.fireChannelActive()
+                ctx.channel().pipeline().remove(this)
             }
         }
 
         override fun channelRegistered(ctx: ChannelHandlerContext) {
-            if (activated) {
-                return
-            }
-            logger.debug("Registration starting")
+            if (activated) return
             activated = true
 
+            // even though both the alice and bob parties can have the payload ready
+            // the Noise protocol only permits alice to send a packet first
             if (role.get() == HandshakeState.INITIATOR) {
-                val msgBuffer = ByteArray(65535)
-
-                // TODO : include data fields into protobuf struct to match spec
-                // alice needs to put signed peer id public key into message
-                val signed = localKey.sign(localKey.publicKey().bytes())
-
-                // generate an appropriate protobuf element
-                val bs = Spipe.Exchange.newBuilder().setEpubkey(ByteString.copyFrom(localKey.publicKey().bytes()))
-                    .setSignature(ByteString.copyFrom(signed)).build()
-
-                // create the message
-                // also create assign the signed payload
-                val msgLength = handshakestate.writeMessage(msgBuffer, 0, bs.toByteArray(), 0, bs.toByteArray().size)
-
-                // put the message frame which also contains the payload onto the wire
-                ctx.writeAndFlush(msgBuffer.copyOfRange(0, msgLength).toByteBuf())
+                sendNoiseStaticKeyAsPayload(ctx)
             }
-            logger.debug("Registration complete")
+        }
+
+        /**
+         * Sends the next Noise message with a payload of the identities and signatures
+         * Currently does not include additional data in the payload.
+         */
+        private fun sendNoiseStaticKeyAsPayload(ctx: ChannelHandlerContext) {
+            // only send the Noise static key once
+            if (sentNoiseKeyPayload) return
+            sentNoiseKeyPayload = true
+
+            // the payload consists of the identity public key, and the signature of the noise static public key
+            // the actual noise static public key is sent later as part of the XX handshake
+
+            // get identity public key
+            val identityPublicKey: ByteArray = marshalPublicKey(localKey.publicKey())
+
+            // get noise static public key signature
+            val localNoisePubKey = ByteArray(localNoiseState.publicKeyLength)
+            localNoiseState.getPublicKey(localNoisePubKey, 0)
+            val localNoiseStaticKeySignature = localKey.sign("noise-libp2p-static-key:".toByteArray() + localNoisePubKey)
+
+            // generate an appropriate protobuf element
+            val noiseHandshakePayload =
+                Spipe.NoiseHandshakePayload.newBuilder()
+                    .setLibp2PKey(ByteString.copyFrom(identityPublicKey))
+                    .setNoiseStaticKeySignature(ByteString.copyFrom(localNoiseStaticKeySignature))
+                    .setLibp2PData(ByteString.EMPTY)
+                    .setLibp2PDataSignature(ByteString.EMPTY)
+                    .build()
+
+            // create the message with the signed payload - verification happens once the noise static key is shared
+            val msgBuffer = ByteArray(65535)
+            val msgLength = handshakestate.writeMessage(
+                msgBuffer,
+                0,
+                noiseHandshakePayload.toByteArray(),
+                0,
+                noiseHandshakePayload.toByteArray().size
+            )
+
+            logger2.debug("Sending signed Noise static public key as payload")
+            logger2.debug("Noise handshake WRITE_MESSAGE")
+            // put the message frame which also contains the payload onto the wire
+            ctx.writeAndFlush(msgBuffer.copyOfRange(0, msgLength).toByteBuf())
+        }
+
+        private fun verifyPayload(
+            ctx: ChannelHandlerContext,
+            payload: ByteArray,
+            payloadLength: Int,
+            remotePublicKey: ByteArray
+        ) {
+            logger2.debug("Verifying noise static key payload")
+            flagRemoteVerified = true
+
+            // the self-signed remote pubkey and signature would be retrieved from the first Noise payload
+            val inp = Spipe.NoiseHandshakePayload.parseFrom(payload.copyOfRange(0, payloadLength))
+            // validate the signature
+            val data: ByteArray = inp.libp2PKey.toByteArray()
+            val remotePubKeyFromMessage = unmarshalPublicKey(data)
+            val remoteSignatureFromMessage = inp.noiseStaticKeySignature.toByteArray()
+
+            flagRemoteVerifiedPassed = remotePubKeyFromMessage.verify("noise-libp2p-static-key:".toByteArray() + remotePublicKey, remoteSignatureFromMessage)
+
+            if (flagRemoteVerifiedPassed) {
+                logger2.debug("Remote verification passed")
+            } else {
+                logger2.error("Remote verification failed")
+                ctx.fireUserEventTriggered(SecureChannelFailed(Exception("Responder verification of Remote peer id has failed")))
+                return
+//                ctx.fireChannelActive()
+                // throwing exception for early exit of protocol and for application to handle
+            }
         }
 
         override fun channelActive(ctx: ChannelHandlerContext) {
-            logger.debug("Activation starting")
             channelRegistered(ctx)
-            logger.debug("Activation complete")
         }
 
         private var activated = false

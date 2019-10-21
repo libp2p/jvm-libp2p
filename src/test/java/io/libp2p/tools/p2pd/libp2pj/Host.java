@@ -1,6 +1,6 @@
 package io.libp2p.tools.p2pd.libp2pj;
 
-import io.ipfs.multiaddr.MultiAddress;
+import io.libp2p.core.multiformats.Multiaddr;
 
 import java.io.Closeable;
 import java.util.List;
@@ -14,9 +14,9 @@ public interface Host extends Muxer {
 
     Peer getMyId();
 
-    List<MultiAddress> getListenAddresses();
+    List<Multiaddr> getListenAddresses();
 
-    CompletableFuture<Void> connect(List<MultiAddress> peerAddresses, Peer peerId);
+    CompletableFuture<Void> connect(List<Multiaddr> peerAddresses, Peer peerId);
 
     @Override
     CompletableFuture<Void> dial(MuxerAdress muxerAdress, StreamHandler<MuxerAdress> handler);

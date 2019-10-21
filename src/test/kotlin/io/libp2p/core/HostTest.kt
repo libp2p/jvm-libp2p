@@ -8,6 +8,7 @@ import io.libp2p.mux.mplex.MplexStreamMuxer
 import io.libp2p.protocol.Identify
 import io.libp2p.protocol.Ping
 import io.libp2p.protocol.PingController
+import io.libp2p.security.noise.NoiseXXSecureChannel
 import io.libp2p.security.secio.SecIoSecureChannel
 import io.libp2p.transport.tcp.TcpTransport
 import io.netty.handler.logging.LogLevel
@@ -16,10 +17,15 @@ import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable
 import java.util.concurrent.TimeUnit
 
 @Tag("secure-channel")
-class SecioTest : HostTest(::SecIoSecureChannel)
+class SecioHostTest : HostTest(::SecIoSecureChannel)
+
+@DisabledIfEnvironmentVariable(named = "TRAVIS", matches = "true")
+@Tag("secure-channel")
+class NoiseXXHostTest : HostTest(::NoiseXXSecureChannel)
 
 abstract class HostTest(val secureChannelCtor: SecureChannelCtor) {
     val clientHost = host {
@@ -124,7 +130,7 @@ abstract class HostTest(val secureChannelCtor: SecureChannelCtor) {
 
         for (i in 1..10) {
             val latency = pingCtr.ping().get(1, TimeUnit.SECONDS)
-            println("Ping is $latency")
+            println("Ping $i is ${latency}ms")
         }
         pingStream.close().get(5, TimeUnit.SECONDS)
         println("Ping stream closed")

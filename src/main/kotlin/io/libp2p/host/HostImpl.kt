@@ -70,7 +70,7 @@ class HostImpl(
     }
 
     override fun removeConnectionHandler(handler: ConnectionHandler) {
-        connectionHandlers += handler
+        connectionHandlers -= handler
     }
 
     override fun <TController> newStream(protocol: String, peer: PeerId, vararg addr: Multiaddr): StreamPromise<TController> {

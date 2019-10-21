@@ -1,6 +1,6 @@
 package io.libp2p.tools.p2pd.libp2pj;
 
-import io.ipfs.multiaddr.MultiAddress;
+import io.libp2p.core.multiformats.Multiaddr;
 
 import java.util.List;
 
@@ -9,26 +9,26 @@ import java.util.List;
  */
 public class PeerInfo {
     private final Peer id;
-    private final List<MultiAddress> adresses;
+    private final List<Multiaddr> addresses;
 
-    public PeerInfo(Peer id, List<MultiAddress> adresses) {
+    public PeerInfo(Peer id, List<Multiaddr> addresses) {
         this.id = id;
-        this.adresses = adresses;
+        this.addresses = addresses;
     }
 
     public Peer getId() {
         return id;
     }
 
-    public List<MultiAddress> getAdresses() {
-        return adresses;
+    public List<Multiaddr> getAddresses() {
+        return addresses;
     }
 
     @Override
     public String toString() {
         return "PeerInfo{" +
                 "id=" + id +
-                ", adresses=" + adresses +
+                ", adresses=" + addresses +
                 '}';
     }
 }
