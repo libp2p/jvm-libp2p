@@ -117,7 +117,7 @@ class NoiseXXSecureChannel(private val localKey: PrivKey) :
         private var localNoiseState: DHState
         private var sentNoiseKeyPayload = false
 
-        private lateinit var instancePayload : ByteArray
+        private lateinit var instancePayload: ByteArray
         private var instancePayloadLength = 0
 
         init {
@@ -154,7 +154,7 @@ class NoiseXXSecureChannel(private val localKey: PrivKey) :
                 logger2.debug("Noise handshake READ_MESSAGE")
                 try {
                     payloadLength = handshakestate.readMessage(msg, 0, msg.size, payload, 0)
-                    logger2.trace("msg.size:"+msg.size)
+                    logger2.trace("msg.size:" + msg.size)
                     logger2.trace("Read message size:$payloadLength")
                 } catch (e: Exception) {
                     logger2.debug("Exception e:" + e.toString())
