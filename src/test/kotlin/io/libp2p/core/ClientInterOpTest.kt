@@ -78,7 +78,7 @@ abstract class ClientInterOpTest(
     @AfterEach
     fun stopHosts() {
         serverHost.stop().get(5, TimeUnit.SECONDS)
-        println("Server Host stopped")
+        println("Server stopped")
     }
 
     @Test
@@ -93,6 +93,7 @@ abstract class ClientInterOpTest(
             .directory(File(System.getenv(external.clientDirEnvVar)))
             .redirectOutput(ProcessBuilder.Redirect.INHERIT)
             .redirectError(ProcessBuilder.Redirect.INHERIT)
+        println("Starting $command")
         clientProcess.start().waitFor()
     }
 }
