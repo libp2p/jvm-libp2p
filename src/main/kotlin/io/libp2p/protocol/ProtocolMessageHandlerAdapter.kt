@@ -1,7 +1,6 @@
 package io.libp2p.protocol
 
 import io.libp2p.core.Stream
-import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.SimpleChannelInboundHandler
 import io.netty.util.ReferenceCounted
@@ -9,7 +8,7 @@ import io.netty.util.ReferenceCounted
 class ProtocolMessageHandlerAdapter<TMessage>(
     private val stream: Stream,
     private val pmh: ProtocolMessageHandler<TMessage>
-) : SimpleChannelInboundHandler<ByteBuf>() { // This ByteBuf is a horrible hack just to get me going for now
+) : SimpleChannelInboundHandler<Any>() { // This ByteBuf is a horrible hack just to get me going for now
     override fun channelActive(ctx: ChannelHandlerContext) {
         pmh.onActivated(stream)
     }
@@ -21,7 +20,7 @@ class ProtocolMessageHandlerAdapter<TMessage>(
             if (acceptInboundMessage(msg)) {
                 ref = refCount(msg)
                 @Suppress("UNCHECKED_CAST")
-                channelRead0(ctx, msg as ByteBuf)
+                channelRead0(ctx, msg)
             } else {
                 release = false
                 ctx.fireChannelRead(msg)
@@ -33,8 +32,8 @@ class ProtocolMessageHandlerAdapter<TMessage>(
         }
     }
 
-    override fun channelRead0(ctx: ChannelHandlerContext?, msg: ByteBuf) {
-        pmh.onMessage(stream, msg as TMessage)
+    override fun channelRead0(ctx: ChannelHandlerContext?, msg: Any) {
+        pmh.fireMessage(stream, msg)
     }
 
     override fun channelUnregistered(ctx: ChannelHandlerContext?) {
