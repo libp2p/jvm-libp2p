@@ -41,8 +41,8 @@ interface Stream : P2PChannel {
     fun writeAndFlush(msg: Any)
 
     private fun protobufMessageType(candidate: Any): Class<*>? {
-        val candidate = if (candidate is Class<*>) candidate else candidate.javaClass
-        val interfaces = candidate.genericInterfaces
+        val candidateClass = if (candidate is Class<*>) candidate else candidate.javaClass
+        val interfaces = candidateClass.genericInterfaces
         for (type in interfaces) {
             if (type !is ParameterizedType) {
                 val mT = protobufMessageType(type)
@@ -51,8 +51,7 @@ interface Stream : P2PChannel {
                 else
                     continue
             }
-            val parameterizedType = type as ParameterizedType
-            val typeParameter = parameterizedType.actualTypeArguments.first() as Class<*>
+            val typeParameter = type.actualTypeArguments.first() as Class<*>
             val protobufClass = MessageLite::class.java
 
             val isProtobuf = protobufClass.isAssignableFrom(typeParameter)
