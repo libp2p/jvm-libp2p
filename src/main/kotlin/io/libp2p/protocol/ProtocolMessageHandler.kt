@@ -6,7 +6,7 @@ interface ProtocolMessageHandler<TMessage> {
     fun onActivated(stream: Stream) = Unit
     fun onMessage(stream: Stream, msg: TMessage) = Unit
     fun onClosed(stream: Stream) = Unit
-    fun onException(stream: Stream) = Unit
+    fun onException(cause: Throwable?) = Unit
 
     fun fireMessage(stream: Stream, msg: Any) {
         @Suppress("UNCHECKED_CAST")
