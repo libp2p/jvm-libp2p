@@ -5,11 +5,12 @@ import io.libp2p.core.dsl.host
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.etc.types.getX
 import io.libp2p.mux.mplex.MplexStreamMuxer
-import io.libp2p.protocol.Identify
+import io.libp2p.tools.DoNothing
 import io.libp2p.protocol.Ping
 import io.libp2p.protocol.PingController
 import io.libp2p.security.noise.NoiseXXSecureChannel
 import io.libp2p.security.secio.SecIoSecureChannel
+import io.libp2p.tools.DoNothingController
 import io.libp2p.transport.tcp.TcpTransport
 import io.netty.handler.logging.LogLevel
 import org.junit.jupiter.api.AfterEach
@@ -43,7 +44,7 @@ abstract class HostTest(val secureChannelCtor: SecureChannelCtor) {
         }
         protocols {
             +Ping()
-            +Identify()
+            +DoNothing()
         }
         debug {
             afterSecureHandler.setLogger(LogLevel.ERROR)
@@ -91,7 +92,7 @@ abstract class HostTest(val secureChannelCtor: SecureChannelCtor) {
     }
 
     @Test
-    fun unknownProtocol() {
+    fun unknownLocalProtocol() {
         val badProtocol = clientHost.newStream<PingController>(
             "/__no_such_protocol/1.0.0",
             serverHost.peerId,
@@ -104,8 +105,8 @@ abstract class HostTest(val secureChannelCtor: SecureChannelCtor) {
     @Test
     fun unsupportedServerProtocol() {
         // remote party doesn't support the protocol
-        val unsupportedProtocol = clientHost.newStream<PingController>(
-            "/ipfs/id/1.0.0",
+        val unsupportedProtocol = clientHost.newStream<DoNothingController>(
+            "/ipfs/do-nothing/1.0.0",
             serverHost.peerId,
             Multiaddr("/ip4/127.0.0.1/tcp/40002")
         )
