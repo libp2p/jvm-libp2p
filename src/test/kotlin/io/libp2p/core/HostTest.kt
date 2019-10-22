@@ -5,6 +5,7 @@ import io.libp2p.core.dsl.host
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.etc.types.getX
 import io.libp2p.mux.mplex.MplexStreamMuxer
+import io.libp2p.protocol.Identify
 import io.libp2p.tools.DoNothing
 import io.libp2p.protocol.Ping
 import io.libp2p.protocol.PingController
@@ -44,6 +45,7 @@ abstract class HostTest(val secureChannelCtor: SecureChannelCtor) {
         }
         protocols {
             +Ping()
+            +Identify()
             +DoNothing()
         }
         debug {
@@ -70,6 +72,7 @@ abstract class HostTest(val secureChannelCtor: SecureChannelCtor) {
         }
         protocols {
             +Ping()
+            +Identify()
         }
     }
 
