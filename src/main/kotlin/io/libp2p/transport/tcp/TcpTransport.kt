@@ -98,7 +98,7 @@ class TcpTransport(
         return server.clone()
             .childHandler(nettyInitializer { ch ->
                 registerChannel(ch)
-                val (channelHandler, _) = createConnectionHandler(connHandler, false)
+                val (channelHandler, connFuture) = createConnectionHandler(connHandler, false)
                 ch.pipeline().addLast(channelHandler)
             })
             .bind(fromMultiaddr(addr))

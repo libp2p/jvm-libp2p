@@ -54,9 +54,6 @@ class NetworkImpl(
             }
         ))
 
-    /**
-     * Connects to a peerid with a provided set of {@code Multiaddr}, returning the existing connection if already connected.
-     */
     override fun connect(
         id: PeerId,
         vararg addrs: Multiaddr
