@@ -41,7 +41,7 @@ class ProtocolMessageHandlerAdapter<TMessage>(
     }
 
     override fun exceptionCaught(ctx: ChannelHandlerContext?, cause: Throwable?) {
-        pmh.onException(stream)
+        pmh.onException(cause)
     }
 
     // ///////////////////////
