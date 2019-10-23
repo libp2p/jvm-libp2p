@@ -61,4 +61,16 @@ class PeerIdTest {
         val peerId = PeerId.fromPubKey(privKey.publicKey())
         assertEquals("16Uiu2HAmH6m8pE7pXsfzXHg3Z5kLzgwJ5PWSYELaKXc75Bs2utZM", peerId.toBase58())
     }
+
+    @Test
+    fun `roundtrip through bytes`() {
+        val idHex = "1220593cd036d6ac062ca1c332c15aca7a7b8ed7c9a004b34046e58f2aa6439102b5"
+        val peerId = PeerId(idHex.fromHex())
+
+        val bytes = peerId.bytes
+        val unmarshalledPeerId = PeerId(peerId.bytes)
+
+        assertEquals("QmULzn6KtFUCKpkFymEUgUvkLtv9j2Eo4utZPELmQEebR6", peerId.toBase58())
+        assertEquals("QmULzn6KtFUCKpkFymEUgUvkLtv9j2Eo4utZPELmQEebR6", unmarshalledPeerId .toBase58())
+    }
 }
