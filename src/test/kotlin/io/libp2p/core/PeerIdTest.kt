@@ -71,6 +71,6 @@ class PeerIdTest {
         val unmarshalledPeerId = PeerId(peerId.bytes)
 
         assertEquals("QmULzn6KtFUCKpkFymEUgUvkLtv9j2Eo4utZPELmQEebR6", peerId.toBase58())
-        assertEquals("QmULzn6KtFUCKpkFymEUgUvkLtv9j2Eo4utZPELmQEebR6", unmarshalledPeerId .toBase58())
+        assertEquals("QmULzn6KtFUCKpkFymEUgUvkLtv9j2Eo4utZPELmQEebR6", unmarshalledPeerId.toBase58())
     }
 }
