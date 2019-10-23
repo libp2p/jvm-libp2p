@@ -11,6 +11,7 @@ import io.libp2p.protocol.IdentifyController
 import io.libp2p.protocol.Ping
 import io.libp2p.protocol.PingController
 import io.libp2p.security.noise.NoiseXXSecureChannel
+import io.libp2p.security.plaintext.PlaintextInsecureChannel
 import io.libp2p.security.secio.SecIoSecureChannel
 import io.libp2p.tools.DoNothingController
 import io.libp2p.transport.tcp.TcpTransport
@@ -31,6 +32,9 @@ class SecioHostTest : HostTest(::SecIoSecureChannel)
 @DisabledIfEnvironmentVariable(named = "TRAVIS", matches = "true")
 @Tag("secure-channel")
 class NoiseXXHostTest : HostTest(::NoiseXXSecureChannel)
+
+@Tag("secure-channel")
+class PlaintextHostTest : HostTest(::PlaintextInsecureChannel)
 
 abstract class HostTest(val secureChannelCtor: SecureChannelCtor) {
     val listenAddress = "/ip4/127.0.0.1/tcp/40002"
