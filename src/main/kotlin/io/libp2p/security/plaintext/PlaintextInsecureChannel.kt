@@ -1,5 +1,6 @@
 package io.libp2p.security.plaintext
 
+import com.google.protobuf.ByteString
 import crypto.pb.Crypto
 import io.libp2p.core.ConnectionClosedException
 import io.libp2p.core.P2PChannel
@@ -50,10 +51,17 @@ class PlaintextHandshakeHandler(
     private lateinit var remotePubKey: PubKey
     private lateinit var remotePeerId: PeerId
 
+    private var active = false
+    private var read = false
+
     override fun channelActive(ctx: ChannelHandlerContext) {
+        if (active) return
+
+        active = true
+
         val pubKeyMsg = Crypto.PublicKey.newBuilder()
             .setType(localPubKey.keyType)
-            .setData(localPubKey.bytes().toProtobuf())
+            .setData(ByteString.copyFrom(localPubKey.raw()))
             .build()
 
         val exchangeMsg = Plaintext.Exchange.newBuilder()
@@ -63,9 +71,14 @@ class PlaintextHandshakeHandler(
 
         val byteBuf = Unpooled.buffer().writeBytes(exchangeMsg.toByteArray())
         ctx.writeAndFlush(byteBuf)
+
+        handshakeCompleted(ctx)
     } // channelActive
 
     override fun channelRead0(ctx: ChannelHandlerContext, msg: ByteBuf) {
+        if (read) return
+
+        read = true
         val exchangeRecv = Plaintext.Exchange.parser().parseFrom(msg.nioBuffer())
             ?: throw InvalidInitialPacket()
 
@@ -73,7 +86,7 @@ class PlaintextHandshakeHandler(
             throw InvalidRemotePubKey()
 
         remotePeerId = PeerId(exchangeRecv.id.toByteArray())
-        remotePubKey = unmarshalPublicKey(exchangeRecv.pubkey.data.toByteArray())
+        remotePubKey = unmarshalPublicKey(exchangeRecv.pubkey.toByteArray())
         val calculatedPeerId = PeerId.fromPubKey(remotePubKey)
         if (remotePeerId != calculatedPeerId)
             throw InvalidRemotePubKey()
@@ -92,6 +105,8 @@ class PlaintextHandshakeHandler(
     } // channelUnregistered
 
     private fun handshakeCompleted(ctx: ChannelHandlerContext) {
+        if (!active || !read) return
+
         val session = SecureChannel.Session(
             localPeerId,
             remotePeerId,
