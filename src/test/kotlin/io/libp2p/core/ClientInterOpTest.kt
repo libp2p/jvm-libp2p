@@ -7,10 +7,10 @@ import io.libp2p.mux.mplex.MplexStreamMuxer
 import io.libp2p.protocol.PingBinding
 import io.libp2p.protocol.PingController
 import io.libp2p.protocol.PingProtocol
+import io.libp2p.security.plaintext.PlaintextInsecureChannel
 import io.libp2p.security.secio.SecIoSecureChannel
 import io.libp2p.transport.tcp.TcpTransport
-import io.netty.channel.ChannelHandlerContext
-import io.netty.channel.ChannelInboundHandlerAdapter
+import io.netty.buffer.ByteBuf
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
@@ -24,6 +24,12 @@ import java.util.concurrent.TimeUnit
 @EnabledIfEnvironmentVariable(named = "ENABLE_GO_INTEROP", matches = "true")
 class SecioGoClientInterOpTest : ClientInterOpTest(::SecIoSecureChannel, GoPingClient)
 
+@EnabledIfEnvironmentVariable(named = "ENABLE_GO_INTEROP", matches = "true")
+class PlaintextGoClientInterOpTest : ClientInterOpTest(::PlaintextInsecureChannel, GoPlaintextClient)
+
+//@EnabledIfEnvironmentVariable(named = "ENABLE_RUST_INTEROP", matches = "true")
+//class PlaintextRustClientInterOpTest : ClientInterOpTest(::PlaintextInsecureChannel, RustPlaintextClient)
+
 // @EnabledIfEnvironmentVariable(named = "ENABLE_JS_INTEROP", matches = "true")
 // class SecioJsClientInterOpTest : ClientInterOpTest(::SecIoSecureChannel, JsPingClient)
 
@@ -36,6 +42,16 @@ val GoPingClient = ExternalClient(
     "./ping-client",
     "GO_PING_CLIENT"
 )
+val GoPlaintextClient = ExternalClient(
+    "./ping-client --plaintext",
+    "GO_PING_CLIENT"
+)
+
+val RustPlaintextClient = ExternalClient(
+    "cargo run",
+    "RUST_PING_CLIENT"
+)
+
 val JsPingClient = ExternalClient(
     "node lib/ping-client.js",
     "JS_PINGER"
@@ -83,7 +99,7 @@ abstract class ClientInterOpTest(
 
     @Test
     fun listenForPings() {
-        startClient("/ip4/0.0.0.0/tcp/40002/ipfs/${serverHost.peerId}")
+        startClient("/ip4/127.0.0.1/tcp/40002/ipfs/${serverHost.peerId}")
         assertEquals(5, countedPingResponder.pingsReceived)
     }
 
@@ -107,14 +123,10 @@ class CountingPingProtocol : PingProtocol() {
         return CompletableFuture.completedFuture(handler)
     }
 
-    inner class CountingPingResponderChannelHandler : ChannelInboundHandlerAdapter(), PingController {
-        override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
+    inner class CountingPingResponderChannelHandler : PingResponder() {
+        override fun onMessage(stream: Stream, msg: ByteBuf) {
             ++pingsReceived
-            ctx.writeAndFlush(msg)
-        }
-
-        override fun ping(): CompletableFuture<Long> {
-            throw Libp2pException("This is ping responder only")
+            super.onMessage(stream, msg)
         }
     }
 }
