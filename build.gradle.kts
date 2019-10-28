@@ -112,17 +112,29 @@ fun findOnPath(executable: String): Boolean {
 }
 val goOnPath = findOnPath("go")
 val nodeOnPath = findOnPath("node")
+val rustOnPath = findOnPath("cargo")
 
 val testResourceDir = sourceSets.test.get().resources.sourceDirectories.singleFile
 val goPingServer = File(testResourceDir, "go/ping-server")
 val goPingClient = File(testResourceDir, "go/ping-client")
 val jsPinger = File(testResourceDir, "js/pinger")
+val rustPingServer = File(testResourceDir, "rust/ping-server")
+val rustPingClient = File(testResourceDir, "rust/ping-client")
 
 val goTargets = listOf(goPingServer, goPingClient).map { target ->
     val name = "go-build-${target.name}"
     task(name, Exec::class) {
         workingDir = target
         commandLine = "go build".split(" ")
+    }
+    name
+}
+
+val rustTargets = listOf(rustPingServer, rustPingClient).map { target ->
+    val name = "rust-build-${target.name}"
+    task(name, Exec::class) {
+        workingDir = target
+        commandLine = "cargo build".split(" ")
     }
     name
 }
@@ -139,6 +151,7 @@ task("interopTest", Test::class) {
     val dependencies = ArrayList<String>()
     if (goOnPath) dependencies.addAll(goTargets)
     if (nodeOnPath) dependencies.add("npm-install-pinger")
+    if (rustOnPath) dependencies.addAll(rustTargets)
     dependsOn(dependencies)
 
     useJUnitPlatform {
@@ -154,6 +167,9 @@ task("interopTest", Test::class) {
     environment("ENABLE_GO_INTEROP", goOnPath)
     environment("GO_PING_SERVER", goPingServer.toString())
     environment("GO_PING_CLIENT", goPingClient.toString())
+    environment("ENABLE_RUST_INTEROP", rustOnPath)
+    environment("RUST_PING_SERVER", rustPingServer.toString())
+    environment("RUST_PING_CLIENT", rustPingClient.toString())
 }
 // End Interop Tests
 
