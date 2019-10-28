@@ -10,10 +10,12 @@ import io.libp2p.protocol.Identify
 import io.libp2p.protocol.IdentifyController
 import io.libp2p.protocol.Ping
 import io.libp2p.protocol.PingController
+import io.libp2p.security.plaintext.PlaintextInsecureChannel
 import io.libp2p.security.secio.SecIoSecureChannel
 import io.libp2p.tools.DoNothing
 import io.libp2p.tools.DoNothingController
 import io.libp2p.transport.tcp.TcpTransport
+import io.netty.handler.logging.LogLevel
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Tag
@@ -28,6 +30,9 @@ import java.util.concurrent.TimeUnit
 @EnabledIfEnvironmentVariable(named = "ENABLE_GO_INTEROP", matches = "true")
 class SecioGoServerInterOpTest : ServerInterOpTest(::SecIoSecureChannel, GoPingServer)
 
+@EnabledIfEnvironmentVariable(named = "ENABLE_GO_INTEROP", matches = "true")
+class PlaintextGoServerInterOpTest : ServerInterOpTest(::PlaintextInsecureChannel, GoPlaintextServer)
+
 // @EnabledIfEnvironmentVariable(named = "ENABLE_JS_INTEROP", matches = "true")
 // class SecioJsServerInterOpTest : ServerInterOpTest(::SecIoSecureChannel, JsPingServer)
 
@@ -40,6 +45,11 @@ val GoPingServer = ExternalServer(
     "./ping-server",
     "GO_PING_SERVER"
 )
+val GoPlaintextServer = ExternalServer(
+    "./ping-server --plaintext",
+    "GO_PING_SERVER"
+)
+
 val JsPingServer = ExternalServer(
     "node lib/ping-server.js",
     "JS_PINGER"
@@ -68,10 +78,11 @@ abstract class ServerInterOpTest(
             +Identify()
             +DoNothing()
         }
-        /*debug {
+        debug {
+            beforeSecureHandler.setLogger(LogLevel.ERROR)
             afterSecureHandler.setLogger(LogLevel.ERROR)
             muxFramesHandler.setLogger(LogLevel.ERROR)
-        }*/
+        }
     }
 
     val serverHost = ProcessBuilder(*external.serverCommand.split(" ").toTypedArray())
@@ -170,9 +181,9 @@ abstract class ServerInterOpTest(
             serverPeerId,
             serverMultiAddress
         )
-        val identifyStream = identify.stream.get(5, TimeUnit.SECONDS)
+        val identifyStream = identify.stream.get(5, TimeUnit.MINUTES)
         println("Identify stream created")
-        val identifyController = identify.controller.get(5, TimeUnit.SECONDS)
+        val identifyController = identify.controller.get(5, TimeUnit.MINUTES)
         println("Identify controller created")
 
         val remoteIdentity = identifyController.id().get(5, TimeUnit.SECONDS)
