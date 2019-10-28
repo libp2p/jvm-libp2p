@@ -16,11 +16,7 @@ func main() {
 	ctx := context.Background()
 
 	// start a libp2p node that listens on a random local TCP port
-	options := []libp2p.Option{
-		libp2p.ListenAddrStrings("/ip4/127.0.0.1/tcp/0"),
-		libp2p.Ping(true),
-		libp2p.NoSecurity,
-	}
+	options := makeOptions()
 	node, err := libp2p.New(ctx, options...)
 	if err != nil {
 		panic(err)
@@ -49,3 +45,18 @@ func main() {
 	}
 }
 
+func makeOptions() []libp2p.Option {
+	options := []libp2p.Option{
+		libp2p.ListenAddrStrings("/ip4/127.0.0.1/tcp/0"),
+		libp2p.Ping(true),
+	}
+	if wantPlaintext() {
+		options = append(options, libp2p.NoSecurity)
+	}
+	return options
+}
+
+func wantPlaintext() bool {
+	args := os.Args[1:]
+	return len(args) != 0 && args[0] == "--plaintext"
+}
