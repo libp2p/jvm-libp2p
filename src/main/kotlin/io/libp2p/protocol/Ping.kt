@@ -49,7 +49,7 @@ open class PingProtocol : ProtocolHandler<PingController>() {
         return CompletableFuture.completedFuture(handler)
     }
 
-    inner class PingResponder : ProtocolMessageHandler<ByteBuf>, PingController {
+    open inner class PingResponder : ProtocolMessageHandler<ByteBuf>, PingController {
         override fun onMessage(stream: Stream, msg: ByteBuf) {
             stream.writeAndFlush(msg)
         }
@@ -59,7 +59,7 @@ open class PingProtocol : ProtocolHandler<PingController>() {
         }
     }
 
-    inner class PingInitiator : ProtocolMessageHandler<ByteBuf>, PingController {
+    open inner class PingInitiator : ProtocolMessageHandler<ByteBuf>, PingController {
         val activeFuture = CompletableFuture<PingController>()
         val requests = Collections.synchronizedMap(mutableMapOf<String, Pair<Long, CompletableFuture<Long>>>())
         lateinit var stream: Stream
