@@ -114,12 +114,12 @@ val goOnPath = findOnPath("go")
 val nodeOnPath = findOnPath("node")
 val rustOnPath = findOnPath("cargo")
 
-val testResourceDir = sourceSets.test.get().resources.sourceDirectories.singleFile
-val goPingServer = File(testResourceDir, "go/ping-server")
-val goPingClient = File(testResourceDir, "go/ping-client")
-val jsPinger = File(testResourceDir, "js/pinger")
-val rustPingServer = File(testResourceDir, "rust/ping-server")
-val rustPingClient = File(testResourceDir, "rust/ping-client")
+val externalsDir = File(sourceSets.test.get().resources.sourceDirectories.singleFile, "../external")
+val goPingServer = File(externalsDir, "go/ping-server")
+val goPingClient = File(externalsDir, "go/ping-client")
+val jsPinger = File(externalsDir, "js/pinger")
+val rustPingServer = File(externalsDir, "rust/ping-server")
+val rustPingClient = File(externalsDir, "rust/ping-client")
 
 val goTargets = listOf(goPingServer, goPingClient).map { target ->
     val name = "go-build-${target.name}"

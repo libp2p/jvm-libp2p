@@ -49,7 +49,7 @@ func main() {
 
 	// shut the node down
 	if err := node.Close(); err != nil {
-		panic(err)
+		// panic(err)
 	}
 }
 

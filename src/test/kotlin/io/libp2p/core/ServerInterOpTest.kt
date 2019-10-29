@@ -10,7 +10,6 @@ import io.libp2p.protocol.Identify
 import io.libp2p.protocol.IdentifyController
 import io.libp2p.protocol.Ping
 import io.libp2p.protocol.PingController
-import io.libp2p.security.plaintext.PlaintextInsecureChannel
 import io.libp2p.security.secio.SecIoSecureChannel
 import io.libp2p.tools.DoNothing
 import io.libp2p.tools.DoNothingController
@@ -30,8 +29,8 @@ import java.util.concurrent.TimeUnit
 @EnabledIfEnvironmentVariable(named = "ENABLE_GO_INTEROP", matches = "true")
 class SecioGoServerInterOpTest : ServerInterOpTest(::SecIoSecureChannel, GoPingServer)
 
-@EnabledIfEnvironmentVariable(named = "ENABLE_GO_INTEROP", matches = "true")
-class PlaintextGoServerInterOpTest : ServerInterOpTest(::PlaintextInsecureChannel, GoPlaintextServer)
+// @EnabledIfEnvironmentVariable(named = "ENABLE_GO_INTEROP", matches = "true")
+// class PlaintextGoServerInterOpTest : ServerInterOpTest(::PlaintextInsecureChannel, GoPlaintextServer)
 
 // @EnabledIfEnvironmentVariable(named = "ENABLE_JS_INTEROP", matches = "true")
 // class SecioJsServerInterOpTest : ServerInterOpTest(::SecIoSecureChannel, JsPingServer)
