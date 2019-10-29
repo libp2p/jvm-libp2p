@@ -2,12 +2,12 @@ package main
 
 import (
 	"context"
-	"os"
-
+	"fmt"
 	"github.com/libp2p/go-libp2p"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
 	multiaddr "github.com/multiformats/go-multiaddr"
+	"os"
 )
 
 func main() {
@@ -15,13 +15,12 @@ func main() {
 	ctx := context.Background()
 
 	// build a libp2p node
-	node, err := libp2p.New(ctx,
-		libp2p.Ping(false),
-	)
+	options := makeOptions()
+	node, err := libp2p.New(ctx, options...)
 	if err != nil {
 		panic(err)
 	}
-
+	
 	// configure our own ping protocol
 	pingService := &ping.PingService{Host: node}
 	node.SetStreamHandler(ping.ID, pingService.PingHandler)
@@ -29,7 +28,7 @@ func main() {
 	// if a remote peer has been passed on the command line, connect to it
 	// and send it 5 ping messages, otherwise wait for a signal to stop
 	if len(os.Args) > 1 {
-		addr, err := multiaddr.NewMultiaddr(os.Args[1])
+		addr, err := multiaddr.NewMultiaddr(os.Args[len(os.Args)-1])
 		if err != nil {
 			panic(err)
 		}
@@ -41,13 +40,30 @@ func main() {
 			panic(err)
 		}
 		ch := pingService.Ping(ctx, peer.ID)
-		for i := 1; i < 5; i++ {
-			_ = <-ch // first call here sends two pings
+		for i := 1; i <= 5; i++ {
+			fmt.Printf("Ping %v", i)
+			pingResp := <-ch
+			fmt.Printf(" - %v\n", pingResp.RTT)
 		}
 	}
 
 	// shut the node down
 	if err := node.Close(); err != nil {
-		panic(err)
+		// panic(err)
 	}
+}
+
+func makeOptions() []libp2p.Option {
+	options := []libp2p.Option{
+		libp2p.Ping(false),
+	}
+	if wantPlaintext() {
+		options = append(options, libp2p.NoSecurity)
+	}
+	return options
+}
+
+func wantPlaintext() bool {
+	args := os.Args[1:]
+	return len(args) != 0 && args[0] == "--plaintext"
 }
