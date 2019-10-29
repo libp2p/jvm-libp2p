@@ -2,12 +2,12 @@ package main
 
 import (
 	"context"
-	"os"
-
+	"fmt"
 	"github.com/libp2p/go-libp2p"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
 	multiaddr "github.com/multiformats/go-multiaddr"
+	"os"
 )
 
 func main() {
@@ -20,7 +20,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
+	
 	// configure our own ping protocol
 	pingService := &ping.PingService{Host: node}
 	node.SetStreamHandler(ping.ID, pingService.PingHandler)
@@ -40,8 +40,10 @@ func main() {
 			panic(err)
 		}
 		ch := pingService.Ping(ctx, peer.ID)
-		for i := 1; i < 5; i++ {
-			_ = <-ch // first call here sends two pings
+		for i := 1; i <= 5; i++ {
+			fmt.Printf("Ping %v", i)
+			pingResp := <-ch
+			fmt.Printf(" - %v\n", pingResp.RTT)
 		}
 	}
 
