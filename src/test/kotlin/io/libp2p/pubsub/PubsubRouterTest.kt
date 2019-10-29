@@ -266,7 +266,6 @@ abstract class PubsubRouterTest(val router: RouterCtor) {
 //            val otherChannel = if (connection.ch1 == channel) connection.ch2 else connection.ch1
 //            allRouters.find { (it.router as AbstractRouter).peers.any { it.streamHandler.stream.nettyChannel == otherChannel } }!!
 //        }
-
 //        allRouters.forEach {tr ->
 //            (tr.router as? GossipRouter)?.also {
 //                val meshRouters = it.mesh.values.flatten().map(handler2router)
