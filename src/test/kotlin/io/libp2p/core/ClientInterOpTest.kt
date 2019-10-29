@@ -24,11 +24,11 @@ class SecioGoClientInterOpTest : ClientInterOpTest(::SecIoSecureChannel, GoPingC
 @EnabledIfEnvironmentVariable(named = "ENABLE_GO_INTEROP", matches = "true")
 class PlaintextGoClientInterOpTest : ClientInterOpTest(::PlaintextInsecureChannel, GoPlaintextClient)
 
-//@EnabledIfEnvironmentVariable(named = "ENABLE_RUST_INTEROP", matches = "true")
-//class PlaintextRustClientInterOpTest : ClientInterOpTest(::PlaintextInsecureChannel, RustPlaintextClient)
+// @EnabledIfEnvironmentVariable(named = "ENABLE_RUST_INTEROP", matches = "true")
+// class PlaintextRustClientInterOpTest : ClientInterOpTest(::PlaintextInsecureChannel, RustPlaintextClient)
 
-//@EnabledIfEnvironmentVariable(named = "ENABLE_JS_INTEROP", matches = "true")
-//class SecioJsClientInterOpTest : ClientInterOpTest(::SecIoSecureChannel, JsPingClient)
+// @EnabledIfEnvironmentVariable(named = "ENABLE_JS_INTEROP", matches = "true")
+// class SecioJsClientInterOpTest : ClientInterOpTest(::SecIoSecureChannel, JsPingClient)
 
 data class ExternalClient(
     val clientCommand: String,
