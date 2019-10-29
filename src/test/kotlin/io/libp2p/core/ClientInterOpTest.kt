@@ -5,13 +5,10 @@ import io.libp2p.core.dsl.SecureChannelCtor
 import io.libp2p.core.dsl.host
 import io.libp2p.mux.mplex.MplexStreamMuxer
 import io.libp2p.protocol.PingBinding
-import io.libp2p.protocol.PingController
-import io.libp2p.protocol.PingProtocol
-import io.libp2p.protocol.ProtocolMessageHandler
 import io.libp2p.security.plaintext.PlaintextInsecureChannel
 import io.libp2p.security.secio.SecIoSecureChannel
+import io.libp2p.tools.CountingPingProtocol
 import io.libp2p.transport.tcp.TcpTransport
-import io.netty.buffer.ByteBuf
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
@@ -19,7 +16,6 @@ import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable
 import java.io.File
-import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 
 @EnabledIfEnvironmentVariable(named = "ENABLE_GO_INTEROP", matches = "true")
@@ -31,8 +27,8 @@ class PlaintextGoClientInterOpTest : ClientInterOpTest(::PlaintextInsecureChanne
 //@EnabledIfEnvironmentVariable(named = "ENABLE_RUST_INTEROP", matches = "true")
 //class PlaintextRustClientInterOpTest : ClientInterOpTest(::PlaintextInsecureChannel, RustPlaintextClient)
 
-// @EnabledIfEnvironmentVariable(named = "ENABLE_JS_INTEROP", matches = "true")
-// class SecioJsClientInterOpTest : ClientInterOpTest(::SecIoSecureChannel, JsPingClient)
+//@EnabledIfEnvironmentVariable(named = "ENABLE_JS_INTEROP", matches = "true")
+//class SecioJsClientInterOpTest : ClientInterOpTest(::SecIoSecureChannel, JsPingClient)
 
 data class ExternalClient(
     val clientCommand: String,
@@ -112,22 +108,5 @@ abstract class ClientInterOpTest(
             .redirectError(ProcessBuilder.Redirect.INHERIT)
         println("Starting $command")
         clientProcess.start().waitFor()
-    }
-}
-
-class CountingPingProtocol : PingProtocol() {
-    var pingsReceived: Int = 0
-
-    override fun onStartResponder(stream: Stream): CompletableFuture<PingController> {
-        val handler = CountingPingResponderChannelHandler()
-        stream.pushHandler(handler)
-        return CompletableFuture.completedFuture(handler)
-    }
-
-    inner class CountingPingResponderChannelHandler : PingResponder() {
-        override fun onMessage(stream: Stream, msg: ByteBuf) {
-            ++pingsReceived
-            super.onMessage(stream, msg)
-        }
     }
 }
