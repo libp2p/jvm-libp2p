@@ -190,4 +190,3 @@ abstract class HostTest(val secureChannelCtor: SecureChannelCtor) {
         assertEquals(identifyStream.connection.remoteAddress(), remoteAddress)
     }
 }
-
