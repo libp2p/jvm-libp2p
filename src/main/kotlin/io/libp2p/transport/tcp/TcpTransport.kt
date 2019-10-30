@@ -156,6 +156,7 @@ class TcpTransport(
                 .thenCompose {
                     upgrader.establishMuxer(connection)
                 }.thenApply {
+                    connection.setMuxer(it)
                     connHandler.handleConnection(connection)
                     connection
                 }
