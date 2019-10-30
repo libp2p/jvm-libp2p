@@ -14,7 +14,6 @@ import io.libp2p.core.crypto.unmarshalPublicKey
 import io.libp2p.core.multistream.Mode
 import io.libp2p.core.multistream.ProtocolMatcher
 import io.libp2p.core.security.SecureChannel
-import io.libp2p.etc.SECURE_SESSION
 import io.libp2p.etc.events.SecureChannelFailed
 import io.libp2p.etc.events.SecureChannelInitialized
 import io.libp2p.etc.types.toByteArray
@@ -68,7 +67,6 @@ class NoiseXXSecureChannel(private val localKey: PrivKey) :
                 when (evt) {
                     is SecureChannelInitialized -> {
                         val session = evt.session as NoiseSecureChannelSession
-                        ctx.channel().attr(SECURE_SESSION).set(session)
 
                         ret.complete(session)
                         ctx.pipeline().remove(this)
