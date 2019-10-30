@@ -1,8 +1,12 @@
 package io.libp2p.core.multistream
 
+import io.libp2p.core.Host
 import io.libp2p.core.Libp2pException
+import io.libp2p.core.PeerId
 import io.libp2p.core.P2PChannel
 import io.libp2p.core.P2PChannelHandler
+import io.libp2p.core.StreamPromise
+import io.libp2p.core.multiformats.Multiaddr
 import java.util.concurrent.CompletableFuture
 
 /**
@@ -23,6 +27,18 @@ interface ProtocolBinding<out TController> {
      * Matching heuristic to be used on inbound negotiations. If positive, it leads to activation of this protocol.
      */
     val matcher: ProtocolMatcher
+
+    /**
+     * Dials the specified peer, and attempts to connect this Protocol
+     */
+    @JvmDefault
+    fun dial(host: Host, peer: PeerId, vararg addr: Multiaddr): StreamPromise<out TController> {
+        return host.newStream(
+            announce,
+            peer,
+            *addr
+        )
+    } // dial
 
     /**
      * Returns initializer for this protocol on the provided channel, together with an optional controller object.

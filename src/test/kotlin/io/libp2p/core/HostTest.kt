@@ -6,16 +6,15 @@ import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.etc.types.getX
 import io.libp2p.mux.mplex.MplexStreamMuxer
 import io.libp2p.protocol.Identify
-import io.libp2p.protocol.IdentifyController
 import io.libp2p.protocol.Ping
 import io.libp2p.protocol.PingController
 import io.libp2p.protocol.PingBinding
-import io.libp2p.tools.CountingPingProtocol
-import io.libp2p.tools.DoNothing
 import io.libp2p.security.noise.NoiseXXSecureChannel
 import io.libp2p.security.plaintext.PlaintextInsecureChannel
 import io.libp2p.security.secio.SecIoSecureChannel
-import io.libp2p.tools.DoNothingController
+import io.libp2p.tools.CountingPingProtocol
+import io.libp2p.tools.DoNothing
+import io.libp2p.tools.Echo
 import io.libp2p.transport.tcp.TcpTransport
 import io.netty.handler.logging.LogLevel
 import org.junit.jupiter.api.AfterEach
@@ -57,6 +56,7 @@ abstract class HostTest(val secureChannelCtor: SecureChannelCtor) {
         protocols {
             +Ping()
             +Identify()
+            +Echo()
             +DoNothing()
         }
         debug {
@@ -85,6 +85,7 @@ abstract class HostTest(val secureChannelCtor: SecureChannelCtor) {
         protocols {
             +PingBinding(countedPingResponder)
             +Identify()
+            +Echo()
         }
     }
 
@@ -120,8 +121,8 @@ abstract class HostTest(val secureChannelCtor: SecureChannelCtor) {
     @Test
     fun unsupportedServerProtocol() {
         // remote party doesn't support the protocol
-        val unsupportedProtocol = clientHost.newStream<DoNothingController>(
-            "/ipfs/do-nothing/1.0.0",
+        val unsupportedProtocol = DoNothing().dial(
+            clientHost,
             serverHost.peerId,
             Multiaddr(listenAddress)
         )
@@ -134,8 +135,8 @@ abstract class HostTest(val secureChannelCtor: SecureChannelCtor) {
 
     @Test
     fun pingOverSecureConnection() {
-        val ping = clientHost.newStream<PingController>(
-            "/ipfs/ping/1.0.0",
+        val ping = Ping().dial(
+            clientHost,
             serverHost.peerId,
             Multiaddr(listenAddress)
         )
@@ -161,8 +162,8 @@ abstract class HostTest(val secureChannelCtor: SecureChannelCtor) {
 
     @Test
     fun identifyOverSecureConnection() {
-        val identify = clientHost.newStream<IdentifyController>(
-            "/ipfs/id/1.0.0",
+        val identify = Identify().dial(
+            clientHost,
             serverHost.peerId,
             Multiaddr(listenAddress)
         )
@@ -188,5 +189,45 @@ abstract class HostTest(val secureChannelCtor: SecureChannelCtor) {
         val remoteAddress = Multiaddr(remoteIdentity.listenAddrsList[0].toByteArray())
         assertEquals(listenAddress, remoteAddress.toString())
         assertEquals(identifyStream.connection.remoteAddress(), remoteAddress)
+    }
+
+    @Test
+    fun echoOverSecureConnection() {
+        val echo = Echo().dial(
+            clientHost,
+            serverHost.peerId,
+            Multiaddr(listenAddress)
+        )
+
+        val echoController = echo.controller.get(5, TimeUnit.SECONDS)
+
+        assertEquals("hello", echoController.echo("hello").get(1, TimeUnit.SECONDS))
+        assertEquals("world", echoController.echo("world").get(1, TimeUnit.SECONDS))
+    }
+
+    @Test
+    fun twoEchosOverSecureConnection() {
+        val echo = Echo()
+        val echo1 = echo.dial(
+            clientHost,
+            serverHost.peerId,
+            Multiaddr(listenAddress)
+        )
+
+        val echo1Controller = echo1.controller.get(5, TimeUnit.SECONDS)
+        assertEquals("hello", echo1Controller.echo("hello").get(1, TimeUnit.SECONDS))
+
+        val echo2 = echo.dial(
+            clientHost,
+            serverHost.peerId,
+            Multiaddr(listenAddress)
+        )
+
+        val echo2Controller = echo2.controller.get(5, TimeUnit.SECONDS)
+        assertEquals("goodbye", echo2Controller.echo("goodbye").get(1, TimeUnit.SECONDS))
+
+        assertEquals("world", echo1Controller.echo("world").get(1, TimeUnit.SECONDS))
+
+        assertEquals("to all that", echo2Controller.echo("to all that").get(1, TimeUnit.SECONDS))
     }
 }
