@@ -12,7 +12,7 @@ import java.util.function.Function
 
 typealias MuxChannelInitializer<TData> = (MuxChannel<TData>) -> Unit
 
-abstract class AbtractMuxHandler<TData>(var inboundInitializer: MuxChannelInitializer<TData>? = null) :
+abstract class AbstractMuxHandler<TData>(var inboundInitializer: MuxChannelInitializer<TData>? = null) :
     ChannelInboundHandlerAdapter() {
 
     private val streamMap: MutableMap<MuxId, MuxChannel<TData>> = mutableMapOf()
