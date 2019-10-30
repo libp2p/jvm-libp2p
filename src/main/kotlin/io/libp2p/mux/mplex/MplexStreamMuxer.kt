@@ -1,7 +1,6 @@
 package io.libp2p.mux.mplex
 
 import io.libp2p.core.P2PChannel
-import io.libp2p.core.mplex.MplexFrameCodec
 import io.libp2p.core.multistream.Mode
 import io.libp2p.core.multistream.ProtocolMatcher
 import io.libp2p.core.mux.StreamMuxer
