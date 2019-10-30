@@ -71,7 +71,7 @@ class EchoSampleTest {
         val echoString = "Helooooooooooooooooooooooooo\n"
         connFuture.thenCompose {
             logger.info("Connection made")
-            it.muxerSession.createStream(Multistream.create(applicationProtocols).toStreamHandler()).controller
+            it.muxerSession().createStream(Multistream.create(applicationProtocols).toStreamHandler()).controller
         }.thenCompose {
             logger.info("Stream created, sending echo string...")
             it.echo(echoString)

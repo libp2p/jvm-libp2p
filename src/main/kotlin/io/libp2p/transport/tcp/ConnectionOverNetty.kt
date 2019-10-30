@@ -19,11 +19,15 @@ import java.net.InetSocketAddress
  */
 class ConnectionOverNetty(
     ch: Channel,
-    override val transport: Transport,
+    private val transport: Transport,
     override val isInitiator: Boolean
 ) : Connection, P2PChannelOverNetty(ch) {
-    override val muxerSession by lazy { ch.attr(MUXER_SESSION).get() }
-    override val secureSession by lazy { ch.attr(SECURE_SESSION).get() }
+    private val muxerSession by lazy { ch.attr(MUXER_SESSION).get() }
+    private val secureSession by lazy { ch.attr(SECURE_SESSION).get() }
+
+    override fun muxerSession() = muxerSession
+    override fun secureSession() = secureSession
+    override fun transport() = transport
 
     override fun localAddress(): Multiaddr =
         toMultiaddr(nettyChannel.localAddress() as InetSocketAddress)

@@ -21,7 +21,7 @@ class StreamOverNetty(
      * Returns the [PeerId] of the remote peer [Connection] which this
      * [Stream] created on
      */
-    override fun remotePeerId() = connection.secureSession.remoteId
+    override fun remotePeerId() = connection.secureSession().remoteId
 
     /**
      * @return negotiated protocol

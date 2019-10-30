@@ -57,7 +57,7 @@ class HostTestJava {
         System.out.println("Server started");
 
         StreamPromise<PingController> ping = clientHost.getNetwork().connect(serverHost.getPeerId(), new Multiaddr("/ip4/127.0.0.1/tcp/40002"))
-                .thenApply(it -> it.getMuxerSession().createStream(Multistream.create(new Ping()).toStreamHandler()))
+                .thenApply(it -> it.muxerSession().createStream(Multistream.create(new Ping()).toStreamHandler()))
                 .get(5, TimeUnit.SECONDS);
         Stream pingStream = ping.getStream().get(5, TimeUnit.SECONDS);
         System.out.println("Ping stream created");

@@ -62,7 +62,7 @@ class NetworkImpl(
     ): CompletableFuture<Connection> {
 
         // we already have a connection for this peer, short circuit.
-        connections.find { it.secureSession.remoteId == id }
+        connections.find { it.secureSession().remoteId == id }
             ?.apply { return CompletableFuture.completedFuture(this) }
 
         // 1. check that some transport can dial at least one addr.
