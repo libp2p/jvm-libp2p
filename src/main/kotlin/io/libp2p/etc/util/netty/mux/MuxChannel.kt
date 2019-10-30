@@ -11,7 +11,7 @@ import java.net.SocketAddress
  * Alternative effort to start MultistreamChannel implementation from AbstractChannel
  */
 class MuxChannel<TData>(
-    val parent: AbtractMuxHandler<TData>,
+    val parent: AbstractMuxHandler<TData>,
     val id: MuxId,
     var initializer: ChannelHandler? = null,
     val initiator: Boolean

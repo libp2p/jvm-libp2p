@@ -10,7 +10,7 @@ import io.libp2p.etc.MUXER_SESSION
 import io.libp2p.etc.STREAM
 import io.libp2p.etc.events.MuxSessionInitialized
 import io.libp2p.etc.types.forward
-import io.libp2p.etc.util.netty.mux.AbtractMuxHandler
+import io.libp2p.etc.util.netty.mux.AbstractMuxHandler
 import io.libp2p.etc.util.netty.mux.MuxChannel
 import io.libp2p.etc.util.netty.mux.MuxId
 import io.netty.buffer.ByteBuf
@@ -18,7 +18,7 @@ import io.netty.channel.ChannelHandlerContext
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicLong
 
-class MuxHandler() : AbtractMuxHandler<ByteBuf>(), StreamMuxer.Session {
+class MuxHandler() : AbstractMuxHandler<ByteBuf>(), StreamMuxer.Session {
 
     private val idGenerator = AtomicLong(0xF)
 
