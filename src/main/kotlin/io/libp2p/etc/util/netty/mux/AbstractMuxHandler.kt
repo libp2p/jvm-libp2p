@@ -3,8 +3,6 @@ package io.libp2p.etc.util.netty.mux
 import io.libp2p.core.ConnectionClosedException
 import io.libp2p.core.Libp2pException
 import io.libp2p.etc.types.completedExceptionally
-import io.libp2p.etc.util.netty.nettyInitializer
-import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
 import java.util.concurrent.CompletableFuture
@@ -49,10 +47,9 @@ abstract class AbstractMuxHandler<TData>(var inboundInitializer: MuxChannelIniti
 
     protected fun onRemoteOpen(id: MuxId) {
         val initializer = inboundInitializer ?: throw Libp2pException("Illegal state: inbound stream handler is not set up yet")
-        val child = createChild(id,
-            nettyInitializer {
-                initializer(it as MuxChannel<TData>)
-            },
+        val child = createChild(
+            id,
+            initializer,
             false
         )
         onRemoteCreated(child)
@@ -86,7 +83,11 @@ abstract class AbstractMuxHandler<TData>(var inboundInitializer: MuxChannelIniti
     protected abstract fun onLocalClose(child: MuxChannel<TData>)
     protected abstract fun onLocalDisconnect(child: MuxChannel<TData>)
 
-    private fun createChild(id: MuxId, initializer: ChannelHandler, initiator: Boolean): MuxChannel<TData> {
+    private fun createChild(
+        id: MuxId,
+        initializer: MuxChannelInitializer<TData>,
+        initiator: Boolean
+    ): MuxChannel<TData> {
         val child = MuxChannel(this, id, initializer, initiator)
         streamMap[id] = child
         ctx!!.channel().eventLoop().register(child)
@@ -104,12 +105,12 @@ abstract class AbstractMuxHandler<TData>(var inboundInitializer: MuxChannelIniti
                 checkClosed() // close may happen after above check and before this point
                 val child = createChild(
                     generateNextId(),
-                    nettyInitializer {
-                        it as MuxChannel<TData>
+                    {
                         onLocalOpen(it)
                         outboundInitializer(it)
                     },
-                    true)
+                    true
+                )
                 child
             }, getChannelHandlerContext().channel().eventLoop())
         } catch (e: Exception) {
