@@ -1,7 +1,6 @@
 package io.libp2p.etc.util.netty.mux
 
 import io.libp2p.etc.util.netty.AbstractChildChannel
-import io.libp2p.etc.util.netty.nettyInitializer
 import io.netty.channel.ChannelMetadata
 import io.netty.channel.ChannelOutboundBuffer
 import io.netty.util.ReferenceCountUtil
@@ -29,11 +28,7 @@ class MuxChannel<TData>(
 
     override fun doRegister() {
         super.doRegister()
-        pipeline().addLast(
-            nettyInitializer {
-                initializer(this)
-            }
-        )
+        initializer(this)
     }
 
     override fun doWrite(buf: ChannelOutboundBuffer) {
