@@ -11,10 +11,10 @@ import java.net.SocketAddress
  * Alternative effort to start MultistreamChannel implementation from AbstractChannel
  */
 class MuxChannel<TData>(
-    val parent: AbstractMuxHandler<TData>,
+    private val parent: AbstractMuxHandler<TData>,
     val id: MuxId,
-    var initializer: ChannelHandler? = null,
-    val initiator: Boolean
+    private val initializer: ChannelHandler,
+    private val initiator: Boolean
 ) : AbstractChildChannel(parent.ctx!!.channel(), id) {
 
     private var remoteDisconnected = false

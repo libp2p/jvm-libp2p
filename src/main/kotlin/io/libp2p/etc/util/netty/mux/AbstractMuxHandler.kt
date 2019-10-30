@@ -49,9 +49,12 @@ abstract class AbstractMuxHandler<TData>(var inboundInitializer: MuxChannelIniti
 
     protected fun onRemoteOpen(id: MuxId) {
         val initializer = inboundInitializer ?: throw Libp2pException("Illegal state: inbound stream handler is not set up yet")
-        val child = createChild(id, nettyInitializer {
-            initializer(it as MuxChannel<TData>)
-        }, false)
+        val child = createChild(id,
+            nettyInitializer {
+                initializer(it as MuxChannel<TData>)
+            },
+            false
+        )
         onRemoteCreated(child)
     }
 
@@ -99,11 +102,14 @@ abstract class AbstractMuxHandler<TData>(var inboundInitializer: MuxChannelIniti
             checkClosed() // if already closed then event loop is already down and async task may never execute
             return activeFuture.thenApplyAsync(Function {
                 checkClosed() // close may happen after above check and before this point
-                val child = createChild(generateNextId(), nettyInitializer {
-                    it as MuxChannel<TData>
-                    onLocalOpen(it)
-                    outboundInitializer(it)
-                }, true)
+                val child = createChild(
+                    generateNextId(),
+                    nettyInitializer {
+                        it as MuxChannel<TData>
+                        onLocalOpen(it)
+                        outboundInitializer(it)
+                    },
+                    true)
                 child
             }, getChannelHandlerContext().channel().eventLoop())
         } catch (e: Exception) {
