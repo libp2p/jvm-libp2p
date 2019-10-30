@@ -21,7 +21,7 @@ interface ConnectionHandler {
             BroadcastConnectionHandler().also { it += handlers }
 
         fun createStreamHandlerInitializer(streamHandler: StreamHandler<*>) =
-            create { it.muxerSession.inboundStreamHandler = streamHandler }
+            create { it.muxerSession().inboundStreamHandler = streamHandler }
     }
 
     interface Broadcast : ConnectionHandler, MutableList<ConnectionHandler>

@@ -86,7 +86,7 @@ class HostImpl(
 
         val multistream: Multistream<TController> =
             Multistream.create(binding.toInitiator(protocol))
-        return conn.muxerSession.createStream(object : StreamHandler<TController> {
+        return conn.muxerSession().createStream(object : StreamHandler<TController> {
             override fun handleStream(stream: Stream): CompletableFuture<out TController> {
                 val ret = multistream.toStreamHandler().handleStream(stream)
                 streamHandlers.handleStream(stream)
