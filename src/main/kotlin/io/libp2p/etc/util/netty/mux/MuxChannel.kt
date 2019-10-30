@@ -1,7 +1,7 @@
 package io.libp2p.etc.util.netty.mux
 
 import io.libp2p.etc.util.netty.AbstractChildChannel
-import io.netty.channel.ChannelHandler
+import io.libp2p.etc.util.netty.nettyInitializer
 import io.netty.channel.ChannelMetadata
 import io.netty.channel.ChannelOutboundBuffer
 import io.netty.util.ReferenceCountUtil
@@ -13,7 +13,7 @@ import java.net.SocketAddress
 class MuxChannel<TData>(
     private val parent: AbstractMuxHandler<TData>,
     val id: MuxId,
-    private val initializer: ChannelHandler,
+    private val initializer: MuxChannelInitializer<TData>,
     private val initiator: Boolean
 ) : AbstractChildChannel(parent.ctx!!.channel(), id) {
 
@@ -29,7 +29,11 @@ class MuxChannel<TData>(
 
     override fun doRegister() {
         super.doRegister()
-        pipeline().addLast(initializer)
+        pipeline().addLast(
+            nettyInitializer {
+                initializer(this)
+            }
+        )
     }
 
     override fun doWrite(buf: ChannelOutboundBuffer) {
