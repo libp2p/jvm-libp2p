@@ -39,12 +39,12 @@ class ConnectionUpgrader(
         )
     } // establishMuxer
 
-    private fun <T : ProtocolBinding<out R>, R> establish(
+    private fun <T : ProtocolBinding<R>, R> establish(
         connection: Connection,
         channels: List<T>,
         beforeHandler: ChannelHandler?,
         afterHandler: ChannelHandler?
-    ) : CompletableFuture<R> {
+    ): CompletableFuture<R> {
         beforeHandler?.also { connection.pushHandler(it) }
 
         val multistream = Multistream.create(channels)
