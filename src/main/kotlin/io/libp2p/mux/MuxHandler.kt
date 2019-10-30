@@ -6,7 +6,6 @@ import io.libp2p.core.StreamHandler
 import io.libp2p.core.StreamPromise
 import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.etc.CONNECTION
-import io.libp2p.etc.MUXER_SESSION
 import io.libp2p.etc.STREAM
 import io.libp2p.etc.types.forward
 import io.libp2p.etc.util.netty.mux.AbstractMuxHandler
@@ -28,7 +27,6 @@ class MuxHandler(
 
     override fun handlerAdded(ctx: ChannelHandlerContext) {
         super.handlerAdded(ctx)
-        ctx.channel().attr(MUXER_SESSION).set(this)
         ready?.complete(this)
     }
 
