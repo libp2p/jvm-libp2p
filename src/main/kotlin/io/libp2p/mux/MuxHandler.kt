@@ -8,7 +8,6 @@ import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.etc.CONNECTION
 import io.libp2p.etc.MUXER_SESSION
 import io.libp2p.etc.STREAM
-import io.libp2p.etc.events.MuxSessionInitialized
 import io.libp2p.etc.types.forward
 import io.libp2p.etc.util.netty.mux.AbstractMuxHandler
 import io.libp2p.etc.util.netty.mux.MuxChannel
@@ -18,18 +17,19 @@ import io.netty.channel.ChannelHandlerContext
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicLong
 
-class MuxHandler() : AbstractMuxHandler<ByteBuf>(), StreamMuxer.Session {
-
+class MuxHandler(
+    private val ready: CompletableFuture<StreamMuxer.Session>?
+) : AbstractMuxHandler<ByteBuf>(), StreamMuxer.Session {
     private val idGenerator = AtomicLong(0xF)
 
-    constructor(streamHandler: StreamHandler<*>) : this() {
+    constructor(streamHandler: StreamHandler<*>) : this(null) {
         this.inboundStreamHandler = streamHandler
     }
 
     override fun handlerAdded(ctx: ChannelHandlerContext) {
         super.handlerAdded(ctx)
         ctx.channel().attr(MUXER_SESSION).set(this)
-        ctx.fireUserEventTriggered(MuxSessionInitialized(this))
+        ready?.complete(this)
     }
 
     override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
