@@ -6,7 +6,6 @@ import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.security.SecureChannel
-import io.libp2p.etc.SECURE_SESSION
 import io.libp2p.etc.types.lazyVar
 import io.libp2p.etc.util.netty.nettyInitializer
 import io.libp2p.pubsub.flood.FloodRouter
@@ -49,16 +48,13 @@ class TestRouter(val name: String = "" + cnt.getAndIncrement()) {
         initiator: Boolean
     ): TestChannel {
 
-        val parentChannel = TestChannel("dummy-parent-channel", false, nettyInitializer {
-            it.attr(SECURE_SESSION).set(
-                SecureChannel.Session(
-                    PeerId.fromPubKey(keyPair.second),
-                    PeerId.fromPubKey(remoteRouter.keyPair.second),
-                    remoteRouter.keyPair.second
-                )
-            )
-        })
+        val parentChannel = TestChannel("dummy-parent-channel", false)
         val connection = ConnectionOverNetty(parentChannel, NullTransport(), initiator)
+        connection.setSecureSession(SecureChannel.Session(
+            PeerId.fromPubKey(keyPair.second),
+            PeerId.fromPubKey(remoteRouter.keyPair.second),
+            remoteRouter.keyPair.second
+        ))
 
         return TestChannel(
             channelName,

@@ -154,9 +154,10 @@ class TcpTransport(
             remotePeerId?.also { ch.attr(REMOTE_PEER_ID).set(it) }
             upgrader.establishSecureChannel(connection)
                 .thenCompose {
+                    connection.setSecureSession(it)
                     upgrader.establishMuxer(connection)
                 }.thenApply {
-                    connection.setMuxer(it)
+                    connection.setMuxerSession(it)
                     connHandler.handleConnection(connection)
                     connection
                 }

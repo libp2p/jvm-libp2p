@@ -4,12 +4,10 @@ import io.libp2p.core.Connection
 import io.libp2p.core.P2PChannel
 import io.libp2p.core.PeerId
 import io.libp2p.core.Stream
-import io.libp2p.core.security.SecureChannel
 import io.netty.channel.Channel
 import io.netty.util.AttributeKey
 import java.util.concurrent.CompletableFuture
 
-val SECURE_SESSION = AttributeKey.newInstance<SecureChannel.Session>("LIBP2P_SECURE_SESSION")!!
 val STREAM = AttributeKey.newInstance<Stream>("LIBP2P_STREAM")!!
 val CONNECTION = AttributeKey.newInstance<Connection>("LIBP2P_CONNECTION")!!
 val PROTOCOL = AttributeKey.newInstance<CompletableFuture<String>>("LIBP2P_PROTOCOL")!!
