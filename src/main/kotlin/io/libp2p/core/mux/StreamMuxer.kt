@@ -1,11 +1,9 @@
 package io.libp2p.core.mux
 
-import io.libp2p.core.P2PChannel
 import io.libp2p.core.StreamHandler
 import io.libp2p.core.StreamPromise
 import io.libp2p.core.multistream.ProtocolBinding
 import io.netty.channel.ChannelHandler
-import java.util.concurrent.CompletableFuture
 
 /**
  * Performs stream multiplexing of an abstract channel
@@ -26,9 +24,6 @@ import java.util.concurrent.CompletableFuture
  * Client protocol implementations may perform resetting a stream via [io.libp2p.core.Stream.nettyChannel.close]
  */
 interface StreamMuxer : ProtocolBinding<StreamMuxer.Session> {
-
-    override fun initChannel(ch: P2PChannel, selectedProtocol: String): CompletableFuture<out Session>
-
     /**
      * The Multiplexer controller which is capable of opening new Streams
      */
