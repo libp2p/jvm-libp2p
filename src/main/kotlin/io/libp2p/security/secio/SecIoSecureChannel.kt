@@ -40,6 +40,7 @@ class SecIoSecureChannel(val localKey: PrivKey) :
             "PacketLenDecoder" to LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0, 4, 0, 4),
             HandshakeHandlerName to SecIoHandshake(handshakeComplete)
         ).forEach { ch.pushHandler(it.first, it.second) }
+
         return handshakeComplete
     }
 
@@ -72,7 +73,7 @@ class SecIoSecureChannel(val localKey: PrivKey) :
             }
 
             if (negotiator.isComplete()) {
-                val session = SecioSession(
+                val session = SecureChannel.Session(
                     PeerId.fromPubKey(secIoCodec.local.permanentPubKey),
                     PeerId.fromPubKey(secIoCodec.remote.permanentPubKey),
                     secIoCodec.remote.permanentPubKey
@@ -100,8 +101,3 @@ class SecIoSecureChannel(val localKey: PrivKey) :
     }
 }
 
-/**
- * SecioSession exposes the identity and public security material of the other party as authenticated by SecIO.
- */
-class SecioSession(localId: PeerId, remoteId: PeerId, remotePubKey: PubKey) :
-    SecureChannel.Session(localId, remoteId, remotePubKey)
