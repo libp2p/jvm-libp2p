@@ -61,39 +61,16 @@ class NoiseXXSecureChannel(private val localKey: PrivKey) :
         chid = this.hashCode().toString()
         logger.debug(chid)
 
-        val ret = CompletableFuture<SecureChannel.Session>()
-        val resultHandler = object : ChannelInboundHandlerAdapter() {
-            override fun userEventTriggered(ctx: ChannelHandlerContext, evt: Any) {
-                when (evt) {
-                    is SecureChannelInitialized -> {
-                        val session = evt.session as NoiseSecureChannelSession
+        val handshakeComplete = CompletableFuture<SecureChannel.Session>()
 
-                        ret.complete(session)
-                        ctx.pipeline().remove(this)
-                        ctx.pipeline().addLast(NoiseXXCodec(session.aliceCipher, session.bobCipher))
+        ch.pushHandler(handshakeHandlerName + chid, NoiseIoHandshake(handshakeComplete))
 
-                        logger.debug("Reporting secure channel initialized")
-                    }
-                    is SecureChannelFailed -> {
-                        ret.completeExceptionally(evt.exception)
-
-                        ctx.pipeline().remove(handshakeHandlerName)
-                        ctx.pipeline().remove(this)
-
-                        logger.debug("Reporting secure channel failed")
-                    }
-                }
-                ctx.fireUserEventTriggered(evt)
-                ctx.fireChannelActive()
-            }
-        }
-        ch.pushHandler(handshakeHandlerName, NoiseIoHandshake())
-        ch.pushHandler(handshakeHandlerName + "ResultHandler", resultHandler)
-        return ret
+        return handshakeComplete
     }
 
-    inner class NoiseIoHandshake() : SimpleChannelInboundHandler<ByteBuf>() {
-
+    inner class NoiseIoHandshake(
+        private val handshakeComplete: CompletableFuture<SecureChannel.Session>
+    ) : SimpleChannelInboundHandler<ByteBuf>() {
         private val handshakestate: HandshakeState = HandshakeState(protocolName, role.intVal)
         private val logger2 = LogManager.getLogger("$loggerNameParent.$chid.$role")
 
@@ -120,8 +97,7 @@ class NoiseXXSecureChannel(private val localKey: PrivKey) :
             channelActive(ctx)
 
             if (role == Role.RESP && flagRemoteVerified && !flagRemoteVerifiedPassed) {
-                logger2.error("Responder verification of Remote peer id has failed")
-                ctx.fireUserEventTriggered(SecureChannelFailed(Exception("Responder verification of Remote peer id has failed")))
+                handshakeFailed(ctx, "Responder verification of Remote peer id has failed")
                 return
             }
 
@@ -136,8 +112,7 @@ class NoiseXXSecureChannel(private val localKey: PrivKey) :
                     logger2.trace("msg.size:" + msg.size)
                     logger2.trace("Read message size:$payloadLength")
                 } catch (e: Exception) {
-                    logger2.debug("Exception e:" + e.toString())
-                    ctx.fireUserEventTriggered(SecureChannelFailed(e))
+                    handshakeFailed(ctx, e)
                     return
                 }
             }
@@ -177,18 +152,15 @@ class NoiseXXSecureChannel(private val localKey: PrivKey) :
                 logger2.debug("Split complete")
 
                 // put alice and bob security sessions into the context and trigger the next action
-                val secureChannelInitialized = SecureChannelInitialized(
-                    NoiseSecureChannelSession(
-                        PeerId.fromPubKey(localKey.publicKey()),
-                        PeerId.random(),
-                        localKey.publicKey(),
-                        aliceSplit,
-                        bobSplit
-                    ) as SecureChannel.Session
+                val secureSession = NoiseSecureChannelSession(
+                    PeerId.fromPubKey(localKey.publicKey()),
+                    PeerId.random(),
+                    localKey.publicKey(),
+                    aliceSplit,
+                    bobSplit
                 )
-                ctx.fireUserEventTriggered(secureChannelInitialized)
-//                ctx.fireChannelActive()
-                ctx.channel().pipeline().remove(this)
+
+                handshakeSucceeded(ctx, secureSession)
             }
         }
 
@@ -274,8 +246,7 @@ class NoiseXXSecureChannel(private val localKey: PrivKey) :
             if (flagRemoteVerifiedPassed) {
                 logger2.debug("Remote verification passed")
             } else {
-                logger2.error("Remote verification failed")
-                ctx.fireUserEventTriggered(SecureChannelFailed(Exception("Responder verification of Remote peer id has failed")))
+                handshakeFailed(ctx, "Responder verification of Remote peer id has failed")
                 return
 //                ctx.fireChannelActive()
                 // throwing exception for early exit of protocol and for application to handle
@@ -284,6 +255,23 @@ class NoiseXXSecureChannel(private val localKey: PrivKey) :
 
         override fun channelActive(ctx: ChannelHandlerContext) {
             channelRegistered(ctx)
+        }
+
+        private fun handshakeSucceeded(ctx: ChannelHandlerContext, session: NoiseSecureChannelSession) {
+            handshakeComplete.complete(session)
+            ctx.pipeline().remove(this)
+            ctx.pipeline().addLast(NoiseXXCodec(session.aliceCipher, session.bobCipher))
+            ctx.fireChannelActive()
+        } // handshakeSucceeded
+
+        private fun handshakeFailed(ctx: ChannelHandlerContext, cause: String) {
+            handshakeFailed(ctx, Exception(cause))
+        }
+        private fun handshakeFailed(ctx: ChannelHandlerContext, cause: Throwable) {
+            logger2.error(cause.message)
+
+            handshakeComplete.completeExceptionally(cause)
+            ctx.pipeline().remove(this)
         }
 
         private var activated = false
