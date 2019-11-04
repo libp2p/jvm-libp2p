@@ -60,11 +60,11 @@ class SecIoNegotiator(
 
     private var state = State.Initial
 
-    val random = SecureRandom()
-    val nonceSize = 16
-    val ciphers = linkedSetOf("AES-128", "AES-256")
-    val hashes = linkedSetOf("SHA256", "SHA512")
-    val curves = linkedSetOf("P-256", "P-384", "P-521")
+    private val random = SecureRandom()
+    private val nonceSize = 16
+    private val ciphers = linkedSetOf("AES-128", "AES-256")
+    private val hashes = linkedSetOf("SHA256", "SHA512")
+    private val curves = linkedSetOf("P-256", "P-384", "P-521")
 
     private val nonce = ByteArray(nonceSize).apply { random.nextBytes(this) }
     private var proposeMsg: Spipe.Propose? = null
@@ -77,11 +77,13 @@ class SecIoNegotiator(
     private var ephPrivKey: EcdsaPrivateKey? = null
     private var ephPubKey: EcdsaPublicKey? = null
 
+    private val localPubKeyBytes = localKey.publicKey().bytes()
+    private val remoteNonce: ByteArray
+        get() = remotePropose!!.rand.toByteArray()
+
     fun isComplete() = state == State.FinalValidated
 
     fun start() {
-        val localPubKeyBytes = localKey.publicKey().bytes()
-
         proposeMsg = Spipe.Propose.newBuilder()
             .setRand(nonce.toProtobuf())
             .setPubkey(localPubKeyBytes.toProtobuf())
@@ -96,58 +98,78 @@ class SecIoNegotiator(
 
     fun onSecureChannelSetup() {
         if (state != State.KeysCreated) throw InvalidNegotiationState()
-        outboundChannel.invoke(remotePropose!!.rand.toByteArray().toByteBuf())
+        outboundChannel.invoke(remoteNonce.toByteBuf())
         state = State.SecureChannelCreated
     }
 
     fun onNewMessage(buf: ByteBuf): Pair<SecioParams, SecioParams>? {
         when (state) {
-            State.ProposeSent -> {
+            State.ProposeSent ->
                 verifyRemoteProposal(buf)
-            }
-            State.ExchangeSent -> {
+            State.ExchangeSent ->
                 return verifyKeyExchange(buf)
-            }
-            State.SecureChannelCreated -> {
-                if (!nonce.contentEquals(buf.toByteArray())) throw InvalidInitialPacket()
-                state = State.FinalValidated
-            }
-            else -> throw InvalidNegotiationState()
+            State.SecureChannelCreated ->
+                verifyNonceResponse(buf)
+            else ->
+                throw InvalidNegotiationState()
         }
         return null
     }
 
     private fun verifyRemoteProposal(buf: ByteBuf) {
         remotePropose = read(buf, Spipe.Propose.parser())
-        val remotePubKeyBytes = remotePropose!!.pubkey.toByteArray()
-        remotePubKey = unmarshalPublicKey(remotePubKeyBytes)
-        val calcedPeerId = PeerId.fromPubKey(remotePubKey!!)
-        if (remotePeerId != null && calcedPeerId != remotePeerId) throw InvalidRemotePubKey()
 
-        val h1 = sha256(remotePubKeyBytes + nonce)
-        val h2 = sha256(localKey.publicKey().bytes() + remotePropose!!.rand.toByteArray())
-        order = h1.compareTo(h2)
-        if (order == 0) throw SelfConnecting()
-        curve = selectBest(order!!, curves, remotePropose!!.exchanges.split(","))
-        hash = selectBest(order!!, hashes, remotePropose!!.hashes.split(","))
-        cipher = selectBest(order!!, ciphers, remotePropose!!.ciphers.split(","))
+        val remotePubKeyBytes = remotePropose!!.pubkey.toByteArray()
+        remotePubKey = validateRemoteKey(remotePubKeyBytes)
+
+        order = orderKeys(remotePubKeyBytes)
+
+        curve = selectCurve(order!!)
+        hash = selectHash(order!!)
+        cipher = selectCipher(order!!)
 
         val (ephPrivKeyL, ephPubKeyL) = generateEcdsaKeyPair(curve!!)
         ephPrivKey = ephPrivKeyL
         ephPubKey = ephPubKeyL
 
-        val exchangeMsg = Spipe.Exchange.newBuilder()
-            .setEpubkey(ephPubKeyL.toUncompressedBytes().toProtobuf())
-            .setSignature(
-                localKey.sign(
-                    proposeMsg!!.toByteArray() + remotePropose!!.toByteArray() +
-                            ephPubKeyL.toUncompressedBytes()
-                ).toProtobuf()
-            ).build()
+        val exchangeMsg = buildExchangeMessage()
 
         state = State.ExchangeSent
         write(exchangeMsg)
     } // verifyRemoteProposal
+
+    private fun validateRemoteKey(remotePubKeyBytes: ByteArray): PubKey {
+        val pubKey = unmarshalPublicKey(remotePubKeyBytes)
+
+        val calcedPeerId = PeerId.fromPubKey(pubKey)
+        if (remotePeerId != null && calcedPeerId != remotePeerId)
+            throw InvalidRemotePubKey()
+
+        return pubKey
+    } // validateRemoteKey
+
+    private fun orderKeys(remotePubKeyBytes: ByteArray): Int {
+        val h1 = sha256(remotePubKeyBytes + nonce)
+        val h2 = sha256(localPubKeyBytes + remoteNonce)
+
+        val keyOrder = h1.compareTo(h2)
+        if (keyOrder == 0)
+            throw SelfConnecting()
+
+        return keyOrder
+    } // orderKeys
+
+    private fun buildExchangeMessage(): Spipe.Exchange {
+        return Spipe.Exchange.newBuilder()
+            .setEpubkey(ephPubKey!!.toUncompressedBytes().toProtobuf())
+            .setSignature(
+                localKey.sign(
+                    proposeMsg!!.toByteArray() +
+                            remotePropose!!.toByteArray() +
+                            ephPubKey!!.toUncompressedBytes()
+                ).toProtobuf()
+            ).build()
+    }
 
     private fun verifyKeyExchange(buf: ByteBuf): Pair<SecioParams, SecioParams> {
         val remoteExchangeMsg = read(buf, Spipe.Exchange.parser())
@@ -211,6 +233,13 @@ class SecIoNegotiator(
         )
     } // verifyKeyExchange
 
+    private fun verifyNonceResponse(buf: ByteBuf) {
+        if (!nonce.contentEquals(buf.toByteArray()))
+            throw InvalidInitialPacket()
+
+        state = State.FinalValidated
+    } // verifyNonceResponse
+
     private fun write(outMsg: Message) {
         val byteBuf = Unpooled.buffer().writeBytes(outMsg.toByteArray())
         outboundChannel.invoke(byteBuf)
@@ -220,10 +249,20 @@ class SecIoNegotiator(
         return parser.parseFrom(buf.nioBuffer())
     }
 
-    private inline fun <reified T> selectBest(order: Int, p1: Collection<T>, p2: Collection<T>): T {
+    private fun selectCurve(order: Int): String {
+        return selectBest(order, curves, remotePropose!!.exchanges.split(","))
+    } // selectCurve
+    private fun selectHash(order: Int): String {
+        return selectBest(order, hashes, remotePropose!!.hashes.split(","))
+    }
+    private fun selectCipher(order: Int): String {
+        return selectBest(order, ciphers, remotePropose!!.ciphers.split(","))
+    }
+
+    private fun selectBest(order: Int, p1: Collection<String>, p2: Collection<String>): String {
         val intersect = linkedSetOf(*(if (order >= 0) p1 else p2).toTypedArray())
             .intersect(linkedSetOf(*(if (order >= 0) p2 else p1).toTypedArray()))
         if (intersect.isEmpty()) throw NoCommonAlgos()
         return intersect.first()
-    }
-}
+    } // selectBest
+} // class SecioNegotiator
