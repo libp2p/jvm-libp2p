@@ -61,15 +61,15 @@ class SecIoNegotiator(
     private val curves = linkedSetOf("P-256", "P-384", "P-521")
 
     private val nonce = ByteArray(nonceSize).apply { random.nextBytes(this) }
-    private var proposeMsg: Spipe.Propose? = null
-    private var remotePropose: Spipe.Propose? = null
-    private var remotePubKey: PubKey? = null
+    private lateinit var proposeMsg: Spipe.Propose
+    private lateinit var remotePropose: Spipe.Propose
+    private lateinit var remotePubKey: PubKey
     private var order: Int? = null
-    private var curve: String? = null
-    private var hash: String? = null
-    private var cipher: String? = null
-    private var ephPrivKey: EcdsaPrivateKey? = null
-    private var ephPubKey: EcdsaPublicKey? = null
+    private lateinit var curve: String
+    private lateinit var hash: String
+    private lateinit var cipher: String
+    private lateinit var ephPrivKey: EcdsaPrivateKey
+    private lateinit var ephPubKey: EcdsaPublicKey
 
     private val localPubKeyBytes = localKey.publicKey().bytes()
     private val remoteNonce: ByteArray
@@ -92,7 +92,9 @@ class SecIoNegotiator(
 
     fun onSecureChannelSetup() {
         if (state != State.KeysCreated) throw InvalidNegotiationState()
-        outboundChannel.invoke(remoteNonce.toByteBuf())
+
+        write(remoteNonce)
+
         state = State.SecureChannelCreated
     }
 
@@ -113,7 +115,7 @@ class SecIoNegotiator(
     private fun verifyRemoteProposal(buf: ByteBuf) {
         remotePropose = read(buf, Spipe.Propose.parser())
 
-        val remotePubKeyBytes = remotePropose!!.pubkey.toByteArray()
+        val remotePubKeyBytes = remotePropose.pubkey.toByteArray()
         remotePubKey = validateRemoteKey(remotePubKeyBytes)
 
         order = orderKeys(remotePubKeyBytes)
@@ -122,7 +124,7 @@ class SecIoNegotiator(
         hash = selectHash()
         cipher = selectCipher()
 
-        val (ephPrivKeyL, ephPubKeyL) = generateEcdsaKeyPair(curve!!)
+        val (ephPrivKeyL, ephPubKeyL) = generateEcdsaKeyPair(curve)
         ephPrivKey = ephPrivKeyL
         ephPubKey = ephPubKeyL
 
@@ -155,12 +157,12 @@ class SecIoNegotiator(
 
     private fun buildExchangeMessage(): Spipe.Exchange {
         return Spipe.Exchange.newBuilder()
-            .setEpubkey(ephPubKey!!.toUncompressedBytes().toProtobuf())
+            .setEpubkey(ephPubKey.toUncompressedBytes().toProtobuf())
             .setSignature(
                 localKey.sign(
-                    proposeMsg!!.toByteArray() +
-                            remotePropose!!.toByteArray() +
-                            ephPubKey!!.toUncompressedBytes()
+                    proposeMsg.toByteArray() +
+                            remotePropose.toByteArray() +
+                            ephPubKey.toUncompressedBytes()
                 ).toProtobuf()
             ).build()
     } // buildExchangeMessage
@@ -171,7 +173,7 @@ class SecIoNegotiator(
 
         val sharedSecret = generateSharedSecret(remoteExchangeMsg)
 
-        val (k1, k2) = stretchKeys(cipher!!, hash!!, sharedSecret)
+        val (k1, k2) = stretchKeys(cipher, hash, sharedSecret)
 
         val localKeys = selectFirst(k1, k2)
         val remoteKeys = selectSecond(k1, k2)
@@ -184,7 +186,7 @@ class SecIoNegotiator(
                 calcHMac(localKeys.macKey)
             ),
             SecioParams(
-                remotePubKey!!,
+                remotePubKey,
                 remoteKeys,
                 calcHMac(remoteKeys.macKey)
             )
@@ -192,9 +194,9 @@ class SecIoNegotiator(
     } // verifyKeyExchange
 
     private fun validateExchangeMessage(exchangeMsg: Spipe.Exchange) {
-        val signatureIsOk = remotePubKey!!.verify(
-                remotePropose!!.toByteArray() +
-                        proposeMsg!!.toByteArray() +
+        val signatureIsOk = remotePubKey.verify(
+                remotePropose.toByteArray() +
+                        proposeMsg.toByteArray() +
                         exchangeMsg.epubkey.toByteArray(),
                 exchangeMsg.signature.toByteArray()
             )
@@ -218,7 +220,7 @@ class SecIoNegotiator(
 
         val remoteEphPublickKey =
             decodeEcdsaPublicKeyUncompressed(
-                curve!!,
+                curve,
                 exchangeMsg.epubkey.toByteArray()
             )
         val remoteEphPubPoint =
@@ -229,7 +231,7 @@ class SecIoNegotiator(
 
         val sharedSecretPoint = ecCurve.multiplier.multiply(
             remoteEphPubPoint,
-            ephPrivKey!!.priv.s
+            ephPrivKey.priv.s
         )
 
         val sharedSecret = sharedSecretPoint.normalize().affineXCoord.encoded
@@ -247,19 +249,22 @@ class SecIoNegotiator(
         val byteBuf = Unpooled.buffer().writeBytes(outMsg.toByteArray())
         outboundChannel.invoke(byteBuf)
     }
+    private fun write(msg: ByteArray) {
+        outboundChannel.invoke(msg.toByteBuf())
+    }
 
     private fun <MessageType : Message> read(buf: ByteBuf, parser: Parser<MessageType>): MessageType {
         return parser.parseFrom(buf.nioBuffer())
     }
 
     private fun selectCurve(): String {
-        return selectBest(curves, remotePropose!!.exchanges.split(","))
+        return selectBest(curves, remotePropose.exchanges.split(","))
     } // selectCurve
     private fun selectHash(): String {
-        return selectBest(hashes, remotePropose!!.hashes.split(","))
+        return selectBest(hashes, remotePropose.hashes.split(","))
     }
     private fun selectCipher(): String {
-        return selectBest(ciphers, remotePropose!!.ciphers.split(","))
+        return selectBest(ciphers, remotePropose.ciphers.split(","))
     }
 
     private fun selectBest(
