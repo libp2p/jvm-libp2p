@@ -163,59 +163,78 @@ class SecIoNegotiator(
                             ephPubKey!!.toUncompressedBytes()
                 ).toProtobuf()
             ).build()
-    }
+    } // buildExchangeMessage
 
     private fun verifyKeyExchange(buf: ByteBuf): Pair<SecioParams, SecioParams> {
         val remoteExchangeMsg = read(buf, Spipe.Exchange.parser())
-        if (!remotePubKey!!.verify(
-                remotePropose!!.toByteArray() + proposeMsg!!.toByteArray() + remoteExchangeMsg.epubkey.toByteArray(),
-                remoteExchangeMsg.signature.toByteArray()
-            )
-        ) {
-            throw InvalidSignature()
-        }
+        validateExchangeMessage(remoteExchangeMsg)
 
-        val ecCurve = ECNamedCurveTable.getParameterSpec(curve).curve
-        val remoteEphPublickKey =
-            decodeEcdsaPublicKeyUncompressed(
-                curve!!,
-                remoteExchangeMsg.epubkey.toByteArray()
-            )
-        val remoteEphPubPoint =
-            ecCurve.validatePoint(remoteEphPublickKey.pub.w.affineX, remoteEphPublickKey.pub.w.affineY)
-
-        val sharedSecretPoint = ecCurve.multiplier.multiply(remoteEphPubPoint, ephPrivKey!!.priv.s)
-        val sharedSecret = sharedSecretPoint.normalize().affineXCoord.encoded
+        val sharedSecret = generateSharedSecret(remoteExchangeMsg)
 
         val (k1, k2) = stretchKeys(cipher!!, hash!!, sharedSecret)
 
         val localKeys = if (order!! > 0) k1 else k2
         val remoteKeys = if (order!! > 0) k2 else k1
 
-        val hmacFactory: (ByteArray) -> HMac = { macKey ->
-            val ret = when (hash) {
-                "SHA256" -> HMac(SHA256Digest())
-                "SHA512" -> HMac(SHA512Digest())
-                else -> throw IllegalArgumentException("Unsupported hash function: $hash")
-            }
-            ret.init(KeyParameter(macKey))
-            ret
-        }
-
         state = State.KeysCreated
         return Pair(
             SecioParams(
                 localKey.publicKey(),
                 localKeys,
-                hmacFactory.invoke(localKeys.macKey)
+                calcHMac(localKeys.macKey)
             ),
             SecioParams(
                 remotePubKey!!,
                 remoteKeys,
-                hmacFactory.invoke(remoteKeys.macKey)
+                calcHMac(remoteKeys.macKey)
             )
         )
     } // verifyKeyExchange
+
+    private fun validateExchangeMessage(exchangeMsg: Spipe.Exchange) {
+        val signatureIsOk = remotePubKey!!.verify(
+                remotePropose!!.toByteArray() +
+                        proposeMsg!!.toByteArray() +
+                        exchangeMsg.epubkey.toByteArray(),
+                exchangeMsg.signature.toByteArray()
+            )
+
+        if (!signatureIsOk)
+            throw InvalidSignature()
+    } // validateExchangeMessage
+
+    private fun calcHMac(macKey: ByteArray): HMac {
+        val hmac = when (hash) {
+            "SHA256" -> HMac(SHA256Digest())
+            "SHA512" -> HMac(SHA512Digest())
+            else -> throw IllegalArgumentException("Unsupported hash function: $hash")
+        }
+        hmac.init(KeyParameter(macKey))
+        return hmac
+    } // calcHMac
+
+    private fun generateSharedSecret(exchangeMsg: Spipe.Exchange): ByteArray {
+        val ecCurve = ECNamedCurveTable.getParameterSpec(curve).curve
+
+        val remoteEphPublickKey =
+            decodeEcdsaPublicKeyUncompressed(
+                curve!!,
+                exchangeMsg.epubkey.toByteArray()
+            )
+        val remoteEphPubPoint =
+            ecCurve.validatePoint(
+                remoteEphPublickKey.pub.w.affineX,
+                remoteEphPublickKey.pub.w.affineY
+            )
+
+        val sharedSecretPoint = ecCurve.multiplier.multiply(
+            remoteEphPubPoint,
+            ephPrivKey!!.priv.s
+        )
+
+        val sharedSecret = sharedSecretPoint.normalize().affineXCoord.encoded
+        return sharedSecret
+    } // generateSharedSecret
 
     private fun verifyNonceResponse(buf: ByteBuf) {
         if (!nonce.contentEquals(buf.toByteArray()))
