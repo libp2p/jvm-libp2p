@@ -118,9 +118,9 @@ class SecIoNegotiator(
 
         order = orderKeys(remotePubKeyBytes)
 
-        curve = selectCurve(order!!)
-        hash = selectHash(order!!)
-        cipher = selectCipher(order!!)
+        curve = selectCurve()
+        hash = selectHash()
+        cipher = selectCipher()
 
         val (ephPrivKeyL, ephPubKeyL) = generateEcdsaKeyPair(curve!!)
         ephPrivKey = ephPrivKeyL
@@ -173,8 +173,8 @@ class SecIoNegotiator(
 
         val (k1, k2) = stretchKeys(cipher!!, hash!!, sharedSecret)
 
-        val localKeys = if (order!! > 0) k1 else k2
-        val remoteKeys = if (order!! > 0) k2 else k1
+        val localKeys = selectFirst(k1, k2)
+        val remoteKeys = selectSecond(k1, k2)
 
         state = State.KeysCreated
         return Pair(
@@ -252,20 +252,27 @@ class SecIoNegotiator(
         return parser.parseFrom(buf.nioBuffer())
     }
 
-    private fun selectCurve(order: Int): String {
-        return selectBest(order, curves, remotePropose!!.exchanges.split(","))
+    private fun selectCurve(): String {
+        return selectBest(curves, remotePropose!!.exchanges.split(","))
     } // selectCurve
-    private fun selectHash(order: Int): String {
-        return selectBest(order, hashes, remotePropose!!.hashes.split(","))
+    private fun selectHash(): String {
+        return selectBest(hashes, remotePropose!!.hashes.split(","))
     }
-    private fun selectCipher(order: Int): String {
-        return selectBest(order, ciphers, remotePropose!!.ciphers.split(","))
+    private fun selectCipher(): String {
+        return selectBest(ciphers, remotePropose!!.ciphers.split(","))
     }
 
-    private fun selectBest(order: Int, p1: Collection<String>, p2: Collection<String>): String {
-        val intersect = linkedSetOf(*(if (order >= 0) p1 else p2).toTypedArray())
-            .intersect(linkedSetOf(*(if (order >= 0) p2 else p1).toTypedArray()))
+    private fun selectBest(
+        p1: Collection<String>,
+        p2: Collection<String>
+    ): String {
+        val intersect =
+            linkedSetOf(*(selectFirst(p1, p2)).toTypedArray())
+            .intersect(linkedSetOf(*(selectSecond(p1, p2)).toTypedArray()))
         if (intersect.isEmpty()) throw NoCommonAlgos()
         return intersect.first()
     } // selectBest
+
+    private fun <T> selectFirst(lhs: T, rhs: T) = if (order!! > 0) lhs else rhs
+    private fun <T> selectSecond(lhs: T, rhs: T) = if (order!! > 0) rhs else lhs
 } // class SecioNegotiator
