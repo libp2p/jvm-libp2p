@@ -43,7 +43,7 @@ data class SecioParams(
 /**
  * Created by Anton Nashatyrev on 14.06.2019.
  */
-class SecioHandshake(
+class SecIoNegotiator(
     private val outboundChannel: (ByteBuf) -> Unit,
     val localKey: PrivKey,
     val remotePeerId: PeerId?

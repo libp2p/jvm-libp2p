@@ -59,7 +59,7 @@ class SecIoSecureChannel(val localKey: PrivKey) :
     }
 
     inner class SecIoHandshake : SimpleChannelInboundHandler<ByteBuf>() {
-        private lateinit var negotiator: SecioHandshake
+        private lateinit var negotiator: SecIoNegotiator
         private var activated = false
         private lateinit var secIoCodec: SecIoCodec
 
@@ -68,7 +68,7 @@ class SecIoSecureChannel(val localKey: PrivKey) :
                 activated = true
                 val remotePeerId = ctx.channel().attr(REMOTE_PEER_ID).get()
                 negotiator =
-                    SecioHandshake({ buf -> writeAndFlush(ctx, buf) }, localKey, remotePeerId)
+                    SecIoNegotiator({ buf -> writeAndFlush(ctx, buf) }, localKey, remotePeerId)
                 negotiator.start()
             }
         }
