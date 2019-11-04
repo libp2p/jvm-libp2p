@@ -14,23 +14,20 @@ import io.libp2p.core.crypto.unmarshalPublicKey
 import io.libp2p.core.multistream.Mode
 import io.libp2p.core.multistream.ProtocolMatcher
 import io.libp2p.core.security.SecureChannel
-import io.libp2p.etc.events.SecureChannelFailed
-import io.libp2p.etc.events.SecureChannelInitialized
 import io.libp2p.etc.types.toByteArray
 import io.libp2p.etc.types.toByteBuf
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
-import io.netty.channel.ChannelInboundHandlerAdapter
 import io.netty.channel.SimpleChannelInboundHandler
 import org.apache.logging.log4j.LogManager
 import spipe.pb.Spipe
 import java.util.Arrays
 import java.util.concurrent.CompletableFuture
 
+private enum class Role(val intVal: Int) { INIT(HandshakeState.INITIATOR), RESP(HandshakeState.RESPONDER) }
+
 class NoiseXXSecureChannel(private val localKey: PrivKey) :
     SecureChannel {
-
-    private enum class Role(val intVal: Int) { INIT(HandshakeState.INITIATOR), RESP(HandshakeState.RESPONDER) }
 
     companion object {
         const val protocolName = "Noise_XX_25519_ChaChaPoly_SHA256"
@@ -43,8 +40,6 @@ class NoiseXXSecureChannel(private val localKey: PrivKey) :
     private val loggerNameParent = NoiseXXSecureChannel::class.java.name + '.' + this.hashCode()
     private val logger = LogManager.getLogger(loggerNameParent)
     private lateinit var chid: String
-
-    private lateinit var role: Role
 
     private val handshakeHandlerName = "NoiseHandshake"
 
@@ -60,23 +55,25 @@ class NoiseXXSecureChannel(private val localKey: PrivKey) :
         ch: P2PChannel,
         selectedProtocol: String
     ): CompletableFuture<SecureChannel.Session> {
-        role = if (ch.isInitiator) Role.INIT else Role.RESP
-
         // chid = "ch=" + ch.id().asShortText() + "-" + ch.localAddress() + "-" + ch.remoteAddress()
         chid = "ch=${this.hashCode()}"
         logger.debug(chid)
 
         val handshakeComplete = CompletableFuture<SecureChannel.Session>()
 
-        ch.pushHandler(handshakeHandlerName + chid, NoiseIoHandshake(handshakeComplete))
+        ch.pushHandler(
+            handshakeHandlerName + chid,
+            NoiseIoHandshake(handshakeComplete, if (ch.isInitiator) Role.INIT else Role.RESP)
+        )
 
         return handshakeComplete
     }
 
-    inner class NoiseIoHandshake(
-        private val handshakeComplete: CompletableFuture<SecureChannel.Session>
+    private inner class NoiseIoHandshake(
+        private val handshakeComplete: CompletableFuture<SecureChannel.Session>,
+        private val role: Role
     ) : SimpleChannelInboundHandler<ByteBuf>() {
-        private val handshakestate: HandshakeState = HandshakeState(protocolName, role.intVal)
+        private val handshakestate = HandshakeState(protocolName, role.intVal)
         private val logger2 = LogManager.getLogger("$loggerNameParent.$chid.$role")
 
         private var localNoiseState: DHState
