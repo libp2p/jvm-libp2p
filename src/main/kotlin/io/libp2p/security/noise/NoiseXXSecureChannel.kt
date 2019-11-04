@@ -26,6 +26,8 @@ import java.util.concurrent.CompletableFuture
 
 private enum class Role(val intVal: Int) { INIT(HandshakeState.INITIATOR), RESP(HandshakeState.RESPONDER) }
 
+private val log = LogManager.getLogger(NoiseXXSecureChannel::class.java)
+
 class NoiseXXSecureChannel(private val localKey: PrivKey) :
     SecureChannel {
 
@@ -37,10 +39,6 @@ class NoiseXXSecureChannel(private val localKey: PrivKey) :
         var localStaticPrivateKey25519: ByteArray = ByteArray(32).also { Noise.random(it) }
     }
 
-    private val loggerNameParent = NoiseXXSecureChannel::class.java.name + '.' + this.hashCode()
-    private val logger = LogManager.getLogger(loggerNameParent)
-    private lateinit var chid: String
-
     private val handshakeHandlerName = "NoiseHandshake"
 
     override val announce = Companion.announce
@@ -50,14 +48,14 @@ class NoiseXXSecureChannel(private val localKey: PrivKey) :
         return initChannel(ch, "")
     }
 
-    override fun initChannel(ch: P2PChannel, selectedProtocol: String): CompletableFuture<SecureChannel.Session> {
-        chid = this.hashCode().toString()
-        logger.debug(chid)
-
+    override fun initChannel(
+        ch: P2PChannel,
+        selectedProtocol: String
+    ): CompletableFuture<SecureChannel.Session> {
         val handshakeComplete = CompletableFuture<SecureChannel.Session>()
 
         ch.pushHandler(
-            handshakeHandlerName + chid,
+            handshakeHandlerName,
             NoiseIoHandshake(handshakeComplete, if (ch.isInitiator) Role.INIT else Role.RESP)
         )
 
@@ -69,7 +67,6 @@ class NoiseXXSecureChannel(private val localKey: PrivKey) :
         private val role: Role
     ) : SimpleChannelInboundHandler<ByteBuf>() {
         private val handshakestate = HandshakeState(protocolName, role.intVal)
-        private val logger2 = LogManager.getLogger("$loggerNameParent.$chid.$role")
 
         private var localNoiseState: DHState
         private var sentNoiseKeyPayload = false
@@ -78,7 +75,7 @@ class NoiseXXSecureChannel(private val localKey: PrivKey) :
         private var instancePayloadLength = 0
 
         init {
-            logger2.debug("Starting handshake")
+            log.debug("Starting handshake")
 
             // configure the localDHState with the private
             // which will automatically generate the corresponding public key
@@ -103,11 +100,11 @@ class NoiseXXSecureChannel(private val localKey: PrivKey) :
             val payload = ByteArray(msg.size)
             var payloadLength = 0
             if (handshakestate.action == HandshakeState.READ_MESSAGE) {
-                logger2.debug("Noise handshake READ_MESSAGE")
+                log.debug("Noise handshake READ_MESSAGE")
                 try {
                     payloadLength = handshakestate.readMessage(msg, 0, msg.size, payload, 0)
-                    logger2.trace("msg.size:" + msg.size)
-                    logger2.trace("Read message size:$payloadLength")
+                    log.trace("msg.size:" + msg.size)
+                    log.trace("Read message size:$payloadLength")
                 } catch (e: Exception) {
                     handshakeFailed(ctx, e)
                     return
@@ -136,9 +133,9 @@ class NoiseXXSecureChannel(private val localKey: PrivKey) :
             } else if (handshakestate.action == HandshakeState.WRITE_MESSAGE) {
                 val sndmessage = ByteArray(2 * handshakestate.localKeyPair.publicKeyLength)
                 val sndmessageLength: Int
-                logger2.debug("Noise handshake WRITE_MESSAGE")
+                log.debug("Noise handshake WRITE_MESSAGE")
                 sndmessageLength = handshakestate.writeMessage(sndmessage, 0, null, 0, 0)
-                logger2.trace("Sent message length:$sndmessageLength")
+                log.trace("Sent message length:$sndmessageLength")
                 ctx.writeAndFlush(sndmessage.copyOfRange(0, sndmessageLength).toByteBuf())
             }
 
@@ -146,7 +143,7 @@ class NoiseXXSecureChannel(private val localKey: PrivKey) :
                 cipherStatePair = handshakestate.split()
                 aliceSplit = cipherStatePair.sender
                 bobSplit = cipherStatePair.receiver
-                logger2.debug("Split complete")
+                log.debug("Split complete")
 
                 // put alice and bob security sessions into the context and trigger the next action
                 val secureSession = NoiseSecureChannelSession(
@@ -212,9 +209,9 @@ class NoiseXXSecureChannel(private val localKey: PrivKey) :
                 0,
                 noiseHandshakePayload.toByteArray().size
             )
-            logger2.debug("Sending signed Noise static public key as payload")
-            logger2.debug("Noise handshake WRITE_MESSAGE")
-            logger2.trace("Sent message size:$msgLength")
+            log.debug("Sending signed Noise static public key as payload")
+            log.debug("Noise handshake WRITE_MESSAGE")
+            log.trace("Sent message size:$msgLength")
             // put the message frame which also contains the payload onto the wire
             ctx.writeAndFlush(msgBuffer.copyOfRange(0, msgLength).toByteBuf())
         }
@@ -225,7 +222,7 @@ class NoiseXXSecureChannel(private val localKey: PrivKey) :
             payloadLength: Int,
             remotePublicKey: ByteArray
         ) {
-            logger2.debug("Verifying noise static key payload")
+            log.debug("Verifying noise static key payload")
             flagRemoteVerified = true
 
             // the self-signed remote pubkey and signature would be retrieved from the first Noise payload
@@ -241,7 +238,7 @@ class NoiseXXSecureChannel(private val localKey: PrivKey) :
             )
 
             if (flagRemoteVerifiedPassed) {
-                logger2.debug("Remote verification passed")
+                log.debug("Remote verification passed")
             } else {
                 handshakeFailed(ctx, "Responder verification of Remote peer id has failed")
                 return
@@ -265,7 +262,7 @@ class NoiseXXSecureChannel(private val localKey: PrivKey) :
             handshakeFailed(ctx, Exception(cause))
         }
         private fun handshakeFailed(ctx: ChannelHandlerContext, cause: Throwable) {
-            logger2.error(cause.message)
+            log.error(cause.message)
 
             handshakeComplete.completeExceptionally(cause)
             ctx.pipeline().remove(this)
