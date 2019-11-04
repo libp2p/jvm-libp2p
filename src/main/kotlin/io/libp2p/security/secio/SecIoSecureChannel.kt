@@ -33,32 +33,18 @@ class SecIoSecureChannel(val localKey: PrivKey) :
         ProtocolMatcher(Mode.STRICT, name = "/secio/1.0.0")
 
     override fun initChannel(ch: P2PChannel, selectedProtocol: String): CompletableFuture<SecureChannel.Session> {
-        val ret = CompletableFuture<SecureChannel.Session>()
-        val resultHandler = object : ChannelInboundHandlerAdapter() {
-            override fun userEventTriggered(ctx: ChannelHandlerContext, evt: Any) {
-                when (evt) {
-                    is SecureChannelInitialized -> {
-                        ret.complete(evt.session)
-                        ctx.pipeline().remove(this)
-                    }
-                    is SecureChannelFailed -> {
-                        ret.completeExceptionally(evt.exception)
-                        ctx.pipeline().remove(this)
-                    }
-                }
-                ctx.fireUserEventTriggered(evt)
-            }
-        }
+        val handshakeComplete = CompletableFuture<SecureChannel.Session>()
+
         listOf(
             "PacketLenEncoder" to LengthFieldPrepender(4),
             "PacketLenDecoder" to LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0, 4, 0, 4),
-            HandshakeHandlerName to SecIoHandshake(),
-            "SecioNegotiationResultHandler" to resultHandler
+            HandshakeHandlerName to SecIoHandshake(handshakeComplete)
         ).forEach { ch.pushHandler(it.first, it.second) }
-        return ret
+        return handshakeComplete
     }
 
-    inner class SecIoHandshake : SimpleChannelInboundHandler<ByteBuf>() {
+    inner class SecIoHandshake(private val handshakeComplete: CompletableFuture<SecureChannel.Session>)
+            : SimpleChannelInboundHandler<ByteBuf>() {
         private lateinit var negotiator: SecIoNegotiator
         private var activated = false
         private lateinit var secIoCodec: SecIoCodec
@@ -91,7 +77,7 @@ class SecIoSecureChannel(val localKey: PrivKey) :
                     PeerId.fromPubKey(secIoCodec.remote.permanentPubKey),
                     secIoCodec.remote.permanentPubKey
                 )
-                ctx.fireUserEventTriggered(SecureChannelInitialized(session))
+                handshakeComplete.complete(session)
                 ctx.channel().pipeline().remove(HandshakeHandlerName)
                 ctx.fireChannelActive()
             }
@@ -102,13 +88,13 @@ class SecIoSecureChannel(val localKey: PrivKey) :
         }
 
         override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
-            ctx.fireUserEventTriggered(SecureChannelFailed(cause))
+            handshakeComplete.completeExceptionally(cause)
             log.error(cause.message)
             ctx.channel().close()
         }
 
         override fun channelUnregistered(ctx: ChannelHandlerContext) {
-            ctx.fireUserEventTriggered(SecureChannelFailed(ConnectionClosedException("Connection was closed ${ctx.channel()}")))
+            handshakeComplete.completeExceptionally(ConnectionClosedException("Connection was closed ${ctx.channel()}"))
             super.channelUnregistered(ctx)
         }
     }
