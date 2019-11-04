@@ -16,7 +16,7 @@ import java.math.BigInteger
  * Created by Anton Nashatyrev on 18.06.2019.
  */
 @Tag("secure-channel")
-class SecioHandshakeTest {
+class SecIoNegotiatorTest {
     @Test
     fun handshake() {
         val (privKey1, pubKey1) = generateKeyPair(KEY_TYPE.ECDSA)
@@ -24,8 +24,8 @@ class SecioHandshakeTest {
         var bb1: ByteBuf? = null
         var bb2: ByteBuf? = null
 
-        val hs1 = SecioHandshake({ bb -> bb1 = bb }, privKey1, PeerId.fromPubKey(pubKey2))
-        val hs2 = SecioHandshake({ bb -> bb2 = bb }, privKey2, PeerId.fromPubKey(pubKey1))
+        val hs1 = SecIoNegotiator({ bb -> bb1 = bb }, privKey1, PeerId.fromPubKey(pubKey2))
+        val hs2 = SecIoNegotiator({ bb -> bb2 = bb }, privKey2, PeerId.fromPubKey(pubKey1))
 
         hs1.start()
         hs2.start()
