@@ -4,16 +4,12 @@ import io.libp2p.core.ConnectionClosedException
 import io.libp2p.core.P2PChannel
 import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.PrivKey
-import io.libp2p.core.crypto.PubKey
 import io.libp2p.core.multistream.Mode
 import io.libp2p.core.multistream.ProtocolMatcher
 import io.libp2p.core.security.SecureChannel
 import io.libp2p.etc.REMOTE_PEER_ID
-import io.libp2p.etc.events.SecureChannelFailed
-import io.libp2p.etc.events.SecureChannelInitialized
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
-import io.netty.channel.ChannelInboundHandlerAdapter
 import io.netty.channel.SimpleChannelInboundHandler
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder
 import io.netty.handler.codec.LengthFieldPrepender
@@ -97,5 +93,3 @@ private class SecIoHandshake(
         super.channelUnregistered(ctx)
     }
 }
-
-
