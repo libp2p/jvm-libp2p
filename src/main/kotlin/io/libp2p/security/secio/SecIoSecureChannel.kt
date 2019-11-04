@@ -59,9 +59,9 @@ class SecIoSecureChannel(val localKey: PrivKey) :
     }
 
     inner class SecIoHandshake : SimpleChannelInboundHandler<ByteBuf>() {
-        private var negotiator: SecioHandshake? = null
+        private lateinit var negotiator: SecioHandshake
         private var activated = false
-        private var secIoCodec: SecIoCodec? = null
+        private lateinit var secIoCodec: SecIoCodec
 
         override fun channelActive(ctx: ChannelHandlerContext) {
             if (!activated) {
@@ -69,7 +69,7 @@ class SecIoSecureChannel(val localKey: PrivKey) :
                 val remotePeerId = ctx.channel().attr(REMOTE_PEER_ID).get()
                 negotiator =
                     SecioHandshake({ buf -> writeAndFlush(ctx, buf) }, localKey, remotePeerId)
-                negotiator!!.start()
+                negotiator.start()
             }
         }
 
@@ -77,19 +77,19 @@ class SecIoSecureChannel(val localKey: PrivKey) :
             // it seems there is no guarantee from Netty that channelActive() must be called before channelRead()
             channelActive(ctx)
 
-            val keys = negotiator!!.onNewMessage(msg)
+            val keys = negotiator.onNewMessage(msg)
 
             if (keys != null) {
                 secIoCodec = SecIoCodec(keys.first, keys.second)
                 ctx.channel().pipeline().addBefore(HandshakeHandlerName, "SecIoCodec", secIoCodec)
-                negotiator!!.onSecureChannelSetup()
+                negotiator.onSecureChannelSetup()
             }
 
-            if (negotiator!!.isComplete()) {
+            if (negotiator.isComplete()) {
                 val session = SecioSession(
-                    PeerId.fromPubKey(secIoCodec!!.local.permanentPubKey),
-                    PeerId.fromPubKey(secIoCodec!!.remote.permanentPubKey),
-                    secIoCodec!!.remote.permanentPubKey
+                    PeerId.fromPubKey(secIoCodec.local.permanentPubKey),
+                    PeerId.fromPubKey(secIoCodec.remote.permanentPubKey),
+                    secIoCodec.remote.permanentPubKey
                 )
                 ctx.fireUserEventTriggered(SecureChannelInitialized(session))
                 ctx.channel().pipeline().remove(HandshakeHandlerName)
