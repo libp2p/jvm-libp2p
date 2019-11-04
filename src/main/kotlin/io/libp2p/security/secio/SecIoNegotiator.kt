@@ -28,14 +28,8 @@ import spipe.pb.Spipe
 import java.security.SecureRandom
 
 data class SecioParams(
-    val nonce: ByteArray,
     val permanentPubKey: PubKey,
-    val ephemeralPubKey: ByteArray,
     val keys: StretchedKey,
-
-    val curveT: String,
-    val cipherT: String,
-    val hashT: String,
 
     val mac: HMac
 )
@@ -211,23 +205,13 @@ class SecIoNegotiator(
         state = State.KeysCreated
         return Pair(
             SecioParams(
-                nonce,
                 localKey.publicKey(),
-                ephPubKey!!.bytes(),
                 localKeys,
-                curve!!,
-                cipher!!,
-                hash!!,
                 hmacFactory.invoke(localKeys.macKey)
             ),
             SecioParams(
-                remotePropose!!.rand.toByteArray(),
                 remotePubKey!!,
-                remoteEphPubPoint.getEncoded(true),
                 remoteKeys,
-                curve!!,
-                cipher!!,
-                hash!!,
                 hmacFactory.invoke(remoteKeys.macKey)
             )
         )
