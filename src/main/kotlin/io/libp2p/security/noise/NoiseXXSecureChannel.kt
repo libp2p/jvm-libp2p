@@ -4,6 +4,7 @@ import com.google.protobuf.ByteString
 import com.southernstorm.noise.protocol.DHState
 import com.southernstorm.noise.protocol.HandshakeState
 import com.southernstorm.noise.protocol.Noise
+import io.libp2p.core.ConnectionClosedException
 import io.libp2p.core.P2PChannel
 import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.PrivKey
@@ -109,14 +110,9 @@ private class NoiseIoHandshake(
 
         if (handshakestate.action == HandshakeState.READ_MESSAGE) {
             log.debug("Noise handshake READ_MESSAGE")
-            try {
-                payloadLength = handshakestate.readMessage(msg, 0, msg.size, payload, 0)
-                log.trace("msg.size:" + msg.size)
-                log.trace("Read message size:$payloadLength")
-            } catch (e: Exception) {
-                handshakeFailed(ctx, e)
-                return
-            }
+            payloadLength = handshakestate.readMessage(msg, 0, msg.size, payload, 0)
+            log.trace("msg.size:" + msg.size)
+            log.trace("Read message size:$payloadLength")
         }
 
         val remotePublicKeyState: DHState = handshakestate.remotePublicKey
@@ -160,6 +156,16 @@ private class NoiseIoHandshake(
             handshakeSucceeded(ctx, secureSession)
         }
     } // channelRead0
+
+    override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
+        handshakeFailed(ctx, cause)
+        ctx.channel().close()
+    } // exceptionCaught
+
+    override fun channelUnregistered(ctx: ChannelHandlerContext) {
+        handshakeFailed(ctx, "Connection was closed ${ctx.channel()}")
+        super.channelUnregistered(ctx)
+    } // channelUnregistered
 
     /**
      * Sends the next Noise message with a payload of the identities and signatures
