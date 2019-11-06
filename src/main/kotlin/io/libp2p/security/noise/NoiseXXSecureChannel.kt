@@ -77,6 +77,14 @@ private class NoiseIoHandshake(
     private lateinit var instancePayload: ByteArray
     private var instancePayloadLength = 0
 
+
+    private var activated = false
+    private var flagRemoteVerified = false
+    private var flagRemoteVerifiedPassed = false
+    private lateinit var aliceSplit: CipherState
+    private lateinit var bobSplit: CipherState
+    private lateinit var cipherStatePair: CipherStatePair
+
     init {
         log.debug("Starting handshake")
 
@@ -86,6 +94,17 @@ private class NoiseIoHandshake(
         localNoiseState.setPrivateKey(NoiseXXSecureChannel.localStaticPrivateKey25519, 0)
         handshakestate.localKeyPair.copyFrom(localNoiseState)
         handshakestate.start()
+    }
+
+    override fun channelActive(ctx: ChannelHandlerContext) {
+        if (activated) return
+        activated = true
+
+        // even though both the alice and bob parties can have the payload ready
+        // the Noise protocol only permits alice to send a packet first
+        if (role == Role.INIT) {
+            sendNoiseStaticKeyAsPayload(ctx)
+        }
     }
 
     override fun channelRead0(ctx: ChannelHandlerContext, msg1: ByteBuf) {
@@ -131,15 +150,18 @@ private class NoiseIoHandshake(
         }
 
         // after reading messages and setting up state, write next message onto the wire
-        if (role == Role.RESP && handshakestate.action == HandshakeState.WRITE_MESSAGE) {
-            sendNoiseStaticKeyAsPayload(ctx)
-        } else if (handshakestate.action == HandshakeState.WRITE_MESSAGE) {
-            val sndmessage = ByteArray(2 * handshakestate.localKeyPair.publicKeyLength)
-            val sndmessageLength: Int
-            log.debug("Noise handshake WRITE_MESSAGE")
-            sndmessageLength = handshakestate.writeMessage(sndmessage, 0, null, 0, 0)
-            log.trace("Sent message length:$sndmessageLength")
-            ctx.writeAndFlush(sndmessage.copyOfRange(0, sndmessageLength).toByteBuf())
+        if (handshakestate.action == HandshakeState.WRITE_MESSAGE) {
+            if (role == Role.RESP) {
+                sendNoiseStaticKeyAsPayload(ctx)
+            } else {
+                val sndmessage = ByteArray(2 * handshakestate.localKeyPair.publicKeyLength)
+                val sndmessageLength = handshakestate.writeMessage(sndmessage, 0, null, 0, 0)
+
+                log.debug("Noise handshake WRITE_MESSAGE")
+                log.trace("Sent message length:$sndmessageLength")
+
+                ctx.writeAndFlush(sndmessage.copyOfRange(0, sndmessageLength).toByteBuf())
+            }
         }
 
         if (handshakestate.action == HandshakeState.SPLIT && flagRemoteVerifiedPassed) {
@@ -158,17 +180,6 @@ private class NoiseIoHandshake(
             )
 
             handshakeSucceeded(ctx, secureSession)
-        }
-    }
-
-    override fun channelRegistered(ctx: ChannelHandlerContext) {
-        if (activated) return
-        activated = true
-
-        // even though both the alice and bob parties can have the payload ready
-        // the Noise protocol only permits alice to send a packet first
-        if (role == Role.INIT) {
-            sendNoiseStaticKeyAsPayload(ctx)
         }
     }
 
@@ -244,14 +255,7 @@ private class NoiseIoHandshake(
             log.debug("Remote verification passed")
         } else {
             handshakeFailed(ctx, "Responder verification of Remote peer id has failed")
-            return
-//                ctx.fireChannelActive()
-            // throwing exception for early exit of protocol and for application to handle
         }
-    }
-
-    override fun channelActive(ctx: ChannelHandlerContext) {
-        channelRegistered(ctx)
     }
 
     private fun handshakeSucceeded(ctx: ChannelHandlerContext, session: NoiseSecureChannelSession) {
@@ -270,11 +274,4 @@ private class NoiseIoHandshake(
         handshakeComplete.completeExceptionally(cause)
         ctx.pipeline().remove(this)
     }
-
-    private var activated = false
-    private var flagRemoteVerified = false
-    private var flagRemoteVerifiedPassed = false
-    private lateinit var aliceSplit: CipherState
-    private lateinit var bobSplit: CipherState
-    private lateinit var cipherStatePair: CipherStatePair
 }
