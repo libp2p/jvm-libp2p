@@ -77,9 +77,6 @@ private class NoiseIoHandshake(
     private var instancePayload: ByteArray? = null
 
     private var activated = false
-    private lateinit var aliceSplit: CipherState
-    private lateinit var bobSplit: CipherState
-    private lateinit var cipherStatePair: CipherStatePair
 
     init {
         log.debug("Starting handshake")
@@ -153,9 +150,10 @@ private class NoiseIoHandshake(
         }
 
         if (handshakestate.action == HandshakeState.SPLIT) {
-            cipherStatePair = handshakestate.split()
-            aliceSplit = cipherStatePair.sender
-            bobSplit = cipherStatePair.receiver
+            val cipherStatePair = handshakestate.split()
+
+            val aliceSplit = cipherStatePair.sender
+            val bobSplit = cipherStatePair.receiver
             log.debug("Split complete")
 
             // put alice and bob security sessions into the context and trigger the next action
