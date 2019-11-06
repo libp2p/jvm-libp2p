@@ -125,8 +125,6 @@ private class NoiseIoHandshake(
         }
 
         val remotePublicKeyState: DHState = handshakestate.remotePublicKey
-        val remotePublicKey = ByteArray(remotePublicKeyState.publicKeyLength)
-        remotePublicKeyState.getPublicKey(remotePublicKey, 0)
 
         if (payloadLength > 0 && instancePayload == null) {
             // currently, only allow storing a single payload for verification (this should maybe be changed to a queue)
@@ -135,8 +133,8 @@ private class NoiseIoHandshake(
         }
 
         // verify the signature of the remote's noise static public key once the remote public key has been provided by the XX protocol
-        if (!Arrays.equals(remotePublicKey, ByteArray(remotePublicKeyState.publicKeyLength))) {
-            verifyPayload(ctx, instancePayload!!, remotePublicKey)
+        if (remotePublicKeyState.hasPublicKey()) {
+            verifyPayload(ctx, instancePayload!!, remotePublicKeyState)
         }
 
         // after reading messages and setting up state, write next message onto the wire
@@ -223,9 +221,12 @@ private class NoiseIoHandshake(
     private fun verifyPayload(
         ctx: ChannelHandlerContext,
         payload: ByteArray,
-        remotePublicKey: ByteArray
+        remotePublicKeyState: DHState
     ) {
         log.debug("Verifying noise static key payload")
+
+        val remotePublicKey = ByteArray(remotePublicKeyState.publicKeyLength)
+        remotePublicKeyState.getPublicKey(remotePublicKey, 0)
 
         // the self-signed remote pubkey and signature would be retrieved from the first Noise payload
         val inp = Spipe.NoiseHandshakePayload.parseFrom(payload.copyOfRange(0, payload.size))
@@ -244,7 +245,7 @@ private class NoiseIoHandshake(
         } else {
             handshakeFailed(ctx, "Responder verification of Remote peer id has failed")
         }
-    }
+    } // verifyPayload
 
     private fun handshakeSucceeded(ctx: ChannelHandlerContext, session: NoiseSecureChannelSession) {
         handshakeComplete.complete(session)
