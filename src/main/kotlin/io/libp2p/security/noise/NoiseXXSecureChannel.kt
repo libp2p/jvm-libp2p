@@ -106,6 +106,7 @@ private class NoiseIoHandshake(
         // capture any payloads
         val payload = ByteArray(msg.size)
         var payloadLength = 0
+
         if (handshakestate.action == HandshakeState.READ_MESSAGE) {
             log.debug("Noise handshake READ_MESSAGE")
             try {
@@ -136,13 +137,7 @@ private class NoiseIoHandshake(
             if (role == Role.RESP) {
                 sendNoiseStaticKeyAsPayload(ctx)
             } else {
-                val sndmessage = ByteArray(2 * handshakestate.localKeyPair.publicKeyLength)
-                val sndmessageLength = handshakestate.writeMessage(sndmessage, 0, null, 0, 0)
-
-                log.debug("Noise handshake WRITE_MESSAGE")
-                log.trace("Sent message length:$sndmessageLength")
-
-                ctx.writeAndFlush(sndmessage.copyOfRange(0, sndmessageLength).toByteBuf())
+                sendNoiseMessage(ctx)
             }
         }
 
@@ -164,7 +159,7 @@ private class NoiseIoHandshake(
 
             handshakeSucceeded(ctx, secureSession)
         }
-    }
+    } // channelRead0
 
     /**
      * Sends the next Noise message with a payload of the identities and signatures
@@ -211,7 +206,17 @@ private class NoiseIoHandshake(
         log.trace("Sent message size:$msgLength")
         // put the message frame which also contains the payload onto the wire
         ctx.writeAndFlush(msgBuffer.copyOfRange(0, msgLength).toByteBuf())
-    }
+    } // sendNoiseStaticKeyAsPayload
+
+    private fun sendNoiseMessage(ctx: ChannelHandlerContext) {
+        val sndmessage = ByteArray(2 * handshakestate.localKeyPair.publicKeyLength)
+        val sndmessageLength = handshakestate.writeMessage(sndmessage, 0, null, 0, 0)
+
+        log.debug("Noise handshake WRITE_MESSAGE")
+        log.trace("Sent message length:$sndmessageLength")
+
+        ctx.writeAndFlush(sndmessage.copyOfRange(0, sndmessageLength).toByteBuf())
+    } // sendNoiseMessage
 
     private fun verifyPayload(
         ctx: ChannelHandlerContext,
