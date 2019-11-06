@@ -4,7 +4,6 @@ import com.google.protobuf.ByteString
 import com.southernstorm.noise.protocol.DHState
 import com.southernstorm.noise.protocol.HandshakeState
 import com.southernstorm.noise.protocol.Noise
-import io.libp2p.core.ConnectionClosedException
 import io.libp2p.core.P2PChannel
 import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.PrivKey
@@ -106,23 +105,23 @@ private class NoiseIoHandshake(
 
         // we always read from the wire when it's the next action to take
         // capture any payloads
-        val payload = ByteArray(msg.size)
-        var payloadLength = 0
-
         if (handshakestate.action == HandshakeState.READ_MESSAGE) {
             log.debug("Noise handshake READ_MESSAGE")
-            payloadLength = handshakestate.readMessage(msg, 0, msg.size, payload, 0)
+
+            val payload = ByteArray(msg.size)
+            val payloadLength = handshakestate.readMessage(msg, 0, msg.size, payload, 0)
+
             log.trace("msg.size:" + msg.size)
             log.trace("Read message size:$payloadLength")
+
+            if (instancePayload == null) {
+                // currently, only allow storing a single payload for verification (this should maybe be changed to a queue)
+                instancePayload = ByteArray(payloadLength)
+                payload.copyInto(instancePayload!!, 0, 0, payloadLength)
+            }
         }
 
         val remotePublicKeyState: DHState = handshakestate.remotePublicKey
-
-        if (payloadLength > 0 && instancePayload == null) {
-            // currently, only allow storing a single payload for verification (this should maybe be changed to a queue)
-            instancePayload = ByteArray(payloadLength)
-            payload.copyInto(instancePayload!!, 0, 0, payloadLength)
-        }
 
         // verify the signature of the remote's noise static public key once the remote public key has been provided by the XX protocol
         if (remotePublicKeyState.hasPublicKey()) {
