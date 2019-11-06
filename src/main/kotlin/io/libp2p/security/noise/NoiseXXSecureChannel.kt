@@ -22,7 +22,6 @@ import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.SimpleChannelInboundHandler
 import org.apache.logging.log4j.LogManager
 import spipe.pb.Spipe
-import java.util.Arrays
 import java.util.concurrent.CompletableFuture
 
 private enum class Role(val intVal: Int) { INIT(HandshakeState.INITIATOR), RESP(HandshakeState.RESPONDER) }
@@ -230,28 +229,27 @@ private class NoiseIoHandshake(
         val remotePublicKey = ByteArray(remotePublicKeyState.publicKeyLength)
         remotePublicKeyState.getPublicKey(remotePublicKey, 0)
 
-        val (remotePubKeyFromMessage, remoteSignatureFromMessage) = unpackKeyAndSignature(payload)
+        val (pubKeyFromMessage, signatureFromMessage) = unpackKeyAndSignature(payload)
 
-        val flagRemoteVerifiedPassed = remotePubKeyFromMessage.verify(
+        val verified = pubKeyFromMessage.verify(
             "noise-libp2p-static-key:".toByteArray() + remotePublicKey,
-            remoteSignatureFromMessage
+            signatureFromMessage
         )
 
-        if (flagRemoteVerifiedPassed) {
-            log.debug("Remote verification passed")
-        } else {
+        log.debug("Remote verification is $verified")
+
+        if (!verified) {
             handshakeFailed(ctx, "Responder verification of Remote peer id has failed")
         }
     } // verifyPayload
 
     private fun unpackKeyAndSignature(payload: ByteArray) : Pair<PubKey, ByteArray> {
-        val inp = Spipe.NoiseHandshakePayload.parseFrom(payload.copyOfRange(0, payload.size))
-        // validate the signature
-        val data: ByteArray = inp.libp2PKey.toByteArray()
-        val remotePubKeyFromMessage = unmarshalPublicKey(data)
-        val remoteSignatureFromMessage = inp.noiseStaticKeySignature.toByteArray()
+        val noiseMsg = Spipe.NoiseHandshakePayload.parseFrom(payload)
 
-        return Pair(remotePubKeyFromMessage, remoteSignatureFromMessage)
+        val publicKey = unmarshalPublicKey(noiseMsg.libp2PKey.toByteArray())
+        val signature = noiseMsg.noiseStaticKeySignature.toByteArray()
+
+        return Pair(publicKey, signature)
     } // unpackKeyAndSignature
 
     private fun handshakeSucceeded(ctx: ChannelHandlerContext, session: NoiseSecureChannelSession) {
