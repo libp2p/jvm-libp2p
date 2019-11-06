@@ -9,6 +9,7 @@ import com.southernstorm.noise.protocol.Noise
 import io.libp2p.core.P2PChannel
 import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.PrivKey
+import io.libp2p.core.crypto.PubKey
 import io.libp2p.core.crypto.marshalPublicKey
 import io.libp2p.core.crypto.unmarshalPublicKey
 import io.libp2p.core.multistream.Mode
@@ -228,12 +229,7 @@ private class NoiseIoHandshake(
         val remotePublicKey = ByteArray(remotePublicKeyState.publicKeyLength)
         remotePublicKeyState.getPublicKey(remotePublicKey, 0)
 
-        // the self-signed remote pubkey and signature would be retrieved from the first Noise payload
-        val inp = Spipe.NoiseHandshakePayload.parseFrom(payload.copyOfRange(0, payload.size))
-        // validate the signature
-        val data: ByteArray = inp.libp2PKey.toByteArray()
-        val remotePubKeyFromMessage = unmarshalPublicKey(data)
-        val remoteSignatureFromMessage = inp.noiseStaticKeySignature.toByteArray()
+        val (remotePubKeyFromMessage, remoteSignatureFromMessage) = unpackKeyAndSignature(payload)
 
         val flagRemoteVerifiedPassed = remotePubKeyFromMessage.verify(
             "noise-libp2p-static-key:".toByteArray() + remotePublicKey,
@@ -246,6 +242,16 @@ private class NoiseIoHandshake(
             handshakeFailed(ctx, "Responder verification of Remote peer id has failed")
         }
     } // verifyPayload
+
+    private fun unpackKeyAndSignature(payload: ByteArray) : Pair<PubKey, ByteArray> {
+        val inp = Spipe.NoiseHandshakePayload.parseFrom(payload.copyOfRange(0, payload.size))
+        // validate the signature
+        val data: ByteArray = inp.libp2PKey.toByteArray()
+        val remotePubKeyFromMessage = unmarshalPublicKey(data)
+        val remoteSignatureFromMessage = inp.noiseStaticKeySignature.toByteArray()
+
+        return Pair(remotePubKeyFromMessage, remoteSignatureFromMessage)
+    } // unpackKeyAndSignature
 
     private fun handshakeSucceeded(ctx: ChannelHandlerContext, session: NoiseSecureChannelSession) {
         handshakeComplete.complete(session)
