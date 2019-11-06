@@ -31,7 +31,7 @@ async function pingRemotePeer(address) {
   console.log(`pinging remote peer at ${address}`)
   for (let i = 0; i != 5; ++i) {
     const time = await ping(pingNode, remotePeerInfo)
-    console.log(`ping ${i+1} in ${time}ms`)
+    console.log(`Ping ${i+1} in ${time}ms`)
   }
 
   pingNode.stop()

@@ -43,7 +43,7 @@ func main() {
 		for i := 1; i <= 5; i++ {
 			fmt.Printf("Ping %v", i)
 			pingResp := <-ch
-			fmt.Printf(" - %v\n", pingResp.RTT)
+			fmt.Printf(" in %v\n", pingResp.RTT)
 		}
 	}
 
