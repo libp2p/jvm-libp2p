@@ -74,9 +74,7 @@ private class NoiseIoHandshake(
     private var localNoiseState: DHState
     private var sentNoiseKeyPayload = false
 
-    private lateinit var instancePayload: ByteArray
-    private var instancePayloadLength = 0
-
+    private var instancePayload: ByteArray? = null
 
     private var activated = false
     private lateinit var aliceSplit: CipherState
@@ -130,16 +128,15 @@ private class NoiseIoHandshake(
         val remotePublicKey = ByteArray(remotePublicKeyState.publicKeyLength)
         remotePublicKeyState.getPublicKey(remotePublicKey, 0)
 
-        if (payloadLength > 0 && instancePayloadLength == 0) {
+        if (payloadLength > 0 && instancePayload == null) {
             // currently, only allow storing a single payload for verification (this should maybe be changed to a queue)
             instancePayload = ByteArray(payloadLength)
-            payload.copyInto(instancePayload, 0, 0, payloadLength)
-            instancePayloadLength = payloadLength
+            payload.copyInto(instancePayload!!, 0, 0, payloadLength)
         }
 
         // verify the signature of the remote's noise static public key once the remote public key has been provided by the XX protocol
         if (!Arrays.equals(remotePublicKey, ByteArray(remotePublicKeyState.publicKeyLength))) {
-            verifyPayload(ctx, instancePayload, instancePayloadLength, remotePublicKey)
+            verifyPayload(ctx, instancePayload!!, remotePublicKey)
         }
 
         // after reading messages and setting up state, write next message onto the wire
@@ -226,13 +223,12 @@ private class NoiseIoHandshake(
     private fun verifyPayload(
         ctx: ChannelHandlerContext,
         payload: ByteArray,
-        payloadLength: Int,
         remotePublicKey: ByteArray
     ) {
         log.debug("Verifying noise static key payload")
 
         // the self-signed remote pubkey and signature would be retrieved from the first Noise payload
-        val inp = Spipe.NoiseHandshakePayload.parseFrom(payload.copyOfRange(0, payloadLength))
+        val inp = Spipe.NoiseHandshakePayload.parseFrom(payload.copyOfRange(0, payload.size))
         // validate the signature
         val data: ByteArray = inp.libp2PKey.toByteArray()
         val remotePubKeyFromMessage = unmarshalPublicKey(data)
