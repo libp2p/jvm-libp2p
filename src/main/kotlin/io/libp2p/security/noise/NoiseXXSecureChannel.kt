@@ -1,8 +1,6 @@
 package io.libp2p.security.noise
 
 import com.google.protobuf.ByteString
-import com.southernstorm.noise.protocol.CipherState
-import com.southernstorm.noise.protocol.CipherStatePair
 import com.southernstorm.noise.protocol.DHState
 import com.southernstorm.noise.protocol.HandshakeState
 import com.southernstorm.noise.protocol.Noise
@@ -61,7 +59,6 @@ class NoiseXXSecureChannel(private val localKey: PrivKey) :
 
         return handshakeComplete
     }
-
 }
 
 private class NoiseIoHandshake(
@@ -240,7 +237,7 @@ private class NoiseIoHandshake(
         }
     } // verifyPayload
 
-    private fun unpackKeyAndSignature(payload: ByteArray) : Pair<PubKey, ByteArray> {
+    private fun unpackKeyAndSignature(payload: ByteArray): Pair<PubKey, ByteArray> {
         val noiseMsg = Spipe.NoiseHandshakePayload.parseFrom(payload)
 
         val publicKey = unmarshalPublicKey(noiseMsg.libp2PKey.toByteArray())
