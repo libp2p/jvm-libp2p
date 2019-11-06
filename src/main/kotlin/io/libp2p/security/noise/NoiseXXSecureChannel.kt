@@ -37,15 +37,13 @@ class NoiseXXSecureChannel(private val localKey: PrivKey) :
         var localStaticPrivateKey25519: ByteArray = ByteArray(32).also { Noise.random(it) }
     }
 
-    private val handshakeHandlerName = "NoiseHandshake"
-
     override val announce = Companion.announce
     override val matcher = ProtocolMatcher(Mode.PREFIX, name = "/noise/$protocolName/0.1.0")
 
     // simplified constructor
     fun initChannel(ch: P2PChannel): CompletableFuture<SecureChannel.Session> {
         return initChannel(ch, "")
-    }
+    } // initChannel
 
     override fun initChannel(
         ch: P2PChannel,
@@ -54,26 +52,24 @@ class NoiseXXSecureChannel(private val localKey: PrivKey) :
         val handshakeComplete = CompletableFuture<SecureChannel.Session>()
 
         ch.pushHandler(
-            handshakeHandlerName,
             NoiseIoHandshake(localKey, handshakeComplete, if (ch.isInitiator) Role.INIT else Role.RESP)
         )
 
         return handshakeComplete
-    }
-}
+    } // initChannel
+} // class NoiseXXSecureChannel
 
 private class NoiseIoHandshake(
     private val localKey: PrivKey,
     private val handshakeComplete: CompletableFuture<SecureChannel.Session>,
     private val role: Role
 ) : SimpleChannelInboundHandler<ByteBuf>() {
-    private val handshakestate = HandshakeState(NoiseXXSecureChannel.protocolName, role.intVal)
+    private val handshakeState = HandshakeState(NoiseXXSecureChannel.protocolName, role.intVal)
 
-    private var localNoiseState: DHState
+    private val localNoiseState = Noise.createDH("25519")
+
     private var sentNoiseKeyPayload = false
-
     private var instancePayload: ByteArray? = null
-
     private var activated = false
 
     init {
@@ -81,11 +77,11 @@ private class NoiseIoHandshake(
 
         // configure the localDHState with the private
         // which will automatically generate the corresponding public key
-        localNoiseState = Noise.createDH("25519")
         localNoiseState.setPrivateKey(NoiseXXSecureChannel.localStaticPrivateKey25519, 0)
-        handshakestate.localKeyPair.copyFrom(localNoiseState)
-        handshakestate.start()
-    }
+
+        handshakeState.localKeyPair.copyFrom(localNoiseState)
+        handshakeState.start()
+    } // init
 
     override fun channelActive(ctx: ChannelHandlerContext) {
         if (activated) return
@@ -96,26 +92,27 @@ private class NoiseIoHandshake(
         if (role == Role.INIT) {
             sendNoiseStaticKeyAsPayload(ctx)
         }
-    }
+    } // channelActive
 
     override fun channelRead0(ctx: ChannelHandlerContext, msg: ByteBuf) {
         channelActive(ctx)
 
         // we always read from the wire when it's the next action to take
         // capture any payloads
-        if (handshakestate.action == HandshakeState.READ_MESSAGE) {
+        if (handshakeState.action == HandshakeState.READ_MESSAGE) {
             readNoiseMessage(msg.toByteArray())
         }
 
-        val remotePublicKeyState: DHState = handshakestate.remotePublicKey
-
-        // verify the signature of the remote's noise static public key once the remote public key has been provided by the XX protocol
-        if (remotePublicKeyState.hasPublicKey()) {
-            verifyPayload(ctx, instancePayload!!, remotePublicKeyState)
+        // verify the signature of the remote's noise static public key once
+        // the remote public key has been provided by the XX protocol
+        with(handshakeState.remotePublicKey) {
+            if (hasPublicKey()) {
+                verifyPayload(ctx, instancePayload!!, this)
+            }
         }
 
         // after reading messages and setting up state, write next message onto the wire
-        if (handshakestate.action == HandshakeState.WRITE_MESSAGE) {
+        if (handshakeState.action == HandshakeState.WRITE_MESSAGE) {
             if (role == Role.RESP) {
                 sendNoiseStaticKeyAsPayload(ctx)
             } else {
@@ -123,7 +120,7 @@ private class NoiseIoHandshake(
             }
         }
 
-        if (handshakestate.action == HandshakeState.SPLIT) {
+        if (handshakeState.action == HandshakeState.SPLIT) {
             splitHandshake(ctx)
         }
     } // channelRead0
@@ -142,7 +139,7 @@ private class NoiseIoHandshake(
         log.debug("Noise handshake READ_MESSAGE")
 
         val payload = ByteArray(msg.size)
-        val payloadLength = handshakestate.readMessage(msg, 0, msg.size, payload, 0)
+        val payloadLength = handshakeState.readMessage(msg, 0, msg.size, payload, 0)
 
         log.trace("msg.size:" + msg.size)
         log.trace("Read message size:$payloadLength")
@@ -170,10 +167,8 @@ private class NoiseIoHandshake(
         val identityPublicKey: ByteArray = marshalPublicKey(localKey.publicKey())
 
         // get noise static public key signature
-        val localNoisePubKey = ByteArray(localNoiseState.publicKeyLength)
-        localNoiseState.getPublicKey(localNoisePubKey, 0)
         val localNoiseStaticKeySignature =
-            localKey.sign("noise-libp2p-static-key:".toByteArray() + localNoisePubKey)
+            localKey.sign(noiseSignaturePhrase(localNoiseState))
 
         // generate an appropriate protobuf element
         val noiseHandshakePayload =
@@ -183,32 +178,24 @@ private class NoiseIoHandshake(
                 .setLibp2PData(ByteString.EMPTY)
                 .setLibp2PDataSignature(ByteString.EMPTY)
                 .build()
+                .toByteArray()
 
-        // create the message with the signed payload - verification happens once the noise static key is shared
-        val msgBuffer =
-            ByteArray(noiseHandshakePayload.toByteArray().size + (2 * (handshakestate.localKeyPair.publicKeyLength + 16))) // mac length is 16
-        val msgLength = handshakestate.writeMessage(
-            msgBuffer,
-            0,
-            noiseHandshakePayload.toByteArray(),
-            0,
-            noiseHandshakePayload.toByteArray().size
-        )
+        // create the message with the signed payload -
+        // verification happens once the noise static key is shared
         log.debug("Sending signed Noise static public key as payload")
-        log.debug("Noise handshake WRITE_MESSAGE")
-        log.trace("Sent message size:$msgLength")
-        // put the message frame which also contains the payload onto the wire
-        ctx.writeAndFlush(msgBuffer.copyOfRange(0, msgLength).toByteBuf())
+        sendNoiseMessage(ctx, noiseHandshakePayload)
     } // sendNoiseStaticKeyAsPayload
 
-    private fun sendNoiseMessage(ctx: ChannelHandlerContext) {
-        val sndmessage = ByteArray(2 * handshakestate.localKeyPair.publicKeyLength)
-        val sndmessageLength = handshakestate.writeMessage(sndmessage, 0, null, 0, 0)
+    private fun sendNoiseMessage(ctx: ChannelHandlerContext, msg: ByteArray? = null) {
+        val msgLength = msg?.size ?: 0
+
+        val outputBuffer = ByteArray(msgLength + (2 * (handshakeState.localKeyPair.publicKeyLength + 16))) // 16 is MAC length
+        val outputLength = handshakeState.writeMessage(outputBuffer, 0, msg, 0, msgLength)
 
         log.debug("Noise handshake WRITE_MESSAGE")
-        log.trace("Sent message length:$sndmessageLength")
+        log.trace("Sent message length:$outputLength")
 
-        ctx.writeAndFlush(sndmessage.copyOfRange(0, sndmessageLength).toByteBuf())
+        ctx.writeAndFlush(outputBuffer.copyOfRange(0, outputLength).toByteBuf())
     } // sendNoiseMessage
 
     private fun verifyPayload(
@@ -218,13 +205,10 @@ private class NoiseIoHandshake(
     ) {
         log.debug("Verifying noise static key payload")
 
-        val remotePublicKey = ByteArray(remotePublicKeyState.publicKeyLength)
-        remotePublicKeyState.getPublicKey(remotePublicKey, 0)
-
         val (pubKeyFromMessage, signatureFromMessage) = unpackKeyAndSignature(payload)
 
         val verified = pubKeyFromMessage.verify(
-            "noise-libp2p-static-key:".toByteArray() + remotePublicKey,
+            noiseSignaturePhrase(remotePublicKeyState),
             signatureFromMessage
         )
 
@@ -245,7 +229,7 @@ private class NoiseIoHandshake(
     } // unpackKeyAndSignature
 
     private fun splitHandshake(ctx: ChannelHandlerContext) {
-        val cipherStatePair = handshakestate.split()
+        val cipherStatePair = handshakeState.split()
 
         val aliceSplit = cipherStatePair.sender
         val bobSplit = cipherStatePair.receiver
@@ -279,4 +263,14 @@ private class NoiseIoHandshake(
         handshakeComplete.completeExceptionally(cause)
         ctx.pipeline().remove(this)
     }
-}
+} // class NoiseIoHandshake
+
+private fun noiseSignaturePhrase(dhState: DHState) =
+    "noise-libp2p-static-key:".toByteArray() + dhState.publicKey
+
+private val DHState.publicKey: ByteArray
+    get() {
+        val pubKey = ByteArray(publicKeyLength)
+        getPublicKey(pubKey, 0)
+        return pubKey
+    }
