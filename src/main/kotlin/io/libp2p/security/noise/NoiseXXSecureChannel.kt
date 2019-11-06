@@ -79,8 +79,6 @@ private class NoiseIoHandshake(
 
 
     private var activated = false
-    private var flagRemoteVerified = false
-    private var flagRemoteVerifiedPassed = false
     private lateinit var aliceSplit: CipherState
     private lateinit var bobSplit: CipherState
     private lateinit var cipherStatePair: CipherStatePair
@@ -111,11 +109,6 @@ private class NoiseIoHandshake(
         val msg = msg1.toByteArray()
 
         channelActive(ctx)
-
-        if (role == Role.RESP && flagRemoteVerified && !flagRemoteVerifiedPassed) {
-            handshakeFailed(ctx, "Responder verification of Remote peer id has failed")
-            return
-        }
 
         // we always read from the wire when it's the next action to take
         // capture any payloads
@@ -164,7 +157,7 @@ private class NoiseIoHandshake(
             }
         }
 
-        if (handshakestate.action == HandshakeState.SPLIT && flagRemoteVerifiedPassed) {
+        if (handshakestate.action == HandshakeState.SPLIT) {
             cipherStatePair = handshakestate.split()
             aliceSplit = cipherStatePair.sender
             bobSplit = cipherStatePair.receiver
@@ -237,7 +230,6 @@ private class NoiseIoHandshake(
         remotePublicKey: ByteArray
     ) {
         log.debug("Verifying noise static key payload")
-        flagRemoteVerified = true
 
         // the self-signed remote pubkey and signature would be retrieved from the first Noise payload
         val inp = Spipe.NoiseHandshakePayload.parseFrom(payload.copyOfRange(0, payloadLength))
@@ -246,7 +238,7 @@ private class NoiseIoHandshake(
         val remotePubKeyFromMessage = unmarshalPublicKey(data)
         val remoteSignatureFromMessage = inp.noiseStaticKeySignature.toByteArray()
 
-        flagRemoteVerifiedPassed = remotePubKeyFromMessage.verify(
+        val flagRemoteVerifiedPassed = remotePubKeyFromMessage.verify(
             "noise-libp2p-static-key:".toByteArray() + remotePublicKey,
             remoteSignatureFromMessage
         )
