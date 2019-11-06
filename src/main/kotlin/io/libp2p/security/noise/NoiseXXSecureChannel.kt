@@ -97,27 +97,13 @@ private class NoiseIoHandshake(
         }
     }
 
-    override fun channelRead0(ctx: ChannelHandlerContext, msg1: ByteBuf) {
-        val msg = msg1.toByteArray()
-
+    override fun channelRead0(ctx: ChannelHandlerContext, msg: ByteBuf) {
         channelActive(ctx)
 
         // we always read from the wire when it's the next action to take
         // capture any payloads
         if (handshakestate.action == HandshakeState.READ_MESSAGE) {
-            log.debug("Noise handshake READ_MESSAGE")
-
-            val payload = ByteArray(msg.size)
-            val payloadLength = handshakestate.readMessage(msg, 0, msg.size, payload, 0)
-
-            log.trace("msg.size:" + msg.size)
-            log.trace("Read message size:$payloadLength")
-
-            if (instancePayload == null) {
-                // currently, only allow storing a single payload for verification (this should maybe be changed to a queue)
-                instancePayload = ByteArray(payloadLength)
-                payload.copyInto(instancePayload!!, 0, 0, payloadLength)
-            }
+            readNoiseMessage(msg.toByteArray())
         }
 
         val remotePublicKeyState: DHState = handshakestate.remotePublicKey
@@ -150,6 +136,22 @@ private class NoiseIoHandshake(
         handshakeFailed(ctx, "Connection was closed ${ctx.channel()}")
         super.channelUnregistered(ctx)
     } // channelUnregistered
+
+    private fun readNoiseMessage(msg: ByteArray) {
+        log.debug("Noise handshake READ_MESSAGE")
+
+        val payload = ByteArray(msg.size)
+        val payloadLength = handshakestate.readMessage(msg, 0, msg.size, payload, 0)
+
+        log.trace("msg.size:" + msg.size)
+        log.trace("Read message size:$payloadLength")
+
+        if (instancePayload == null) {
+            // currently, only allow storing a single payload for verification (this should maybe be changed to a queue)
+            instancePayload = ByteArray(payloadLength)
+            payload.copyInto(instancePayload!!, 0, 0, payloadLength)
+        }
+    } // readNoiseMessage
 
     /**
      * Sends the next Noise message with a payload of the identities and signatures
