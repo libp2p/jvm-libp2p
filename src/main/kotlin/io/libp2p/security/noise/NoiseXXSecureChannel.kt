@@ -138,22 +138,7 @@ private class NoiseIoHandshake(
         }
 
         if (handshakestate.action == HandshakeState.SPLIT) {
-            val cipherStatePair = handshakestate.split()
-
-            val aliceSplit = cipherStatePair.sender
-            val bobSplit = cipherStatePair.receiver
-            log.debug("Split complete")
-
-            // put alice and bob security sessions into the context and trigger the next action
-            val secureSession = NoiseSecureChannelSession(
-                PeerId.fromPubKey(localKey.publicKey()),
-                PeerId.random(),
-                localKey.publicKey(),
-                aliceSplit,
-                bobSplit
-            )
-
-            handshakeSucceeded(ctx, secureSession)
+            splitHandshake(ctx)
         }
     } // channelRead0
 
@@ -256,6 +241,25 @@ private class NoiseIoHandshake(
 
         return Pair(publicKey, signature)
     } // unpackKeyAndSignature
+
+    private fun splitHandshake(ctx: ChannelHandlerContext) {
+        val cipherStatePair = handshakestate.split()
+
+        val aliceSplit = cipherStatePair.sender
+        val bobSplit = cipherStatePair.receiver
+        log.debug("Split complete")
+
+        // put alice and bob security sessions into the context and trigger the next action
+        val secureSession = NoiseSecureChannelSession(
+            PeerId.fromPubKey(localKey.publicKey()),
+            PeerId.random(),
+            localKey.publicKey(),
+            aliceSplit,
+            bobSplit
+        )
+
+        handshakeSucceeded(ctx, secureSession)
+    } // splitHandshake
 
     private fun handshakeSucceeded(ctx: ChannelHandlerContext, session: NoiseSecureChannelSession) {
         handshakeComplete.complete(session)
