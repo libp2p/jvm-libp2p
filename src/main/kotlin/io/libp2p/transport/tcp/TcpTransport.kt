@@ -10,6 +10,7 @@ import io.libp2p.core.multiformats.Protocol.DNSADDR
 import io.libp2p.core.multiformats.Protocol.IP4
 import io.libp2p.core.multiformats.Protocol.IP6
 import io.libp2p.core.multiformats.Protocol.TCP
+import io.libp2p.core.multiformats.Protocol.WS
 import io.libp2p.core.transport.Transport
 import io.libp2p.etc.CONNECTION
 import io.libp2p.etc.REMOTE_PEER_ID
@@ -72,7 +73,9 @@ class TcpTransport(
 
     // Checks if this transport can handle this multiaddr. It should return true for multiaddrs containing `tcp` atoms.
     override fun handles(addr: Multiaddr): Boolean {
-        return addr.getComponent(TCP) != null
+        return (addr.has(IP4) || addr.has(IP6) || addr.has(DNSADDR)) &&
+                addr.has(TCP) &&
+                !addr.has(WS)
     }
 
     // Closes this transport entirely, aborting all ongoing connections and shutting down any listeners.
