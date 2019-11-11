@@ -15,6 +15,7 @@ import io.libp2p.core.multistream.ProtocolMatcher
 import io.libp2p.core.security.SecureChannel
 import io.libp2p.etc.types.toByteArray
 import io.libp2p.etc.types.toByteBuf
+import io.libp2p.security.InvalidRemotePubKey
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.SimpleChannelInboundHandler
@@ -215,7 +216,7 @@ private class NoiseIoHandshake(
         log.debug("Remote verification is $verified")
 
         if (!verified) {
-            handshakeFailed(ctx, "Responder verification of Remote peer id has failed")
+            handshakeFailed(ctx, InvalidRemotePubKey())
         }
     } // verifyPayload
 

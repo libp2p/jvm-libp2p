@@ -2,6 +2,7 @@ package io.libp2p.security.secio
 
 import io.libp2p.etc.types.toByteArray
 import io.libp2p.etc.types.toByteBuf
+import io.libp2p.security.SecureChannelError
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 import io.netty.channel.ChannelHandlerContext
@@ -56,7 +57,7 @@ class SecIoCodec(val local: SecioParams, val remote: SecioParams) : MessageToMes
 
     override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
         log.error(cause.message)
-        if (cause is SecioError) {
+        if (cause is SecureChannelError) {
             ctx.channel().close()
         }
     } // exceptionCaught

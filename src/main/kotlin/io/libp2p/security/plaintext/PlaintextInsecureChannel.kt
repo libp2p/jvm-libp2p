@@ -12,8 +12,8 @@ import io.libp2p.core.multistream.Mode
 import io.libp2p.core.multistream.ProtocolMatcher
 import io.libp2p.core.security.SecureChannel
 import io.libp2p.etc.types.toProtobuf
-import io.libp2p.security.secio.InvalidInitialPacket
-import io.libp2p.security.secio.InvalidRemotePubKey
+import io.libp2p.security.InvalidInitialPacket
+import io.libp2p.security.InvalidRemotePubKey
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 import io.netty.channel.ChannelHandlerContext
