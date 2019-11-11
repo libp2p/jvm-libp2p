@@ -2,6 +2,7 @@ package io.libp2p.transport.ws
 
 import io.libp2p.core.Connection
 import io.libp2p.core.ConnectionHandler
+import io.libp2p.core.Libp2pException
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multiformats.Protocol
 import io.libp2p.core.transport.Transport
@@ -11,6 +12,8 @@ import java.util.concurrent.CompletableFuture
 class WsTransport(
     val upgrader: ConnectionUpgrader
 ) : Transport {
+    private var closed = false
+
     override fun initialize() {
     }
 
@@ -21,10 +24,14 @@ class WsTransport(
     }
 
     override fun close(): CompletableFuture<Unit> {
-        TODO("not implemented")
+        closed = true
+
+        return CompletableFuture.completedFuture(null)
     }
 
     override fun listen(addr: Multiaddr, connHandler: ConnectionHandler): CompletableFuture<Unit> {
+        if (closed) throw Libp2pException("Transport is closed")
+
         TODO("not implemented")
     }
 
@@ -33,6 +40,8 @@ class WsTransport(
     }
 
     override fun dial(addr: Multiaddr, connHandler: ConnectionHandler): CompletableFuture<Connection> {
+        if (closed) throw Libp2pException("Transport is closed")
+
         TODO("not implemented")
     }
 }

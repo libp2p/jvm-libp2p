@@ -1,11 +1,17 @@
 package io.libp2p.transport.tcp
 
+import io.libp2p.core.Connection
+import io.libp2p.core.ConnectionHandler
+import io.libp2p.core.Libp2pException
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.transport.ConnectionUpgrader
 import io.libp2p.transport.ws.WsTransport
+import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Tag
+import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
+import java.util.concurrent.TimeUnit
 
 @Tag("transport")
 class WsTransportTest {
@@ -32,6 +38,9 @@ class WsTransportTest {
     }
 
     private val upgrader = ConnectionUpgrader(emptyList(), emptyList())
+    private val nullConnHandler = object : ConnectionHandler {
+        override fun handleConnection(conn: Connection) { }
+    }
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("validMultiaddrs")
@@ -46,4 +55,32 @@ class WsTransportTest {
         val ws = WsTransport(upgrader)
         assert(!ws.handles(addr))
     }
-}
+
+    @Test
+    fun cannotListenOnClosedTransport() {
+        val ws = WsTransport(upgrader)
+        ws.close().get(5, TimeUnit.SECONDS)
+
+        Assertions.assertThrows(Libp2pException::class.java) {
+            ws.listen(
+                Multiaddr("/ip4/0.0.0.0/tcp/20000/ws"),
+                nullConnHandler
+            )
+                .get(5, TimeUnit.SECONDS)
+        }
+    } // cannotListenOnClosedTransport
+
+    @Test
+    fun cannotDialOnClosedTransport() {
+        val ws = WsTransport(upgrader)
+        ws.close().get(5, TimeUnit.SECONDS)
+
+        Assertions.assertThrows(Libp2pException::class.java) {
+            ws.dial(
+                Multiaddr("/ip4/127.0.0.1/tcp/20000/ws"),
+                nullConnHandler
+            )
+                .get(5, TimeUnit.SECONDS)
+        }
+    } // cannotDialOnClosedTransport
+} // class WsTransportTest
