@@ -12,11 +12,12 @@ class WsTransport(
     val upgrader: ConnectionUpgrader
 ) : Transport {
     override fun initialize() {
-        TODO("not implemented")
     }
 
     override fun handles(addr: Multiaddr): Boolean {
-        TODO("not implemented")
+        return (addr.has(Protocol.IP4) || addr.has(Protocol.IP6) || addr.has(Protocol.DNSADDR)) &&
+                addr.has(Protocol.TCP) &&
+                addr.has(Protocol.WS)
     }
 
     override fun close(): CompletableFuture<Unit> {
