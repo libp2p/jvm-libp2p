@@ -6,12 +6,15 @@ import io.libp2p.core.Libp2pException
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.transport.ConnectionUpgrader
 import io.libp2p.transport.ws.WsTransport
+import org.apache.logging.log4j.LogManager
 import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.TimeUnit.SECONDS
 
 @Tag("transport")
 class WsTransportTest {
@@ -41,6 +44,7 @@ class WsTransportTest {
     private val nullConnHandler = object : ConnectionHandler {
         override fun handleConnection(conn: Connection) { }
     }
+    private val logger = LogManager.getLogger("test")
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("validMultiaddrs")
@@ -59,28 +63,48 @@ class WsTransportTest {
     @Test
     fun cannotListenOnClosedTransport() {
         val ws = WsTransport(upgrader)
-        ws.close().get(5, TimeUnit.SECONDS)
+        ws.close().get(5, SECONDS)
 
         Assertions.assertThrows(Libp2pException::class.java) {
             ws.listen(
                 Multiaddr("/ip4/0.0.0.0/tcp/20000/ws"),
                 nullConnHandler
             )
-                .get(5, TimeUnit.SECONDS)
+                .get(5, SECONDS)
         }
     } // cannotListenOnClosedTransport
 
     @Test
     fun cannotDialOnClosedTransport() {
         val ws = WsTransport(upgrader)
-        ws.close().get(5, TimeUnit.SECONDS)
+        ws.close().get(5, SECONDS)
 
         Assertions.assertThrows(Libp2pException::class.java) {
             ws.dial(
                 Multiaddr("/ip4/127.0.0.1/tcp/20000/ws"),
                 nullConnHandler
             )
-                .get(5, TimeUnit.SECONDS)
+                .get(5, SECONDS)
         }
     } // cannotDialOnClosedTransport
+
+    @Test
+    fun listenThenClose() {
+        val ws = WsTransport(upgrader)
+
+        val listening = (0..5).map {
+            val bindComplete = ws.listen(
+                Multiaddr("/ip4/0.0.0.0/tcp/${20000 + it}/ws"),
+                nullConnHandler
+            )
+            bindComplete.handle { _, u -> logger.info("Bound #$it", u)}
+            logger.info("Binding #$it")
+            bindComplete
+        }
+        CompletableFuture.allOf(*listening.toTypedArray()).get(5, SECONDS)
+        assertEquals(6, ws.activeListeners.size, "No all listeners active")
+
+        ws.close().get(5, SECONDS)
+        assertEquals(0, ws.activeListeners.size, "Not all listeners closed")
+    }
 } // class WsTransportTest
