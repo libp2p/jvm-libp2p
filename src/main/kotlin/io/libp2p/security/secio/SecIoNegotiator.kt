@@ -17,6 +17,8 @@ import io.libp2p.etc.types.compareTo
 import io.libp2p.etc.types.toByteArray
 import io.libp2p.etc.types.toByteBuf
 import io.libp2p.etc.types.toProtobuf
+import io.libp2p.security.InvalidInitialPacket
+import io.libp2p.security.InvalidRemotePubKey
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 import org.bouncycastle.crypto.digests.SHA256Digest
@@ -73,7 +75,7 @@ class SecIoNegotiator(
 
     private val localPubKeyBytes = localKey.publicKey().bytes()
     private val remoteNonce: ByteArray
-        get() = remotePropose!!.rand.toByteArray()
+        get() = remotePropose.rand.toByteArray()
 
     fun isComplete() = state == State.FinalValidated
 
@@ -87,7 +89,7 @@ class SecIoNegotiator(
             .build()
 
         state = State.ProposeSent
-        write(proposeMsg!!)
+        write(proposeMsg)
     }
 
     fun onSecureChannelSetup() {
