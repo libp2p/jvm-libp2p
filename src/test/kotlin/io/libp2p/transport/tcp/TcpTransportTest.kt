@@ -12,6 +12,7 @@ import io.libp2p.transport.ConnectionUpgrader
 import org.apache.logging.log4j.LogManager
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable
 import org.junit.jupiter.params.ParameterizedTest
@@ -19,17 +20,24 @@ import org.junit.jupiter.params.provider.MethodSource
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit.SECONDS
 
+@Tag("transport")
 class TcpTransportTest {
 
     companion object {
         @JvmStatic
         fun validMultiaddrs() = listOf(
+            "/dnsaddr/ipfs.io/tcp/97",
             "/ip4/1.2.3.4/tcp/1234",
+            "/ip4/0.0.0.0/tcp/1234",
+            "/ip4/1.2.3.4/tcp/0",
+            "/ip4/0.0.0.0/tcp/1234",
             "/ip6/fe80::6f77:b303:aa6e:a16/tcp/42"
         ).map { Multiaddr(it) }
 
         @JvmStatic
         fun invalidMultiaddrs() = listOf(
+            "/dnsaddr/ipfs.io/udp/97",
+            "/ip4/1.2.3.4/tcp/1234/ws",
             "/ip4/1.2.3.4/udp/42",
             "/unix/a/file/named/tcp"
         ).map { Multiaddr(it) }
@@ -46,7 +54,7 @@ class TcpTransportTest {
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("invalidMultiaddrs")
-    fun `TcpTransport does not suport`(addr: Multiaddr) {
+    fun `TcpTransport does not support`(addr: Multiaddr) {
         val tcp = TcpTransport(upgrader)
         assert(!tcp.handles(addr))
     }
