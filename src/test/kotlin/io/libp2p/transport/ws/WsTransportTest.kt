@@ -48,6 +48,35 @@ class WsTransportTest {
             logger.info("The negotiations succeeded.")
         }
 
+        fun connectClientAndServer(wsServer: WsTransport, connectionCount: Int): WsTransport {
+            val address = localAddress(21100)
+
+            val inboundConnections = object : ConnectionHandler {
+                var count = 0
+                override fun handleConnection(conn: Connection) {
+                    logger.info("Inbound connection $conn")
+                    ++count
+                }
+            }
+
+            wsServer.listen(address, inboundConnections).get()
+            logger.info("Server is listening")
+
+            val wsClient = makeTransport()
+            dialConnections(wsClient, address, connectionCount)
+            assertEquals(connectionCount, wsClient.activeChannels.size)
+
+            SECONDS.sleep(5) // let things settle
+            assertEquals(connectionCount, inboundConnections.count, "Connections not acknowledged by server")
+            assertEquals(connectionCount, wsServer.activeChannels.size)
+
+            return wsClient
+        }
+
+        fun makeTransport(): WsTransport {
+            return WsTransport(NullConnectionUpgrader())
+        } // makeTransport
+
         fun localAddress(portNumber: Int = 20000): Multiaddr {
             return Multiaddr("/ip4/0.0.0.0/tcp/${portNumber}/ws")
         }
@@ -74,9 +103,6 @@ class WsTransportTest {
     } // companion object
 
     private lateinit var ws: WsTransport
-    private fun makeTransport(): WsTransport {
-        return WsTransport(NullConnectionUpgrader())
-    } // makeTransport
 
     @BeforeEach
     fun `set up transport`() {
@@ -157,35 +183,29 @@ class WsTransportTest {
 
     @Test
     fun `dial then close client transport`() {
-        val dialCount = 50
-        val address = localAddress(21100)
-
-        val wsServer = ws
-        val inboundConnections = object : ConnectionHandler {
-            var count = 0
-            override fun handleConnection(conn: Connection) {
-                logger.info("Inbound connection $conn")
-                ++count
-            }
-        }
-
-        wsServer.listen(address, inboundConnections).get()
-        logger.info("Server is listening")
-
-        val wsClient = makeTransport()
-        dialConnections(wsClient, address, dialCount)
-        assertEquals(dialCount, wsClient.activeChannels.size)
-
-        SECONDS.sleep(5) // let things settle
-        assertEquals(dialCount, inboundConnections.count, "Connections not acknowledged by server")
-        assertEquals(dialCount, wsServer.activeChannels.size)
+        val wsClient = connectClientAndServer(ws, 50)
 
         logger.info("Closing now")
         wsClient.close().get(5, SECONDS)
         logger.info("Client transport closed")
-        wsServer.close().get(5, SECONDS)
+        ws.close().get(5, SECONDS)
         logger.info("Server transport closed")
 
         assertEquals(0, wsClient.activeChannels.size, "Not all client connections closed")
+    }
+
+    @Test
+    fun `dial then close server transport`() {
+        val wsClient = connectClientAndServer(ws, 50)
+
+        logger.info("Closing now")
+        ws.close().get(5, SECONDS)
+        logger.info("Server transport closed")
+
+        SECONDS.sleep(2) // let things settle
+        assertEquals(0, wsClient.activeChannels.size, "Not all client connections closed")
+
+        wsClient.close().get(5, SECONDS)
+        logger.info("Client transport closed")
     }
 } // class WsTransportTest
