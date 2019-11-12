@@ -161,7 +161,6 @@ class WsTransportTest {
             val dialer = wsClient.dial(address, nullConnHandler)
             dialer.whenComplete { t, u -> logger.info("Connected #$it: $t ($u)") }
         }
-        logger.info("Active channels: ${wsClient.activeChannels.size}")
 
         CompletableFuture.allOf(*dialFutures.toTypedArray()).get(20, SECONDS)
         logger.info("The negotiations succeeded. Closing now...")
@@ -178,6 +177,8 @@ class WsTransportTest {
         val dialCompletions = dialFutures.map { it.handle { t, u -> t to u } }
         CompletableFuture.allOf(*dialCompletions.toTypedArray()).get(5, SECONDS)
 
-        assertEquals(0, wsClient.activeChannels.size)
+        assertEquals(0, wsClient.activeChannels.size, "Not all client connections closed")
+
+        assertEquals(50, serverConnections, "Connections not acknowledged by server")
     }
 } // class WsTransportTest
