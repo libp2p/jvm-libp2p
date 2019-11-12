@@ -86,6 +86,13 @@ class WsTransport(
 
         val listener = server.clone()
             .childHandler(WebSocketServerInitializer())
+            .childHandler(
+                nettyInitializer { ch ->
+                    registerChannel(ch)
+                    val (channelHandler, _) = createConnectionHandler(connHandler, false)
+                    ch.pipeline().addLast(channelHandler)
+                }
+            )
 
         val bindComplete = listener.bind(fromMultiaddr(addr))
 
