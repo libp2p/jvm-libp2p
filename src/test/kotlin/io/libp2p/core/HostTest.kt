@@ -1,6 +1,7 @@
 package io.libp2p.core
 
 import io.libp2p.core.dsl.SecureChannelCtor
+import io.libp2p.core.dsl.TransportCtor
 import io.libp2p.core.dsl.host
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.etc.types.getX
@@ -28,16 +29,19 @@ import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable
 import java.util.concurrent.TimeUnit
 
 @Tag("secure-channel")
-class SecioHostTest : HostTest(::SecIoSecureChannel)
+class PlaintextTcpTest : HostTest(::TcpTransport, ::PlaintextInsecureChannel)
+
+@Tag("secure-channel")
+class SecioTcpTest : HostTest(::TcpTransport, ::SecIoSecureChannel)
 
 @DisabledIfEnvironmentVariable(named = "TRAVIS", matches = "true")
 @Tag("secure-channel")
-class NoiseXXHostTest : HostTest(::NoiseXXSecureChannel)
+class NoiseXXTcpTest : HostTest(::TcpTransport, ::NoiseXXSecureChannel)
 
-@Tag("secure-channel")
-class PlaintextHostTest : HostTest(::PlaintextInsecureChannel)
-
-abstract class HostTest(val secureChannelCtor: SecureChannelCtor) {
+abstract class HostTest(
+    val transportCtor: TransportCtor,
+    val secureChannelCtor: SecureChannelCtor
+) {
     val listenAddress = "/ip4/127.0.0.1/tcp/40002"
 
     val clientHost = host {
@@ -45,7 +49,7 @@ abstract class HostTest(val secureChannelCtor: SecureChannelCtor) {
             random()
         }
         transports {
-            +::TcpTransport
+            add(transportCtor)
         }
         secureChannels {
             add(secureChannelCtor)
