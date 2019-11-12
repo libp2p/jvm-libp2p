@@ -1,27 +1,12 @@
 package io.libp2p.transport.tcp
 
-import io.libp2p.core.Connection
-import io.libp2p.core.ConnectionHandler
-import io.libp2p.core.Libp2pException
-import io.libp2p.core.crypto.KEY_TYPE
-import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.transport.Transport
-import io.libp2p.mux.mplex.MplexStreamMuxer
-import io.libp2p.security.secio.SecIoSecureChannel
-import io.libp2p.transport.ConnectionUpgrader
 import io.libp2p.transport.NullConnectionUpgrader
 import io.libp2p.transport.TransportTests
-import org.apache.logging.log4j.LogManager
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Tag
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
-import java.util.concurrent.CompletableFuture
-import java.util.concurrent.TimeUnit.SECONDS
 
 @Tag("transport")
 class TcpTransportTest : TransportTests() {

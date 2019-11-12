@@ -19,7 +19,7 @@ typealias TransportCtor = (ConnectionUpgrader) -> Transport
 typealias LocalTestAddress = (Int) -> Multiaddr
 
 @Tag("transport")
-open abstract class TransportTests {
+abstract class TransportTests {
     protected abstract fun makeTransport(): Transport
     protected abstract fun localAddress(portNumber: Int = 20000): Multiaddr
     protected lateinit var transportUnderTest: Transport
