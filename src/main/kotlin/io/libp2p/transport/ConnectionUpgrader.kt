@@ -12,7 +12,7 @@ import java.util.concurrent.CompletableFuture
  * ConnectionUpgrader is a utility class that Transports can use to shim secure channels and muxers when those
  * capabilities are not provided natively by the transport.
  */
-class ConnectionUpgrader(
+open class ConnectionUpgrader(
     private val secureChannels: List<SecureChannel>,
     private val muxers: List<StreamMuxer>
 ) {
@@ -21,7 +21,7 @@ class ConnectionUpgrader(
     var beforeMuxHandler: ChannelHandler? = null
     var afterMuxHandler: ChannelHandler? = null
 
-    fun establishSecureChannel(connection: Connection): CompletableFuture<SecureChannel.Session> {
+    open fun establishSecureChannel(connection: Connection): CompletableFuture<SecureChannel.Session> {
         return establish(
             connection,
             secureChannels,
@@ -30,7 +30,7 @@ class ConnectionUpgrader(
         )
     } // establishSecureChannel
 
-    fun establishMuxer(connection: Connection): CompletableFuture<StreamMuxer.Session> {
+    open fun establishMuxer(connection: Connection): CompletableFuture<StreamMuxer.Session> {
         return establish(
             connection,
             muxers,
