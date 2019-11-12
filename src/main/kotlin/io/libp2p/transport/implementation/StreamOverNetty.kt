@@ -1,4 +1,4 @@
-package io.libp2p.transport.tcp
+package io.libp2p.transport.implementation
 
 import io.libp2p.core.Connection
 import io.libp2p.core.PeerId

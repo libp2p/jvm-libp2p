@@ -1,7 +1,7 @@
 package io.libp2p.mux
 
 import io.libp2p.core.Stream
-import io.libp2p.transport.tcp.StreamOverNetty
+import io.libp2p.transport.implementation.StreamOverNetty
 import io.libp2p.core.StreamHandler
 import io.libp2p.core.StreamPromise
 import io.libp2p.core.mux.StreamMuxer
