@@ -6,9 +6,12 @@ import io.libp2p.core.Libp2pException
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.multiformats.Multiaddr
+import io.libp2p.core.transport.Transport
 import io.libp2p.mux.mplex.MplexStreamMuxer
 import io.libp2p.security.secio.SecIoSecureChannel
 import io.libp2p.transport.ConnectionUpgrader
+import io.libp2p.transport.NullConnectionUpgrader
+import io.libp2p.transport.TransportTests
 import org.apache.logging.log4j.LogManager
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
@@ -21,7 +24,14 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit.SECONDS
 
 @Tag("transport")
-class TcpTransportTest {
+class TcpTransportTest : TransportTests() {
+    override fun makeTransport(): Transport {
+        return TcpTransport(NullConnectionUpgrader())
+    }
+
+    override fun localAddress(portNumber: Int): Multiaddr {
+        return Multiaddr("/ip4/127.0.0.1/tcp/$portNumber")
+    }
 
     companion object {
         @JvmStatic
@@ -43,138 +53,15 @@ class TcpTransportTest {
         ).map { Multiaddr(it) }
     }
 
-    private val upgrader = ConnectionUpgrader(emptyList(), emptyList())
-
     @ParameterizedTest(name = "{0}")
     @MethodSource("validMultiaddrs")
     fun `TcpTransport supports`(addr: Multiaddr) {
-        val tcp = TcpTransport(upgrader)
-        assert(tcp.handles(addr))
+        assert(transportUnderTest.handles(addr))
     }
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("invalidMultiaddrs")
     fun `TcpTransport does not support`(addr: Multiaddr) {
-        val tcp = TcpTransport(upgrader)
-        assert(!tcp.handles(addr))
-    }
-
-    @Test
-    fun testListenClose() {
-        val logger = LogManager.getLogger("test")
-
-        val (privKey1, _) = generateKeyPair(KEY_TYPE.ECDSA)
-        val upgrader = ConnectionUpgrader(
-            listOf(SecIoSecureChannel(privKey1)),
-            listOf(MplexStreamMuxer())
-        )
-
-        val tcpTransport = TcpTransport(upgrader)
-        val connHandler: ConnectionHandler = object : ConnectionHandler {
-            override fun handleConnection(conn: Connection) {
-            }
-        }
-
-        for (i in 0..5) {
-            val bindFuture = tcpTransport.listen(
-                Multiaddr("/ip4/0.0.0.0/tcp/${20000 + i}"),
-                connHandler
-            )
-            bindFuture.handle { _, u -> logger.info("Bound #$i", u) }
-            logger.info("Binding #$i")
-        }
-        val unbindFuts = mutableListOf<CompletableFuture<Unit>>()
-        for (i in 0..5) {
-            val unbindFuture = tcpTransport.unlisten(
-                Multiaddr("/ip4/0.0.0.0/tcp/${20000 + i}")
-            )
-            unbindFuture.handle { _, u -> logger.info("Unbound #$i", u) }
-            unbindFuts += unbindFuture
-            logger.info("Unbinding #$i")
-        }
-
-        CompletableFuture.allOf(*unbindFuts.toTypedArray())
-            .get(5, SECONDS)
-        assertEquals(0, tcpTransport.activeListeners)
-
-        for (i in 0..5) {
-            val bindFuture = tcpTransport.listen(
-                Multiaddr("/ip4/0.0.0.0/tcp/${20000 + i}"),
-                connHandler)
-            bindFuture.handle { _, u -> logger.info("Bound #$i", u) }
-            logger.info("Binding #$i")
-        }
-        for (i in 1..50) {
-            if (tcpTransport.activeListeners == 6) break
-            Thread.sleep(100)
-        }
-        assertEquals(6, tcpTransport.activeListeners)
-
-        tcpTransport.close().get(5, SECONDS)
-        for (i in 1..50) {
-            if (tcpTransport.activeListeners == 0) break
-            Thread.sleep(100)
-        }
-        assertEquals(0, tcpTransport.activeListeners)
-
-        assertThrows(Libp2pException::class.java) {
-            tcpTransport.listen(
-                Multiaddr("/ip4/0.0.0.0/tcp/20000"),
-                connHandler)
-                .get(5, SECONDS)
-        }
-    }
-
-    @Test
-    @DisabledIfEnvironmentVariable(named = "TRAVIS", matches = "true")
-    // We currently have a race condition in TcpTransport close
-    // Disable this test on Travis so it doesn't mask other errors
-    // Will remove this annotation when the issue is resolved.
-    fun testDialClose() {
-        val logger = LogManager.getLogger("test")
-
-        val (privKey1, _) = generateKeyPair(KEY_TYPE.ECDSA)
-        val upgrader = ConnectionUpgrader(
-            listOf(SecIoSecureChannel(privKey1)),
-            listOf(MplexStreamMuxer())
-        )
-
-        val tcpTransportServer = TcpTransport(upgrader)
-        val serverConnections = mutableListOf<Connection>()
-        val connHandler: ConnectionHandler = object : ConnectionHandler {
-            override fun handleConnection(conn: Connection) {
-                logger.info("Inbound connection: $conn")
-                serverConnections += conn
-            }
-        }
-
-        tcpTransportServer.listen(
-            Multiaddr("/ip4/0.0.0.0/tcp/20000"),
-            connHandler
-        ).get(5, SECONDS)
-        logger.info("Server is listening")
-
-        val tcpTransportClient = TcpTransport(upgrader)
-
-        val dialFutures = mutableListOf<CompletableFuture<Connection>>()
-        for (i in 0..50) {
-            logger.info("Connecting #$i")
-            dialFutures +=
-                tcpTransportClient.dial(Multiaddr("/ip4/127.0.0.1/tcp/20000"), ConnectionHandler.create { })
-            dialFutures.last().whenComplete { t, u -> logger.info("Connected #$i: $t ($u)") }
-        }
-        logger.info("Active channels: ${tcpTransportClient.activeConnections}")
-
-        CompletableFuture.allOf(*dialFutures.toTypedArray()).get(5, SECONDS)
-        logger.info("The negotiations succeeded. Closing now...")
-
-        tcpTransportClient.close().get(5, SECONDS)
-        logger.info("Client transport closed")
-        tcpTransportServer.close().get(5, SECONDS)
-        logger.info("Server transport closed")
-
-        // checking that all dial futures are complete (successfully or not)
-        val dialCompletions = dialFutures.map { it.handle { t, u -> t to u } }
-        CompletableFuture.allOf(*dialCompletions.toTypedArray()).get(5, SECONDS)
+        assert(!transportUnderTest.handles(addr))
     }
 }
