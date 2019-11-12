@@ -80,8 +80,9 @@ class WsTransport(
     } // listener
 
     override fun unlisten(addr: Multiaddr): CompletableFuture<Unit> {
-        TODO("not implemented")
-    }
+        return activeListeners[addr]?.close()?.toVoidCompletableFuture()
+            ?: throw Libp2pException("No listeners on address $addr")
+    } // unlisten
 
     override fun dial(addr: Multiaddr, connHandler: ConnectionHandler): CompletableFuture<Connection> {
         if (closed) throw Libp2pException("Transport is closed")

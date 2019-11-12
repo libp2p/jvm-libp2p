@@ -97,7 +97,7 @@ class WsTransportTest {
                 Multiaddr("/ip4/0.0.0.0/tcp/${20000 + it}/ws"),
                 nullConnHandler
             )
-            bindComplete.handle { _, u -> logger.info("Bound #$it", u)}
+            bindComplete.handle { _, u -> logger.info("Bound #$it", u) }
             logger.info("Binding #$it")
             bindComplete
         }
@@ -105,6 +105,35 @@ class WsTransportTest {
         assertEquals(6, ws.activeListeners.size, "No all listeners active")
 
         ws.close().get(5, SECONDS)
+        assertEquals(0, ws.activeListeners.size, "Not all listeners closed")
+    }
+
+    @Test
+    fun listenThenUnlisten() {
+        val ws = WsTransport(upgrader)
+
+        val listening = (0..5).map {
+            val bindComplete = ws.listen(
+                Multiaddr("/ip4/0.0.0.0/tcp/${20000 + it}/ws"),
+                nullConnHandler
+            )
+            bindComplete.handle { _, u -> logger.info("Bound #$it", u) }
+            logger.info("Binding #$it")
+            bindComplete
+        }
+        CompletableFuture.allOf(*listening.toTypedArray()).get(5, SECONDS)
+        assertEquals(6, ws.activeListeners.size, "No all listeners active")
+
+        val unlistening = (0..5).map {
+            val unbindComplete = ws.unlisten(
+                Multiaddr("/ip4/0.0.0.0/tcp/${20000 + it}/ws")
+            )
+            unbindComplete.handle { _, u -> logger.info("Unbound #$it", u) }
+            logger.info("Unbinding #$it")
+            unbindComplete
+        }
+        CompletableFuture.allOf(*unlistening.toTypedArray()).get(5, SECONDS)
+
         assertEquals(0, ws.activeListeners.size, "Not all listeners closed")
     }
 } // class WsTransportTest
