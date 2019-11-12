@@ -10,7 +10,7 @@ import io.netty.handler.codec.http.websocketx.WebSocketVersion
 import io.netty.handler.codec.http.websocketx.extensions.compression.WebSocketClientCompressionHandler
 import java.net.URI
 
-class WebSocketClientInitializer(
+internal class WebSocketClientInitializer(
     private val url: String
 ) : ChannelInitializer<SocketChannel>() {
 

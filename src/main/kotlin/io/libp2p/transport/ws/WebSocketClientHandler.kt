@@ -11,7 +11,7 @@ import io.netty.handler.codec.http.websocketx.WebSocketFrame
 import io.netty.handler.codec.http.websocketx.WebSocketHandshakeException
 import io.netty.util.CharsetUtil
 
-class WebSocketClientHandler(
+internal class WebSocketClientHandler(
     private val handshaker: WebSocketClientHandshaker
 ) : SimpleChannelInboundHandler<Any>() {
     private lateinit var handshakeFuture: ChannelPromise
