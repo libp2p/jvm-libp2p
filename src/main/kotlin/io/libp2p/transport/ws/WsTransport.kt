@@ -14,7 +14,7 @@ import io.libp2p.etc.types.toCompletableFuture
 import io.libp2p.etc.types.toVoidCompletableFuture
 import io.libp2p.etc.util.netty.nettyInitializer
 import io.libp2p.transport.ConnectionUpgrader
-import io.libp2p.transport.tcp.ConnectionOverNetty
+import io.libp2p.transport.implementation.ConnectionOverNetty
 import io.netty.bootstrap.Bootstrap
 import io.netty.bootstrap.ServerBootstrap
 import io.netty.channel.Channel
