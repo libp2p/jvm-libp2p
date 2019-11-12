@@ -4,13 +4,14 @@ import io.libp2p.core.Connection
 import io.libp2p.core.ConnectionHandler
 import io.libp2p.core.Libp2pException
 import io.libp2p.core.multiformats.Multiaddr
-import io.libp2p.core.transport.Transport
-import io.libp2p.transport.ConnectionUpgrader
 import io.libp2p.transport.NullConnectionUpgrader
-import io.libp2p.transport.ws.WsTransport
 import org.apache.logging.log4j.LogManager
-import org.junit.jupiter.api.*
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Tag
+import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
 import java.util.concurrent.CompletableFuture
@@ -78,7 +79,7 @@ class WsTransportTest {
         } // makeTransport
 
         fun localAddress(portNumber: Int = 20000): Multiaddr {
-            return Multiaddr("/ip4/0.0.0.0/tcp/${portNumber}/ws")
+            return Multiaddr("/ip4/0.0.0.0/tcp/$portNumber/ws")
         }
 
         @JvmStatic
@@ -132,7 +133,7 @@ class WsTransportTest {
     fun `cannot listen on closed transport`() {
         ws.close()
 
-        Assertions.assertThrows(Libp2pException::class.java) {
+        assertThrows(Libp2pException::class.java) {
             ws.listen(
                 localAddress(),
                 nullConnHandler
@@ -144,7 +145,7 @@ class WsTransportTest {
     fun `cannot dial from a closed transport`() {
         ws.close()
 
-        Assertions.assertThrows(Libp2pException::class.java) {
+        assertThrows(Libp2pException::class.java) {
             ws.dial(
                 localAddress(21000),
                 nullConnHandler

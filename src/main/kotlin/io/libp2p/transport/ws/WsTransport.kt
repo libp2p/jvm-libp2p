@@ -7,7 +7,6 @@ import io.libp2p.core.PeerId
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multiformats.Protocol
 import io.libp2p.core.transport.Transport
-import io.libp2p.etc.CONNECTION
 import io.libp2p.etc.REMOTE_PEER_ID
 import io.libp2p.etc.types.forward
 import io.libp2p.etc.types.lazyVar
@@ -122,7 +121,7 @@ class WsTransport(
 
         val host = hostFromMultiaddr(addr)
         val port = portFromMultiaddr(addr)
-        val url = "ws://${host}:${port}/"
+        val url = "ws://$host:$port/"
 
         val chanFuture = client.clone()
             .handler(WebSocketClientInitializer(url))
