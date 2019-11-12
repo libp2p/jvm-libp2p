@@ -15,9 +15,6 @@ import org.junit.jupiter.api.Assertions.assertThrows
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit.SECONDS
 
-typealias TransportCtor = (ConnectionUpgrader) -> Transport
-typealias LocalTestAddress = (Int) -> Multiaddr
-
 @Tag("transport")
 abstract class TransportTests {
     protected abstract fun makeTransport(): Transport
