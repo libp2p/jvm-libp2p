@@ -163,9 +163,13 @@ class WsTransportTest {
         }
 
         CompletableFuture.allOf(*dialFutures.toTypedArray()).get(20, SECONDS)
-        logger.info("The negotiations succeeded. Closing now...")
+        logger.info("The negotiations succeeded.")
 
         assertEquals(50, wsClient.activeChannels.size)
+        SECONDS.sleep(5) // let things settle
+        logger.info("Closing now")
+        assertEquals(50, serverConnections, "Connections not acknowledged by server")
+        assertEquals(50, wsServer.activeChannels.size)
 
         wsClient.close().get(5, SECONDS)
         logger.info("Client transport closed")
@@ -178,7 +182,5 @@ class WsTransportTest {
         CompletableFuture.allOf(*dialCompletions.toTypedArray()).get(5, SECONDS)
 
         assertEquals(0, wsClient.activeChannels.size, "Not all client connections closed")
-
-        assertEquals(50, serverConnections, "Connections not acknowledged by server")
     }
 } // class WsTransportTest
