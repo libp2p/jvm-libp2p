@@ -95,7 +95,7 @@ class TcpTransportTest {
 
         CompletableFuture.allOf(*unbindFuts.toTypedArray())
             .get(5, SECONDS)
-        assertEquals(0, tcpTransport.activeListeners.size)
+        assertEquals(0, tcpTransport.activeListeners)
 
         for (i in 0..5) {
             val bindFuture = tcpTransport.listen(
@@ -105,17 +105,17 @@ class TcpTransportTest {
             logger.info("Binding #$i")
         }
         for (i in 1..50) {
-            if (tcpTransport.activeListeners.size == 6) break
+            if (tcpTransport.activeListeners == 6) break
             Thread.sleep(100)
         }
-        assertEquals(6, tcpTransport.activeListeners.size)
+        assertEquals(6, tcpTransport.activeListeners)
 
         tcpTransport.close().get(5, SECONDS)
         for (i in 1..50) {
-            if (tcpTransport.activeListeners.isEmpty()) break
+            if (tcpTransport.activeListeners == 0) break
             Thread.sleep(100)
         }
-        assertEquals(0, tcpTransport.activeListeners.size)
+        assertEquals(0, tcpTransport.activeListeners)
 
         assertThrows(Libp2pException::class.java) {
             tcpTransport.listen(
@@ -163,7 +163,7 @@ class TcpTransportTest {
                 tcpTransportClient.dial(Multiaddr("/ip4/127.0.0.1/tcp/20000"), ConnectionHandler.create { })
             dialFutures.last().whenComplete { t, u -> logger.info("Connected #$i: $t ($u)") }
         }
-        logger.info("Active channels: ${tcpTransportClient.activeChannels.size}")
+        logger.info("Active channels: ${tcpTransportClient.activeConnections}")
 
         CompletableFuture.allOf(*dialFutures.toTypedArray()).get(5, SECONDS)
         logger.info("The negotiations succeeded. Closing now...")

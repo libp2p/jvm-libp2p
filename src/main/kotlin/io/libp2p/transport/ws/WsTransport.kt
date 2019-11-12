@@ -32,13 +32,14 @@ class WsTransport(
 ) : Transport {
     private var closed = false
     var connectTimeout = Duration.ofSeconds(15)
-    val activeListeners = mutableMapOf<Multiaddr, Channel>()
-    val activeChannels = mutableListOf<Channel>()
+
+    private val listeners = mutableMapOf<Multiaddr, Channel>()
+    private val channels = mutableListOf<Channel>()
 
     private var workerGroup by lazyVar { NioEventLoopGroup() }
     private var bossGroup by lazyVar { workerGroup }
 
-    var client by lazyVar {
+    private var client by lazyVar {
         Bootstrap().apply {
             group(workerGroup)
             channel(NioSocketChannel::class.java)
@@ -53,6 +54,11 @@ class WsTransport(
         }
     }
 
+    override val activeListeners: Int
+        get() = listeners.size
+    override val activeConnections: Int
+        get() = channels.size
+
     override fun initialize() {
     }
 
@@ -65,11 +71,11 @@ class WsTransport(
     override fun close(): CompletableFuture<Unit> {
         closed = true
 
-        val unbindsCompleted = activeListeners
+        val unbindsCompleted = listeners
             .map { (_, ch) -> ch }
             .map { it.close().toVoidCompletableFuture() }
 
-        val channelsClosed = activeChannels
+        val channelsClosed = channels
             .toMutableList() // need a copy to avoid potential co-modification problems
             .map { it.close().toVoidCompletableFuture() }
 
@@ -96,10 +102,10 @@ class WsTransport(
         val bindComplete = listener.bind(fromMultiaddr(addr))
 
         bindComplete.also {
-            activeListeners += addr to it.channel()
+            listeners += addr to it.channel()
             it.channel().closeFuture().addListener {
                 synchronized(this@WsTransport) {
-                    activeListeners -= addr
+                    listeners -= addr
                 }
             }
         }
@@ -108,7 +114,7 @@ class WsTransport(
     } // listener
 
     override fun unlisten(addr: Multiaddr): CompletableFuture<Unit> {
-        return activeListeners[addr]?.close()?.toVoidCompletableFuture()
+        return listeners[addr]?.close()?.toVoidCompletableFuture()
             ?: throw Libp2pException("No listeners on address $addr")
     } // unlisten
 
@@ -159,10 +165,10 @@ class WsTransport(
         if (closed) {
             ch.close()
         } else {
-            activeChannels += ch
+            channels += ch
             ch.closeFuture().addListener {
                 synchronized(this@WsTransport) {
-                    activeChannels -= ch
+                    channels -= ch
                 }
             }
         }

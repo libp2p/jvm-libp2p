@@ -45,9 +45,9 @@ class TcpTransport(
     var bossGroup by lazyVar { workerGroup }
     var connectTimeout = Duration.ofSeconds(15)
 
-    val activeListeners = mutableMapOf<Multiaddr, Channel>()
-    val activeChannels = mutableListOf<Channel>()
-    var closed = false
+    private val listeners = mutableMapOf<Multiaddr, Channel>()
+    private val channels = mutableListOf<Channel>()
+    private var closed = false
 
     // client Bootstrap prototype
     var client by lazyVar {
@@ -68,6 +68,11 @@ class TcpTransport(
 
     // Initializes the server and client fields, preparing them to establish outbound connections (client)
     // and to accept inbound connections (server).
+    override val activeListeners: Int
+        get() = listeners.size
+    override val activeConnections: Int
+        get() = channels.size
+
     override fun initialize() {
     }
 
@@ -82,13 +87,13 @@ class TcpTransport(
     @Synchronized
     override fun close(): CompletableFuture<Unit> {
         closed = true
-        val unbindFutures = activeListeners
+        val unbindFutures = listeners
             .map { (_, ch) -> ch }
             .map { it.close().toVoidCompletableFuture() }
         return CompletableFuture.allOf(*unbindFutures.toTypedArray())
             .thenCompose {
                 synchronized(this@TcpTransport) {
-                    val closeFutures = activeChannels.toMutableList()
+                    val closeFutures = channels.toMutableList()
                         .map { it.close().toVoidCompletableFuture() }
                     CompletableFuture.allOf(*closeFutures.toTypedArray())
                 }
@@ -106,10 +111,10 @@ class TcpTransport(
             })
             .bind(fromMultiaddr(addr))
             .also { ch ->
-                activeListeners += addr to ch.channel()
+                listeners += addr to ch.channel()
                 ch.channel().closeFuture().addListener {
                     synchronized(this@TcpTransport) {
-                        activeListeners -= addr
+                        listeners -= addr
                     }
                 }
             }
@@ -118,7 +123,7 @@ class TcpTransport(
 
     @Synchronized
     override fun unlisten(addr: Multiaddr): CompletableFuture<Unit> {
-        return activeListeners[addr]?.close()?.toVoidCompletableFuture()
+        return listeners[addr]?.close()?.toVoidCompletableFuture()
             ?: throw Libp2pException("No listeners on address $addr")
     }
 
@@ -139,8 +144,8 @@ class TcpTransport(
         if (closed) {
             ch.close()
         } else {
-            activeChannels += ch
-            ch.closeFuture().addListener { activeChannels -= ch }
+            channels += ch
+            ch.closeFuture().addListener { channels -= ch }
         }
         return ch
     }
