@@ -62,30 +62,28 @@ class WsTransportTest {
     }
 
     @Test
-    fun cannotListenOnClosedTransport() {
+    fun `cannot listen on closed transport`() {
         val ws = WsTransport(upgrader)
-        ws.close().get(5, SECONDS)
+        ws.close()
 
         Assertions.assertThrows(Libp2pException::class.java) {
             ws.listen(
                 Multiaddr("/ip4/0.0.0.0/tcp/21000/ws"),
                 nullConnHandler
             )
-                .get(5, SECONDS)
         }
     } // cannotListenOnClosedTransport
 
     @Test
-    fun cannotDialOnClosedTransport() {
+    fun `cannot dial from a closed transport`() {
         val ws = WsTransport(upgrader)
-        ws.close().get(5, SECONDS)
+        ws.close()
 
         Assertions.assertThrows(Libp2pException::class.java) {
             ws.dial(
                 Multiaddr("/ip4/127.0.0.1/tcp/21000/ws"),
                 nullConnHandler
             )
-                .get(5, SECONDS)
         }
     } // cannotDialOnClosedTransport
 
