@@ -7,6 +7,7 @@ import io.libp2p.core.multiformats.Protocol
 import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.core.security.SecureChannel
 import io.libp2p.core.transport.Transport
+import io.libp2p.etc.CONNECTION
 import io.netty.channel.Channel
 import java.net.Inet4Address
 import java.net.Inet6Address
@@ -24,6 +25,10 @@ class ConnectionOverNetty(
 ) : Connection, P2PChannelOverNetty(ch) {
     private lateinit var muxerSession: StreamMuxer.Session
     private lateinit var secureSession: SecureChannel.Session
+
+    init {
+        ch.attr(CONNECTION).set(this)
+    }
 
     fun setMuxerSession(ms: StreamMuxer.Session) { muxerSession = ms }
     fun setSecureSession(ss: SecureChannel.Session) { secureSession = ss }
