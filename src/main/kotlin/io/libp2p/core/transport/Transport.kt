@@ -13,6 +13,8 @@ import java.util.concurrent.CompletableFuture
  *   * Expose transport qualities/attributes (dial only, listen only, reliable, connectionful, costly, etc.)
  */
 interface Transport {
+    val activeListeners: Int
+    val activeConnections: Int
 
     /**
      * Verifies whether this transport is capable of handling this multiaddr.

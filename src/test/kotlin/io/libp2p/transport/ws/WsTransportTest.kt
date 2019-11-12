@@ -36,7 +36,7 @@ class WsTransportTest {
                 bindComplete
             }
             CompletableFuture.allOf(*listening.toTypedArray()).get(5, SECONDS)
-            assertEquals(howMany, server.activeListeners.size, "Not all listeners active")
+            assertEquals(howMany, server.activeListeners, "Not all listeners active")
         }
 
         fun dialConnections(client: WsTransport, addr: Multiaddr, howMany: Int) {
@@ -65,11 +65,11 @@ class WsTransportTest {
 
             val wsClient = makeTransport()
             dialConnections(wsClient, address, connectionCount)
-            assertEquals(connectionCount, wsClient.activeChannels.size)
+            assertEquals(connectionCount, wsClient.activeConnections)
 
             SECONDS.sleep(5) // let things settle
             assertEquals(connectionCount, inboundConnections.count, "Connections not acknowledged by server")
-            assertEquals(connectionCount, wsServer.activeChannels.size)
+            assertEquals(connectionCount, wsServer.activeConnections)
 
             return wsClient
         }
@@ -160,7 +160,7 @@ class WsTransportTest {
         startListeners(ws, portNumber, listenerCount)
 
         ws.close().get(5, SECONDS)
-        assertEquals(0, ws.activeListeners.size, "Not all listeners closed")
+        assertEquals(0, ws.activeListeners, "Not all listeners closed")
     }
 
     @Test
@@ -179,7 +179,7 @@ class WsTransportTest {
         }
         CompletableFuture.allOf(*unlistening.toTypedArray()).get(5, SECONDS)
 
-        assertEquals(0, ws.activeListeners.size, "Not all listeners closed")
+        assertEquals(0, ws.activeListeners, "Not all listeners closed")
     }
 
     @Test
@@ -192,7 +192,7 @@ class WsTransportTest {
         ws.close().get(5, SECONDS)
         logger.info("Server transport closed")
 
-        assertEquals(0, wsClient.activeChannels.size, "Not all client connections closed")
+        assertEquals(0, wsClient.activeConnections, "Not all client connections closed")
     }
 
     @Test
@@ -204,7 +204,7 @@ class WsTransportTest {
         logger.info("Server transport closed")
 
         SECONDS.sleep(2) // let things settle
-        assertEquals(0, wsClient.activeChannels.size, "Not all client connections closed")
+        assertEquals(0, wsClient.activeConnections, "Not all client connections closed")
 
         wsClient.close().get(5, SECONDS)
         logger.info("Client transport closed")
