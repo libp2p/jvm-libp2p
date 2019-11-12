@@ -12,7 +12,7 @@ class WsTransportTest : TransportTests() {
     } // makeTransport
 
     override fun localAddress(portNumber: Int): Multiaddr {
-        return Multiaddr("/ip4/0.0.0.0/tcp/$portNumber/ws")
+        return Multiaddr("/ip4/127.0.0.1/tcp/$portNumber/ws")
     } // localAddress
 
     companion object {
