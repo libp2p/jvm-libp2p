@@ -148,7 +148,6 @@ public class P2PDHost implements Host {
             String path = "/tmp/p2pd.client." + counter.incrementAndGet();
             listenAddr = new DomainSocketAddress(path);
             listenMultiaddr = new Multiaddr("/unix" + path);
-
         } else {
             throw new IllegalStateException();
         }

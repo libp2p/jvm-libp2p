@@ -26,33 +26,10 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
-public class HostTestJava {
-
-    static class A implements ProtocolBinding<String> {
-        @NotNull
-        @Override
-        public String getAnnounce() {
-            return null;
-        }
-
-        @NotNull
-        @Override
-        public ProtocolMatcher getMatcher() {
-            return null;
-        }
-
-        @NotNull
-        @Override
-        public CompletableFuture<? extends String> initChannel(@NotNull P2PAbstractChannel ch, @NotNull String selectedProtocol) {
-            this.toInitiator("aa");
-            return null;
-        }
-
-    }
-
+class HostTestJava {
     @Test
-    public void test1() throws Exception {
-        HostImpl host1 = BuildersJKt.hostJ(b -> {
+    void ping() throws Exception {
+        HostImpl clientHost = BuildersJKt.hostJ(b -> {
             b.getIdentity().random();
             b.getTransports().add(TcpTransport::new);
             b.getSecureChannels().add(SecIoSecureChannel::new);
@@ -63,7 +40,7 @@ public class HostTestJava {
             b.getDebug().getAfterSecureHandler().setLogger(LogLevel.ERROR, "host-1-AS");
         });
 
-        HostImpl host2 = BuildersJKt.hostJ(b -> {
+        HostImpl serverHost = BuildersJKt.hostJ(b -> {
             b.getIdentity().random();
             b.getTransports().add(TcpTransport::new);
             b.getSecureChannels().add(SecIoSecureChannel::new);
@@ -72,14 +49,14 @@ public class HostTestJava {
             b.getNetwork().listen("/ip4/0.0.0.0/tcp/40002");
         });
 
-        CompletableFuture<Unit> start1 = host1.start();
-        CompletableFuture<Unit> start2 = host2.start();
-        start1.get(5, TimeUnit.SECONDS);
-        System.out.println("Host #1 started");
-        start2.get(5, TimeUnit.SECONDS);
-        System.out.println("Host #2 started");
+        CompletableFuture<Unit> clientStarted = clientHost.start();
+        CompletableFuture<Unit> serverStarted = serverHost.start();
+        clientStarted.get(5, TimeUnit.SECONDS);
+        System.out.println("Client started");
+        serverStarted.get(5, TimeUnit.SECONDS);
+        System.out.println("Server started");
 
-        StreamPromise<PingController> ping = host1.getNetwork().connect(host2.getPeerId(), new Multiaddr("/ip4/127.0.0.1/tcp/40002"))
+        StreamPromise<PingController> ping = clientHost.getNetwork().connect(serverHost.getPeerId(), new Multiaddr("/ip4/127.0.0.1/tcp/40002"))
                 .thenApply(it -> it.getMuxerSession().createStream(Multistream.create(new Ping()).toStreamHandler()))
                 .get(5, TimeUnit.SECONDS);
         Stream pingStream = ping.getStream().get(5, TimeUnit.SECONDS);
@@ -97,17 +74,16 @@ public class HostTestJava {
         Assertions.assertThrows(ExecutionException.class, () ->
                 pingCtr.ping().get(5, TimeUnit.SECONDS));
 
-        host1.stop().get(5, TimeUnit.SECONDS);
-        System.out.println("Host #1 stopped");
-        host2.stop().get(5, TimeUnit.SECONDS);
-        System.out.println("Host #2 stopped");
+        clientHost.stop().get(5, TimeUnit.SECONDS);
+        System.out.println("Client stopped");
+        serverHost.stop().get(5, TimeUnit.SECONDS);
+        System.out.println("Server stopped");
     }
 
     @Test
-    void test2() {
+    void keyPairGeneration() {
         Pair<PrivKey, PubKey> pair = KeyKt.generateKeyPair(KEY_TYPE.SECP256K1);
         PeerId peerId = PeerId.fromPubKey(pair.component2());
         System.out.println("PeerId: " + peerId.toHex());
-
     }
 }

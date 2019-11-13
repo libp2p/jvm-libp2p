@@ -7,7 +7,7 @@ import io.netty.channel.DefaultChannelPipeline
 class CachingChannelPipeline(channel: Channel) : DefaultChannelPipeline(channel) {
 
     enum class EventType { Message, Exception, UserEvent, Active, Inactive }
-    class Event(val type: EventType, data: Any?)
+    class Event(val type: EventType, val data: Any?)
 
     override fun onUnhandledInboundMessage(msg: Any?) {
         super.onUnhandledInboundMessage(msg)

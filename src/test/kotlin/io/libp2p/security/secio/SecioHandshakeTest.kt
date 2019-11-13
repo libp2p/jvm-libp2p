@@ -8,16 +8,17 @@ import io.libp2p.crypto.keys.secp256k1PublicKeyFromCoordinates
 import io.libp2p.etc.types.fromHex
 import io.netty.buffer.ByteBuf
 import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import java.math.BigInteger
 
 /**
  * Created by Anton Nashatyrev on 18.06.2019.
  */
-
+@Tag("secure-channel")
 class SecioHandshakeTest {
     @Test
-    fun test1() {
+    fun handshake() {
         val (privKey1, pubKey1) = generateKeyPair(KEY_TYPE.ECDSA)
         val (privKey2, pubKey2) = generateKeyPair(KEY_TYPE.ECDSA)
         var bb1: ByteBuf? = null
@@ -31,8 +32,8 @@ class SecioHandshakeTest {
 
         Assertions.assertTrue(bb1 != null)
         Assertions.assertTrue(bb2 != null)
-        var msgFor1 = bb2!!
-        var msgFor2 = bb1!!
+        val msgFor1 = bb2!!
+        val msgFor2 = bb1!!
         bb1 = null
         bb2 = null
 
@@ -54,8 +55,8 @@ class SecioHandshakeTest {
 
         Assertions.assertArrayEquals(plainMsg, tmp)
 
-        SecIoCodec.createCipher(keys2!!.first).processBytes(plainMsg, 0, plainMsg.size, tmp, 0)
-        SecIoCodec.createCipher(keys1!!.second).processBytes(tmp, 0, tmp.size, tmp, 0)
+        SecIoCodec.createCipher(keys2.first).processBytes(plainMsg, 0, plainMsg.size, tmp, 0)
+        SecIoCodec.createCipher(keys1.second).processBytes(tmp, 0, tmp.size, tmp, 0)
 
         Assertions.assertArrayEquals(plainMsg, tmp)
     }
