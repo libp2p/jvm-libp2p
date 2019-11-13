@@ -5,13 +5,10 @@ import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.SimpleChannelInboundHandler
 import io.netty.handler.codec.http.DefaultHttpHeaders
 import io.netty.handler.codec.http.FullHttpResponse
-import io.netty.handler.codec.http.websocketx.WebSocketClientHandshakerFactory
-import io.netty.handler.codec.http.websocketx.WebSocketHandshakeException
-import io.netty.handler.codec.http.websocketx.WebSocketVersion
-import io.netty.util.CharsetUtil
+import io.netty.handler.codec.http.websocketx.*
 import java.net.URI
 
-internal class WebSocketClientHandler(
+internal class WebSocketClientHandshake(
     private val connectionHandler: ChannelHandler,
     val url: String
 ) : SimpleChannelInboundHandler<Any>() {
@@ -34,20 +31,16 @@ internal class WebSocketClientHandler(
     public override fun channelRead0(ctx: ChannelHandlerContext, msg: Any) {
         val ch = ctx.channel()
         if (!handshaker.isHandshakeComplete) {
-            try {
-                handshaker.finishHandshake(ch, msg as FullHttpResponse)
-                println("WebSocket Client connected!")
-                ctx.pipeline().remove(this)
-                ctx.pipeline().addLast(connectionHandler)
-            } catch (e: WebSocketHandshakeException) {
-                println("WebSocket Client failed to connect")
-            }
+            handshaker.finishHandshake(ch, msg as FullHttpResponse)
+            println("WebSocket Client connected!")
+            ctx.pipeline().addLast(WebFrameCodec())
+            ctx.pipeline().addLast(connectionHandler)
+            ctx.pipeline().remove(this)
+            ctx.fireChannelActive()
             return
         }
 
-        if (msg is FullHttpResponse) {
-            throw IllegalStateException("Unexpected FullHttpResponse (getStatus=" + msg.status() + ", content=" + msg.content().toString(CharsetUtil.UTF_8) + ')'.toString())
-        }
+        throw IllegalStateException("Unexpected message in WebSocket Client")
 
         /*
         val frame = msg as WebSocketFrame
