@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Tag
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
 
-@Tag("transport")
+@Tag("tcp-transport")
 class TcpTransportTest : TransportTests() {
     override fun makeTransport(): Transport {
         return TcpTransport(NullConnectionUpgrader())

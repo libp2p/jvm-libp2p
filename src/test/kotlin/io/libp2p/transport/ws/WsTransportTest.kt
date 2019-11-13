@@ -3,9 +3,11 @@ package io.libp2p.transport.ws
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.transport.NullConnectionUpgrader
 import io.libp2p.transport.TransportTests
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
 
+@Tag("ws-transport")
 class WsTransportTest : TransportTests() {
     override fun makeTransport(): WsTransport {
         return WsTransport(NullConnectionUpgrader())
