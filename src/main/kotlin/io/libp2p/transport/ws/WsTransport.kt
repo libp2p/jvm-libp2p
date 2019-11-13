@@ -31,6 +31,6 @@ class WsTransport(
         val port = portFromMultiaddr(addr)
         val url = "ws://$host:$port/"
 
-        return WebSocketClientInitializer(url)
+        return WebSocketClientInitializer(connectionBuilder, url)
     } // clientTransportBuilder
 } // class WsTransport
