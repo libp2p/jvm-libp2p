@@ -18,7 +18,7 @@ internal class WebSocketClientInitializer(
         pipeline.addLast(HttpClientCodec())
         pipeline.addLast(HttpObjectAggregator(65536))
         pipeline.addLast(WebSocketClientCompressionHandler.INSTANCE)
-        pipeline.addLast(WebSocketClientHandler(
+        pipeline.addLast(WebSocketClientHandshake(
             connectionBuilder,
             url
         ))

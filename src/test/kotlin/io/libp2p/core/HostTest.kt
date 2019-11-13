@@ -17,6 +17,7 @@ import io.libp2p.tools.CountingPingProtocol
 import io.libp2p.tools.DoNothing
 import io.libp2p.tools.Echo
 import io.libp2p.transport.tcp.TcpTransport
+import io.libp2p.transport.ws.WsTransport
 import io.netty.handler.logging.LogLevel
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -29,21 +30,45 @@ import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable
 import java.util.concurrent.TimeUnit
 
 @Tag("secure-channel")
-class PlaintextTcpTest : HostTest(::TcpTransport, ::PlaintextInsecureChannel)
+class PlaintextTcpTest : TcpTransportHostTest(::PlaintextInsecureChannel)
+@Tag("secure-channel")
+class PlaintextWsTest : WsTransportHostTest(::PlaintextInsecureChannel)
 
 @Tag("secure-channel")
-class SecioTcpTest : HostTest(::TcpTransport, ::SecIoSecureChannel)
+class SecioTcpTest : TcpTransportHostTest(::SecIoSecureChannel)
+@Tag("secure-channel")
+class SecioWsTest : WsTransportHostTest(::SecIoSecureChannel)
 
 @DisabledIfEnvironmentVariable(named = "TRAVIS", matches = "true")
 @Tag("secure-channel")
-class NoiseXXTcpTest : HostTest(::TcpTransport, ::NoiseXXSecureChannel)
+class NoiseXXTcpTest : TcpTransportHostTest(::NoiseXXSecureChannel)
+@DisabledIfEnvironmentVariable(named = "TRAVIS", matches = "true")
+@Tag("secure-channel")
+class NoiseXXWsTest : WsTransportHostTest(::NoiseXXSecureChannel)
+
+@Tag("ws-transport")
+abstract class WsTransportHostTest(
+    secureChannelCtor: SecureChannelCtor
+) : HostTest(
+    secureChannelCtor,
+    ::WsTransport,
+    "/ip4/127.0.0.1/tcp/4002/ws"
+)
+
+@Tag("tcp-transport")
+abstract class TcpTransportHostTest(
+    secureChannelCtor: SecureChannelCtor
+) : HostTest(
+    secureChannelCtor,
+    ::TcpTransport,
+    "/ip4/127.0.0.1/tcp/4002"
+)
 
 abstract class HostTest(
+    val secureChannelCtor: SecureChannelCtor,
     val transportCtor: TransportCtor,
-    val secureChannelCtor: SecureChannelCtor
+    val listenAddress: String
 ) {
-    val listenAddress = "/ip4/127.0.0.1/tcp/40002"
-
     val clientHost = host {
         identity {
             random()
@@ -75,7 +100,7 @@ abstract class HostTest(
             random()
         }
         transports {
-            +::TcpTransport
+            add(transportCtor)
         }
         secureChannels {
             add(secureChannelCtor)
@@ -118,8 +143,8 @@ abstract class HostTest(
             serverHost.peerId,
             Multiaddr(listenAddress)
         )
-        assertThrows(NoSuchProtocolException::class.java) { badProtocol.stream.getX(5.0) }
-        assertThrows(NoSuchProtocolException::class.java) { badProtocol.controller.getX(5.0) }
+        assertThrows(NoSuchProtocolException::class.java) { badProtocol.stream.getX(500.0) }
+        assertThrows(NoSuchProtocolException::class.java) { badProtocol.controller.getX(500.0) }
     }
 
     @Test
