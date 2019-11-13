@@ -20,7 +20,7 @@ class WsTransport(
         connectionBuilder: ConnectionBuilder,
         addr: Multiaddr
     ): ChannelHandler? {
-        return WebSocketServerInitializer()
+        return WebSocketServerInitializer(connectionBuilder)
     } // serverTransportBuilder
 
     override fun clientTransportBuilder(
