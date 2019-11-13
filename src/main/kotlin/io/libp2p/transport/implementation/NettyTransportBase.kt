@@ -7,8 +7,6 @@ import io.libp2p.core.PeerId
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multiformats.Protocol
 import io.libp2p.core.transport.Transport
-import io.libp2p.etc.REMOTE_PEER_ID
-import io.libp2p.etc.types.forward
 import io.libp2p.etc.types.lazyVar
 import io.libp2p.etc.types.toCompletableFuture
 import io.libp2p.etc.types.toVoidCompletableFuture
@@ -89,8 +87,8 @@ abstract class NettyTransportBase(
             .childHandler(
                 nettyInitializer { ch ->
                     registerChannel(ch)
-                    val (channelHandler, _) = createConnectionHandler(connHandler, false)
-                    ch.pipeline().addLast(channelHandler)
+                    val connectionBuilder = makeConnectionBuilder(connHandler, false)
+                    ch.pipeline().addLast(connectionBuilder)
                 }
             )
 
@@ -121,7 +119,7 @@ abstract class NettyTransportBase(
         if (closed) throw Libp2pException("Transport is closed")
 
         val remotePeerId = addr.getStringComponent(Protocol.P2P)?.let { PeerId.fromBase58(it) }
-        val (channelHandler, connFuture) = createConnectionHandler(connHandler, true, remotePeerId)
+        val connectionBuilder = makeConnectionBuilder(connHandler, true, remotePeerId)
 
         val client = nettyClient.clone()
         clientInitializer(addr)?.also {
@@ -129,36 +127,15 @@ abstract class NettyTransportBase(
         }
 
         val chanFuture = client
-            .handler(channelHandler)
+            .handler(connectionBuilder)
             .connect(fromMultiaddr(addr))
             .also { registerChannel(it.channel()) }
 
-        return chanFuture.toCompletableFuture().thenCompose { connFuture }
+        return chanFuture.toCompletableFuture()
+            .thenCompose { connectionBuilder.connectionEstablished }
     } // dial
 
     protected abstract fun clientInitializer(addr: Multiaddr): ChannelHandler?
-
-    private fun createConnectionHandler(
-        connHandler: ConnectionHandler,
-        initiator: Boolean,
-        remotePeerId: PeerId? = null
-    ): Pair<ChannelHandler, CompletableFuture<Connection>> {
-        val connFuture = CompletableFuture<Connection>()
-        return nettyInitializer { ch ->
-            val connection = ConnectionOverNetty(ch, this, initiator)
-            remotePeerId?.also { ch.attr(REMOTE_PEER_ID).set(it) }
-            upgrader.establishSecureChannel(connection)
-                .thenCompose {
-                    connection.setSecureSession(it)
-                    upgrader.establishMuxer(connection)
-                }.thenApply {
-                    connection.setMuxerSession(it)
-                    connHandler.handleConnection(connection)
-                    connection
-                }
-                .forward(connFuture)
-        } to connFuture
-    } // createConnectionHandler
 
     private fun registerChannel(ch: Channel) {
         if (closed) {
@@ -183,6 +160,18 @@ abstract class NettyTransportBase(
             Protocol.DNSADDR
         ) }
             ?.second ?: throw Libp2pException("Missing IP4/IP6/DNSADDR in multiaddress $addr")
+
+    private fun makeConnectionBuilder(
+        connHandler: ConnectionHandler,
+        initiator: Boolean,
+        remotePeerId: PeerId? = null
+    ) = ConnectionBuilder(
+        this,
+        upgrader,
+        connHandler,
+        initiator,
+        remotePeerId
+    )
 
     protected fun portFromMultiaddr(addr: Multiaddr) =
         addr.filterStringComponents().find { p -> p.first == Protocol.TCP }
