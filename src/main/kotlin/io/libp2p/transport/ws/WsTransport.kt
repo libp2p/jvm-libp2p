@@ -3,6 +3,7 @@ package io.libp2p.transport.ws
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multiformats.Protocol
 import io.libp2p.transport.ConnectionUpgrader
+import io.libp2p.transport.implementation.ConnectionBuilder
 import io.libp2p.transport.implementation.NettyTransportBase
 import io.netty.channel.ChannelHandler
 
@@ -15,15 +16,21 @@ class WsTransport(
                 addr.has(Protocol.WS)
     } // handles
 
-    override fun serverInitializer(addr: Multiaddr): ChannelHandler? {
+    override fun serverTransportBuilder(
+        connectionBuilder: ConnectionBuilder,
+        addr: Multiaddr
+    ): ChannelHandler? {
         return WebSocketServerInitializer()
-    } // serverInitializer
+    } // serverTransportBuilder
 
-    override fun clientInitializer(addr: Multiaddr): ChannelHandler? {
+    override fun clientTransportBuilder(
+        connectionBuilder: ConnectionBuilder,
+        addr: Multiaddr
+    ): ChannelHandler? {
         val host = hostFromMultiaddr(addr)
         val port = portFromMultiaddr(addr)
         val url = "ws://$host:$port/"
 
         return WebSocketClientInitializer(url)
-    } // clientInitializer
+    } // clientTransportBuilder
 } // class WsTransport

@@ -36,7 +36,7 @@ abstract class NettyTransportBase(
     private var workerGroup by lazyVar { NioEventLoopGroup() }
     private var bossGroup by lazyVar { workerGroup }
 
-    private var nettyClient by lazyVar {
+    private var client by lazyVar {
         Bootstrap().apply {
             group(workerGroup)
             channel(NioSocketChannel::class.java)
@@ -44,7 +44,7 @@ abstract class NettyTransportBase(
         }
     }
 
-    private var nettyServer by lazyVar {
+    private var server by lazyVar {
         ServerBootstrap().apply {
             group(bossGroup, workerGroup)
             channel(NioServerSocketChannel::class.java)
@@ -80,15 +80,14 @@ abstract class NettyTransportBase(
     override fun listen(addr: Multiaddr, connHandler: ConnectionHandler): CompletableFuture<Unit> {
         if (closed) throw Libp2pException("Transport is closed")
 
-        val server = nettyServer.clone()
-        serverInitializer(addr)?.also { server.childHandler(it) }
+        val connectionBuilder = makeConnectionBuilder(connHandler, false)
+        val channelHandler = serverTransportBuilder(connectionBuilder, addr) ?: connectionBuilder
 
         val listener = server.clone()
             .childHandler(
                 nettyInitializer { ch ->
                     registerChannel(ch)
-                    val connectionBuilder = makeConnectionBuilder(connHandler, false)
-                    ch.pipeline().addLast(connectionBuilder)
+                    ch.pipeline().addLast(channelHandler)
                 }
             )
 
@@ -108,26 +107,26 @@ abstract class NettyTransportBase(
         return bindComplete.toVoidCompletableFuture()
     } // listener
 
-    protected abstract fun serverInitializer(addr: Multiaddr): ChannelHandler?
+    protected abstract fun serverTransportBuilder(
+        connectionBuilder: ConnectionBuilder,
+        addr: Multiaddr
+    ): ChannelHandler?
 
     override fun unlisten(addr: Multiaddr): CompletableFuture<Unit> {
         return listeners[addr]?.close()?.toVoidCompletableFuture()
             ?: throw Libp2pException("No listeners on address $addr")
     } // unlisten
 
-    override fun dial(addr: Multiaddr, connHandler: ConnectionHandler): CompletableFuture<Connection> {
+    override fun dial(addr: Multiaddr, connHandler: ConnectionHandler)
+            : CompletableFuture<Connection> {
         if (closed) throw Libp2pException("Transport is closed")
 
         val remotePeerId = addr.getStringComponent(Protocol.P2P)?.let { PeerId.fromBase58(it) }
         val connectionBuilder = makeConnectionBuilder(connHandler, true, remotePeerId)
+        val channelHandler = clientTransportBuilder(connectionBuilder, addr) ?: connectionBuilder
 
-        val client = nettyClient.clone()
-        clientInitializer(addr)?.also {
-            client.handler(it)
-        }
-
-        val chanFuture = client
-            .handler(connectionBuilder)
+        val chanFuture = client.clone()
+            .handler(channelHandler)
             .connect(fromMultiaddr(addr))
             .also { registerChannel(it.channel()) }
 
@@ -135,7 +134,10 @@ abstract class NettyTransportBase(
             .thenCompose { connectionBuilder.connectionEstablished }
     } // dial
 
-    protected abstract fun clientInitializer(addr: Multiaddr): ChannelHandler?
+    protected abstract fun clientTransportBuilder(
+        connectionBuilder: ConnectionBuilder,
+        addr: Multiaddr
+    ): ChannelHandler?
 
     private fun registerChannel(ch: Channel) {
         if (closed) {
