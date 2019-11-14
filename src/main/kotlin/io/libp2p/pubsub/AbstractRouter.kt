@@ -14,6 +14,7 @@ import io.netty.handler.codec.protobuf.ProtobufDecoder
 import io.netty.handler.codec.protobuf.ProtobufEncoder
 import io.netty.handler.codec.protobuf.ProtobufVarint32FrameDecoder
 import io.netty.handler.codec.protobuf.ProtobufVarint32LengthFieldPrepender
+import org.apache.logging.log4j.LogManager
 import pubsub.pb.Rpc
 import java.util.Random
 import java.util.concurrent.CompletableFuture
@@ -22,6 +23,7 @@ import java.util.concurrent.CompletableFuture
  * Implements common logic for pubsub routers
  */
 abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRouterDebug {
+    private val logger = LogManager.getLogger(AbstractRouter::class.java)
 
     override var curTime: () -> Long by lazyVar { { System.currentTimeMillis() } }
     override var random by lazyVar { Random() }
@@ -130,7 +132,7 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
     /**
      * Broadcasts to peers validated unseen messages received from another peer
      */
-    protected abstract fun broadcastInbound(msg: Rpc.RPC, receivedFrom: PeerHandler)
+    protected abstract fun broadcastInbound(msgs: List<Rpc.Message>, receivedFrom: PeerHandler)
 
     /**
      * Processes Pubsub control message
@@ -151,13 +153,19 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
         if (msg.hasControl()) {
             processControl(msg.control, peer)
         }
-        val msgUnseen = filterSeen(msg)
-        if (msgUnseen.publishCount > 0) {
-            validator.validate(msgUnseen)
-            msgUnseen.publishList.forEach(msgHandler)
-            seenMessages += msg.publishList.map { getMessageId(it) }
-            broadcastInbound(msgUnseen, peer)
+        val msgUnseen = msg.publishList
+            .filter { seenMessages.add(getMessageId(it)) }
+        val msgValid = msgUnseen.filter {
+            try {
+                validator.validate(it)
+                true
+            } catch (e: Exception) {
+                logger.info("Invalid pubsub message from peer $peer: $it", e)
+                false
+            }
         }
+        msgValid.forEach(msgHandler)
+        broadcastInbound(msgValid, peer)
         flushAllPending()
     }
 
@@ -177,12 +185,6 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
         activePeers.filter { topics.intersect(peerTopics[it]).isNotEmpty() }
     protected fun getTopicPeers(topic: String) =
         activePeers.filter { topic in peerTopics[it] }
-
-    private fun filterSeen(msg: Rpc.RPC): Rpc.RPC =
-        Rpc.RPC.newBuilder(msg)
-            .clearPublish()
-            .addAllPublish(msg.publishList.filter { getMessageId(it) !in seenMessages })
-            .build()
 
     override fun subscribe(vararg topics: String) {
         runOnEventThread {

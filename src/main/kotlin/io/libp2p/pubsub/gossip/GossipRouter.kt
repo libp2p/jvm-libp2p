@@ -92,8 +92,8 @@ open class GossipRouter : AbstractRouter() {
         }.forEach { processControlMessage(it, receivedFrom) }
     }
 
-    override fun broadcastInbound(msg: Rpc.RPC, receivedFrom: PeerHandler) {
-        msg.publishList.forEach { pubMsg ->
+    override fun broadcastInbound(msgs: List<Rpc.Message>, receivedFrom: PeerHandler) {
+        msgs.forEach { pubMsg ->
             pubMsg.topicIDsList
                 .mapNotNull { mesh[it] }
                 .flatten()
