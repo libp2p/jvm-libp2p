@@ -7,6 +7,7 @@ import io.libp2p.core.pubsub.PubsubApi
 import io.libp2p.core.pubsub.PubsubPublisherApi
 import io.libp2p.core.pubsub.PubsubSubscription
 import io.libp2p.core.pubsub.Topic
+import io.libp2p.core.pubsub.Validator
 import io.libp2p.etc.types.toByteArray
 import io.libp2p.etc.types.toByteBuf
 import io.libp2p.etc.types.toBytesBigEndian
@@ -16,11 +17,10 @@ import io.netty.buffer.ByteBuf
 import pubsub.pb.Rpc
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicLong
-import java.util.function.Consumer
 
 class PubsubApiImpl(val router: PubsubRouter) : PubsubApi {
 
-    inner class SubscriptionImpl(val topics: Array<out Topic>, val receiver: Consumer<MessageApi>) :
+    inner class SubscriptionImpl(val topics: Array<out Topic>, val receiver: Validator) :
         PubsubSubscription {
         var unsubscribed = false
         override fun unsubscribe() {
@@ -51,12 +51,14 @@ class PubsubApiImpl(val router: PubsubRouter) : PubsubApi {
 
     val subscriptions: MutableMap<Topic, MutableList<SubscriptionImpl>> = mutableMapOf()
 
-    private fun onNewMessage(msg: Rpc.Message) {
-        synchronized(this) {
+    private fun onNewMessage(msg: Rpc.Message): CompletableFuture<Boolean> {
+        val validationFuts = synchronized(this) {
             msg.topicIDsList.mapNotNull { subscriptions[Topic(it)] }.flatten().distinct()
-        }.forEach {
-            it.receiver.accept(rpc2Msg(msg))
+        }.map {
+            it.receiver.apply(rpc2Msg(msg))
         }
+        return CompletableFuture.allOf(*validationFuts.toTypedArray())
+            .thenApply { validationFuts.all { it.get() } }
     }
 
     private fun rpc2Msg(msg: Rpc.Message): MessageApi {
@@ -68,7 +70,7 @@ class PubsubApiImpl(val router: PubsubRouter) : PubsubApi {
         )
     }
 
-    override fun subscribe(receiver: Consumer<MessageApi>, vararg topics: Topic): PubsubSubscription {
+    override fun subscribe(receiver: Validator, vararg topics: Topic): PubsubSubscription {
         val subscription = SubscriptionImpl(topics, receiver)
         val routerToSubscribe = mutableListOf<String>()
 

@@ -1,5 +1,12 @@
 package io.libp2p.pubsub
 
+import io.libp2p.core.pubsub.MessageApi
+import io.libp2p.core.pubsub.RESULT_INVALID
+import io.libp2p.core.pubsub.RESULT_VALID
+import io.libp2p.core.pubsub.Subscriber
+import io.libp2p.core.pubsub.Topic
+import io.libp2p.core.pubsub.Validator
+import io.libp2p.etc.types.toByteBuf
 import io.libp2p.etc.types.toBytesBigEndian
 import io.libp2p.etc.types.toProtobuf
 import io.libp2p.tools.TestChannel.TestConnection
@@ -9,6 +16,7 @@ import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import pubsub.pb.Rpc
 import java.time.Duration
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeUnit
 
@@ -303,5 +311,75 @@ abstract class PubsubRouterTest(val router: RouterCtor) {
         Assertions.assertEquals(msg, router2.inboundMessages.poll(5, TimeUnit.SECONDS))
         Assertions.assertTrue(router1.inboundMessages.isEmpty())
         Assertions.assertTrue(router2.inboundMessages.isEmpty())
+    }
+
+    @Test
+    fun validateTest() {
+        val fuzz = DeterministicFuzz()
+
+        val routers = List(3) { fuzz.createTestRouter(router()) }
+
+        val conn_1_2 = routers[0].connectSemiDuplex(routers[1], pubsubLogs = LogLevel.ERROR)
+        val conn_2_3 = routers[1].connectSemiDuplex(routers[2], pubsubLogs = LogLevel.ERROR)
+
+        val apis = routers.map { it.api }
+        class RecordingSubscriber : Subscriber {
+            var count = 0
+            override fun accept(t: MessageApi) {
+                count++
+            }
+        }
+
+        val topics = List(4) { Topic("topic$it") }
+
+        val subs2 = topics
+            .map { it to RecordingSubscriber() }
+            .map { apis[2].subscribe(it.second, it.first); it.second }
+
+        val scheduler = fuzz.createControlledExecutor()
+        val delayed = { result: Boolean, delayMs: Long ->
+            CompletableFuture<Boolean>().also {
+                scheduler.schedule({ it.complete(result) }, delayMs, TimeUnit.MILLISECONDS)
+            }
+        }
+        apis[1].subscribe(Validator { RESULT_VALID }, topics[0])
+        apis[1].subscribe(Validator { RESULT_INVALID }, topics[1])
+        apis[1].subscribe(Validator { delayed(true, 500) }, topics[2])
+        apis[1].subscribe(Validator { delayed(false, 500) }, topics[3])
+
+        // 2 heartbeats for all
+        fuzz.timeController.addTime(Duration.ofSeconds(2))
+
+        val publisher = apis[0].createPublisher(routers[0].keyPair.first)
+        val msg = { "Hello".toByteArray().toByteBuf() }
+        topics.forEach { publisher.publish(msg(), it) }
+
+        Assertions.assertEquals(1, subs2[0].count)
+        Assertions.assertEquals(0, subs2[1].count)
+        Assertions.assertEquals(0, subs2[2].count)
+        Assertions.assertEquals(0, subs2[3].count)
+
+        fuzz.timeController.addTime(Duration.ofMillis(200))
+        topics.forEach { publisher.publish(msg(), it) }
+
+        Assertions.assertEquals(2, subs2[0].count)
+        Assertions.assertEquals(0, subs2[1].count)
+        Assertions.assertEquals(0, subs2[2].count)
+        Assertions.assertEquals(0, subs2[3].count)
+
+        // delayed validators should complete
+        fuzz.timeController.addTime(Duration.ofMillis(400))
+
+        Assertions.assertEquals(2, subs2[0].count)
+        Assertions.assertEquals(0, subs2[1].count)
+        Assertions.assertEquals(1, subs2[2].count)
+        Assertions.assertEquals(0, subs2[3].count)
+
+        fuzz.timeController.addTime(Duration.ofMillis(500))
+
+        Assertions.assertEquals(2, subs2[0].count)
+        Assertions.assertEquals(0, subs2[1].count)
+        Assertions.assertEquals(2, subs2[2].count)
+        Assertions.assertEquals(0, subs2[3].count)
     }
 }

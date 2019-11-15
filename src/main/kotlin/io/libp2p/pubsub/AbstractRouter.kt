@@ -1,6 +1,7 @@
 package io.libp2p.pubsub
 
 import io.libp2p.core.Stream
+import io.libp2p.core.pubsub.RESULT_VALID
 import io.libp2p.etc.types.LRUSet
 import io.libp2p.etc.types.MultiSet
 import io.libp2p.etc.types.completedExceptionally
@@ -16,6 +17,7 @@ import io.netty.handler.codec.protobuf.ProtobufVarint32FrameDecoder
 import io.netty.handler.codec.protobuf.ProtobufVarint32LengthFieldPrepender
 import org.apache.logging.log4j.LogManager
 import pubsub.pb.Rpc
+import java.util.Collections.singletonList
 import java.util.Random
 import java.util.concurrent.CompletableFuture
 
@@ -29,7 +31,7 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
     override var random by lazyVar { Random() }
 
     val peerTopics = MultiSet<PeerHandler, String>()
-    private var msgHandler: (Rpc.Message) -> Unit = { }
+    private var msgHandler: (Rpc.Message) -> CompletableFuture<Boolean> = { RESULT_VALID }
     var maxSeenMessagesSizeSet = 10000
     var validator: PubsubMessageValidator = PubsubMessageValidator.nopValidator()
     val seenMessages by lazy { LRUSet.create<String>(maxSeenMessagesSizeSet) }
@@ -164,9 +166,38 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
                 false
             }
         }
-        msgValid.forEach(msgHandler)
-        broadcastInbound(msgValid, peer)
+
+        val validFuts = msgValid.map { it to msgHandler(it) }
+        val doneUndone = validFuts.groupBy { it.second.isDone }
+        val done = doneUndone.getOrDefault(true, emptyList())
+        val undone = doneUndone.getOrDefault(false, emptyList())
+
+        // broadcasting in a single chunk those which were validated synchronously
+        val validatedMsgs = done.filter {
+                try {
+                    it.second.get()
+                } catch (e: Exception) {
+                    logger.warn("Exception while handling message from peer $peer: ${it.first}", e)
+                    false
+                }
+            }
+            .map { it.first }
+        broadcastInbound(validatedMsgs, peer)
         flushAllPending()
+
+        // broadcast others on completion
+        undone.forEach {
+                it.second.whenComplete { res, err ->
+                    when {
+                        err != null -> logger.warn("Exception while handling message from peer $peer: ${it.first}", err)
+                        !res -> logger.info("Invalid pubsub message from peer $peer: ${it.first}")
+                        else -> {
+                            broadcastInbound(singletonList(it.first), peer)
+                            flushAllPending()
+                        }
+                    }
+                }
+            }
     }
 
     override fun onPeerDisconnected(peer: PeerHandler) {
@@ -218,7 +249,7 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
         return peer.writeAndFlush(msg)
     }
 
-    override fun initHandler(handler: (Rpc.Message) -> Unit) {
+    override fun initHandler(handler: (Rpc.Message) -> CompletableFuture<Boolean>) {
         msgHandler = handler
     }
 }
