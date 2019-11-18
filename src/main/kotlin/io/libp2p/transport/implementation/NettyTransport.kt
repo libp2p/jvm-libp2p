@@ -155,14 +155,6 @@ abstract class NettyTransport(
         }
     } // registerChannel
 
-    protected fun hostFromMultiaddr(addr: Multiaddr) =
-        addr.filterStringComponents().find { p -> p.first in arrayOf(
-            Protocol.IP4,
-            Protocol.IP6,
-            Protocol.DNSADDR
-        ) }
-            ?.second ?: throw Libp2pException("Missing IP4/IP6/DNSADDR in multiaddress $addr")
-
     private fun makeConnectionBuilder(
         connHandler: ConnectionHandler,
         initiator: Boolean,
@@ -175,6 +167,14 @@ abstract class NettyTransport(
         remotePeerId
     )
 
+    protected fun hostFromMultiaddr(addr: Multiaddr) =
+        addr.filterStringComponents().find { p -> p.first in arrayOf(
+            Protocol.IP4,
+            Protocol.IP6,
+            Protocol.DNSADDR
+        ) }
+            ?.second ?: throw Libp2pException("Missing IP4/IP6/DNSADDR in multiaddress $addr")
+
     protected fun portFromMultiaddr(addr: Multiaddr) =
         addr.filterStringComponents().find { p -> p.first == Protocol.TCP }
             ?.second?.toInt() ?: throw Libp2pException("Missing TCP in multiaddress $addr")
@@ -184,4 +184,6 @@ abstract class NettyTransport(
         val port = portFromMultiaddr(addr)
         return InetSocketAddress(host, port)
     } // fromMultiaddr
+
+    abstract fun toMultiaddr(addr: InetSocketAddress): Multiaddr
 } // class NettyTransportBase
