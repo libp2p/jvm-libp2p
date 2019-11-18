@@ -8,7 +8,7 @@ import io.libp2p.core.multiformats.Protocol.TCP
 import io.libp2p.core.multiformats.Protocol.WS
 import io.libp2p.transport.ConnectionUpgrader
 import io.libp2p.transport.implementation.ConnectionBuilder
-import io.libp2p.transport.implementation.NettyTransportBase
+import io.libp2p.transport.implementation.NettyTransport
 import io.netty.channel.ChannelHandler
 
 /**
@@ -19,7 +19,7 @@ import io.netty.channel.ChannelHandler
  */
 class TcpTransport(
     upgrader: ConnectionUpgrader
-) : NettyTransportBase(upgrader) {
+) : NettyTransport(upgrader) {
     // Checks if this transport can handle this multiaddr. It should return true for multiaddrs containing `tcp` atoms.
     override fun handles(addr: Multiaddr): Boolean {
         return (addr.has(IP4) || addr.has(IP6) || addr.has(DNSADDR)) &&
