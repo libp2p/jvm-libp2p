@@ -43,14 +43,8 @@ class ConnectionOverNetty(
         toMultiaddr(nettyChannel.remoteAddress() as InetSocketAddress)
 
     private fun toMultiaddr(addr: InetSocketAddress): Multiaddr {
-        val proto = when (addr.address) {
-            is Inet4Address -> Protocol.IP4
-            is Inet6Address -> Protocol.IP6
-            else -> throw InternalErrorException("Unknown address type $addr")
-        }
-        return Multiaddr(listOf(
-            proto to proto.addressToBytes(addr.address.hostAddress),
-            Protocol.TCP to Protocol.TCP.addressToBytes(addr.port.toString())
-        ))
+        if (transport is NettyTransport)
+            return transport.toMultiaddr(addr)
+        throw RuntimeException("Can not determine address as Multiaddr")
     }
 }
