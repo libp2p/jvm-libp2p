@@ -2,7 +2,6 @@ package io.libp2p.transport.tcp
 
 import io.libp2p.core.InternalErrorException
 import io.libp2p.core.multiformats.Multiaddr
-import io.libp2p.core.multiformats.Protocol
 import io.libp2p.core.multiformats.Protocol.DNSADDR
 import io.libp2p.core.multiformats.Protocol.IP4
 import io.libp2p.core.multiformats.Protocol.IP6
@@ -25,7 +24,7 @@ import java.net.InetSocketAddress
 class TcpTransport(
     upgrader: ConnectionUpgrader
 ) : NettyTransport(upgrader) {
-    // Checks if this transport can handle this multiaddr. It should return true for multiaddrs containing `tcp` atoms.
+
     override fun handles(addr: Multiaddr): Boolean {
         return (addr.has(IP4) || addr.has(IP6) || addr.has(DNSADDR)) &&
                 addr.has(TCP) &&
