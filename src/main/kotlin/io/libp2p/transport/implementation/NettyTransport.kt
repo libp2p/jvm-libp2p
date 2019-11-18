@@ -24,7 +24,7 @@ import java.net.InetSocketAddress
 import java.time.Duration
 import java.util.concurrent.CompletableFuture
 
-abstract class NettyTransportBase(
+abstract class NettyTransport(
     private val upgrader: ConnectionUpgrader
 ) : Transport {
     private var closed = false
@@ -94,10 +94,10 @@ abstract class NettyTransportBase(
         val bindComplete = listener.bind(fromMultiaddr(addr))
 
         bindComplete.also {
-            synchronized(this@NettyTransportBase) {
+            synchronized(this@NettyTransport) {
                 listeners += addr to it.channel()
                 it.channel().closeFuture().addListener {
-                    synchronized(this@NettyTransportBase) {
+                    synchronized(this@NettyTransport) {
                         listeners -= addr
                     }
                 }
@@ -145,10 +145,10 @@ abstract class NettyTransportBase(
             return
         }
 
-        synchronized(this@NettyTransportBase) {
+        synchronized(this@NettyTransport) {
             channels += ch
             ch.closeFuture().addListener {
-                synchronized(this@NettyTransportBase) {
+                synchronized(this@NettyTransport) {
                     channels -= ch
                 }
             }
