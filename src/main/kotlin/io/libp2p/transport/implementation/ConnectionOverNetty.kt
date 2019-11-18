@@ -1,16 +1,12 @@
 package io.libp2p.transport.implementation
 
 import io.libp2p.core.Connection
-import io.libp2p.core.InternalErrorException
 import io.libp2p.core.multiformats.Multiaddr
-import io.libp2p.core.multiformats.Protocol
 import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.core.security.SecureChannel
 import io.libp2p.core.transport.Transport
 import io.libp2p.etc.CONNECTION
 import io.netty.channel.Channel
-import java.net.Inet4Address
-import java.net.Inet6Address
 import java.net.InetSocketAddress
 
 /**
