@@ -47,7 +47,7 @@ func main() {
 
 func makeOptions() []libp2p.Option {
 	options := []libp2p.Option{
-		libp2p.ListenAddrStrings("/ip4/127.0.0.1/tcp/0"),
+		libp2p.ListenAddrStrings("/ip4/127.0.0.1/tcp/0/ws"),
 		libp2p.Ping(true),
 	}
 	if wantPlaintext() {
