@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit.SECONDS
 
@@ -69,7 +70,7 @@ abstract class TransportTests {
         assertEquals(connectionCount, client.activeConnections)
 
         SECONDS.sleep(5) // let things settle
-    assertEquals(connectionCount, inboundConnections.count, "Connections not acknowledged by server")
+        assertEquals(connectionCount, inboundConnections.count, "Connections not acknowledged by server")
         assertEquals(connectionCount, server.activeConnections)
 
         return client
@@ -141,6 +142,7 @@ abstract class TransportTests {
     }
 
     @Test
+    @DisabledIfEnvironmentVariable(named = "TRAVIS", matches = "true")
     fun `dial then close client transport`() {
         val wsClient = connectClientAndServer(transportUnderTest, 50)
 
@@ -154,6 +156,7 @@ abstract class TransportTests {
     }
 
     @Test
+    @DisabledIfEnvironmentVariable(named = "TRAVIS", matches = "true")
     fun `dial then close server transport`() {
         val wsClient = connectClientAndServer(transportUnderTest, 50)
 
