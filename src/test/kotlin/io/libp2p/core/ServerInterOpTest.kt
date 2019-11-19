@@ -2,6 +2,7 @@ package io.libp2p.core
 
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.dsl.SecureChannelCtor
+import io.libp2p.core.dsl.TransportCtor
 import io.libp2p.core.dsl.host
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.etc.types.getX
@@ -10,10 +11,12 @@ import io.libp2p.protocol.Identify
 import io.libp2p.protocol.IdentifyController
 import io.libp2p.protocol.Ping
 import io.libp2p.protocol.PingController
+import io.libp2p.security.plaintext.PlaintextInsecureChannel
 import io.libp2p.security.secio.SecIoSecureChannel
 import io.libp2p.tools.DoNothing
 import io.libp2p.tools.DoNothingController
 import io.libp2p.transport.tcp.TcpTransport
+import io.libp2p.transport.ws.WsTransport
 import io.netty.handler.logging.LogLevel
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -27,7 +30,10 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 
 @EnabledIfEnvironmentVariable(named = "ENABLE_GO_INTEROP", matches = "true")
-class SecioGoServerInterOpTest : ServerInterOpTest(::SecIoSecureChannel, GoPingServer)
+class SecioTcpGoServerInterOpTest : ServerInterOpTest(::SecIoSecureChannel, ::TcpTransport, GoServer)
+
+@EnabledIfEnvironmentVariable(named = "ENABLE_GO_INTEROP", matches = "true")
+class SecioWsGoServerInterOpTest : ServerInterOpTest(::SecIoSecureChannel, ::WsTransport, GoServer)
 
 // @EnabledIfEnvironmentVariable(named = "ENABLE_GO_INTEROP", matches = "true")
 // class PlaintextGoServerInterOpTest : ServerInterOpTest(::PlaintextInsecureChannel, GoPlaintextServer)
@@ -40,15 +46,10 @@ data class ExternalServer(
     val serverDirEnvVar: String
 )
 
-val GoPingServer = ExternalServer(
+val GoServer = ExternalServer(
     "./ping-server",
     "GO_PING_SERVER"
 )
-val GoPlaintextServer = ExternalServer(
-    "./ping-server --plaintext",
-    "GO_PING_SERVER"
-)
-
 val JsPingServer = ExternalServer(
     "node lib/ping-server.js",
     "JS_PINGER"
@@ -57,14 +58,15 @@ val JsPingServer = ExternalServer(
 @Tag("interop")
 abstract class ServerInterOpTest(
     val secureChannelCtor: SecureChannelCtor,
-    external: ExternalServer
+    val transportCtor: TransportCtor,
+    val external: ExternalServer
 ) {
     val clientHost = host {
         identity {
             random(KEY_TYPE.RSA)
         }
         transports {
-            +::TcpTransport
+            add(transportCtor)
         }
         secureChannels {
             add(secureChannelCtor)
@@ -84,7 +86,20 @@ abstract class ServerInterOpTest(
         }
     }
 
-    val serverHost = ProcessBuilder(*external.serverCommand.split(" ").toTypedArray())
+    fun serverCommandLine(): Array<String> {
+        val args = mutableListOf<String>()
+        args.addAll(external.serverCommand.split(" "))
+
+        if (transportCtor.equals(::WsTransport))
+            args.add("--websocket")
+
+        if (secureChannelCtor.equals(::PlaintextInsecureChannel))
+            args.add("--plaintext")
+
+        return args.toTypedArray()
+    }
+
+    val serverHost = ProcessBuilder(*serverCommandLine())
         .directory(File(System.getenv(external.serverDirEnvVar)))
         .redirectOutput(ProcessBuilder.Redirect.PIPE)
         .redirectError(ProcessBuilder.Redirect.INHERIT)
@@ -106,7 +121,7 @@ abstract class ServerInterOpTest(
             println("Server started on $publishedAddress")
 
             val addressParts = publishedAddress.split("/")
-            val serverAddress = addressParts.subList(0, 5).joinToString("/")
+            val serverAddress = addressParts.subList(0, addressParts.indexOf("ipfs")).joinToString("/")
             val peerId = addressParts.last()
 
             serverMultiAddress = Multiaddr(serverAddress)
