@@ -38,9 +38,8 @@ class SecioWsGoServerInterOpTest : ServerInterOpTest(::SecIoSecureChannel, ::WsT
 @EnabledIfEnvironmentVariable(named = "ENABLE_RUST_INTEROP", matches = "true")
 class PlaintextTcpRustServerInterOpTest : ServerInterOpTest(::PlaintextInsecureChannel, ::TcpTransport, RustServer)
 
-//@EnabledIfEnvironmentVariable(named = "ENABLE_RUST_INTEROP", matches = "true")
-//class PlaintextTcpRustServerInterOpTest : ServerInterOpTest(::PlaintextInsecureChannel, ::TcpTransport, RustServer)
-
+// @EnabledIfEnvironmentVariable(named = "ENABLE_RUST_INTEROP", matches = "true")
+// class PlaintextTcpRustServerInterOpTest : ServerInterOpTest(::PlaintextInsecureChannel, ::TcpTransport, RustServer)
 
 // @EnabledIfEnvironmentVariable(named = "ENABLE_GO_INTEROP", matches = "true")
 // class PlaintextGoServerInterOpTest : ServerInterOpTest(::PlaintextInsecureChannel, GoPlaintextServer)
