@@ -135,15 +135,7 @@ abstract class HostTest(val secureChannelCtor: SecureChannelCtor) {
 
     @Test
     fun pingOverSecureConnection() {
-        val ping = Ping().dial(
-            clientHost,
-            serverHost.peerId,
-            Multiaddr(listenAddress)
-        )
-        val pingStream = ping.stream.get(5, TimeUnit.SECONDS)
-        println("Ping stream created")
-        val pingCtr = ping.controller.get(5, TimeUnit.SECONDS)
-        println("Ping controller created")
+        val (pingStream, pingCtr) = dialPing()
 
         for (i in 1..10) {
             val latency = pingCtr.ping().get(1, TimeUnit.SECONDS)
@@ -159,6 +151,47 @@ abstract class HostTest(val secureChannelCtor: SecureChannelCtor) {
             pingCtr.ping().getX(5.0)
         }
     }
+
+    @Test
+    fun multiplePingChannelsOnTheSameConnection() {
+        val controllers = mutableListOf<PingController>()
+        val range = (0..2)
+        val rangeLength = (range.last - range.first) + 1
+
+        range.forEach {
+            val (_, pingCtr) = dialPing()
+            controllers.add(pingCtr)
+        }
+
+        assertEquals(rangeLength, clientHost.streams.size)
+        assertEquals(1, clientHost.network.connections.size)
+        assertEquals(rangeLength, serverHost.streams.size)
+        assertEquals(1, serverHost.network.connections.size)
+
+        for (i in 1..10) {
+            range.forEach {
+                val latency = controllers[it].ping().get(1, TimeUnit.SECONDS)
+                println("Ping $it/$i is ${latency}ms")
+            }
+        }
+
+        assertEquals(10 * rangeLength, countedPingResponder.pingsReceived)
+    }
+
+    fun dialPing(): Pair<Stream, PingController> {
+        val ping = Ping().dial(
+            clientHost,
+            serverHost.peerId,
+            Multiaddr(listenAddress)
+        )
+
+        val pingStream = ping.stream.get(5, TimeUnit.SECONDS)
+        println("Ping stream created")
+        val pingCtr = ping.controller.get(5, TimeUnit.SECONDS)
+        println("Ping controller created")
+
+        return Pair(pingStream, pingCtr)
+    } // dialPing
 
     @Test
     fun identifyOverSecureConnection() {
