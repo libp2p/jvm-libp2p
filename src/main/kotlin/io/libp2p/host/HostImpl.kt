@@ -39,14 +39,16 @@ class HostImpl(
         streamHandlers += internalStreamHandler
     }
 
-    override fun start(): CompletableFuture<Unit> {
+    override fun start(): CompletableFuture<Void> {
         return CompletableFuture.allOf(
             *listenAddrs.map { network.listen(it) }.toTypedArray()
-        ).thenApply { }
+        )
     }
 
-    override fun stop(): CompletableFuture<Unit> {
-        return network.close()
+    override fun stop(): CompletableFuture<Void> {
+        return CompletableFuture.allOf(
+            network.close()
+        )
     }
 
     override fun addStreamHandler(handler: StreamHandler<*>) {

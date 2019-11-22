@@ -71,8 +71,8 @@ public class HostTestJava {
                 .listen("/ip4/0.0.0.0/tcp/40002")
                 .build();
 
-        CompletableFuture<Unit> clientStarted = clientHost.start();
-        CompletableFuture<Unit> serverStarted = serverHost.start();
+        CompletableFuture<Void> clientStarted = clientHost.start();
+        CompletableFuture<Void> serverStarted = serverHost.start();
         clientStarted.get(5, TimeUnit.SECONDS);
         System.out.println("Client started");
         serverStarted.get(5, TimeUnit.SECONDS);

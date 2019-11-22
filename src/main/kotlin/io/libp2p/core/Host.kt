@@ -41,12 +41,12 @@ interface Host {
      * The returned future is completed when all stuff up and working or
      * has completes with exception in case of any problems during start up
      */
-    fun start(): CompletableFuture<Unit>
+    fun start(): CompletableFuture<Void>
 
     /**
      * Stops all the services of this host
      */
-    fun stop(): CompletableFuture<Unit>
+    fun stop(): CompletableFuture<Void>
 
     /**
      * Adds a handler which is notified when a new [Stream] is created
