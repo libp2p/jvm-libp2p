@@ -26,8 +26,8 @@ import io.netty.handler.logging.LogLevel
 import io.netty.handler.logging.LoggingHandler
 
 typealias TransportCtor = (ConnectionUpgrader) -> Transport
-typealias StreamMuxerCtor = () -> StreamMuxer
 typealias SecureChannelCtor = (PrivKey) -> SecureChannel
+typealias StreamMuxerCtor = () -> StreamMuxer
 typealias ProtocolCtor = () -> ProtocolBinding<*>
 
 class HostConfigurationException(message: String) : RuntimeException(message)
