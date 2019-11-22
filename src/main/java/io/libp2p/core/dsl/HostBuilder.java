@@ -15,7 +15,22 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 public class HostBuilder {
-    public HostBuilder() { }
+    public HostBuilder() { this(DefaultMode.Standard); }
+    public HostBuilder(DefaultMode defaultMode) {
+        defaultMode_ = defaultMode;
+    }
+
+    public enum DefaultMode {
+        None,
+        Standard;
+
+        private Builder.Defaults asBuilderDefault() {
+            if (this.equals(None)) {
+                return Builder.Defaults.None;
+            }
+            return Builder.Defaults.Standard;
+        }
+    };
 
     @SafeVarargs
     public final HostBuilder transport(
@@ -52,25 +67,29 @@ public class HostBuilder {
 
 
     public Host build() {
-        return BuilderJKt.hostJ(b -> {
-            b.getIdentity().random();
+        return BuilderJKt.hostJ(
+            defaultMode_.asBuilderDefault(),
+            b -> {
+                b.getIdentity().random();
 
-            transports_.forEach(t ->
-                b.getTransports().add(t::apply)
-            );
-            secureChannels_.forEach(sc ->
-                b.getSecureChannels().add(sc::apply)
-            );
-            muxers_.forEach(m ->
-                b.getMuxers().add(m::get)
-            );
-            b.getProtocols().addAll(protocols_);
-            listenAddresses_.forEach(a ->
-                b.getNetwork().listen(a)
-            );
-        });
-    }
+                transports_.forEach(t ->
+                    b.getTransports().add(t::apply)
+                );
+                secureChannels_.forEach(sc ->
+                    b.getSecureChannels().add(sc::apply)
+                );
+                muxers_.forEach(m ->
+                    b.getMuxers().add(m::get)
+                );
+                b.getProtocols().addAll(protocols_);
+                listenAddresses_.forEach(a ->
+                    b.getNetwork().listen(a)
+                );
+            }
+        );
+    } // build
 
+    private DefaultMode defaultMode_;
     private List<Function<ConnectionUpgrader, Transport>> transports_ = new ArrayList<>();
     private List<Function<PrivKey, SecureChannel>> secureChannels_ = new ArrayList<>();
     private List<Supplier<StreamMuxer>> muxers_ = new ArrayList<>();
