@@ -34,7 +34,7 @@ abstract class NettyTransport(
     private val channels = mutableListOf<Channel>()
 
     private var workerGroup by lazyVar { NioEventLoopGroup() }
-    private var bossGroup by lazyVar { workerGroup }
+    private var bossGroup by lazyVar { NioEventLoopGroup(1) }
 
     private var client by lazyVar {
         Bootstrap().apply {
@@ -71,10 +71,13 @@ abstract class NettyTransport(
             .map { it.close().toVoidCompletableFuture() }
 
         val everythingThatNeedsToClose = unbindsCompleted.union(channelsClosed)
+        val allClosed = CompletableFuture.allOf(*everythingThatNeedsToClose.toTypedArray())
 
-        return CompletableFuture
-            .allOf(*everythingThatNeedsToClose.toTypedArray())
-            .thenApply { }
+        return allClosed.thenApply {
+            workerGroup.shutdownGracefully()
+            bossGroup.shutdownGracefully()
+            Unit
+        }
     } // close
 
     override fun listen(addr: Multiaddr, connHandler: ConnectionHandler): CompletableFuture<Unit> {
