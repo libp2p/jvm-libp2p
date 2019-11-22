@@ -1,6 +1,6 @@
 package io.libp2p.core.dsl
 
-import io.libp2p.host.HostImpl
+import io.libp2p.core.Host
 import java.util.function.Consumer
 
 /**
@@ -9,7 +9,7 @@ import java.util.function.Consumer
 fun hostJ(
     defaultMode: Builder.Defaults,
     fn: Consumer<BuilderJ>
-): HostImpl {
+): Host {
     val builder = BuilderJ()
     fn.accept(builder)
     return builder.build(defaultMode)

@@ -3,6 +3,7 @@ package io.libp2p.core.dsl
 import identify.pb.IdentifyOuterClass
 import io.libp2p.core.AddressBook
 import io.libp2p.core.ConnectionHandler
+import io.libp2p.core.Host
 import io.libp2p.core.StreamHandler
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.PrivKey
@@ -46,7 +47,7 @@ open class Builder {
     enum class Defaults {
         None,
         Standard
-    };
+    }
 
     protected open val identity = IdentityBuilder()
     protected open val secureChannels = SecureChannelsBuilder()
@@ -112,7 +113,7 @@ open class Builder {
     /**
      * Constructs the Host with the provided parameters.
      */
-    fun build(def: Defaults): HostImpl {
+    fun build(def: Defaults): Host {
         if (def == Defaults.None) {
             if (identity.factory == null) throw IllegalStateException("No identity builder")
 
