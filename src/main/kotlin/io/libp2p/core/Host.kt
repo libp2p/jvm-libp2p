@@ -28,6 +28,14 @@ interface Host {
     val addressBook: AddressBook
 
     /**
+     * List of all of the active listen address, across all of the active transports.
+     * Note these address will be the actual address in use, not necessarily what was requested.
+     * For example, requests to listen on a random TCP port - /ip4/addr/tcp/0 - will be returned
+     * with the actual port used.
+     */
+    fun listenAddresses(): List<Multiaddr>
+
+    /**
      * List of all streams opened at the moment across all the [Connection]s
      * Please note that this list is updated asynchronously so the streams upon receiving
      * of this list can be already closed or not yet completely initialized
