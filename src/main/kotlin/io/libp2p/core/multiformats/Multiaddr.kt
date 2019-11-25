@@ -106,6 +106,11 @@ class Multiaddr(val components: List<Pair<Protocol, ByteArray>>) {
     }
 
     companion object {
+        @JvmStatic
+        fun fromString(addr: String): Multiaddr { // helper method for Java access
+            return Multiaddr(addr)
+        }
+
         private fun parseString(addr_: String): List<Pair<Protocol, ByteArray>> {
             val ret: MutableList<Pair<Protocol, ByteArray>> = mutableListOf()
 
