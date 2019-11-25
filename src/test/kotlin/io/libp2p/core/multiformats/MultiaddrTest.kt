@@ -1,10 +1,11 @@
 package io.libp2p.core.multiformats
 
+import io.libp2p.core.PeerId
 import io.libp2p.etc.types.fromHex
 import io.libp2p.etc.types.toHex
-import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
@@ -104,12 +105,31 @@ class MultiaddrTest {
             Arguments.of("/ip4/127.0.0.1/udp/1234/ip4/127.0.0.1/tcp/4321", "047f000001910204d2047f0000010610e1".fromHex()),
             Arguments.of("/onion/aaimaq4ygg2iegci:80", "bc030010c0439831b48218480050".fromHex())
         )
+
+        @JvmStatic
+        fun protocolLists() = listOf(
+            Arguments.of(
+                listOf(
+                    Pair(Protocol.IP4, "7f000001".fromHex()),
+                    Pair(Protocol.TCP, "2328".fromHex())
+                ),
+                "/ip4/127.0.0.1/tcp/9000"
+            ),
+            Arguments.of(
+                listOf(
+                    Pair(Protocol.IP4, "7f000001".fromHex()),
+                    Pair(Protocol.TCP, "2328".fromHex()),
+                    Pair(Protocol.WS, ByteArray(0))
+                ),
+                "/ip4/127.0.0.1/tcp/9000/ws"
+            )
+        )
     }
 
     @ParameterizedTest
     @MethodSource("paramsInvalid")
     fun invalidStringAddress(addr: String) {
-        Assertions.assertThrows(IllegalArgumentException::class.java, { Multiaddr(addr) })
+        assertThrows(IllegalArgumentException::class.java, { Multiaddr(addr) })
     }
 
     @ParameterizedTest
@@ -137,5 +157,31 @@ class MultiaddrTest {
         assertNotEquals(Multiaddr("/ip4/0.0.0.1/tcp/20000"), Multiaddr("/ip4/0.0.0.0/tcp/20000"))
         assertNotEquals(Multiaddr("/ip4/0.0.0.0/tcp/20001").hashCode(), Multiaddr("/ip4/0.0.0.0/tcp/20000").hashCode())
         assertNotEquals(Multiaddr("/ip4/0.0.0.1/tcp/20000").hashCode(), Multiaddr("/ip4/0.0.0.0/tcp/20000").hashCode())
+    }
+
+    @ParameterizedTest
+    @MethodSource("protocolLists")
+    fun testFromProtocolList(protocols: List<Pair<Protocol, ByteArray>>, expected: String) {
+        assertEquals(expected, Multiaddr(protocols).toString())
+    }
+
+    @Test
+    fun testWithPeerId() {
+        val parentAddr = Multiaddr("/ip4/127.0.0.1/tcp/20000")
+        val peerId = testPeerId()
+
+        val addr = Multiaddr(parentAddr, peerId);
+        assertEquals("/ip4/127.0.0.1/tcp/20000/ipfs/QmULzn6KtFUCKpkFymEUgUvkLtv9j2Eo4utZPELmQEebR6", addr.toString())
+
+        assertThrows(java.lang.IllegalArgumentException::class.java) {
+            Multiaddr(addr, peerId) // parent already has peer id
+        }
+
+    }
+
+    private fun testPeerId(): PeerId {
+        val idHex = "1220593cd036d6ac062ca1c332c15aca7a7b8ed7c9a004b34046e58f2aa6439102b5"
+        val peerId = PeerId(idHex.fromHex())
+        return peerId
     }
 }
