@@ -32,6 +32,12 @@ interface ProtocolBinding<out TController> {
      * Dials the specified peer, and attempts to connect this Protocol
      */
     @JvmDefault
+    fun dial(host: Host, addrWithPeer: Multiaddr): StreamPromise<out TController> {
+        val (peerId, addr) = addrWithPeer.toPeerIdAndAddr()
+        return dial(host, peerId, addr)
+    }
+
+    @JvmDefault
     fun dial(host: Host, peer: PeerId, vararg addr: Multiaddr): StreamPromise<out TController> {
         return host.newStream(
             announce,
