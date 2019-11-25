@@ -28,7 +28,8 @@ interface Host {
     val addressBook: AddressBook
 
     /**
-     * List of all of the active listen address, across all of the active transports.
+     * List of all of the active listen address, across all of the active transports, with PeerId
+     * appended.
      * Note these address will be the actual address in use, not necessarily what was requested.
      * For example, requests to listen on a random TCP port - /ip4/addr/tcp/0 - will be returned
      * with the actual port used.
