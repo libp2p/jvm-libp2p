@@ -56,6 +56,12 @@ abstract class NettyTransport(
     override val activeConnections: Int
         get() = channels.size
 
+    override fun listenAddresses(): List<Multiaddr> {
+        return listeners.values.map {
+            toMultiaddr(it.localAddress() as InetSocketAddress)
+        }
+    }
+
     override fun initialize() {
     }
 

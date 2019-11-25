@@ -9,7 +9,6 @@ import java.util.concurrent.CompletableFuture
  * The networkConfig component handles all networkConfig affairs, particularly listening on endpoints and dialing peers.
  */
 interface Network {
-
     /**
      * Transports supported by this network
      */

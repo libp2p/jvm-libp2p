@@ -35,6 +35,8 @@ class HostTestJava {
             b.getDebug().getAfterSecureHandler().setLogger(LogLevel.ERROR, "host-1-AS");
         });
 */
+        String localListenAddress = "/ip4/127.0.0.1/tcp/40002";
+
         Host clientHost = new HostBuilder()
                 .transport(TcpTransport::new)
                 .secureChannel(SecIoSecureChannel::new)
@@ -46,7 +48,7 @@ class HostTestJava {
                 .secureChannel(SecIoSecureChannel::new)
                 .muxer(MplexStreamMuxer::new)
                 .protocol(new Ping())
-                .listen("/ip4/0.0.0.0/tcp/40002")
+                .listen(localListenAddress)
                 .build();
 
         CompletableFuture<Void> clientStarted = clientHost.start();
@@ -56,10 +58,14 @@ class HostTestJava {
         serverStarted.get(5, TimeUnit.SECONDS);
         System.out.println("Server started");
 
+        Assertions.assertEquals(0, clientHost.listenAddresses().size());
+        Assertions.assertEquals(1, serverHost.listenAddresses().size());
+        Assertions.assertEquals(localListenAddress, serverHost.listenAddresses().get(0).toString());
+
         StreamPromise<PingController> ping =
                 clientHost.getNetwork().connect(
                         serverHost.getPeerId(),
-                        new Multiaddr("/ip4/127.0.0.1/tcp/40002")
+                        new Multiaddr(localListenAddress)
                 ).thenApply(
                         it -> it.muxerSession().createStream(Multistream.create(new Ping()).toStreamHandler())
                 )

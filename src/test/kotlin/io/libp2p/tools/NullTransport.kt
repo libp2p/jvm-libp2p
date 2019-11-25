@@ -13,6 +13,7 @@ class NullTransport : Transport {
         get() = stub()
 
     override fun initialize() = stub()
+    override fun listenAddresses() = stub()
     override fun close(): CompletableFuture<Unit> = stub()
     override fun listen(addr: Multiaddr, connHandler: ConnectionHandler): CompletableFuture<Unit> = stub()
     override fun unlisten(addr: Multiaddr): CompletableFuture<Unit> = stub()
