@@ -170,7 +170,7 @@ class MultiaddrTest {
         val parentAddr = Multiaddr("/ip4/127.0.0.1/tcp/20000")
         val peerId = testPeerId()
 
-        val addr = Multiaddr(parentAddr, peerId);
+        val addr = Multiaddr(parentAddr, peerId)
         assertEquals("/ip4/127.0.0.1/tcp/20000/ipfs/QmULzn6KtFUCKpkFymEUgUvkLtv9j2Eo4utZPELmQEebR6", addr.toString())
 
         assertThrows(java.lang.IllegalArgumentException::class.java) {
@@ -182,7 +182,7 @@ class MultiaddrTest {
     fun testSplitIntoPeerAndMultiaddr() {
         val addr = Multiaddr("/ip4/127.0.0.1/tcp/20000/ipfs/QmULzn6KtFUCKpkFymEUgUvkLtv9j2Eo4utZPELmQEebR6")
 
-        val (splitPeerId, addrWithoutPeer) = addr.toPeerIdAndAddr();
+        val (splitPeerId, addrWithoutPeer) = addr.toPeerIdAndAddr()
         assertEquals(testPeerId(), splitPeerId)
         assertEquals("/ip4/127.0.0.1/tcp/20000", addrWithoutPeer.toString())
 
