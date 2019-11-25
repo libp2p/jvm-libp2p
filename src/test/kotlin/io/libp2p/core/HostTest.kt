@@ -166,8 +166,7 @@ abstract class HostTest(
     fun pingOverSecureConnection() {
         val ping = Ping().dial(
             clientHost,
-            serverHost.peerId,
-            Multiaddr(listenAddress)
+            serverHost.listenAddresses().get(0)
         )
         val pingStream = ping.stream.get(5, TimeUnit.SECONDS)
         println("Ping stream created")
