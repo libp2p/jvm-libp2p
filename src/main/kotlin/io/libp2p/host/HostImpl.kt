@@ -43,7 +43,9 @@ class HostImpl(
         val listening = mutableListOf<Multiaddr>();
 
         network.transports.forEach {
-            listening.addAll(it.listenAddresses())
+            listening.addAll(
+                it.listenAddresses().map { Multiaddr(it, peerId) }
+            )
         }
 
         return listening;

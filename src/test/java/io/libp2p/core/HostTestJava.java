@@ -82,7 +82,10 @@ public class HostTestJava {
 
         Assertions.assertEquals(0, clientHost.listenAddresses().size());
         Assertions.assertEquals(1, serverHost.listenAddresses().size());
-        Assertions.assertEquals(localListenAddress, serverHost.listenAddresses().get(0).toString());
+        Assertions.assertEquals(
+                localListenAddress + "/ipfs/" + serverHost.getPeerId(),
+                serverHost.listenAddresses().get(0).toString()
+        );
 
         StreamPromise<PingController> ping =
                 clientHost.getNetwork().connect(
