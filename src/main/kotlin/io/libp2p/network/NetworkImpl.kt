@@ -26,12 +26,16 @@ class NetworkImpl(
     }
 
     override fun close(): CompletableFuture<Unit> {
-        val futs = transports.map(Transport::close)
-        return CompletableFuture.allOf(*futs.toTypedArray())
-            .thenCompose {
-                val connCloseFuts = connections.map { it.close() }
-                CompletableFuture.allOf(*connCloseFuts.toTypedArray())
-            }.thenApply { }
+        val transportsClosed = transports.map(Transport::close)
+        val connectionsClosed = connections.map(Connection::close)
+
+        val everythingThatNeedsToClose = transportsClosed.union(connectionsClosed)
+
+        return if (everythingThatNeedsToClose.isNotEmpty()) {
+            CompletableFuture.allOf(*everythingThatNeedsToClose.toTypedArray()).thenApply { }
+        } else {
+            CompletableFuture.completedFuture(Unit)
+        }
     }
 
     override fun listen(addr: Multiaddr): CompletableFuture<Unit> =
