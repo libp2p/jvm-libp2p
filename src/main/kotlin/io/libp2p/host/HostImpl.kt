@@ -40,7 +40,7 @@ class HostImpl(
     }
 
     override fun listenAddresses(): List<Multiaddr> {
-        val listening = mutableListOf<Multiaddr>();
+        val listening = mutableListOf<Multiaddr>()
 
         network.transports.forEach {
             listening.addAll(
@@ -48,7 +48,7 @@ class HostImpl(
             )
         }
 
-        return listening;
+        return listening
     }
 
     override fun start(): CompletableFuture<Void> {
