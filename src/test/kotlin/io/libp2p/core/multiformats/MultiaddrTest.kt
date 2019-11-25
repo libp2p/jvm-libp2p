@@ -166,7 +166,7 @@ class MultiaddrTest {
     }
 
     @Test
-    fun testWithPeerId() {
+    fun testMakeWithPeerId() {
         val parentAddr = Multiaddr("/ip4/127.0.0.1/tcp/20000")
         val peerId = testPeerId()
 
@@ -176,7 +176,19 @@ class MultiaddrTest {
         assertThrows(java.lang.IllegalArgumentException::class.java) {
             Multiaddr(addr, peerId) // parent already has peer id
         }
+    }
 
+    @Test
+    fun testSplitIntoPeerAndMultiaddr() {
+        val addr = Multiaddr("/ip4/127.0.0.1/tcp/20000/ipfs/QmULzn6KtFUCKpkFymEUgUvkLtv9j2Eo4utZPELmQEebR6")
+
+        val (splitPeerId, addrWithoutPeer) = addr.toPeerIdAndAddr();
+        assertEquals(testPeerId(), splitPeerId)
+        assertEquals("/ip4/127.0.0.1/tcp/20000", addrWithoutPeer.toString())
+
+        assertThrows(java.lang.IllegalArgumentException::class.java) {
+            addrWithoutPeer.toPeerIdAndAddr()
+        }
     }
 
     private fun testPeerId(): PeerId {

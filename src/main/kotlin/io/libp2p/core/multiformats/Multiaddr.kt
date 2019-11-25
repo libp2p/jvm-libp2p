@@ -86,6 +86,16 @@ class Multiaddr(val components: List<Pair<Protocol, ByteArray>>) {
      */
     fun getBytes(): ByteArray = writeBytes(Unpooled.buffer()).toByteArray()
 
+    fun toPeerIdAndAddr(): Pair<PeerId, Multiaddr> {
+        if (!has(Protocol.IPFS))
+            throw IllegalArgumentException("Multiaddr has no peer id")
+
+        return Pair(
+            PeerId.fromBase58(getStringComponent(Protocol.IPFS)!!),
+            Multiaddr(components.subList(0, components.lastIndex))
+        )
+    }
+
     /**
      * Returns the string representation of this multiaddress
      * Note that `Multiaddress(strAddr).toString` is not always equal to `strAddr`
