@@ -40,9 +40,9 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.0-M1")
     compile("io.netty:netty-all:4.1.36.Final")
     compile("com.google.guava:guava:27.1-jre")
-    compile("org.bouncycastle:bcprov-jdk15on:1.61")
-    compile("org.bouncycastle:bcpkix-jdk15on:1.61")
-    compile("com.google.protobuf:protobuf-java:3.6.1")
+    compile("org.bouncycastle:bcprov-jdk15on:1.62")
+    compile("org.bouncycastle:bcpkix-jdk15on:1.62")
+    compile("com.google.protobuf:protobuf-java:3.11.0")
     compile("commons-codec:commons-codec:1.13")
 
     compile("org.apache.logging.log4j:log4j-api:${log4j2Version}")
