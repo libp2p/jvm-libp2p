@@ -25,7 +25,7 @@ open class GossipRouter : AbstractRouter() {
 
         fun put(msg: Rpc.Message) = getMessageId(msg).also {
                 messages[it] = msg
-                history[0].add(CacheEntry(it, msg.topicIDsList.toSet()))
+                history.last.add(CacheEntry(it, msg.topicIDsList.toSet()))
             }
 
         fun getMessageIds(topic: String) =
