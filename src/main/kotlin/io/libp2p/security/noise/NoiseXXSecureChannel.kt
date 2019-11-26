@@ -72,6 +72,7 @@ private class NoiseIoHandshake(
     private var sentNoiseKeyPayload = false
     private var instancePayload: ByteArray? = null
     private var activated = false
+    private var remotePeerId: PeerId? = null
 
     init {
         log.debug("Starting handshake")
@@ -108,7 +109,7 @@ private class NoiseIoHandshake(
         // the remote public key has been provided by the XX protocol
         with(handshakeState.remotePublicKey) {
             if (hasPublicKey()) {
-                verifyPayload(ctx, instancePayload!!, this)
+                remotePeerId = verifyPayload(ctx, instancePayload!!, this)
             }
         }
 
@@ -203,7 +204,7 @@ private class NoiseIoHandshake(
         ctx: ChannelHandlerContext,
         payload: ByteArray,
         remotePublicKeyState: DHState
-    ) {
+    ): PeerId {
         log.debug("Verifying noise static key payload")
 
         val (pubKeyFromMessage, signatureFromMessage) = unpackKeyAndSignature(payload)
@@ -218,6 +219,8 @@ private class NoiseIoHandshake(
         if (!verified) {
             handshakeFailed(ctx, InvalidRemotePubKey())
         }
+
+        return PeerId.fromPubKey(pubKeyFromMessage)
     } // verifyPayload
 
     private fun unpackKeyAndSignature(payload: ByteArray): Pair<PubKey, ByteArray> {
@@ -239,7 +242,7 @@ private class NoiseIoHandshake(
         // put alice and bob security sessions into the context and trigger the next action
         val secureSession = NoiseSecureChannelSession(
             PeerId.fromPubKey(localKey.publicKey()),
-            PeerId.random(),
+            remotePeerId!!,
             localKey.publicKey(),
             aliceSplit,
             bobSplit
