@@ -47,6 +47,8 @@ class GossipPubsubRouterTest : PubsubRouterTest({ GossipRouter().withDConstants(
 
         allRouters.forEach { it.router.subscribe("topic1") }
 
+        val receiveRouters = allRouters - routerCenter
+
         // heartbeat for all
         fuzz.timeController.addTime(Duration.ofSeconds(1))
 
@@ -54,8 +56,6 @@ class GossipPubsubRouterTest : PubsubRouterTest({ GossipRouter().withDConstants(
         routerCenter.router.publish(msg1)
 
         Assertions.assertTrue(routerCenter.inboundMessages.isEmpty())
-
-        val receiveRouters = allRouters - routerCenter
 
         val msgCount1 = receiveRouters.sumBy { it.inboundMessages.size }
         println("Messages received on first turn: $msgCount1")
@@ -70,8 +70,24 @@ class GossipPubsubRouterTest : PubsubRouterTest({ GossipRouter().withDConstants(
         val msgCount2 = receiveRouters.sumBy { it.inboundMessages.size }
         println("Messages received on second turn: $msgCount2")
 
-        // no all peers should receive the message
+        // now all peers should receive the message
         Assertions.assertEquals(receiveRouters.size, msgCount1 + msgCount2)
+        receiveRouters.forEach { it.inboundMessages.clear() }
+
+        // test the history roll up
+        fuzz.timeController.addTime(Duration.ofSeconds(100))
+
+        val msg2 = newMessage("topic1", 1L, "Hello".toByteArray())
+        routerCenter.router.publish(msg2)
+
+        // all routers should receive after 100 sec
+        fuzz.timeController.addTime(Duration.ofSeconds(100))
+
+        val msgCount3 = receiveRouters.sumBy { it.inboundMessages.size }
+        println("Messages received on third turn: $msgCount3")
+
+        // now all peers should receive the message
+        Assertions.assertEquals(receiveRouters.size, msgCount3)
         receiveRouters.forEach { it.inboundMessages.clear() }
     }
 }

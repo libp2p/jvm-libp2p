@@ -25,7 +25,7 @@ open class GossipRouter : AbstractRouter() {
 
         fun put(msg: Rpc.Message) = getMessageId(msg).also {
                 messages[it] = msg
-                history[0].add(CacheEntry(it, msg.topicIDsList.toSet()))
+                history.last.add(CacheEntry(it, msg.topicIDsList.toSet()))
             }
 
         fun getMessageIds(topic: String) =
@@ -44,8 +44,8 @@ open class GossipRouter : AbstractRouter() {
     var gossipSize by lazyVar { 3 }
     var gossipHistoryLength by lazyVar { 5 }
     var mCache by lazyVar { MCache(gossipSize, gossipHistoryLength) }
-    val fanout: MutableMap<String, MutableList<PeerHandler>> = linkedMapOf()
-    val mesh: MutableMap<String, MutableList<PeerHandler>> = linkedMapOf()
+    val fanout: MutableMap<String, MutableSet<PeerHandler>> = linkedMapOf()
+    val mesh: MutableMap<String, MutableSet<PeerHandler>> = linkedMapOf()
     val lastPublished = linkedMapOf<String, Long>()
     private var inited = false
 
@@ -92,8 +92,8 @@ open class GossipRouter : AbstractRouter() {
         }.forEach { processControlMessage(it, receivedFrom) }
     }
 
-    override fun broadcastInbound(msg: Rpc.RPC, receivedFrom: PeerHandler) {
-        msg.publishList.forEach { pubMsg ->
+    override fun broadcastInbound(msgs: List<Rpc.Message>, receivedFrom: PeerHandler) {
+        msgs.forEach { pubMsg ->
             pubMsg.topicIDsList
                 .mapNotNull { mesh[it] }
                 .flatten()
@@ -112,7 +112,7 @@ open class GossipRouter : AbstractRouter() {
             .mapNotNull { topic ->
                 mesh[topic] ?: fanout[topic] ?: getTopicPeers(topic).shuffled(random).take(D)
                     .also {
-                        if (it.isNotEmpty()) fanout[topic] = it.toMutableList()
+                        if (it.isNotEmpty()) fanout[topic] = it.toMutableSet()
                     }
             }
             .flatten()
@@ -125,8 +125,8 @@ open class GossipRouter : AbstractRouter() {
 
     override fun subscribe(topic: String) {
         super.subscribe(topic)
-        val fanoutPeers = fanout[topic] ?: mutableListOf()
-        val meshPeers = mesh.getOrPut(topic) { mutableListOf() }
+        val fanoutPeers = fanout[topic] ?: mutableSetOf()
+        val meshPeers = mesh.getOrPut(topic) { mutableSetOf() }
         val otherPeers = getTopicPeers(topic) - meshPeers - fanoutPeers
         if (meshPeers.size < D) {
             val addFromFanout = fanoutPeers.shuffled(random).take(D - meshPeers.size)
