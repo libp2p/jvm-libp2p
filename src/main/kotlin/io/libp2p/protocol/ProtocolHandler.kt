@@ -7,7 +7,7 @@ import io.libp2p.core.Stream
 import java.util.concurrent.CompletableFuture
 
 abstract class ProtocolHandler<out TController> : P2PChannelHandler<TController> {
-    final override fun initChannel(ch: P2PChannel): CompletableFuture<out TController> {
+    override fun initChannel(ch: P2PChannel): CompletableFuture<out TController> {
         val stream = ch as Stream
         return if (stream.isInitiator) {
             onStartInitiator(stream)
