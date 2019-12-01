@@ -5,14 +5,14 @@ import com.jfrog.bintray.gradle.BintrayExtension
 import org.jetbrains.dokka.gradle.DokkaTask
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.net.URL
-import java.nio.file.Paths
 import java.nio.file.Files
+import java.nio.file.Paths
 
 // To publish the release artifact to JFrog Bintray repo run the following :
 // ./gradlew bintrayUpload -PbintrayUser=<user> -PbintrayApiKey=<api-key>
 
 group = "io.libp2p"
-version = "0.2.0-SNAPSHOT"
+version = "0.2.0-RELEASE"
 description = "a minimal implementation of libp2p for the jvm"
 
 plugins {
