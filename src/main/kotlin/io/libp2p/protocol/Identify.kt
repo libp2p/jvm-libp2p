@@ -19,7 +19,9 @@ open class IdentifyBinding(override val protocol: IdentifyProtocol) : StrictProt
     override val announce = "/ipfs/id/1.0.0"
 }
 
-class IdentifyProtocol(var idMessage: IdentifyOuterClass.Identify? = null) : ProtocolHandler<IdentifyController>() {
+class IdentifyProtocol(var idMessage: IdentifyOuterClass.Identify? = null) :
+    ProtobufProtocolHandler<IdentifyController>(IdentifyOuterClass.Identify.getDefaultInstance()) {
+
     override fun onStartInitiator(stream: Stream): CompletableFuture<IdentifyController> {
         val handler = IdentifyRequesterChannelHandler()
         stream.pushHandler(handler)
