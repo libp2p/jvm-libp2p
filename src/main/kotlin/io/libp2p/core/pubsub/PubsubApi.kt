@@ -6,10 +6,17 @@ import io.libp2p.pubsub.PubsubRouter
 import io.netty.buffer.ByteBuf
 import java.util.concurrent.CompletableFuture
 import java.util.function.Consumer
+import java.util.function.Function
 import kotlin.random.Random.Default.nextLong
 
 fun createPubsubApi(router: PubsubRouter): PubsubApi =
     PubsubApiImpl(router)
+
+typealias Subscriber = Consumer<MessageApi>
+typealias Validator = Function<MessageApi, CompletableFuture<Boolean>>
+
+val RESULT_VALID = CompletableFuture.completedFuture(true)
+val RESULT_INVALID = CompletableFuture.completedFuture(false)
 
 /**
  * API interface for Pubsub subscriber
@@ -25,8 +32,28 @@ interface PubsubSubscriberApi {
      *
      * The [receiver] callback is invoked on the [PubsubRouter] event thread
      * thus it is not recommended to run any time consuming task withing callback
+     *
+     * If the [receiver] is in duty of message validation it should return the
+     * result either synchronously ([RESULT_VALID] or [RESULT_INVALID]) or asynchronously.
+     *
+     * If the [receiver] doesn't validates it should just return [RESULT_VALID]
+     *
+     * **Note** the message is not propagated to other peers until **all** receivers
+     * subscribed to the topic return [true]. Too long validation procedure may significantly
+     * slow down the message dissimination over the network
      */
-    fun subscribe(receiver: Consumer<MessageApi>, vararg topics: Topic): PubsubSubscription
+    fun subscribe(receiver: Validator, vararg topics: Topic): PubsubSubscription
+
+    /**
+     * The same as [subscribe(Validator, vararg Topic)] but for subscription only
+     * (without validation)
+     */
+    fun subscribe(receiver: Subscriber, vararg topics: Topic): PubsubSubscription {
+        return subscribe(Validator {
+            receiver.accept(it)
+            RESULT_VALID
+        }, *topics)
+    }
 }
 
 /**

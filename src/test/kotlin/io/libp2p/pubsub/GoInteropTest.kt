@@ -44,7 +44,12 @@ import io.netty.util.ResourceLeakDetector
 import org.apache.logging.log4j.LogManager
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Disabled
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.ConditionEvaluationResult
+import org.junit.jupiter.api.extension.ExecutionCondition
+import org.junit.jupiter.api.extension.ExtendWith
+import org.junit.jupiter.api.extension.ExtensionContext
 import pubsub.pb.Rpc
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.CompletableFuture
@@ -61,8 +66,23 @@ class GossipProtocol(val router: PubsubRouterDebug) : P2PAbstractHandler<Unit> {
     }
 }
 
-class GoInteropTest {
+class AssumeP2PDAvailableCondition : ExecutionCondition {
+    override fun evaluateExecutionCondition(context: ExtensionContext?): ConditionEvaluationResult {
+        return if (P2pdRunner().launcher() != null) {
+            ConditionEvaluationResult.enabled("p2pd executable is available")
+        } else {
+            ConditionEvaluationResult.disabled("p2pd executable is not available")
+        }
+    }
+}
 
+@Retention()
+@ExtendWith(AssumeP2PDAvailableCondition::class)
+annotation class AssumeP2PAvailable()
+
+@AssumeP2PAvailable
+@Tag("interop")
+class GoInteropTest {
     init {
         ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.PARANOID)
     }
@@ -70,10 +90,7 @@ class GoInteropTest {
     @Test
     fun connect1() {
         val logger = LogManager.getLogger("test")
-        val daemonLauncher = P2pdRunner().launcher() ?: run {
-            println("p2pd executable not found. Skipping this test")
-            return
-        }
+        val daemonLauncher = P2pdRunner().launcher()!!
         val identityFileArgs = arrayOf<String>()
 
         // uncomment the following line and set the generated (with p2p-keygen tool) key file path
@@ -192,10 +209,7 @@ class GoInteropTest {
     @Test
     fun hostTest() = defer { d ->
         val logger = LogManager.getLogger("test")
-        val daemonLauncher = P2pdRunner().launcher() ?: run {
-            println("p2pd executable not found. Skipping this test")
-            return@defer
-        }
+        val daemonLauncher = P2pdRunner().launcher()!!
         val pdHost = daemonLauncher
             .launch(45555, "-pubsub")
 
@@ -391,7 +405,7 @@ class GoInteropTest {
         testChannel.writeInbound(bytes.toByteBuf())
         val psMsg = testChannel.readInbound<Rpc.RPC>()
         PubsubMessageValidator.signatureValidator().validate(psMsg)
-        val seqNo = psMsg.publishList[0].seqno
+//        val seqNo = psMsg.publishList[0].seqno
 
         println(psMsg.publishList[0].data.toByteArray().toHex())
     }

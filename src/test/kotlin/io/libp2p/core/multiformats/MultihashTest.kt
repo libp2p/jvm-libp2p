@@ -113,8 +113,8 @@ class MultihashTest {
     fun `Multihash digest and of`(desc: Multihash.Descriptor, length: Int, content: String, expected: String) {
         val hex = BaseEncoding.base16()
         val mh = Multihash.digest(desc, content.toByteArray().toByteBuf(), if (length == -1) null else length).bytes
-        val expected = hex.decode(expected.toUpperCase()).toByteBuf()
-        assertEquals(expected, mh)
+        val decodedMh = hex.decode(expected.toUpperCase()).toByteBuf()
+        assertEquals(decodedMh, mh)
         with(Multihash.of(mh)) {
             assertEquals(desc, this.desc)
             if (length != -1) assertEquals(length, this.lengthBits)

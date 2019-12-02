@@ -135,5 +135,7 @@ class MultiaddrTest {
         assertEquals(Multiaddr("/ip4/0.0.0.0/tcp/20000").hashCode(), Multiaddr("/ip4/0.0.0.0/tcp/20000").hashCode())
         assertNotEquals(Multiaddr("/ip4/0.0.0.0/tcp/20001"), Multiaddr("/ip4/0.0.0.0/tcp/20000"))
         assertNotEquals(Multiaddr("/ip4/0.0.0.1/tcp/20000"), Multiaddr("/ip4/0.0.0.0/tcp/20000"))
+        assertNotEquals(Multiaddr("/ip4/0.0.0.0/tcp/20001").hashCode(), Multiaddr("/ip4/0.0.0.0/tcp/20000").hashCode())
+        assertNotEquals(Multiaddr("/ip4/0.0.0.1/tcp/20000").hashCode(), Multiaddr("/ip4/0.0.0.0/tcp/20000").hashCode())
     }
 }
