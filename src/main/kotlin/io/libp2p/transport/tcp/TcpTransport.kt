@@ -26,7 +26,7 @@ class TcpTransport(
 ) : NettyTransport(upgrader) {
 
     override fun handles(addr: Multiaddr): Boolean {
-        return (addr.has(IP4) || addr.has(IP6) || addr.has(DNSADDR)) &&
+        return (addr.hasAny(IP4, IP6, DNSADDR)) &&
                 addr.has(TCP) &&
                 !addr.has(WS)
     } // handles
