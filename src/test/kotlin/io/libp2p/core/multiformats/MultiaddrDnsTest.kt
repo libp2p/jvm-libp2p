@@ -1,8 +1,8 @@
 package io.libp2p.core.multiformats
 
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
 
 class MultiaddrDnsTest {
@@ -16,7 +16,36 @@ class MultiaddrDnsTest {
         assertEquals(multiaddr, resolved[0])
     }
 
+    @ParameterizedTest
+    @MethodSource("dns4Localhost")
+    fun `resolve dns4 localhost`(addr: String, expected: String) {
+        val multiaddr = Multiaddr(addr)
+
+        val resolved = MultiaddrDns.resolve(multiaddr)
+        assertEquals(1, resolved.size)
+        assertEquals(Multiaddr(expected), resolved[0])
+    }
+
     companion object {
+        @JvmStatic
+        fun dns4Localhost() = listOf(
+            Arguments.of(
+                "/dns4/localhost",
+                "/ip4/127.0.0.1"
+            ),
+            Arguments.of(
+                "/dns4/localhost/tcp/1234",
+                "/ip4/127.0.0.1/tcp/1234"
+            ),
+            Arguments.of(
+                "/dns4/localhost/ipfs/QmcgpsyWgH8Y8ajJz1Cu72KnS5uo2Aa2LpzU7kinSupNKC",
+                "/ip4/127.0.0.1/ipfs/QmcgpsyWgH8Y8ajJz1Cu72KnS5uo2Aa2LpzU7kinSupNKC"
+            ),
+            Arguments.of(
+                "/dns4/localhost/ipfs/QmcgpsyWgH8Y8ajJz1Cu72KnS5uo2Aa2LpzU7kinSupNKC",
+                "/ip4/127.0.0.1/ipfs/QmcgpsyWgH8Y8ajJz1Cu72KnS5uo2Aa2LpzU7kinSupNKC"
+            )
+        )
         @JvmStatic
         fun noResolutionNeeded() = listOf(
             "/ip4/1.2.3.4",
