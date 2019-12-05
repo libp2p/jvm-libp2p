@@ -39,14 +39,28 @@ class HostImpl(
         streamHandlers += internalStreamHandler
     }
 
-    override fun start(): CompletableFuture<Unit> {
-        return CompletableFuture.allOf(
-            *listenAddrs.map { network.listen(it) }.toTypedArray()
-        ).thenApply { }
+    override fun listenAddresses(): List<Multiaddr> {
+        val listening = mutableListOf<Multiaddr>()
+
+        network.transports.forEach {
+            listening.addAll(
+                it.listenAddresses().map { Multiaddr(it, peerId) }
+            )
+        }
+
+        return listening
     }
 
-    override fun stop(): CompletableFuture<Unit> {
-        return network.close()
+    override fun start(): CompletableFuture<Void> {
+        return CompletableFuture.allOf(
+            *listenAddrs.map { network.listen(it) }.toTypedArray()
+        )
+    }
+
+    override fun stop(): CompletableFuture<Void> {
+        return CompletableFuture.allOf(
+            network.close()
+        )
     }
 
     override fun addStreamHandler(handler: StreamHandler<*>) {

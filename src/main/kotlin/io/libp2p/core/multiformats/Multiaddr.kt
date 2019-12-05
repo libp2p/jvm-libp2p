@@ -1,5 +1,6 @@
 package io.libp2p.core.multiformats
 
+import io.libp2p.core.PeerId
 import io.libp2p.etc.types.readUvarint
 import io.libp2p.etc.types.toByteArray
 import io.libp2p.etc.types.toByteBuf
@@ -20,7 +21,6 @@ import io.netty.buffer.Unpooled
  * to this protocol rule
  */
 class Multiaddr(val components: List<Pair<Protocol, ByteArray>>) {
-
     /**
      * Creates instance from the string representation
      */
@@ -34,6 +34,9 @@ class Multiaddr(val components: List<Pair<Protocol, ByteArray>>) {
      * Creates instance from serialized form from [ByteBuf]
      */
     constructor(bytes: ByteArray) : this(parseBytes(bytes.toByteBuf()))
+
+    constructor(parentAddr: Multiaddr, peerId: PeerId) :
+            this(concatProtocols(parentAddr, peerId))
 
     /**
      * Returns only components matching any of supplied protocols
@@ -83,6 +86,16 @@ class Multiaddr(val components: List<Pair<Protocol, ByteArray>>) {
      */
     fun getBytes(): ByteArray = writeBytes(Unpooled.buffer()).toByteArray()
 
+    fun toPeerIdAndAddr(): Pair<PeerId, Multiaddr> {
+        if (!has(Protocol.IPFS))
+            throw IllegalArgumentException("Multiaddr has no peer id")
+
+        return Pair(
+            PeerId.fromBase58(getStringComponent(Protocol.IPFS)!!),
+            Multiaddr(components.subList(0, components.lastIndex))
+        )
+    }
+
     /**
      * Returns the string representation of this multiaddress
      * Note that `Multiaddress(strAddr).toString` is not always equal to `strAddr`
@@ -103,6 +116,11 @@ class Multiaddr(val components: List<Pair<Protocol, ByteArray>>) {
     }
 
     companion object {
+        @JvmStatic
+        fun fromString(addr: String): Multiaddr { // helper method for Java access
+            return Multiaddr(addr)
+        }
+
         private fun parseString(addr_: String): List<Pair<Protocol, ByteArray>> {
             val ret: MutableList<Pair<Protocol, ByteArray>> = mutableListOf()
 
@@ -145,6 +163,14 @@ class Multiaddr(val components: List<Pair<Protocol, ByteArray>>) {
                 ret.add(protocol to protocol.readAddressBytes(buf))
             }
             return ret
+        }
+
+        private fun concatProtocols(addr: Multiaddr, peerId: PeerId): List<Pair<Protocol, ByteArray>> {
+            if (addr.has(Protocol.IPFS))
+                throw IllegalArgumentException("Multiaddr already has peer id")
+            val protocols = addr.components.toMutableList()
+            protocols.add(Pair(Protocol.IPFS, peerId.bytes))
+            return protocols
         }
     }
 }

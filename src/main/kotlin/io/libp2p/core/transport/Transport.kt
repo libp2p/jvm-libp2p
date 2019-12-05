@@ -16,6 +16,8 @@ interface Transport {
     val activeListeners: Int
     val activeConnections: Int
 
+    fun listenAddresses(): List<Multiaddr>
+
     /**
      * Verifies whether this transport is capable of handling this multiaddr.
      */

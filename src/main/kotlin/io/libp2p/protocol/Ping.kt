@@ -79,6 +79,9 @@ open class PingProtocol : ProtocolHandler<PingController>() {
 
         override fun onClosed(stream: Stream) {
             closed = true
+
+            scheduler.shutdownNow()
+
             activeFuture.completeExceptionally(ConnectionClosedException())
             synchronized(requests) {
                 requests.values.forEach { it.second.completeExceptionally(ConnectionClosedException()) }
