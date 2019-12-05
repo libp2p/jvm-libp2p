@@ -35,6 +35,12 @@ class SecioTcpGoServerInterOpTest : ServerInterOpTest(::SecIoSecureChannel, ::Tc
 @EnabledIfEnvironmentVariable(named = "ENABLE_GO_INTEROP", matches = "true")
 class SecioWsGoServerInterOpTest : ServerInterOpTest(::SecIoSecureChannel, ::WsTransport, GoServer)
 
+@EnabledIfEnvironmentVariable(named = "ENABLE_RUST_INTEROP", matches = "true")
+class PlaintextTcpRustServerInterOpTest : ServerInterOpTest(::PlaintextInsecureChannel, ::TcpTransport, RustServer)
+
+// @EnabledIfEnvironmentVariable(named = "ENABLE_RUST_INTEROP", matches = "true")
+// class PlaintextTcpRustServerInterOpTest : ServerInterOpTest(::PlaintextInsecureChannel, ::TcpTransport, RustServer)
+
 // @EnabledIfEnvironmentVariable(named = "ENABLE_GO_INTEROP", matches = "true")
 // class PlaintextGoServerInterOpTest : ServerInterOpTest(::PlaintextInsecureChannel, GoPlaintextServer)
 
@@ -43,12 +49,18 @@ class SecioWsGoServerInterOpTest : ServerInterOpTest(::SecIoSecureChannel, ::WsT
 
 data class ExternalServer(
     val serverCommand: String,
-    val serverDirEnvVar: String
+    val serverDirEnvVar: String,
+    val pingCount: Int = 5
 )
 
 val GoServer = ExternalServer(
     "./ping-server",
     "GO_PING_SERVER"
+)
+val RustServer = ExternalServer(
+    "cargo run --quiet --",
+    "RUST_PING_SERVER",
+    1 // Rust ping protocol only responds to one ping per session.
 )
 val JsPingServer = ExternalServer(
     "node lib/ping-server.js",
@@ -175,7 +187,7 @@ abstract class ServerInterOpTest(
         val pingCtr = ping.controller.get(10, TimeUnit.SECONDS)
         println("Ping controller created")
 
-        for (i in 1..10) {
+        for (i in 1..external.pingCount) {
             val latency = pingCtr.ping().get(1, TimeUnit.SECONDS)
             println("Ping is $latency")
         }
@@ -214,7 +226,6 @@ abstract class ServerInterOpTest(
             Multiaddr(remoteIdentity.observedAddr.toByteArray())
         )
 
-        assertEquals(1, remoteIdentity.listenAddrsCount)
         val remoteAddress = Multiaddr(remoteIdentity.listenAddrsList[0].toByteArray())
         assertEquals(serverMultiAddress, remoteAddress)
         assertEquals(identifyStream.connection.remoteAddress(), remoteAddress)

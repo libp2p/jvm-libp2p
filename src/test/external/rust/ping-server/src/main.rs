@@ -4,15 +4,20 @@ extern crate futures;
 use futures::{prelude::*, future};
 use libp2p::identity;
 use libp2p::PeerId;
-use libp2p::ping::{ Ping, PingConfig };
+use libp2p::ping::{ Ping, PingConfig, PingEvent };
 use libp2p::Swarm;
 use libp2p::secio;
 use libp2p::mplex;
 use libp2p::tcp;
 use libp2p::Transport;
+use libp2p::identify::{ Identify, IdentifyEvent };
 use libp2p::core;
 use libp2p::plaintext;
+use libp2p::NetworkBehaviour;
 use std::time::Duration;
+use libp2p::tokio_io::{AsyncRead, AsyncWrite};
+use libp2p::swarm::NetworkBehaviourEventProcess;
+
 
 fn main() {
     // Load the PeerId.
@@ -23,17 +28,31 @@ fn main() {
     // Create a transport.
     let transport = tcp::TcpConfig::new()
         .upgrade(core::upgrade::Version::V1)
-        .authenticate(plaintext::PlainText2Config {
-            local_public_key: id_keys.public()
-        })
+        .authenticate(plaintext::PlainText2Config { local_public_key: id_keys.public() })
+//secio::SecioConfig::new(id_keys.clone()))
         .multiplex(mplex::MplexConfig::new())
+        .map(|(peer, muxer), _| (peer, core::muxing::StreamMuxerBox::new(muxer)))
         .timeout(Duration::from_secs(20));
 
-    // Create a ping network behaviour.
-    let behaviour = Ping::new(PingConfig::new().with_keep_alive(true));
+    #[derive(NetworkBehaviour)]
+    struct ServerBehaviour<TSubstream: AsyncRead + AsyncWrite> {
+    	   ping: Ping<TSubstream>,
+           identify: Identify<TSubstream>
+    }
+
+    impl<TSubstream: AsyncRead + AsyncWrite> NetworkBehaviourEventProcess<PingEvent> for ServerBehaviour<TSubstream> {
+        fn inject_event(&mut self, _message: PingEvent) { }
+    }
+    impl<TSubstream: AsyncRead + AsyncWrite> NetworkBehaviourEventProcess<IdentifyEvent> for ServerBehaviour<TSubstream> {
+        fn inject_event(&mut self, _message: IdentifyEvent) { }
+    }
 
     // Create a Swarm that establishes connections through the given transport
     // and applies the ping behaviour on each connection.
+    let behaviour = ServerBehaviour {
+        ping: Ping::new(PingConfig::new().with_keep_alive(false)),
+        identify: Identify::new("a".to_string(), "b".to_string(), id_keys.public())
+    };
     let mut swarm = Swarm::new(transport, behaviour, peer_id);
 
     // Tell the swarm to listen on all interfaces and a random, OS-assigned port.
