@@ -1,6 +1,7 @@
 package io.libp2p.core.multiformats
 
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
@@ -28,6 +29,7 @@ class MultiaddrDnsTest {
 
     @ParameterizedTest
     @MethodSource("dns6Localhost")
+    @DisabledIfEnvironmentVariable(named = "TRAVIS", matches = "true")
     fun `resolve dns6 localhost`(addr: String, expected: String) {
         val multiaddr = Multiaddr(addr)
 
