@@ -6,11 +6,14 @@ import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.etc.types.getX
 import io.libp2p.mux.mplex.MplexStreamMuxer
 import io.libp2p.protocol.Identify
-import io.libp2p.tools.DoNothing
 import io.libp2p.protocol.IdentifyController
 import io.libp2p.protocol.Ping
 import io.libp2p.protocol.PingController
+import io.libp2p.protocol.PingBinding
+import io.libp2p.tools.CountingPingProtocol
+import io.libp2p.tools.DoNothing
 import io.libp2p.security.noise.NoiseXXSecureChannel
+import io.libp2p.security.plaintext.PlaintextInsecureChannel
 import io.libp2p.security.secio.SecIoSecureChannel
 import io.libp2p.tools.DoNothingController
 import io.libp2p.transport.tcp.TcpTransport
@@ -31,6 +34,9 @@ class SecioHostTest : HostTest(::SecIoSecureChannel)
 @DisabledIfEnvironmentVariable(named = "TRAVIS", matches = "true")
 @Tag("secure-channel")
 class NoiseXXHostTest : HostTest(::NoiseXXSecureChannel)
+
+@Tag("secure-channel")
+class PlaintextHostTest : HostTest(::PlaintextInsecureChannel)
 
 abstract class HostTest(val secureChannelCtor: SecureChannelCtor) {
     val listenAddress = "/ip4/127.0.0.1/tcp/40002"
@@ -59,6 +65,7 @@ abstract class HostTest(val secureChannelCtor: SecureChannelCtor) {
         }
     }
 
+    var countedPingResponder = CountingPingProtocol()
     val serverHost = host {
         identity {
             random()
@@ -76,7 +83,7 @@ abstract class HostTest(val secureChannelCtor: SecureChannelCtor) {
             listen(listenAddress)
         }
         protocols {
-            +Ping()
+            +PingBinding(countedPingResponder)
             +Identify()
         }
     }
@@ -143,6 +150,8 @@ abstract class HostTest(val secureChannelCtor: SecureChannelCtor) {
         }
         pingStream.close().get(5, TimeUnit.SECONDS)
         println("Ping stream closed")
+
+        assertEquals(10, countedPingResponder.pingsReceived)
 
         // stream is closed, the call should fail correctly
         assertThrows(ConnectionClosedException::class.java) {
