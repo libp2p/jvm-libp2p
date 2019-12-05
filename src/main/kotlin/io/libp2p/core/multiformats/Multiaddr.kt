@@ -35,8 +35,11 @@ class Multiaddr(val components: List<Pair<Protocol, ByteArray>>) {
      */
     constructor(bytes: ByteArray) : this(parseBytes(bytes.toByteBuf()))
 
+    constructor(parentAddr: Multiaddr, childAddr: Multiaddr) :
+            this(concatProtocols(parentAddr, childAddr))
+
     constructor(parentAddr: Multiaddr, peerId: PeerId) :
-            this(concatProtocols(parentAddr, peerId))
+            this(concatPeerId(parentAddr, peerId))
 
     /**
      * Returns only components matching any of supplied protocols
@@ -201,7 +204,13 @@ class Multiaddr(val components: List<Pair<Protocol, ByteArray>>) {
             return ret
         }
 
-        private fun concatProtocols(addr: Multiaddr, peerId: PeerId): List<Pair<Protocol, ByteArray>> {
+        private fun concatProtocols(parentAddr: Multiaddr, childAddr: Multiaddr): List<Pair<Protocol, ByteArray>> {
+            val protocols = parentAddr.components.toMutableList()
+            protocols.addAll(childAddr.components)
+            return protocols
+        }
+
+        private fun concatPeerId(addr: Multiaddr, peerId: PeerId): List<Pair<Protocol, ByteArray>> {
             if (addr.has(Protocol.IPFS))
                 throw IllegalArgumentException("Multiaddr already has peer id")
             val protocols = addr.components.toMutableList()

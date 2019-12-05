@@ -203,6 +203,18 @@ class MultiaddrTest {
     }
 
     @Test
+    fun concatTwoMultiaddrs() {
+        val parentAddr = Multiaddr("/ip4/127.0.0.1/tcp/20000")
+        val childAddr = Multiaddr("/p2p-circuit/dns4/trousers.org")
+
+        val addr = Multiaddr(parentAddr, childAddr)
+        assertEquals(
+            "/ip4/127.0.0.1/tcp/20000/p2p-circuit/dns4/trousers.org",
+            addr.toString()
+        )
+    }
+
+    @Test
     fun testSplitIntoPeerAndMultiaddr() {
         val addr = Multiaddr("/ip4/127.0.0.1/tcp/20000/ipfs/QmULzn6KtFUCKpkFymEUgUvkLtv9j2Eo4utZPELmQEebR6")
 
