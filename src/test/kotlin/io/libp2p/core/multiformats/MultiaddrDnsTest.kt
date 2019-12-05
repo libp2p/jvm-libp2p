@@ -26,6 +26,16 @@ class MultiaddrDnsTest {
         assertEquals(Multiaddr(expected), resolved[0])
     }
 
+    @ParameterizedTest
+    @MethodSource("dns6Localhost")
+    fun `resolve dns6 localhost`(addr: String, expected: String) {
+        val multiaddr = Multiaddr(addr)
+
+        val resolved = MultiaddrDns.resolve(multiaddr)
+        assertEquals(1, resolved.size)
+        assertEquals(Multiaddr(expected), resolved[0])
+    }
+
     companion object {
         @JvmStatic
         fun dns4Localhost() = listOf(
@@ -46,6 +56,27 @@ class MultiaddrDnsTest {
                 "/ip4/127.0.0.1/ipfs/QmcgpsyWgH8Y8ajJz1Cu72KnS5uo2Aa2LpzU7kinSupNKC"
             )
         )
+
+        @JvmStatic
+        fun dns6Localhost() = listOf(
+            Arguments.of(
+                "/dns6/localhost",
+                "/ip6/0:0:0:0:0:0:0:1"
+            ),
+            Arguments.of(
+                "/dns6/localhost/tcp/1234",
+                "/ip6/0:0:0:0:0:0:0:1/tcp/1234"
+            ),
+            Arguments.of(
+                "/dns6/localhost/ipfs/QmcgpsyWgH8Y8ajJz1Cu72KnS5uo2Aa2LpzU7kinSupNKC",
+                "/ip6/0:0:0:0:0:0:0:1/ipfs/QmcgpsyWgH8Y8ajJz1Cu72KnS5uo2Aa2LpzU7kinSupNKC"
+            ),
+            Arguments.of(
+                "/dns6/localhost/ipfs/QmcgpsyWgH8Y8ajJz1Cu72KnS5uo2Aa2LpzU7kinSupNKC",
+                "/ip6/0:0:0:0:0:0:0:1/ipfs/QmcgpsyWgH8Y8ajJz1Cu72KnS5uo2Aa2LpzU7kinSupNKC"
+            )
+        )
+
         @JvmStatic
         fun noResolutionNeeded() = listOf(
             "/ip4/1.2.3.4",

@@ -2,6 +2,9 @@ package io.libp2p.core.multiformats
 
 import io.libp2p.etc.types.copy
 import java.net.Inet4Address
+import java.net.Inet6Address
+import java.net.InetAddress
+import kotlin.reflect.KClass
 
 class MultiaddrDns {
     companion object {
@@ -29,6 +32,7 @@ class MultiaddrDns {
         private fun resolve(proto: Protocol, hostname: String, address: Multiaddr): List<Multiaddr> {
             return when (proto) {
                 Protocol.DNS4 -> resolveDns4(hostname, address)
+                Protocol.DNS6 -> resolveDns6(hostname, address)
                 else -> {
                     TODO(proto.toString() + " not done yet")
                 }
@@ -36,11 +40,21 @@ class MultiaddrDns {
         }
 
         private fun resolveDns4(hostname: String, address: Multiaddr): List<Multiaddr> {
-            val ipAddresses = Inet4Address.getAllByName(hostname)
+            val ipAddresses = InetAddress.getAllByName(hostname)
             return ipAddresses.filterIsInstance<Inet4Address>()
                 .map {
                     val components = address.components.toMutableList()
                     components[0] = Pair(Protocol.IP4, it.address)
+                    Multiaddr(components)
+                }
+        }
+
+        private fun resolveDns6(hostname: String, address: Multiaddr): List<Multiaddr> {
+            val ipAddresses = InetAddress.getAllByName(hostname)
+            return ipAddresses.filterIsInstance<Inet6Address>()
+                .map {
+                    val components = address.components.toMutableList()
+                    components[0] = Pair(Protocol.IP6, it.address)
                     Multiaddr(components)
                 }
         }
