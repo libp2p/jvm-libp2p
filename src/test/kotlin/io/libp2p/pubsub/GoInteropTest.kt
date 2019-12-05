@@ -140,11 +140,11 @@ class GoInteropTest {
             var pingRes: Long? = null
             connFuture.thenCompose {
                 logger.info("Connection made")
-                val ret = it.muxerSession.createStream(Multistream.create(applicationProtocols).toStreamHandler()).controller
+                val ret = it.muxerSession().createStream(Multistream.create(applicationProtocols).toStreamHandler()).controller
 
                 val initiator = Multistream.create(Ping())
                 logger.info("Creating ping stream")
-                it.muxerSession.createStream(initiator.toStreamHandler())
+                it.muxerSession().createStream(initiator.toStreamHandler())
                     .controller.thenCompose {
                         println("Sending ping...")
                         it.ping()

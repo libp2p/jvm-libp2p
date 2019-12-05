@@ -2,6 +2,7 @@ package io.libp2p.transport
 
 import io.libp2p.core.Connection
 import io.libp2p.core.multistream.Multistream
+import io.libp2p.core.multistream.ProtocolBinding
 import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.core.security.SecureChannel
 import io.netty.channel.ChannelHandler
@@ -17,19 +18,41 @@ class ConnectionUpgrader(
 ) {
     var beforeSecureHandler: ChannelHandler? = null
     var afterSecureHandler: ChannelHandler? = null
+    var beforeMuxHandler: ChannelHandler? = null
+    var afterMuxHandler: ChannelHandler? = null
 
     fun establishSecureChannel(connection: Connection): CompletableFuture<SecureChannel.Session> {
-        val multistream = Multistream.create(secureChannels)
-        beforeSecureHandler?.also { connection.pushHandler(it) }
-        return multistream.initChannel(connection)
-            .thenApply {
-                afterSecureHandler?.also { connection.pushHandler(it) }
-                it
-            }
-    }
+        return establish(
+            connection,
+            secureChannels,
+            beforeSecureHandler,
+            afterSecureHandler
+        )
+    } // establishSecureChannel
 
     fun establishMuxer(connection: Connection): CompletableFuture<StreamMuxer.Session> {
-        val multistream = Multistream.create(muxers)
+        return establish(
+            connection,
+            muxers,
+            beforeMuxHandler,
+            afterMuxHandler
+        )
+    } // establishMuxer
+
+    private fun <T : ProtocolBinding<R>, R> establish(
+        connection: Connection,
+        channels: List<T>,
+        beforeHandler: ChannelHandler?,
+        afterHandler: ChannelHandler?
+    ): CompletableFuture<R> {
+        beforeHandler?.also { connection.pushHandler(it) }
+
+        val multistream = Multistream.create(channels)
+
         return multistream.initChannel(connection)
-    }
-}
+            .thenApply {
+                afterHandler?.also { connection.pushHandler(it) }
+                it
+            }
+    } // establish
+} // ConnectionUpgrader

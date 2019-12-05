@@ -78,9 +78,9 @@ abstract class SecureChannelTest(
         System.gc()
     } // secureInterconnect
 
-    fun makeSelector(key: PrivKey) = ProtocolSelect(listOf(secureChannelCtor(key)))
+    private fun makeSelector(key: PrivKey) = ProtocolSelect(listOf(secureChannelCtor(key)))
 
-    fun makeChannel(
+    private fun makeChannel(
         name: String,
         initiator: Boolean,
         selector: ChannelInboundHandlerAdapter

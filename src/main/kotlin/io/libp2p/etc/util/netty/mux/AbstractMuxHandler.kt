@@ -3,8 +3,6 @@ package io.libp2p.etc.util.netty.mux
 import io.libp2p.core.ConnectionClosedException
 import io.libp2p.core.Libp2pException
 import io.libp2p.etc.types.completedExceptionally
-import io.libp2p.etc.util.netty.nettyInitializer
-import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
 import java.util.concurrent.CompletableFuture
@@ -12,7 +10,7 @@ import java.util.function.Function
 
 typealias MuxChannelInitializer<TData> = (MuxChannel<TData>) -> Unit
 
-abstract class AbtractMuxHandler<TData>(var inboundInitializer: MuxChannelInitializer<TData>? = null) :
+abstract class AbstractMuxHandler<TData>(var inboundInitializer: MuxChannelInitializer<TData>? = null) :
     ChannelInboundHandlerAdapter() {
 
     private val streamMap: MutableMap<MuxId, MuxChannel<TData>> = mutableMapOf()
@@ -49,9 +47,11 @@ abstract class AbtractMuxHandler<TData>(var inboundInitializer: MuxChannelInitia
 
     protected fun onRemoteOpen(id: MuxId) {
         val initializer = inboundInitializer ?: throw Libp2pException("Illegal state: inbound stream handler is not set up yet")
-        val child = createChild(id, nettyInitializer {
-            initializer(it as MuxChannel<TData>)
-        }, false)
+        val child = createChild(
+            id,
+            initializer,
+            false
+        )
         onRemoteCreated(child)
     }
 
@@ -83,7 +83,11 @@ abstract class AbtractMuxHandler<TData>(var inboundInitializer: MuxChannelInitia
     protected abstract fun onLocalClose(child: MuxChannel<TData>)
     protected abstract fun onLocalDisconnect(child: MuxChannel<TData>)
 
-    private fun createChild(id: MuxId, initializer: ChannelHandler, initiator: Boolean): MuxChannel<TData> {
+    private fun createChild(
+        id: MuxId,
+        initializer: MuxChannelInitializer<TData>,
+        initiator: Boolean
+    ): MuxChannel<TData> {
         val child = MuxChannel(this, id, initializer, initiator)
         streamMap[id] = child
         ctx!!.channel().eventLoop().register(child)
@@ -99,11 +103,14 @@ abstract class AbtractMuxHandler<TData>(var inboundInitializer: MuxChannelInitia
             checkClosed() // if already closed then event loop is already down and async task may never execute
             return activeFuture.thenApplyAsync(Function {
                 checkClosed() // close may happen after above check and before this point
-                val child = createChild(generateNextId(), nettyInitializer {
-                    it as MuxChannel<TData>
-                    onLocalOpen(it)
-                    outboundInitializer(it)
-                }, true)
+                val child = createChild(
+                    generateNextId(),
+                    {
+                        onLocalOpen(it)
+                        outboundInitializer(it)
+                    },
+                    true
+                )
                 child
             }, getChannelHandlerContext().channel().eventLoop())
         } catch (e: Exception) {

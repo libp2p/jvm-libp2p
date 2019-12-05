@@ -10,9 +10,8 @@
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
  */
-package io.libp2p.core.mplex
+package io.libp2p.mux.mplex
 
-import io.libp2p.core.wip.MplexFrame
 import io.libp2p.etc.types.readUvarint
 import io.libp2p.etc.types.writeUvarint
 import io.libp2p.mux.MuxFrame

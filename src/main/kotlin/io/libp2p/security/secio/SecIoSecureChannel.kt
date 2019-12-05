@@ -9,7 +9,6 @@ import io.libp2p.core.multistream.Mode
 import io.libp2p.core.multistream.ProtocolMatcher
 import io.libp2p.core.security.SecureChannel
 import io.libp2p.etc.REMOTE_PEER_ID
-import io.libp2p.etc.SECURE_SESSION
 import io.libp2p.etc.events.SecureChannelFailed
 import io.libp2p.etc.events.SecureChannelInitialized
 import io.netty.buffer.ByteBuf
@@ -39,7 +38,6 @@ class SecIoSecureChannel(val localKey: PrivKey) :
             override fun userEventTriggered(ctx: ChannelHandlerContext, evt: Any) {
                 when (evt) {
                     is SecureChannelInitialized -> {
-                        ctx.channel().attr(SECURE_SESSION).set(evt.session)
                         ret.complete(evt.session)
                         ctx.pipeline().remove(this)
                     }

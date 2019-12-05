@@ -11,7 +11,6 @@ import io.libp2p.core.crypto.unmarshalPublicKey
 import io.libp2p.core.multistream.Mode
 import io.libp2p.core.multistream.ProtocolMatcher
 import io.libp2p.core.security.SecureChannel
-import io.libp2p.etc.SECURE_SESSION
 import io.libp2p.etc.types.toProtobuf
 import io.libp2p.security.secio.InvalidInitialPacket
 import io.libp2p.security.secio.InvalidRemotePubKey
@@ -113,7 +112,6 @@ class PlaintextHandshakeHandler(
             remotePubKey
         )
 
-        ctx.channel().attr(SECURE_SESSION).set(session)
         handshakeCompleted.complete(session)
         ctx.pipeline().remove(this)
         ctx.fireChannelActive()
