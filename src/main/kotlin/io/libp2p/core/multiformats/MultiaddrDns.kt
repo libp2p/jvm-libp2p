@@ -60,7 +60,13 @@ class MultiaddrDns {
         // * /ip4/1.1.1.2/p2p-circuit/ip4/2.1.1.1
         // * /ip4/1.1.1.2/p2p-circuit/ip4/2.1.1.2
         private fun crossProduct(addressMatrix: List<List<Multiaddr>>): List<Multiaddr> {
-            return addressMatrix[0]
+            return if (addressMatrix.size == 1)
+                addressMatrix[0]
+            else
+                addressMatrix[0].flatMap { parent ->
+                    crossProduct(addressMatrix.subList(1, addressMatrix.size))
+                        .map { child -> Multiaddr(parent, child) }
+                }
         }
 
         private fun isDnsProtocol(proto: Protocol): Boolean {

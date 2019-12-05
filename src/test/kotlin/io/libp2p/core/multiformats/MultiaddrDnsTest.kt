@@ -57,6 +57,29 @@ class MultiaddrDnsTest {
             Arguments.of(
                 "/dns4/pig.com/tcp/8000",
                 listOf("/ip4/1.1.1.1/tcp/8000", "/ip4/1.1.1.2/tcp/8000")
+            ),
+            Arguments.of(
+                "/dns4/pig.com/p2p-circuit/dns4/localhost",
+                listOf(
+                    "/ip4/1.1.1.1/p2p-circuit/ip4/127.0.0.1",
+                    "/ip4/1.1.1.2/p2p-circuit/ip4/127.0.0.1"
+                )
+            ),
+            Arguments.of(
+                "/dns4/localhost/p2p-circuit/dns4/pig.com",
+                listOf(
+                    "/ip4/127.0.0.1/p2p-circuit/ip4/1.1.1.1",
+                    "/ip4/127.0.0.1/p2p-circuit/ip4/1.1.1.2"
+                )
+            ),
+            Arguments.of(
+                "/dns4/pig.com/p2p-circuit/dns4/pog.com",
+                listOf(
+                    "/ip4/1.1.1.1/p2p-circuit/ip4/2.2.2.1",
+                    "/ip4/1.1.1.1/p2p-circuit/ip4/2.2.2.2",
+                    "/ip4/1.1.1.2/p2p-circuit/ip4/2.2.2.1",
+                    "/ip4/1.1.1.2/p2p-circuit/ip4/2.2.2.2"
+                )
             )
         )
 
