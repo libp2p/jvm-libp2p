@@ -102,6 +102,36 @@ class Multiaddr(val components: List<Pair<Protocol, ByteArray>>) {
         )
     }
 
+    internal fun split(pred: (Protocol) -> Boolean): List<Multiaddr> {
+        val addresses = mutableListOf<Multiaddr>()
+        split(
+            addresses,
+            components,
+            pred
+        )
+        return addresses
+    }
+
+    private fun split(
+        accumulated: MutableList<Multiaddr>,
+        remainingComponents: List<Pair<Protocol, ByteArray>>,
+        pred: (Protocol) -> Boolean
+    ) {
+        val splitIndex = remainingComponents.indexOfLast { pred(it.first) }
+
+        if (splitIndex > 0) {
+            accumulated.add(0, Multiaddr(remainingComponents.subList(splitIndex, remainingComponents.size)))
+
+            split(
+                accumulated,
+                remainingComponents.subList(0, splitIndex),
+                pred
+            )
+        } else {
+            accumulated.add(0, Multiaddr(remainingComponents))
+        }
+    }
+
     /**
      * Returns the string representation of this multiaddress
      * Note that `Multiaddress(strAddr).toString` is not always equal to `strAddr`

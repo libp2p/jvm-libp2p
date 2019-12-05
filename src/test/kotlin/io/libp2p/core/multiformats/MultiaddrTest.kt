@@ -124,6 +124,30 @@ class MultiaddrTest {
                 "/ip4/127.0.0.1/tcp/9000/ws"
             )
         )
+
+        @JvmStatic
+        fun splitParams() = listOf(
+            Arguments.of(
+                "/ip4/127.0.0.1/tcp/20000/ipfs/QmULzn6KtFUCKpkFymEUgUvkLtv9j2Eo4utZPELmQEebR6",
+                listOf("/ip4/127.0.0.1/tcp/20000/ipfs/QmULzn6KtFUCKpkFymEUgUvkLtv9j2Eo4utZPELmQEebR6")
+            ),
+            Arguments.of(
+                "/ip4/127.0.0.1/tcp/20000/dns4/made.up.host/ipfs/QmULzn6KtFUCKpkFymEUgUvkLtv9j2Eo4utZPELmQEebR6",
+                listOf("/ip4/127.0.0.1/tcp/20000", "/dns4/made.up.host/ipfs/QmULzn6KtFUCKpkFymEUgUvkLtv9j2Eo4utZPELmQEebR6")
+            ),
+            Arguments.of(
+                "/dns4/made.up.host/tcp/20000/ip4/127.0.0.1/ipfs/QmULzn6KtFUCKpkFymEUgUvkLtv9j2Eo4utZPELmQEebR6",
+                listOf("/dns4/made.up.host/tcp/20000/ip4/127.0.0.1/ipfs/QmULzn6KtFUCKpkFymEUgUvkLtv9j2Eo4utZPELmQEebR6")
+            ),
+            Arguments.of(
+                "/dns4/made.up.host/tcp/20000/dns4/a.different.host/ipfs/QmULzn6KtFUCKpkFymEUgUvkLtv9j2Eo4utZPELmQEebR6",
+                listOf("/dns4/made.up.host/tcp/20000", "/dns4/a.different.host/ipfs/QmULzn6KtFUCKpkFymEUgUvkLtv9j2Eo4utZPELmQEebR6")
+            ),
+            Arguments.of(
+                "/dns4/made.up.host/tcp/20000/dns4/a.different.host/ipfs/QmULzn6KtFUCKpkFymEUgUvkLtv9j2Eo4utZPELmQEebR6/dns4/lets.go.crazy",
+                listOf("/dns4/made.up.host/tcp/20000", "/dns4/a.different.host/ipfs/QmULzn6KtFUCKpkFymEUgUvkLtv9j2Eo4utZPELmQEebR6", "/dns4/lets.go.crazy")
+            )
+        )
     }
 
     @ParameterizedTest
@@ -189,6 +213,14 @@ class MultiaddrTest {
         assertThrows(java.lang.IllegalArgumentException::class.java) {
             addrWithoutPeer.toPeerIdAndAddr()
         }
+    }
+
+    @ParameterizedTest
+    @MethodSource("splitParams")
+    fun splitMultiAddr(addr: Multiaddr, expected: List<String>) {
+        val split = addr.split { it.equals(Protocol.DNS4) }
+
+        assertEquals(expected, split.map { it.toString() })
     }
 
     private fun testPeerId(): PeerId {
