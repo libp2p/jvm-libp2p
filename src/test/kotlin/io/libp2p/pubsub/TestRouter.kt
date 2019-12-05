@@ -1,7 +1,7 @@
 package io.libp2p.pubsub
 
-import io.libp2p.transport.tcp.ConnectionOverNetty
-import io.libp2p.transport.tcp.StreamOverNetty
+import io.libp2p.transport.implementation.ConnectionOverNetty
+import io.libp2p.transport.implementation.StreamOverNetty
 import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.generateKeyPair
@@ -55,7 +55,8 @@ class TestRouter(val name: String = "" + cnt.getAndIncrement()) {
     ): TestChannel {
 
         val parentChannel = TestChannel("dummy-parent-channel", false)
-        val connection = ConnectionOverNetty(parentChannel, NullTransport(), initiator)
+        val connection =
+            ConnectionOverNetty(parentChannel, NullTransport(), initiator)
         connection.setSecureSession(SecureChannel.Session(
             PeerId.fromPubKey(keyPair.second),
             PeerId.fromPubKey(remoteRouter.keyPair.second),

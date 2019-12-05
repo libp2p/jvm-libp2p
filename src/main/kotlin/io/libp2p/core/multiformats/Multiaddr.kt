@@ -46,6 +46,11 @@ class Multiaddr(val components: List<Pair<Protocol, ByteArray>>) {
     fun getComponent(proto: Protocol): ByteArray? = filterComponents(proto).firstOrNull()?.second
 
     /**
+     * Queries the address to confirm if it contains the given protocol
+     */
+    fun has(proto: Protocol): Boolean = getComponent(proto) != null
+
+    /**
      * Returns [components] in a human readable form where each protocol value
      * is deserialized and represented as String
      */

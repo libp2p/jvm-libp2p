@@ -7,6 +7,11 @@ import io.libp2p.core.transport.Transport
 import java.util.concurrent.CompletableFuture
 
 class NullTransport : Transport {
+    override val activeConnections: Int
+        get() = stub()
+    override val activeListeners: Int
+        get() = stub()
+
     override fun initialize() = stub()
     override fun close(): CompletableFuture<Unit> = stub()
     override fun listen(addr: Multiaddr, connHandler: ConnectionHandler): CompletableFuture<Unit> = stub()

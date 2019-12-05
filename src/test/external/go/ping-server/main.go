@@ -46,8 +46,13 @@ func main() {
 }
 
 func makeOptions() []libp2p.Option {
+    listenAddr := "/ip4/127.0.0.1/tcp/0"
+    if (wantWebSocket()) {
+        listenAddr += "/ws"
+    }
+
 	options := []libp2p.Option{
-		libp2p.ListenAddrStrings("/ip4/127.0.0.1/tcp/0"),
+		libp2p.ListenAddrStrings(listenAddr),
 		libp2p.Ping(true),
 	}
 	if wantPlaintext() {
@@ -57,6 +62,18 @@ func makeOptions() []libp2p.Option {
 }
 
 func wantPlaintext() bool {
-	args := os.Args[1:]
-	return len(args) != 0 && args[0] == "--plaintext"
+	return hasArgument("--plaintext")
+}
+
+func wantWebSocket() bool {
+	return hasArgument("--websocket")
+}
+
+func hasArgument(wanted string) bool {
+    for _, arg := range os.Args[1:] {
+        if arg == wanted {
+            return true
+        }
+    }
+    return false
 }

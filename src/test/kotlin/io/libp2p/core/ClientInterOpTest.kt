@@ -2,12 +2,14 @@ package io.libp2p.core
 
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.dsl.SecureChannelCtor
+import io.libp2p.core.dsl.TransportCtor
 import io.libp2p.core.dsl.host
 import io.libp2p.mux.mplex.MplexStreamMuxer
 import io.libp2p.protocol.PingBinding
 import io.libp2p.security.secio.SecIoSecureChannel
 import io.libp2p.tools.CountingPingProtocol
 import io.libp2p.transport.tcp.TcpTransport
+import io.libp2p.transport.ws.WsTransport
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
@@ -18,7 +20,12 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 
 @EnabledIfEnvironmentVariable(named = "ENABLE_GO_INTEROP", matches = "true")
-class SecioGoClientInterOpTest : ClientInterOpTest(::SecIoSecureChannel, GoPingClient)
+class SecioTcpGoClientInterOpTest :
+    GoClientInterOpTest(::SecIoSecureChannel, OverTcp)
+
+@EnabledIfEnvironmentVariable(named = "ENABLE_GO_INTEROP", matches = "true")
+class SecioWsGoClientInterOpTest :
+    GoClientInterOpTest(::SecIoSecureChannel, OverWs)
 
 // @EnabledIfEnvironmentVariable(named = "ENABLE_GO_INTEROP", matches = "true")
 // class PlaintextGoClientInterOpTest : ClientInterOpTest(::PlaintextInsecureChannel, GoPlaintextClient)
@@ -28,6 +35,21 @@ class SecioGoClientInterOpTest : ClientInterOpTest(::SecIoSecureChannel, GoPingC
 
 // @EnabledIfEnvironmentVariable(named = "ENABLE_JS_INTEROP", matches = "true")
 // class SecioJsClientInterOpTest : ClientInterOpTest(::SecIoSecureChannel, JsPingClient)
+
+data class Transport(
+    val ctor: TransportCtor,
+    val listenAddress: String
+)
+
+val OverTcp = Transport(
+    ::TcpTransport,
+    "/ip4/127.0.0.1/tcp/40002"
+)
+
+val OverWs = Transport(
+    ::WsTransport,
+    "/ip4/127.0.0.1/tcp/40002/ws"
+)
 
 data class ExternalClient(
     val clientCommand: String,
@@ -53,9 +75,21 @@ val JsPingClient = ExternalClient(
     "JS_PINGER"
 )
 
+abstract class GoClientInterOpTest(
+    secureChannelCtor: SecureChannelCtor,
+    transport: Transport
+) : ClientInterOpTest(
+    secureChannelCtor,
+    transport.ctor,
+    transport.listenAddress,
+    GoPingClient
+)
+
 @Tag("interop")
 abstract class ClientInterOpTest(
     val secureChannelCtor: SecureChannelCtor,
+    val transportCtor: TransportCtor,
+    val listenAddress: String,
     val external: ExternalClient
 ) {
     var countedPingResponder = CountingPingProtocol()
@@ -64,7 +98,7 @@ abstract class ClientInterOpTest(
             random(KEY_TYPE.RSA)
         }
         transports {
-            +::TcpTransport
+            add(transportCtor)
         }
         secureChannels {
             add(secureChannelCtor)
@@ -73,7 +107,7 @@ abstract class ClientInterOpTest(
             +::MplexStreamMuxer
         }
         network {
-            listen("/ip4/0.0.0.0/tcp/40002")
+            listen(listenAddress)
         }
         protocols {
             +PingBinding(countedPingResponder)
@@ -95,7 +129,7 @@ abstract class ClientInterOpTest(
 
     @Test
     fun listenForPings() {
-        startClient("/ip4/127.0.0.1/tcp/40002/ipfs/${serverHost.peerId}")
+        startClient("$listenAddress/ipfs/${serverHost.peerId}")
         // assertEquals(5, countedPingResponder.pingsReceived)
 
         // We seem to receive one-too many pings from the Go client
