@@ -7,14 +7,19 @@ import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.etc.types.getX
 import io.libp2p.mux.mplex.MplexStreamMuxer
 import io.libp2p.protocol.Identify
+import io.libp2p.protocol.IdentifyController
 import io.libp2p.protocol.Ping
 import io.libp2p.protocol.PingController
 import io.libp2p.security.secio.SecIoSecureChannel
+import io.libp2p.tools.DoNothing
+import io.libp2p.tools.DoNothingController
 import io.libp2p.transport.tcp.TcpTransport
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable
 import java.io.File
@@ -61,6 +66,7 @@ abstract class ServerInterOpTest(
         protocols {
             +Ping()
             +Identify()
+            +DoNothing()
         }
         /*debug {
             afterSecureHandler.setLogger(LogLevel.ERROR)
@@ -118,14 +124,18 @@ abstract class ServerInterOpTest(
     }
 
     @Test
-    fun unknownProtocol() {
-        val badProtocol = clientHost.newStream<PingController>(
-            "/__no_such_protocol/1.0.0",
+    fun unsupportedServerProtocol() {
+        // remote party doesn't support the protocol
+        val unsupportedProtocol = clientHost.newStream<DoNothingController>(
+            "/ipfs/do-nothing/1.0.0",
             serverPeerId,
             serverMultiAddress
         )
-        assertThrows(NoSuchProtocolException::class.java) { badProtocol.stream.getX(5.0) }
-        assertThrows(NoSuchProtocolException::class.java) { badProtocol.controler.getX(5.0) }
+        // stream should be created
+        unsupportedProtocol.stream.get()
+        println("Stream created")
+        // ... though protocol controller should fail
+        assertThrows(NoSuchProtocolException::class.java) { unsupportedProtocol.controller.getX() }
     }
 
     @Test
@@ -137,19 +147,51 @@ abstract class ServerInterOpTest(
         )
         val pingStream = ping.stream.get(5, TimeUnit.SECONDS)
         println("Ping stream created")
-        val pingCtr = ping.controler.get(10, TimeUnit.SECONDS)
+        val pingCtr = ping.controller.get(10, TimeUnit.SECONDS)
         println("Ping controller created")
 
         for (i in 1..10) {
             val latency = pingCtr.ping().get(1, TimeUnit.SECONDS)
             println("Ping is $latency")
         }
-        pingStream.nettyChannel.close().await(5, TimeUnit.SECONDS)
+        pingStream.close().get(5, TimeUnit.SECONDS)
         println("Ping stream closed")
 
         // stream is closed, the call should fail correctly
         assertThrows(ConnectionClosedException::class.java) {
             pingCtr.ping().getX(5.0)
         }
+    }
+
+    @Test
+    fun identifyOverSecureConnection() {
+        val identify = clientHost.newStream<IdentifyController>(
+            "/ipfs/id/1.0.0",
+            serverPeerId,
+            serverMultiAddress
+        )
+        val identifyStream = identify.stream.get(5, TimeUnit.SECONDS)
+        println("Identify stream created")
+        val identifyController = identify.controller.get(5, TimeUnit.SECONDS)
+        println("Identify controller created")
+
+        val remoteIdentity = identifyController.id().get(5, TimeUnit.SECONDS)
+        println(remoteIdentity)
+
+        identifyStream.close().get(5, TimeUnit.SECONDS)
+        println("Identify stream closed")
+
+        assertTrue(remoteIdentity.protocolsList.contains("/ipfs/id/1.0.0"))
+        assertTrue(remoteIdentity.protocolsList.contains("/ipfs/ping/1.0.0"))
+
+        assertEquals(
+            identifyStream.connection.localAddress(),
+            Multiaddr(remoteIdentity.observedAddr.toByteArray())
+        )
+
+        assertEquals(1, remoteIdentity.listenAddrsCount)
+        val remoteAddress = Multiaddr(remoteIdentity.listenAddrsList[0].toByteArray())
+        assertEquals(serverMultiAddress, remoteAddress)
+        assertEquals(identifyStream.connection.remoteAddress(), remoteAddress)
     }
 }

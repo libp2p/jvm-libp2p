@@ -1,8 +1,8 @@
 package io.libp2p.etc
 
 import io.libp2p.core.ConnectionClosedException
-import io.libp2p.core.P2PAbstractChannel
-import io.libp2p.core.P2PAbstractHandler
+import io.libp2p.core.P2PChannel
+import io.libp2p.core.P2PChannelHandler
 import io.libp2p.core.Stream
 import io.libp2p.core.multistream.ProtocolBinding
 import io.libp2p.etc.types.toVoidCompletableFuture
@@ -11,7 +11,7 @@ import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.SimpleChannelInboundHandler
 import java.util.concurrent.CompletableFuture
 
-fun <T : SimpleClientHandler> createSimpleHandler(handlerCtor: () -> T): P2PAbstractHandler<T> =
+fun <T : SimpleClientHandler> createSimpleHandler(handlerCtor: () -> T): P2PChannelHandler<T> =
     SimpleClientProtocol(handlerCtor)
 
 fun <T : SimpleClientHandler> createSimpleBinding(protocolName: String, handlerCtor: () -> T): ProtocolBinding<T> =
@@ -53,12 +53,12 @@ abstract class SimpleClientHandler : SimpleChannelInboundHandler<ByteBuf>(ByteBu
 
 class SimpleClientProtocol<TController : SimpleClientHandler>(
     val handlerCtor: () -> TController
-) : P2PAbstractHandler<TController> {
+) : P2PChannelHandler<TController> {
 
-    override fun initChannel(ch: P2PAbstractChannel): CompletableFuture<TController> {
+    override fun initChannel(ch: P2PChannel): CompletableFuture<TController> {
         val handler = handlerCtor()
         handler.initStream(ch as Stream)
-        ch.nettyChannel.pipeline().addLast(handler)
+        ch.pushHandler(handler)
         return handler.activeFuture.thenApply { handler }
     }
 }

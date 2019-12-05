@@ -4,6 +4,7 @@ import io.libp2p.core.AddressBook
 import io.libp2p.core.Connection
 import io.libp2p.core.ConnectionHandler
 import io.libp2p.core.Host
+import io.libp2p.core.Network
 import io.libp2p.core.NoSuchLocalProtocolException
 import io.libp2p.core.PeerId
 import io.libp2p.core.Stream
@@ -13,13 +14,12 @@ import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multistream.Multistream
 import io.libp2p.core.multistream.ProtocolBinding
-import io.libp2p.network.NetworkImpl
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CopyOnWriteArrayList
 
 class HostImpl(
     override val privKey: PrivKey,
-    override val network: NetworkImpl,
+    override val network: Network,
     override val addressBook: AddressBook,
     private val listenAddrs: List<Multiaddr>,
     private val protocolHandlers: Multistream<Any>,
@@ -32,7 +32,7 @@ class HostImpl(
 
     private val internalStreamHandler = StreamHandler.create { stream ->
         streams += stream
-        stream.nettyChannel.closeFuture().addListener { streams -= stream }
+        stream.closeFuture().thenAccept { streams -= stream }
     }
 
     init {
@@ -76,7 +76,7 @@ class HostImpl(
     override fun <TController> newStream(protocol: String, peer: PeerId, vararg addr: Multiaddr): StreamPromise<TController> {
         val retF = network.connect(peer, *addr)
             .thenApply { newStream<TController>(protocol, it) }
-        return StreamPromise(retF.thenCompose { it.stream }, retF.thenCompose { it.controler })
+        return StreamPromise(retF.thenCompose { it.stream }, retF.thenCompose { it.controller })
     }
 
     override fun <TController> newStream(protocol: String, conn: Connection): StreamPromise<TController> {

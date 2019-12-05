@@ -13,7 +13,8 @@ import java.net.SocketAddress
 class MuxChannel<TData>(
     val parent: AbtractMuxHandler<TData>,
     val id: MuxId,
-    var initializer: ChannelHandler? = null
+    var initializer: ChannelHandler? = null,
+    val initiator: Boolean
 ) : AbstractChildChannel(parent.ctx!!.channel(), id) {
 
     private var remoteDisconnected = false

@@ -6,7 +6,7 @@ import com.southernstorm.noise.protocol.CipherStatePair
 import com.southernstorm.noise.protocol.DHState
 import com.southernstorm.noise.protocol.HandshakeState
 import com.southernstorm.noise.protocol.Noise
-import io.libp2p.core.P2PAbstractChannel
+import io.libp2p.core.P2PChannel
 import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.crypto.marshalPublicKey
@@ -52,14 +52,14 @@ class NoiseXXSecureChannel(private val localKey: PrivKey) :
     override val announce = Companion.announce
     override val matcher = ProtocolMatcher(Mode.PREFIX, name = "/noise/$protocolName/0.1.0")
 
-    override fun initChannel(
-        ch: P2PAbstractChannel,
-        selectedProtocol: String
-    ): CompletableFuture<SecureChannel.Session> {
+    fun initChannel(ch: P2PChannel): CompletableFuture<SecureChannel.Session> {
+        return initChannel(ch, "")
+    }
+
+    override fun initChannel(ch: P2PChannel, selectedProtocol: String): CompletableFuture<SecureChannel.Session> {
         role = if (ch.isInitiator) Role.INIT else Role.RESP
 
-        chid =
-            "ch=" + ch.nettyChannel.id().asShortText() + "-" + ch.nettyChannel.localAddress() + "-" + ch.nettyChannel.remoteAddress()
+        chid = this.hashCode().toString()
         logger.debug(chid)
 
         val ret = CompletableFuture<SecureChannel.Session>()
@@ -89,8 +89,8 @@ class NoiseXXSecureChannel(private val localKey: PrivKey) :
                 ctx.fireChannelActive()
             }
         }
-        ch.nettyChannel.pipeline().addLast(handshakeHandlerName, NoiseIoHandshake())
-        ch.nettyChannel.pipeline().addLast(handshakeHandlerName + "ResultHandler", resultHandler)
+        ch.pushHandler(handshakeHandlerName, NoiseIoHandshake())
+        ch.pushHandler(handshakeHandlerName + "ResultHandler", resultHandler)
         return ret
     }
 

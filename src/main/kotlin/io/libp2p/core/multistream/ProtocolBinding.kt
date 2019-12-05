@@ -1,8 +1,8 @@
 package io.libp2p.core.multistream
 
 import io.libp2p.core.Libp2pException
-import io.libp2p.core.P2PAbstractChannel
-import io.libp2p.core.P2PAbstractHandler
+import io.libp2p.core.P2PChannel
+import io.libp2p.core.P2PChannelHandler
 import java.util.concurrent.CompletableFuture
 
 /**
@@ -27,7 +27,7 @@ interface ProtocolBinding<out TController> {
     /**
      * Returns initializer for this protocol on the provided channel, together with an optional controller object.
      */
-    fun initChannel(ch: P2PAbstractChannel, selectedProtocol: String): CompletableFuture<out TController>
+    fun initChannel(ch: P2PChannel, selectedProtocol: String): CompletableFuture<out TController>
 
     /**
      * If the [matcher] of this binding is not [Mode.STRICT] then it can't play initiator role since
@@ -41,7 +41,7 @@ interface ProtocolBinding<out TController> {
         return object : ProtocolBinding<TController> {
             override val announce = protocol
             override val matcher = ProtocolMatcher(Mode.STRICT, announce)
-            override fun initChannel(ch: P2PAbstractChannel, selectedProtocol: String): CompletableFuture<out TController> =
+            override fun initChannel(ch: P2PChannel, selectedProtocol: String): CompletableFuture<out TController> =
                 srcBinding.initChannel(ch, selectedProtocol)
         }
     }
@@ -50,11 +50,11 @@ interface ProtocolBinding<out TController> {
         /**
          * Creates a [ProtocolBinding] instance with [Mode.STRICT] [matcher] and specified [handler]
          */
-        fun <T> createSimple(protocolName: String, handler: P2PAbstractHandler<T>): ProtocolBinding<T> {
+        fun <T> createSimple(protocolName: String, handler: P2PChannelHandler<T>): ProtocolBinding<T> {
             return object : ProtocolBinding<T> {
                 override val announce = protocolName
                 override val matcher = ProtocolMatcher(Mode.STRICT, announce)
-                override fun initChannel(ch: P2PAbstractChannel, selectedProtocol: String): CompletableFuture<out T> {
+                override fun initChannel(ch: P2PChannel, selectedProtocol: String): CompletableFuture<out T> {
                     return handler.initChannel(ch)
                 }
             }

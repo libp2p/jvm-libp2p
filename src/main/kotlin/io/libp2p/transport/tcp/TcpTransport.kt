@@ -2,30 +2,31 @@ package io.libp2p.transport.tcp
 
 import io.libp2p.core.Connection
 import io.libp2p.core.ConnectionHandler
-import io.libp2p.core.InternalErrorException
-import io.libp2p.core.Libp2pException
 import io.libp2p.core.PeerId
+import io.libp2p.core.Libp2pException
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multiformats.Protocol
 import io.libp2p.core.multiformats.Protocol.DNSADDR
 import io.libp2p.core.multiformats.Protocol.IP4
 import io.libp2p.core.multiformats.Protocol.IP6
 import io.libp2p.core.multiformats.Protocol.TCP
+import io.libp2p.core.transport.Transport
+import io.libp2p.etc.CONNECTION
+import io.libp2p.etc.REMOTE_PEER_ID
+import io.libp2p.etc.types.forward
 import io.libp2p.etc.types.lazyVar
 import io.libp2p.etc.types.toCompletableFuture
 import io.libp2p.etc.types.toVoidCompletableFuture
 import io.libp2p.etc.util.netty.nettyInitializer
-import io.libp2p.transport.AbstractTransport
 import io.libp2p.transport.ConnectionUpgrader
 import io.netty.bootstrap.Bootstrap
 import io.netty.bootstrap.ServerBootstrap
 import io.netty.channel.Channel
+import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelOption
 import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.nio.NioServerSocketChannel
 import io.netty.channel.socket.nio.NioSocketChannel
-import java.net.Inet4Address
-import java.net.Inet6Address
 import java.net.InetSocketAddress
 import java.time.Duration
 import java.util.concurrent.CompletableFuture
@@ -37,9 +38,8 @@ import java.util.concurrent.CompletableFuture
  * shim those capabilities via dynamic negotiation.
  */
 class TcpTransport(
-    upgrader: ConnectionUpgrader
-) : AbstractTransport(upgrader) {
-
+    val upgrader: ConnectionUpgrader
+) : Transport {
     var workerGroup by lazyVar { NioEventLoopGroup() }
     var bossGroup by lazyVar { workerGroup }
     var connectTimeout = Duration.ofSeconds(15)
@@ -142,22 +142,25 @@ class TcpTransport(
         return ch
     }
 
-    override fun remoteAddress(connection: Connection): Multiaddr =
-        toMultiaddr(connection.nettyChannel.remoteAddress() as InetSocketAddress)
-
-    override fun localAddress(connection: Connection): Multiaddr =
-        toMultiaddr(connection.nettyChannel.localAddress() as InetSocketAddress)
-
-    private fun toMultiaddr(addr: InetSocketAddress): Multiaddr {
-        val proto = when (addr.address) {
-            is Inet4Address -> IP4
-            is Inet6Address -> IP6
-            else -> throw InternalErrorException("Unknow address type $addr")
-        }
-        return Multiaddr(listOf(
-            proto to proto.addressToBytes(addr.address.hostAddress),
-            TCP to TCP.addressToBytes(addr.port.toString())
-        ))
+    private fun createConnectionHandler(
+        connHandler: ConnectionHandler,
+        initiator: Boolean,
+        remotePeerId: PeerId? = null
+    ): Pair<ChannelHandler, CompletableFuture<Connection>> {
+        val connFuture = CompletableFuture<Connection>()
+        return nettyInitializer { ch ->
+            val connection = ConnectionOverNetty(ch, this, initiator)
+            ch.attr(CONNECTION).set(connection)
+            remotePeerId?.also { ch.attr(REMOTE_PEER_ID).set(it) }
+            upgrader.establishSecureChannel(connection)
+                .thenCompose {
+                    upgrader.establishMuxer(connection)
+                }.thenApply {
+                    connHandler.handleConnection(connection)
+                    connection
+                }
+                .forward(connFuture)
+        } to connFuture
     }
 
     private fun fromMultiaddr(addr: Multiaddr): InetSocketAddress {

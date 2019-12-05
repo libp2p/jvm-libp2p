@@ -1,8 +1,8 @@
 package io.libp2p.pubsub
 
 import io.libp2p.core.ConnectionHandler
-import io.libp2p.core.P2PAbstractChannel
-import io.libp2p.core.P2PAbstractHandler
+import io.libp2p.core.P2PChannel
+import io.libp2p.core.P2PChannelHandler
 import io.libp2p.core.PeerId
 import io.libp2p.core.Stream
 import io.libp2p.core.StreamHandler
@@ -57,10 +57,10 @@ import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 import java.util.function.Consumer
 
-class GossipProtocol(val router: PubsubRouterDebug) : P2PAbstractHandler<Unit> {
+class GossipProtocol(val router: PubsubRouterDebug) : P2PChannelHandler<Unit> {
     var debugGossipHandler: ChannelHandler? = null
 
-    override fun initChannel(ch: P2PAbstractChannel): CompletableFuture<out Unit> {
+    override fun initChannel(ch: P2PChannel): CompletableFuture<out Unit> {
         router.addPeerWithDebugHandler(ch as Stream, debugGossipHandler)
         return CompletableFuture.completedFuture(Unit)
     }
@@ -140,12 +140,12 @@ class GoInteropTest {
             var pingRes: Long? = null
             connFuture.thenCompose {
                 logger.info("Connection made")
-                val ret = it.muxerSession.createStream(Multistream.create(applicationProtocols).toStreamHandler()).controler
+                val ret = it.muxerSession.createStream(Multistream.create(applicationProtocols).toStreamHandler()).controller
 
                 val initiator = Multistream.create(Ping())
                 logger.info("Creating ping stream")
                 it.muxerSession.createStream(initiator.toStreamHandler())
-                    .controler.thenCompose {
+                    .controller.thenCompose {
                         println("Sending ping...")
                         it.ping()
                     }.thenAccept {

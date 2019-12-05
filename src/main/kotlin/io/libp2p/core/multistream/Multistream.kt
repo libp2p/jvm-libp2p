@@ -1,7 +1,7 @@
 package io.libp2p.core.multistream
 
-import io.libp2p.core.P2PAbstractChannel
-import io.libp2p.core.P2PAbstractHandler
+import io.libp2p.core.P2PChannel
+import io.libp2p.core.P2PChannelHandler
 import io.libp2p.multistream.MultistreamImpl
 import java.util.concurrent.CompletableFuture
 
@@ -21,7 +21,7 @@ import java.util.concurrent.CompletableFuture
  * The _responder_ [Multistream] basically contains the list of all supported protocols.
  * The protocol is instantiated by a remote request
  */
-interface Multistream<TController> : P2PAbstractHandler<TController> {
+interface Multistream<TController> : P2PChannelHandler<TController> {
 
     /**
      * For _responder_ role this is the list of all supported protocols for this peer
@@ -30,7 +30,7 @@ interface Multistream<TController> : P2PAbstractHandler<TController> {
      */
     val bindings: MutableList<ProtocolBinding<TController>>
 
-    override fun initChannel(ch: P2PAbstractChannel): CompletableFuture<TController>
+    override fun initChannel(ch: P2PChannel): CompletableFuture<TController>
 
     companion object {
         /**
@@ -58,7 +58,7 @@ interface Multistream<TController> : P2PAbstractHandler<TController> {
          * Creates an _initiator_ [Multistream] with specified [protocol] and [handler]
          */
         @JvmStatic
-        fun <TController> initiator(protocol: String, handler: P2PAbstractHandler<TController>): Multistream<TController> =
+        fun <TController> initiator(protocol: String, handler: P2PChannelHandler<TController>): Multistream<TController> =
             create(ProtocolBinding.createSimple(protocol, handler))
     }
 }

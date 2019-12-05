@@ -1,6 +1,7 @@
 package io.libp2p.mux
 
 import io.libp2p.core.Stream
+import io.libp2p.transport.tcp.StreamOverNetty
 import io.libp2p.core.StreamHandler
 import io.libp2p.core.StreamPromise
 import io.libp2p.core.mux.StreamMuxer
@@ -75,8 +76,12 @@ class MuxHandler() : AbtractMuxHandler<ByteBuf>(), StreamMuxer.Session {
             inboundInitializer = { inboundStreamHandler!!.handleStream(createStream(it)) }
         }
 
-    private fun createStream(channel: MuxChannel<ByteBuf>) =
-        Stream(channel, ctx!!.channel().attr(CONNECTION).get()).also { channel.attr(STREAM).set(it) }
+    private fun createStream(channel: MuxChannel<ByteBuf>): Stream {
+        val connection = ctx!!.channel().attr(CONNECTION).get()
+        val stream = StreamOverNetty(channel, connection)
+        channel.attr(STREAM).set(stream)
+        return stream
+    }
 
     override fun <T> createStream(streamHandler: StreamHandler<T>): StreamPromise<T> {
         val controller = CompletableFuture<T>()

@@ -26,7 +26,29 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
-class HostTestJava {
+public class HostTestJava {
+    static class A implements ProtocolBinding<String> {
+        @NotNull
+        @Override
+        public String getAnnounce() {
+            return null;
+        }
+
+        @NotNull
+        @Override
+        public ProtocolMatcher getMatcher() {
+            return null;
+        }
+
+        @NotNull
+        @Override
+        public CompletableFuture<? extends String> initChannel(@NotNull P2PChannel ch, @NotNull String selectedProtocol) {
+            this.toInitiator("aa");
+            return null;
+        }
+
+    }
+
     @Test
     void ping() throws Exception {
         HostImpl clientHost = BuildersJKt.hostJ(b -> {
@@ -61,14 +83,14 @@ class HostTestJava {
                 .get(5, TimeUnit.SECONDS);
         Stream pingStream = ping.getStream().get(5, TimeUnit.SECONDS);
         System.out.println("Ping stream created");
-        PingController pingCtr = ping.getControler().get(5, TimeUnit.SECONDS);
+        PingController pingCtr = ping.getController().get(5, TimeUnit.SECONDS);
         System.out.println("Ping controller created");
 
         for (int i = 0; i < 10; i++) {
             long latency = pingCtr.ping().get(1, TimeUnit.SECONDS);
             System.out.println("Ping is " + latency);
         }
-        pingStream.getNettyChannel().close().await(5, TimeUnit.SECONDS);
+        pingStream.close().get(5, TimeUnit.SECONDS);
         System.out.println("Ping stream closed");
 
         Assertions.assertThrows(ExecutionException.class, () ->

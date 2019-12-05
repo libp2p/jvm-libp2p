@@ -1,26 +1,29 @@
 package io.libp2p.core
 
-import io.libp2p.etc.PROTOCOL
-import io.netty.channel.Channel
+import io.libp2p.protocol.ProtocolMessageHandler
+import io.libp2p.protocol.ProtocolMessageHandlerAdapter
 import java.util.concurrent.CompletableFuture
 
 /**
  * Represents a multiplexed stream over wire connection
  */
-class Stream(ch: Channel, val conn: Connection) : P2PAbstractChannel(ch) {
-
-    init {
-        nettyChannel.attr(PROTOCOL).set(CompletableFuture())
-    }
+interface Stream : P2PChannel {
+    val connection: Connection
 
     /**
      * Returns the [PeerId] of the remote peer [Connection] which this
      * [Stream] created on
      */
-    fun remotePeerId() = conn.secureSession.remoteId
+    fun remotePeerId(): PeerId
 
     /**
      * @return negotiated protocol
      */
-    fun getProtocol(): CompletableFuture<String> = nettyChannel.attr(PROTOCOL).get()
+    fun getProtocol(): CompletableFuture<String>
+
+    fun <TMessage> pushHandler(protocolHandler: ProtocolMessageHandler<TMessage>) {
+        pushHandler(ProtocolMessageHandlerAdapter(this, protocolHandler))
+    }
+
+    fun writeAndFlush(msg: Any)
 }

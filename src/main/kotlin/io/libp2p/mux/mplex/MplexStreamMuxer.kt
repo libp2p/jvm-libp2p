@@ -1,6 +1,6 @@
 package io.libp2p.mux.mplex
 
-import io.libp2p.core.P2PAbstractChannel
+import io.libp2p.core.P2PChannel
 import io.libp2p.core.mplex.MplexFrameCodec
 import io.libp2p.core.multistream.Mode
 import io.libp2p.core.multistream.ProtocolMatcher
@@ -20,11 +20,11 @@ class MplexStreamMuxer : StreamMuxer, StreamMuxerDebug {
         ProtocolMatcher(Mode.STRICT, announce)
     override var muxFramesDebugHandler: ChannelHandler? = null
 
-    override fun initChannel(ch: P2PAbstractChannel, selectedProtocol: String): CompletableFuture<out StreamMuxer.Session> {
+    override fun initChannel(ch: P2PChannel, selectedProtocol: String): CompletableFuture<out StreamMuxer.Session> {
         val muxSessionFuture = CompletableFuture<StreamMuxer.Session>()
-        ch.nettyChannel.pipeline().addLast(MplexFrameCodec())
-        muxFramesDebugHandler?.also { ch.nettyChannel.pipeline().addLast(it) }
-        ch.nettyChannel.pipeline().addLast("MuxerSessionTracker", object : ChannelInboundHandlerAdapter() {
+        ch.pushHandler(MplexFrameCodec())
+        muxFramesDebugHandler?.also { ch.pushHandler(it) }
+        ch.pushHandler("MuxerSessionTracker", object : ChannelInboundHandlerAdapter() {
             override fun userEventTriggered(ctx: ChannelHandlerContext, evt: Any) {
                 when (evt) {
                     is MuxSessionInitialized -> {
@@ -39,7 +39,7 @@ class MplexStreamMuxer : StreamMuxer, StreamMuxerDebug {
                 }
             }
         })
-        ch.nettyChannel.pipeline().addBefore("MuxerSessionTracker", "MuxHandler", MuxHandler())
+        ch.addHandlerBefore("MuxerSessionTracker", "MuxHandler", MuxHandler())
         return muxSessionFuture
     }
 }
