@@ -21,12 +21,14 @@ class TcpTransportTest : TransportTests() {
     companion object {
         @JvmStatic
         fun validMultiaddrs() = listOf(
-            "/dnsaddr/ipfs.io/tcp/97",
             "/ip4/1.2.3.4/tcp/1234",
             "/ip4/0.0.0.0/tcp/1234",
             "/ip4/1.2.3.4/tcp/0",
             "/ip4/0.0.0.0/tcp/1234",
-            "/ip6/fe80::6f77:b303:aa6e:a16/tcp/42"
+            "/ip6/fe80::6f77:b303:aa6e:a16/tcp/42",
+            "/dns4/localhost/tcp/9999",
+            "/dns6/localhost/tcp/9999",
+            "/dnsaddr/ipfs.io/tcp/97"
         ).map { Multiaddr(it) }
 
         @JvmStatic
@@ -34,6 +36,9 @@ class TcpTransportTest : TransportTests() {
             "/dnsaddr/ipfs.io/udp/97",
             "/ip4/1.2.3.4/tcp/1234/ws",
             "/ip4/1.2.3.4/udp/42",
+            "/dns4/localhost/tcp/1234/ws",
+            "/dns4/localhost/udp/9999",
+            "/dns6/localhost/udp/9999",
             "/unix/a/file/named/tcp"
         ).map { Multiaddr(it) }
     }

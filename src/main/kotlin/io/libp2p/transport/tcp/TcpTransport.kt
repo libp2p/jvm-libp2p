@@ -3,6 +3,8 @@ package io.libp2p.transport.tcp
 import io.libp2p.core.InternalErrorException
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multiformats.Protocol.DNSADDR
+import io.libp2p.core.multiformats.Protocol.DNS4
+import io.libp2p.core.multiformats.Protocol.DNS6
 import io.libp2p.core.multiformats.Protocol.IP4
 import io.libp2p.core.multiformats.Protocol.IP6
 import io.libp2p.core.multiformats.Protocol.TCP
@@ -26,7 +28,7 @@ class TcpTransport(
 ) : NettyTransport(upgrader) {
 
     override fun handles(addr: Multiaddr): Boolean {
-        return (addr.hasAny(IP4, IP6, DNSADDR)) &&
+        return (addr.hasAny(IP4, IP6, DNS4, DNS6, DNSADDR)) &&
                 addr.has(TCP) &&
                 !addr.has(WS)
     } // handles
