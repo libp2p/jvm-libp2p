@@ -176,6 +176,9 @@ abstract class NettyTransport(
         remotePeerId
     )
 
+    protected fun handlesHost(addr: Multiaddr) =
+        addr.hasAny(Protocol.IP4, Protocol.IP6, Protocol.DNS4, Protocol.DNS6, Protocol.DNSADDR)
+
     protected fun hostFromMultiaddr(addr: Multiaddr) =
         addr.filterStringComponents().find { p -> p.first in arrayOf(
             Protocol.IP4,
