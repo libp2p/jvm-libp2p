@@ -24,8 +24,10 @@ class WsTransportTest : TransportTests() {
             "/ip4/0.0.0.0/tcp/1234/ws",
             "/ip4/1.2.3.4/tcp/0/ws",
             "/ip4/0.0.0.0/tcp/1234/ws",
-            "/ip6/fe80::6f77:b303:aa6e:a16/tcp/42/ws"
-        ).map { Multiaddr(it) }
+            "/ip6/fe80::6f77:b303:aa6e:a16/tcp/42/ws",
+            "/dns4/localhost/tcp/9999/ws",
+            "/dns6/localhost/tcp/9999/ws"
+            ).map { Multiaddr(it) }
 
         @JvmStatic
         fun invalidMultiaddrs() = listOf(
@@ -35,7 +37,11 @@ class WsTransportTest : TransportTests() {
             "/ip4/0.0.0.0/tcp/1234",
             "/ip6/fe80::6f77:b303:aa6e:a16/tcp/42",
             "/ip4/1.2.3.4/udp/42",
-            "/unix/a/file/named/tcp"
+            "/unix/a/file/named/tcp",
+            "/dns4/localhost/udp/9999/ws",
+            "/dns6/localhost/udp/9999/ws",
+            "/dns4/localhost/udp/9999",
+            "/dns6/localhost/udp/9999"
         ).map { Multiaddr(it) }
     } // companion object
 
