@@ -1,13 +1,11 @@
 package io.libp2p.core.multiformats
 
+import io.libp2p.tools.DnsAvailability.Companion.assumeIp4Dns
+import io.libp2p.tools.DnsAvailability.Companion.assumeIp6Dns
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
-import java.net.Inet4Address
-import java.net.Inet6Address
-import java.net.InetAddress
 
 class MultiaddrDnsTest {
     @ParameterizedTest
@@ -23,7 +21,7 @@ class MultiaddrDnsTest {
     @ParameterizedTest
     @MethodSource("dns4Localhost")
     fun `resolve dns4 localhost`(addr: String, expected: String) {
-        assumeTrue(ip4DnsAvailable, "IP4 DNS resolution not available")
+        assumeIp4Dns()
         val multiaddr = Multiaddr(addr)
 
         val resolved = MultiaddrDns.resolve(multiaddr)
@@ -34,7 +32,7 @@ class MultiaddrDnsTest {
     @ParameterizedTest
     @MethodSource("dns6Localhost")
     fun `resolve dns6 localhost`(addr: String, expected: String) {
-        assumeTrue(ip6DnsAvailable, "IP6 DNS resolution not available")
+        assumeIp6Dns()
         val multiaddr = Multiaddr(addr)
 
         val resolved = MultiaddrDns.resolve(multiaddr)
@@ -162,14 +160,5 @@ class MultiaddrDnsTest {
                 throw NotImplementedError("Not used")
             }
         }
-
-        val ip4DnsAvailable =
-            InetAddress.getAllByName("localhost")
-                .filter { it is Inet4Address }
-                .isNotEmpty()
-        val ip6DnsAvailable =
-            InetAddress.getAllByName("localhost")
-                .filter { it is Inet6Address }
-                .isNotEmpty()
     }
 }
