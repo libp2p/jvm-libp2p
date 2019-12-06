@@ -3,6 +3,7 @@ package io.libp2p.core.multiformats
 import java.net.Inet4Address
 import java.net.Inet6Address
 import java.net.InetAddress
+import java.net.UnknownHostException
 
 class MultiaddrDns {
     interface Resolver {
@@ -42,12 +43,18 @@ class MultiaddrDns {
         }
 
         private fun resolve(proto: Protocol, hostname: String, resolver: Resolver): List<Multiaddr> {
-            return when (proto) {
-                Protocol.DNS4 -> resolver.resolveDns4(hostname)
-                Protocol.DNS6 -> resolver.resolveDns6(hostname)
-                else -> {
-                    TODO(proto.toString() + " not done yet")
+            try {
+                return when (proto) {
+                    Protocol.DNS4 -> resolver.resolveDns4(hostname)
+                    Protocol.DNS6 -> resolver.resolveDns6(hostname)
+                    else -> {
+                        TODO(proto.toString() + " not done yet")
+                    }
                 }
+            } catch (e: UnknownHostException) {
+                return emptyList()
+                // squash, as this might not be fatal,
+                // and if it is we'll handle this higher up the call chain
             }
         }
 

@@ -3,6 +3,7 @@ package io.libp2p.core.multiformats
 import io.libp2p.tools.DnsAvailability.Companion.assumeIp4Dns
 import io.libp2p.tools.DnsAvailability.Companion.assumeIp6Dns
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
@@ -51,7 +52,24 @@ class MultiaddrDnsTest {
         assertEquals(expectedMultiaddr, resolved)
     }
 
+    @ParameterizedTest
+    @MethodSource("unresolvableAddresses")
+    fun `unresolvable addresses return an empty result`(addr: String) {
+        val multiaddr = Multiaddr(addr)
+
+        val resolved = MultiaddrDns.resolve(multiaddr)
+        assertTrue(resolved.isEmpty())
+    }
+
     companion object {
+        @JvmStatic
+        fun unresolvableAddresses() = listOf(
+            "/dns4/host.invalid",
+            "/dns6/host.invalid",
+            "/dns4/art-history-coloring-arrogance-fruit-stick.test",
+            "/dns6/art-history-coloring-arrogance-fruit-stick.test"
+        )
+
         @JvmStatic
         fun dnsResolvesToMultipleAddresses() = listOf(
             Arguments.of(
