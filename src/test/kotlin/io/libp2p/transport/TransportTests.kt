@@ -20,6 +20,7 @@ import java.util.concurrent.TimeUnit.SECONDS
 abstract class TransportTests {
     protected abstract fun makeTransport(): Transport
     protected abstract fun localAddress(portNumber: Int = 20000): Multiaddr
+    protected abstract fun badAddress(): Multiaddr
     protected lateinit var transportUnderTest: Transport
 
     protected val nullConnHandler = object : ConnectionHandler {
@@ -169,5 +170,25 @@ abstract class TransportTests {
 
         wsClient.close().get(5, SECONDS)
         logger.info("Client transport closed")
+    }
+
+    @Test
+    fun `cannot dial an unresolveable address`() {
+        assertThrows(Libp2pException::class.java) {
+            transportUnderTest.dial(
+                badAddress(),
+                nullConnHandler
+            )
+        }
+    }
+
+    @Test
+    fun `cannot listen on an unresolveable address`() {
+        assertThrows(Libp2pException::class.java) {
+            transportUnderTest.listen(
+                badAddress(),
+                nullConnHandler
+            )
+        }
     }
 } // class TransportTests

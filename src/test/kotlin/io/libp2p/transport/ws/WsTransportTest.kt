@@ -1,6 +1,7 @@
 package io.libp2p.transport.ws
 
 import io.libp2p.core.multiformats.Multiaddr
+import io.libp2p.tools.DnsAvailability.Companion.ip4DnsAvailable
 import io.libp2p.transport.NullConnectionUpgrader
 import io.libp2p.transport.TransportTests
 import org.junit.jupiter.api.Tag
@@ -14,8 +15,14 @@ class WsTransportTest : TransportTests() {
     } // makeTransport
 
     override fun localAddress(portNumber: Int): Multiaddr {
-        return Multiaddr("/ip4/127.0.0.1/tcp/$portNumber/ws")
+        return if (ip4DnsAvailable && (portNumber % 2 == 0))
+            Multiaddr("/dns4/localhost/tcp/$portNumber/ws")
+        else
+            Multiaddr("/ip4/127.0.0.1/tcp/$portNumber/ws")
     } // localAddress
+
+    override fun badAddress(): Multiaddr =
+        Multiaddr("/dns4/host.invalid/tcp/4000/ws")
 
     companion object {
         @JvmStatic
