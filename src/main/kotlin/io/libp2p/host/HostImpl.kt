@@ -95,6 +95,7 @@ class HostImpl(
 
     override fun <TController> newStream(protocol: String, conn: Connection): StreamPromise<TController> {
         val binding =
+            @Suppress("UNCHECKED_CAST")
             protocolHandlers.bindings.find { it.matcher.matches(protocol) } as? ProtocolBinding<TController>
             ?: throw NoSuchLocalProtocolException("Protocol handler not found: $protocol")
 
