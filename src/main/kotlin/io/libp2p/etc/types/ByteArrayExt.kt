@@ -61,6 +61,7 @@ fun Int.toBytesBigEndian() =
 /**
  * Extends ByteBuf to add a read* method for unsigned varints, as defined in https://github.com/multiformats/unsigned-varint.
  */
+@kotlin.ExperimentalUnsignedTypes
 fun ByteArray.readUvarint(): Pair<Long, ByteArray>? {
     var x: Long = 0
     var s = 0
