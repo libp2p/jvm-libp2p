@@ -1,6 +1,6 @@
 package io.libp2p.discovery
 
-import io.libp2p.core.PeerId
+import io.libp2p.core.Host
 import io.libp2p.core.PeerInfo
 import java.net.InetAddress
 import java.util.concurrent.CompletableFuture
@@ -9,7 +9,7 @@ import javax.jmdns.JmDNS
 typealias PeerListener = (PeerInfo) -> Unit
 
 class MDnsDiscovery(
-    private val peerId: PeerId
+    private val host: Host
 ) {
     private var mDns: JmDNS? = null
 
