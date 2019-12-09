@@ -38,6 +38,7 @@ class MuxChannel<TData>(
                 // the msg is released by both onChildWrite and buf.remove() so we need to retain
                 // however it is still to be confirmed that no buf leaks happen here TODO
                 ReferenceCountUtil.retain(msg)
+                @Suppress("UNCHECKED_CAST")
                 parent.onChildWrite(this, msg as TData)
                 buf.remove()
             } catch (cause: Throwable) {
