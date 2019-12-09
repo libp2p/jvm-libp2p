@@ -50,7 +50,7 @@ class EchoSampleTest {
     fun connect1() {
         val logger = LogManager.getLogger("test")
 
-        val (privKey1, pubKey1) = generateKeyPair(KEY_TYPE.ECDSA)
+        val (privKey1, _) = generateKeyPair(KEY_TYPE.ECDSA)
         val upgrader = ConnectionUpgrader(
             listOf(SecIoSecureChannel(privKey1)),
             listOf(MplexStreamMuxer().also {
