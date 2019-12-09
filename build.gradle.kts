@@ -23,6 +23,7 @@ plugins {
     id("com.google.protobuf") version "0.8.7"
     `build-scan`
 
+    `maven`
     `maven-publish`
     id("com.jfrog.bintray") version "1.8.1"
     id("org.jetbrains.dokka") version "0.9.18"
