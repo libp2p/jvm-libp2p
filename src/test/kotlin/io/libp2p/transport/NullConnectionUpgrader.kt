@@ -30,7 +30,7 @@ class NullConnectionUpgrader : ConnectionUpgrader(emptyList(), emptyList()) {
     private class DoNothingMuxerSession : StreamMuxer.Session {
         override var inboundStreamHandler: StreamHandler<*>?
             get() = throw NotImplementedError("Test only. Shouldn't be called")
-            set(value) {}
+            set(_) {}
 
         override fun <T> createStream(streamHandler: StreamHandler<T>): StreamPromise<T> {
             throw NotImplementedError("Test only. Shouldn't be called")

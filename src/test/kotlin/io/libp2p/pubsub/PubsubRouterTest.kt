@@ -319,8 +319,8 @@ abstract class PubsubRouterTest(val router: RouterCtor) {
 
         val routers = List(3) { fuzz.createTestRouter(router()) }
 
-        val conn_1_2 = routers[0].connectSemiDuplex(routers[1], pubsubLogs = LogLevel.ERROR)
-        val conn_2_3 = routers[1].connectSemiDuplex(routers[2], pubsubLogs = LogLevel.ERROR)
+        routers[0].connectSemiDuplex(routers[1], pubsubLogs = LogLevel.ERROR)
+        routers[1].connectSemiDuplex(routers[2], pubsubLogs = LogLevel.ERROR)
 
         val apis = routers.map { it.api }
         class RecordingSubscriber : Subscriber {
