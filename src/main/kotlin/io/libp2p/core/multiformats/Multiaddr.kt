@@ -55,12 +55,7 @@ class Multiaddr(val components: List<Pair<Protocol, ByteArray>>) {
      * Queries the address to confirm if it contains the given protocol
      */
     fun has(proto: Protocol): Boolean = getComponent(proto) != null
-    fun hasAny(vararg protos: Protocol): Boolean {
-        for (proto in protos)
-            if (has(proto))
-                return true
-        return false
-    }
+    fun hasAny(vararg protos: Protocol) = protos.any { has(it) }
 
     /**
      * Returns [components] in a human readable form where each protocol value
@@ -205,9 +200,7 @@ class Multiaddr(val components: List<Pair<Protocol, ByteArray>>) {
         }
 
         private fun concatProtocols(parentAddr: Multiaddr, childAddr: Multiaddr): List<Pair<Protocol, ByteArray>> {
-            val protocols = parentAddr.components.toMutableList()
-            protocols.addAll(childAddr.components)
-            return protocols
+            return parentAddr.components + childAddr.components
         }
 
         private fun concatPeerId(addr: Multiaddr, peerId: PeerId): List<Pair<Protocol, ByteArray>> {
