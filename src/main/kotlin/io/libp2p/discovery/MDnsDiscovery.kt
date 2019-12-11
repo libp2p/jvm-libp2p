@@ -18,6 +18,7 @@ typealias PeerListener = (PeerInfo) -> Unit
 
 class MDnsDiscovery(private val host: Host) {
     private var mDns = JmDNS.create(InetAddress.getLocalHost())
+    private val listeners = mutableListOf<PeerListener>()
 
     fun start(): CompletableFuture<Void> {
         mDns.registerService(
@@ -38,10 +39,12 @@ class MDnsDiscovery(private val host: Host) {
         return CompletableFuture.completedFuture(null)
     }
 
-    fun onPeerFound(listener: PeerListener) { }
+    fun onPeerFound(listener: PeerListener) {
+        listeners += listener
+    }
 
     internal fun peerFound(peerInfo: PeerInfo) {
-        println(peerInfo)
+        listeners.forEach { it(peerInfo) }
     }
 
     private fun ipfsDiscoveryInfo(): ServiceInfo {
