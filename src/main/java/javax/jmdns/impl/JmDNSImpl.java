@@ -1015,8 +1015,6 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
         // bind the service to this address
         info.recoverState();
         info.setServer(_localHost.getName());
-        info.addAddress(_localHost.getInet4Address());
-        info.addAddress(_localHost.getInet6Address());
 
         this.makeServiceNameUnique(info);
         while (_services.putIfAbsent(info.getKey(), info) != null) {
