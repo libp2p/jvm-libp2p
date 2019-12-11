@@ -13,7 +13,6 @@ import javax.jmdns.JmDNS;
 import javax.jmdns.ServiceEvent;
 import javax.jmdns.ServiceInfo;
 import javax.jmdns.ServiceListener;
-import javax.jmdns.ServiceTypeListener;
 
 /**
  * This class track the status of listener.<br/>
@@ -146,78 +145,6 @@ public class ListenerStatus<T extends EventListener> {
                 sb.append(" (");
                 for (final String service : _addedServices.keySet()) {
                     sb.append(service + ", ");
-                }
-                sb.append(") ");
-            }
-            sb.append("]");
-            return sb.toString();
-        }
-
-    }
-
-    public static class ServiceTypeListenerStatus extends ListenerStatus<ServiceTypeListener> {
-        private static Logger                       logger = LogManager.getLogger(ServiceTypeListenerStatus.class.getName());
-
-        private final ConcurrentMap<String, String> _addedTypes;
-
-        /**
-         * @param listener
-         *            listener being tracked.
-         * @param synch
-         *            true if that listener can be called asynchronously
-         */
-        public ServiceTypeListenerStatus(ServiceTypeListener listener, boolean synch) {
-            super(listener, synch);
-            _addedTypes = new ConcurrentHashMap<String, String>(32);
-        }
-
-        /**
-         * A new service type was discovered.
-         * 
-         * @param event
-         *            The service event providing the fully qualified type of the service.
-         */
-        void serviceTypeAdded(ServiceEvent event) {
-            if (null == _addedTypes.putIfAbsent(event.getType(), event.getType())) {
-                this.getListener().serviceTypeAdded(event);
-            } else {
-                logger.trace("Service Type Added called for a service type already added: {}", event);
-            }
-        }
-
-        /**
-         * A new subtype for the service type was discovered.
-         * 
-         * <pre>
-         * &lt;sub&gt;._sub.&lt;app&gt;.&lt;protocol&gt;.&lt;servicedomain&gt;.&lt;parentdomain&gt;.
-         * </pre>
-         * 
-         * @param event
-         *            The service event providing the fully qualified type of the service with subtype.
-         */
-        void subTypeForServiceTypeAdded(ServiceEvent event) {
-            if (null == _addedTypes.putIfAbsent(event.getType(), event.getType())) {
-                this.getListener().subTypeForServiceTypeAdded(event);
-            } else {
-                logger.trace("Service Sub Type Added called for a service sub type already added: {}", event);
-            }
-        }
-
-        /*
-         * (non-Javadoc)
-         * @see java.lang.Object#toString()
-         */
-        @Override
-        public String toString() {
-            final StringBuilder sb = new StringBuilder(2048);
-            sb.append("[Status for ");
-            sb.append(this.getListener().toString());
-            if (_addedTypes.isEmpty()) {
-                sb.append(" no type event ");
-            } else {
-                sb.append(" (");
-                for (final String type : _addedTypes.keySet()) {
-                    sb.append(type + ", ");
                 }
                 sb.append(") ");
             }
