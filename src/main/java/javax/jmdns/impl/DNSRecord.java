@@ -585,7 +585,7 @@ public abstract class DNSRecord extends DNSEntry {
         /**
          * @return the text
          */
-        byte[] getText() {
+        public byte[] getText() {
             return this._text;
         }
 
