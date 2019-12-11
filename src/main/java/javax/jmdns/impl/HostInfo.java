@@ -14,8 +14,8 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import javax.jmdns.NetworkTopologyDiscovery;
 import javax.jmdns.impl.constants.DNSConstants;
@@ -30,7 +30,7 @@ import javax.jmdns.impl.tasks.DNSTask;
  * @author Pierre Frisch, Werner Randelshofer
  */
 public class HostInfo implements DNSStatefulObject {
-    private static Logger       logger = LoggerFactory.getLogger(HostInfo.class.getName());
+    private static Logger       logger = LogManager.getLogger(HostInfo.class.getName());
 
     protected String            _name;
 

@@ -6,8 +6,8 @@ package javax.jmdns.impl;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import javax.jmdns.impl.constants.DNSConstants;
 
@@ -15,7 +15,7 @@ import javax.jmdns.impl.constants.DNSConstants;
  * Listen for multicast packets.
  */
 class SocketListener extends Thread {
-    static Logger           logger = LoggerFactory.getLogger(SocketListener.class.getName());
+    static Logger           logger = LogManager.getLogger(SocketListener.class.getName());
 
     /**
      *

@@ -10,8 +10,8 @@ import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.util.HashMap;
 import java.util.Map;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import javax.jmdns.impl.constants.DNSConstants;
 import javax.jmdns.impl.constants.DNSLabel;
@@ -26,14 +26,14 @@ import javax.jmdns.impl.constants.DNSResultCode;
  * @author Arthur van Hoff, Werner Randelshofer, Pierre Frisch, Daniel Bobbert
  */
 public final class DNSIncoming extends DNSMessage {
-    private static Logger logger                                = LoggerFactory.getLogger(DNSIncoming.class.getName());
+    private static Logger logger                                = LogManager.getLogger(DNSIncoming.class.getName());
 
     // This is a hack to handle a bug in the BonjourConformanceTest
     // It is sending out target strings that don't follow the "domain name" format.
     public static boolean USE_DOMAIN_NAME_FORMAT_FOR_SRV_TARGET = true;
 
     public static class MessageInputStream extends ByteArrayInputStream {
-        private static Logger      logger1 = LoggerFactory.getLogger(MessageInputStream.class.getName());
+        private static Logger      logger1 = LogManager.getLogger(MessageInputStream.class.getName());
 
         final Map<Integer, String> _names;
 

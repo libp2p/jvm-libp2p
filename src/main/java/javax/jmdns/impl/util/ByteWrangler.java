@@ -6,8 +6,8 @@ import java.io.OutputStream;
 import java.nio.charset.Charset;
 import java.util.Map;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 /**
  * This class contains all the byte shifting 
@@ -16,7 +16,7 @@ import org.slf4j.LoggerFactory;
  *
  */
 public class ByteWrangler {
-    private static Logger logger = LoggerFactory.getLogger(ByteWrangler.class.getName());
+    private static Logger logger = LogManager.getLogger(ByteWrangler.class.getName());
 
     /**
      * Maximum number of bytes a value can consist of.

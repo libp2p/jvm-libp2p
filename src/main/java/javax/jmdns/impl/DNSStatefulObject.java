@@ -9,8 +9,8 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import javax.jmdns.impl.constants.DNSState;
 import javax.jmdns.impl.tasks.DNSTask;
@@ -32,7 +32,7 @@ public interface DNSStatefulObject {
      * @author Pierre Frisch
      */
     public static final class DNSStatefulObjectSemaphore {
-        private static Logger                          logger = LoggerFactory.getLogger(DNSStatefulObjectSemaphore.class.getName());
+        private static Logger logger = LogManager.getLogger(DNSStatefulObjectSemaphore.class.getName());
 
         private final String                           _name;
 
@@ -104,7 +104,7 @@ public interface DNSStatefulObject {
     }
 
     public static class DefaultImplementation extends ReentrantLock implements DNSStatefulObject {
-        private static Logger                    logger           = LoggerFactory.getLogger(DefaultImplementation.class.getName());
+        private static Logger                    logger           = LogManager.getLogger(DefaultImplementation.class.getName());
 
         private static final long                serialVersionUID = -3264781576883412227L;
 

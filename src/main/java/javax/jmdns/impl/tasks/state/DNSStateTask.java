@@ -4,8 +4,8 @@ package javax.jmdns.impl.tasks.state;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import javax.jmdns.ServiceInfo;
 import javax.jmdns.impl.DNSOutgoing;
@@ -22,7 +22,7 @@ import javax.jmdns.impl.tasks.DNSTask;
  * @author Pierre Frisch
  */
 public abstract class DNSStateTask extends DNSTask {
-    static Logger      logger     = LoggerFactory.getLogger(DNSStateTask.class.getName());
+    static Logger      logger     = LogManager.getLogger(DNSStateTask.class.getName());
 
     /**
      * By setting a 0 ttl we effectively expire the record.

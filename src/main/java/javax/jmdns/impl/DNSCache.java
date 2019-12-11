@@ -15,8 +15,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import javax.jmdns.impl.constants.DNSRecordClass;
 import javax.jmdns.impl.constants.DNSRecordType;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 /**
  * A table of DNS entries. This is a map table which can handle multiple entries with the same name.
@@ -45,7 +45,7 @@ import org.slf4j.LoggerFactory;
  */
 public class DNSCache extends ConcurrentHashMap<String, List<DNSEntry>> {
 
-    private static Logger       logger              = LoggerFactory.getLogger(DNSCache.class.getName());
+    private static Logger       logger              = LogManager.getLogger(DNSCache.class.getName());
 
     private static final long   serialVersionUID    = 3024739453186759259L;
 

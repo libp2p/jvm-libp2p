@@ -3,8 +3,8 @@
  */
 package javax.jmdns.impl.constants;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 /**
  * DNS Record Type
@@ -249,7 +249,7 @@ public enum DNSRecordType {
      */
     TYPE_ANY("any", 255);
 
-    private static Logger logger = LoggerFactory.getLogger(DNSRecordType.class.getName());
+    private static Logger logger = LogManager.getLogger(DNSRecordType.class.getName());
 
     private final String  _externalName;
 

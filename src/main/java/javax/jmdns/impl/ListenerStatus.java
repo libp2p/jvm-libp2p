@@ -6,8 +6,8 @@ package javax.jmdns.impl;
 import java.util.EventListener;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import javax.jmdns.JmDNS;
 import javax.jmdns.ServiceEvent;
@@ -26,7 +26,7 @@ import javax.jmdns.ServiceTypeListener;
 public class ListenerStatus<T extends EventListener> {
 
     public static class ServiceListenerStatus extends ListenerStatus<ServiceListener> {
-        private static Logger logger = LoggerFactory.getLogger(ServiceListenerStatus.class.getName());
+        private static Logger logger = LogManager.getLogger(ServiceListenerStatus.class.getName());
 
         private final ConcurrentMap<String, ServiceInfo> _addedServices;
 
@@ -156,7 +156,7 @@ public class ListenerStatus<T extends EventListener> {
     }
 
     public static class ServiceTypeListenerStatus extends ListenerStatus<ServiceTypeListener> {
-        private static Logger                       logger = LoggerFactory.getLogger(ServiceTypeListenerStatus.class.getName());
+        private static Logger                       logger = LogManager.getLogger(ServiceTypeListenerStatus.class.getName());
 
         private final ConcurrentMap<String, String> _addedTypes;
 

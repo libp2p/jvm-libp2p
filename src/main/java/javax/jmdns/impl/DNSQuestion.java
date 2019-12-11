@@ -6,8 +6,8 @@ package javax.jmdns.impl;
 
 import java.net.InetAddress;
 import java.util.Set;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import javax.jmdns.ServiceInfo;
 import javax.jmdns.ServiceInfo.Fields;
@@ -22,7 +22,7 @@ import javax.jmdns.impl.constants.DNSRecordType;
  * @author Arthur van Hoff, Pierre Frisch
  */
 public class DNSQuestion extends DNSEntry {
-    private static Logger logger = LoggerFactory.getLogger(DNSQuestion.class.getName());
+    private static Logger logger = LogManager.getLogger(DNSQuestion.class.getName());
 
     /**
      * Address question.

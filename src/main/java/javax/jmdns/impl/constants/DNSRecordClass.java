@@ -3,8 +3,8 @@
  */
 package javax.jmdns.impl.constants;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 /**
  * DNS Record Class
@@ -41,7 +41,7 @@ public enum DNSRecordClass {
      */
     CLASS_ANY("any", 255);
 
-    private static Logger       logger       = LoggerFactory.getLogger(DNSRecordClass.class.getName());
+    private static Logger       logger       = LogManager.getLogger(DNSRecordClass.class.getName());
 
     /**
      * Multicast DNS uses the bottom 15 bits to identify the record class...<br/>

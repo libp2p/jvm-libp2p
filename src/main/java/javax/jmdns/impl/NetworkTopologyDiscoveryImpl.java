@@ -12,8 +12,8 @@ import java.util.Set;
 
 import javax.jmdns.NetworkTopologyDiscovery;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 /**
  * This class implements NetworkTopologyDiscovery.
@@ -21,7 +21,7 @@ import org.slf4j.LoggerFactory;
  * @author Pierre Frisch
  */
 public class NetworkTopologyDiscoveryImpl implements NetworkTopologyDiscovery {
-    private final static Logger logger = LoggerFactory.getLogger(NetworkTopologyDiscoveryImpl.class.getName());
+    private final static Logger logger = LogManager.getLogger(NetworkTopologyDiscoveryImpl.class.getName());
 
     /**
      *
