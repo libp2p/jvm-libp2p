@@ -7,6 +7,7 @@ import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.util.Enumeration;
+import java.util.List;
 import java.util.Map;
 
 import javax.jmdns.impl.ServiceInfoImpl;
@@ -71,8 +72,15 @@ public abstract class ServiceInfo implements Cloneable {
      *            string describing the service
      * @return new service info
      */
-    public static ServiceInfo create(final String type, final String name, final int port, final String text) {
-        return new ServiceInfoImpl(type, name, "", port, 0, 0, false, text);
+    public static ServiceInfo create(
+            final String type,
+            final String name,
+            final int port,
+            final String text,
+            final List<Inet4Address> ip4Addresses) {
+        ServiceInfoImpl si = new ServiceInfoImpl(type, name, "", port, 0, 0, false, text);
+        ip4Addresses.forEach(address -> { si.addAddress(address);});
+        return si;
     }
 
     /**

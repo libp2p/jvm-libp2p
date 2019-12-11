@@ -3,6 +3,7 @@ package io.libp2p.discovery
 import io.libp2p.core.Host
 import io.libp2p.core.PeerInfo
 import io.libp2p.core.multiformats.Protocol
+import java.net.Inet4Address
 import java.net.InetAddress
 import java.util.concurrent.CompletableFuture
 import javax.jmdns.JmDNS
@@ -41,7 +42,8 @@ class MDnsDiscovery(private val host: Host) {
             ServiceTagLocal,
             host.peerId.toBase58(),
             listenPort(),
-            host.peerId.toBase58()
+            host.peerId.toBase58(),
+            ip4Addresses()
         )
     }
 
@@ -53,16 +55,26 @@ class MDnsDiscovery(private val host: Host) {
         return Integer.parseInt(str)
     }
 
+    private fun ip4Addresses(): List<Inet4Address> {
+        return host.listenAddresses().map {
+            it.getComponent(Protocol.IP4)
+        }.filter {
+            it != null
+        }.map {
+            InetAddress.getByAddress(InetAddress.getLocalHost().hostName, it)
+        }.filterIsInstance(Inet4Address::class.java)
+    }
+
     companion object {
         val ServiceTag = "_ipfs-discovery._udp"
-        val ServiceTagLocal = "${ServiceTag}.local."
+        val ServiceTagLocal = "$ServiceTag.local."
 
         internal class Listener(
             private val parent: MDnsDiscovery
         ) : ServiceListener {
             override fun serviceResolved(event: ServiceEvent) = service(event)
-            override fun serviceRemoved(event: ServiceEvent) = service(event)
-            override fun serviceAdded(event: ServiceEvent) = service(event)
+            override fun serviceRemoved(event: ServiceEvent) { }
+            override fun serviceAdded(event: ServiceEvent) { }
 
             fun service(event: ServiceEvent) {
                 println(event.toString())
@@ -70,5 +82,4 @@ class MDnsDiscovery(private val host: Host) {
             }
         }
     }
-
 }
