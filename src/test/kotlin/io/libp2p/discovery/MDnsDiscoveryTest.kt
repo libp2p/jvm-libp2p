@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test
 import java.util.concurrent.TimeUnit
 
 class MDnsDiscoveryTest {
-    val host = object: NullHost() {
+    val host = object : NullHost() {
         override val peerId: PeerId = PeerId.fromPubKey(
             generateEcdsaKeyPair().second
         )
@@ -39,16 +39,15 @@ class MDnsDiscoveryTest {
 
         discoverer.onPeerFound {
             discoverer.stop()
-            peerInfo = it;
+            peerInfo = it
         }
 
         discoverer.start()
-        (1..120).forEach {
+        (1..20).forEach {
             TimeUnit.SECONDS.sleep(1)
             print('.')
         }
         println()
-
 
         assertEquals(host.peerId, peerInfo?.peerId)
         assertEquals(host.listenAddresses().size, peerInfo?.addresses?.size)
