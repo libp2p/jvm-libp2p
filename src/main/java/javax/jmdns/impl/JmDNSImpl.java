@@ -1343,7 +1343,7 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
             DNSRecordType type = answer.getRecordType();
             if (type.equals(DNSRecordType.TYPE_A) || type.equals(DNSRecordType.TYPE_AAAA)) {
                 arecords.add(answer);
-            } if(type.equals(DNSRecordType.TYPE_PTR)) {
+            } else if(type.equals(DNSRecordType.TYPE_PTR)) {
                 ret.add(0, answer);
             } else {
                 ret.add(answer);
