@@ -343,7 +343,7 @@ public abstract class DNSRecord extends DNSEntry {
             return false;
         }
 
-        InetAddress getAddress() {
+        public InetAddress getAddress() {
             return _addr;
         }
 
