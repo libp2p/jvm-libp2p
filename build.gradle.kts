@@ -44,7 +44,6 @@ dependencies {
     compile("org.bouncycastle:bcpkix-jdk15on:1.62")
     compile("com.google.protobuf:protobuf-java:3.11.0")
     compile("commons-codec:commons-codec:1.13")
-    compile("org.jmdns:jmdns:3.5.5")
 
     compile("org.apache.logging.log4j:log4j-api:${log4j2Version}")
     compile("org.apache.logging.log4j:log4j-core:${log4j2Version}")
