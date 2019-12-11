@@ -1244,6 +1244,11 @@ public class ServiceInfoImpl extends ServiceInfo implements DNSListener, DNSStat
             list.add(new Pointer(this.getType(), DNSRecordClass.CLASS_IN, DNSRecordClass.NOT_UNIQUE, ttl, this.getQualifiedName()));
             list.add(new Service(this.getQualifiedName(), DNSRecordClass.CLASS_IN, unique, ttl, _priority, _weight, _port, localHost.getName()));
             list.add(new Text(this.getQualifiedName(), DNSRecordClass.CLASS_IN, unique, ttl, this.getTextBytes()));
+            _ipv4Addresses.forEach(address -> {
+                list.add(
+                        new DNSRecord.IPv4Address(this.getQualifiedName(), DNSRecordClass.CLASS_IN, unique, ttl, address)
+                );
+            });
         }
         return list;
     }
