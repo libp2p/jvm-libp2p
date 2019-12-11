@@ -32,11 +32,8 @@ import java.util.concurrent.locks.ReentrantLock;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import javax.jmdns.JmDNS;
-import javax.jmdns.ServiceEvent;
-import javax.jmdns.ServiceInfo;
+import javax.jmdns.*;
 import javax.jmdns.ServiceInfo.Fields;
-import javax.jmdns.ServiceListener;
 import javax.jmdns.impl.ListenerStatus.ServiceListenerStatus;
 import javax.jmdns.impl.constants.DNSConstants;
 import javax.jmdns.impl.constants.DNSRecordClass;
@@ -78,6 +75,8 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
      * Holds instances of ServiceListener's. Keys are Strings holding a fully qualified service type. Values are LinkedList's of ServiceListener's.
      */
     /* default */ final ConcurrentMap<String, List<ServiceListenerStatus>> _serviceListeners;
+
+    final ConcurrentMap<String, List<AnswerListener>> _answerListeners;
 
     /**
      * Cache for DNSEntry's.
@@ -363,6 +362,7 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
 
         _listeners = Collections.synchronizedList(new ArrayList<DNSListener>());
         _serviceListeners = new ConcurrentHashMap<String, List<ServiceListenerStatus>>();
+        _answerListeners = new ConcurrentHashMap<>();
         _serviceCollectors = new ConcurrentHashMap<String, ServiceCollector>();
 
         _services = new ConcurrentHashMap<String, ServiceInfo>(20);
@@ -762,6 +762,28 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
         }
     }
 
+    void handleServiceAnswers(List<DNSRecord> answers) {
+        DNSRecord ptr = answers.get(0);
+        if(!DNSRecordType.TYPE_PTR.equals(ptr.getRecordType()))
+            return;
+        List<AnswerListener> list = _answerListeners.get(ptr.getKey());
+
+        if ((list != null) && (!list.isEmpty())) {
+            final List<AnswerListener> listCopy;
+            synchronized (list) {
+                listCopy = new ArrayList<>(list);
+            }
+            for (final AnswerListener listener: listCopy) {
+                _executor.submit(new Runnable() {
+                    @Override
+                    public void run() {
+                        listener.answersReceived(answers);
+                    }
+                });
+            }
+        }
+    }
+
     void handleServiceResolved(ServiceEvent event) {
         List<ServiceListenerStatus> list = _serviceListeners.get(event.getType().toLowerCase());
         final List<ServiceListenerStatus> listCopy;
@@ -831,6 +853,25 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
         }
         // Create/start ServiceResolver
         this.startServiceResolver(type);
+    }
+
+    @Override
+    public void addAnswerListener(String type, AnswerListener listener) {
+        final String loType = type.toLowerCase();
+        List<AnswerListener> list = _answerListeners.get(loType);
+        if (list == null) {
+            if (_answerListeners.putIfAbsent(loType, new LinkedList<>()) == null) {
+                _serviceCollectors.putIfAbsent(loType, new ServiceCollector(type));
+            }
+            list = _answerListeners.get(loType);
+        }
+        if (list != null) {
+            synchronized (list) {
+                if (!list.contains(listener)) {
+                    list.add(listener);
+                }
+            }
+        }
     }
 
     /**
@@ -1252,6 +1293,9 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
 
         List<DNSRecord> allAnswers = msg.getAllAnswers();
         allAnswers = aRecordsLast(allAnswers);
+
+        handleServiceAnswers(allAnswers);
+
         for (DNSRecord newRecord : allAnswers) {
             this.handleRecord(newRecord, now);
 
@@ -1294,11 +1338,13 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
     private List<DNSRecord> aRecordsLast(List<DNSRecord> allAnswers) {
         ArrayList<DNSRecord> ret = new ArrayList<DNSRecord>(allAnswers.size());
         ArrayList<DNSRecord> arecords = new ArrayList<DNSRecord>();
-        // filter all a records and move them to the end of the list
-        // we do not change der order of the order records
+
         for (DNSRecord answer : allAnswers) {
-            if (answer.getRecordType().equals(DNSRecordType.TYPE_A) || answer.getRecordType().equals(DNSRecordType.TYPE_AAAA)) {
+            DNSRecordType type = answer.getRecordType();
+            if (type.equals(DNSRecordType.TYPE_A) || type.equals(DNSRecordType.TYPE_AAAA)) {
                 arecords.add(answer);
+            } if(type.equals(DNSRecordType.TYPE_PTR)) {
+                ret.add(0, answer);
             } else {
                 ret.add(answer);
             }

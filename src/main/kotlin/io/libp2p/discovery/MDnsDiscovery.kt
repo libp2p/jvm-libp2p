@@ -6,10 +6,10 @@ import io.libp2p.core.multiformats.Protocol
 import java.net.Inet4Address
 import java.net.InetAddress
 import java.util.concurrent.CompletableFuture
+import javax.jmdns.AnswerListener
 import javax.jmdns.JmDNS
-import javax.jmdns.ServiceEvent
 import javax.jmdns.ServiceInfo
-import javax.jmdns.ServiceListener
+import javax.jmdns.impl.DNSRecord
 
 typealias PeerListener = (PeerInfo) -> Unit
 
@@ -20,7 +20,7 @@ class MDnsDiscovery(private val host: Host) {
         mDns.registerService(
             ipfsDiscoveryInfo()
         )
-        mDns.addServiceListener(
+        mDns.addAnswerListener(
             ServiceTagLocal,
             Listener(this)
         )
@@ -71,14 +71,9 @@ class MDnsDiscovery(private val host: Host) {
 
         internal class Listener(
             private val parent: MDnsDiscovery
-        ) : ServiceListener {
-            override fun serviceResolved(event: ServiceEvent) = service(event)
-            override fun serviceRemoved(event: ServiceEvent) { }
-            override fun serviceAdded(event: ServiceEvent) { }
-
-            fun service(event: ServiceEvent) {
-                println(event.toString())
-                println(event.info.toString())
+        ) : AnswerListener {
+            override fun answersReceived(answers: List<DNSRecord>) {
+                println(answers.last().toString())
             }
         }
     }

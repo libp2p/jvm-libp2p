@@ -170,6 +170,8 @@ public abstract class JmDNS implements Closeable {
      */
     public abstract void addServiceListener(String type, ServiceListener listener);
 
+    public abstract void addAnswerListener(String type, AnswerListener listener);
+
     /**
      * Register a service. The service is registered for access by other jmdns clients. The name of the service may be changed to make it unique.<br>
      * Note that the given {@code ServiceInfo} is bound to this {@code JmDNS} instance, and should not be reused for any other {@linkplain #registerService(ServiceInfo)}.
