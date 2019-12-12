@@ -1005,7 +1005,7 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
      */
     @Override
     public void startProber() {
-        Factory.getInstance().getStarter(this.getDns()).startProber();
+        // Factory.getInstance().getStarter(this.getDns()).startProber();
     }
 
     /*
@@ -1014,7 +1014,7 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
      */
     @Override
     public void startAnnouncer() {
-        Factory.getInstance().getStarter(this.getDns()).startAnnouncer();
+        // Factory.getInstance().getStarter(this.getDns()).startAnnouncer();
     }
 
     /*

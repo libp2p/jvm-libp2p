@@ -107,57 +107,55 @@ public class Responder extends DNSTask {
         Set<DNSQuestion> questions = new HashSet<DNSQuestion>();
         Set<DNSRecord> answers = new HashSet<DNSRecord>();
 
-        if (this.getDns().isAnnounced()) {
-            try {
-                // Answer questions
-                for (DNSQuestion question : _in.getQuestions()) {
-                    logger.debug("{}.run() JmDNS responding to: {}", this.getName(), question);
+        try {
+            // Answer questions
+            for (DNSQuestion question : _in.getQuestions()) {
+                logger.debug("{}.run() JmDNS responding to: {}", this.getName(), question);
 
-                    // for unicast responses the question must be included
-                    if (_unicast) {
-                        // out.addQuestion(q);
-                        questions.add(question);
-                    }
-
-                    question.addAnswers(this.getDns(), answers);
+                // for unicast responses the question must be included
+                if (_unicast) {
+                    // out.addQuestion(q);
+                    questions.add(question);
                 }
 
-                // remove known answers, if the TTL is at least half of the correct value. (See Draft Cheshire chapter 7.1.).
-                long now = System.currentTimeMillis();
-                for (DNSRecord knownAnswer : _in.getAnswers()) {
-                    if (knownAnswer.isStale(now)) {
-                        answers.remove(knownAnswer);
-                        logger.debug("{} - JmDNS Responder Known Answer Removed", this.getName());
-                    }
-                }
-
-                // respond if we have answers
-                if (!answers.isEmpty()) {
-                    logger.debug("{}.run() JmDNS responding", this.getName());
-
-                    DNSOutgoing out = new DNSOutgoing(DNSConstants.FLAGS_QR_RESPONSE | DNSConstants.FLAGS_AA, !_unicast, _in.getSenderUDPPayload());
-                    if (_unicast) {
-                        out.setDestination(new InetSocketAddress(_addr, _port));
-                    }
-                    out.setId(_in.getId());
-                    for (DNSQuestion question : questions) {
-                        if (question != null) {
-                            out = this.addQuestion(out, question);
-                        }
-                    }
-                    for (DNSRecord answer : answers) {
-                        if (answer != null) {
-                            out = this.addAnswer(out, _in, answer);
-
-                        }
-                    }
-                    if (!out.isEmpty()) this.getDns().send(out);
-                }
-                // this.cancel();
-            } catch (Throwable e) {
-                logger.warn(this.getName() + "run() exception ", e);
-                this.getDns().close();
+                question.addAnswers(this.getDns(), answers);
             }
+
+            // remove known answers, if the TTL is at least half of the correct value. (See Draft Cheshire chapter 7.1.).
+            long now = System.currentTimeMillis();
+            for (DNSRecord knownAnswer : _in.getAnswers()) {
+                if (knownAnswer.isStale(now)) {
+                    answers.remove(knownAnswer);
+                    logger.debug("{} - JmDNS Responder Known Answer Removed", this.getName());
+                }
+            }
+
+            // respond if we have answers
+            if (!answers.isEmpty()) {
+                logger.debug("{}.run() JmDNS responding", this.getName());
+
+                DNSOutgoing out = new DNSOutgoing(DNSConstants.FLAGS_QR_RESPONSE | DNSConstants.FLAGS_AA, !_unicast, _in.getSenderUDPPayload());
+                if (_unicast) {
+                    out.setDestination(new InetSocketAddress(_addr, _port));
+                }
+                out.setId(_in.getId());
+                for (DNSQuestion question : questions) {
+                    if (question != null) {
+                        out = this.addQuestion(out, question);
+                    }
+                }
+                for (DNSRecord answer : answers) {
+                    if (answer != null) {
+                        out = this.addAnswer(out, _in, answer);
+
+                    }
+                }
+                if (!out.isEmpty()) this.getDns().send(out);
+            }
+            // this.cancel();
+        } catch (Throwable e) {
+            logger.warn(this.getName() + "run() exception ", e);
+            this.getDns().close();
         }
     }
 }
