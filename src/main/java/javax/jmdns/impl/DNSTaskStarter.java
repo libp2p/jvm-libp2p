@@ -11,7 +11,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
 
-import javax.jmdns.impl.tasks.RecordReaper;
 import javax.jmdns.impl.tasks.Responder;
 import javax.jmdns.impl.tasks.resolver.ServiceInfoResolver;
 import javax.jmdns.impl.tasks.resolver.ServiceResolver;
@@ -352,15 +351,6 @@ public interface DNSTaskStarter {
 
         /*
          * (non-Javadoc)
-         * @see javax.jmdns.impl.DNSTaskStarter#startReaper()
-         */
-        @Override
-        public void startReaper() {
-            new RecordReaper(_jmDNSImpl).start(_timer);
-        }
-
-        /*
-         * (non-Javadoc)
          * @see javax.jmdns.impl.DNSTaskStarter#startServiceInfoResolver(javax.jmdns.impl.ServiceInfoImpl)
          */
         @Override
@@ -435,11 +425,6 @@ public interface DNSTaskStarter {
      * Start a new canceler task
      */
     public void startCanceler();
-
-    /**
-     * Start a new reaper task. There is only supposed to be one reaper running at a time.
-     */
-    public void startReaper();
 
     /**
      * Start a new service info resolver task

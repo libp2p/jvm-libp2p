@@ -40,7 +40,6 @@ import javax.jmdns.impl.constants.DNSRecordClass;
 import javax.jmdns.impl.constants.DNSRecordType;
 import javax.jmdns.impl.constants.DNSState;
 import javax.jmdns.impl.tasks.DNSTask;
-import javax.jmdns.impl.tasks.RecordReaper;
 import javax.jmdns.impl.util.NamedThreadFactory;
 
 // REMIND: multiple IP addresses
@@ -383,8 +382,6 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
         // Bind to multicast socket
         this.openMulticastSocket(this.getLocalHost());
         this.start(this.getServices().values());
-
-        this.startReaper();
     }
 
     private void start(Collection<? extends ServiceInfo> serviceInfos) {
@@ -1543,15 +1540,6 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
 
     /*
      * (non-Javadoc)
-     * @see javax.jmdns.impl.DNSTaskStarter#startReaper()
-     */
-    @Override
-    public void startReaper() {
-        Factory.getInstance().getStarter(this.getDns()).startReaper();
-    }
-
-    /*
-     * (non-Javadoc)
      * @see javax.jmdns.impl.DNSTaskStarter#startServiceInfoResolver(javax.jmdns.impl.ServiceInfoImpl)
      */
     @Override
@@ -1694,12 +1682,7 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
      * Checks the cache of expired records and removes them.
      * If any records are about to expire it tries to get them refreshed.
      *
-     * <p>
-     * Implementation note:<br />
-     * This method is called by the {@link RecordReaper} every {@link DNSConstants#RECORD_REAPER_INTERVAL} milliseconds.
-     * </p>
      * @see DNSRecord
-     * @see RecordReaper
      */
     public void cleanCache() {
         this.getCache().logCachedContent();
