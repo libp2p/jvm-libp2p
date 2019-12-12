@@ -15,7 +15,6 @@ import javax.jmdns.impl.tasks.Responder;
 import javax.jmdns.impl.tasks.resolver.ServiceResolver;
 import javax.jmdns.impl.tasks.state.Announcer;
 import javax.jmdns.impl.tasks.state.Canceler;
-import javax.jmdns.impl.tasks.state.Prober;
 
 /**
  * This class is used by JmDNS to start the various task required to run the DNS discovery. This interface is only there in order to support MANET modifications.
@@ -312,15 +311,6 @@ public interface DNSTaskStarter {
 
         /*
          * (non-Javadoc)
-         * @see javax.jmdns.impl.DNSTaskStarter#startProber()
-         */
-        @Override
-        public void startProber() {
-            new Prober(_jmDNSImpl).start(_stateTimer);
-        }
-
-        /*
-         * (non-Javadoc)
          * @see javax.jmdns.impl.DNSTaskStarter#startAnnouncer()
          */
         @Override
@@ -375,11 +365,6 @@ public interface DNSTaskStarter {
      * Cancel the state task timer
      */
     public void cancelStateTimer();
-
-    /**
-     * Start a new prober task
-     */
-    public void startProber();
 
     /**
      * Start a new announcer task

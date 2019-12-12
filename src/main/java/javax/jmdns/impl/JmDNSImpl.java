@@ -346,7 +346,6 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
             _incomingListener = new SocketListener(this);
             _incomingListener.start();
         }
-        this.startProber();
         for (ServiceInfo info : serviceInfos) {
             try {
                 this.registerService(new ServiceInfoImpl(info));
@@ -677,8 +676,6 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
 
         _services.putIfAbsent(info.getKey(), info);
 
-        this.startProber();
-
         logger.debug("registerService() JmDNS registered service as {}", info);
     }
 
@@ -878,10 +875,6 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
         for (DNSRecord answer : in.getAnswers()) {
             this.handleRecord(answer, now);
         }
-
-        if (conflictDetected) {
-            this.startProber();
-        }
     }
 
     public void respondToQuery(DNSIncoming in) {
@@ -997,15 +990,6 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
     @Override
     public void cancelStateTimer() {
         Factory.getInstance().getStarter(this.getDns()).cancelStateTimer();
-    }
-
-    /*
-     * (non-Javadoc)
-     * @see javax.jmdns.impl.DNSTaskStarter#startProber()
-     */
-    @Override
-    public void startProber() {
-        // Factory.getInstance().getStarter(this.getDns()).startProber();
     }
 
     /*
