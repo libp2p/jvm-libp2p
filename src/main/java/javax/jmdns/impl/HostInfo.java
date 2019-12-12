@@ -5,19 +5,12 @@
 package javax.jmdns.impl;
 
 import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.Inet4Address;
-import java.net.Inet6Address;
-import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
+import java.net.*;
+import java.util.*;
+
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 
-import javax.jmdns.NetworkTopologyDiscovery;
 import javax.jmdns.impl.constants.DNSConstants;
 import javax.jmdns.impl.constants.DNSRecordClass;
 import javax.jmdns.impl.constants.DNSRecordType;
@@ -76,7 +69,7 @@ public class HostInfo implements DNSStatefulObject {
                     addr = InetAddress.getLocalHost();
                     if (addr.isLoopbackAddress()) {
                         // Find local address that isn't a loopback address
-                        InetAddress[] addresses = NetworkTopologyDiscovery.Factory.getInstance().getInetAddresses();
+                        InetAddress[] addresses = getInetAddresses();
                         if (addresses.length > 0) {
                             addr = addresses[0];
                         }
@@ -108,6 +101,46 @@ public class HostInfo implements DNSStatefulObject {
         aName += ".local.";
         localhost = new HostInfo(addr, aName, dns);
         return localhost;
+    }
+
+    private static InetAddress[] getInetAddresses() {
+        Set<InetAddress> result = new HashSet<InetAddress>();
+        try {
+
+            for (Enumeration<NetworkInterface> nifs = NetworkInterface.getNetworkInterfaces(); nifs.hasMoreElements();) {
+                NetworkInterface nif = nifs.nextElement();
+                if (useInterface(nif)) {
+                    for (Enumeration<InetAddress> iaenum = nif.getInetAddresses(); iaenum.hasMoreElements();) {
+                        InetAddress interfaceAddress = iaenum.nextElement();
+                        logger.trace("Found NetworkInterface/InetAddress: {} -- {}",  nif , interfaceAddress);
+                        result.add(interfaceAddress);
+                    }
+                }
+            }
+        } catch (SocketException se) {
+            logger.warn("Error while fetching network interfaces addresses: " + se);
+        }
+        return result.toArray(new InetAddress[result.size()]);
+    }
+
+    private static boolean useInterface(NetworkInterface networkInterface) {
+        try {
+            if (!networkInterface.isUp()) {
+                return false;
+            }
+
+            if (!networkInterface.supportsMulticast()) {
+                return false;
+            }
+
+            if (networkInterface.isLoopback()) {
+                return false;
+            }
+
+            return true;
+        } catch (Exception exception) {
+            return false;
+        }
     }
 
     private static InetAddress loopbackAddress() {
