@@ -96,9 +96,6 @@ public class ServiceInfoImpl extends ServiceInfo implements DNSStatefulObject {
                     if ((this._task == null) && _info.needTextAnnouncing()) {
                         if (this._state.isAnnounced()) {
                             this.setState(DNSState.ANNOUNCING_1);
-                            if (this.getDns() != null) {
-                                this.getDns().startAnnouncer();
-                            }
                         }
                         _info.setNeedTextAnnouncing(false);
                     }

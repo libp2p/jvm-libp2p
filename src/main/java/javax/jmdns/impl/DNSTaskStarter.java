@@ -13,7 +13,6 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import javax.jmdns.impl.tasks.Responder;
 import javax.jmdns.impl.tasks.resolver.ServiceResolver;
-import javax.jmdns.impl.tasks.state.Announcer;
 import javax.jmdns.impl.tasks.state.Canceler;
 
 /**
@@ -311,15 +310,6 @@ public interface DNSTaskStarter {
 
         /*
          * (non-Javadoc)
-         * @see javax.jmdns.impl.DNSTaskStarter#startAnnouncer()
-         */
-        @Override
-        public void startAnnouncer() {
-            new Announcer(_jmDNSImpl).start(_stateTimer);
-        }
-
-        /*
-         * (non-Javadoc)
          * @see javax.jmdns.impl.DNSTaskStarter#startCanceler()
          */
         @Override
@@ -365,11 +355,6 @@ public interface DNSTaskStarter {
      * Cancel the state task timer
      */
     public void cancelStateTimer();
-
-    /**
-     * Start a new announcer task
-     */
-    public void startAnnouncer();
 
     /**
      * Start a new canceler task

@@ -994,15 +994,6 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
 
     /*
      * (non-Javadoc)
-     * @see javax.jmdns.impl.DNSTaskStarter#startAnnouncer()
-     */
-    @Override
-    public void startAnnouncer() {
-        // Factory.getInstance().getStarter(this.getDns()).startAnnouncer();
-    }
-
-    /*
-     * (non-Javadoc)
      * @see javax.jmdns.impl.DNSTaskStarter#startCanceler()
      */
     @Override
