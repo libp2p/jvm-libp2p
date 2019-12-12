@@ -5,6 +5,7 @@ import io.libp2p.core.ConnectionHandler
 import io.libp2p.core.Libp2pException
 import io.libp2p.core.PeerId
 import io.libp2p.core.multiformats.Multiaddr
+import io.libp2p.core.multiformats.MultiaddrDns
 import io.libp2p.core.multiformats.Protocol
 import io.libp2p.core.transport.Transport
 import io.libp2p.etc.types.lazyVar
@@ -176,13 +177,18 @@ abstract class NettyTransport(
         remotePeerId
     )
 
-    protected fun hostFromMultiaddr(addr: Multiaddr) =
-        addr.filterStringComponents().find { p -> p.first in arrayOf(
-            Protocol.IP4,
-            Protocol.IP6,
-            Protocol.DNSADDR
-        ) }
-            ?.second ?: throw Libp2pException("Missing IP4/IP6/DNSADDR in multiaddress $addr")
+    protected fun handlesHost(addr: Multiaddr) =
+        addr.hasAny(Protocol.IP4, Protocol.IP6, Protocol.DNS4, Protocol.DNS6, Protocol.DNSADDR)
+
+    protected fun hostFromMultiaddr(addr: Multiaddr): String {
+        val resolvedAddresses = MultiaddrDns.resolve(addr)
+        if (resolvedAddresses.isEmpty())
+            throw Libp2pException("Could not resolve $addr to an IP address")
+
+        return resolvedAddresses[0].filterStringComponents().find {
+            it.first in arrayOf(Protocol.IP4, Protocol.IP6)
+        }?.second ?: throw Libp2pException("Missing IP4/IP6 in multiaddress $addr")
+    }
 
     protected fun portFromMultiaddr(addr: Multiaddr) =
         addr.filterStringComponents().find { p -> p.first == Protocol.TCP }

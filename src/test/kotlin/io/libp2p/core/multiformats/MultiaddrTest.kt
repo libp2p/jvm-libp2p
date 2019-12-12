@@ -124,6 +124,30 @@ class MultiaddrTest {
                 "/ip4/127.0.0.1/tcp/9000/ws"
             )
         )
+
+        @JvmStatic
+        fun splitParams() = listOf(
+            Arguments.of(
+                "/ip4/127.0.0.1/tcp/20000/ipfs/QmULzn6KtFUCKpkFymEUgUvkLtv9j2Eo4utZPELmQEebR6",
+                listOf("/ip4/127.0.0.1/tcp/20000/ipfs/QmULzn6KtFUCKpkFymEUgUvkLtv9j2Eo4utZPELmQEebR6")
+            ),
+            Arguments.of(
+                "/ip4/127.0.0.1/tcp/20000/dns4/made.up.host/ipfs/QmULzn6KtFUCKpkFymEUgUvkLtv9j2Eo4utZPELmQEebR6",
+                listOf("/ip4/127.0.0.1/tcp/20000", "/dns4/made.up.host/ipfs/QmULzn6KtFUCKpkFymEUgUvkLtv9j2Eo4utZPELmQEebR6")
+            ),
+            Arguments.of(
+                "/dns4/made.up.host/tcp/20000/ip4/127.0.0.1/ipfs/QmULzn6KtFUCKpkFymEUgUvkLtv9j2Eo4utZPELmQEebR6",
+                listOf("/dns4/made.up.host/tcp/20000/ip4/127.0.0.1/ipfs/QmULzn6KtFUCKpkFymEUgUvkLtv9j2Eo4utZPELmQEebR6")
+            ),
+            Arguments.of(
+                "/dns4/made.up.host/tcp/20000/dns4/a.different.host/ipfs/QmULzn6KtFUCKpkFymEUgUvkLtv9j2Eo4utZPELmQEebR6",
+                listOf("/dns4/made.up.host/tcp/20000", "/dns4/a.different.host/ipfs/QmULzn6KtFUCKpkFymEUgUvkLtv9j2Eo4utZPELmQEebR6")
+            ),
+            Arguments.of(
+                "/dns4/made.up.host/tcp/20000/dns4/a.different.host/ipfs/QmULzn6KtFUCKpkFymEUgUvkLtv9j2Eo4utZPELmQEebR6/dns4/lets.go.crazy",
+                listOf("/dns4/made.up.host/tcp/20000", "/dns4/a.different.host/ipfs/QmULzn6KtFUCKpkFymEUgUvkLtv9j2Eo4utZPELmQEebR6", "/dns4/lets.go.crazy")
+            )
+        )
     }
 
     @ParameterizedTest
@@ -179,6 +203,18 @@ class MultiaddrTest {
     }
 
     @Test
+    fun concatTwoMultiaddrs() {
+        val parentAddr = Multiaddr("/ip4/127.0.0.1/tcp/20000")
+        val childAddr = Multiaddr("/p2p-circuit/dns4/trousers.org")
+
+        val addr = Multiaddr(parentAddr, childAddr)
+        assertEquals(
+            "/ip4/127.0.0.1/tcp/20000/p2p-circuit/dns4/trousers.org",
+            addr.toString()
+        )
+    }
+
+    @Test
     fun testSplitIntoPeerAndMultiaddr() {
         val addr = Multiaddr("/ip4/127.0.0.1/tcp/20000/ipfs/QmULzn6KtFUCKpkFymEUgUvkLtv9j2Eo4utZPELmQEebR6")
 
@@ -189,6 +225,14 @@ class MultiaddrTest {
         assertThrows(java.lang.IllegalArgumentException::class.java) {
             addrWithoutPeer.toPeerIdAndAddr()
         }
+    }
+
+    @ParameterizedTest
+    @MethodSource("splitParams")
+    fun splitMultiAddr(addr: Multiaddr, expected: List<String>) {
+        val split = addr.split { it.equals(Protocol.DNS4) }
+
+        assertEquals(expected, split.map { it.toString() })
     }
 
     private fun testPeerId(): PeerId {
