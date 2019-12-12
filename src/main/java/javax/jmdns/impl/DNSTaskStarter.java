@@ -13,7 +13,6 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import javax.jmdns.impl.tasks.Responder;
 import javax.jmdns.impl.tasks.resolver.ServiceResolver;
-import javax.jmdns.impl.tasks.state.Canceler;
 
 /**
  * This class is used by JmDNS to start the various task required to run the DNS discovery. This interface is only there in order to support MANET modifications.
@@ -310,15 +309,6 @@ public interface DNSTaskStarter {
 
         /*
          * (non-Javadoc)
-         * @see javax.jmdns.impl.DNSTaskStarter#startCanceler()
-         */
-        @Override
-        public void startCanceler() {
-            new Canceler(_jmDNSImpl).start(_stateTimer);
-        }
-
-        /*
-         * (non-Javadoc)
          * @see javax.jmdns.impl.DNSTaskStarter#startServiceResolver(java.lang.String)
          */
         @Override
@@ -355,11 +345,6 @@ public interface DNSTaskStarter {
      * Cancel the state task timer
      */
     public void cancelStateTimer();
-
-    /**
-     * Start a new canceler task
-     */
-    public void startCanceler();
 
     /**
      * Start a new service resolver task

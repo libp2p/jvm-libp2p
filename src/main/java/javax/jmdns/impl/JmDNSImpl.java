@@ -693,7 +693,6 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
                 infoImpl.cancelState();
             }
         }
-        this.startCanceler();
 
         for (final Map.Entry<String, ServiceInfo> entry : _services.entrySet()) {
             final ServiceInfo info = entry.getValue();
@@ -990,15 +989,6 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
     @Override
     public void cancelStateTimer() {
         Factory.getInstance().getStarter(this.getDns()).cancelStateTimer();
-    }
-
-    /*
-     * (non-Javadoc)
-     * @see javax.jmdns.impl.DNSTaskStarter#startCanceler()
-     */
-    @Override
-    public void startCanceler() {
-        Factory.getInstance().getStarter(this.getDns()).startCanceler();
     }
 
     /*
