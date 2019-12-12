@@ -99,22 +99,6 @@ public class DNSQuestion extends DNSEntry {
                 for (final ServiceTypeEntry typeEntry : jmDNSImpl.getServiceTypes().values()) {
                     answers.add(new DNSRecord.Pointer("_services._dns-sd._udp.local.", DNSRecordClass.CLASS_IN, DNSRecordClass.NOT_UNIQUE, DNSConstants.DNS_TTL, typeEntry.getType()));
                 }
-            } else if (this.isReverseLookup()) {
-                String ipValue = this.getQualifiedNameMap().get(Fields.Instance);
-                if ((ipValue != null) && (ipValue.length() > 0)) {
-                    InetAddress address = jmDNSImpl.getLocalHost().getInetAddress();
-                    String hostIPAddress = (address != null ? address.getHostAddress() : "");
-                    if (ipValue.equalsIgnoreCase(hostIPAddress)) {
-                        if (this.isV4ReverseLookup()) {
-                            answers.add(jmDNSImpl.getLocalHost().getDNSReverseAddressRecord(DNSRecordType.TYPE_A, DNSRecordClass.NOT_UNIQUE, DNSConstants.DNS_TTL));
-                        }
-                        if (this.isV6ReverseLookup()) {
-                            answers.add(jmDNSImpl.getLocalHost().getDNSReverseAddressRecord(DNSRecordType.TYPE_AAAA, DNSRecordClass.NOT_UNIQUE, DNSConstants.DNS_TTL));
-                        }
-                    }
-                }
-            } else if (this.isDomainDiscoveryQuery()) {
-                // FIXME [PJYF Nov 16 2010] We do not currently support domain discovery
             }
         }
 
