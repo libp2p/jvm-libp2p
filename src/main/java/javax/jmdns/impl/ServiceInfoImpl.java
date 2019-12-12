@@ -25,7 +25,6 @@ import java.util.Vector;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 
-import javax.jmdns.ServiceEvent;
 import javax.jmdns.ServiceInfo;
 import javax.jmdns.impl.DNSRecord.Pointer;
 import javax.jmdns.impl.DNSRecord.Service;
@@ -804,35 +803,6 @@ public class ServiceInfoImpl extends ServiceInfo implements DNSListener, DNSStat
             serviceChanged = handleUpdateRecord(dnsCache, now, record);
         }
 
-        // handle changes in service
-        // things have changed => have to inform listeners
-        if (serviceChanged) {
-            final JmDNSImpl dns = this.getDns();
-            if (dns != null) {
-                // we have enough data, to resolve the service
-                if (this.hasData()) {
-                    // ServiceEvent event = ((DNSRecord) rec).getServiceEvent(dns);
-                    // event = new ServiceEventImpl(dns, event.getType(), event.getName(), this);
-                    // Failure to resolve services - ID: 3517826
-                    //
-                    // There is a timing/ concurrency issue here.  The ServiceInfo object is subject to concurrent change.
-                    // e.g. when a device announce a new IP, the old IP has TTL=1.
-                    //
-                    // The listeners runs on different threads concurrently. When they start and read the event,
-                    // the ServiceInfo is already removed/ changed.
-                    //
-                    // The simple solution is to clone the ServiceInfo.  Therefore, future changes to ServiceInfo 
-                    // will not be seen by the listeners.
-                    //
-                    // Fixes ListenerStatus warning "Service Resolved called for an unresolved event: {}"
-                    ServiceEvent event = new ServiceEventImpl(dns, this.getType(), this.getName(), this.clone());
-                    dns.handleServiceResolved(event);
-                }
-            } else {
-                logger.debug("JmDNS not available.");
-            }
-        }
-
         // This is done, to notify the wait loop in method JmDNS.waitForInfoData(ServiceInfo info, int timeout);
         synchronized (this) {
             this.notifyAll();
@@ -1250,6 +1220,7 @@ public class ServiceInfoImpl extends ServiceInfo implements DNSListener, DNSStat
                 );
             });
         }
+
         return list;
     }
 
