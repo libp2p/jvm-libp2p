@@ -337,11 +337,6 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
 
     // State machine
 
-    /**
-     * This hashtable is used to maintain a list of service types being collected by this JmDNS instance. The key of the hashtable is a service type name, the value is an instance of JmDNS.ServiceCollector.
-     */
-    private final ConcurrentMap<String, ServiceCollector> _serviceCollectors;
-
     private final String _name;
 
     /**
@@ -362,7 +357,6 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
         _listeners = Collections.synchronizedList(new ArrayList<DNSListener>());
         _serviceListeners = new ConcurrentHashMap<String, List<ServiceListenerStatus>>();
         _answerListeners = new ConcurrentHashMap<>();
-        _serviceCollectors = new ConcurrentHashMap<String, ServiceCollector>();
 
         _services = new ConcurrentHashMap<String, ServiceInfo>(20);
         _serviceTypes = new ConcurrentHashMap<String, ServiceTypeEntry>(20);
@@ -667,9 +661,6 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
         this.cleanCache();
         String loType = type.toLowerCase();
         this.registerServiceType(type);
-        if (_serviceCollectors.putIfAbsent(loType, new ServiceCollector(type)) == null) {
-            this.addServiceListener(loType, _serviceCollectors.get(loType), ListenerStatus.SYNCHRONOUS);
-        }
 
         // Check if the answer is in the cache.
         final ServiceInfoImpl info = this.getServiceInfoFromCache(type, name, subtype, persistent);
@@ -809,10 +800,6 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
         List<ServiceListenerStatus> list = _serviceListeners.get(loType);
         if (list == null) {
             if (_serviceListeners.putIfAbsent(loType, new LinkedList<ServiceListenerStatus>()) == null) {
-                if (_serviceCollectors.putIfAbsent(loType, new ServiceCollector(type)) == null) {
-                    // We have a problem here. The service collectors must be called synchronously so that their cache get cleaned up immediately or we will report .
-                    this.addServiceListener(loType, _serviceCollectors.get(loType), ListenerStatus.SYNCHRONOUS);
-                }
             }
             list = _serviceListeners.get(loType);
         }
@@ -849,9 +836,7 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
         final String loType = type.toLowerCase();
         List<AnswerListener> list = _answerListeners.get(loType);
         if (list == null) {
-            if (_answerListeners.putIfAbsent(loType, new LinkedList<>()) == null) {
-                _serviceCollectors.putIfAbsent(loType, new ServiceCollector(type));
-            }
+            _answerListeners.putIfAbsent(loType, new LinkedList<>());
             list = _answerListeners.get(loType);
         }
         if (list != null) {
@@ -1042,19 +1027,6 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
      */
     public void removeListener(DNSListener listener) {
         _listeners.remove(listener);
-    }
-
-    /**
-     * Renew a service when the record become stale. If there is no service collector for the type this method does nothing.
-     *
-     * @param type
-     *            Service Type
-     */
-    public void renewServiceCollector(String type) {
-        if (_serviceCollectors.containsKey(type.toLowerCase())) {
-            // Create/start ServiceResolver
-            this.startServiceResolver(type);
-        }
     }
 
     // Remind: Method updateRecord should receive a better name.
@@ -1640,7 +1612,6 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
 
         // Cancel all services
         this.unregisterAllServices();
-        this.disposeServiceCollectors();
 
         this.waitForCanceled(DNSConstants.CLOSE_TIMEOUT);
 
@@ -1702,7 +1673,6 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
                     // only query every service type once per refresh
                     if (staleServiceTypesForRefresh.add(type)) {
                         // we should query for the record we care about i.e. those in the service collectors
-                        this.renewServiceCollector(type);
                     }
                 }
             } catch (Exception exception) {
@@ -1734,7 +1704,6 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
 
             // Cancel all services
             this.unregisterAllServices();
-            this.disposeServiceCollectors();
 
             logger.debug("Wait for JmDNS cancel: {}", this);
 
@@ -1792,14 +1761,6 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
         sb.append("\n");
         sb.append(_cache.toString());
         sb.append("\n");
-        sb.append("\t---- Service Collectors ----");
-        for (final Map.Entry<String, ServiceCollector> entry : _serviceCollectors.entrySet()) {
-            sb.append("\n\t\tService Collector: ");
-            sb.append(entry.getKey());
-            sb.append(": ");
-            sb.append(entry.getValue());
-        }
-        sb.append("\n");
         sb.append("\t---- Service Listeners ----");
         for (final Map.Entry<String, List<ServiceListenerStatus>> entry : _serviceListeners.entrySet()) {
             sb.append("\n\t\tService Listener: ");
@@ -1808,171 +1769,6 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
             sb.append(entry.getValue());
         }
         return sb.toString();
-    }
-
-    /**
-     * This method disposes all ServiceCollector instances which have been created by calls to method <code>list(type)</code>.
-     */
-    private void disposeServiceCollectors() {
-        logger.debug("disposeServiceCollectors()");
-        for (final Map.Entry<String, ServiceCollector> entry : _serviceCollectors.entrySet()) {
-            final ServiceCollector collector = entry.getValue();
-            if (collector != null) {
-                final String type = entry.getKey();
-                _serviceCollectors.remove(type, collector);
-            }
-        }
-    }
-
-    /**
-     * Instances of ServiceCollector are used internally to speed up the performance of method <code>list(type)</code>.
-     *
-     * @see #list
-     */
-    private static class ServiceCollector implements ServiceListener {
-        // private static Logger logger = LoggerFactory.getLogger(ServiceCollector.class.getName());
-
-        /**
-         * A set of collected service instance names.
-         */
-        private final ConcurrentMap<String, ServiceInfo> _infos;
-
-        /**
-         * A set of collected service event waiting to be resolved.
-         */
-        private final ConcurrentMap<String, ServiceEvent> _events;
-
-        /**
-         * This is the type we are listening for (only used for debugging).
-         */
-        private final String _type;
-
-        /**
-         * This is used to force a wait on the first invocation of list.
-         */
-        private volatile boolean _needToWaitForInfos;
-
-        public ServiceCollector(String type) {
-            super();
-            _infos = new ConcurrentHashMap<String, ServiceInfo>();
-            _events = new ConcurrentHashMap<String, ServiceEvent>();
-            _type = type;
-            _needToWaitForInfos = true;
-        }
-
-        /**
-         * A service has been added.
-         *
-         * @param event
-         *            service event
-         */
-        @Override
-        public void serviceAdded(ServiceEvent event) {
-            synchronized (this) {
-                ServiceInfo info = event.getInfo();
-                if ((info != null) && (info.hasData())) {
-                    _infos.put(event.getName(), info);
-                } else {
-                    String subtype = (info != null ? info.getSubtype() : "");
-                    info = ((JmDNSImpl) event.getDNS()).resolveServiceInfo(event.getType(), event.getName(), subtype, true);
-                    if (info != null) {
-                        _infos.put(event.getName(), info);
-                    } else {
-                        _events.put(event.getName(), event);
-                    }
-                }
-            }
-        }
-
-        /**
-         * A service has been removed.
-         *
-         * @param event
-         *            service event
-         */
-        @Override
-        public void serviceRemoved(ServiceEvent event) {
-            synchronized (this) {
-                _infos.remove(event.getName());
-                _events.remove(event.getName());
-            }
-        }
-
-        /**
-         * A service has been resolved. Its details are now available in the ServiceInfo record.
-         *
-         * @param event
-         *            service event
-         */
-        @Override
-        public void serviceResolved(ServiceEvent event) {
-            synchronized (this) {
-                _infos.put(event.getName(), event.getInfo());
-                _events.remove(event.getName());
-            }
-        }
-
-        /**
-         * Returns an array of all service infos which have been collected by this ServiceCollector.
-         *
-         * @param timeout
-         *            timeout if the info list is empty.
-         * @return Service Info array
-         */
-        public ServiceInfo[] list(long timeout) {
-            if (_infos.isEmpty() || !_events.isEmpty() || _needToWaitForInfos) {
-                long loops = (timeout / 200L);
-                if (loops < 1) {
-                    loops = 1;
-                }
-                for (int i = 0; i < loops; i++) {
-                    try {
-                        Thread.sleep(200);
-                    } catch (final InterruptedException e) {
-                        /* Stub */
-                    }
-                    if (_events.isEmpty() && !_infos.isEmpty() && !_needToWaitForInfos) {
-                        break;
-                    }
-                }
-            }
-            _needToWaitForInfos = false;
-            return _infos.values().toArray(new ServiceInfo[_infos.size()]);
-        }
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        public String toString() {
-            final StringBuilder sb = new StringBuilder();
-            sb.append("\n\tType: ");
-            sb.append(_type);
-            if (_infos.isEmpty()) {
-                sb.append("\n\tNo services collected.");
-            } else {
-                sb.append("\n\tServices");
-                for (final Map.Entry<String, ServiceInfo> entry : _infos.entrySet()) {
-                    sb.append("\n\t\tService: ");
-                    sb.append(entry.getKey());
-                    sb.append(": ");
-                    sb.append(entry.getValue());
-                }
-            }
-            if (_events.isEmpty()) {
-                sb.append("\n\tNo event queued.");
-            } else {
-                sb.append("\n\tEvents");
-                for (final Map.Entry<String, ServiceEvent> entry : _events.entrySet()) {
-                    sb.append("\n\t\tEvent: ");
-                    sb.append(entry.getKey());
-                    sb.append(": ");
-                    sb.append(entry.getValue());
-                }
-            }
-            return sb.toString();
-        }
-
     }
 
     static String toUnqualifiedName(String type, String qualifiedName) {
