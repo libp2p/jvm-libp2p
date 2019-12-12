@@ -21,46 +21,6 @@ import javax.jmdns.impl.JmDNSImpl;
  */
 public abstract class JmDNS implements Closeable {
     /**
-     * The version of JmDNS.
-     */
-    public static String VERSION;
-
-    static {
-        try {
-            InputStream inputStream = JmDNS.class.getClassLoader().getResourceAsStream("version.properties");
-            try {
-                Properties properties = new Properties();
-                properties.load(inputStream);
-                VERSION = properties.getProperty("jmdns.version");
-            } finally {
-                inputStream.close();
-            }
-        } catch (Exception ignored) {
-            VERSION = "VERSION MISSING";
-        }
-
-    }
-
-    /**
-     * <p>
-     * Create an instance of JmDNS.
-     * </p>
-     * <p>
-     * <b>Note:</b> This is a convenience method. The preferred constructor is {@link #create(InetAddress, String)}.<br/>
-     * Check that your platform correctly handle the default localhost IP address and the local hostname. In doubt use the explicit constructor.<br/>
-     * This call is equivalent to <code>create(null, null)</code>.
-     * </p>
-     *
-     * @see #create(InetAddress, String)
-     * @return jmDNS instance
-     * @exception IOException
-     *                if an exception occurs during the socket creation
-     */
-    public static JmDNS create() throws IOException {
-        return new JmDNSImpl(null, null);
-    }
-
-    /**
      * <p>
      * Create an instance of JmDNS and bind it to a specific network interface given its IP-address.
      * </p>
@@ -79,27 +39,6 @@ public abstract class JmDNS implements Closeable {
      */
     public static JmDNS create(final InetAddress addr) throws IOException {
         return new JmDNSImpl(addr, null);
-    }
-
-    /**
-     * <p>
-     * Create an instance of JmDNS.
-     * </p>
-     * <p>
-     * <b>Note:</b> This is a convenience method. The preferred constructor is {@link #create(InetAddress, String)}.<br/>
-     * Check that your platform correctly handle the default localhost IP address and the local hostname. In doubt use the explicit constructor.<br/>
-     * This call is equivalent to <code>create(null, name)</code>.
-     * </p>
-     *
-     * @see #create(InetAddress, String)
-     * @param name
-     *            name of the newly created JmDNS
-     * @return jmDNS instance
-     * @exception IOException
-     *                if an exception occurs during the socket creation
-     */
-    public static JmDNS create(final String name) throws IOException {
-        return new JmDNSImpl(null, name);
     }
 
     /**
@@ -159,16 +98,6 @@ public abstract class JmDNS implements Closeable {
      *                if there is an error in the underlying protocol, such as a TCP error.
      */
     public abstract InetAddress getInetAddress() throws IOException;
-
-    /**
-     * Listen for services of a given type. The type has to be a fully qualified type name such as <code>_http._tcp.local.</code>.
-     *
-     * @param type
-     *            full qualified service type, such as <code>_http._tcp.local.</code>.
-     * @param listener
-     *            listener for service updates
-     */
-    public abstract void addServiceListener(String type, ServiceListener listener);
 
     public abstract void addAnswerListener(String type, AnswerListener listener);
 

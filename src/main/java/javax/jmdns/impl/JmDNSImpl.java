@@ -806,14 +806,6 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void addServiceListener(String type, ServiceListener listener) {
-        this.addServiceListener(type, listener, ListenerStatus.ASYNCHRONOUS);
-    }
-
     private void addServiceListener(String type, ServiceListener listener, boolean synch) {
         ServiceListenerStatus status = new ServiceListenerStatus(listener, synch);
         final String loType = type.toLowerCase();
