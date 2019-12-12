@@ -6,7 +6,6 @@ package javax.jmdns.impl;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
-import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -16,7 +15,6 @@ import java.net.SocketException;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -35,16 +33,13 @@ import org.apache.logging.log4j.Logger;
 import javax.jmdns.*;
 import javax.jmdns.ServiceInfo.Fields;
 import javax.jmdns.impl.constants.DNSConstants;
-import javax.jmdns.impl.constants.DNSRecordClass;
 import javax.jmdns.impl.constants.DNSRecordType;
 import javax.jmdns.impl.constants.DNSState;
 import javax.jmdns.impl.tasks.DNSTask;
 import javax.jmdns.impl.util.NamedThreadFactory;
 
-// REMIND: multiple IP addresses
-
 /**
- * mDNS implementation in Java.
+ * Derived from mDNS implementation in Java.
  *
  * @author Arthur van Hoff, Rick Blair, Jeff Sonstein, Werner Randelshofer, Pierre Frisch, Scott Lewis, Kai Kreuzer, Victor Toni
  */
@@ -290,18 +285,6 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
     private long _lastThrottleIncrement;
 
     private final ExecutorService _executor = Executors.newSingleThreadExecutor(new NamedThreadFactory("JmDNS"));
-
-    //
-    // 2009-09-16 ldeck: adding docbug patch with slight ammendments
-    // 'Fixes two deadlock conditions involving JmDNS.close() - ID: 1473279'
-    //
-    // ---------------------------------------------------
-    /**
-     * The timer that triggers our announcements. We can't use the main timer object, because that could cause a deadlock where Prober waits on JmDNS.this lock held by close(), close() waits for us to finish, and we wait for Prober to give us back
-     * the timer thread so we can announce. (Patch from docbug in 2006-04-19 still wasn't patched .. so I'm doing it!)
-     */
-    // private final Timer _cancelerTimer;
-    // ---------------------------------------------------
 
     /**
      * The source for random values. This is used to introduce random delays in responses. This reduces the potential for collisions on the network.
@@ -809,30 +792,10 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
      * @exception IOException
      */
     void handleResponse(DNSIncoming msg) throws IOException {
-        final long now = System.currentTimeMillis();
-
-        boolean hostConflictDetected = false;
-        boolean serviceConflictDetected = false;
-
         List<DNSRecord> allAnswers = msg.getAllAnswers();
         allAnswers = aRecordsLast(allAnswers);
 
         handleServiceAnswers(allAnswers);
-
-        for (DNSRecord newRecord : allAnswers) {
-            this.handleRecord(newRecord, now);
-
-            if (DNSRecordType.TYPE_A.equals(newRecord.getRecordType()) || DNSRecordType.TYPE_AAAA.equals(newRecord.getRecordType())) {
-                hostConflictDetected |= newRecord.handleResponse(this);
-            } else {
-                serviceConflictDetected |= newRecord.handleResponse(this);
-            }
-
-        }
-
-        if (hostConflictDetected || serviceConflictDetected) {
-            this.startProber();
-        }
     }
 
     /**
