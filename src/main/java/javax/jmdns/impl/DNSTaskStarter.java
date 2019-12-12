@@ -18,7 +18,6 @@ import javax.jmdns.impl.tasks.resolver.TypeResolver;
 import javax.jmdns.impl.tasks.state.Announcer;
 import javax.jmdns.impl.tasks.state.Canceler;
 import javax.jmdns.impl.tasks.state.Prober;
-import javax.jmdns.impl.tasks.state.Renewer;
 
 /**
  * This class is used by JmDNS to start the various task required to run the DNS discovery. This interface is only there in order to support MANET modifications.
@@ -333,15 +332,6 @@ public interface DNSTaskStarter {
 
         /*
          * (non-Javadoc)
-         * @see javax.jmdns.impl.DNSTaskStarter#startRenewer()
-         */
-        @Override
-        public void startRenewer() {
-            new Renewer(_jmDNSImpl).start(_stateTimer);
-        }
-
-        /*
-         * (non-Javadoc)
          * @see javax.jmdns.impl.DNSTaskStarter#startCanceler()
          */
         @Override
@@ -415,11 +405,6 @@ public interface DNSTaskStarter {
      * Start a new announcer task
      */
     public void startAnnouncer();
-
-    /**
-     * Start a new renewer task
-     */
-    public void startRenewer();
 
     /**
      * Start a new canceler task

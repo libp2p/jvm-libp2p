@@ -136,8 +136,6 @@ public class Announcer extends DNSStateTask {
         this.setTaskState(this.getTaskState().advance());
         if (!this.getTaskState().isAnnouncing()) {
             this.cancel();
-
-            this.getDns().startRenewer();
         }
     }
 

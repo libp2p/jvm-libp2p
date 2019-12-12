@@ -24,5 +24,4 @@ interface DNSListener {
      * @param record
      *            DNS record
      */
-    void updateRecord(DNSCache dnsCache, long now, DNSEntry record);
 }

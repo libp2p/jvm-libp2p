@@ -60,21 +60,7 @@ public class ServiceInfoResolver extends DNSResolverTask {
      */
     @Override
     protected DNSOutgoing addAnswers(DNSOutgoing out) throws IOException {
-        DNSOutgoing newOut = out;
-        if (!_info.hasData()) {
-            long now = System.currentTimeMillis();
-            newOut = this.addAnswer(newOut, (DNSRecord) this.getDns().getCache().getDNSEntry(_info.getQualifiedName(), DNSRecordType.TYPE_SRV, DNSRecordClass.CLASS_IN), now);
-            newOut = this.addAnswer(newOut, (DNSRecord) this.getDns().getCache().getDNSEntry(_info.getQualifiedName(), DNSRecordType.TYPE_TXT, DNSRecordClass.CLASS_IN), now);
-            if (_info.getServer().length() > 0) {
-                for (DNSEntry addressEntry : this.getDns().getCache().getDNSEntryList(_info.getServer(), DNSRecordType.TYPE_A, DNSRecordClass.CLASS_IN)) {
-                    newOut = this.addAnswer(newOut, (DNSRecord) addressEntry, now);
-                }
-                for (DNSEntry addressEntry : this.getDns().getCache().getDNSEntryList(_info.getServer(), DNSRecordType.TYPE_AAAA, DNSRecordClass.CLASS_IN)) {
-                    newOut = this.addAnswer(newOut, (DNSRecord) addressEntry, now);
-                }
-            }
-        }
-        return newOut;
+        return out;
     }
 
     /*

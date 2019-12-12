@@ -383,7 +383,6 @@ public abstract class DNSRecord extends DNSEntry {
                     if (dns.isProbing() && comparison > 0) {
                         // We lost the tie-break. We have to choose a different name.
                         dns.getLocalHost().incrementHostName();
-                        dns.getCache().clear();
                         for (ServiceInfo serviceInfo : dns.getServices().values()) {
                             ServiceInfoImpl info = (ServiceInfoImpl) serviceInfo;
                             info.revertState();
@@ -406,7 +405,6 @@ public abstract class DNSRecord extends DNSEntry {
 
                 if (dns.isProbing()) {
                     dns.getLocalHost().incrementHostName();
-                    dns.getCache().clear();
                     for (ServiceInfo serviceInfo : dns.getServices().values()) {
                         ServiceInfoImpl info = (ServiceInfoImpl) serviceInfo;
                         info.revertState();
