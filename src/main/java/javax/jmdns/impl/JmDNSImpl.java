@@ -64,12 +64,7 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
      */
     private volatile MulticastSocket _socket;
 
-    /**
-     * Holds instances of JmDNS.DNSListener. Must by a synchronized collection, because it is updated from concurrent threads.
-     */
-    private final List<DNSListener> _listeners;
-
-    final ConcurrentMap<String, List<AnswerListener>> _answerListeners;
+    private final ConcurrentMap<String, List<AnswerListener>> _answerListeners;
 
     /**
      * This hashtable holds the services that have been registered. Keys are instances of String which hold an all lower-case version of the fully qualified service name. Values are instances of ServiceInfo.
@@ -341,7 +336,6 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
         super();
         logger.debug("JmDNS instance created");
 
-        _listeners = Collections.synchronizedList(new ArrayList<DNSListener>());
         _answerListeners = new ConcurrentHashMap<>();
 
         _services = new ConcurrentHashMap<String, ServiceInfo>(20);
@@ -771,31 +765,6 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
             }
         }
         return typeAdded;
-    }
-
-    /**
-     * Add a listener for a question. The listener will receive updates of answers to the question as they arrive, or from the cache if they are already available.
-     *
-     * @param listener
-     *            DSN listener
-     * @param question
-     *            DNS query
-     */
-    public void addListener(DNSListener listener, DNSQuestion question) {
-        final long now = System.currentTimeMillis();
-
-        // add the new listener
-        _listeners.add(listener);
-    }
-
-    /**
-     * Remove a listener from all outstanding questions. The listener will no longer receive any updates.
-     *
-     * @param listener
-     *            DSN listener
-     */
-    public void removeListener(DNSListener listener) {
-        _listeners.remove(listener);
     }
 
     void handleRecord(DNSRecord record, long now) {

@@ -6,10 +6,8 @@ package javax.jmdns.impl.tasks.resolver;
 
 import java.io.IOException;
 
-import javax.jmdns.impl.DNSEntry;
 import javax.jmdns.impl.DNSOutgoing;
 import javax.jmdns.impl.DNSQuestion;
-import javax.jmdns.impl.DNSRecord;
 import javax.jmdns.impl.JmDNSImpl;
 import javax.jmdns.impl.ServiceInfoImpl;
 import javax.jmdns.impl.constants.DNSRecordClass;
@@ -28,7 +26,6 @@ public class ServiceInfoResolver extends DNSResolverTask {
         super(jmDNSImpl);
         this._info = info;
         info.setDns(this.getDns());
-        this.getDns().addListener(info, DNSQuestion.newQuestion(info.getQualifiedName(), DNSRecordType.TYPE_ANY, DNSRecordClass.CLASS_IN, DNSRecordClass.NOT_UNIQUE));
     }
 
     /*
@@ -38,20 +35,6 @@ public class ServiceInfoResolver extends DNSResolverTask {
     @Override
     public String getName() {
         return "ServiceInfoResolver(" + (this.getDns() != null ? this.getDns().getName() : "") + ")";
-    }
-
-    /*
-     * (non-Javadoc)
-     * @see java.util.TimerTask#cancel()
-     */
-    @Override
-    public boolean cancel() {
-        // We should not forget to remove the listener
-        boolean result = super.cancel();
-        if (!_info.isPersistent()) {
-            this.getDns().removeListener(_info);
-        }
-        return result;
     }
 
     /*
