@@ -1065,24 +1065,6 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
 
     /*
      * (non-Javadoc)
-     * @see javax.jmdns.impl.DNSTaskStarter#startServiceInfoResolver(javax.jmdns.impl.ServiceInfoImpl)
-     */
-    @Override
-    public void startServiceInfoResolver(ServiceInfoImpl info) {
-        Factory.getInstance().getStarter(this.getDns()).startServiceInfoResolver(info);
-    }
-
-    /*
-     * (non-Javadoc)
-     * @see javax.jmdns.impl.DNSTaskStarter#startTypeResolver()
-     */
-    @Override
-    public void startTypeResolver() {
-        Factory.getInstance().getStarter(this.getDns()).startTypeResolver();
-    }
-
-    /*
-     * (non-Javadoc)
      * @see javax.jmdns.impl.DNSTaskStarter#startServiceResolver(java.lang.String)
      */
     @Override

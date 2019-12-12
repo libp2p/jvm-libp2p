@@ -12,9 +12,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
 
 import javax.jmdns.impl.tasks.Responder;
-import javax.jmdns.impl.tasks.resolver.ServiceInfoResolver;
 import javax.jmdns.impl.tasks.resolver.ServiceResolver;
-import javax.jmdns.impl.tasks.resolver.TypeResolver;
 import javax.jmdns.impl.tasks.state.Announcer;
 import javax.jmdns.impl.tasks.state.Canceler;
 import javax.jmdns.impl.tasks.state.Prober;
@@ -341,24 +339,6 @@ public interface DNSTaskStarter {
 
         /*
          * (non-Javadoc)
-         * @see javax.jmdns.impl.DNSTaskStarter#startServiceInfoResolver(javax.jmdns.impl.ServiceInfoImpl)
-         */
-        @Override
-        public void startServiceInfoResolver(ServiceInfoImpl info) {
-            new ServiceInfoResolver(_jmDNSImpl, info).start(_timer);
-        }
-
-        /*
-         * (non-Javadoc)
-         * @see javax.jmdns.impl.DNSTaskStarter#startTypeResolver()
-         */
-        @Override
-        public void startTypeResolver() {
-            new TypeResolver(_jmDNSImpl).start(_timer);
-        }
-
-        /*
-         * (non-Javadoc)
          * @see javax.jmdns.impl.DNSTaskStarter#startServiceResolver(java.lang.String)
          */
         @Override
@@ -410,19 +390,6 @@ public interface DNSTaskStarter {
      * Start a new canceler task
      */
     public void startCanceler();
-
-    /**
-     * Start a new service info resolver task
-     *
-     * @param info
-     *            service info to resolve
-     */
-    public void startServiceInfoResolver(ServiceInfoImpl info);
-
-    /**
-     * Start a new service type resolver task
-     */
-    public void startTypeResolver();
 
     /**
      * Start a new service resolver task
