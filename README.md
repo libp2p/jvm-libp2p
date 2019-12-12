@@ -63,7 +63,7 @@ do not impact the ability to hold communications with other libp2p processes.
        jcenter()
    }
 
-   implementation 'io.libp2p:jvm-libp2p-minimal:0.2.0-RELEASE'
+   implementation 'io.libp2p:jvm-libp2p-minimal:0.3.0-RELEASE'
 ```
 
 
