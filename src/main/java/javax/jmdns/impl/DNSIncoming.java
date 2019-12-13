@@ -222,42 +222,37 @@ public final class DNSIncoming extends DNSMessage {
             }
 
             // parse questions
-            if (numQuestions > 0) {
-                for (int i = 0; i < numQuestions; i++) {
-                    _questions.add(this.readQuestion());
-                }
+            for (int i = 0; i < numQuestions; i++) {
+                DNSQuestion question = this.readQuestion();
+                if (question != null)
+                    _questions.add(question);
             }
 
             // parse answers
-            if (numAnswers > 0) {
-                for (int i = 0; i < numAnswers; i++) {
-                    DNSRecord rec = this.readAnswer(source);
-                    if (rec != null) {
-                        // Add a record, if we were able to create one.
-                        _answers.add(rec);
-                    }
+            for (int i = 0; i < numAnswers; i++) {
+                DNSRecord rec = this.readAnswer(source);
+                if (rec != null) {
+                    // Add a record, if we were able to create one.
+                    _answers.add(rec);
                 }
             }
 
-            if (numAuthorities > 0) {
-                for (int i = 0; i < numAuthorities; i++) {
-                    DNSRecord rec = this.readAnswer(source);
-                    if (rec != null) {
-                        // Add a record, if we were able to create one.
-                        _authoritativeAnswers.add(rec);
-                    }
+            for (int i = 0; i < numAuthorities; i++) {
+                DNSRecord rec = this.readAnswer(source);
+                if (rec != null) {
+                    // Add a record, if we were able to create one.
+                    _authoritativeAnswers.add(rec);
                 }
             }
 
-            if (numAdditionals > 0) {
-                for (int i = 0; i < numAdditionals; i++) {
-                    DNSRecord rec = this.readAnswer(source);
-                    if (rec != null) {
-                        // Add a record, if we were able to create one.
-                        _additionals.add(rec);
-                    }
+            for (int i = 0; i < numAdditionals; i++) {
+                DNSRecord rec = this.readAnswer(source);
+                if (rec != null) {
+                    // Add a record, if we were able to create one.
+                    _additionals.add(rec);
                 }
             }
+
             // We should have drained the entire stream by now
             if (_messageInputStream.available() > 0) {
                 throw new IOException("Received a message with the wrong length.");
