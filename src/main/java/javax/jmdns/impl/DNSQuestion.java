@@ -4,13 +4,11 @@
 
 package javax.jmdns.impl;
 
-import java.net.InetAddress;
 import java.util.Set;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 
 import javax.jmdns.ServiceInfo;
-import javax.jmdns.ServiceInfo.Fields;
 import javax.jmdns.impl.JmDNSImpl.ServiceTypeEntry;
 import javax.jmdns.impl.constants.DNSConstants;
 import javax.jmdns.impl.constants.DNSRecordClass;
@@ -23,63 +21,6 @@ import javax.jmdns.impl.constants.DNSRecordType;
  */
 public class DNSQuestion extends DNSEntry {
     private static Logger logger = LogManager.getLogger(DNSQuestion.class.getName());
-
-    /**
-     * Address question.
-     */
-    private static class DNS4Address extends DNSQuestion {
-        DNS4Address(String name, DNSRecordType type, DNSRecordClass recordClass, boolean unique) {
-            super(name, type, recordClass, unique);
-        }
-
-        @Override
-        public void addAnswers(JmDNSImpl jmDNSImpl, Set<DNSRecord> answers) {
-            DNSRecord answer = jmDNSImpl.getLocalHost().getDNSAddressRecord(this.getRecordType(), DNSRecordClass.UNIQUE, DNSConstants.DNS_TTL);
-            if (answer != null) {
-                answers.add(answer);
-            }
-        }
-
-        @Override
-        public boolean iAmTheOnlyOne(JmDNSImpl jmDNSImpl) {
-            String name = this.getName().toLowerCase();
-            return jmDNSImpl.getLocalHost().getName().equals(name) || jmDNSImpl.getServices().containsKey(name);
-        }
-
-    }
-
-    /**
-     * Address question.
-     */
-    private static class DNS6Address extends DNSQuestion {
-        DNS6Address(String name, DNSRecordType type, DNSRecordClass recordClass, boolean unique) {
-            super(name, type, recordClass, unique);
-        }
-
-        @Override
-        public void addAnswers(JmDNSImpl jmDNSImpl, Set<DNSRecord> answers) {
-            DNSRecord answer = jmDNSImpl.getLocalHost().getDNSAddressRecord(this.getRecordType(), DNSRecordClass.UNIQUE, DNSConstants.DNS_TTL);
-            if (answer != null) {
-                answers.add(answer);
-            }
-        }
-
-        @Override
-        public boolean iAmTheOnlyOne(JmDNSImpl jmDNSImpl) {
-            String name = this.getName().toLowerCase();
-            return jmDNSImpl.getLocalHost().getName().equals(name) || jmDNSImpl.getServices().containsKey(name);
-        }
-
-    }
-
-    /**
-     * Host Information question.
-     */
-    private static class HostInformation extends DNSQuestion {
-        HostInformation(String name, DNSRecordType type, DNSRecordClass recordClass, boolean unique) {
-            super(name, type, recordClass, unique);
-        }
-    }
 
     /**
      * Pointer question.
@@ -101,104 +42,6 @@ public class DNSQuestion extends DNSEntry {
                 }
             }
         }
-
-    }
-
-    /**
-     * Service question.
-     */
-    private static class Service extends DNSQuestion {
-        Service(String name, DNSRecordType type, DNSRecordClass recordClass, boolean unique) {
-            super(name, type, recordClass, unique);
-        }
-
-        @Override
-        public void addAnswers(JmDNSImpl jmDNSImpl, Set<DNSRecord> answers) {
-            String loname = this.getName().toLowerCase();
-            if (jmDNSImpl.getLocalHost().getName().equalsIgnoreCase(loname)) {
-                // type = DNSConstants.TYPE_A;
-                answers.addAll(jmDNSImpl.getLocalHost().answers(this.getRecordClass(), this.isUnique(), DNSConstants.DNS_TTL));
-                return;
-            }
-            // Service type request
-            if (jmDNSImpl.getServiceTypes().containsKey(loname)) {
-                DNSQuestion question = new Pointer(this.getName(), DNSRecordType.TYPE_PTR, this.getRecordClass(), this.isUnique());
-                question.addAnswers(jmDNSImpl, answers);
-                return;
-            }
-
-            this.addAnswersForServiceInfo(jmDNSImpl, answers, (ServiceInfoImpl) jmDNSImpl.getServices().get(loname));
-        }
-
-        @Override
-        public boolean iAmTheOnlyOne(JmDNSImpl jmDNSImpl) {
-            String name = this.getName().toLowerCase();
-            return jmDNSImpl.getLocalHost().getName().equals(name) || jmDNSImpl.getServices().containsKey(name);
-        }
-
-    }
-
-    /**
-     * Text question.
-     */
-    private static class Text extends DNSQuestion {
-        Text(String name, DNSRecordType type, DNSRecordClass recordClass, boolean unique) {
-            super(name, type, recordClass, unique);
-        }
-
-        @Override
-        public void addAnswers(JmDNSImpl jmDNSImpl, Set<DNSRecord> answers) {
-            this.addAnswersForServiceInfo(jmDNSImpl, answers, (ServiceInfoImpl) jmDNSImpl.getServices().get(this.getName().toLowerCase()));
-        }
-
-        @Override
-        public boolean iAmTheOnlyOne(JmDNSImpl jmDNSImpl) {
-            String name = this.getName().toLowerCase();
-            return jmDNSImpl.getLocalHost().getName().equals(name) || jmDNSImpl.getServices().containsKey(name);
-        }
-
-    }
-
-    /**
-     * AllRecords question.
-     */
-    private static class AllRecords extends DNSQuestion {
-        AllRecords(String name, DNSRecordType type, DNSRecordClass recordClass, boolean unique) {
-            super(name, type, recordClass, unique);
-        }
-
-        @Override
-        public boolean isSameType(DNSEntry entry) {
-            // We match all non null entry
-            return (entry != null);
-        }
-
-        @Override
-        public void addAnswers(JmDNSImpl jmDNSImpl, Set<DNSRecord> answers) {
-            String loname = this.getName().toLowerCase();
-            if (jmDNSImpl.getLocalHost().getName().equalsIgnoreCase(loname)) {
-                // type = DNSConstants.TYPE_A;
-                answers.addAll(jmDNSImpl.getLocalHost().answers(this.getRecordClass(), this.isUnique(), DNSConstants.DNS_TTL));
-                return;
-            }
-            // Service type request
-            if (jmDNSImpl.getServiceTypes().containsKey(loname)) {
-                DNSQuestion question = new Pointer(this.getName(), DNSRecordType.TYPE_PTR, this.getRecordClass(), this.isUnique());
-                question.addAnswers(jmDNSImpl, answers);
-                return;
-            }
-
-            for (ServiceInfo serviceInfo : jmDNSImpl.getServices().values()) {
-                this.addAnswersForServiceInfo(jmDNSImpl, answers, (ServiceInfoImpl) serviceInfo);
-            }
-        }
-
-        @Override
-        public boolean iAmTheOnlyOne(JmDNSImpl jmDNSImpl) {
-            String name = this.getName().toLowerCase();
-            return jmDNSImpl.getLocalHost().getName().equals(name) || jmDNSImpl.getServices().containsKey(name);
-        }
-
     }
 
     DNSQuestion(String name, DNSRecordType type, DNSRecordClass recordClass, boolean unique) {
@@ -222,13 +65,6 @@ public class DNSQuestion extends DNSEntry {
         return (type == DNSRecordType.TYPE_PTR)
                 ? new Pointer(name, type, recordClass, unique)
                 : null;
-    }
-
-    /**
-     * Check if this question is answered by a given DNS record.
-     */
-    boolean answeredBy(DNSEntry rec) {
-        return this.isSameRecordClass(rec) && this.isSameType(rec) && this.getName().equals(rec.getName());
     }
 
     /**
