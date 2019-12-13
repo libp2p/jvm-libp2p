@@ -17,28 +17,27 @@ import javax.jmdns.impl.constants.DNSConstants;
 class SocketListener extends Thread {
     static Logger logger = LogManager.getLogger(SocketListener.class.getName());
 
-    /**
-     *
-     */
     private final JmDNSImpl _jmDNSImpl;
+    private volatile boolean _closed;
 
-    /**
-     * @param jmDNSImpl
-     */
     SocketListener(JmDNSImpl jmDNSImpl) {
         super("SocketListener(" + (jmDNSImpl != null ? jmDNSImpl.getName() : "") + ")");
         this.setDaemon(true);
         this._jmDNSImpl = jmDNSImpl;
     }
 
+    public void close() { _closed = true; }
+
     @Override
     public void run() {
         try {
             byte buf[] = new byte[DNSConstants.MAX_MSG_ABSOLUTE];
             DatagramPacket packet = new DatagramPacket(buf, buf.length);
-            while (true) {
+            while (!_closed) {
                 packet.setLength(buf.length);
                 this._jmDNSImpl.getSocket().receive(packet);
+                if (_closed)
+                    break;
                 try {
                     if (this._jmDNSImpl.getLocalHost().shouldIgnorePacket(packet)) {
                         continue;
@@ -67,7 +66,8 @@ class SocketListener extends Thread {
                 }
             }
         } catch (IOException e) {
-            logger.warn(this.getName() + ".run() exception ", e);
+            if (!_closed)
+                logger.warn(this.getName() + ".run() exception ", e);
         }
         logger.trace("{}.run() exiting.", this.getName());
     }

@@ -62,7 +62,7 @@ public class JmDNSImpl extends JmDNS {
      */
     private HostInfo _localHost;
 
-    private Thread _incomingListener;
+    private SocketListener _incomingListener;
 
     private final ExecutorService _executor = Executors.newSingleThreadExecutor(new NamedThreadFactory("JmDNS"));
 
@@ -395,6 +395,8 @@ public class JmDNSImpl extends JmDNS {
     @Override
     public void close() {
         logger.debug("Cancelling JmDNS: {}", this);
+
+        _incomingListener.close();
 
         // Stop the timer
         logger.debug("Canceling the timer");
