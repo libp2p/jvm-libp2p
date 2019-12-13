@@ -6,34 +6,52 @@ package javax.jmdns.impl;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 
 import javax.jmdns.impl.constants.DNSConstants;
+import javax.jmdns.impl.util.NamedThreadFactory;
 
 /**
  * Listen for multicast packets.
  */
-class SocketListener extends Thread {
+class SocketListener implements Runnable {
     static Logger logger = LogManager.getLogger(SocketListener.class.getName());
 
     private final JmDNSImpl _jmDNSImpl;
+    private final String _name;
     private volatile boolean _closed;
+    private final ExecutorService _executor = Executors.newSingleThreadExecutor(new NamedThreadFactory("JmDNS"));
+    private Future<Void> _isShutdown;
 
     SocketListener(JmDNSImpl jmDNSImpl) {
-        super("SocketListener(" + (jmDNSImpl != null ? jmDNSImpl.getName() : "") + ")");
-        this.setDaemon(true);
+        _name = "SocketListener(" + (jmDNSImpl != null ? jmDNSImpl.getName() : "") + ")";
         this._jmDNSImpl = jmDNSImpl;
     }
 
-    public void close() { _closed = true; }
+    public void start() {
+        _isShutdown = _executor.submit(this, null);
+    }
+    public Future<Void> stop() {
+        _closed = true;
+        _executor.shutdown();
+        return _isShutdown;
+    }
+    public boolean isStopped() {
+        return _isShutdown.isDone();
+    }
+
 
     @Override
     public void run() {
         try {
             byte buf[] = new byte[DNSConstants.MAX_MSG_ABSOLUTE];
             DatagramPacket packet = new DatagramPacket(buf, buf.length);
-            while (!_closed) {
+            while (!_executor.isShutdown()) {
                 packet.setLength(buf.length);
                 this._jmDNSImpl.getSocket().receive(packet);
                 if (_closed)
@@ -46,7 +64,7 @@ class SocketListener extends Thread {
                     DNSIncoming msg = new DNSIncoming(packet);
                     if (msg.isValidResponseCode()) {
                         if (logger.isTraceEnabled()) {
-                            logger.trace("{}.run() JmDNS in:{}", this.getName(), msg.print(true));
+                            logger.trace("{}.run() JmDNS in:{}", _name, msg.print(true));
                         }
                         if (msg.isQuery()) {
                             if (packet.getPort() != DNSConstants.MDNS_PORT) {
@@ -58,17 +76,17 @@ class SocketListener extends Thread {
                         }
                     } else {
                         if (logger.isDebugEnabled()) {
-                            logger.debug("{}.run() JmDNS in message with error code: {}", this.getName(), msg.print(true));
+                            logger.debug("{}.run() JmDNS in message with error code: {}", _name, msg.print(true));
                         }
                     }
                 } catch (IOException e) {
-                    logger.warn(this.getName() + ".run() exception ", e);
+                    logger.warn(_name + ".run() exception ", e);
                 }
             }
         } catch (IOException e) {
             if (!_closed)
-                logger.warn(this.getName() + ".run() exception ", e);
+                logger.warn(_name + ".run() exception ", e);
         }
-        logger.trace("{}.run() exiting.", this.getName());
+        logger.trace("{}.run() exiting.", _name);
     }
 }

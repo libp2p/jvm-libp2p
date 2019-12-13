@@ -13,10 +13,7 @@ import java.net.MulticastSocket;
 import java.net.SocketAddress;
 import java.net.SocketException;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 import java.util.concurrent.locks.ReentrantLock;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -173,26 +170,6 @@ public class JmDNSImpl extends JmDNS {
                     //
                 }
                 _socket.close();
-                // jP: 20010-01-18. It isn't safe to join() on the listener
-                // thread - it attempts to lock the IoLock object, and deadlock
-                // ensues. Per issue #2933183, changed this to wait on the JmDNS
-                // monitor, checking on each notify (or timeout) that the
-                // listener thread has stopped.
-                //
-                while (_incomingListener != null && _incomingListener.isAlive()) {
-                    synchronized (this) {
-                        try {
-                            if (_incomingListener != null && _incomingListener.isAlive()) {
-                                // wait time is arbitrary, we're really expecting notification.
-                                logger.debug("closeMulticastSocket(): waiting for jmDNS monitor");
-                                this.wait(1000);
-                            }
-                        } catch (InterruptedException ignored) {
-                            // Ignored
-                        }
-                    }
-                }
-                _incomingListener = null;
             } catch (final Exception exception) {
                 logger.warn("closeMulticastSocket() Close socket exception ", exception);
             }
@@ -398,7 +375,14 @@ public class JmDNSImpl extends JmDNS {
     public void close() {
         logger.debug("Cancelling JmDNS: {}", this);
 
-        _incomingListener.close();
+        Future<Void> shutdown =_incomingListener.stop();
+        _incomingListener = null;
+
+        try {
+            shutdown.get();
+        } catch(Exception e) {
+
+        }
 
         // Stop the timer
         logger.debug("Canceling the timer");
