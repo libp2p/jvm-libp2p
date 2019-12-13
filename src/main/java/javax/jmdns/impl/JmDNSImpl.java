@@ -296,12 +296,6 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
      */
     private final ReentrantLock _ioLock = new ReentrantLock();
 
-    /**
-     * If an incoming package which needs an answer is truncated, we store it here. We add more incoming DNSRecords to it, until the JmDNS.Responder timer picks it up.<br/>
-     * FIXME [PJYF June 8 2010]: This does not work well with multiple planned answers for packages that came in from different clients.
-     */
-    private DNSIncoming _plannedAnswer;
-
     // State machine
 
     private final String _name;
@@ -847,25 +841,15 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
     void handleQuery(DNSIncoming in, InetAddress addr, int port) throws IOException {
         logger.debug("{} handle query: {}", this.getName(), in);
         // Track known answers
-        boolean conflictDetected = false;
         final long expirationTime = System.currentTimeMillis() + DNSConstants.KNOWN_ANSWER_TTL;
         for (DNSRecord answer : in.getAllAnswers()) {
-            conflictDetected |= answer.handleQuery(this, expirationTime);
+            answer.handleQuery(this, expirationTime);
         }
 
         this.ioLock();
         try {
-
-            if (_plannedAnswer != null) {
-                _plannedAnswer.append(in);
-            } else {
-                DNSIncoming plannedAnswer = in.clone();
-                if (in.isTruncated()) {
-                    _plannedAnswer = plannedAnswer;
-                }
-                this.startResponder(plannedAnswer, addr, port);
-            }
-
+            DNSIncoming plannedAnswer = in.clone();
+            this.startResponder(plannedAnswer, addr, port);
         } finally {
             this.ioUnlock();
         }
@@ -873,17 +857,6 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
         final long now = System.currentTimeMillis();
         for (DNSRecord answer : in.getAnswers()) {
             this.handleRecord(answer, now);
-        }
-    }
-
-    public void respondToQuery(DNSIncoming in) {
-        this.ioLock();
-        try {
-            if (_plannedAnswer == in) {
-                _plannedAnswer = null;
-            }
-        } finally {
-            this.ioUnlock();
         }
     }
 
@@ -1234,14 +1207,6 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
 
     public void ioUnlock() {
         _ioLock.unlock();
-    }
-
-    public void setPlannedAnswer(DNSIncoming plannedAnswer) {
-        this._plannedAnswer = plannedAnswer;
-    }
-
-    public DNSIncoming getPlannedAnswer() {
-        return _plannedAnswer;
     }
 
     void setLocalHost(HostInfo localHost) {
