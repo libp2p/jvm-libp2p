@@ -8,15 +8,17 @@ import io.libp2p.core.multiformats.Protocol
 import java.net.Inet4Address
 import java.net.InetAddress
 import java.util.concurrent.CompletableFuture
-import javax.jmdns.AnswerListener
-import javax.jmdns.JmDNS
-import javax.jmdns.ServiceInfo
-import javax.jmdns.impl.DNSRecord
-import javax.jmdns.impl.constants.DNSRecordType
+import io.libp2p.discovery.mdns.AnswerListener
+import io.libp2p.discovery.mdns.JmDNS
+import io.libp2p.discovery.mdns.ServiceInfo
+import io.libp2p.discovery.mdns.impl.DNSRecord
+import io.libp2p.discovery.mdns.impl.constants.DNSRecordType
 
 typealias PeerListener = (PeerInfo) -> Unit
 
-class MDnsDiscovery(private val host: Host) {
+class MDnsDiscovery(
+    private val host: Host
+) {
     private var mDns = JmDNS.create(InetAddress.getLocalHost())
     private val listeners = mutableListOf<PeerListener>()
 

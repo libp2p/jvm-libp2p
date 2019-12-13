@@ -39,9 +39,9 @@ class MDnsDiscoveryTest {
     fun `start and stop discovery`() {
         val discoverer = MDnsDiscovery(host)
 
-        discoverer.start()
-        TimeUnit.SECONDS.sleep(2)
-        discoverer.stop()
+        discoverer.start().get(1, TimeUnit.SECONDS)
+        TimeUnit.MILLISECONDS.sleep(100)
+        discoverer.stop().get(1, TimeUnit.SECONDS)
     }
 
     @Test
@@ -51,22 +51,14 @@ class MDnsDiscoveryTest {
 
         discoverer.onPeerFound {
             peerInfo = it
-            println(peerInfo)
         }
 
-        discoverer.start()
-        (1..15).forEach {
+        discoverer.start().get(1, TimeUnit.SECONDS)
+        (1..5).forEach {
             TimeUnit.SECONDS.sleep(1)
-            print('.')
-        }
-        println("Ping!")
-        discoverer.ping()
-        (1..15).forEach {
-            TimeUnit.SECONDS.sleep(1)
-            print('.')
         }
         println()
-        discoverer.stop()
+        discoverer.stop().get(1, TimeUnit.SECONDS)
 
         assertEquals(host.peerId, peerInfo?.peerId)
         assertEquals(host.listenAddresses().size, peerInfo?.addresses?.size)
@@ -76,29 +68,22 @@ class MDnsDiscoveryTest {
     fun `start discovery and listen for other`() {
         var peerInfo: PeerInfo? = null
         val other = MDnsDiscovery(otherHost)
-        other.start()
+        other.start().get(1, TimeUnit.SECONDS)
 
         val discoverer = MDnsDiscovery(host)
         discoverer.onPeerFound {
             if (it.peerId != host.peerId) {
                 peerInfo = it
-                println(peerInfo)
             }
         }
 
-        discoverer.start()
-        (1..15).forEach {
+        discoverer.start().get(1, TimeUnit.SECONDS)
+        (1..5).forEach {
             TimeUnit.SECONDS.sleep(1)
             print('.')
         }
-        println("Ping!")
-        discoverer.ping()
-        (1..15).forEach {
-            TimeUnit.SECONDS.sleep(1)
-            print('.')
-        }
-        discoverer.stop()
-        other.stop()
+        discoverer.stop().get(1, TimeUnit.SECONDS)
+        other.stop().get(1, TimeUnit.SECONDS)
 
         assertEquals(otherHost.peerId, peerInfo?.peerId)
         assertEquals(otherHost.listenAddresses().size, peerInfo?.addresses?.size)
