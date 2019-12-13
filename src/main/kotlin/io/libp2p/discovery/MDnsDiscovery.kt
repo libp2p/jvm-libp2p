@@ -1,6 +1,10 @@
 package io.libp2p.discovery
 
-import io.libp2p.core.*
+import io.libp2p.core.Discoverer
+import io.libp2p.core.PeerListener
+import io.libp2p.core.Host
+import io.libp2p.core.PeerId
+import io.libp2p.core.PeerInfo
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multiformats.Protocol
 import java.net.Inet4Address
