@@ -12,12 +12,7 @@ import java.net.InetSocketAddress;
 import java.net.MulticastSocket;
 import java.net.SocketAddress;
 import java.net.SocketException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
@@ -29,6 +24,8 @@ import org.apache.logging.log4j.Logger;
 import javax.jmdns.*;
 import javax.jmdns.impl.constants.DNSConstants;
 import javax.jmdns.impl.constants.DNSRecordType;
+import javax.jmdns.impl.tasks.Responder;
+import javax.jmdns.impl.tasks.ServiceResolver;
 import javax.jmdns.impl.util.NamedThreadFactory;
 
 /**
@@ -36,7 +33,7 @@ import javax.jmdns.impl.util.NamedThreadFactory;
  *
  * @author Arthur van Hoff, Rick Blair, Jeff Sonstein, Werner Randelshofer, Pierre Frisch, Scott Lewis, Kai Kreuzer, Victor Toni
  */
-public class JmDNSImpl extends JmDNS implements DNSTaskStarter {
+public class JmDNSImpl extends JmDNS {
     private static Logger logger = LogManager.getLogger(JmDNSImpl.class.getName());
 
     /**
@@ -81,6 +78,8 @@ public class JmDNSImpl extends JmDNS implements DNSTaskStarter {
 
     private final String _name;
 
+    private final Timer _timer;
+
     /**
      * Create an instance of JmDNS and bind it to a specific network interface given its IP-address.
      *
@@ -100,6 +99,8 @@ public class JmDNSImpl extends JmDNS implements DNSTaskStarter {
 
         _localHost = HostInfo.newHostInfo(address, this, name);
         _name = (name != null ? name : _localHost.getName());
+
+        _timer = new StarterTimer("JmDNS(" + _name + ").Timer", true);
 
         // Bind to multicast socket
         this.openMulticastSocket(this.getLocalHost());
@@ -379,63 +380,18 @@ public class JmDNSImpl extends JmDNS implements DNSTaskStarter {
         }
     }
 
-    /*
-     * (non-Javadoc)
-     * @see javax.jmdns.impl.DNSTaskStarter#purgeTimer()
-     */
-    @Override
-    public void purgeTimer() {
-        Factory.getInstance().getStarter(this).purgeTimer();
-    }
+    private void purgeTimer() { _timer.purge(); }
 
-    /*
-     * (non-Javadoc)
-     * @see javax.jmdns.impl.DNSTaskStarter#purgeStateTimer()
-     */
-    @Override
-    public void purgeStateTimer() {
-        Factory.getInstance().getStarter(this).purgeStateTimer();
-    }
+    private void cancelTimer() { _timer.cancel(); }
 
-    /*
-     * (non-Javadoc)
-     * @see javax.jmdns.impl.DNSTaskStarter#cancelTimer()
-     */
-    @Override
-    public void cancelTimer() {
-        Factory.getInstance().getStarter(this).cancelTimer();
-    }
-
-    /*
-     * (non-Javadoc)
-     * @see javax.jmdns.impl.DNSTaskStarter#cancelStateTimer()
-     */
-    @Override
-    public void cancelStateTimer() {
-        Factory.getInstance().getStarter(this).cancelStateTimer();
-    }
-
-    /*
-     * (non-Javadoc)
-     * @see javax.jmdns.impl.DNSTaskStarter#startServiceResolver(java.lang.String)
-     */
-    @Override
     public void startServiceResolver(String type) {
-        Factory.getInstance().getStarter(this).startServiceResolver(type);
+        new ServiceResolver(this, type).start(_timer);
     }
 
-    /*
-     * (non-Javadoc)
-     * @see javax.jmdns.impl.DNSTaskStarter#startResponder(javax.jmdns.impl.DNSIncoming, int)
-     */
-    @Override
-    public void startResponder(DNSIncoming in, InetAddress addr, int port) {
-        Factory.getInstance().getStarter(this).startResponder(in, addr, port);
+    private void startResponder(DNSIncoming in, InetAddress addr, int port) {
+        new Responder(this, in, addr, port).start(_timer);
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public void close() {
         logger.debug("Cancelling JmDNS: {}", this);
@@ -443,10 +399,6 @@ public class JmDNSImpl extends JmDNS implements DNSTaskStarter {
         // Stop the timer
         logger.debug("Canceling the timer");
         this.cancelTimer();
-
-        // Stop the canceler timer
-        logger.debug("Canceling the state timer");
-        this.cancelStateTimer();
 
         // Stop the executor
         _executor.shutdown();
@@ -458,10 +410,6 @@ public class JmDNSImpl extends JmDNS implements DNSTaskStarter {
         if (_shutdown != null) {
             Runtime.getRuntime().removeShutdownHook(_shutdown);
         }
-
-        // earlier we did a DNSTaskStarter.Factory.getInstance().getStarter(this.getDns())
-        // now we must release the resources associated with the starter for this JmDNS instance
-        Factory.getInstance().disposeStarter(this);
 
         logger.debug("JmDNS closed.");
     }
