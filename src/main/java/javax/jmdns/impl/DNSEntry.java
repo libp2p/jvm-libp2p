@@ -216,26 +216,6 @@ public abstract class DNSEntry {
     public abstract boolean isExpired(long now);
 
     /**
-     * Check that 2 entries are of the same class.
-     *
-     * @param entry
-     * @return <code>true</code> is the two class are the same, <code>false</code> otherwise.
-     */
-    public boolean isSameRecordClass(DNSEntry entry) {
-        return (entry != null) && (entry.getRecordClass() == this.getRecordClass());
-    }
-
-    /**
-     * Check that 2 entries are of the same type.
-     *
-     * @param entry
-     * @return <code>true</code> is the two type are the same, <code>false</code> otherwise.
-     */
-    public boolean isSameType(DNSEntry entry) {
-        return (entry != null) && (entry.getRecordType() == this.getRecordType());
-    }
-
-    /**
      * @param dout
      * @exception IOException
      */
@@ -260,25 +240,6 @@ public abstract class DNSEntry {
         } catch (IOException e) {
             throw new InternalError();
         }
-    }
-
-    /**
-     * Does a lexicographic comparison of the byte array representation of this record and that record. This is needed for tie-break tests according to draft-cheshire-dnsext-multicastdns-04.txt chapter 9.2.
-     *
-     * @param that
-     * @return a negative integer, zero, or a positive integer as this object is less than, equal to, or greater than the specified object.
-     */
-    public int compareTo(DNSEntry that) {
-        byte[] thisBytes = this.toByteArray();
-        byte[] thatBytes = that.toByteArray();
-        for (int i = 0, n = Math.min(thisBytes.length, thatBytes.length); i < n; i++) {
-            if (thisBytes[i] > thatBytes[i]) {
-                return 1;
-            } else if (thisBytes[i] < thatBytes[i]) {
-                return -1;
-            }
-        }
-        return thisBytes.length - thatBytes.length;
     }
 
     /**

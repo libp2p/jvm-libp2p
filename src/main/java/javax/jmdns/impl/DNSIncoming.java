@@ -467,9 +467,6 @@ public final class DNSIncoming extends DNSMessage {
                 _messageInputStream.skip(len);
                 break;
         }
-        if (rec != null) {
-            rec.setRecordSource(source);
-        }
         return rec;
     }
 

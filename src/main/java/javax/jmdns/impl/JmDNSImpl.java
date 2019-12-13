@@ -814,35 +814,6 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
     }
 
     /**
-     * Add an answer to a question. Deal with the case when the outgoing packet overflows
-     *
-     * @param in
-     * @param addr
-     * @param port
-     * @param out
-     * @param rec
-     * @return outgoing answer
-     * @exception IOException
-     */
-    public DNSOutgoing addAnswer(DNSIncoming in, InetAddress addr, int port, DNSOutgoing out, DNSRecord rec) throws IOException {
-        DNSOutgoing newOut = out;
-        if (newOut == null) {
-            newOut = new DNSOutgoing(DNSConstants.FLAGS_QR_RESPONSE | DNSConstants.FLAGS_AA, false, in.getSenderUDPPayload());
-        }
-        try {
-            newOut.addAnswer(in, rec);
-        } catch (final IOException e) {
-            newOut.setFlags(newOut.getFlags() | DNSConstants.FLAGS_TC);
-            newOut.setId(in.getId());
-            send(newOut);
-
-            newOut = new DNSOutgoing(DNSConstants.FLAGS_QR_RESPONSE | DNSConstants.FLAGS_AA, false, in.getSenderUDPPayload());
-            newOut.addAnswer(in, rec);
-        }
-        return newOut;
-    }
-
-    /**
      * Send an outgoing multicast DNS message.
      *
      * @param out
@@ -933,23 +904,6 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
     @Override
     public void startResponder(DNSIncoming in, InetAddress addr, int port) {
         Factory.getInstance().getStarter(this.getDns()).startResponder(in, addr, port);
-    }
-
-    // REMIND: Why is this not an anonymous inner class?
-    /**
-     * Shutdown operations.
-     */
-    protected class Shutdown implements Runnable {
-        /** {@inheritDoc} */
-        @Override
-        public void run() {
-            try {
-                _shutdown = null;
-                close();
-            } catch (Throwable exception) {
-                System.err.println("Error while shuting down. " + exception);
-            }
-        }
     }
 
     private final Object _recoverLock = new Object();
@@ -1134,22 +1088,6 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
         return _services;
     }
 
-    public void setLastThrottleIncrement(long lastThrottleIncrement) {
-        this._lastThrottleIncrement = lastThrottleIncrement;
-    }
-
-    public long getLastThrottleIncrement() {
-        return _lastThrottleIncrement;
-    }
-
-    public void setThrottle(int throttle) {
-        this._throttle = throttle;
-    }
-
-    public int getThrottle() {
-        return _throttle;
-    }
-
     public static Random getRandom() {
         return _random;
     }
@@ -1160,10 +1098,6 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
 
     public void ioUnlock() {
         _ioLock.unlock();
-    }
-
-    void setLocalHost(HostInfo localHost) {
-        this._localHost = localHost;
     }
 
     public Map<String, ServiceTypeEntry> getServiceTypes() {
