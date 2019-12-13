@@ -79,8 +79,6 @@ public class JmDNSImpl extends JmDNS implements DNSTaskStarter {
      */
     private final ReentrantLock _ioLock = new ReentrantLock();
 
-    // State machine
-
     private final String _name;
 
     /**
@@ -102,15 +100,6 @@ public class JmDNSImpl extends JmDNS implements DNSTaskStarter {
 
         _localHost = HostInfo.newHostInfo(address, this, name);
         _name = (name != null ? name : _localHost.getName());
-
-        // _cancelerTimer = new Timer("JmDNS.cancelerTimer");
-
-        // (ldeck 2.1.1) preventing shutdown blocking thread
-        // -------------------------------------------------
-        // _shutdown = new Thread(new Shutdown(), "JmDNS.Shutdown");
-        // Runtime.getRuntime().addShutdownHook(_shutdown);
-
-        // -------------------------------------------------
 
         // Bind to multicast socket
         this.openMulticastSocket(this.getLocalHost());

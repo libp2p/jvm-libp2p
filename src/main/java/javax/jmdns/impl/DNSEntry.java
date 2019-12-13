@@ -201,10 +201,6 @@ public abstract class DNSEntry {
         return this.getKey().hashCode() + this.getRecordType().indexValue() + this.getRecordClass().indexValue();
     }
 
-    /*
-     * (non-Javadoc)
-     * @see java.lang.Object#toString()
-     */
     @Override
     public String toString() {
         final StringBuilder sb = new StringBuilder(200);
@@ -213,17 +209,8 @@ public abstract class DNSEntry {
         sb.append(", class: ").append(this.getRecordClass());
         sb.append((_unique ? "-unique," : ","));
         sb.append(" name: ").append( _name);
-        this.toString(sb);
         sb.append(']');
 
         return sb.toString();
     }
-
-    /**
-     * @param sb
-     */
-    protected void toString(final StringBuilder sb) {
-        // Stub
-    }
-
 }

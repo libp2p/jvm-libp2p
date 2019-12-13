@@ -12,7 +12,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Hashtable;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -47,7 +46,6 @@ public class ServiceInfoImpl extends ServiceInfo {
     private int                     _weight;
     private int                     _priority;
     private byte[]                  _text;
-    private Map<String, byte[]>     _props;
     private final Set<Inet4Address> _ipv4Addresses;
     private final Set<Inet6Address> _ipv6Addresses;
 
@@ -91,11 +89,6 @@ public class ServiceInfoImpl extends ServiceInfo {
         this._ipv6Addresses = Collections.synchronizedSet(new LinkedHashSet<Inet6Address>());
     }
 
-    /**
-     * During recovery we need to duplicate service info to reregister them
-     *
-     * @param info
-     */
     ServiceInfoImpl(ServiceInfo info) {
         this._ipv4Addresses = Collections.synchronizedSet(new LinkedHashSet<Inet4Address>());
         this._ipv6Addresses = Collections.synchronizedSet(new LinkedHashSet<Inet6Address>());
@@ -262,9 +255,6 @@ public class ServiceInfoImpl extends ServiceInfo {
         return newName;
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public String getType() {
         String domain = this.getDomain();
@@ -273,26 +263,17 @@ public class ServiceInfoImpl extends ServiceInfo {
         return (application.length() > 0 ? "_" + application + "." : "") + (protocol.length() > 0 ? "_" + protocol + "." : "") + domain + ".";
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public String getTypeWithSubtype() {
         String subtype = this.getSubtype();
         return (subtype.length() > 0 ? "_" + subtype + "._sub." : "") + this.getType();
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public String getName() {
         return (_name != null ? _name : "");
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public String getKey() {
         if (this._key == null) {
@@ -301,149 +282,80 @@ public class ServiceInfoImpl extends ServiceInfo {
         return this._key;
     }
 
-    /**
-     * Sets the service instance name.
-     *
-     * @param name
-     *            unqualified service instance name, such as <code>foobar</code>
-     */
-    void setName(String name) {
-        this._name = name;
-        this._key = null;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public String getQualifiedName() {
         String domain = this.getDomain();
         String protocol = this.getProtocol();
         String application = this.getApplication();
         String instance = this.getName();
-        // String subtype = this.getSubtype();
-        // return (instance.length() > 0 ? instance + "." : "") + (application.length() > 0 ? "_" + application + "." : "") + (protocol.length() > 0 ? "_" + protocol + (subtype.length() > 0 ? ",_" + subtype.toLowerCase() + "." : ".") : "") + domain
-        // + ".";
         return (instance.length() > 0 ? instance + "." : "") + (application.length() > 0 ? "_" + application + "." : "") + (protocol.length() > 0 ? "_" + protocol + "." : "") + domain + ".";
     }
 
-    /**
-     * @see ServiceInfo#getServer()
-     */
     @Override
     public String getServer() {
         return (_server != null ? _server : "");
     }
-
-    /**
-     * @param server
-     *            the server to set
-     */
     void setServer(String server) {
         this._server = server;
     }
 
-    /**
-     * @param addr
-     *            the addr to add
-     */
     public void addAddress(Inet4Address addr) {
         _ipv4Addresses.add(addr);
     }
-
-    /**
-     * @param addr
-     *            the addr to add
-     */
     public void addAddress(Inet6Address addr) {
         _ipv6Addresses.add(addr);
     }
 
-    /*
-     * (non-Javadoc)
-     * @see javax.jmdns.ServiceInfo#getInet4Addresses()
-     */
     @Override
     public Inet4Address[] getInet4Addresses() {
         return _ipv4Addresses.toArray(new Inet4Address[_ipv4Addresses.size()]);
     }
 
-    /*
-     * (non-Javadoc)
-     * @see javax.jmdns.ServiceInfo#getInet6Addresses()
-     */
     @Override
     public Inet6Address[] getInet6Addresses() {
         return _ipv6Addresses.toArray(new Inet6Address[_ipv6Addresses.size()]);
     }
 
-    /**
-     * @see ServiceInfo#getPort()
-     */
     @Override
     public int getPort() {
         return _port;
     }
 
-    /**
-     * @see ServiceInfo#getPriority()
-     */
     @Override
     public int getPriority() {
         return _priority;
     }
 
-    /**
-     * @see ServiceInfo#getWeight()
-     */
     @Override
     public int getWeight() {
         return _weight;
     }
 
-    /**
-     * @see ServiceInfo#getTextBytes()
-     */
     @Override
     public byte[] getTextBytes() {
         return (this._text != null && this._text.length > 0 ? this._text : ByteWrangler.EMPTY_TXT);
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public String getApplication() {
         return (_application != null ? _application : "");
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public String getDomain() {
         return (_domain != null ? _domain : "local");
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public String getProtocol() {
         return (_protocol != null ? _protocol : "tcp");
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public String getSubtype() {
         return (_subtype != null ? _subtype : "");
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public Map<Fields, String> getQualifiedNameMap() {
         Map<Fields, String> map = new HashMap<Fields, String>(5);
@@ -456,55 +368,25 @@ public class ServiceInfoImpl extends ServiceInfo {
         return map;
     }
 
-    synchronized Map<String, byte[]> getProperties() {
-        if ((_props == null) && (this.getTextBytes() != null)) {
-            final Map<String, byte[]> properties = new Hashtable<String, byte[]>();
-            try {
-                ByteWrangler.readProperties(properties, this.getTextBytes());
-            } catch (final Exception exception) {
-                // We should get better logging.
-                logger.warn("Malformed TXT Field ", exception);
-            }
-            this._props = properties;
-        }
-        return (_props != null ? _props : Collections.<String, byte[]> emptyMap());
-    }
-
-    /**
-     * Returns true if the service info is filled with data.
-     *
-     * @return <code>true</code> if the service info has data, <code>false</code> otherwise.
-     */
     @Override
     public synchronized boolean hasData() {
         return this.getServer() != null && this.hasInetAddress() && this.getTextBytes() != null && this.getTextBytes().length > 0;
-        // return this.getServer() != null && (this.getAddress() != null || (this.getTextBytes() != null && this.getTextBytes().length > 0));
     }
 
     private final boolean hasInetAddress() {
         return _ipv4Addresses.size() > 0 || _ipv6Addresses.size() > 0;
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public int hashCode() {
         return getQualifiedName().hashCode();
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public boolean equals(Object obj) {
         return (obj instanceof ServiceInfoImpl) && getQualifiedName().equals(((ServiceInfoImpl) obj).getQualifiedName());
     }
 
-    /*
-     * (non-Javadoc)
-     * @see javax.jmdns.ServiceInfo#clone()
-     */
     @Override
     public ServiceInfoImpl clone() {
         ServiceInfoImpl serviceInfo = new ServiceInfoImpl(this.getQualifiedNameMap(), _port, _weight, _priority, _text);
@@ -519,9 +401,6 @@ public class ServiceInfoImpl extends ServiceInfo {
         return serviceInfo;
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public String toString() {
         final StringBuilder sb = new StringBuilder();
@@ -543,24 +422,7 @@ public class ServiceInfoImpl extends ServiceInfo {
             }
         }
 
-        if (this.hasData()) {
-            sb.append(" has data");
-        } else {
-            sb.append(" has NO data");
-            
-        }
-        if (this.getTextBytes().length > 0) {
-            // sb.append("\n").append(this.getNiceTextString());
-            final Map<String, byte[]> properties = this.getProperties();
-            if (!properties.isEmpty()) {
-                for (final Map.Entry<String, byte[]> entry : properties.entrySet()) {
-                    final String value = ByteWrangler.readUTF(entry.getValue());
-                    sb.append("\n\t").append(entry.getKey()).append(": ").append(value);
-                }
-            } else {
-                sb.append(", empty");
-            }
-        }
+        sb.append(this.hasData() ? " has data" : " has NO data");
         sb.append(']');
 
         return sb.toString();
@@ -578,7 +440,7 @@ public class ServiceInfoImpl extends ServiceInfo {
      */
     public Collection<DNSRecord> answers(DNSRecordClass recordClass, boolean unique, int ttl, HostInfo localHost) {
         List<DNSRecord> list = new ArrayList<DNSRecord>();
-        // [PJYF Dec 6 2011] This is bad hack as I don't know what the spec should really means in this case. i.e. what is the class of our registered services.
+
         if ((recordClass == DNSRecordClass.CLASS_ANY) || (recordClass == DNSRecordClass.CLASS_IN)) {
             if (this.getSubtype().length() > 0) {
                 list.add(new Pointer(this.getTypeWithSubtype(), DNSRecordClass.CLASS_IN, DNSRecordClass.NOT_UNIQUE, ttl, this.getQualifiedName()));

@@ -23,7 +23,7 @@ import javax.jmdns.impl.constants.DNSRecordType;
 public class ServiceResolver extends DNSTask {
     private static Logger logger = LogManager.getLogger(ServiceResolver.class.getName());
 
-    protected int         _count = 0;
+    protected int _count = 0;
     private final String _type;
 
     public ServiceResolver(JmDNSImpl jmDNSImpl, String type) {

@@ -82,22 +82,8 @@ public class DNSQuestion extends DNSEntry {
         }
     }
 
-    /*
-     * (non-Javadoc)
-     * @see javax.jmdns.impl.DNSEntry#isExpired(long)
-     */
     @Override
     public boolean isExpired(long now) {
         return false;
     }
-
-    /*
-     * (non-Javadoc)
-     * @see javax.jmdns.impl.DNSEntry#toString(java.lang.StringBuilder)
-     */
-    @Override
-    public void toString(final StringBuilder sb) {
-        // do nothing
-    }
-
 }
