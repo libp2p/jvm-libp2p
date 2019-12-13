@@ -20,32 +20,24 @@ class MDnsDiscovery(private val host: Host) {
     private var mDns = JmDNS.create(InetAddress.getLocalHost())
     private val listeners = mutableListOf<PeerListener>()
 
-    fun ping() {
-        mDns.startServiceResolver(ServiceTagLocal)
-    }
-
     fun start(): CompletableFuture<Void> {
-        mDns.registerService(
-            ipfsDiscoveryInfo()
-        )
-        mDns.addAnswerListener(
-            ServiceTagLocal,
-            Listener(this)
-        )
+        return CompletableFuture.runAsync {
+            mDns.start()
 
-        mDns.start()
-
-
-        mDns.startServiceResolver(ServiceTagLocal);
-
-
-        return CompletableFuture.completedFuture(null)
+            mDns.registerService(
+                ipfsDiscoveryInfo()
+            )
+            mDns.addAnswerListener(
+                ServiceTagLocal,
+                Listener(this)
+            )
+        }
     }
 
     fun stop(): CompletableFuture<Void> {
-        mDns.close()
-
-        return CompletableFuture.completedFuture(null)
+        return CompletableFuture.runAsync {
+            mDns.stop()
+        }
     }
 
     fun onPeerFound(listener: PeerListener) {

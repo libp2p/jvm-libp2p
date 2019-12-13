@@ -43,16 +43,12 @@ public class JmDNSImpl extends JmDNS {
     private volatile MulticastSocket _socket;
 
     private final ConcurrentMap<String, List<AnswerListener>> _answerListeners;
+    private final ConcurrentMap<String, ServiceResolver> _serviceResolvers;
 
     /**
      * This hashtable holds the services that have been registered. Keys are instances of String which hold an all lower-case version of the fully qualified service name. Values are instances of ServiceInfo.
      */
     private final ConcurrentMap<String, ServiceInfo> _services;
-
-    /**
-     * This is the shutdown hook, we registered with the java runtime.
-     */
-    protected Thread _shutdown;
 
     /**
      * Handle on the local host
@@ -75,8 +71,6 @@ public class JmDNSImpl extends JmDNS {
 
     private final String _name;
 
-    private final Timer _timer;
-
     /**
      * Create an instance of JmDNS and bind it to a specific network interface given its IP-address.
      *
@@ -91,13 +85,12 @@ public class JmDNSImpl extends JmDNS {
         logger.debug("JmDNS instance created");
 
         _answerListeners = new ConcurrentHashMap<>();
+        _serviceResolvers = new ConcurrentHashMap<>();
 
-        _services = new ConcurrentHashMap<String, ServiceInfo>(20);
+        _services = new ConcurrentHashMap<>(20);
 
         _localHost = HostInfo.newHostInfo(address, this, name);
         _name = (name != null ? name : _localHost.getName());
-
-        _timer = new StarterTimer("JmDNS(" + _name + ").Timer", true);
     }
 
     public void start() throws IOException {
@@ -231,6 +224,8 @@ public class JmDNSImpl extends JmDNS {
                 }
             }
         }
+
+        startServiceResolver(loType);                        ;
     }
 
     /**
@@ -359,47 +354,50 @@ public class JmDNSImpl extends JmDNS {
         }
     }
 
-    private void purgeTimer() { _timer.purge(); }
+    private void startServiceResolver(String type) {
+        if (_serviceResolvers.containsKey(type))
+            return;
 
-    private void cancelTimer() { _timer.cancel(); }
-
-    public void startServiceResolver(String type) {
-        new ServiceResolver(this, type).start(_timer);
+        ServiceResolver resolver = new ServiceResolver(this, type);
+        if (_serviceResolvers.putIfAbsent(type, resolver) == null)
+            resolver.start();
     }
 
     private void startResponder(DNSIncoming in, InetAddress addr, int port) {
-        new Responder(this, in, addr, port).start(_timer);
+        new Responder(this, in, addr, port).start();
     }
 
-    @Override
-    public void close() {
-        logger.debug("Cancelling JmDNS: {}", this);
+    public void stop() {
+        logger.debug("Stopping JmDNS: {}", this);
 
-        Future<Void> shutdown =_incomingListener.stop();
+        List<Future<Void>> shutdowns = new ArrayList<>();
+
+        shutdowns.add(_incomingListener.stop());
         _incomingListener = null;
 
-        try {
-            shutdown.get();
-        } catch(Exception e) {
+        for (ServiceResolver resolver : _serviceResolvers.values())
+            shutdowns.add(resolver.stop());
 
-        }
-
-        // Stop the timer
-        logger.debug("Canceling the timer");
-        this.cancelTimer();
-
-        // Stop the executor
         _executor.shutdown();
 
         // close socket
         this.closeMulticastSocket();
 
-        // remove the shutdown hook
-        if (_shutdown != null) {
-            Runtime.getRuntime().removeShutdownHook(_shutdown);
+        while(true) {
+            boolean allDone = _executor.isShutdown();
+
+            for (Future<Void> f : shutdowns)
+                allDone &= f.isDone();
+
+            if (allDone)
+                break;
+
+            try {
+                TimeUnit.MILLISECONDS.sleep(100);
+            } catch(InterruptedException e) { }
         }
 
-        logger.debug("JmDNS closed.");
+        logger.debug("JmDNS Stopping.");
     }
 
     /**

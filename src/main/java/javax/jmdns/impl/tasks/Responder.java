@@ -10,6 +10,8 @@ import java.net.InetSocketAddress;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.Timer;
+import java.util.concurrent.TimeUnit;
+
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 
@@ -24,22 +26,13 @@ import javax.jmdns.impl.constants.DNSConstants;
  * The Responder sends a single answer for the specified service infos and for the host name.
  */
 public class Responder extends DNSTask {
-    static Logger             logger = LogManager.getLogger(Responder.class.getName());
+    static Logger logger = LogManager.getLogger(Responder.class.getName());
 
-    /**
-     *
-     */
     private final DNSIncoming _in;
 
-    /**
-     * The incoming address and port.
-     */
     private final InetAddress _addr;
     private final int         _port;
 
-    /**
-     *
-     */
     private final boolean     _unicast;
 
     public Responder(JmDNSImpl jmDNSImpl, DNSIncoming in, InetAddress addr, int port) {
@@ -61,7 +54,7 @@ public class Responder extends DNSTask {
     }
 
     @Override
-    public void start(Timer timer) {
+    public void start() {
         int delay =
                 DNSConstants.RESPONSE_MIN_WAIT_INTERVAL +
                 JmDNSImpl.getRandom().nextInt(
@@ -74,7 +67,7 @@ public class Responder extends DNSTask {
         }
         logger.trace("{}.start() Responder chosen delay={}", this.getName(), delay);
 
-        timer.schedule(this, delay);
+        _scheduler.schedule(this, delay, TimeUnit.MILLISECONDS);
     }
 
     @Override

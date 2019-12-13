@@ -41,17 +41,13 @@ class SocketListener implements Runnable {
         _executor.shutdown();
         return _isShutdown;
     }
-    public boolean isStopped() {
-        return _isShutdown.isDone();
-    }
-
 
     @Override
     public void run() {
         try {
             byte buf[] = new byte[DNSConstants.MAX_MSG_ABSOLUTE];
             DatagramPacket packet = new DatagramPacket(buf, buf.length);
-            while (!_executor.isShutdown()) {
+            while (!_closed) {
                 packet.setLength(buf.length);
                 this._jmDNSImpl.getSocket().receive(packet);
                 if (_closed)

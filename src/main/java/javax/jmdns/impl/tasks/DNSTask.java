@@ -3,15 +3,18 @@ package javax.jmdns.impl.tasks;
 
 import java.io.IOException;
 import java.util.Timer;
-import java.util.TimerTask;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 
 import javax.jmdns.impl.DNSOutgoing;
 import javax.jmdns.impl.DNSQuestion;
 import javax.jmdns.impl.JmDNSImpl;
 import javax.jmdns.impl.constants.DNSConstants;
 
-public abstract class DNSTask extends TimerTask {
+public abstract class DNSTask implements Runnable {
     private final JmDNSImpl _jmDNSImpl;
+    protected final ScheduledExecutorService _scheduler =
+            Executors.newScheduledThreadPool(1);
 
     protected DNSTask(JmDNSImpl jmDNSImpl) {
         super();
@@ -22,7 +25,7 @@ public abstract class DNSTask extends TimerTask {
         return _jmDNSImpl;
     }
 
-    public abstract void start(Timer timer);
+    public abstract void start();
 
     protected abstract String getName();
 

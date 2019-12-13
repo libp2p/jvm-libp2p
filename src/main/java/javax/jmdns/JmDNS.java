@@ -4,22 +4,16 @@
 
 package javax.jmdns;
 
-import java.io.Closeable;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.InetAddress;
-import java.util.Collection;
-import java.util.Map;
-import java.util.Properties;
+import java.util.concurrent.CompletableFuture;
 
 import javax.jmdns.impl.JmDNSImpl;
 
 /**
- * mDNS implementation in Java.
- *
- * @author Arthur van Hoff, Rick Blair, Jeff Sonstein, Werner Randelshofer, Pierre Frisch, Scott Lewis, Scott Cytacki
+ * Based on code by Arthur van Hoff, Rick Blair, Jeff Sonstein, Werner Randelshofer, Pierre Frisch, Scott Lewis, Scott Cytacki
  */
-public abstract class JmDNS implements Closeable {
+public abstract class JmDNS {
     /**
      * <p>
      * Create an instance of JmDNS and bind it to a specific network interface given its IP-address.
@@ -71,7 +65,8 @@ public abstract class JmDNS implements Closeable {
         return new JmDNSImpl(addr, name);
     }
 
-    public abstract void start() throws IOException ;
+    public abstract void start() throws IOException;
+    public abstract void stop();
 
     /**
      * Return the name of the JmDNS instance. This is an arbitrary string that is useful for distinguishing instances.
@@ -82,6 +77,4 @@ public abstract class JmDNS implements Closeable {
 
     public abstract void addAnswerListener(String type, AnswerListener listener);
     public abstract void registerService(ServiceInfo info) throws IOException;
-
-    public abstract void startServiceResolver(String type);
 }

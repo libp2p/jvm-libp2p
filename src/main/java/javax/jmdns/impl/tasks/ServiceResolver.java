@@ -8,7 +8,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
-import java.util.Timer;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 import javax.jmdns.impl.DNSOutgoing;
 import javax.jmdns.impl.DNSQuestion;
@@ -25,6 +27,7 @@ public class ServiceResolver extends DNSTask {
 
     protected int _count = 0;
     private final String _type;
+    private ScheduledFuture<?> _isShutdown;
 
     public ServiceResolver(JmDNSImpl jmDNSImpl, String type) {
         super(jmDNSImpl);
@@ -42,24 +45,28 @@ public class ServiceResolver extends DNSTask {
     }
 
     @Override
-    public void start(Timer timer) {
-        timer.schedule(this, DNSConstants.QUERY_WAIT_INTERVAL, DNSConstants.QUERY_WAIT_INTERVAL);
+    public void start() {
+        _isShutdown = _scheduler.scheduleAtFixedRate(
+                this,
+                DNSConstants.QUERY_WAIT_INTERVAL,
+                120 * 1000,
+                TimeUnit.MILLISECONDS
+        );
+    }
+
+    public Future<Void> stop() {
+        _scheduler.shutdown();
+        return (Future<Void>)_isShutdown;
     }
 
     @Override
     public void run() {
         try {
-            if (_count++ < 3) {
-                logger.debug("{}.run() JmDNS {}",this.getName(), this.description());
-
-                DNSOutgoing out = new DNSOutgoing(DNSConstants.FLAGS_QR_QUERY);
-                out = this.addQuestions(out);
-                if (!out.isEmpty()) {
-                    this.dns().send(out);
-                }
-            } else {
-                // After three queries, we can quit.
-                this.cancel();
+            logger.debug("{}.run() JmDNS {}",this.getName(), this.description());
+            DNSOutgoing out = new DNSOutgoing(DNSConstants.FLAGS_QR_QUERY);
+            out = this.addQuestions(out);
+            if (!out.isEmpty()) {
+                this.dns().send(out);
             }
         } catch (Throwable e) {
             logger.warn(this.getName() + ".run() exception ", e);
