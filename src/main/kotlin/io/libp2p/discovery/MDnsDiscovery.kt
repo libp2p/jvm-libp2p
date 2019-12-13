@@ -1,8 +1,6 @@
 package io.libp2p.discovery
 
-import io.libp2p.core.Host
-import io.libp2p.core.PeerId
-import io.libp2p.core.PeerInfo
+import io.libp2p.core.*
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multiformats.Protocol
 import java.net.Inet4Address
@@ -14,17 +12,15 @@ import io.libp2p.discovery.mdns.ServiceInfo
 import io.libp2p.discovery.mdns.impl.DNSRecord
 import io.libp2p.discovery.mdns.impl.constants.DNSRecordType
 
-typealias PeerListener = (PeerInfo) -> Unit
-
 class MDnsDiscovery(
     private val host: Host,
     private val serviceTag: String = ServiceTagLocal,
-    private val queryInterval: Int = 120
-) {
+    private val queryInterval: Int = QueryInterval
+) : Discoverer {
     private var mDns = JmDNS.create(InetAddress.getLocalHost())
     private val listeners = mutableListOf<PeerListener>()
 
-    fun start(): CompletableFuture<Void> {
+    override fun start(): CompletableFuture<Void> {
         return CompletableFuture.runAsync {
             mDns.start()
 
@@ -39,13 +35,13 @@ class MDnsDiscovery(
         }
     }
 
-    fun stop(): CompletableFuture<Void> {
+    override fun stop(): CompletableFuture<Void> {
         return CompletableFuture.runAsync {
             mDns.stop()
         }
     }
 
-    fun onPeerFound(listener: PeerListener) {
+    override fun onPeerFound(listener: PeerListener) {
         listeners += listener
     }
 
