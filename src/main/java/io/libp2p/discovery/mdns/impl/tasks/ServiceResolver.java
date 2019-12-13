@@ -26,11 +26,13 @@ public class ServiceResolver extends DNSTask {
     private static Logger logger = LogManager.getLogger(ServiceResolver.class.getName());
 
     private final String _type;
+    private final int _queryInterval;
     private ScheduledFuture<?> _isShutdown;
 
-    public ServiceResolver(JmDNSImpl jmDNSImpl, String type) {
+    public ServiceResolver(JmDNSImpl jmDNSImpl, String type, int queryInterval) {
         super(jmDNSImpl);
         this._type = type;
+        this._queryInterval = queryInterval;
     }
 
     @Override
@@ -43,7 +45,7 @@ public class ServiceResolver extends DNSTask {
         _isShutdown = _scheduler.scheduleAtFixedRate(
                 this,
                 DNSConstants.QUERY_WAIT_INTERVAL,
-                120 * 1000,
+                _queryInterval * 1000,
                 TimeUnit.MILLISECONDS
         );
     }

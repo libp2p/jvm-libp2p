@@ -47,7 +47,7 @@ class MDnsDiscoveryTest {
     @Test
     fun `start discovery and listen for self`() {
         var peerInfo: PeerInfo? = null
-        val discoverer = MDnsDiscovery(host)
+        val discoverer = MDnsDiscovery(host, "_ipfs-test._udp.local.")
 
         discoverer.onPeerFound {
             peerInfo = it

@@ -213,7 +213,7 @@ public class JmDNSImpl extends JmDNS {
     }
 
     @Override
-    public void addAnswerListener(String type, AnswerListener listener) {
+    public void addAnswerListener(String type, int queryInterval, AnswerListener listener) {
         final String loType = type.toLowerCase();
         List<AnswerListener> list = _answerListeners.get(loType);
         if (list == null) {
@@ -228,7 +228,7 @@ public class JmDNSImpl extends JmDNS {
             }
         }
 
-        startServiceResolver(loType);
+        startServiceResolver(loType, queryInterval);
     }
 
     /**
@@ -357,11 +357,11 @@ public class JmDNSImpl extends JmDNS {
         }
     }
 
-    private void startServiceResolver(String type) {
+    private void startServiceResolver(String type, int queryInterval) {
         if (_serviceResolvers.containsKey(type))
             return;
 
-        ServiceResolver resolver = new ServiceResolver(this, type);
+        ServiceResolver resolver = new ServiceResolver(this, type, queryInterval);
         if (_serviceResolvers.putIfAbsent(type, resolver) == null)
             resolver.start();
     }

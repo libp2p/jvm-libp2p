@@ -17,7 +17,9 @@ import io.libp2p.discovery.mdns.impl.constants.DNSRecordType
 typealias PeerListener = (PeerInfo) -> Unit
 
 class MDnsDiscovery(
-    private val host: Host
+    private val host: Host,
+    private val serviceTag: String = ServiceTagLocal,
+    private val queryInterval: Int = 120
 ) {
     private var mDns = JmDNS.create(InetAddress.getLocalHost())
     private val listeners = mutableListOf<PeerListener>()
@@ -30,7 +32,8 @@ class MDnsDiscovery(
                 ipfsDiscoveryInfo()
             )
             mDns.addAnswerListener(
-                ServiceTagLocal,
+                serviceTag,
+                queryInterval,
                 Listener(this)
             )
         }
@@ -52,7 +55,7 @@ class MDnsDiscovery(
 
     private fun ipfsDiscoveryInfo(): ServiceInfo {
         return ServiceInfo.create(
-            ServiceTagLocal,
+            serviceTag,
             host.peerId.toBase58(),
             listenPort(),
             host.peerId.toBase58(),
@@ -81,6 +84,7 @@ class MDnsDiscovery(
     companion object {
         val ServiceTag = "_ipfs-discovery._udp"
         val ServiceTagLocal = "$ServiceTag.local."
+        val QueryInterval = 120
 
         internal class Listener(
             private val parent: MDnsDiscovery

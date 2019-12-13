@@ -72,6 +72,6 @@ public abstract class JmDNS {
      */
     public abstract String getName();
 
-    public abstract void addAnswerListener(String type, AnswerListener listener);
+    public abstract void addAnswerListener(String type, int queryInterval, AnswerListener listener);
     public abstract void registerService(ServiceInfo info) throws IOException;
 }
