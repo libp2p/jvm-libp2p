@@ -740,42 +740,6 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
         return typeAdded;
     }
 
-    void handleRecord(DNSRecord record, long now) {
-        DNSRecord newRecord = record;
-
-        Operation cacheOperation = Operation.Noop;
-        final boolean expired = newRecord.isExpired(now);
-        logger.debug("{} handle response: {}", this.getName(), newRecord);
-
-
-        // Register new service types
-        if (newRecord.getRecordType() == DNSRecordType.TYPE_PTR) {
-            // handle DNSConstants.DNS_META_QUERY records
-            boolean typeAdded = false;
-            if (newRecord.isServicesDiscoveryMetaQuery()) {
-                // The service names are in the alias.
-                if (!expired) {
-                    typeAdded = this.registerServiceType(((DNSRecord.Pointer) newRecord).getAlias());
-                }
-                return;
-            }
-            typeAdded |= this.registerServiceType(newRecord.getName());
-            if (typeAdded && (cacheOperation == Operation.Noop)) {
-                cacheOperation = Operation.RegisterServiceType;
-            }
-        }
-    }
-    
-    /**
-     *  
-     * @param dnsRecord 
-     * @param timeToCompare a given times for comparison
-     * @return true if dnsRecord create time is older than 1 second, relative to the given time; false otherwise 
-     */
-    private boolean isOlderThanOneSecond(DNSRecord dnsRecord, long timeToCompare) {
-        return (dnsRecord.getCreated() < (timeToCompare - DNSConstants.FLUSH_RECORD_OLDER_THAN_1_SECOND*1000));
-    }
-
     /**
      * Handle an incoming response. Cache answers, and pass them on to the appropriate questions.
      *
@@ -840,23 +804,12 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
      */
     void handleQuery(DNSIncoming in, InetAddress addr, int port) throws IOException {
         logger.debug("{} handle query: {}", this.getName(), in);
-        // Track known answers
-        final long expirationTime = System.currentTimeMillis() + DNSConstants.KNOWN_ANSWER_TTL;
-        for (DNSRecord answer : in.getAllAnswers()) {
-            answer.handleQuery(this, expirationTime);
-        }
-
         this.ioLock();
         try {
             DNSIncoming plannedAnswer = in.clone();
             this.startResponder(plannedAnswer, addr, port);
         } finally {
             this.ioUnlock();
-        }
-
-        final long now = System.currentTimeMillis();
-        for (DNSRecord answer : in.getAnswers()) {
-            this.handleRecord(answer, now);
         }
     }
 
