@@ -11,12 +11,6 @@ import java.util.*;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 
-import javax.jmdns.impl.constants.DNSConstants;
-import javax.jmdns.impl.constants.DNSRecordClass;
-import javax.jmdns.impl.constants.DNSRecordType;
-import javax.jmdns.impl.constants.DNSState;
-import javax.jmdns.impl.tasks.DNSTask;
-
 /**
  * HostInfo information on the local host to be able to cope with change of addresses.
  *

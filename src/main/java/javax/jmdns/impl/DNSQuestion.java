@@ -84,30 +84,10 @@ public class DNSQuestion extends DNSEntry {
 
     /*
      * (non-Javadoc)
-     * @see javax.jmdns.impl.DNSEntry#isStale(long)
-     */
-    @Override
-    public boolean isStale(long now) {
-        return false;
-    }
-
-    /*
-     * (non-Javadoc)
      * @see javax.jmdns.impl.DNSEntry#isExpired(long)
      */
     @Override
     public boolean isExpired(long now) {
-        return false;
-    }
-
-    /**
-     * Checks if we are the only to be able to answer that question.
-     *
-     * @param jmDNSImpl
-     *            DNS holding the records
-     * @return <code>true</code> if we are the only one with the answer to the question, <code>false</code> otherwise.
-     */
-    public boolean iAmTheOnlyOne(JmDNSImpl jmDNSImpl) {
         return false;
     }
 

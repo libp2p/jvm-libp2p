@@ -77,7 +77,7 @@ public abstract class ServiceInfo implements Cloneable {
             final int port,
             final String text,
             final List<Inet4Address> ip4Addresses) {
-        ServiceInfoImpl si = new ServiceInfoImpl(type, name, "", port, 0, 0, false, text);
+        ServiceInfoImpl si = new ServiceInfoImpl(type, name, "", port, 0, 0, text);
         ip4Addresses.forEach(address -> { si.addAddress(address);});
         return si;
     }
@@ -179,13 +179,6 @@ public abstract class ServiceInfo implements Cloneable {
      * @return raw service text
      */
     public abstract byte[] getTextBytes();
-
-    /**
-     * Returns <code>true</code> if ServiceListener.resolveService will be called whenever new new information is received.
-     * 
-     * @return the persistent
-     */
-    public abstract boolean isPersistent();
 
     /**
      * Returns the domain of the service info suitable for printing.

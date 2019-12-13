@@ -230,7 +230,7 @@ public final class DNSIncoming extends DNSMessage {
 
             // parse answers
             for (int i = 0; i < numAnswers; i++) {
-                DNSRecord rec = this.readAnswer(source);
+                DNSRecord rec = this.readAnswer();
                 if (rec != null) {
                     // Add a record, if we were able to create one.
                     _answers.add(rec);
@@ -238,7 +238,7 @@ public final class DNSIncoming extends DNSMessage {
             }
 
             for (int i = 0; i < numAuthorities; i++) {
-                DNSRecord rec = this.readAnswer(source);
+                DNSRecord rec = this.readAnswer();
                 if (rec != null) {
                     // Add a record, if we were able to create one.
                     _authoritativeAnswers.add(rec);
@@ -246,7 +246,7 @@ public final class DNSIncoming extends DNSMessage {
             }
 
             for (int i = 0; i < numAdditionals; i++) {
-                DNSRecord rec = this.readAnswer(source);
+                DNSRecord rec = this.readAnswer();
                 if (rec != null) {
                     // Add a record, if we were able to create one.
                     _additionals.add(rec);
@@ -306,7 +306,7 @@ public final class DNSIncoming extends DNSMessage {
         return DNSQuestion.newQuestion(domain, type, recordClass, unique);
     }
 
-    private DNSRecord readAnswer(InetAddress source) {
+    private DNSRecord readAnswer() {
         String domain = _messageInputStream.readName();
         DNSRecordType type = DNSRecordType.typeForIndex(_messageInputStream.readUnsignedShort());
         if (type == DNSRecordType.TYPE_IGNORE) {
@@ -557,23 +557,6 @@ public final class DNSIncoming extends DNSMessage {
         sb.append(']');
 
         return sb.toString();
-    }
-
-    /**
-     * Appends answers to this Incoming.
-     *
-     * @exception IllegalArgumentException
-     *                If not a query or if Truncated.
-     */
-    void append(DNSIncoming that) {
-        if (this.isQuery() && this.isTruncated() && that.isQuery()) {
-            this._questions.addAll(that.getQuestions());
-            this._answers.addAll(that.getAnswers());
-            this._authoritativeAnswers.addAll(that.getAuthorities());
-            this._additionals.addAll(that.getAdditionals());
-        } else {
-            throw new IllegalArgumentException();
-        }
     }
 
     public int elapseSinceArrival() {

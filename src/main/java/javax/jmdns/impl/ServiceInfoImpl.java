@@ -26,7 +26,6 @@ import javax.jmdns.impl.DNSRecord.Pointer;
 import javax.jmdns.impl.DNSRecord.Service;
 import javax.jmdns.impl.DNSRecord.Text;
 import javax.jmdns.impl.constants.DNSRecordClass;
-import javax.jmdns.impl.constants.DNSRecordType;
 
 import javax.jmdns.impl.util.ByteWrangler;
 
@@ -54,9 +53,6 @@ public class ServiceInfoImpl extends ServiceInfo {
 
     private transient String        _key;
 
-    private boolean                 _persistent;
-    private boolean                 _needTextAnnouncing;
-
     /**
      * @param type
      * @param name
@@ -64,11 +60,10 @@ public class ServiceInfoImpl extends ServiceInfo {
      * @param port
      * @param weight
      * @param priority
-     * @param persistent
      * @param text
      */
-    public ServiceInfoImpl(String type, String name, String subtype, int port, int weight, int priority, boolean persistent, String text) {
-        this(ServiceInfoImpl.decodeQualifiedNameMap(type, name, subtype), port, weight, priority, persistent, (byte[]) null);
+    public ServiceInfoImpl(String type, String name, String subtype, int port, int weight, int priority, String text) {
+        this(ServiceInfoImpl.decodeQualifiedNameMap(type, name, subtype), port, weight, priority, (byte[]) null);
 
         try {
             this._text = ByteWrangler.encodeText(text);
@@ -79,7 +74,7 @@ public class ServiceInfoImpl extends ServiceInfo {
         _server = text;
     }
 
-    ServiceInfoImpl(Map<Fields, String> qualifiedNameMap, int port, int weight, int priority, boolean persistent, byte text[]) {
+    ServiceInfoImpl(Map<Fields, String> qualifiedNameMap, int port, int weight, int priority, byte text[]) {
         Map<Fields, String> map = ServiceInfoImpl.checkQualifiedNameMap(qualifiedNameMap);
 
         this._domain = map.get(Fields.Domain);
@@ -92,7 +87,6 @@ public class ServiceInfoImpl extends ServiceInfo {
         this._weight = weight;
         this._priority = priority;
         this._text = text;
-        this._persistent = persistent;
         this._ipv4Addresses = Collections.synchronizedSet(new LinkedHashSet<Inet4Address>());
         this._ipv6Addresses = Collections.synchronizedSet(new LinkedHashSet<Inet6Address>());
     }
@@ -115,7 +109,6 @@ public class ServiceInfoImpl extends ServiceInfo {
             this._weight = info.getWeight();
             this._priority = info.getPriority();
             this._text = info.getTextBytes();
-            this._persistent = info.isPersistent();
             Inet6Address[] ipv6Addresses = info.getInet6Addresses();
             for (Inet6Address address : ipv6Addresses) {
                 this._ipv6Addresses.add(address);
@@ -478,55 +471,6 @@ public class ServiceInfoImpl extends ServiceInfo {
     }
 
     /**
-     * Handles expired records insofar that it removes their content from this service.
-     *
-     * Implementation note:<br/>
-     * Currently only expired A and AAAA records are handled.
-     *
-     * @param record to check for data to be removed
-     * @return <code>true</code> if data from the expired record could be removed from this service, <code>false</code> otherwise
-     */
-    private boolean handleExpiredRecord(final DNSRecord record) {
-        switch (record.getRecordType()) {
-            case TYPE_A:    // IPv4
-            case TYPE_AAAA: // IPv6
-                if (record.getName().equalsIgnoreCase(this.getServer())) {
-                    final DNSRecord.Address address = (DNSRecord.Address) record;
-
-                    // IPv4
-                    if (DNSRecordType.TYPE_A.equals(record.getRecordType())) {
-                        final Inet4Address inet4Address = (Inet4Address) address.getAddress();
-
-                        // try to remove the expired IPv4 if it exists
-                        if (_ipv4Addresses.remove(inet4Address)) {
-                            logger.debug("Removed expired IPv4: {}", inet4Address);
-                            return true;
-                        } else {
-                            logger.debug("Expired IPv4 not in this service: {}", inet4Address);
-                        }
-                    } else {    // IPv6
-                        final Inet6Address inet6Address = (Inet6Address) address.getAddress();
-
-                        // try to remove the expired IPv6 if it exists
-                        if (_ipv6Addresses.remove(inet6Address)) {
-                            logger.debug("Removed expired IPv6: {}", inet6Address);
-                            return true;
-                        } else {
-                            logger.debug("Expired IPv6 not in this service: {}", inet6Address);
-                        }
-                    }
-                }
-                break;
-            default:
-                // just log other record types which are not handled yet
-                logger.trace("Unhandled expired record: {}", record);
-                break;
-        }
-
-        return false;
-    }
-
-    /**
      * Returns true if the service info is filled with data.
      *
      * @return <code>true</code> if the service info has data, <code>false</code> otherwise.
@@ -563,7 +507,7 @@ public class ServiceInfoImpl extends ServiceInfo {
      */
     @Override
     public ServiceInfoImpl clone() {
-        ServiceInfoImpl serviceInfo = new ServiceInfoImpl(this.getQualifiedNameMap(), _port, _weight, _priority, _persistent, _text);
+        ServiceInfoImpl serviceInfo = new ServiceInfoImpl(this.getQualifiedNameMap(), _port, _weight, _priority, _text);
         Inet6Address[] ipv6Addresses = this.getInet6Addresses();
         for (Inet6Address address : ipv6Addresses) {
             serviceInfo._ipv6Addresses.add(address);
@@ -598,11 +542,9 @@ public class ServiceInfoImpl extends ServiceInfo {
                 sb.append(address).append(':').append(this.getPort()).append(' ');
             }
         }
-        sb.append(this.isPersistent() ? "' is persistent," : "',");
-        
+
         if (this.hasData()) {
             sb.append(" has data");
-            
         } else {
             sb.append(" has NO data");
             
@@ -652,13 +594,5 @@ public class ServiceInfoImpl extends ServiceInfo {
         }
 
         return list;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean isPersistent() {
-        return _persistent;
     }
 }

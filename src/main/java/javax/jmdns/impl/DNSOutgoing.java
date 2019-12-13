@@ -19,7 +19,6 @@ import javax.jmdns.impl.constants.DNSRecordClass;
  * @author Arthur van Hoff, Rick Blair, Werner Randelshofer
  */
 public final class DNSOutgoing extends DNSMessage {
-
     public static class MessageOutputStream extends ByteArrayOutputStream {
         private final DNSOutgoing _out;
 
@@ -220,16 +219,6 @@ public final class DNSOutgoing extends DNSMessage {
      *
      * @param flags
      * @param multicast
-     */
-    public DNSOutgoing(int flags, boolean multicast) {
-        this(flags, multicast, DNSConstants.MAX_MSG_TYPICAL);
-    }
-
-    /**
-     * Create an outgoing query or response.
-     *
-     * @param flags
-     * @param multicast
      * @param senderUDPPayload
      *            The sender's UDP payload size is the number of bytes of the largest UDP payload that can be reassembled and delivered in the sender's network stack.
      */
@@ -293,14 +282,11 @@ public final class DNSOutgoing extends DNSMessage {
     /**
      * Add an answer if it is not suppressed.
      *
-     * @param in
      * @param rec
      * @exception IOException
      */
-    public void addAnswer(DNSIncoming in, DNSRecord rec) throws IOException {
-        if ((in == null) || !rec.suppressedBy(in)) {
-            this.addAnswer(rec, 0);
-        }
+    public void addAnswer(DNSRecord rec) throws IOException {
+        this.addAnswer(rec, 0);
     }
 
     /**
@@ -324,45 +310,6 @@ public final class DNSOutgoing extends DNSMessage {
                     throw new IOException("message full");
                 }
             }
-        }
-    }
-
-    /**
-     * Add an authoritative answer to the message.
-     *
-     * @param rec
-     * @exception IOException
-     */
-    public void addAuthorativeAnswer(DNSRecord rec) throws IOException {
-        MessageOutputStream record = new MessageOutputStream(512, this);
-        record.writeRecord(rec, 0);
-        byte[] byteArray = record.toByteArray();
-        record.close();
-        if (byteArray.length < this.availableSpace()) {
-            _authoritativeAnswers.add(rec);
-            _authoritativeAnswersBytes.write(byteArray, 0, byteArray.length);
-        } else {
-            throw new IOException("message full");
-        }
-    }
-
-    /**
-     * Add an additional answer to the record. Omit if there is no room.
-     *
-     * @param in
-     * @param rec
-     * @exception IOException
-     */
-    public void addAdditionalAnswer(DNSIncoming in, DNSRecord rec) throws IOException {
-        MessageOutputStream record = new MessageOutputStream(512, this);
-        record.writeRecord(rec, 0);
-        byte[] byteArray = record.toByteArray();
-        record.close();
-        if (byteArray.length < this.availableSpace()) {
-            _additionals.add(rec);
-            _additionalsAnswersBytes.write(byteArray, 0, byteArray.length);
-        } else {
-            throw new IOException("message full");
         }
     }
 
@@ -399,18 +346,6 @@ public final class DNSOutgoing extends DNSMessage {
             message.close();
         } catch (IOException exception) {}
         return result;
-    }
-
-    /**
-     * Debugging.
-     */
-    String print(boolean dump) {
-        final StringBuilder sb = new StringBuilder();
-        sb.append(this.print());
-        if (dump) {
-            sb.append(this.print(this.data()));
-        }
-        return sb.toString();
     }
 
     @Override

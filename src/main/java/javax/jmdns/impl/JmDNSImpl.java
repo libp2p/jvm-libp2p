@@ -29,8 +29,6 @@ import org.apache.logging.log4j.Logger;
 import javax.jmdns.*;
 import javax.jmdns.impl.constants.DNSConstants;
 import javax.jmdns.impl.constants.DNSRecordType;
-import javax.jmdns.impl.constants.DNSState;
-import javax.jmdns.impl.tasks.DNSTask;
 import javax.jmdns.impl.util.NamedThreadFactory;
 
 /**
@@ -219,28 +217,12 @@ public class JmDNSImpl extends JmDNS implements DNSTaskStarter {
     }
 
     /**
-     * {@inheritDoc}
-     */
-    @Override
-    public String getHostName() {
-        return _localHost.getName();
-    }
-
-    /**
      * Returns the local host info
      *
      * @return local host info
      */
     public HostInfo getLocalHost() {
         return _localHost;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public InetAddress getInetAddress() throws IOException {
-        return _localHost.getInetAddress();
     }
 
     void handleServiceAnswers(List<DNSRecord> answers) {
@@ -462,8 +444,6 @@ public class JmDNSImpl extends JmDNS implements DNSTaskStarter {
         Factory.getInstance().getStarter(this).startResponder(in, addr, port);
     }
 
-    private final Object _recoverLock = new Object();
-
     /**
      * {@inheritDoc}
      */
@@ -533,11 +513,11 @@ public class JmDNSImpl extends JmDNS implements DNSTaskStarter {
         return _random;
     }
 
-    public void ioLock() {
+    private void ioLock() {
         _ioLock.lock();
     }
 
-    public void ioUnlock() {
+    private void ioUnlock() {
         _ioLock.unlock();
     }
 

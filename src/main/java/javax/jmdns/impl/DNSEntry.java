@@ -78,16 +78,6 @@ public abstract class DNSEntry {
     }
 
     /**
-     * Check if two entries have the same subtype.
-     *
-     * @param other
-     * @return <code>true</code> if the two entries have are for the same subtype, <code>false</code> otherwise
-     */
-    public boolean sameSubtype(DNSEntry other) {
-        return this.getSubtype().equals(other.getSubtype());
-    }
-
-    /**
      * Check if the requested record class match the current record class
      *
      * @param recordClass
@@ -166,45 +156,6 @@ public abstract class DNSEntry {
     public Map<Fields, String> getQualifiedNameMap() {
         return Collections.unmodifiableMap(_qualifiedNameMap);
     }
-
-    public boolean isServicesDiscoveryMetaQuery() {
-        return _qualifiedNameMap.get(Fields.Application).equals("dns-sd") && _qualifiedNameMap.get(Fields.Instance).equals("_services");
-    }
-
-    public boolean isDomainDiscoveryQuery() {
-        // b._dns-sd._udp.<domain>.
-        // db._dns-sd._udp.<domain>.
-        // r._dns-sd._udp.<domain>.
-        // dr._dns-sd._udp.<domain>.
-        // lb._dns-sd._udp.<domain>.
-
-        if (_qualifiedNameMap.get(Fields.Application).equals("dns-sd")) {
-            String name = _qualifiedNameMap.get(Fields.Instance);
-            return "b".equals(name) || "db".equals(name) || "r".equals(name) || "dr".equals(name) || "lb".equals(name);
-        }
-        return false;
-    }
-
-    public boolean isReverseLookup() {
-        return this.isV4ReverseLookup() || this.isV6ReverseLookup();
-    }
-
-    public boolean isV4ReverseLookup() {
-        return _qualifiedNameMap.get(Fields.Domain).endsWith("in-addr.arpa");
-    }
-
-    public boolean isV6ReverseLookup() {
-        return _qualifiedNameMap.get(Fields.Domain).endsWith("ip6.arpa");
-    }
-
-    /**
-     * Check if the record is stale, i.e. it has outlived more than half of its TTL.
-     *
-     * @param now
-     *            update date
-     * @return <code>true</code> is the record is stale, <code>false</code> otherwise.
-     */
-    public abstract boolean isStale(long now);
 
     /**
      * Check if the record is expired.

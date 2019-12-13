@@ -78,22 +78,6 @@ public abstract class JmDNS implements Closeable {
      */
     public abstract String getName();
 
-    /**
-     * Return the HostName associated with this JmDNS instance. Note: May not be the same as what started. The host name is subject to negotiation.
-     *
-     * @return Host name
-     */
-    public abstract String getHostName();
-
-    /**
-     * Return the address of the interface to which this instance of JmDNS is bound.
-     *
-     * @return Internet Address
-     * @exception IOException
-     *                if there is an error in the underlying protocol, such as a TCP error.
-     */
-    public abstract InetAddress getInetAddress() throws IOException;
-
     public abstract void addAnswerListener(String type, AnswerListener listener);
 
     public abstract void startServiceResolver(String type);

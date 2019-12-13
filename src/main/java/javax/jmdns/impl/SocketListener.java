@@ -15,7 +15,7 @@ import javax.jmdns.impl.constants.DNSConstants;
  * Listen for multicast packets.
  */
 class SocketListener extends Thread {
-    static Logger           logger = LogManager.getLogger(SocketListener.class.getName());
+    static Logger logger = LogManager.getLogger(SocketListener.class.getName());
 
     /**
      *
@@ -47,7 +47,7 @@ class SocketListener extends Thread {
                     DNSIncoming msg = new DNSIncoming(packet);
                     if (msg.isValidResponseCode()) {
                         if (logger.isTraceEnabled()) {
-                            logger.trace( "{}.run() JmDNS in:{}", this.getName(), msg.print(true));
+                            logger.trace("{}.run() JmDNS in:{}", this.getName(), msg.print(true));
                         }
                         if (msg.isQuery()) {
                             if (packet.getPort() != DNSConstants.MDNS_PORT) {
@@ -69,11 +69,6 @@ class SocketListener extends Thread {
         } catch (IOException e) {
             logger.warn(this.getName() + ".run() exception ", e);
         }
-        logger.trace("{}.run() exiting.", this.getName() );
+        logger.trace("{}.run() exiting.", this.getName());
     }
-
-    public JmDNSImpl getDns() {
-        return _jmDNSImpl;
-    }
-
 }

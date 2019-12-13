@@ -10,12 +10,10 @@ import java.io.UnsupportedEncodingException;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.Random;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 
 import javax.jmdns.impl.DNSOutgoing.MessageOutputStream;
-import javax.jmdns.impl.constants.DNSConstants;
 import javax.jmdns.impl.constants.DNSRecordClass;
 import javax.jmdns.impl.constants.DNSRecordType;
 
@@ -113,15 +111,6 @@ public abstract class DNSRecord extends DNSEntry {
     @Override
     public boolean isExpired(long now) {
         return getExpirationTime(100) <= now;
-    }
-
-    /*
-     * (non-Javadoc)
-     * @see javax.jmdns.impl.DNSEntry#isStale(long)
-     */
-    @Override
-    public boolean isStale(long now) {
-        return getExpirationTime(50) <= now;
     }
 
     /**
@@ -545,9 +534,4 @@ public abstract class DNSRecord extends DNSEntry {
     public int getTTL() {
         return _ttl;
     }
-
-    public long getCreated() {
-        return this._created;
-    }
-
 }
