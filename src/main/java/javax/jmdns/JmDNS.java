@@ -67,9 +67,11 @@ public abstract class JmDNS implements Closeable {
      * @exception IOException
      *                if an exception occurs during the socket creation
      */
-    public static JmDNS create(final InetAddress addr, final String name) throws IOException {
+    public static JmDNS create(final InetAddress addr, final String name) {
         return new JmDNSImpl(addr, name);
     }
+
+    public abstract void start() throws IOException ;
 
     /**
      * Return the name of the JmDNS instance. This is an arbitrary string that is useful for distinguishing instances.
@@ -79,17 +81,7 @@ public abstract class JmDNS implements Closeable {
     public abstract String getName();
 
     public abstract void addAnswerListener(String type, AnswerListener listener);
+    public abstract void registerService(ServiceInfo info) throws IOException;
 
     public abstract void startServiceResolver(String type);
-
-        /**
-         * Register a service. The service is registered for access by other jmdns clients. The name of the service may be changed to make it unique.<br>
-         * Note that the given {@code ServiceInfo} is bound to this {@code JmDNS} instance, and should not be reused for any other {@linkplain #registerService(ServiceInfo)}.
-         *
-         * @param info
-         *            service info to register
-         * @exception IOException
-         *                if there is an error in the underlying protocol, such as a TCP error.
-         */
-    public abstract void registerService(ServiceInfo info) throws IOException;
 }

@@ -89,7 +89,7 @@ public class JmDNSImpl extends JmDNS {
      *            name of the newly created JmDNS
      * @exception IOException
      */
-    public JmDNSImpl(InetAddress address, String name) throws IOException {
+    public JmDNSImpl(InetAddress address, String name) {
         super();
         logger.debug("JmDNS instance created");
 
@@ -101,7 +101,9 @@ public class JmDNSImpl extends JmDNS {
         _name = (name != null ? name : _localHost.getName());
 
         _timer = new StarterTimer("JmDNS(" + _name + ").Timer", true);
+    }
 
+    public void start() throws IOException {
         // Bind to multicast socket
         this.openMulticastSocket(this.getLocalHost());
         this.start(this.getServices().values());
