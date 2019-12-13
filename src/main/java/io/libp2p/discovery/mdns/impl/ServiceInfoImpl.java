@@ -8,14 +8,7 @@ import java.io.IOException;
 import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import io.libp2p.discovery.mdns.impl.constants.DNSRecordClass;
 import io.libp2p.discovery.mdns.impl.util.ByteWrangler;
@@ -369,7 +362,7 @@ public class ServiceInfoImpl extends ServiceInfo {
         return this.getServer() != null && this.hasInetAddress() && this.getTextBytes() != null && this.getTextBytes().length > 0;
     }
 
-    private final boolean hasInetAddress() {
+    private boolean hasInetAddress() {
         return _ipv4Addresses.size() > 0 || _ipv6Addresses.size() > 0;
     }
 
@@ -386,14 +379,8 @@ public class ServiceInfoImpl extends ServiceInfo {
     @Override
     public ServiceInfoImpl clone() {
         ServiceInfoImpl serviceInfo = new ServiceInfoImpl(this.getQualifiedNameMap(), _port, _weight, _priority, _text);
-        Inet6Address[] ipv6Addresses = this.getInet6Addresses();
-        for (Inet6Address address : ipv6Addresses) {
-            serviceInfo._ipv6Addresses.add(address);
-        }
-        Inet4Address[] ipv4Addresses = this.getInet4Addresses();
-        for (Inet4Address address : ipv4Addresses) {
-            serviceInfo._ipv4Addresses.add(address);
-        }
+        serviceInfo._ipv6Addresses.addAll(Arrays.asList(getInet6Addresses()));
+        serviceInfo._ipv4Addresses.addAll(Arrays.asList(getInet4Addresses()));
         return serviceInfo;
     }
 
@@ -412,10 +399,8 @@ public class ServiceInfoImpl extends ServiceInfo {
             sb.append(address).append(':').append(this.getPort()).append(' ');
         }
         Inet6Address[] addresses6 = this.getInet6Addresses();
-        if (addresses6.length > 0) {
-            for (InetAddress address : addresses6) {
-                sb.append(address).append(':').append(this.getPort()).append(' ');
-            }
+        for (InetAddress address : addresses6) {
+            sb.append(address).append(':').append(this.getPort()).append(' ');
         }
 
         sb.append(this.hasData() ? " has data" : " has NO data");
@@ -444,11 +429,12 @@ public class ServiceInfoImpl extends ServiceInfo {
             list.add(new DNSRecord.Pointer(this.getType(), DNSRecordClass.CLASS_IN, DNSRecordClass.NOT_UNIQUE, ttl, this.getQualifiedName()));
             list.add(new DNSRecord.Service(this.getQualifiedName(), DNSRecordClass.CLASS_IN, unique, ttl, _priority, _weight, _port, localHost.getName()));
             list.add(new DNSRecord.Text(this.getQualifiedName(), DNSRecordClass.CLASS_IN, unique, ttl, this.getTextBytes()));
-            _ipv4Addresses.forEach(address -> {
-                list.add(
-                        new DNSRecord.IPv4Address(this.getQualifiedName(), DNSRecordClass.CLASS_IN, unique, ttl, address)
-                );
-            });
+            _ipv4Addresses.forEach(address -> list.add(
+                new DNSRecord.IPv4Address(this.getQualifiedName(), DNSRecordClass.CLASS_IN, unique, ttl, address)
+            ));
+            _ipv6Addresses.forEach(address -> list.add(
+                new DNSRecord.IPv6Address(this.getQualifiedName(), DNSRecordClass.CLASS_IN, unique, ttl, address)
+            ));
         }
 
         return list;

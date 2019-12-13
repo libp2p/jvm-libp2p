@@ -11,6 +11,7 @@ import io.libp2p.discovery.mdns.JmDNS
 import io.libp2p.discovery.mdns.ServiceInfo
 import io.libp2p.discovery.mdns.impl.DNSRecord
 import io.libp2p.discovery.mdns.impl.constants.DNSRecordType
+import java.net.Inet6Address
 
 class MDnsDiscovery(
     private val host: Host,
@@ -55,7 +56,8 @@ class MDnsDiscovery(
             host.peerId.toBase58(),
             listenPort(),
             host.peerId.toBase58(),
-            ip4Addresses()
+            ip4Addresses(),
+            ip6Addresses()
         )
     }
 
@@ -77,6 +79,16 @@ class MDnsDiscovery(
         }.filterIsInstance(Inet4Address::class.java)
     }
 
+    private fun ip6Addresses(): List<Inet6Address> {
+        return host.listenAddresses().map {
+            it.getComponent(Protocol.IP6)
+        }.filter {
+            it != null
+        }.map {
+            InetAddress.getByAddress(InetAddress.getLocalHost().hostName, it)
+        }.filterIsInstance(Inet6Address::class.java)
+    }
+
     companion object {
         val ServiceTag = "_ipfs-discovery._udp"
         val ServiceTagLocal = "$ServiceTag.local."
@@ -86,24 +98,32 @@ class MDnsDiscovery(
             private val parent: MDnsDiscovery
         ) : AnswerListener {
             override fun answersReceived(answers: List<DNSRecord>) {
-                val txtRecord = answers.find { DNSRecordType.TYPE_TXT.equals(it.recordType) } as DNSRecord.Text
-                val srvRecord = answers.find { DNSRecordType.TYPE_SRV.equals(it.recordType) } as DNSRecord.Service
+                val txtRecord = answers.find { DNSRecordType.TYPE_TXT.equals(it.recordType) }
+                val srvRecord = answers.find { DNSRecordType.TYPE_SRV.equals(it.recordType) }
                 val aRecords = answers.filter { DNSRecordType.TYPE_A.equals(it.recordType) }
+                val aaaaRecords = answers.filter { DNSRecordType.TYPE_AAAA.equals(it.recordType) }
 
                 if (txtRecord == null || srvRecord == null || aRecords.isEmpty())
                     return // incomplete answers
+
+                txtRecord as DNSRecord.Text
+                srvRecord as DNSRecord.Service
 
                 var peerIdStr = String(txtRecord.text)
                 if (peerIdStr[0] == '.') peerIdStr = peerIdStr.substring(1)
                 val peerId = PeerId.fromBase58(peerIdStr)
                 val port = srvRecord.port
 
-                val multiAddrs = aRecords.map {
+                val ip4multiAddrStr = aRecords.map {
                     it as DNSRecord.IPv4Address
                     "/ip4/${it.address.hostAddress}/tcp/$port"
-                }.map {
-                    Multiaddr(it)
                 }
+                val ip6multiAddrStr = aaaaRecords.map {
+                    it as DNSRecord.IPv6Address
+                    "/ip6/${it.address.hostAddress}/tcp/$port"
+                }
+
+                val multiAddrs = (ip4multiAddrStr + ip6multiAddrStr).map { Multiaddr(it) }
 
                 val peerInfo = PeerInfo(peerId, multiAddrs)
                 parent.peerFound(peerInfo)
