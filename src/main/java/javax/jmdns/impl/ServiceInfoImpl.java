@@ -9,18 +9,14 @@ import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Enumeration;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.Vector;
 
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
@@ -31,8 +27,6 @@ import javax.jmdns.impl.DNSRecord.Service;
 import javax.jmdns.impl.DNSRecord.Text;
 import javax.jmdns.impl.constants.DNSRecordClass;
 import javax.jmdns.impl.constants.DNSRecordType;
-import javax.jmdns.impl.constants.DNSState;
-import javax.jmdns.impl.tasks.DNSTask;
 
 import javax.jmdns.impl.util.ByteWrangler;
 
@@ -41,7 +35,7 @@ import javax.jmdns.impl.util.ByteWrangler;
  *
  * @author Arthur van Hoff, Jeff Sonstein, Werner Randelshofer, Victor Toni
  */
-public class ServiceInfoImpl extends ServiceInfo implements DNSStatefulObject {
+public class ServiceInfoImpl extends ServiceInfo {
     private static Logger           logger = LogManager.getLogger(ServiceInfoImpl.class.getName());
 
     private String                  _domain;
@@ -62,47 +56,6 @@ public class ServiceInfoImpl extends ServiceInfo implements DNSStatefulObject {
 
     private boolean                 _persistent;
     private boolean                 _needTextAnnouncing;
-
-    private final ServiceInfoState  _state;
-
-    private final static class ServiceInfoState extends DefaultImplementation {
-
-        private static final long     serialVersionUID = 1104131034952196820L;
-
-        private final ServiceInfoImpl _info;
-
-        /**
-         * @param info
-         */
-        public ServiceInfoState(ServiceInfoImpl info) {
-            super();
-            _info = info;
-        }
-
-        @Override
-        protected void setTask(DNSTask task) {
-            super.setTask(task);
-            if ((this._task == null) && _info.needTextAnnouncing()) {
-                this.lock();
-                try {
-                    if ((this._task == null) && _info.needTextAnnouncing()) {
-                        if (this._state.isAnnounced()) {
-                            this.setState(DNSState.ANNOUNCING_1);
-                        }
-                        _info.setNeedTextAnnouncing(false);
-                    }
-                } finally {
-                    this.unlock();
-                }
-            }
-        }
-
-        @Override
-        public void setDns(JmDNSImpl dns) {
-            super.setDns(dns);
-        }
-
-    }
 
     /**
      * @param type
@@ -139,8 +92,6 @@ public class ServiceInfoImpl extends ServiceInfo implements DNSStatefulObject {
         this._weight = weight;
         this._priority = priority;
         this._text = text;
-        this.setNeedTextAnnouncing(false);
-        this._state = new ServiceInfoState(this);
         this._persistent = persistent;
         this._ipv4Addresses = Collections.synchronizedSet(new LinkedHashSet<Inet4Address>());
         this._ipv6Addresses = Collections.synchronizedSet(new LinkedHashSet<Inet6Address>());
@@ -174,7 +125,6 @@ public class ServiceInfoImpl extends ServiceInfo implements DNSStatefulObject {
                 this._ipv4Addresses.add(address);
             }
         }
-        this._state = new ServiceInfoState(this);
     }
 
     public static Map<Fields, String> decodeQualifiedNameMap(String type, String name, String subtype) {
@@ -591,144 +541,6 @@ public class ServiceInfoImpl extends ServiceInfo implements DNSStatefulObject {
         return _ipv4Addresses.size() > 0 || _ipv6Addresses.size() > 0;
     }
 
-    // State machine
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean advanceState(DNSTask task) {
-        return _state.advanceState(task);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean revertState() {
-        return _state.revertState();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean cancelState() {
-        return _state.cancelState();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean closeState() {
-        return this._state.closeState();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean recoverState() {
-        return this._state.recoverState();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void removeAssociationWithTask(DNSTask task) {
-        _state.removeAssociationWithTask(task);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void associateWithTask(DNSTask task, DNSState state) {
-        _state.associateWithTask(task, state);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean isAssociatedWithTask(DNSTask task, DNSState state) {
-        return _state.isAssociatedWithTask(task, state);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean isProbing() {
-        return _state.isProbing();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean isAnnouncing() {
-        return _state.isAnnouncing();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean isAnnounced() {
-        return _state.isAnnounced();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean isCanceling() {
-        return this._state.isCanceling();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean isCanceled() {
-        return _state.isCanceled();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean isClosing() {
-        return _state.isClosing();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean isClosed() {
-        return _state.isClosed();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean waitForAnnounced(long timeout) {
-        return _state.waitForAnnounced(timeout);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean waitForCanceled(long timeout) {
-        return _state.waitForCanceled(timeout);
-    }
-
     /**
      * {@inheritDoc}
      */
@@ -786,7 +598,6 @@ public class ServiceInfoImpl extends ServiceInfo implements DNSStatefulObject {
                 sb.append(address).append(':').append(this.getPort()).append(' ');
             }
         }
-        sb.append("' status: '").append(_state.toString());
         sb.append(this.isPersistent() ? "' is persistent," : "',");
         
         if (this.hasData()) {
@@ -843,41 +654,11 @@ public class ServiceInfoImpl extends ServiceInfo implements DNSStatefulObject {
         return list;
     }
 
-    public void setDns(JmDNSImpl dns) {
-        this._state.setDns(dns);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public JmDNSImpl getDns() {
-        return this._state.getDns();
-    }
-
     /**
      * {@inheritDoc}
      */
     @Override
     public boolean isPersistent() {
         return _persistent;
-    }
-
-    /**
-     * @param needTextAnnouncing
-     *            the needTextAnnouncing to set
-     */
-    public void setNeedTextAnnouncing(boolean needTextAnnouncing) {
-        this._needTextAnnouncing = needTextAnnouncing;
-        if (this._needTextAnnouncing) {
-            _state.setTask(null);
-        }
-    }
-
-    /**
-     * @return the needTextAnnouncing
-     */
-    public boolean needTextAnnouncing() {
-        return _needTextAnnouncing;
     }
 }

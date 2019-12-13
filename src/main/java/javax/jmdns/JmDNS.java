@@ -108,9 +108,4 @@ public abstract class JmDNS implements Closeable {
          *                if there is an error in the underlying protocol, such as a TCP error.
          */
     public abstract void registerService(ServiceInfo info) throws IOException;
-
-    /**
-     * Unregister all services.
-     */
-    public abstract void unregisterAllServices();
 }

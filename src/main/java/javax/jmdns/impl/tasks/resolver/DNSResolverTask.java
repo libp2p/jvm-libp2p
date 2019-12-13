@@ -46,9 +46,7 @@ public abstract class DNSResolverTask extends DNSTask {
      */
     @Override
     public void start(Timer timer) {
-        if (!this.getDns().isCanceling() && !this.getDns().isCanceled()) {
-            timer.schedule(this, DNSConstants.QUERY_WAIT_INTERVAL, DNSConstants.QUERY_WAIT_INTERVAL);
-        }
+        timer.schedule(this, DNSConstants.QUERY_WAIT_INTERVAL, DNSConstants.QUERY_WAIT_INTERVAL);
     }
 
     /*
@@ -58,28 +56,20 @@ public abstract class DNSResolverTask extends DNSTask {
     @Override
     public void run() {
         try {
-            if (this.getDns().isCanceling() || this.getDns().isCanceled()) {
-                this.cancel();
-            } else {
-                if (_count++ < 3) {
-                    logger.debug("{}.run() JmDNS {}",this.getName(), this.description());
+            if (_count++ < 3) {
+                logger.debug("{}.run() JmDNS {}",this.getName(), this.description());
 
-                    DNSOutgoing out = new DNSOutgoing(DNSConstants.FLAGS_QR_QUERY);
-                    out = this.addQuestions(out);
-                    if (this.getDns().isAnnounced()) {
-                        out = this.addAnswers(out);
-                    }
-                    if (!out.isEmpty()) {
-                        this.getDns().send(out);
-                    }
-                } else {
-                    // After three queries, we can quit.
-                    this.cancel();
+                DNSOutgoing out = new DNSOutgoing(DNSConstants.FLAGS_QR_QUERY);
+                out = this.addQuestions(out);
+                if (!out.isEmpty()) {
+                    this.getDns().send(out);
                 }
+            } else {
+                // After three queries, we can quit.
+                this.cancel();
             }
         } catch (Throwable e) {
             logger.warn(this.getName() + ".run() exception ", e);
-            this.getDns().recover();
         }
     }
 

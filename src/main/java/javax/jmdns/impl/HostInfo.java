@@ -22,7 +22,7 @@ import javax.jmdns.impl.tasks.DNSTask;
  *
  * @author Pierre Frisch, Werner Randelshofer
  */
-public class HostInfo implements DNSStatefulObject {
+public class HostInfo {
     private static Logger       logger = LogManager.getLogger(HostInfo.class.getName());
 
     protected String            _name;
@@ -30,22 +30,6 @@ public class HostInfo implements DNSStatefulObject {
     protected InetAddress       _address;
 
     protected NetworkInterface  _interfaze;
-
-    private final HostInfoState _state;
-
-    private final static class HostInfoState extends DefaultImplementation {
-
-        private static final long serialVersionUID = -8191476803620402088L;
-
-        /**
-         * @param dns
-         */
-        public HostInfoState(JmDNSImpl dns) {
-            super();
-            this.setDns(dns);
-        }
-
-    }
 
     /**
      * @param address
@@ -153,7 +137,6 @@ public class HostInfo implements DNSStatefulObject {
 
     private HostInfo(final InetAddress address, final String name, final JmDNSImpl dns) {
         super();
-        this._state = new HostInfoState(dns);
         this._address = address;
         this._name = name;
         if (address != null) {
@@ -218,158 +201,7 @@ public class HostInfo implements DNSStatefulObject {
         sb.append(getInterface() != null ? getInterface().getDisplayName() : "???");
         sb.append(":");
         sb.append(getInetAddress() != null ? getInetAddress().getHostAddress() : "no address");
-        sb.append(", ");
-        sb.append(_state);
         sb.append("]");
         return sb.toString();
     }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public JmDNSImpl getDns() {
-        return this._state.getDns();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean advanceState(DNSTask task) {
-        return this._state.advanceState(task);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void removeAssociationWithTask(DNSTask task) {
-        this._state.removeAssociationWithTask(task);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean revertState() {
-        return this._state.revertState();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void associateWithTask(DNSTask task, DNSState state) {
-        this._state.associateWithTask(task, state);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean isAssociatedWithTask(DNSTask task, DNSState state) {
-        return this._state.isAssociatedWithTask(task, state);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean cancelState() {
-        return this._state.cancelState();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean closeState() {
-        return this._state.closeState();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean recoverState() {
-        return this._state.recoverState();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean isProbing() {
-        return this._state.isProbing();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean isAnnouncing() {
-        return this._state.isAnnouncing();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean isAnnounced() {
-        return this._state.isAnnounced();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean isCanceling() {
-        return this._state.isCanceling();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean isCanceled() {
-        return this._state.isCanceled();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean isClosing() {
-        return this._state.isClosing();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean isClosed() {
-        return this._state.isClosed();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean waitForAnnounced(long timeout) {
-        return _state.waitForAnnounced(timeout);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean waitForCanceled(long timeout) {
-        if (_address == null) {
-            // No need to wait this was never announced.
-            return true;
-        }
-        return _state.waitForCanceled(timeout);
-    }
-
 }

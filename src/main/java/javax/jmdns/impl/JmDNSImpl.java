@@ -38,7 +38,7 @@ import javax.jmdns.impl.util.NamedThreadFactory;
  *
  * @author Arthur van Hoff, Rick Blair, Jeff Sonstein, Werner Randelshofer, Pierre Frisch, Scott Lewis, Kai Kreuzer, Victor Toni
  */
-public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarter {
+public class JmDNSImpl extends JmDNS implements DNSTaskStarter {
     private static Logger logger = LogManager.getLogger(JmDNSImpl.class.getName());
 
     /**
@@ -68,11 +68,6 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
     private HostInfo _localHost;
 
     private Thread _incomingListener;
-
-    /**
-     * Throttle count. This is used to count the overall number of probes sent by JmDNS. When the last throttle increment happened .
-     */
-    private int _throttle;
 
     private final ExecutorService _executor = Executors.newSingleThreadExecutor(new NamedThreadFactory("JmDNS"));
 
@@ -215,151 +210,6 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
         }
     }
 
-    // State machine
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean advanceState(DNSTask task) {
-        return this._localHost.advanceState(task);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean revertState() {
-        return this._localHost.revertState();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean cancelState() {
-        return this._localHost.cancelState();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean closeState() {
-        return this._localHost.closeState();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean recoverState() {
-        return this._localHost.recoverState();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public JmDNSImpl getDns() {
-        return this;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void associateWithTask(DNSTask task, DNSState state) {
-        this._localHost.associateWithTask(task, state);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void removeAssociationWithTask(DNSTask task) {
-        this._localHost.removeAssociationWithTask(task);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean isAssociatedWithTask(DNSTask task, DNSState state) {
-        return this._localHost.isAssociatedWithTask(task, state);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean isProbing() {
-        return this._localHost.isProbing();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean isAnnouncing() {
-        return this._localHost.isAnnouncing();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean isAnnounced() {
-        return this._localHost.isAnnounced();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean isCanceling() {
-        return this._localHost.isCanceling();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean isCanceled() {
-        return this._localHost.isCanceled();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean isClosing() {
-        return this._localHost.isClosing();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean isClosed() {
-        return this._localHost.isClosed();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean waitForAnnounced(long timeout) {
-        return this._localHost.waitForAnnounced(timeout);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean waitForCanceled(long timeout) {
-        return this._localHost.waitForCanceled(timeout);
-    }
-
     /**
      * {@inheritDoc}
      */
@@ -437,56 +287,13 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
      */
     @Override
     public void registerService(ServiceInfo infoAbstract) throws IOException {
-        if (this.isClosing() || this.isClosed()) {
-            throw new IllegalStateException("This DNS is closed.");
-        }
         final ServiceInfoImpl info = (ServiceInfoImpl) infoAbstract;
 
-        if (info.getDns() != null) {
-            if (info.getDns() != this) {
-                throw new IllegalStateException("A service information can only be registered with a single instamce of JmDNS.");
-            } else if (_services.get(info.getKey()) != null) {
-                throw new IllegalStateException("A service information can only be registered once.");
-            }
-        }
-        info.setDns(this);
-
-        // bind the service to this address
-        info.recoverState();
         info.setServer(_localHost.getName());
 
         _services.putIfAbsent(info.getKey(), info);
 
         logger.debug("registerService() JmDNS registered service as {}", info);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void unregisterAllServices() {
-        logger.debug("unregisterAllServices()");
-
-        for (final ServiceInfo info : _services.values()) {
-            if (info != null) {
-                final ServiceInfoImpl infoImpl = (ServiceInfoImpl) info;
-                logger.debug("Cancelling service info: {}", info);
-                infoImpl.cancelState();
-            }
-        }
-
-        for (final Map.Entry<String, ServiceInfo> entry : _services.entrySet()) {
-            final ServiceInfo info = entry.getValue();
-            if (info != null) {
-                final ServiceInfoImpl infoImpl = (ServiceInfoImpl) info;
-                final String name = entry.getKey();
-
-                logger.debug("Wait for service info cancel: {}", info);
-                infoImpl.waitForCanceled(DNSConstants.CLOSE_TIMEOUT);
-                _services.remove(name, info);
-            }
-        }
-
     }
 
     /**
@@ -607,7 +414,7 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
      */
     @Override
     public void purgeTimer() {
-        Factory.getInstance().getStarter(this.getDns()).purgeTimer();
+        Factory.getInstance().getStarter(this).purgeTimer();
     }
 
     /*
@@ -616,7 +423,7 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
      */
     @Override
     public void purgeStateTimer() {
-        Factory.getInstance().getStarter(this.getDns()).purgeStateTimer();
+        Factory.getInstance().getStarter(this).purgeStateTimer();
     }
 
     /*
@@ -625,7 +432,7 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
      */
     @Override
     public void cancelTimer() {
-        Factory.getInstance().getStarter(this.getDns()).cancelTimer();
+        Factory.getInstance().getStarter(this).cancelTimer();
     }
 
     /*
@@ -634,7 +441,7 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
      */
     @Override
     public void cancelStateTimer() {
-        Factory.getInstance().getStarter(this.getDns()).cancelStateTimer();
+        Factory.getInstance().getStarter(this).cancelStateTimer();
     }
 
     /*
@@ -643,7 +450,7 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
      */
     @Override
     public void startServiceResolver(String type) {
-        Factory.getInstance().getStarter(this.getDns()).startServiceResolver(type);
+        Factory.getInstance().getStarter(this).startServiceResolver(type);
     }
 
     /*
@@ -652,140 +459,42 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
      */
     @Override
     public void startResponder(DNSIncoming in, InetAddress addr, int port) {
-        Factory.getInstance().getStarter(this.getDns()).startResponder(in, addr, port);
+        Factory.getInstance().getStarter(this).startResponder(in, addr, port);
     }
 
     private final Object _recoverLock = new Object();
-
-    /**
-     * Recover jmDNS when there is an error.
-     */
-    public void recover() {
-        logger.debug("{}.recover()", this.getName());
-        // We have an IO error so lets try to recover if anything happens lets close it.
-        // This should cover the case of the IP address changing under our feet
-        if (this.isClosing() || this.isClosed() || this.isCanceling() || this.isCanceled()) {
-            return;
-        }
-
-        // We need some definite lock here as we may have multiple timer running in the same thread that will not be stopped by the reentrant lock
-        // in the state object. This is only a problem in this case as we are going to execute in seperate thread so that the timer can clear.
-        synchronized (_recoverLock) {
-            // Stop JmDNS
-            // This protects against recursive calls
-            if (this.cancelState()) {
-                final String newThreadName = this.getName() + ".recover()";
-                logger.debug("{} thread {}", newThreadName, Thread.currentThread().getName());
-                Thread recover = new Thread(newThreadName) {
-                    /**
-                     * {@inheritDoc}
-                     */
-                    @Override
-                    public void run() {
-                        __recover();
-                    }
-                };
-                recover.start();
-            }
-        }
-    }
-
-    void __recover() {
-        // Synchronize only if we are not already in process to prevent dead locks
-        //
-        logger.debug("{}.recover() Cleanning up", this.getName());
-
-        logger.warn("RECOVERING");
-        // Purge the timer
-        this.purgeTimer();
-
-        // We need to keep a copy for reregistration
-        final Collection<ServiceInfo> oldServiceInfos = new ArrayList<ServiceInfo>(getServices().values());
-
-        // Cancel all services
-        this.unregisterAllServices();
-
-        this.waitForCanceled(DNSConstants.CLOSE_TIMEOUT);
-
-        // Purge the canceler timer
-        this.purgeStateTimer();
-
-        //
-        // close multicast socket
-        this.closeMulticastSocket();
-
-        if (this.isCanceled()) {
-            //
-            // All is clear now start the services
-            //
-            for (ServiceInfo info : oldServiceInfos) {
-                ((ServiceInfoImpl) info).recoverState();
-            }
-            this.recoverState();
-
-            try {
-                this.openMulticastSocket(this.getLocalHost());
-                this.start(oldServiceInfos);
-            } catch (final Exception exception) {
-                logger.warn(this.getName() + ".recover() Start services exception ", exception);
-            }
-            logger.warn("{}.recover() We are back!", this.getName());
-        } else {
-            // We have a problem. We could not clear the state.
-            logger.warn("{}.recover() Could not recover we are Down!", this.getName());
-        }
-
-    }
 
     /**
      * {@inheritDoc}
      */
     @Override
     public void close() {
-        if (this.isClosing()) {
-            return;
-        }
-
         logger.debug("Cancelling JmDNS: {}", this);
 
-        // Stop JmDNS
-        // This protects against recursive calls
-        if (this.cancelState()) {
-            // We got the tie break now clean up
+        // Stop the timer
+        logger.debug("Canceling the timer");
+        this.cancelTimer();
 
-            // Stop the timer
-            logger.debug("Canceling the timer");
-            this.cancelTimer();
+        // Stop the canceler timer
+        logger.debug("Canceling the state timer");
+        this.cancelStateTimer();
 
-            // Cancel all services
-            this.unregisterAllServices();
+        // Stop the executor
+        _executor.shutdown();
 
-            logger.debug("Wait for JmDNS cancel: {}", this);
+        // close socket
+        this.closeMulticastSocket();
 
-            this.waitForCanceled(DNSConstants.CLOSE_TIMEOUT);
-
-            // Stop the canceler timer
-            logger.debug("Canceling the state timer");
-            this.cancelStateTimer();
-
-            // Stop the executor
-            _executor.shutdown();
-
-            // close socket
-            this.closeMulticastSocket();
-
-            // remove the shutdown hook
-            if (_shutdown != null) {
-                Runtime.getRuntime().removeShutdownHook(_shutdown);
-            }
-
-            // earlier we did a DNSTaskStarter.Factory.getInstance().getStarter(this.getDns())
-            // now we must release the resources associated with the starter for this JmDNS instance
-            Factory.getInstance().disposeStarter(this.getDns());
-
-            logger.debug("JmDNS closed.");
+        // remove the shutdown hook
+        if (_shutdown != null) {
+            Runtime.getRuntime().removeShutdownHook(_shutdown);
         }
-        advanceState(null);
+
+        // earlier we did a DNSTaskStarter.Factory.getInstance().getStarter(this.getDns())
+        // now we must release the resources associated with the starter for this JmDNS instance
+        Factory.getInstance().disposeStarter(this);
+
+        logger.debug("JmDNS closed.");
     }
 
     /**

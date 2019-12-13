@@ -36,12 +36,9 @@ class SocketListener extends Thread {
         try {
             byte buf[] = new byte[DNSConstants.MAX_MSG_ABSOLUTE];
             DatagramPacket packet = new DatagramPacket(buf, buf.length);
-            while (!this._jmDNSImpl.isCanceling() && !this._jmDNSImpl.isCanceled()) {
+            while (true) {
                 packet.setLength(buf.length);
                 this._jmDNSImpl.getSocket().receive(packet);
-                if (this._jmDNSImpl.isCanceling() || this._jmDNSImpl.isCanceled() || this._jmDNSImpl.isClosing() || this._jmDNSImpl.isClosed()) {
-                    break;
-                }
                 try {
                     if (this._jmDNSImpl.getLocalHost().shouldIgnorePacket(packet)) {
                         continue;
@@ -70,10 +67,7 @@ class SocketListener extends Thread {
                 }
             }
         } catch (IOException e) {
-            if (!this._jmDNSImpl.isCanceling() && !this._jmDNSImpl.isCanceled() && !this._jmDNSImpl.isClosing() && !this._jmDNSImpl.isClosed()) {
-                logger.warn(this.getName() + ".run() exception ", e);
-                this._jmDNSImpl.recover();
-            }
+            logger.warn(this.getName() + ".run() exception ", e);
         }
         logger.trace("{}.run() exiting.", this.getName() );
     }
