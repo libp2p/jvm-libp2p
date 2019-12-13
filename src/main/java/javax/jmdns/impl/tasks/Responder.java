@@ -4,6 +4,7 @@
 
 package javax.jmdns.impl.tasks;
 
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.HashSet;
@@ -49,28 +50,16 @@ public class Responder extends DNSTask {
         this._unicast = (port != DNSConstants.MDNS_PORT);
     }
 
-    /*
-     * (non-Javadoc)
-     * @see javax.jmdns.impl.tasks.DNSTask#getName()
-     */
     @Override
-    public String getName() {
-        return "Responder(" + (this.getDns() != null ? this.getDns().getName() : "") + ")";
+    protected String getName() {
+        return "Responder(" + (this.dns() != null ? this.dns().getName() : "") + ")";
     }
 
-    /*
-     * (non-Javadoc)
-     * @see java.lang.Object#toString()
-     */
     @Override
     public String toString() {
-        return super.toString() + " incomming: " + _in;
+        return super.toString() + " incoming: " + _in;
     }
 
-    /*
-     * (non-Javadoc)
-     * @see javax.jmdns.impl.tasks.DNSTask#start(java.util.Timer)
-     */
     @Override
     public void start(Timer timer) {
         int delay =
@@ -104,7 +93,7 @@ public class Responder extends DNSTask {
                     questions.add(question);
                 }
 
-                question.addAnswers(this.getDns(), answers);
+                question.addAnswers(this.dns(), answers);
             }
 
             // respond if we have answers
@@ -120,13 +109,33 @@ public class Responder extends DNSTask {
                     out = this.addQuestion(out, question);
                 }
                 for (DNSRecord answer : answers) {
-                    out = this.addAnswer(out, _in, answer);
+                    out = this.addAnswer(out, answer);
                 }
                 if (!out.isEmpty())
-                    this.getDns().send(out);
+                    this.dns().send(out);
             }
         } catch (Throwable e) {
             logger.warn(this.getName() + "run() exception ", e);
         }
+    }
+
+    private DNSOutgoing addAnswer(DNSOutgoing out, DNSRecord rec) throws IOException {
+        DNSOutgoing newOut = out;
+        try {
+            newOut.addAnswer(rec);
+        } catch (final IOException e) {
+            int flags = newOut.getFlags();
+            boolean multicast = newOut.isMulticast();
+            int maxUDPPayload = newOut.getMaxUDPPayload();
+            int id = newOut.getId();
+
+            newOut.setFlags(flags | DNSConstants.FLAGS_TC);
+            newOut.setId(id);
+            this.dns().send(newOut);
+
+            newOut = new DNSOutgoing(flags, multicast, maxUDPPayload);
+            newOut.addAnswer(rec);
+        }
+        return newOut;
     }
 }

@@ -12,7 +12,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
 
 import javax.jmdns.impl.tasks.Responder;
-import javax.jmdns.impl.tasks.resolver.ServiceResolver;
+import javax.jmdns.impl.tasks.ServiceResolver;
 
 /**
  * This class is used by JmDNS to start the various task required to run the DNS discovery. This interface is only there in order to support MANET modifications.
