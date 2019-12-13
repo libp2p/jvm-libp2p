@@ -6,7 +6,6 @@ package javax.jmdns;
 import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
-import java.util.Enumeration;
 import java.util.List;
 import java.util.Map;
 
@@ -134,77 +133,6 @@ public abstract class ServiceInfo implements Cloneable {
     public abstract String getServer();
 
     /**
-     * Returns the host IP address string in textual presentation.<br/>
-     * <b>Note:</b> This can be either an IPv4 or an IPv6 representation.
-     * 
-     * @return the host raw IP address in a string format.
-     * @deprecated since 3.2.3
-     * @see #getHostAddresses()
-     */
-    @Deprecated
-    public abstract String getHostAddress();
-
-    /**
-     * Returns the host IP addresses string in textual presentation.
-     * 
-     * @return list of host raw IP address in a string format.
-     */
-    public abstract String[] getHostAddresses();
-
-    /**
-     * Get the host address of the service.<br/>
-     * 
-     * @return host Internet address
-     * @deprecated since 3.1.8
-     * @see #getInetAddresses()
-     */
-    @Deprecated
-    public abstract InetAddress getAddress();
-
-    /**
-     * Get the InetAddress of the service. This will return the IPv4 if it exist, otherwise it return the IPv6 if set.<br/>
-     * <b>Note:</b> This return null if the service IP address cannot be resolved.
-     * 
-     * @return Internet address
-     * @deprecated since 3.2.3
-     * @see #getInetAddresses()
-     */
-    @Deprecated
-    public abstract InetAddress getInetAddress();
-
-    /**
-     * Get the IPv4 InetAddress of the service.<br/>
-     * <b>Note:</b> This return null if the service IPv4 address cannot be resolved.
-     * 
-     * @return Internet address
-     * @deprecated since 3.2.3
-     * @see #getInet4Addresses()
-     */
-    @Deprecated
-    public abstract Inet4Address getInet4Address();
-
-    /**
-     * Get the IPv6 InetAddress of the service.<br/>
-     * <b>Note:</b> This return null if the service IPv6 address cannot be resolved.
-     * 
-     * @return Internet address
-     * @deprecated since 3.2.3
-     * @see #getInet6Addresses()
-     */
-    @Deprecated
-    public abstract Inet6Address getInet6Address();
-
-    /**
-     * Returns a list of all InetAddresses that can be used for this service.
-     * <p>
-     * In a multi-homed environment service info can be associated with more than one address.
-     * </p>
-     * 
-     * @return list of InetAddress objects
-     */
-    public abstract InetAddress[] getInetAddresses();
-
-    /**
      * Returns a list of all IPv4 InetAddresses that can be used for this service.
      * <p>
      * In a multi-homed environment service info can be associated with more than one address.
@@ -253,109 +181,6 @@ public abstract class ServiceInfo implements Cloneable {
     public abstract byte[] getTextBytes();
 
     /**
-     * Get the text for the service. This will interpret the text bytes as a UTF8 encoded string. Will return null if the bytes are not a valid UTF8 encoded string.<br/>
-     * <b>Note:</b> Do not use. This method make the assumption that the TXT record is one string. This is false. The TXT record is a series of key value pairs.
-     * 
-     * @return service text
-     * @see #getPropertyNames()
-     * @see #getPropertyBytes(String)
-     * @see #getPropertyString(String)
-     * @deprecated since 3.1.7
-     */
-    @Deprecated
-    public abstract String getTextString();
-
-    /**
-     * Get the URL for this service. An http URL is created by combining the address, port, and path properties.
-     * 
-     * @return service URL
-     * @deprecated since 3.2.3
-     * @see #getURLs()
-     */
-    @Deprecated
-    public abstract String getURL();
-
-    /**
-     * Get the list of URL for this service. An http URL is created by combining the address, port, and path properties.
-     * 
-     * @return list of service URL
-     */
-    public abstract String[] getURLs();
-
-    /**
-     * Get the URL for this service. An URL is created by combining the protocol, address, port, and path properties.
-     * 
-     * @param protocol
-     *            requested protocol
-     * @return service URL
-     * @deprecated since 3.2.3
-     * @see #getURLs()
-     */
-    @Deprecated
-    public abstract String getURL(String protocol);
-
-    /**
-     * Get the list of URL for this service. An URL is created by combining the protocol, address, port, and path properties.
-     * 
-     * @param protocol
-     *            requested protocol
-     * @return list of service URL
-     */
-    public abstract String[] getURLs(String protocol);
-
-    /**
-     * Get a property of the service. This involves decoding the text bytes into a property list. Returns null if the property is not found or the text data could not be decoded correctly.
-     * 
-     * @param name
-     *            property name
-     * @return raw property text
-     */
-    public abstract byte[] getPropertyBytes(final String name);
-
-    /**
-     * Get a property of the service. This involves decoding the text bytes into a property list. Returns null if the property is not found, the text data could not be decoded correctly, or the resulting bytes are not a valid UTF8 string.
-     * 
-     * @param name
-     *            property name
-     * @return property text
-     */
-    public abstract String getPropertyString(final String name);
-
-    /**
-     * Enumeration of the property names.
-     * 
-     * @return property name enumeration
-     */
-    public abstract Enumeration<String> getPropertyNames();
-
-    /**
-     * Returns a description of the service info suitable for printing.
-     * 
-     * @return service info description
-     */
-    public abstract String getNiceTextString();
-
-    /**
-     * Set the text for the service. Setting the text will fore a re-announce of the service.
-     * 
-     * @param text
-     *            the raw byte representation of the text field.
-     * @exception IllegalStateException
-     *                if attempting to set the text for a non persistent service info.
-     */
-    public abstract void setText(final byte[] text) throws IllegalStateException;
-
-    /**
-     * Set the text for the service. Setting the text will fore a re-announce of the service.
-     * 
-     * @param props
-     *            a key=value map that will be encoded into raw bytes.
-     * @exception IllegalStateException
-     *                if attempting to set the text for a non persistent service info.
-     */
-    public abstract void setText(final Map<String, ?> props) throws IllegalStateException;
-
-    /**
      * Returns <code>true</code> if ServiceListener.resolveService will be called whenever new new information is received.
      * 
      * @return the persistent
@@ -396,14 +221,6 @@ public abstract class ServiceInfo implements Cloneable {
      * @return dictionary of the fully qualified name components
      */
     public abstract Map<Fields, String> getQualifiedNameMap();
-
-    /**
-     * Compare addresses of another ServiceInfo
-     *
-     * @param other ServiceInfo to compare
-     * @return true if addresses are the same, false if not
-     */
-    public abstract boolean hasSameAddresses(ServiceInfo other);
 
     /*
      * (non-Javadoc)

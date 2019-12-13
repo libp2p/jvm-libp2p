@@ -65,14 +65,6 @@ public class ServiceInfoImpl extends ServiceInfo implements DNSStatefulObject {
 
     private final ServiceInfoState  _state;
 
-    private Delegate                _delegate;
-
-    public static interface Delegate {
-
-        public void textValueUpdated(ServiceInfo target, byte[] value);
-
-    }
-
     private final static class ServiceInfoState extends DefaultImplementation {
 
         private static final long     serialVersionUID = 1104131034952196820L;
@@ -121,56 +113,9 @@ public class ServiceInfoImpl extends ServiceInfo implements DNSStatefulObject {
      * @param priority
      * @param persistent
      * @param text
-     * @see ServiceInfo#create(String, String, int, int, int, String)
      */
     public ServiceInfoImpl(String type, String name, String subtype, int port, int weight, int priority, boolean persistent, String text) {
         this(ServiceInfoImpl.decodeQualifiedNameMap(type, name, subtype), port, weight, priority, persistent, (byte[]) null);
-
-        try {
-            this._text = ByteWrangler.encodeText(text);
-        } catch (final IOException e) {
-            throw new RuntimeException("Unexpected exception: " + e);
-        }
-
-        _server = text;
-    }
-
-    /**
-     * @param type
-     * @param name
-     * @param subtype
-     * @param port
-     * @param weight
-     * @param priority
-     * @param persistent
-     * @param props
-     * @see ServiceInfo#create(String, String, int, int, int, Map)
-     */
-    public ServiceInfoImpl(String type, String name, String subtype, int port, int weight, int priority, boolean persistent, Map<String, ?> props) {
-        this(ServiceInfoImpl.decodeQualifiedNameMap(type, name, subtype), port, weight, priority, persistent, ByteWrangler.textFromProperties(props));
-    }
-
-    /**
-     * @param type
-     * @param name
-     * @param subtype
-     * @param port
-     * @param weight
-     * @param priority
-     * @param persistent
-     * @param text
-     * @see ServiceInfo#create(String, String, int, int, int, byte[])
-     */
-    public ServiceInfoImpl(String type, String name, String subtype, int port, int weight, int priority, boolean persistent, byte text[]) {
-        this(ServiceInfoImpl.decodeQualifiedNameMap(type, name, subtype), port, weight, priority, persistent, text);
-    }
-
-    public ServiceInfoImpl(Map<Fields, String> qualifiedNameMap, int port, int weight, int priority, boolean persistent, Map<String, ?> props) {
-        this(qualifiedNameMap, port, weight, priority, persistent, ByteWrangler.textFromProperties(props));
-    }
-
-    ServiceInfoImpl(Map<Fields, String> qualifiedNameMap, int port, int weight, int priority, boolean persistent, String text) {
-        this(qualifiedNameMap, port, weight, priority, persistent, (byte[]) null);
 
         try {
             this._text = ByteWrangler.encodeText(text);
@@ -456,33 +401,6 @@ public class ServiceInfoImpl extends ServiceInfo implements DNSStatefulObject {
     }
 
     /**
-     * {@inheritDoc}
-     */
-    @Deprecated
-    @Override
-    public String getHostAddress() {
-        String[] names = this.getHostAddresses();
-        return (names.length > 0 ? names[0] : "");
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public String[] getHostAddresses() {
-        Inet4Address[] ip4Aaddresses = this.getInet4Addresses();
-        Inet6Address[] ip6Aaddresses = this.getInet6Addresses();
-        String[] names = new String[ip4Aaddresses.length + ip6Aaddresses.length];
-        for (int i = 0; i < ip4Aaddresses.length; i++) {
-            names[i] = ip4Aaddresses[i].getHostAddress();
-        }
-        for (int i = 0; i < ip6Aaddresses.length; i++) {
-            names[i + ip4Aaddresses.length] = "[" + ip6Aaddresses[i].getHostAddress() + "]";
-        }
-        return names;
-    }
-
-    /**
      * @param addr
      *            the addr to add
      */
@@ -496,57 +414,6 @@ public class ServiceInfoImpl extends ServiceInfo implements DNSStatefulObject {
      */
     public void addAddress(Inet6Address addr) {
         _ipv6Addresses.add(addr);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Deprecated
-    @Override
-    public InetAddress getAddress() {
-        return this.getInetAddress();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Deprecated
-    @Override
-    public InetAddress getInetAddress() {
-        InetAddress[] addresses = this.getInetAddresses();
-        return (addresses.length > 0 ? addresses[0] : null);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Deprecated
-    @Override
-    public Inet4Address getInet4Address() {
-        Inet4Address[] addresses = this.getInet4Addresses();
-        return (addresses.length > 0 ? addresses[0] : null);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Deprecated
-    @Override
-    public Inet6Address getInet6Address() {
-        Inet6Address[] addresses = this.getInet6Addresses();
-        return (addresses.length > 0 ? addresses[0] : null);
-    }
-
-    /*
-     * (non-Javadoc)
-     * @see javax.jmdns.ServiceInfo#getInetAddresses()
-     */
-    @Override
-    public InetAddress[] getInetAddresses() {
-        List<InetAddress> aList = new ArrayList<InetAddress>(_ipv4Addresses.size() + _ipv6Addresses.size());
-        aList.addAll(_ipv4Addresses);
-        aList.addAll(_ipv6Addresses);
-        return aList.toArray(new InetAddress[aList.size()]);
     }
 
     /*
@@ -597,114 +464,6 @@ public class ServiceInfoImpl extends ServiceInfo implements DNSStatefulObject {
     @Override
     public byte[] getTextBytes() {
         return (this._text != null && this._text.length > 0 ? this._text : ByteWrangler.EMPTY_TXT);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Deprecated
-    @Override
-    public String getTextString() {
-        Map<String, byte[]> properties = this.getProperties();
-        for (final Map.Entry<String, byte[]> entry : properties.entrySet()) {
-            byte[] value = entry.getValue();
-            if ((value != null) && (value.length > 0)) {
-                final String val = ByteWrangler.readUTF(value);
-                return entry.getKey() + "=" + val;
-            }
-            return entry.getKey();
-        }
-        return "";
-    }
-
-    /*
-     * (non-Javadoc)
-     * @see javax.jmdns.ServiceInfo#getURL()
-     */
-    @Deprecated
-    @Override
-    public String getURL() {
-        return this.getURL("http");
-    }
-
-    /*
-     * (non-Javadoc)
-     * @see javax.jmdns.ServiceInfo#getURLs()
-     */
-    @Override
-    public String[] getURLs() {
-        return this.getURLs("http");
-    }
-
-    /*
-     * (non-Javadoc)
-     * @see javax.jmdns.ServiceInfo#getURL(java.lang.String)
-     */
-    @Deprecated
-    @Override
-    public String getURL(String protocol) {
-        String[] urls = this.getURLs(protocol);
-        return (urls.length > 0 ? urls[0] : protocol + "://null:" + getPort());
-    }
-
-    /*
-     * (non-Javadoc)
-     * @see javax.jmdns.ServiceInfo#getURLs(java.lang.String)
-     */
-    @Override
-    public String[] getURLs(String protocol) {
-        InetAddress[] addresses = this.getInetAddresses();
-        List<String> urls = new ArrayList<String>(addresses.length);
-        for (InetAddress address : addresses) {
-            String hostAddress = address.getHostAddress();
-            if (address instanceof Inet6Address) {
-                hostAddress = "[" + hostAddress + "]";
-            }
-            String url = protocol + "://" + hostAddress + ":" + getPort();
-            String path = getPropertyString("path");
-            if (path != null) {
-                if (path.indexOf("://") >= 0) {
-                    url = path;
-                } else {
-                    url += path.startsWith("/") ? path : "/" + path;
-                }
-            }
-            urls.add(url);
-        }
-        return urls.toArray(new String[urls.size()]);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public synchronized byte[] getPropertyBytes(String name) {
-        return this.getProperties().get(name);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public synchronized String getPropertyString(String name) {
-        byte data[] = this.getProperties().get(name);
-        if (data == null) {
-            return null;
-        }
-        if (data == ByteWrangler.NO_VALUE) {
-            return "true";
-        }
-        return ByteWrangler.readUTF(data, 0, data.length);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public Enumeration<String> getPropertyNames() {
-        Map<String, byte[]> properties = this.getProperties();
-        Collection<String> names = (properties != null ? properties.keySet() : Collections.<String> emptySet());
-        return new Vector<String>(names).elements();
     }
 
     /**
@@ -986,28 +745,6 @@ public class ServiceInfoImpl extends ServiceInfo implements DNSStatefulObject {
         return (obj instanceof ServiceInfoImpl) && getQualifiedName().equals(((ServiceInfoImpl) obj).getQualifiedName());
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public String getNiceTextString() {
-        final StringBuilder sb = new StringBuilder();
-        for (int i = 0, len = this.getTextBytes().length; i < len; i++) {
-            if (i >= 200) {
-                sb.append("...");
-                break;
-            }
-            int ch = getTextBytes()[i] & 0xFF;
-            if ((ch < ' ') || (ch > 127)) {
-                sb.append("\\0");
-                sb.append(Integer.toString(ch, 8));
-            } else {
-                sb.append((char) ch);
-            }
-        }
-        return sb.toString();
-    }
-
     /*
      * (non-Javadoc)
      * @see javax.jmdns.ServiceInfo#clone()
@@ -1039,13 +776,15 @@ public class ServiceInfoImpl extends ServiceInfo implements DNSStatefulObject {
         }
         sb.append(this.getTypeWithSubtype());
         sb.append("' address: '");
-        InetAddress[] addresses = this.getInetAddresses();
-        if (addresses.length > 0) {
-            for (InetAddress address : addresses) {
+        Inet4Address[] addresses4 = this.getInet4Addresses();
+        for (InetAddress address : addresses4) {
+            sb.append(address).append(':').append(this.getPort()).append(' ');
+        }
+        Inet6Address[] addresses6 = this.getInet6Addresses();
+        if (addresses6.length > 0) {
+            for (InetAddress address : addresses6) {
                 sb.append(address).append(':').append(this.getPort()).append(' ');
             }
-        } else {
-            sb.append("(null):").append(this.getPort());
         }
         sb.append("' status: '").append(_state.toString());
         sb.append(this.isPersistent() ? "' is persistent," : "',");
@@ -1104,36 +843,6 @@ public class ServiceInfoImpl extends ServiceInfo implements DNSStatefulObject {
         return list;
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void setText(byte[] text) throws IllegalStateException {
-        synchronized (this) {
-            this._text = text;
-            this._props = null;
-            this.setNeedTextAnnouncing(true);
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void setText(Map<String, ?> props) throws IllegalStateException {
-        this.setText(ByteWrangler.textFromProperties(props));
-    }
-
-    /**
-     * This is used internally by the framework
-     *
-     * @param text
-     */
-    void _setText(byte[] text) {
-        this._text = text;
-        this._props = null;
-    }
-
     public void setDns(JmDNSImpl dns) {
         this._state.setDns(dns);
     }
@@ -1171,36 +880,4 @@ public class ServiceInfoImpl extends ServiceInfo implements DNSStatefulObject {
     public boolean needTextAnnouncing() {
         return _needTextAnnouncing;
     }
-
-    /**
-     * @return the delegate
-     */
-    Delegate getDelegate() {
-        return this._delegate;
-    }
-
-    /**
-     * @param delegate
-     *            the delegate to set
-     */
-    void setDelegate(Delegate delegate) {
-        this._delegate = delegate;
-    }
-
-    @Override
-    public boolean hasSameAddresses(ServiceInfo other) {
-        if (other == null) return false;
-        if (other instanceof ServiceInfoImpl) {
-            ServiceInfoImpl otherImpl = (ServiceInfoImpl) other;
-            return _ipv4Addresses.size() == otherImpl._ipv4Addresses.size() && _ipv6Addresses.size() == otherImpl._ipv6Addresses.size() &&
-                    _ipv4Addresses.equals(otherImpl._ipv4Addresses) && _ipv6Addresses.equals(otherImpl._ipv6Addresses);
-
-        } else {
-            InetAddress[] addresses = getInetAddresses();
-            InetAddress[] otherAddresses = other.getInetAddresses();
-            return addresses.length == otherAddresses.length &&
-                    new HashSet<InetAddress>(Arrays.asList(addresses)).equals(new HashSet<InetAddress>(Arrays.asList(otherAddresses)));
-        }
-    }
-
 }
