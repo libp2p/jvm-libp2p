@@ -90,7 +90,10 @@ class MDnsDiscovery(
                 val srvRecord = answers.find { DNSRecordType.TYPE_SRV.equals(it.recordType) } as DNSRecord.Service
                 val aRecords = answers.filter { DNSRecordType.TYPE_A.equals(it.recordType) }
 
-                var peerIdStr = String(txtRecord?.text)
+                if (txtRecord == null || srvRecord == null || aRecords.isEmpty())
+                    return // incomplete answers
+
+                var peerIdStr = String(txtRecord.text)
                 if (peerIdStr[0] == '.') peerIdStr = peerIdStr.substring(1)
                 val peerId = PeerId.fromBase58(peerIdStr)
                 val port = srvRecord.port

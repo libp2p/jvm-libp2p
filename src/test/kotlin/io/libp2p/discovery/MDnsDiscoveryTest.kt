@@ -57,7 +57,6 @@ class MDnsDiscoveryTest {
         (1..5).forEach {
             TimeUnit.SECONDS.sleep(1)
         }
-        println()
         discoverer.stop().get(1, TimeUnit.SECONDS)
 
         assertEquals(host.peerId, peerInfo?.peerId)
@@ -80,7 +79,6 @@ class MDnsDiscoveryTest {
         discoverer.start().get(1, TimeUnit.SECONDS)
         (1..5).forEach {
             TimeUnit.SECONDS.sleep(1)
-            print('.')
         }
         discoverer.stop().get(1, TimeUnit.SECONDS)
         other.stop().get(1, TimeUnit.SECONDS)
