@@ -9,7 +9,6 @@ import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 
 import javax.jmdns.ServiceInfo;
-import javax.jmdns.impl.JmDNSImpl.ServiceTypeEntry;
 import javax.jmdns.impl.constants.DNSConstants;
 import javax.jmdns.impl.constants.DNSRecordClass;
 import javax.jmdns.impl.constants.DNSRecordType;
@@ -35,11 +34,6 @@ public class DNSQuestion extends DNSEntry {
             // find matching services
             for (ServiceInfo serviceInfo : jmDNSImpl.getServices().values()) {
                 this.addAnswersForServiceInfo(jmDNSImpl, answers, (ServiceInfoImpl) serviceInfo);
-            }
-            if (this.isServicesDiscoveryMetaQuery()) {
-                for (final ServiceTypeEntry typeEntry : jmDNSImpl.getServiceTypes().values()) {
-                    answers.add(new DNSRecord.Pointer("_services._dns-sd._udp.local.", DNSRecordClass.CLASS_IN, DNSRecordClass.NOT_UNIQUE, DNSConstants.DNS_TTL, typeEntry.getType()));
-                }
             }
         }
     }

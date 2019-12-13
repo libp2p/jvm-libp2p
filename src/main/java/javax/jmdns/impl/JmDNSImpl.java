@@ -12,16 +12,12 @@ import java.net.InetSocketAddress;
 import java.net.MulticastSocket;
 import java.net.SocketAddress;
 import java.net.SocketException;
-import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
@@ -31,7 +27,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import javax.jmdns.*;
-import javax.jmdns.ServiceInfo.Fields;
 import javax.jmdns.impl.constants.DNSConstants;
 import javax.jmdns.impl.constants.DNSRecordType;
 import javax.jmdns.impl.constants.DNSState;
@@ -45,10 +40,6 @@ import javax.jmdns.impl.util.NamedThreadFactory;
  */
 public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarter {
     private static Logger logger = LogManager.getLogger(JmDNSImpl.class.getName());
-
-    public enum Operation {
-        Remove, Update, Add, RegisterServiceType, Noop
-    }
 
     /**
      * This is the multicast group, we are listening to for multicast DNS messages.
@@ -67,202 +58,6 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
     private final ConcurrentMap<String, ServiceInfo> _services;
 
     /**
-     * This hashtable holds the service types that have been registered or that have been received in an incoming datagram.<br/>
-     * Keys are instances of String which hold an all lower-case version of the fully qualified service type.<br/>
-     * Values hold the fully qualified service type.
-     */
-    private final ConcurrentMap<String, ServiceTypeEntry> _serviceTypes;
-
-    /**
-     * This is used to store type entries. The type is stored as a call variable and the map support the subtypes.
-     * <p>
-     * The key is the lowercase version as the value is the case preserved version.
-     * </p>
-     */
-    public static class ServiceTypeEntry extends AbstractMap<String, String>implements Cloneable {
-
-        private final Set<Entry<String, String>> _entrySet;
-
-        private final String _type;
-
-        private static class SubTypeEntry implements Entry<String, String>, java.io.Serializable, Cloneable {
-
-            private static final long serialVersionUID = 9188503522395855322L;
-
-            private final String _key;
-            private final String _value;
-
-            public SubTypeEntry(String subtype) {
-                super();
-                _value = (subtype != null ? subtype : "");
-                _key = _value.toLowerCase();
-            }
-
-            /**
-             * {@inheritDoc}
-             */
-            @Override
-            public String getKey() {
-                return _key;
-            }
-
-            /**
-             * {@inheritDoc}
-             */
-            @Override
-            public String getValue() {
-                return _value;
-            }
-
-            /**
-             * Replaces the value corresponding to this entry with the specified value (optional operation). This implementation simply throws <tt>UnsupportedOperationException</tt>, as this class implements an <i>immutable</i> map entry.
-             *
-             * @param value
-             *            new value to be stored in this entry
-             * @return (Does not return)
-             * @exception UnsupportedOperationException
-             *                always
-             */
-            @Override
-            public String setValue(String value) {
-                throw new UnsupportedOperationException();
-            }
-
-            /**
-             * {@inheritDoc}
-             */
-            @Override
-            public boolean equals(Object entry) {
-                if (!(entry instanceof Map.Entry)) {
-                    return false;
-                }
-                return this.getKey().equals(((Entry<?, ?>) entry).getKey()) && this.getValue().equals(((Entry<?, ?>) entry).getValue());
-            }
-
-            /**
-             * {@inheritDoc}
-             */
-            @Override
-            public int hashCode() {
-                return (_key == null ? 0 : _key.hashCode()) ^ (_value == null ? 0 : _value.hashCode());
-            }
-
-            /*
-             * (non-Javadoc)
-             * @see java.lang.Object#clone()
-             */
-            @Override
-            public SubTypeEntry clone() {
-                // Immutable object
-                return this;
-            }
-
-            /**
-             * {@inheritDoc}
-             */
-            @Override
-            public String toString() {
-                return _key + "=" + _value;
-            }
-
-        }
-
-        public ServiceTypeEntry(String type) {
-            super();
-            this._type = type;
-            this._entrySet = new HashSet<Entry<String, String>>();
-        }
-
-        /**
-         * The type associated with this entry.
-         *
-         * @return the type
-         */
-        public String getType() {
-            return _type;
-        }
-
-        /*
-         * (non-Javadoc)
-         * @see java.util.AbstractMap#entrySet()
-         */
-        @Override
-        public Set<Entry<String, String>> entrySet() {
-            return _entrySet;
-        }
-
-        /**
-         * Returns <code>true</code> if this set contains the specified element. More formally, returns <code>true</code> if and only if this set contains an element <code>e</code> such that
-         * <code>(o==null&nbsp;?&nbsp;e==null&nbsp;:&nbsp;o.equals(e))</code>.
-         *
-         * @param subtype
-         *            element whose presence in this set is to be tested
-         * @return <code>true</code> if this set contains the specified element
-         */
-        public boolean contains(String subtype) {
-            return subtype != null && this.containsKey(subtype.toLowerCase());
-        }
-
-        /**
-         * Adds the specified element to this set if it is not already present. More formally, adds the specified element <code>e</code> to this set if this set contains no element <code>e2</code> such that
-         * <code>(e==null&nbsp;?&nbsp;e2==null&nbsp;:&nbsp;e.equals(e2))</code>. If this set already contains the element, the call leaves the set unchanged and returns <code>false</code>.
-         *
-         * @param subtype
-         *            element to be added to this set
-         * @return <code>true</code> if this set did not already contain the specified element
-         */
-        public boolean add(String subtype) {
-            if (subtype == null || this.contains(subtype)) {
-                return false;
-            }
-            _entrySet.add(new SubTypeEntry(subtype));
-            return true;
-        }
-
-        /**
-         * Returns an iterator over the elements in this set. The elements are returned in no particular order (unless this set is an instance of some class that provides a guarantee).
-         *
-         * @return an iterator over the elements in this set
-         */
-        public Iterator<String> iterator() {
-            return this.keySet().iterator();
-        }
-
-        /*
-         * (non-Javadoc)
-         * @see java.util.AbstractMap#clone()
-         */
-        @Override
-        public ServiceTypeEntry clone() {
-            ServiceTypeEntry entry = new ServiceTypeEntry(this.getType());
-            for (Entry<String, String> subTypeEntry : this.entrySet()) {
-                entry.add(subTypeEntry.getValue());
-            }
-            return entry;
-        }
-
-        /*
-         * (non-Javadoc)
-         * @see java.util.AbstractMap#toString()
-         */
-        @Override
-        public String toString() {
-            final StringBuilder sb = new StringBuilder(200);
-            if (this.isEmpty()) {
-                sb.append("empty");
-            } else {
-                for (String value : this.values()) {
-                    sb.append(value);
-                    sb.append(", ");
-                }
-                sb.setLength(sb.length() - 2);
-            }
-            return sb.toString();
-        }
-
-    }
-
-    /**
      * This is the shutdown hook, we registered with the java runtime.
      */
     protected Thread _shutdown;
@@ -278,11 +73,6 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
      * Throttle count. This is used to count the overall number of probes sent by JmDNS. When the last throttle increment happened .
      */
     private int _throttle;
-
-    /**
-     * Last throttle increment.
-     */
-    private long _lastThrottleIncrement;
 
     private final ExecutorService _executor = Executors.newSingleThreadExecutor(new NamedThreadFactory("JmDNS"));
 
@@ -316,7 +106,6 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
         _answerListeners = new ConcurrentHashMap<>();
 
         _services = new ConcurrentHashMap<String, ServiceInfo>(20);
-        _serviceTypes = new ConcurrentHashMap<String, ServiceTypeEntry>(20);
 
         _localHost = HostInfo.newHostInfo(address, this, name);
         _name = (name != null ? name : _localHost.getName());
@@ -662,8 +451,6 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
         }
         info.setDns(this);
 
-        this.registerServiceType(info.getTypeWithSubtype());
-
         // bind the service to this address
         info.recoverState();
         info.setServer(_localHost.getName());
@@ -700,44 +487,6 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
             }
         }
 
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean registerServiceType(String type) {
-        boolean typeAdded = false;
-        Map<Fields, String> map = ServiceInfoImpl.decodeQualifiedNameMapForType(type);
-        String domain = map.get(Fields.Domain);
-        String protocol = map.get(Fields.Protocol);
-        String application = map.get(Fields.Application);
-        String subtype = map.get(Fields.Subtype);
-
-        final String name = (application.length() > 0 ? "_" + application + "." : "") + (protocol.length() > 0 ? "_" + protocol + "." : "") + domain + ".";
-        final String loname = name.toLowerCase();
-        logger.debug("{} registering service type: {} as: {}{}{}",
-            this.getName(),
-            type,
-            name,
-            (subtype.length() > 0 ? " subtype: " : ""),
-            (subtype.length() > 0 ? subtype : "")
-        );
-        if (!_serviceTypes.containsKey(loname) && !application.toLowerCase().equals("dns-sd") && !domain.toLowerCase().endsWith("in-addr.arpa") && !domain.toLowerCase().endsWith("ip6.arpa")) {
-            typeAdded = _serviceTypes.putIfAbsent(loname, new ServiceTypeEntry(name)) == null;
-        }
-        if (subtype.length() > 0) {
-            ServiceTypeEntry subtypes = _serviceTypes.get(loname);
-            if ((subtypes != null) && (!subtypes.contains(subtype))) {
-                synchronized (subtypes) {
-                    if (!subtypes.contains(subtype)) {
-                        typeAdded = true;
-                        subtypes.add(subtype);
-                    }
-                }
-            }
-        }
-        return typeAdded;
     }
 
     /**
@@ -1057,14 +806,6 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
             sb.append(entry.getValue());
         }
         sb.append("\n");
-        sb.append("\t---- Types ----");
-        for (final ServiceTypeEntry subtypes : _serviceTypes.values()) {
-            sb.append("\n\t\tType: ");
-            sb.append(subtypes.getType());
-            sb.append(": ");
-            sb.append(subtypes.isEmpty() ? "no subtypes" : subtypes);
-        }
-        sb.append("\n");
         sb.append("\t---- Answer Listeners ----");
         for (final Map.Entry<String, List<AnswerListener>> entry : _answerListeners.entrySet()) {
             sb.append("\n\t\tAnswer Listener: ");
@@ -1073,15 +814,6 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
             sb.append(entry.getValue());
         }
         return sb.toString();
-    }
-
-    static String toUnqualifiedName(String type, String qualifiedName) {
-        String loType = type.toLowerCase();
-        String loQualifiedName = qualifiedName.toLowerCase();
-        if (loQualifiedName.endsWith(loType) && !(loQualifiedName.equals(loType))) {
-            return qualifiedName.substring(0, qualifiedName.length() - type.length() - 1);
-        }
-        return qualifiedName;
     }
 
     public Map<String, ServiceInfo> getServices() {
@@ -1098,10 +830,6 @@ public class JmDNSImpl extends JmDNS implements DNSStatefulObject, DNSTaskStarte
 
     public void ioUnlock() {
         _ioLock.unlock();
-    }
-
-    public Map<String, ServiceTypeEntry> getServiceTypes() {
-        return _serviceTypes;
     }
 
     public MulticastSocket getSocket() {

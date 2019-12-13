@@ -49,7 +49,6 @@ public abstract class JmDNS implements Closeable {
      * <ol>
      * <li>Check the system property <code>net.mdns.interface</code></li>
      * <li>Check the JVM local host</li>
-     * <li>Use the {@link NetworkTopologyDiscovery} to find a valid network interface and IP.</li>
      * <li>In the last resort bind to the loopback address. This is non functional in most cases.</li>
      * </ol>
      * If <code>name</code> parameter is null will use the hostname. The hostname is determined by the following algorithm:
@@ -59,10 +58,6 @@ public abstract class JmDNS implements Closeable {
      * <li>If the name contains <code>'.'</code> replace them by <code>'-'</code></li>
      * <li>Add <code>.local.</code> at the end of the name.</li>
      * </ol>
-     * <p>
-     * <b>Note:</b> If you need to use a custom {@link NetworkTopologyDiscovery} it must be setup before any call to this method. This is done by setting up a {@link NetworkTopologyDiscovery.Factory.ClassDelegate} and installing it using
-     * {@link NetworkTopologyDiscovery.Factory#setClassDelegate(NetworkTopologyDiscovery.Factory.ClassDelegate)}. This must be done before creating a {@link JmDNS} or {@link JmmDNS} instance.
-     * </p>
      *
      * @param addr
      *            IP address to bind to.
@@ -101,31 +96,21 @@ public abstract class JmDNS implements Closeable {
 
     public abstract void addAnswerListener(String type, AnswerListener listener);
 
-    /**
-     * Register a service. The service is registered for access by other jmdns clients. The name of the service may be changed to make it unique.<br>
-     * Note that the given {@code ServiceInfo} is bound to this {@code JmDNS} instance, and should not be reused for any other {@linkplain #registerService(ServiceInfo)}.
-     *
-     * @param info
-     *            service info to register
-     * @exception IOException
-     *                if there is an error in the underlying protocol, such as a TCP error.
-     */
+    public abstract void startServiceResolver(String type);
+
+        /**
+         * Register a service. The service is registered for access by other jmdns clients. The name of the service may be changed to make it unique.<br>
+         * Note that the given {@code ServiceInfo} is bound to this {@code JmDNS} instance, and should not be reused for any other {@linkplain #registerService(ServiceInfo)}.
+         *
+         * @param info
+         *            service info to register
+         * @exception IOException
+         *                if there is an error in the underlying protocol, such as a TCP error.
+         */
     public abstract void registerService(ServiceInfo info) throws IOException;
 
     /**
      * Unregister all services.
      */
     public abstract void unregisterAllServices();
-
-    /**
-     * Register a service type. If this service type was not already known, all service listeners will be notified of the new service type.
-     * <p>
-     * Service types are automatically registered as they are discovered.
-     * </p>
-     *
-     * @param type
-     *            full qualified service type, such as <code>_http._tcp.local.</code>.
-     * @return <code>true</code> if the type or subtype was added, <code>false</code> if the type was already registered.
-     */
-    public abstract boolean registerServiceType(String type);
 }
