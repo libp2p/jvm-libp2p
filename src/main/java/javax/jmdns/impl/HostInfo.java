@@ -173,35 +173,8 @@ public class HostInfo implements DNSStatefulObject {
         return _address;
     }
 
-    Inet4Address getInet4Address() {
-        if (this.getInetAddress() instanceof Inet4Address) {
-            return (Inet4Address) _address;
-        }
-        return null;
-    }
-
-    Inet6Address getInet6Address() {
-        if (this.getInetAddress() instanceof Inet6Address) {
-            return (Inet6Address) _address;
-        }
-        return null;
-    }
-
     public NetworkInterface getInterface() {
         return _interfaze;
-    }
-
-    public boolean conflictWithRecord(DNSRecord.Address record) {
-        DNSRecord.Address hostAddress = this.getDNSAddressRecord(record.getRecordType(), record.isUnique(), DNSConstants.DNS_TTL);
-        if (hostAddress != null) {
-            return hostAddress.sameType(record) && hostAddress.sameName(record) && (!hostAddress.sameValue(record));
-        }
-        return false;
-    }
-
-    synchronized String incrementHostName() {
-        _name = NameRegister.Factory.getRegistry().incrementName(this.getInetAddress(), _name, NameRegister.NameType.HOST);
-        return _name;
     }
 
     boolean shouldIgnorePacket(DatagramPacket packet) {
@@ -236,58 +209,6 @@ public class HostInfo implements DNSStatefulObject {
         return result;
     }
 
-    DNSRecord.Address getDNSAddressRecord(DNSRecordType type, boolean unique, int ttl) {
-        switch (type) {
-            case TYPE_A:
-                return this.getDNS4AddressRecord(unique, ttl);
-            case TYPE_A6:
-            case TYPE_AAAA:
-                return this.getDNS6AddressRecord(unique, ttl);
-            default:
-        }
-        return null;
-    }
-
-    private DNSRecord.Address getDNS4AddressRecord(boolean unique, int ttl) {
-        if (this.getInetAddress() instanceof Inet4Address) {
-            return new DNSRecord.IPv4Address(this.getName(), DNSRecordClass.CLASS_IN, unique, ttl, this.getInetAddress());
-        }
-        return null;
-    }
-
-    private DNSRecord.Address getDNS6AddressRecord(boolean unique, int ttl) {
-        if (this.getInetAddress() instanceof Inet6Address) {
-            return new DNSRecord.IPv6Address(this.getName(), DNSRecordClass.CLASS_IN, unique, ttl, this.getInetAddress());
-        }
-        return null;
-    }
-
-    DNSRecord.Pointer getDNSReverseAddressRecord(DNSRecordType type, boolean unique, int ttl) {
-        switch (type) {
-            case TYPE_A:
-                return this.getDNS4ReverseAddressRecord(unique, ttl);
-            case TYPE_A6:
-            case TYPE_AAAA:
-                return this.getDNS6ReverseAddressRecord(unique, ttl);
-            default:
-        }
-        return null;
-    }
-
-    private DNSRecord.Pointer getDNS4ReverseAddressRecord(boolean unique, int ttl) {
-        if (this.getInetAddress() instanceof Inet4Address) {
-            return new DNSRecord.Pointer(this.getInetAddress().getHostAddress() + ".in-addr.arpa.", DNSRecordClass.CLASS_IN, unique, ttl, this.getName());
-        }
-        return null;
-    }
-
-    private DNSRecord.Pointer getDNS6ReverseAddressRecord(boolean unique, int ttl) {
-        if (this.getInetAddress() instanceof Inet6Address) {
-            return new DNSRecord.Pointer(this.getInetAddress().getHostAddress() + ".ip6.arpa.", DNSRecordClass.CLASS_IN, unique, ttl, this.getName());
-        }
-        return null;
-    }
-
     @Override
     public String toString() {
         final StringBuilder sb = new StringBuilder(1024);
@@ -301,19 +222,6 @@ public class HostInfo implements DNSStatefulObject {
         sb.append(_state);
         sb.append("]");
         return sb.toString();
-    }
-
-    public Collection<DNSRecord> answers(DNSRecordClass recordClass, boolean unique, int ttl) {
-        List<DNSRecord> list = new ArrayList<DNSRecord>();
-        DNSRecord answer = this.getDNS4AddressRecord(unique, ttl);
-        if ((answer != null) && answer.matchRecordClass(recordClass)) {
-            list.add(answer);
-        }
-        answer = this.getDNS6AddressRecord(unique, ttl);
-        if ((answer != null) && answer.matchRecordClass(recordClass)) {
-            list.add(answer);
-        }
-        return list;
     }
 
     /**
