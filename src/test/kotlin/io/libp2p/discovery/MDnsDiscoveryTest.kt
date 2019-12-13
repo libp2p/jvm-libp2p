@@ -23,6 +23,18 @@ class MDnsDiscoveryTest {
         }
     }
 
+    val otherHost = object : NullHost() {
+        override val peerId: PeerId = PeerId.fromPubKey(
+            generateEcdsaKeyPair().second
+        )
+
+        override fun listenAddresses(): List<Multiaddr> {
+            return listOf(
+                Multiaddr("/ip4/10.2.7.12/tcp/5000")
+            )
+        }
+    }
+
     @Test
     fun `start and stop discovery`() {
         val discoverer = MDnsDiscovery(host)
@@ -38,18 +50,57 @@ class MDnsDiscoveryTest {
         val discoverer = MDnsDiscovery(host)
 
         discoverer.onPeerFound {
-            discoverer.stop()
             peerInfo = it
+            println(peerInfo)
         }
 
         discoverer.start()
-        (1..20).forEach {
+        (1..15).forEach {
+            TimeUnit.SECONDS.sleep(1)
+            print('.')
+        }
+        println("Ping!")
+        discoverer.ping()
+        (1..15).forEach {
             TimeUnit.SECONDS.sleep(1)
             print('.')
         }
         println()
+        discoverer.stop()
 
         assertEquals(host.peerId, peerInfo?.peerId)
         assertEquals(host.listenAddresses().size, peerInfo?.addresses?.size)
+    }
+
+    @Test
+    fun `start discovery and listen for other`() {
+        var peerInfo: PeerInfo? = null
+        val other = MDnsDiscovery(otherHost)
+        other.start()
+
+        val discoverer = MDnsDiscovery(host)
+        discoverer.onPeerFound {
+            if (it.peerId != host.peerId) {
+                peerInfo = it
+                println(peerInfo)
+            }
+        }
+
+        discoverer.start()
+        (1..15).forEach {
+            TimeUnit.SECONDS.sleep(1)
+            print('.')
+        }
+        println("Ping!")
+        discoverer.ping()
+        (1..15).forEach {
+            TimeUnit.SECONDS.sleep(1)
+            print('.')
+        }
+        discoverer.stop()
+        other.stop()
+
+        assertEquals(otherHost.peerId, peerInfo?.peerId)
+        assertEquals(otherHost.listenAddresses().size, peerInfo?.addresses?.size)
     }
 }

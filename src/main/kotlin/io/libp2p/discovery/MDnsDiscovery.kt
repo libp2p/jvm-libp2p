@@ -17,24 +17,31 @@ import javax.jmdns.impl.constants.DNSRecordType
 typealias PeerListener = (PeerInfo) -> Unit
 
 class MDnsDiscovery(private val host: Host) {
-    private var mDns = JmDNS.create(InetAddress.getLocalHost())
+    private var mDns: JmDNS? = null
     private val listeners = mutableListOf<PeerListener>()
 
+    fun ping() {
+        mDns?.startServiceResolver(ServiceTagLocal)
+    }
+
     fun start(): CompletableFuture<Void> {
-        mDns.registerService(
+        mDns = JmDNS.create(InetAddress.getLocalHost())
+
+        mDns?.registerService(
             ipfsDiscoveryInfo()
         )
-        mDns.addAnswerListener(
+        mDns?.addAnswerListener(
             ServiceTagLocal,
             Listener(this)
         )
+
+        mDns?.startServiceResolver(ServiceTagLocal)
 
         return CompletableFuture.completedFuture(null)
     }
 
     fun stop(): CompletableFuture<Void> {
-        mDns.unregisterAllServices()
-        mDns.close()
+        mDns?.close()
 
         return CompletableFuture.completedFuture(null)
     }
