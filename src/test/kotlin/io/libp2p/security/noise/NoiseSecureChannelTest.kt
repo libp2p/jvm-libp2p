@@ -8,4 +8,4 @@ import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable
 @Tag("secure-channel")
 class NoiseSecureChannelTest : SecureChannelTest(
     ::NoiseXXSecureChannel,
-    NoiseXXSecureChannel.announce)
+        "/noise/Noise_XX_25519_ChaChaPoly_SHA256/0.1.0")
