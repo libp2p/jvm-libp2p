@@ -4,24 +4,22 @@ import io.libp2p.core.PeerId
 import io.libp2p.core.PeerInfo
 import io.libp2p.core.Stream
 import io.libp2p.core.dsl.host
-import io.libp2p.core.multiformats.Multiaddr
-import io.libp2p.protocol.Identify
 import io.libp2p.discovery.MDnsDiscovery
-import java.util.concurrent.CompletableFuture.runAsync
+import java.lang.Exception
 
 val chatHost = host {
     protocols {
-        +Identify()
-        +Chat()
+        +Chat(::messageReceived)
     }
     network {
         listen("/ip4/127.0.0.1/tcp/0")
     }
 }
 
+val knownHosts = mutableSetOf<PeerId>()
 val peers = mutableMapOf<PeerId, ChatController?>()
 
-fun main(args: Array<String>) {
+fun main() {
     chatHost.start().get()
 
     val peerFinder = MDnsDiscovery(chatHost)
@@ -48,44 +46,46 @@ fun main(args: Array<String>) {
     chatHost.stop()
 }
 
+fun messageReceived(id: PeerId, msg: String) {
+    println("${id} > ${msg}")
+    if (!peers.contains(id)) println("   ... someone new ...")
+}
+
 fun peerFound(info: PeerInfo) {
-    if (info.peerId == chatHost.peerId || peers.contains(info.peerId))
+    if (
+            info.peerId.equals(chatHost.peerId) ||
+            knownHosts.contains(info.peerId)
+    )
         return
-    if (probePeer(info)) {
-        println("Connecting to new peer ${info.peerId}")
-        peers[info.peerId] = null
 
-        val chatConnection = connectChat(info)
-        chatConnection.first.closeFuture().thenAccept {
-            println("${info.peerId} disconnected.")
-            peers.remove(info.peerId)
-        }
-        chatConnection.second.send("Hello ${info.peerId}")
-        peers[info.peerId] = chatConnection.second
+    knownHosts.add(info.peerId)
+    val chatConnection = connectChat(info)
+
+    if (chatConnection == null)
+        return
+
+    chatConnection.first.closeFuture().thenAccept {
+        println("${info.peerId} disconnected.")
+        peers.remove(info.peerId)
+        knownHosts.remove(info.peerId)
     }
+    chatConnection.second.send("Hello")
+    println("Connected to new peer ${info.peerId}")
+    peers[info.peerId] = chatConnection.second
 }
 
-fun probePeer(info: PeerInfo): Boolean {
-    val identify = Identify().dial(
-            chatHost,
-            info.peerId,
-            info.addresses[0]
-    )
-    val identifyController = identify.controller.get()
-    val remoteIdentity = identifyController.id().get()
-    identify.stream.get().close()
-
-    return remoteIdentity.protocolsList.contains(ChatProtocol.announce)
-}
-
-fun connectChat(info: PeerInfo): Pair<Stream, ChatController> {
-    val chat = Chat().dial(
-            chatHost,
-            info.peerId,
-            info.addresses[0]
-    )
-    return Pair(
-            chat.stream.get(),
-            chat.controller.get()
-    )
+fun connectChat(info: PeerInfo): Pair<Stream, ChatController>? {
+    try {
+        val chat = Chat(::messageReceived).dial(
+                chatHost,
+                info.peerId,
+                info.addresses[0]
+        )
+        return Pair(
+                chat.stream.get(),
+                chat.controller.get()
+        )
+    } catch (e: Exception) {
+        return null
+    }
 }

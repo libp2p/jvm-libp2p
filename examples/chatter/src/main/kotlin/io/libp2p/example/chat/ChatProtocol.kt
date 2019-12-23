@@ -1,5 +1,6 @@
 package io.libp2p.example.chat
 
+import io.libp2p.core.PeerId
 import io.libp2p.core.Stream
 import io.libp2p.core.multistream.StrictProtocolBinding
 import io.libp2p.etc.types.toByteBuf
@@ -13,13 +14,16 @@ interface ChatController {
     fun send(message: String)
 }
 
-class Chat : ChatBinding(ChatProtocol())
+typealias OnChatMessage = (PeerId, String) -> Unit
+class Chat(chatCallback: OnChatMessage) : ChatBinding(ChatProtocol(chatCallback))
 
 open class ChatBinding(echo: ChatProtocol) : StrictProtocolBinding<ChatController>(echo) {
     override val announce = ChatProtocol.announce
 }
 
-open class ChatProtocol : ProtocolHandler<ChatController>() {
+open class ChatProtocol(
+        private val chatCallback : OnChatMessage
+) : ProtocolHandler<ChatController>() {
     companion object {
         val announce = "/example/chat/0.1.0"
     }
@@ -29,12 +33,15 @@ open class ChatProtocol : ProtocolHandler<ChatController>() {
 
     private fun onStart(stream: Stream): CompletableFuture<ChatController> {
         val ready = CompletableFuture<Void>()
-        val handler = Chatter(ready)
+        val handler = Chatter(chatCallback, ready)
         stream.pushHandler(handler)
         return ready.thenApply { handler }
     }
 
-    open inner class Chatter(val ready: CompletableFuture<Void>) : ProtocolMessageHandler<ByteBuf>, ChatController {
+    open inner class Chatter(
+            private val chatCallback: OnChatMessage,
+            val ready: CompletableFuture<Void>
+    ) : ProtocolMessageHandler<ByteBuf>, ChatController {
         lateinit var stream: Stream
 
         override fun onActivated(stream: Stream) {
@@ -43,9 +50,8 @@ open class ChatProtocol : ProtocolHandler<ChatController>() {
         }
 
         override fun onMessage(stream: Stream, msg: ByteBuf) {
-            print(stream.remotePeerId())
-            print(" > ")
-            println(msg.toString(Charset.defaultCharset()))
+            val msgStr = msg.toString(Charset.defaultCharset())
+            chatCallback(stream.remotePeerId(), msgStr)
         }
 
         override fun send(message: String) {
