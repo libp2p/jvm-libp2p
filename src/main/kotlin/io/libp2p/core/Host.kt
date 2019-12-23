@@ -3,7 +3,6 @@ package io.libp2p.core
 import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multistream.ProtocolBinding
-import io.libp2p.network.NetworkImpl
 import java.util.concurrent.CompletableFuture
 
 /**
@@ -22,11 +21,20 @@ interface Host {
     /**
      * [Network] implementation
      */
-    val network: NetworkImpl
+    val network: Network
     /**
      * [AddressBook] implementation
      */
     val addressBook: AddressBook
+
+    /**
+     * List of all of the active listen address, across all of the active transports, with PeerId
+     * appended.
+     * Note these address will be the actual address in use, not necessarily what was requested.
+     * For example, requests to listen on a random TCP port - /ip4/addr/tcp/0 - will be returned
+     * with the actual port used.
+     */
+    fun listenAddresses(): List<Multiaddr>
 
     /**
      * List of all streams opened at the moment across all the [Connection]s
@@ -42,12 +50,12 @@ interface Host {
      * The returned future is completed when all stuff up and working or
      * has completes with exception in case of any problems during start up
      */
-    fun start(): CompletableFuture<Unit>
+    fun start(): CompletableFuture<Void>
 
     /**
      * Stops all the services of this host
      */
-    fun stop(): CompletableFuture<Unit>
+    fun stop(): CompletableFuture<Void>
 
     /**
      * Adds a handler which is notified when a new [Stream] is created

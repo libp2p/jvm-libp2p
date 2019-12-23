@@ -33,7 +33,7 @@ const val protoMul = "/mul"
 class RpcProtocol(override val announce: String = "NOP") : ProtocolBinding<OpController> {
     override val matcher = ProtocolMatcher(Mode.PREFIX, protoPrefix)
 
-    override fun initChannel(ch: P2PAbstractChannel, selectedProtocol: String): CompletableFuture<out OpController> {
+    override fun initChannel(ch: P2PChannel, selectedProtocol: String): CompletableFuture<out OpController> {
         val ret = CompletableFuture<OpController>()
         val handler = if (ch.isInitiator) {
             OpClientHandler(ch as Stream, ret)
@@ -46,7 +46,7 @@ class RpcProtocol(override val announce: String = "NOP") : ProtocolBinding<OpCon
             OpServerHandler(op)
         }
 
-        ch.nettyChannel.pipeline().addLast(handler)
+        ch.pushHandler(handler)
         return ret
     }
 }
@@ -73,7 +73,7 @@ class OpClientHandler(val stream: Stream, val activationFut: CompletableFuture<O
     }
 
     override fun calculate(a: Long, b: Long): CompletableFuture<Long> {
-        stream.nettyChannel.writeAndFlush(Unpooled.buffer().writeLong(a).writeLong(b))
+        stream.writeAndFlush(Unpooled.buffer().writeLong(a).writeLong(b))
         return resFuture
     }
     override fun channelRead0(ctx: ChannelHandlerContext, msg: ByteBuf) {
@@ -158,7 +158,7 @@ class RpcHandlerTest {
 
         run {
             val ctr = host1.newStream<OpController>(protoPrefix + protoAdd, host2.peerId, Multiaddr("/ip4/127.0.0.1/tcp/40002"))
-                .controler.get(5, TimeUnit.SECONDS)
+                .controller.get(5, TimeUnit.SECONDS)
             println("Controller created")
             val res = ctr.calculate(100, 10).get(5, TimeUnit.SECONDS)
             println("Calculated plus: $res")
@@ -179,7 +179,7 @@ class RpcHandlerTest {
 
         run {
             val ctr = host1.newStream<OpController>(protoPrefix + protoMul, host2.peerId, Multiaddr("/ip4/127.0.0.1/tcp/40002"))
-                .controler.get(5, TimeUnit.SECONDS)
+                .controller.get(5, TimeUnit.SECONDS)
             println("Controller created")
             val res = ctr.calculate(100, 10).get(5, TimeUnit.SECONDS)
             println("Calculated mul: $res")

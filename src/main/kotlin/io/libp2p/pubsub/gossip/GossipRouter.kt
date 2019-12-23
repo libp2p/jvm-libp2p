@@ -29,7 +29,7 @@ open class GossipRouter : AbstractRouter() {
             }
 
         fun getMessageIds(topic: String) =
-            history.take(gossipSize).flatten().filter { topic in it.topics }.map { it.msgId }.distinct()
+            history.takeLast(gossipSize).flatten().filter { topic in it.topics }.map { it.msgId }.distinct()
 
         fun shift() = history.add(mutableListOf())
     }

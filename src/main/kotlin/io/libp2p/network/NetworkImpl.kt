@@ -8,7 +8,6 @@ import io.libp2p.core.TransportNotSupportedException
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.transport.Transport
 import io.libp2p.etc.types.anyComplete
-import io.libp2p.etc.types.toVoidCompletableFuture
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CopyOnWriteArrayList
 
@@ -27,19 +26,23 @@ class NetworkImpl(
     }
 
     override fun close(): CompletableFuture<Unit> {
-        val futs = transports.map(Transport::close)
-        return CompletableFuture.allOf(*futs.toTypedArray())
-            .thenCompose {
-                val connCloseFuts = connections.map { it.nettyChannel.close().toVoidCompletableFuture() }
-                CompletableFuture.allOf(*connCloseFuts.toTypedArray())
-            }.thenApply { }
+        val transportsClosed = transports.map(Transport::close)
+        val connectionsClosed = connections.map(Connection::close)
+
+        val everythingThatNeedsToClose = transportsClosed.union(connectionsClosed)
+
+        return if (everythingThatNeedsToClose.isNotEmpty()) {
+            CompletableFuture.allOf(*everythingThatNeedsToClose.toTypedArray()).thenApply { }
+        } else {
+            CompletableFuture.completedFuture(Unit)
+        }
     }
 
     override fun listen(addr: Multiaddr): CompletableFuture<Unit> =
         getTransport(addr).listen(addr, createHookedConnHandler(connectionHandler))
     override fun unlisten(addr: Multiaddr): CompletableFuture<Unit> = getTransport(addr).unlisten(addr)
     override fun disconnect(conn: Connection): CompletableFuture<Unit> =
-        conn.nettyChannel.close().toVoidCompletableFuture()
+        conn.close()
 
     private fun getTransport(addr: Multiaddr) =
         transports.firstOrNull { tpt -> tpt.handles(addr) }
@@ -63,7 +66,7 @@ class NetworkImpl(
     ): CompletableFuture<Connection> {
 
         // we already have a connection for this peer, short circuit.
-        connections.find { it.secureSession.remoteId == id }
+        connections.find { it.secureSession().remoteId == id }
             ?.apply { return CompletableFuture.completedFuture(this) }
 
         // 1. check that some transport can dial at least one addr.

@@ -1,17 +1,17 @@
 package io.libp2p.pubsub
 
-import io.libp2p.core.Connection
+import io.libp2p.transport.implementation.ConnectionOverNetty
+import io.libp2p.transport.implementation.StreamOverNetty
 import io.libp2p.core.PeerId
-import io.libp2p.core.Stream
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.pubsub.RESULT_VALID
 import io.libp2p.core.pubsub.createPubsubApi
 import io.libp2p.core.security.SecureChannel
-import io.libp2p.etc.SECURE_SESSION
 import io.libp2p.etc.types.lazyVar
 import io.libp2p.etc.util.netty.nettyInitializer
 import io.libp2p.pubsub.flood.FloodRouter
+import io.libp2p.tools.NullTransport
 import io.libp2p.tools.TestChannel
 import io.netty.handler.logging.LogLevel
 import io.netty.handler.logging.LoggingHandler
@@ -54,23 +54,21 @@ class TestRouter(val name: String = "" + cnt.getAndIncrement()) {
         initiator: Boolean
     ): TestChannel {
 
-        val parentChannel = TestChannel("dummy-parent-channel", false, nettyInitializer {
-            it.attr(SECURE_SESSION).set(
-                SecureChannel.Session(
-                    PeerId.fromPubKey(keyPair.second),
-                    PeerId.fromPubKey(remoteRouter.keyPair.second),
-                    remoteRouter.keyPair.second
-                )
-            )
-        })
-        val connection = Connection(parentChannel)
+        val parentChannel = TestChannel("dummy-parent-channel", false)
+        val connection =
+            ConnectionOverNetty(parentChannel, NullTransport(), initiator)
+        connection.setSecureSession(SecureChannel.Session(
+            PeerId.fromPubKey(keyPair.second),
+            PeerId.fromPubKey(remoteRouter.keyPair.second),
+            remoteRouter.keyPair.second
+        ))
 
         return TestChannel(
             channelName,
             initiator,
             nettyInitializer { ch ->
                 wireLogs?.also { ch.pipeline().addFirst(LoggingHandler(channelName, it)) }
-                val stream1 = Stream(ch, connection)
+                val stream1 = StreamOverNetty(ch, connection)
                 router.addPeerWithDebugHandler(stream1, pubsubLogs?.let { LoggingHandler(channelName, it) })
             }
         ).also {

@@ -2,6 +2,7 @@ package io.libp2p.security.secio
 
 import io.libp2p.etc.types.toByteArray
 import io.libp2p.etc.types.toByteBuf
+import io.libp2p.security.SecureChannelError
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 import io.netty.channel.ChannelHandlerContext
@@ -31,39 +32,58 @@ class SecIoCodec(val local: SecioParams, val remote: SecioParams) : MessageToMes
     }
 
     override fun encode(ctx: ChannelHandlerContext, msg: ByteBuf, out: MutableList<Any>) {
-        val msgByteArr = msg.toByteArray()
-        val outByteArr = ByteArray(msgByteArr.size)
-        localCipher.processBytes(msgByteArr, 0, msgByteArr.size, outByteArr, 0)
+        val cipherText = processBytes(localCipher, msg.toByteArray())
+        val macArr = updateMac(local, cipherText)
 
-        local.mac.reset()
-        local.mac.update(outByteArr, 0, outByteArr.size)
-        val macArr = ByteArray(local.mac.macSize)
-        local.mac.doFinal(macArr, 0)
         out.add(
             Unpooled.wrappedBuffer(
-                Unpooled.wrappedBuffer(outByteArr),
+                Unpooled.wrappedBuffer(cipherText),
                 Unpooled.wrappedBuffer(macArr)
             )
         )
-    }
+    } // encode
 
     override fun decode(ctx: ChannelHandlerContext, msg: ByteBuf, out: MutableList<Any>) {
-        val macBytes = msg.toByteArray(from = msg.readableBytes() - remote.mac.macSize)
-        val cipherBytes = msg.toByteArray(to = msg.readableBytes() - remote.mac.macSize)
-        remote.mac.reset()
-        remote.mac.update(cipherBytes, 0, cipherBytes.size)
-        val macArr = ByteArray(remote.mac.macSize)
-        remote.mac.doFinal(macArr, 0)
-        if (!macBytes.contentEquals(macArr)) throw MacMismatch()
-        val plainBytes = ByteArray(cipherBytes.size)
-        remoteCipher.processBytes(cipherBytes, 0, cipherBytes.size, plainBytes, 0)
-        out.add(plainBytes.toByteBuf())
-    }
+        val (cipherBytes, macBytes) = textAndMac(msg)
+
+        val macArr = updateMac(remote, cipherBytes)
+
+        if (!macBytes.contentEquals(macArr))
+            throw MacMismatch()
+
+        val clearText = processBytes(remoteCipher, cipherBytes)
+        out.add(clearText.toByteBuf())
+    } // decode
 
     override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
         log.error(cause.message)
-        if (cause is SecioError) {
+        if (cause is SecureChannelError) {
             ctx.channel().close()
         }
-    }
+    } // exceptionCaught
+
+    private fun textAndMac(msg: ByteBuf): Pair<ByteArray, ByteArray> {
+        val macBytes = msg.toByteArray(from = msg.readableBytes() - remote.mac.macSize)
+        val cipherBytes = msg.toByteArray(to = msg.readableBytes() - remote.mac.macSize)
+
+        return Pair(cipherBytes, macBytes)
+    } // textAndMac
+
+    private fun processBytes(cipher: StreamCipher, bytesIn: ByteArray): ByteArray {
+        val bytesOut = ByteArray(bytesIn.size)
+        cipher.processBytes(bytesIn, 0, bytesIn.size, bytesOut, 0)
+        return bytesOut
+    } // processBytes
+
+    private fun updateMac(secioParams: SecioParams, bytes: ByteArray): ByteArray {
+        with(secioParams.mac) {
+            reset()
+            update(bytes, 0, bytes.size)
+
+            val macArr = ByteArray(macSize)
+            doFinal(macArr, 0)
+
+            return macArr
+        } // with
+    } // updateMac
 }

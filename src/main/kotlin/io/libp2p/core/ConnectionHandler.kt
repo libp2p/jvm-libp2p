@@ -3,7 +3,7 @@ package io.libp2p.core
 import io.libp2p.etc.BroadcastConnectionHandler
 
 /**
- * The same as [P2PAbstractHandler] with the [Connection] specialized [P2PAbstractChannel]
+ * The same as [P2PChannelHandler] with the [Connection] specialized [P2PChannel]
  */
 interface ConnectionHandler {
 
@@ -21,7 +21,7 @@ interface ConnectionHandler {
             BroadcastConnectionHandler().also { it += handlers }
 
         fun createStreamHandlerInitializer(streamHandler: StreamHandler<*>) =
-            create { it.muxerSession.inboundStreamHandler = streamHandler }
+            create { it.muxerSession().inboundStreamHandler = streamHandler }
     }
 
     interface Broadcast : ConnectionHandler, MutableList<ConnectionHandler>

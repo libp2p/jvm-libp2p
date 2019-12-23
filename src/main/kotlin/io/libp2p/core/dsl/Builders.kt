@@ -3,6 +3,7 @@ package io.libp2p.core.dsl
 import identify.pb.IdentifyOuterClass
 import io.libp2p.core.AddressBook
 import io.libp2p.core.ConnectionHandler
+import io.libp2p.core.Host
 import io.libp2p.core.StreamHandler
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.PrivKey
@@ -18,26 +19,36 @@ import io.libp2p.etc.types.lazyVar
 import io.libp2p.etc.types.toProtobuf
 import io.libp2p.host.HostImpl
 import io.libp2p.host.MemoryAddressBook
+import io.libp2p.mux.mplex.MplexStreamMuxer
 import io.libp2p.network.NetworkImpl
 import io.libp2p.protocol.IdentifyBinding
+import io.libp2p.security.secio.SecIoSecureChannel
 import io.libp2p.transport.ConnectionUpgrader
+import io.libp2p.transport.tcp.TcpTransport
 import io.netty.channel.ChannelHandler
 import io.netty.handler.logging.LogLevel
 import io.netty.handler.logging.LoggingHandler
 
 typealias TransportCtor = (ConnectionUpgrader) -> Transport
-typealias StreamMuxerCtor = () -> StreamMuxer
 typealias SecureChannelCtor = (PrivKey) -> SecureChannel
+typealias StreamMuxerCtor = () -> StreamMuxer
 typealias ProtocolCtor = () -> ProtocolBinding<*>
+typealias IdentityFactory = () -> PrivKey
 
 class HostConfigurationException(message: String) : RuntimeException(message)
 
 /**
  * Starts a fluent builder to construct a new Host.
  */
-fun host(fn: Builder.() -> Unit) = Builder().apply(fn).build()
+fun host(fn: Builder.() -> Unit) = Builder().apply(fn).build(Builder.Defaults.Standard)
+fun host(defMode: Builder.Defaults, fn: Builder.() -> Unit) = Builder().apply(fn).build(defMode)
 
 open class Builder {
+    enum class Defaults {
+        None,
+        Standard
+    }
+
     protected open val identity = IdentityBuilder()
     protected open val secureChannels = SecureChannelsBuilder()
     protected open val muxers = MuxersBuilder()
@@ -102,12 +113,22 @@ open class Builder {
     /**
      * Constructs the Host with the provided parameters.
      */
-    fun build(): HostImpl {
-        if (secureChannels.values.isEmpty()) throw HostConfigurationException("at least one secure channel is required")
-        if (muxers.values.isEmpty()) throw HostConfigurationException("at least one muxer is required")
-        if (transports.values.isEmpty()) throw HostConfigurationException("at least one transport is required")
+    fun build(def: Defaults): Host {
+        if (def == Defaults.None) {
+            if (identity.factory == null) throw IllegalStateException("No identity builder")
 
-        val privKey = identity.factory()
+            if (transports.values.isEmpty()) throw HostConfigurationException("at least one transport is required")
+            if (secureChannels.values.isEmpty()) throw HostConfigurationException("at least one secure channel is required")
+            if (muxers.values.isEmpty()) throw HostConfigurationException("at least one muxer is required")
+        }
+        if (def == Defaults.Standard) {
+            if (identity.factory == null) identity.random()
+            if (transports.values.isEmpty()) transports { add(::TcpTransport) }
+            if (secureChannels.values.isEmpty()) secureChannels { add(::SecIoSecureChannel) }
+            if (muxers.values.isEmpty()) muxers { add(::MplexStreamMuxer) }
+        }
+
+        val privKey = identity.factory!!()
 
         val secureChannels = secureChannels.values.map { it(privKey) }
         val muxers = muxers.values.map { it() }
@@ -167,7 +188,7 @@ class NetworkConfigBuilder {
 }
 
 class IdentityBuilder {
-    var factory: () -> PrivKey = { throw IllegalStateException("No identity builder") }
+    var factory: IdentityFactory? = null
 
     fun random() = random(KEY_TYPE.ECDSA)
     fun random(keyType: KEY_TYPE): IdentityBuilder = apply { factory = { generateKeyPair(keyType).first } }

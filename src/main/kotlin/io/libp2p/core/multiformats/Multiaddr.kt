@@ -1,5 +1,6 @@
 package io.libp2p.core.multiformats
 
+import io.libp2p.core.PeerId
 import io.libp2p.etc.types.readUvarint
 import io.libp2p.etc.types.toByteArray
 import io.libp2p.etc.types.toByteBuf
@@ -20,7 +21,6 @@ import io.netty.buffer.Unpooled
  * to this protocol rule
  */
 class Multiaddr(val components: List<Pair<Protocol, ByteArray>>) {
-
     /**
      * Creates instance from the string representation
      */
@@ -35,6 +35,12 @@ class Multiaddr(val components: List<Pair<Protocol, ByteArray>>) {
      */
     constructor(bytes: ByteArray) : this(parseBytes(bytes.toByteBuf()))
 
+    constructor(parentAddr: Multiaddr, childAddr: Multiaddr) :
+            this(concatProtocols(parentAddr, childAddr))
+
+    constructor(parentAddr: Multiaddr, peerId: PeerId) :
+            this(concatPeerId(parentAddr, peerId))
+
     /**
      * Returns only components matching any of supplied protocols
      */
@@ -44,6 +50,12 @@ class Multiaddr(val components: List<Pair<Protocol, ByteArray>>) {
      * Returns the first found protocol value. [null] if the protocol not found
      */
     fun getComponent(proto: Protocol): ByteArray? = filterComponents(proto).firstOrNull()?.second
+
+    /**
+     * Queries the address to confirm if it contains the given protocol
+     */
+    fun has(proto: Protocol): Boolean = getComponent(proto) != null
+    fun hasAny(vararg protos: Protocol) = protos.any { has(it) }
 
     /**
      * Returns [components] in a human readable form where each protocol value
@@ -78,6 +90,46 @@ class Multiaddr(val components: List<Pair<Protocol, ByteArray>>) {
      */
     fun getBytes(): ByteArray = writeBytes(Unpooled.buffer()).toByteArray()
 
+    fun toPeerIdAndAddr(): Pair<PeerId, Multiaddr> {
+        if (!has(Protocol.IPFS))
+            throw IllegalArgumentException("Multiaddr has no peer id")
+
+        return Pair(
+            PeerId.fromBase58(getStringComponent(Protocol.IPFS)!!),
+            Multiaddr(components.subList(0, components.lastIndex))
+        )
+    }
+
+    internal fun split(pred: (Protocol) -> Boolean): List<Multiaddr> {
+        val addresses = mutableListOf<Multiaddr>()
+        split(
+            addresses,
+            components,
+            pred
+        )
+        return addresses
+    }
+
+    private fun split(
+        accumulated: MutableList<Multiaddr>,
+        remainingComponents: List<Pair<Protocol, ByteArray>>,
+        pred: (Protocol) -> Boolean
+    ) {
+        val splitIndex = remainingComponents.indexOfLast { pred(it.first) }
+
+        if (splitIndex > 0) {
+            accumulated.add(0, Multiaddr(remainingComponents.subList(splitIndex, remainingComponents.size)))
+
+            split(
+                accumulated,
+                remainingComponents.subList(0, splitIndex),
+                pred
+            )
+        } else {
+            accumulated.add(0, Multiaddr(remainingComponents))
+        }
+    }
+
     /**
      * Returns the string representation of this multiaddress
      * Note that `Multiaddress(strAddr).toString` is not always equal to `strAddr`
@@ -98,6 +150,11 @@ class Multiaddr(val components: List<Pair<Protocol, ByteArray>>) {
     }
 
     companion object {
+        @JvmStatic
+        fun fromString(addr: String): Multiaddr { // helper method for Java access
+            return Multiaddr(addr)
+        }
+
         private fun parseString(addr_: String): List<Pair<Protocol, ByteArray>> {
             val ret: MutableList<Pair<Protocol, ByteArray>> = mutableListOf()
 
@@ -140,6 +197,18 @@ class Multiaddr(val components: List<Pair<Protocol, ByteArray>>) {
                 ret.add(protocol to protocol.readAddressBytes(buf))
             }
             return ret
+        }
+
+        private fun concatProtocols(parentAddr: Multiaddr, childAddr: Multiaddr): List<Pair<Protocol, ByteArray>> {
+            return parentAddr.components + childAddr.components
+        }
+
+        private fun concatPeerId(addr: Multiaddr, peerId: PeerId): List<Pair<Protocol, ByteArray>> {
+            if (addr.has(Protocol.IPFS))
+                throw IllegalArgumentException("Multiaddr already has peer id")
+            val protocols = addr.components.toMutableList()
+            protocols.add(Pair(Protocol.IPFS, peerId.bytes))
+            return protocols
         }
     }
 }

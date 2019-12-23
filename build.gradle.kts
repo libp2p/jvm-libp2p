@@ -12,7 +12,7 @@ import java.nio.file.Paths
 // ./gradlew bintrayUpload -PbintrayUser=<user> -PbintrayApiKey=<api-key>
 
 group = "io.libp2p"
-version = "0.2.0-RELEASE"
+version = "0.3.0-RELEASE"
 description = "a minimal implementation of libp2p for the jvm"
 
 plugins {
@@ -23,6 +23,7 @@ plugins {
     id("com.google.protobuf") version "0.8.7"
     `build-scan`
 
+    `maven`
     `maven-publish`
     id("com.jfrog.bintray") version "1.8.1"
     id("org.jetbrains.dokka") version "0.9.18"
@@ -40,9 +41,9 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.0-M1")
     compile("io.netty:netty-all:4.1.36.Final")
     compile("com.google.guava:guava:27.1-jre")
-    compile("org.bouncycastle:bcprov-jdk15on:1.61")
-    compile("org.bouncycastle:bcpkix-jdk15on:1.61")
-    compile("com.google.protobuf:protobuf-java:3.6.1")
+    compile("org.bouncycastle:bcprov-jdk15on:1.62")
+    compile("org.bouncycastle:bcpkix-jdk15on:1.62")
+    compile("com.google.protobuf:protobuf-java:3.11.0")
     compile("commons-codec:commons-codec:1.13")
 
     compile("org.apache.logging.log4j:log4j-api:${log4j2Version}")
@@ -75,9 +76,6 @@ protobuf {
         }
     }
 }
-
-
-
 
 tasks.withType<KotlinCompile> {
     kotlinOptions.jvmTarget = "1.8"
@@ -112,17 +110,29 @@ fun findOnPath(executable: String): Boolean {
 }
 val goOnPath = findOnPath("go")
 val nodeOnPath = findOnPath("node")
+val rustOnPath = findOnPath("cargo")
 
-val testResourceDir = sourceSets.test.get().resources.sourceDirectories.singleFile
-val goPingServer = File(testResourceDir, "go/ping-server")
-val goPingClient = File(testResourceDir, "go/ping-client")
-val jsPinger = File(testResourceDir, "js/pinger")
+val externalsDir = File(sourceSets.test.get().resources.sourceDirectories.singleFile, "../external")
+val goPingServer = File(externalsDir, "go/ping-server")
+val goPingClient = File(externalsDir, "go/ping-client")
+val jsPinger = File(externalsDir, "js/pinger")
+val rustPingServer = File(externalsDir, "rust/ping-server")
+val rustPingClient = File(externalsDir, "rust/ping-client")
 
 val goTargets = listOf(goPingServer, goPingClient).map { target ->
     val name = "go-build-${target.name}"
     task(name, Exec::class) {
         workingDir = target
         commandLine = "go build".split(" ")
+    }
+    name
+}
+
+val rustTargets = listOf(rustPingServer, rustPingClient).map { target ->
+    val name = "rust-build-${target.name}"
+    task(name, Exec::class) {
+        workingDir = target
+        commandLine = "cargo build".split(" ")
     }
     name
 }
@@ -139,6 +149,7 @@ task("interopTest", Test::class) {
     val dependencies = ArrayList<String>()
     if (goOnPath) dependencies.addAll(goTargets)
     if (nodeOnPath) dependencies.add("npm-install-pinger")
+    if (rustOnPath) dependencies.addAll(rustTargets)
     dependsOn(dependencies)
 
     useJUnitPlatform {
@@ -154,6 +165,9 @@ task("interopTest", Test::class) {
     environment("ENABLE_GO_INTEROP", goOnPath)
     environment("GO_PING_SERVER", goPingServer.toString())
     environment("GO_PING_CLIENT", goPingClient.toString())
+    environment("ENABLE_RUST_INTEROP", rustOnPath)
+    environment("RUST_PING_SERVER", rustPingServer.toString())
+    environment("RUST_PING_CLIENT", rustPingClient.toString())
 }
 // End Interop Tests
 

@@ -1,15 +1,14 @@
 package io.libp2p.mux
 
 import io.libp2p.core.Stream
+import io.libp2p.transport.implementation.StreamOverNetty
 import io.libp2p.core.StreamHandler
 import io.libp2p.core.StreamPromise
 import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.etc.CONNECTION
-import io.libp2p.etc.MUXER_SESSION
 import io.libp2p.etc.STREAM
-import io.libp2p.etc.events.MuxSessionInitialized
 import io.libp2p.etc.types.forward
-import io.libp2p.etc.util.netty.mux.AbtractMuxHandler
+import io.libp2p.etc.util.netty.mux.AbstractMuxHandler
 import io.libp2p.etc.util.netty.mux.MuxChannel
 import io.libp2p.etc.util.netty.mux.MuxId
 import io.netty.buffer.ByteBuf
@@ -17,18 +16,18 @@ import io.netty.channel.ChannelHandlerContext
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicLong
 
-class MuxHandler() : AbtractMuxHandler<ByteBuf>(), StreamMuxer.Session {
-
+class MuxHandler(
+    private val ready: CompletableFuture<StreamMuxer.Session>?
+) : AbstractMuxHandler<ByteBuf>(), StreamMuxer.Session {
     private val idGenerator = AtomicLong(0xF)
 
-    constructor(streamHandler: StreamHandler<*>) : this() {
+    constructor(streamHandler: StreamHandler<*>) : this(null) {
         this.inboundStreamHandler = streamHandler
     }
 
     override fun handlerAdded(ctx: ChannelHandlerContext) {
         super.handlerAdded(ctx)
-        ctx.channel().attr(MUXER_SESSION).set(this)
-        ctx.fireUserEventTriggered(MuxSessionInitialized(this))
+        ready?.complete(this)
     }
 
     override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
@@ -75,8 +74,12 @@ class MuxHandler() : AbtractMuxHandler<ByteBuf>(), StreamMuxer.Session {
             inboundInitializer = { inboundStreamHandler!!.handleStream(createStream(it)) }
         }
 
-    private fun createStream(channel: MuxChannel<ByteBuf>) =
-        Stream(channel, ctx!!.channel().attr(CONNECTION).get()).also { channel.attr(STREAM).set(it) }
+    private fun createStream(channel: MuxChannel<ByteBuf>): Stream {
+        val connection = ctx!!.channel().attr(CONNECTION).get()
+        val stream = StreamOverNetty(channel, connection)
+        channel.attr(STREAM).set(stream)
+        return stream
+    }
 
     override fun <T> createStream(streamHandler: StreamHandler<T>): StreamPromise<T> {
         val controller = CompletableFuture<T>()

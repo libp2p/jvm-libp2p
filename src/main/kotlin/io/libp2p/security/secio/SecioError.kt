@@ -1,17 +1,10 @@
 package io.libp2p.security.secio
 
-/**
- * Created by Anton Nashatyrev on 14.06.2019.
- */
-open class SecioError : Exception()
+import io.libp2p.security.SecureHandshakeError
 
-open class SecioHandshakeError : SecioError()
+class NoCommonAlgos : SecureHandshakeError()
+class InvalidSignature : SecureHandshakeError()
+class InvalidNegotiationState : SecureHandshakeError()
+class SelfConnecting : SecureHandshakeError()
 
-class NoCommonAlgos : SecioHandshakeError()
-class InvalidRemotePubKey : SecioHandshakeError()
-class InvalidSignature : SecioHandshakeError()
-class InvalidNegotiationState : SecioHandshakeError()
-class InvalidInitialPacket : SecioHandshakeError()
-class SelfConnecting : SecioHandshakeError()
-
-class MacMismatch : SecioError()
+class MacMismatch : SecureHandshakeError()

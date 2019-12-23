@@ -1,6 +1,6 @@
 package io.libp2p.multistream
 
-import io.libp2p.core.P2PAbstractChannel
+import io.libp2p.core.P2PChannel
 import io.libp2p.core.multistream.Multistream
 import io.libp2p.core.multistream.ProtocolBinding
 import java.util.concurrent.CompletableFuture
@@ -12,9 +12,9 @@ class MultistreamImpl<TController>(initList: List<ProtocolBinding<TController>> 
     override val bindings: MutableList<ProtocolBinding<TController>> =
         CopyOnWriteArrayList(initList)
 
-    override fun initChannel(ch: P2PAbstractChannel): CompletableFuture<TController> {
-        return with(ch.nettyChannel) {
-            pipeline().addLast(
+    override fun initChannel(ch: P2PChannel): CompletableFuture<TController> {
+        return with(ch) {
+            pushHandler(
                 if (ch.isInitiator) {
                     Negotiator.createRequesterInitializer(*bindings.map { it.announce }.toTypedArray())
                 } else {
@@ -22,7 +22,7 @@ class MultistreamImpl<TController>(initList: List<ProtocolBinding<TController>> 
                 }
             )
             val protocolSelect = ProtocolSelect(bindings)
-            pipeline().addLast(protocolSelect)
+            pushHandler(protocolSelect)
             protocolSelect.selectedFuture
         }
     }
