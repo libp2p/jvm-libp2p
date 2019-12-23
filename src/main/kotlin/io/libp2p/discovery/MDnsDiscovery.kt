@@ -22,7 +22,8 @@ class MDnsDiscovery(
     private val serviceTag: String = ServiceTagLocal,
     private val queryInterval: Int = QueryInterval
 ) : Discoverer {
-    private var mDns = JmDNS.create(InetAddress.getLocalHost())
+    private val localhost = InetAddress.getLocalHost()
+    private var mDns = JmDNS.create(localhost)
     private val listeners = mutableListOf<PeerListener>()
 
     override fun start(): CompletableFuture<Void> {
@@ -73,24 +74,17 @@ class MDnsDiscovery(
         return Integer.parseInt(str)
     }
 
-    private fun ip4Addresses(): List<Inet4Address> {
-        return host.listenAddresses().map {
-            it.getComponent(Protocol.IP4)
-        }.filter {
-            it != null
-        }.map {
-            InetAddress.getByAddress(InetAddress.getLocalHost().hostName, it)
-        }.filterIsInstance(Inet4Address::class.java)
-    }
+    private fun ip4Addresses() = ipAddresses(Protocol.IP4, Inet4Address::class.java)
+    private fun ip6Addresses() = ipAddresses(Protocol.IP6, Inet6Address::class.java)
 
-    private fun ip6Addresses(): List<Inet6Address> {
+    private fun <R> ipAddresses(protocol: Protocol, klass: Class<R>): List<R> {
         return host.listenAddresses().map {
-            it.getComponent(Protocol.IP6)
+            it.getComponent(protocol)
         }.filter {
             it != null
         }.map {
-            InetAddress.getByAddress(InetAddress.getLocalHost().hostName, it)
-        }.filterIsInstance(Inet6Address::class.java)
+            InetAddress.getByAddress(localhost.hostName, it)
+        }.filterIsInstance(klass)
     }
 
     companion object {
