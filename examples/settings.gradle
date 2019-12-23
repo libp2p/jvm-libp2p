@@ -1,3 +1,4 @@
 include ':pinger'
+include ':chatter'
 
 rootProject.name = 'jvm-libp2p-examples'
