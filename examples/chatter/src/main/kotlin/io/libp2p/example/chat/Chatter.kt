@@ -16,11 +16,17 @@ val chatHost = host {
     }
 }
 
-val knownHosts = mutableSetOf<PeerId>()
-val peers = mutableMapOf<PeerId, ChatController?>()
+lateinit var currentAlias: String
+val knownNodes = mutableSetOf<PeerId>()
+data class Friend(
+    var name: String,
+    val controller: ChatController
+)
+val peers = mutableMapOf<PeerId, Friend>()
 
 fun main() {
     chatHost.start().get()
+    currentAlias = chatHost.peerId.toBase58()
 
     val peerFinder = MDnsDiscovery(chatHost)
     peerFinder.onPeerFound { peerFound(it) }
@@ -32,46 +38,68 @@ fun main() {
     println()
     println("This node is ${chatHost.peerId}")
     println()
+    println("Enter 'bye' to quit, enter 'alias <name>' to set chat name")
+    println()
 
     var message: String?
     do {
         print(">> ")
         message = readLine()
 
-        if (message != null)
-            peers.values.filterNotNull().forEach { it.send(message) }
-    } while (!message.equals("bye"))
+        if (message == null)
+            continue
+
+        peers.values.forEach { it.controller.send(message) }
+
+        if (message.startsWith("alias "))
+            currentAlias = message.substring(6).trim()
+    } while ("bye" != message?.trim())
 
     peerFinder.stop()
     chatHost.stop()
 }
 
 fun messageReceived(id: PeerId, msg: String) {
-    println("${id} > ${msg}")
-    if (!peers.contains(id)) println("   ... someone new ...")
+    if (msg == "/who") {
+        peers[id]?.controller?.send("alias $currentAlias")
+        return
+    }
+    if (msg.startsWith("alias ")) {
+        val friend = peers[id] ?: return
+        val previousAlias = friend.name
+        val newAlias = msg.substring(6).trim()
+        if (previousAlias != newAlias) {
+            friend.name = newAlias
+            println("$previousAlias is now $newAlias")
+        }
+        return
+    }
+
+    val alias = peers[id]?.name ?: id.toBase58()
+    println("$alias > $msg")
 }
 
 fun peerFound(info: PeerInfo) {
     if (
-            info.peerId.equals(chatHost.peerId) ||
-            knownHosts.contains(info.peerId)
+            info.peerId == chatHost.peerId ||
+            knownNodes.contains(info.peerId)
     )
         return
 
-    knownHosts.add(info.peerId)
-    val chatConnection = connectChat(info)
+    knownNodes.add(info.peerId)
 
-    if (chatConnection == null)
-        return
-
+    val chatConnection = connectChat(info) ?: return
     chatConnection.first.closeFuture().thenAccept {
-        println("${info.peerId} disconnected.")
+        println("${peers[info.peerId]?.name} disconnected.")
         peers.remove(info.peerId)
-        knownHosts.remove(info.peerId)
+        knownNodes.remove(info.peerId)
     }
-    chatConnection.second.send("Hello")
     println("Connected to new peer ${info.peerId}")
-    peers[info.peerId] = chatConnection.second
+    chatConnection.second.send("/who")
+    peers[info.peerId] = Friend(
+            info.peerId.toBase58(),
+            chatConnection.second
+    )
 }
 
 fun connectChat(info: PeerInfo): Pair<Stream, ChatController>? {
