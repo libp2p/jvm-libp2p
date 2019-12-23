@@ -1,1 +1,3 @@
+include ':pinger'
+
 rootProject.name = 'jvm-libp2p-examples'
