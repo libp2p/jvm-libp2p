@@ -27,7 +27,7 @@ class MainActivity : AppCompatActivity() {
         sendButton.setOnClickListener { sendText() }
 
         val wifi = getSystemService(WIFI_SERVICE) as WifiManager
-        multicastLock = wifi.createMulticastLock("multicastLock")
+        multicastLock = wifi.createMulticastLock("libp2p")
         multicastLock?.acquire()
 
         runAsync {
@@ -37,18 +37,13 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    override fun onDestroy() {
-        multicastLock?.release()
-        multicastLock = null
-        super.onDestroy()
-    }
-
     private fun sendText() {
         val msg = line.text.toString().trim()
         if (msg.isEmpty())
             return
 
         // send message here
+        chatNode.send(msg)
 
         chatMessage(msg)
 
@@ -56,7 +51,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun chatMessage(msg: String) {
-        chatWindow.append(msg)
-        chatWindow.append("\n")
+        runOnUiThread {
+            chatWindow.append(msg)
+            chatWindow.append("\n")
+        }
     }
 }
