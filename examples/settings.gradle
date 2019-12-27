@@ -1,5 +1,6 @@
 include ':pinger'
 include ':chatter'
+include ':cli-chatter'
 include ':android-chatter'
 
 rootProject.name = 'jvm-libp2p-examples'
