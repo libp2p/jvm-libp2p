@@ -7,7 +7,7 @@ fun main() {
     println("Libp2p Chatter!")
     println("===============")
     println()
-    println("This node is ${node.peerId}")
+    println("This node is ${node.peerId}, listening on ${node.address}")
     println()
     println("Enter 'bye' to quit, enter 'alias <name>' to set chat name")
     println()
