@@ -1,4 +1,4 @@
-package io.libp2p.example.chatter
+package io.libp2p.example.chat
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
