@@ -122,7 +122,7 @@ class ChatNode(private val printMsg: OnMessage) {
             val interfaces = NetworkInterface.getNetworkInterfaces().toList()
             val addresses = interfaces.flatMap { it.inetAddresses.toList() }
                 .filterIsInstance<Inet4Address>()
-                .filter { it.isSiteLocalAddress() }
+                .filter { it.isSiteLocalAddress }
             val addressStrings = addresses.map { it.hostAddress }.sorted()
             return if (addressStrings.isNotEmpty())
                 addressStrings[0]
