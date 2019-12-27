@@ -1,12 +1,16 @@
 package io.libp2p.example.chat
 
+import com.sun.org.apache.xpath.internal.operations.Mult
 import io.libp2p.core.Discoverer
 import io.libp2p.core.PeerId
 import io.libp2p.core.PeerInfo
 import io.libp2p.core.Stream
 import io.libp2p.core.dsl.host
+import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.discovery.MDnsDiscovery
 import java.lang.Exception
+import java.net.Inet4Address
+import java.net.NetworkInterface
 
 typealias OnMessage = (String) -> Unit
 
@@ -25,11 +29,13 @@ class ChatNode(private val printMsg: OnMessage) {
             +Chat(::messageReceived)
         }
         network {
-            listen("/ip4/127.0.0.1/tcp/0")
+            listen("/ip4/${address}/tcp/0")
         }
     }
 
     val peerId = chatHost.peerId
+    val address: String
+        get() { return privateNetwork() }
 
     init {
         chatHost.start().get()
@@ -110,4 +116,18 @@ class ChatNode(private val printMsg: OnMessage) {
             return null
         }
     } // connectChat
+
+    companion object {
+        private fun privateNetwork(): String {
+            val interfaces = NetworkInterface.getNetworkInterfaces().toList()
+            val addresses = interfaces.flatMap { it.inetAddresses.toList() }
+                .filterIsInstance<Inet4Address>()
+                .filter { it.isSiteLocalAddress() }
+            val addressStrings = addresses.map { it.hostAddress }.sorted()
+            return if (addressStrings.isNotEmpty())
+                addressStrings[0]
+            else
+                "127.0.0.1"
+        }
+    }
 } // class ChatNode
