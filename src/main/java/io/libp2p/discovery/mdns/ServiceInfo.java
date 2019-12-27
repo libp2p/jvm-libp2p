@@ -78,8 +78,10 @@ public abstract class ServiceInfo implements Cloneable {
             final List<Inet4Address> ip4Addresses,
             final List<Inet6Address> ip6Addresses) {
         ServiceInfoImpl si = new ServiceInfoImpl(type, name, "", port, 0, 0, text);
-        ip4Addresses.forEach(si::addAddress);
-        ip6Addresses.forEach(si::addAddress);
+        for (Inet4Address a : ip4Addresses)
+            si.addAddress(a);
+        for (Inet6Address a : ip6Addresses)
+            si.addAddress(a);
         return si;
     }
 
