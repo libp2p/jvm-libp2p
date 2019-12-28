@@ -10,6 +10,7 @@ import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.discovery.MDnsDiscovery
 import java.lang.Exception
 import java.net.Inet4Address
+import java.net.InetAddress
 import java.net.NetworkInterface
 
 typealias OnMessage = (String) -> Unit
@@ -24,6 +25,7 @@ class ChatNode(private val printMsg: OnMessage) {
     private val knownNodes = mutableSetOf<PeerId>()
     private val peerFinder: Discoverer
     private val peers = mutableMapOf<PeerId, Friend>()
+    private val privateAddress: InetAddress = privateNetworkAddress()
     private val chatHost = host {
         protocols {
             +Chat(::messageReceived)
@@ -35,13 +37,13 @@ class ChatNode(private val printMsg: OnMessage) {
 
     val peerId = chatHost.peerId
     val address: String
-        get() { return privateNetwork() }
+        get() { return privateAddress.hostAddress }
 
     init {
         chatHost.start().get()
         currentAlias = chatHost.peerId.toBase58()
 
-        peerFinder = MDnsDiscovery(chatHost)
+        peerFinder = MDnsDiscovery(chatHost, address = privateAddress)
         peerFinder.onPeerFound { peerFound(it) }
         peerFinder.start()
     } // init
@@ -118,16 +120,16 @@ class ChatNode(private val printMsg: OnMessage) {
     } // connectChat
 
     companion object {
-        private fun privateNetwork(): String {
+        private fun privateNetworkAddress(): InetAddress {
             val interfaces = NetworkInterface.getNetworkInterfaces().toList()
             val addresses = interfaces.flatMap { it.inetAddresses.toList() }
                 .filterIsInstance<Inet4Address>()
                 .filter { it.isSiteLocalAddress }
-            val addressStrings = addresses.map { it.hostAddress }.sorted()
-            return if (addressStrings.isNotEmpty())
-                addressStrings[0]
+                .sortedBy { it.hostAddress }
+            return if (addresses.isNotEmpty())
+                addresses[0]
             else
-                "127.0.0.1"
+                InetAddress.getLoopbackAddress()
         }
     }
 } // class ChatNode
