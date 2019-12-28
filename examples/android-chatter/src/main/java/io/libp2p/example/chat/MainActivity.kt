@@ -17,7 +17,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var line: EditText
     private lateinit var sendButton: Button
     private lateinit var chatNode: ChatNode
-    private var multicastLock: WifiManager.MulticastLock? = null
+    private lateinit var multicastLock: WifiManager.MulticastLock
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -30,16 +30,21 @@ class MainActivity : AppCompatActivity() {
 
         sendButton.setOnClickListener { sendText() }
 
-        val wifi = getSystemService(WIFI_SERVICE) as WifiManager
-        multicastLock = wifi.createMulticastLock("libp2p")
-        multicastLock?.acquire()
-
         runAsync {
+            acquireMulticastLock()
+
             chatNode = ChatNode(::chatMessage)
             chatMessage("\nLibp2p Chatter!\n=============\n")
             chatMessage("This node is ${chatNode.peerId}, listening on ${chatNode.address}\n")
         }
     }
+
+    override fun onDestroy() {
+        super.onDestroy()
+
+        releaseMulticastLock()
+        chatNode.stop()
+    } // onDestroy
 
     private fun sendText() {
         val msg = line.text.toString().trim()
@@ -49,10 +54,10 @@ class MainActivity : AppCompatActivity() {
         // send message here
         chatNode.send(msg)
 
-        chatMessage(msg)
+        chatMessage("You > " + msg)
 
         line.text.clear()
-    }
+    } // sendText
 
     private fun chatMessage(msg: String) {
         runOnUiThread {
@@ -60,5 +65,15 @@ class MainActivity : AppCompatActivity() {
             chatWindow.append("\n")
             chatScroller.fullScroll(View.FOCUS_DOWN)
         }
+    } // chatMessage
+
+    private fun acquireMulticastLock() {
+        val wifi = getSystemService(WIFI_SERVICE) as WifiManager
+        multicastLock = wifi.createMulticastLock("libp2p-chatter")
+        multicastLock.acquire()
+    }
+
+    private fun releaseMulticastLock() {
+       multicastLock.release()
     }
 }
