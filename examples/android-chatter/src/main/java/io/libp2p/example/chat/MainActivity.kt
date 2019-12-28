@@ -2,14 +2,17 @@ package io.libp2p.example.chat
 
 import android.net.wifi.WifiManager
 import android.os.Bundle
+import android.view.View
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import java.util.concurrent.CompletableFuture.runAsync
 
 
 class MainActivity : AppCompatActivity() {
+    private lateinit var chatScroller: ScrollView
     private lateinit var chatWindow: TextView
     private lateinit var line: EditText
     private lateinit var sendButton: Button
@@ -20,6 +23,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        chatScroller = findViewById(R.id.chatScroll)
         chatWindow = findViewById(R.id.chat)
         line = findViewById(R.id.line)
         sendButton = findViewById(R.id.send)
@@ -54,6 +58,7 @@ class MainActivity : AppCompatActivity() {
         runOnUiThread {
             chatWindow.append(msg)
             chatWindow.append("\n")
+            chatScroller.fullScroll(View.FOCUS_DOWN)
         }
     }
 }
