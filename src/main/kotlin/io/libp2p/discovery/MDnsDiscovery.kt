@@ -20,10 +20,11 @@ import java.net.Inet6Address
 class MDnsDiscovery(
     private val host: Host,
     private val serviceTag: String = ServiceTagLocal,
-    private val queryInterval: Int = QueryInterval
+    private val queryInterval: Int = QueryInterval,
+    val address: InetAddress? = null
 ) : Discoverer {
     private val localhost = InetAddress.getLocalHost()
-    private var mDns = JmDNS.create(localhost)
+    private var mDns = JmDNS.create(address ?: localhost)
     private val listeners = mutableListOf<PeerListener>()
 
     override fun start(): CompletableFuture<Void> {
