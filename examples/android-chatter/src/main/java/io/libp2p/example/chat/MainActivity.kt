@@ -63,7 +63,7 @@ class MainActivity : AppCompatActivity() {
         runOnUiThread {
             chatWindow.append(msg)
             chatWindow.append("\n")
-            chatScroller.fullScroll(View.FOCUS_DOWN)
+            chatScroller.post { chatScroller.fullScroll(View.FOCUS_DOWN) }
         }
     } // chatMessage
 
