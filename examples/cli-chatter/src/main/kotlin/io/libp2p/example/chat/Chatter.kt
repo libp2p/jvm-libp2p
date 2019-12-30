@@ -15,13 +15,13 @@ fun main() {
     var message: String?
     do {
         print(">> ")
-        message = readLine()
+        message = readLine()?.trim()
 
-        if (message == null)
+        if (message == null || message.isEmpty())
             continue
 
         node.send(message)
-    } while ("bye" != message?.trim())
+    } while ("bye" != message)
 
     node.stop()
 }
