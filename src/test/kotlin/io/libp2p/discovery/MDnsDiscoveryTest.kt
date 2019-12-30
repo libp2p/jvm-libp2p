@@ -36,9 +36,11 @@ class MDnsDiscoveryTest {
         }
     }
 
+    val testServiceTag = "_ipfs-test._udp.local."
+
     @Test
     fun `start and stop discovery`() {
-        val discoverer = MDnsDiscovery(host)
+        val discoverer = MDnsDiscovery(host, testServiceTag)
 
         discoverer.start().get(1, TimeUnit.SECONDS)
         TimeUnit.MILLISECONDS.sleep(100)
@@ -48,7 +50,7 @@ class MDnsDiscoveryTest {
     @Test
     fun `start discovery and listen for self`() {
         var peerInfo: PeerInfo? = null
-        val discoverer = MDnsDiscovery(host, "_ipfs-test._udp.local.")
+        val discoverer = MDnsDiscovery(host, testServiceTag)
 
         discoverer.onPeerFound {
             peerInfo = it
@@ -67,10 +69,10 @@ class MDnsDiscoveryTest {
     @Test
     fun `start discovery and listen for other`() {
         var peerInfo: PeerInfo? = null
-        val other = MDnsDiscovery(otherHost)
+        val other = MDnsDiscovery(otherHost, testServiceTag)
         other.start().get(1, TimeUnit.SECONDS)
 
-        val discoverer = MDnsDiscovery(host)
+        val discoverer = MDnsDiscovery(host, testServiceTag)
         discoverer.onPeerFound {
             if (it.peerId != host.peerId) {
                 peerInfo = it

@@ -109,6 +109,7 @@ public class Responder extends DNSTask {
         } catch (Throwable e) {
             logger.warn(this.getName() + "run() exception ", e);
         }
+        _scheduler.shutdown();
     }
 
     private DNSOutgoing addAnswer(DNSOutgoing out, DNSRecord rec) throws IOException {
