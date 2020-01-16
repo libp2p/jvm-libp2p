@@ -1,6 +1,5 @@
 package io.libp2p.example.chat
 
-import com.sun.org.apache.xpath.internal.operations.Mult
 import io.libp2p.core.Discoverer
 import io.libp2p.core.PeerId
 import io.libp2p.core.PeerInfo
