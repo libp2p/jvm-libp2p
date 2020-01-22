@@ -13,7 +13,7 @@ class MuxChannel<TData>(
     private val parent: AbstractMuxHandler<TData>,
     val id: MuxId,
     private val initializer: MuxChannelInitializer<TData>,
-    private val initiator: Boolean
+    val initiator: Boolean
 ) : AbstractChildChannel(parent.ctx!!.channel(), id) {
 
     private var remoteDisconnected = false

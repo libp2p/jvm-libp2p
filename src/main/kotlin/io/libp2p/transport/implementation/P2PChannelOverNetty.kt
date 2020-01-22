@@ -1,5 +1,6 @@
 package io.libp2p.transport.implementation
 
+import io.libp2p.core.P2PChannel
 import io.libp2p.etc.types.toVoidCompletableFuture
 import io.netty.channel.Channel
 import io.netty.channel.ChannelHandler
@@ -13,20 +14,21 @@ import io.netty.channel.ChannelHandler
  * @param nettyChannel the underlying Netty channel
  */
 abstract class P2PChannelOverNetty(
-    protected val nettyChannel: Channel
-) {
-    fun pushHandler(handler: ChannelHandler) {
+    protected val nettyChannel: Channel,
+    override val isInitiator: Boolean
+) : P2PChannel {
+    override fun pushHandler(handler: ChannelHandler) {
         nettyChannel.pipeline().addLast(handler)
     }
-    fun pushHandler(name: String, handler: ChannelHandler) {
+    override fun pushHandler(name: String, handler: ChannelHandler) {
         nettyChannel.pipeline().addLast(name, handler)
     }
 
-    fun addHandlerBefore(baseName: String, name: String, handler: ChannelHandler) {
+    override fun addHandlerBefore(baseName: String, name: String, handler: ChannelHandler) {
         nettyChannel.pipeline().addBefore(baseName, name, handler)
     }
 
-    fun close() = nettyChannel.close().toVoidCompletableFuture()
+    override fun close() = nettyChannel.close().toVoidCompletableFuture()
 
-    fun closeFuture() = nettyChannel.closeFuture().toVoidCompletableFuture()
+    override fun closeFuture() = nettyChannel.closeFuture().toVoidCompletableFuture()
 }
