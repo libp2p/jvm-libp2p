@@ -1,7 +1,6 @@
 package io.libp2p.mux
 
 import io.libp2p.core.Stream
-import io.libp2p.transport.implementation.StreamOverNetty
 import io.libp2p.core.StreamHandler
 import io.libp2p.core.StreamPromise
 import io.libp2p.core.mux.StreamMuxer
@@ -11,6 +10,7 @@ import io.libp2p.etc.types.forward
 import io.libp2p.etc.util.netty.mux.AbstractMuxHandler
 import io.libp2p.etc.util.netty.mux.MuxChannel
 import io.libp2p.etc.util.netty.mux.MuxId
+import io.libp2p.transport.implementation.StreamOverNetty
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
 import java.util.concurrent.CompletableFuture
@@ -76,7 +76,7 @@ class MuxHandler(
 
     private fun createStream(channel: MuxChannel<ByteBuf>): Stream {
         val connection = ctx!!.channel().attr(CONNECTION).get()
-        val stream = StreamOverNetty(channel, connection)
+        val stream = StreamOverNetty(channel, connection, channel.initiator)
         channel.attr(STREAM).set(stream)
         return stream
     }

@@ -1,7 +1,5 @@
 package io.libp2p.pubsub
 
-import io.libp2p.transport.implementation.ConnectionOverNetty
-import io.libp2p.transport.implementation.StreamOverNetty
 import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.generateKeyPair
@@ -13,6 +11,8 @@ import io.libp2p.etc.util.netty.nettyInitializer
 import io.libp2p.pubsub.flood.FloodRouter
 import io.libp2p.tools.NullTransport
 import io.libp2p.tools.TestChannel
+import io.libp2p.transport.implementation.ConnectionOverNetty
+import io.libp2p.transport.implementation.StreamOverNetty
 import io.netty.handler.logging.LogLevel
 import io.netty.handler.logging.LoggingHandler
 import pubsub.pb.Rpc
@@ -68,7 +68,7 @@ class TestRouter(val name: String = "" + cnt.getAndIncrement()) {
             initiator,
             nettyInitializer { ch ->
                 wireLogs?.also { ch.pipeline().addFirst(LoggingHandler(channelName, it)) }
-                val stream1 = StreamOverNetty(ch, connection)
+                val stream1 = StreamOverNetty(ch, connection, initiator)
                 router.addPeerWithDebugHandler(stream1, pubsubLogs?.let { LoggingHandler(channelName, it) })
             }
         ).also {

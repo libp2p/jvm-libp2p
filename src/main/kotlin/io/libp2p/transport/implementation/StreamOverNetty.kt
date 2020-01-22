@@ -9,13 +9,12 @@ import java.util.concurrent.CompletableFuture
 
 class StreamOverNetty(
     ch: Channel,
-    override val connection: Connection
-) : Stream, P2PChannelOverNetty(ch) {
+    override val connection: Connection,
+    initiator: Boolean
+) : Stream, P2PChannelOverNetty(ch, initiator) {
     init {
         nettyChannel.attr(PROTOCOL).set(CompletableFuture())
     }
-
-    override val isInitiator = connection.isInitiator
 
     /**
      * Returns the [PeerId] of the remote peer [Connection] which this
