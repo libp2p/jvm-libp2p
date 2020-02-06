@@ -21,14 +21,9 @@ abstract class AbstractChildChannel(parent: Channel, id: ChannelId?) : AbstractC
         OPEN, ACTIVE, INACTIVE, CLOSED
     }
 
+    private val closeFuture = parent.closeFuture()
     private var state = State.OPEN
     private var closeImplicitly = false
-
-    init {
-        parent.closeFuture().addListener {
-            closeImpl()
-        }
-    }
 
     fun closeImpl() {
         closeImplicitly = true
@@ -53,6 +48,9 @@ abstract class AbstractChildChannel(parent: Channel, id: ChannelId?) : AbstractC
 
     override fun doRegister() {
         state = State.ACTIVE
+        closeFuture.addListener {
+            closeImpl()
+        }
     }
 
     override fun doDeregister() {
