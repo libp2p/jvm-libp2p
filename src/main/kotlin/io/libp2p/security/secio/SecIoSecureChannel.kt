@@ -84,7 +84,7 @@ private class SecIoHandshake(
 
     override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
         handshakeComplete.completeExceptionally(cause)
-        log.error(cause.message)
+        log.error("SecIo handshake failed", cause)
         ctx.channel().close()
     }
 
