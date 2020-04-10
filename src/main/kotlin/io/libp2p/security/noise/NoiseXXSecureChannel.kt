@@ -17,8 +17,12 @@ import io.libp2p.etc.types.toByteArray
 import io.libp2p.etc.types.toByteBuf
 import io.libp2p.security.InvalidRemotePubKey
 import io.netty.buffer.ByteBuf
+import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelHandlerContext
+import io.netty.channel.CombinedChannelDuplexHandler
 import io.netty.channel.SimpleChannelInboundHandler
+import io.netty.handler.codec.LengthFieldBasedFrameDecoder
+import io.netty.handler.codec.LengthFieldPrepender
 import org.apache.logging.log4j.LogManager
 import spipe.pb.Spipe
 import java.util.concurrent.CompletableFuture
@@ -32,14 +36,17 @@ class NoiseXXSecureChannel(private val localKey: PrivKey) :
 
     companion object {
         const val protocolName = "Noise_XX_25519_ChaChaPoly_SHA256"
-        const val announce = "/noise/$protocolName/0.1.0"
+        const val announce = "/noise"
 
         @JvmStatic
         var localStaticPrivateKey25519: ByteArray = ByteArray(32).also { Noise.random(it) }
     }
 
     override val announce = Companion.announce
-    override val matcher = ProtocolMatcher(Mode.PREFIX, name = "/noise/$protocolName/0.1.0")
+    override val matcher = ProtocolMatcher(Mode.PREFIX, name = announce)
+    private val frameLenCodec =
+        CombinedChannelDuplexHandler(LengthFieldBasedFrameDecoder(0xFFFF, 0, 2), LengthFieldPrepender(2))
+
 
     fun initChannel(ch: P2PChannel): CompletableFuture<SecureChannel.Session> {
         return initChannel(ch, "")
@@ -50,9 +57,9 @@ class NoiseXXSecureChannel(private val localKey: PrivKey) :
         selectedProtocol: String
     ): CompletableFuture<SecureChannel.Session> {
         val handshakeComplete = CompletableFuture<SecureChannel.Session>()
-
+        ch.pushHandler(frameLenCodec)
         ch.pushHandler(
-            NoiseIoHandshake(localKey, handshakeComplete, if (ch.isInitiator) Role.INIT else Role.RESP)
+            NoiseIoHandshake(localKey, handshakeComplete, if (ch.isInitiator) Role.INIT else Role.RESP, frameLenCodec)
         )
 
         return handshakeComplete
@@ -62,7 +69,8 @@ class NoiseXXSecureChannel(private val localKey: PrivKey) :
 private class NoiseIoHandshake(
     private val localKey: PrivKey,
     private val handshakeComplete: CompletableFuture<SecureChannel.Session>,
-    private val role: Role
+    private val role: Role,
+    private val frameLenCodec: ChannelHandler
 ) : SimpleChannelInboundHandler<ByteBuf>() {
     private val handshakeState = HandshakeState(NoiseXXSecureChannel.protocolName, role.intVal)
 
@@ -252,8 +260,9 @@ private class NoiseIoHandshake(
 
     private fun handshakeSucceeded(ctx: ChannelHandlerContext, session: NoiseSecureChannelSession) {
         handshakeComplete.complete(session)
-        ctx.pipeline().remove(this)
         ctx.pipeline().addLast(NoiseXXCodec(session.aliceCipher, session.bobCipher))
+        ctx.pipeline().remove(this)
+        ctx.pipeline().remove(frameLenCodec)
         ctx.fireChannelActive()
     } // handshakeSucceeded
 
