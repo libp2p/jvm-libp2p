@@ -9,6 +9,7 @@ import (
 
 	"github.com/libp2p/go-libp2p"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
+        noise "github.com/libp2p/go-libp2p-noise"
 )
 
 func main() {
@@ -58,6 +59,7 @@ func makeOptions() []libp2p.Option {
 	if wantPlaintext() {
 		options = append(options, libp2p.NoSecurity)
 	}
+        options = append(options, libp2p.Security(noise.ID, noise.New))
 	return options
 }
 
