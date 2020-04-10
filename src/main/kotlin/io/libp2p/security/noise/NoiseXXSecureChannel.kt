@@ -45,7 +45,7 @@ class NoiseXXSecureChannel(private val localKey: PrivKey) :
     override val announce = Companion.announce
     override val matcher = ProtocolMatcher(Mode.PREFIX, name = announce)
     private val frameLenCodec =
-        CombinedChannelDuplexHandler(LengthFieldBasedFrameDecoder(0xFFFF, 0, 2), LengthFieldPrepender(2))
+        CombinedChannelDuplexHandler(LengthFieldBasedFrameDecoder(0xFFFF, 0, 2, 0, 2), LengthFieldPrepender(2))
 
 
     fun initChannel(ch: P2PChannel): CompletableFuture<SecureChannel.Session> {
