@@ -1,7 +1,9 @@
 package io.libp2p.etc.types
 
 fun Boolean.whenTrue(run: () -> Unit): Boolean {
-    run()
+    if (this) {
+        run()
+    }
     return this
 }
 
