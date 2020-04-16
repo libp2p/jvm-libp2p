@@ -30,6 +30,7 @@ import java.util.concurrent.CompletableFuture
 private enum class Role(val intVal: Int) { INIT(HandshakeState.INITIATOR), RESP(HandshakeState.RESPONDER) }
 
 private val log = LogManager.getLogger(NoiseXXSecureChannel::class.java)
+private const val HandshakeNettyHandlerName = "HandshakeNettyHandler"
 
 class NoiseXXSecureChannel(private val localKey: PrivKey) :
     SecureChannel {
@@ -44,9 +45,6 @@ class NoiseXXSecureChannel(private val localKey: PrivKey) :
 
     override val announce = Companion.announce
     override val matcher = ProtocolMatcher(Mode.PREFIX, name = announce)
-    private val frameLenCodec =
-        CombinedChannelDuplexHandler(LengthFieldBasedFrameDecoder(0xFFFF, 0, 2, 0, 2), LengthFieldPrepender(2))
-
 
     fun initChannel(ch: P2PChannel): CompletableFuture<SecureChannel.Session> {
         return initChannel(ch, "")
@@ -57,9 +55,17 @@ class NoiseXXSecureChannel(private val localKey: PrivKey) :
         selectedProtocol: String
     ): CompletableFuture<SecureChannel.Session> {
         val handshakeComplete = CompletableFuture<SecureChannel.Session>()
-        ch.pushHandler(frameLenCodec)
+        // Packet length codec should stay forever.
         ch.pushHandler(
-            NoiseIoHandshake(localKey, handshakeComplete, if (ch.isInitiator) Role.INIT else Role.RESP, frameLenCodec)
+            CombinedChannelDuplexHandler(
+                LengthFieldBasedFrameDecoder(0xFFFF, 0, 2, 0, 2),
+                LengthFieldPrepender(2)
+            )
+        )
+        // Handshake handle is to be removed when handshake is complete
+        ch.pushHandler(
+            HandshakeNettyHandlerName,
+            NoiseIoHandshake(localKey, handshakeComplete, if (ch.isInitiator) Role.INIT else Role.RESP)
         )
 
         return handshakeComplete
@@ -69,8 +75,7 @@ class NoiseXXSecureChannel(private val localKey: PrivKey) :
 private class NoiseIoHandshake(
     private val localKey: PrivKey,
     private val handshakeComplete: CompletableFuture<SecureChannel.Session>,
-    private val role: Role,
-    private val frameLenCodec: ChannelHandler
+    private val role: Role
 ) : SimpleChannelInboundHandler<ByteBuf>() {
     private val handshakeState = HandshakeState(NoiseXXSecureChannel.protocolName, role.intVal)
 
@@ -260,9 +265,9 @@ private class NoiseIoHandshake(
 
     private fun handshakeSucceeded(ctx: ChannelHandlerContext, session: NoiseSecureChannelSession) {
         handshakeComplete.complete(session)
-        ctx.pipeline().addLast(NoiseXXCodec(session.aliceCipher, session.bobCipher))
+        ctx.pipeline()
+            .addBefore(HandshakeNettyHandlerName, "NoiseXXCodec", NoiseXXCodec(session.aliceCipher, session.bobCipher))
         ctx.pipeline().remove(this)
-        ctx.pipeline().remove(frameLenCodec)
         ctx.fireChannelActive()
     } // handshakeSucceeded
 
