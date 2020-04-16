@@ -17,7 +17,6 @@ import io.libp2p.etc.types.toByteArray
 import io.libp2p.etc.types.toByteBuf
 import io.libp2p.security.InvalidRemotePubKey
 import io.netty.buffer.ByteBuf
-import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.CombinedChannelDuplexHandler
 import io.netty.channel.SimpleChannelInboundHandler
@@ -104,7 +103,7 @@ private class NoiseIoHandshake(
         // even though both the alice and bob parties can have the payload ready
         // the Noise protocol only permits alice to send a packet first
         if (role == Role.INIT) {
-            sendNoiseStaticKeyAsPayload(ctx)
+            sendNoiseMessage(ctx)
         }
     } // channelActive
 
@@ -127,11 +126,7 @@ private class NoiseIoHandshake(
 
         // after reading messages and setting up state, write next message onto the wire
         if (handshakeState.action == HandshakeState.WRITE_MESSAGE) {
-            if (role == Role.RESP) {
                 sendNoiseStaticKeyAsPayload(ctx)
-            } else {
-                sendNoiseMessage(ctx)
-            }
         }
 
         if (handshakeState.action == HandshakeState.SPLIT) {
