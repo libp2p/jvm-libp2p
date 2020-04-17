@@ -10,6 +10,7 @@ use libp2p::tcp;
 use libp2p::Transport;
 use libp2p::core;
 use libp2p::plaintext;
+use libp2p::noise::{Keypair, X25519, NoiseConfig};
 use std::time::Duration;
 use std::env;
 
@@ -18,12 +19,17 @@ fn main() {
     let id_keys = identity::Keypair::rsa_from_pkcs8(&mut bytes).unwrap();
     let peer_id = PeerId::from(id_keys.public());
 
+    let id_keys = identity::Keypair::generate_ed25519();
+    let dh_keys = Keypair::<X25519>::new().into_authentic(&id_keys).unwrap();
+
     // Create a transport.
     let transport = tcp::TcpConfig::new()
         .upgrade(core::upgrade::Version::V1)
-        .authenticate(plaintext::PlainText2Config {
-            local_public_key: id_keys.public()
-        })
+        .authenticate(
+            NoiseConfig::xx(dh_keys).into_authenticated()
+            //libp2p::secio::SecioConfig::new(id_keys.clone())
+            //plaintext::PlainText2Config {local_public_key: id_keys.public()}
+        )
         .multiplex(mplex::MplexConfig::new())
         .timeout(Duration::from_secs(20));
 
@@ -46,6 +52,7 @@ fn main() {
             Ok(()) => println!("Dialed {:?}", remote_addr),
             Err(e) => println!("Dialing {:?} failed with: {:?}", remote_addr, e)
         }
+        std::thread::sleep(Duration::from_millis(1000));
     }
 }
 
