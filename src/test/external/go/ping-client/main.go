@@ -61,11 +61,18 @@ func makeOptions() []libp2p.Option {
 	if wantPlaintext() {
 		options = append(options, libp2p.NoSecurity)
 	}
-        options = append(options, libp2p.Security(noise.ID, noise.New))
+	if wantNoise() {
+        	options = append(options, libp2p.Security(noise.ID, noise.New))
+	}
 	return options
 }
 
 func wantPlaintext() bool {
 	args := os.Args[1:]
 	return len(args) != 0 && args[0] == "--plaintext"
+}
+
+func wantNoise() bool {
+	args := os.Args[1:]
+	return len(args) != 0 && args[0] == "--noise"
 }
