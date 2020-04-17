@@ -11,6 +11,7 @@ import io.libp2p.protocol.Identify
 import io.libp2p.protocol.IdentifyController
 import io.libp2p.protocol.Ping
 import io.libp2p.protocol.PingController
+import io.libp2p.security.noise.NoiseXXSecureChannel
 import io.libp2p.security.plaintext.PlaintextInsecureChannel
 import io.libp2p.security.secio.SecIoSecureChannel
 import io.libp2p.tools.DoNothing
@@ -19,12 +20,12 @@ import io.libp2p.transport.tcp.TcpTransport
 import io.libp2p.transport.ws.WsTransport
 import io.netty.handler.logging.LogLevel
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable
 import java.io.File
 import java.util.concurrent.TimeUnit
@@ -33,10 +34,13 @@ import java.util.concurrent.TimeUnit
 class SecioTcpGoServerInterOpTest : ServerInterOpTest(::SecIoSecureChannel, ::TcpTransport, GoServer)
 
 @EnabledIfEnvironmentVariable(named = "ENABLE_GO_INTEROP", matches = "true")
+class NoiseTcpGoServerInterOpTest : ServerInterOpTest(::NoiseXXSecureChannel, ::TcpTransport, GoServer)
+
+@EnabledIfEnvironmentVariable(named = "ENABLE_GO_INTEROP", matches = "true")
 class SecioWsGoServerInterOpTest : ServerInterOpTest(::SecIoSecureChannel, ::WsTransport, GoServer)
 
 @EnabledIfEnvironmentVariable(named = "ENABLE_RUST_INTEROP", matches = "true")
-class PlaintextTcpRustServerInterOpTest : ServerInterOpTest(::PlaintextInsecureChannel, ::TcpTransport, RustServer)
+class PlaintextTcpRustServerInterOpTest : ServerInterOpTest(::NoiseXXSecureChannel, ::TcpTransport, RustServer)
 
 // @EnabledIfEnvironmentVariable(named = "ENABLE_RUST_INTEROP", matches = "true")
 // class PlaintextTcpRustServerInterOpTest : ServerInterOpTest(::PlaintextInsecureChannel, ::TcpTransport, RustServer)
@@ -48,23 +52,27 @@ class PlaintextTcpRustServerInterOpTest : ServerInterOpTest(::PlaintextInsecureC
 // class SecioJsServerInterOpTest : ServerInterOpTest(::SecIoSecureChannel, JsPingServer)
 
 data class ExternalServer(
-    val serverCommand: String,
+    val serverExe: String,
     val serverDirEnvVar: String,
-    val pingCount: Int = 5
+    val pingCount: Int = 5,
+    val clientCLIOptions: String = ""
 )
 
 val GoServer = ExternalServer(
-    "./ping-server",
+    "ping-server",
     "GO_PING_SERVER"
 )
 val RustServer = ExternalServer(
-    "cargo run --quiet --",
+    "cargo",
     "RUST_PING_SERVER",
-    1 // Rust ping protocol only responds to one ping per session.
+    1, // Rust ping protocol only responds to one ping per session.
+    "run --quiet --"
 )
 val JsPingServer = ExternalServer(
-    "node lib/ping-server.js",
-    "JS_PINGER"
+    "node",
+    "JS_PINGER",
+    5,
+    "lib/ping-server.js"
 )
 
 @Tag("interop")
@@ -99,46 +107,47 @@ abstract class ServerInterOpTest(
     }
 
     fun serverCommandLine(): Array<String> {
-        val args = mutableListOf<String>()
-        args.addAll(external.serverCommand.split(" "))
+        if (System.getenv(external.serverDirEnvVar) == null) {
+            throw IllegalArgumentException("Client exe directory not set: environment var ${external.serverDirEnvVar}")
+        }
+        val exeDir = File(System.getenv(external.serverDirEnvVar))
+        if (!exeDir.isDirectory) throw IllegalArgumentException("Client exe directory not found")
+        val exeOs = external.serverExe +
+                if (System.getProperty("os.name").contains("win", true)) ".exe" else ""
 
-        if (transportCtor.equals(::WsTransport))
+        val exeWithPath = File(exeDir, exeOs)
+        val exeFinal = if (exeWithPath.canExecute()) exeWithPath.absoluteFile.canonicalPath else exeOs
+
+        val command = "$exeFinal ${external.clientCLIOptions}"
+        println("Executing command: $command")
+
+        val args = mutableListOf<String>()
+        args.addAll(command.split(" "))
+
+        if (transportCtor == ::WsTransport)
             args.add("--websocket")
 
-        if (secureChannelCtor.equals(::PlaintextInsecureChannel))
+        if (secureChannelCtor == ::PlaintextInsecureChannel)
             args.add("--plaintext")
 
+        if (secureChannelCtor == ::NoiseXXSecureChannel)
+            args.add("--noise")
+
+        println("Running command: " + args.joinToString(" "))
         return args.toTypedArray()
     }
-
     val serverHost = ProcessBuilder(*serverCommandLine())
         .directory(File(System.getenv(external.serverDirEnvVar)))
-        .redirectOutput(ProcessBuilder.Redirect.PIPE)
+        .redirectOutput(ProcessBuilder.Redirect.INHERIT)
         .redirectError(ProcessBuilder.Redirect.INHERIT)
 
     lateinit var server: Process
-    lateinit var serverMultiAddress: Multiaddr
-    lateinit var serverPeerId: PeerId
+    val serverMultiAddress = Multiaddr("/ip4/127.0.0.1/tcp/44444")
+    val serverPeerId = PeerId.fromBase58("12D3KooWDRpGddqQ1UVH7s2PVdqVwnwfGic9QhHxY7HfMK1dZBCh")
 
     @BeforeEach
     fun startServer() {
         server = serverHost.start()
-        Thread.sleep(1000)
-        val available = server.inputStream.available()
-        if (available != 0) {
-            val bytes = ByteArray(available)
-            server.inputStream.read(bytes)
-
-            val publishedAddress = String(bytes).trim()
-            println("Server started on $publishedAddress")
-
-            val addressParts = publishedAddress.split("/")
-            val serverAddress = addressParts.subList(0, addressParts.indexOf("ipfs")).joinToString("/")
-            val peerId = addressParts.last()
-
-            serverMultiAddress = Multiaddr(serverAddress)
-            serverPeerId = PeerId.fromBase58(peerId)
-        }
     }
 
     @AfterEach
