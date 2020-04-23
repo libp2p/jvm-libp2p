@@ -40,8 +40,7 @@ class NoiseGoClientInterOpTest :
 
 @EnabledIfEnvironmentVariable(named = "ENABLE_RUST_INTEROP", matches = "true")
 class PlaintextRustClientInterOpTest :
-    ClientInterOpTest(::NoiseXXSecureChannel, OverTcp.ctor, OverTcp.listenAddress, RustPlaintextClient) {
-}
+    ClientInterOpTest(::NoiseXXSecureChannel, OverTcp.ctor, OverTcp.listenAddress, RustPlaintextClient)
 
 @EnabledIfEnvironmentVariable(named = "ENABLE_JS_INTEROP", matches = "true")
 class SecioJsClientInterOpTest :
