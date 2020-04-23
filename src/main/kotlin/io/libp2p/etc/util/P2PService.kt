@@ -201,6 +201,6 @@ abstract class P2PService {
     companion object {
         private val threadFactory = ThreadFactoryBuilder().setDaemon(true).setNameFormat("P2PService-event-thread-%d").build()
         @JvmStatic
-        protected val logger = LogManager.getLogger(AbstractRouter::class.java)
+        val logger = LogManager.getLogger(AbstractRouter::class.java)
     }
 }

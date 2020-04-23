@@ -8,6 +8,7 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
 	multiaddr "github.com/multiformats/go-multiaddr"
 	"os"
+        noise "github.com/libp2p/go-libp2p-noise"
 )
 
 func main() {
@@ -60,10 +61,18 @@ func makeOptions() []libp2p.Option {
 	if wantPlaintext() {
 		options = append(options, libp2p.NoSecurity)
 	}
+	if wantNoise() {
+        	options = append(options, libp2p.Security(noise.ID, noise.New))
+	}
 	return options
 }
 
 func wantPlaintext() bool {
 	args := os.Args[1:]
 	return len(args) != 0 && args[0] == "--plaintext"
+}
+
+func wantNoise() bool {
+	args := os.Args[1:]
+	return len(args) != 0 && args[0] == "--noise"
 }

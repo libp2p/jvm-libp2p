@@ -6,10 +6,13 @@ import io.libp2p.core.dsl.TransportCtor
 import io.libp2p.core.dsl.host
 import io.libp2p.mux.mplex.MplexStreamMuxer
 import io.libp2p.protocol.PingBinding
+import io.libp2p.security.noise.NoiseXXSecureChannel
+import io.libp2p.security.plaintext.PlaintextInsecureChannel
 import io.libp2p.security.secio.SecIoSecureChannel
 import io.libp2p.tools.CountingPingProtocol
 import io.libp2p.transport.tcp.TcpTransport
 import io.libp2p.transport.ws.WsTransport
+import io.netty.handler.logging.LogLevel
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
@@ -21,20 +24,27 @@ import java.util.concurrent.TimeUnit
 
 @EnabledIfEnvironmentVariable(named = "ENABLE_GO_INTEROP", matches = "true")
 class SecioTcpGoClientInterOpTest :
-    GoClientInterOpTest(::SecIoSecureChannel, OverTcp)
+    ClientInterOpTest(::SecIoSecureChannel, OverTcp.ctor, OverTcp.listenAddress, GoPingClient)
 
 @EnabledIfEnvironmentVariable(named = "ENABLE_GO_INTEROP", matches = "true")
 class SecioWsGoClientInterOpTest :
-    GoClientInterOpTest(::SecIoSecureChannel, OverWs)
+    ClientInterOpTest(::SecIoSecureChannel, OverWs.ctor, OverWs.listenAddress, GoPingClient)
 
-// @EnabledIfEnvironmentVariable(named = "ENABLE_GO_INTEROP", matches = "true")
-// class PlaintextGoClientInterOpTest : ClientInterOpTest(::PlaintextInsecureChannel, GoPlaintextClient)
+@EnabledIfEnvironmentVariable(named = "ENABLE_GO_INTEROP", matches = "true")
+class PlaintextGoClientInterOpTest :
+    ClientInterOpTest(::PlaintextInsecureChannel, OverTcp.ctor, OverTcp.listenAddress, GoPlaintextClient)
 
-// @EnabledIfEnvironmentVariable(named = "ENABLE_RUST_INTEROP", matches = "true")
-// class PlaintextRustClientInterOpTest : ClientInterOpTest(::PlaintextInsecureChannel, RustPlaintextClient)
+@EnabledIfEnvironmentVariable(named = "ENABLE_GO_INTEROP", matches = "true")
+class NoiseGoClientInterOpTest :
+    ClientInterOpTest(::NoiseXXSecureChannel, OverTcp.ctor, OverTcp.listenAddress, GoNoiseClient)
 
-// @EnabledIfEnvironmentVariable(named = "ENABLE_JS_INTEROP", matches = "true")
-// class SecioJsClientInterOpTest : ClientInterOpTest(::SecIoSecureChannel, JsPingClient)
+@EnabledIfEnvironmentVariable(named = "ENABLE_RUST_INTEROP", matches = "true")
+class PlaintextRustClientInterOpTest :
+    ClientInterOpTest(::NoiseXXSecureChannel, OverTcp.ctor, OverTcp.listenAddress, RustPlaintextClient)
+
+@EnabledIfEnvironmentVariable(named = "ENABLE_JS_INTEROP", matches = "true")
+class SecioJsClientInterOpTest :
+    ClientInterOpTest(::SecIoSecureChannel, OverTcp.ctor, OverTcp.listenAddress, JsPingClient)
 
 data class Transport(
     val ctor: TransportCtor,
@@ -52,37 +62,37 @@ val OverWs = Transport(
 )
 
 data class ExternalClient(
-    val clientCommand: String,
-    val clientDirEnvVar: String
+    val clientExeFile: String,
+    val clientDirEnvVar: String,
+    val clientCLIOptions: String = ""
 )
 
+// do 'go build' first
 val GoPingClient = ExternalClient(
-    "./ping-client",
+    "ping-client",
     "GO_PING_CLIENT"
 )
 val GoPlaintextClient = ExternalClient(
-    "./ping-client --plaintext",
-    "GO_PING_CLIENT"
+    "ping-client",
+    "GO_PING_CLIENT",
+    "--plaintext"
+)
+val GoNoiseClient = ExternalClient(
+    "ping-client",
+    "GO_PING_CLIENT",
+    "--noise"
 )
 
+// do 'cargo build' first
 val RustPlaintextClient = ExternalClient(
-    "cargo run",
+    "ping-client",
     "RUST_PING_CLIENT"
 )
 
 val JsPingClient = ExternalClient(
-    "node lib/ping-client.js",
-    "JS_PINGER"
-)
-
-abstract class GoClientInterOpTest(
-    secureChannelCtor: SecureChannelCtor,
-    transport: Transport
-) : ClientInterOpTest(
-    secureChannelCtor,
-    transport.ctor,
-    transport.listenAddress,
-    GoPingClient
+    "node",
+    "JS_PINGER",
+    "lib/ping-client.js"
 )
 
 @Tag("interop")
@@ -112,6 +122,10 @@ abstract class ClientInterOpTest(
         protocols {
             +PingBinding(countedPingResponder)
         }
+        debug {
+            beforeSecureHandler.setLogger(LogLevel.ERROR)
+            afterSecureHandler.setLogger(LogLevel.ERROR)
+        }
     }
 
     @BeforeEach
@@ -129,6 +143,7 @@ abstract class ClientInterOpTest(
 
     @Test
     fun listenForPings() {
+
         startClient("$listenAddress/ipfs/${serverHost.peerId}")
         // assertEquals(5, countedPingResponder.pingsReceived)
 
@@ -141,7 +156,19 @@ abstract class ClientInterOpTest(
     }
 
     fun startClient(serverAddress: String) {
-        val command = "${external.clientCommand} $serverAddress"
+        if (System.getenv(external.clientDirEnvVar) == null) {
+            throw IllegalArgumentException("Client exe directory not set: environment var ${external.clientDirEnvVar}")
+        }
+        val exeDir = File(System.getenv(external.clientDirEnvVar))
+        if (!exeDir.isDirectory) throw IllegalArgumentException("Client exe directory not found")
+        val exeOs = external.clientExeFile +
+                if (System.getProperty("os.name").contains("win", true)) ".exe" else ""
+
+        val exeWithPath = File(exeDir, exeOs)
+        val exeFinal = if (exeWithPath.canExecute()) exeWithPath.absoluteFile.canonicalPath else exeOs
+
+        val command = "$exeFinal ${external.clientCLIOptions} $serverAddress"
+        println("Executing command: $command")
         val clientProcess = ProcessBuilder(*command.split(" ").toTypedArray())
             .directory(File(System.getenv(external.clientDirEnvVar)))
             .redirectOutput(ProcessBuilder.Redirect.INHERIT)

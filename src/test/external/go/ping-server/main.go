@@ -9,6 +9,9 @@ import (
 
 	"github.com/libp2p/go-libp2p"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
+//        noise "github.com/libp2p/go-libp2p-noise"
+	ci "github.com/libp2p/go-libp2p-core/crypto"
+	u "github.com/ipfs/go-ipfs-util"
 )
 
 func main() {
@@ -46,10 +49,15 @@ func main() {
 }
 
 func makeOptions() []libp2p.Option {
-    listenAddr := "/ip4/127.0.0.1/tcp/0"
-    if (wantWebSocket()) {
-        listenAddr += "/ws"
-    }
+    	listenAddr := "/ip4/127.0.0.1/tcp/44444"
+    	r := u.NewSeededRand(15) // generate deterministic keypair
+    	privk, pubk, err := ci.GenerateKeyPairWithReader(ci.RSA, 2048, r)
+	fmt.Println("Pubk: ", pubk, err)
+    
+
+    	if (wantWebSocket()) {
+        	listenAddr += "/ws"
+    	}
 
 	options := []libp2p.Option{
 		libp2p.ListenAddrStrings(listenAddr),
@@ -58,11 +66,19 @@ func makeOptions() []libp2p.Option {
 	if wantPlaintext() {
 		options = append(options, libp2p.NoSecurity)
 	}
+	if wantNoise() {
+        options = append(options, libp2p.Security(noise.ID, noise.New))
+	}
+	options = append(options, libp2p.Identity(privk))
 	return options
 }
 
 func wantPlaintext() bool {
 	return hasArgument("--plaintext")
+}
+
+func wantNoise() bool {
+	return hasArgument("--noise")
 }
 
 func wantWebSocket() bool {

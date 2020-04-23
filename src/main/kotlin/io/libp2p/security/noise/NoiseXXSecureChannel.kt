@@ -15,10 +15,16 @@ import io.libp2p.core.multistream.ProtocolMatcher
 import io.libp2p.core.security.SecureChannel
 import io.libp2p.etc.types.toByteArray
 import io.libp2p.etc.types.toByteBuf
+import io.libp2p.etc.types.toUShortBigEndian
+import io.libp2p.etc.types.uShortToBytesBigEndian
 import io.libp2p.security.InvalidRemotePubKey
+import io.libp2p.security.SecureHandshakeError
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
+import io.netty.channel.CombinedChannelDuplexHandler
 import io.netty.channel.SimpleChannelInboundHandler
+import io.netty.handler.codec.LengthFieldBasedFrameDecoder
+import io.netty.handler.codec.LengthFieldPrepender
 import org.apache.logging.log4j.LogManager
 import spipe.pb.Spipe
 import java.util.concurrent.CompletableFuture
@@ -26,20 +32,26 @@ import java.util.concurrent.CompletableFuture
 private enum class Role(val intVal: Int) { INIT(HandshakeState.INITIATOR), RESP(HandshakeState.RESPONDER) }
 
 private val log = LogManager.getLogger(NoiseXXSecureChannel::class.java)
+private const val HandshakeNettyHandlerName = "HandshakeNettyHandler"
+
+class UShortLengthCodec : CombinedChannelDuplexHandler<LengthFieldBasedFrameDecoder, LengthFieldPrepender>(
+    LengthFieldBasedFrameDecoder(0xFFFF, 0, 2, 0, 2),
+    LengthFieldPrepender(2)
+)
 
 class NoiseXXSecureChannel(private val localKey: PrivKey) :
     SecureChannel {
 
     companion object {
         const val protocolName = "Noise_XX_25519_ChaChaPoly_SHA256"
-        const val announce = "/noise/$protocolName/0.1.0"
+        const val announce = "/noise"
 
         @JvmStatic
         var localStaticPrivateKey25519: ByteArray = ByteArray(32).also { Noise.random(it) }
     }
 
     override val announce = Companion.announce
-    override val matcher = ProtocolMatcher(Mode.PREFIX, name = "/noise/$protocolName/0.1.0")
+    override val matcher = ProtocolMatcher(Mode.PREFIX, name = announce)
 
     fun initChannel(ch: P2PChannel): CompletableFuture<SecureChannel.Session> {
         return initChannel(ch, "")
@@ -50,8 +62,11 @@ class NoiseXXSecureChannel(private val localKey: PrivKey) :
         selectedProtocol: String
     ): CompletableFuture<SecureChannel.Session> {
         val handshakeComplete = CompletableFuture<SecureChannel.Session>()
-
+        // Packet length codec should stay forever.
+        ch.pushHandler(UShortLengthCodec())
+        // Handshake handle is to be removed when handshake is complete
         ch.pushHandler(
+            HandshakeNettyHandlerName,
             NoiseIoHandshake(localKey, handshakeComplete, if (ch.isInitiator) Role.INIT else Role.RESP)
         )
 
@@ -91,7 +106,7 @@ private class NoiseIoHandshake(
         // even though both the alice and bob parties can have the payload ready
         // the Noise protocol only permits alice to send a packet first
         if (role == Role.INIT) {
-            sendNoiseStaticKeyAsPayload(ctx)
+            sendNoiseMessage(ctx)
         }
     } // channelActive
 
@@ -114,11 +129,7 @@ private class NoiseIoHandshake(
 
         // after reading messages and setting up state, write next message onto the wire
         if (handshakeState.action == HandshakeState.WRITE_MESSAGE) {
-            if (role == Role.RESP) {
                 sendNoiseStaticKeyAsPayload(ctx)
-            } else {
-                sendNoiseMessage(ctx)
-            }
         }
 
         if (handshakeState.action == HandshakeState.SPLIT) {
@@ -139,13 +150,20 @@ private class NoiseIoHandshake(
     private fun readNoiseMessage(msg: ByteArray) {
         log.debug("Noise handshake READ_MESSAGE")
 
-        val payload = ByteArray(msg.size)
-        val payloadLength = handshakeState.readMessage(msg, 0, msg.size, payload, 0)
+        var payload = ByteArray(msg.size)
+        var payloadLength = handshakeState.readMessage(msg, 0, msg.size, payload, 0)
+
+        if (payloadLength > 0) {
+            if (payloadLength < 2) throw SecureHandshakeError()
+            payloadLength = payload.sliceArray(0..1).toUShortBigEndian()
+            if (payload.size < payloadLength + 2) throw SecureHandshakeError()
+            payload = payload.sliceArray(2 until payloadLength + 2)
+        }
 
         log.trace("msg.size:" + msg.size)
         log.trace("Read message size:$payloadLength")
 
-        if (instancePayload == null) {
+        if (instancePayload == null && payloadLength > 0) {
             // currently, only allow storing a single payload for verification (this should maybe be changed to a queue)
             instancePayload = ByteArray(payloadLength)
             payload.copyInto(instancePayload!!, 0, 0, payloadLength)
@@ -188,10 +206,16 @@ private class NoiseIoHandshake(
     } // sendNoiseStaticKeyAsPayload
 
     private fun sendNoiseMessage(ctx: ChannelHandlerContext, msg: ByteArray? = null) {
-        val msgLength = msg?.size ?: 0
+
+        val lenMsg = if (msg != null) {
+            msg.size.uShortToBytesBigEndian() + msg
+        } else {
+            null
+        }
+        val msgLength = lenMsg?.size ?: 0
 
         val outputBuffer = ByteArray(msgLength + (2 * (handshakeState.localKeyPair.publicKeyLength + 16))) // 16 is MAC length
-        val outputLength = handshakeState.writeMessage(outputBuffer, 0, msg, 0, msgLength)
+        val outputLength = handshakeState.writeMessage(outputBuffer, 0, lenMsg, 0, msgLength)
 
         log.debug("Noise handshake WRITE_MESSAGE")
         log.trace("Sent message length:$outputLength")
@@ -252,8 +276,14 @@ private class NoiseIoHandshake(
 
     private fun handshakeSucceeded(ctx: ChannelHandlerContext, session: NoiseSecureChannelSession) {
         handshakeComplete.complete(session)
+        ctx.pipeline()
+            .addBefore(HandshakeNettyHandlerName, "NoiseXXCodec", NoiseXXCodec(session.aliceCipher, session.bobCipher))
+        // according to Libp2p spec transport payload should also be length-prefixed
+        // though Rust Libp2p implementation doesn't do it
+        // https://github.com/libp2p/specs/tree/master/noise#wire-format
+//        ctx.pipeline()
+//            .addBefore(HandshakeNettyHandlerName, "NoiseXXPayloadLenCodec", UShortLengthCodec())
         ctx.pipeline().remove(this)
-        ctx.pipeline().addLast(NoiseXXCodec(session.aliceCipher, session.bobCipher))
         ctx.fireChannelActive()
     } // handshakeSucceeded
 
