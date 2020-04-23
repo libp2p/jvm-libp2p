@@ -39,7 +39,6 @@ class UShortLengthCodec : CombinedChannelDuplexHandler<LengthFieldBasedFrameDeco
     LengthFieldPrepender(2)
 )
 
-
 class NoiseXXSecureChannel(private val localKey: PrivKey) :
     SecureChannel {
 
@@ -161,7 +160,6 @@ private class NoiseIoHandshake(
             payload = payload.sliceArray(2 until payloadLength + 2)
         }
 
-
         log.trace("msg.size:" + msg.size)
         log.trace("Read message size:$payloadLength")
 
@@ -215,7 +213,6 @@ private class NoiseIoHandshake(
             null
         }
         val msgLength = lenMsg?.size ?: 0
-
 
         val outputBuffer = ByteArray(msgLength + (2 * (handshakeState.localKeyPair.publicKeyLength + 16))) // 16 is MAC length
         val outputLength = handshakeState.writeMessage(outputBuffer, 0, lenMsg, 0, msgLength)
