@@ -18,7 +18,7 @@ import pubsub.pb.Rpc
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicLong
 
-class PubsubApiImpl(val router: PubsubRouter) : PubsubApi {
+open class PubsubApiImpl(val router: PubsubRouter) : PubsubApi {
 
     inner class SubscriptionImpl(val topics: Array<out Topic>, val receiver: Validator) :
         PubsubSubscription {
@@ -30,19 +30,23 @@ class PubsubApiImpl(val router: PubsubRouter) : PubsubApi {
         }
     }
 
-    inner class PublisherImpl(val privKey: PrivKey, seqId: Long) : PubsubPublisherApi {
+    protected open inner class PublisherImpl(val privKey: PrivKey, seqId: Long) : PubsubPublisherApi {
         val from = PeerId.fromPubKey(privKey.publicKey()).bytes.toProtobuf()
         val seqCounter = AtomicLong(seqId)
+
         override fun publish(data: ByteBuf, vararg topics: Topic): CompletableFuture<Unit> {
-            val msgToSign = Rpc.Message.newBuilder()
+            val msgToSign = createMessageToSign(data, *topics)
+            val signedMsg = pubsubSign(msgToSign, privKey)
+            return router.publish(signedMsg)
+        }
+
+        protected open fun createMessageToSign(data: ByteBuf, vararg topics: Topic): Rpc.Message =
+            Rpc.Message.newBuilder()
                 .setFrom(from)
                 .addAllTopicIDs(topics.map { it.topic })
                 .setData(data.toByteArray().toProtobuf())
                 .setSeqno(seqCounter.incrementAndGet().toBytesBigEndian().toProtobuf())
                 .build()
-            val signedMsg = pubsubSign(msgToSign, privKey)
-            return router.publish(signedMsg)
-        }
     }
 
     init {
