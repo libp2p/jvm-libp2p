@@ -48,6 +48,11 @@ class NoiseXXSecureChannel(private val localKey: PrivKey) :
 
         @JvmStatic
         var localStaticPrivateKey25519: ByteArray = ByteArray(32).also { Noise.random(it) }
+
+        // temporary flag to handle different Noise handshake treatments
+        // if true the noise handshake payload is prepended with 2 bytes encoded length
+        @JvmStatic
+        var rustInteroperability = false
     }
 
     override val announce = Companion.announce
@@ -153,11 +158,13 @@ private class NoiseIoHandshake(
         var payload = ByteArray(msg.size)
         var payloadLength = handshakeState.readMessage(msg, 0, msg.size, payload, 0)
 
-        if (payloadLength > 0) {
-            if (payloadLength < 2) throw SecureHandshakeError()
-            payloadLength = payload.sliceArray(0..1).toUShortBigEndian()
-            if (payload.size < payloadLength + 2) throw SecureHandshakeError()
-            payload = payload.sliceArray(2 until payloadLength + 2)
+        if (NoiseXXSecureChannel.rustInteroperability) {
+            if (payloadLength > 0) {
+                if (payloadLength < 2) throw SecureHandshakeError()
+                payloadLength = payload.sliceArray(0..1).toUShortBigEndian()
+                if (payload.size < payloadLength + 2) throw SecureHandshakeError()
+                payload = payload.sliceArray(2 until payloadLength + 2)
+            }
         }
 
         log.trace("msg.size:" + msg.size)
@@ -207,7 +214,9 @@ private class NoiseIoHandshake(
 
     private fun sendNoiseMessage(ctx: ChannelHandlerContext, msg: ByteArray? = null) {
 
-        val lenMsg = if (msg != null) {
+        val lenMsg = if (!NoiseXXSecureChannel.rustInteroperability) {
+            msg
+        } else if (msg != null) {
             msg.size.uShortToBytesBigEndian() + msg
         } else {
             null

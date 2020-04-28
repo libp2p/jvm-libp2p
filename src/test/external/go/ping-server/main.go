@@ -9,7 +9,7 @@ import (
 
 	"github.com/libp2p/go-libp2p"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
-//        noise "github.com/libp2p/go-libp2p-noise"
+        noise "github.com/libp2p/go-libp2p-noise"
 	ci "github.com/libp2p/go-libp2p-core/crypto"
 	u "github.com/ipfs/go-ipfs-util"
 )
