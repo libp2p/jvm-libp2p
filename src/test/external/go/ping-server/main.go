@@ -53,7 +53,7 @@ func makeOptions() []libp2p.Option {
     	r := u.NewSeededRand(15) // generate deterministic keypair
     	privk, pubk, err := ci.GenerateKeyPairWithReader(ci.RSA, 2048, r)
 	fmt.Println("Pubk: ", pubk, err)
-    
+
 
     	if (wantWebSocket()) {
         	listenAddr += "/ws"
