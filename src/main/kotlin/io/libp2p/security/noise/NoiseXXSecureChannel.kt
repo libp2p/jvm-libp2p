@@ -300,7 +300,7 @@ private class NoiseIoHandshake(
         handshakeFailed(ctx, Exception(cause))
     }
     private fun handshakeFailed(ctx: ChannelHandlerContext, cause: Throwable) {
-        log.error(cause.message)
+        log.debug("Noise handshake failed", cause)
 
         handshakeComplete.completeExceptionally(cause)
         ctx.pipeline().remove(this)

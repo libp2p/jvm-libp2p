@@ -1,5 +1,6 @@
 package io.libp2p.security.secio
 
+import com.google.common.base.Throwables
 import io.libp2p.etc.types.toByteArray
 import io.libp2p.etc.types.toByteBuf
 import io.libp2p.security.SecureChannelError
@@ -13,6 +14,7 @@ import org.bouncycastle.crypto.engines.AESEngine
 import org.bouncycastle.crypto.modes.SICBlockCipher
 import org.bouncycastle.crypto.params.KeyParameter
 import org.bouncycastle.crypto.params.ParametersWithIV
+import java.io.IOException
 
 class SecIoCodec(val local: SecioParams, val remote: SecioParams) : MessageToMessageCodec<ByteBuf, ByteBuf>() {
     private val log = LogManager.getLogger(SecIoCodec::class.java)
@@ -56,9 +58,18 @@ class SecIoCodec(val local: SecioParams, val remote: SecioParams) : MessageToMes
     } // decode
 
     override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
-        log.error(cause.message)
-        if (cause is SecureChannelError) {
-            ctx.channel().close()
+        when (Throwables.getRootCause(cause)) {
+            is IOException -> {
+                // Trace level because having clients unexpectedly disconnect is extremely common
+                log.trace("IOException in SecIO channel", cause)
+            }
+            is SecureChannelError -> {
+                log.debug("Invalid SecIO content", cause)
+                ctx.channel().close()
+            }
+            else -> {
+                log.error("Unexpected error in SecIO channel", cause)
+            }
         }
     } // exceptionCaught
 
