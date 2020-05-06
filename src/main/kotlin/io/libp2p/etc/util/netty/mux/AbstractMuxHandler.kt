@@ -38,7 +38,7 @@ abstract class AbstractMuxHandler<TData>(var inboundInitializer: MuxChannelIniti
         super.channelUnregistered(ctx)
     }
 
-    override fun exceptionCaught(ctx: ChannelHandlerContext?, cause: Throwable?) {
+    override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
         when (cause) {
             is InternalErrorException -> log.warn("Muxer internal error", cause)
             is Libp2pException -> log.debug("Muxer exception", cause)

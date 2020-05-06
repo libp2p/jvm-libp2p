@@ -40,7 +40,7 @@ class MultiplexHandlerTest {
     @BeforeEach
     fun startMultiplexor() {
         childHandlers.clear()
-        multistreamHandler = MuxHandler(
+        multistreamHandler = object : MuxHandler(
             createStreamHandler(
                 nettyInitializer {
                     println("New child channel created")
@@ -48,7 +48,13 @@ class MultiplexHandlerTest {
                     it.pipeline().addLast(handler)
                     childHandlers += handler
                 })
-        )
+        ) {
+            // MuxHandler consumes the exception. Override this behaviour for testing
+            override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
+                super.exceptionCaught(ctx, cause)
+                ctx.fireExceptionCaught(cause)
+            }
+        }
 
         ech = TestChannel("test", true, LoggingHandler(LogLevel.ERROR), multistreamHandler)
     }

@@ -16,7 +16,7 @@ import io.netty.channel.ChannelHandlerContext
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicLong
 
-class MuxHandler(
+open class MuxHandler(
     private val ready: CompletableFuture<StreamMuxer.Session>?
 ) : AbstractMuxHandler<ByteBuf>(), StreamMuxer.Session {
     private val idGenerator = AtomicLong(0xF)
