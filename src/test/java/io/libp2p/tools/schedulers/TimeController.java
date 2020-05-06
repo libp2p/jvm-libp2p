@@ -1,6 +1,7 @@
 package io.libp2p.tools.schedulers;
 
 import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Controls global time and execution order of child executors
@@ -18,7 +19,7 @@ public interface TimeController {
 
     long getTime();
 
-    void execute();
+    CompletableFuture<Void> execute();
   }
 
   /**
