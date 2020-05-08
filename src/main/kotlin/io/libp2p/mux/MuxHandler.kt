@@ -69,7 +69,6 @@ open class MuxHandler(
     override fun generateNextId() =
         MuxId(getChannelHandlerContext().channel().id(), idGenerator.incrementAndGet(), true)
 
-
     override var inboundStreamHandler: StreamHandler<*>? = null
         set(value) {
             field = value
