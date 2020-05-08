@@ -26,8 +26,8 @@ import io.netty.buffer.ByteBuf
  * @param data the data segment.
  * @see [mplex documentation](https://github.com/libp2p/specs/tree/master/mplex#opening-a-new-stream)
  */
-class MplexFrame(streamId: Long, initiator: Boolean, val mplexFlag: Int, data: ByteBuf? = null) :
-    MuxFrame(MuxId(streamId, initiator), MplexFlags.toAbstractFlag(mplexFlag), data) {
+class MplexFrame(channelId: MuxId, val mplexFlag: Int, data: ByteBuf? = null) :
+    MuxFrame(channelId, MplexFlags.toAbstractFlag(mplexFlag), data) {
 
     override fun toString(): String {
         val init = if (MplexFlags.isInitiator(mplexFlag)) "init" else "resp"

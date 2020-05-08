@@ -66,7 +66,8 @@ open class MuxHandler(
     override fun onRemoteCreated(child: MuxChannel<ByteBuf>) {
     }
 
-    override fun generateNextId() = MuxId(idGenerator.incrementAndGet(), true)
+    override fun generateNextId() =
+        MuxId(getChannelHandlerContext().channel().id(), idGenerator.incrementAndGet(), true)
 
     override var inboundStreamHandler: StreamHandler<*>? = null
         set(value) {

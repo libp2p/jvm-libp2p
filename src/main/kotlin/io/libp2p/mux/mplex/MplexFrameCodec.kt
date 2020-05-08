@@ -14,6 +14,7 @@ package io.libp2p.mux.mplex
 
 import io.libp2p.etc.types.readUvarint
 import io.libp2p.etc.types.writeUvarint
+import io.libp2p.etc.util.netty.mux.MuxId
 import io.libp2p.mux.MuxFrame
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
@@ -60,7 +61,7 @@ class MplexFrameCodec : MessageToMessageCodec<ByteBuf, MuxFrame>() {
             val data = msg.readSlice(lenData.toInt())
             data.retain() // MessageToMessageCodec releases original buffer, but it needs to be relayed
             val initiator = if (streamTag == MplexFlags.NewStream) false else !MplexFlags.isInitiator(streamTag)
-            val mplexFrame = MplexFrame(streamId, initiator, streamTag, data)
+            val mplexFrame = MplexFrame(MuxId(ctx.channel().id(), streamId, initiator), streamTag, data)
             out.add(mplexFrame)
         }
     }
