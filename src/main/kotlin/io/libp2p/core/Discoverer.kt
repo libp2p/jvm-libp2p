@@ -7,5 +7,5 @@ typealias PeerListener = (PeerInfo) -> Unit
 interface Discoverer {
     fun start(): CompletableFuture<Void>
     fun stop(): CompletableFuture<Void>
-    fun onPeerFound(listener: PeerListener)
+    val newPeerFoundListeners: MutableCollection<PeerListener>
 }
