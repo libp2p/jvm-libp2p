@@ -1,21 +1,23 @@
 package io.libp2p.discovery
 
 import io.libp2p.core.Discoverer
-import io.libp2p.core.PeerListener
 import io.libp2p.core.Host
 import io.libp2p.core.PeerId
 import io.libp2p.core.PeerInfo
+import io.libp2p.core.PeerListener
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multiformats.Protocol
-import java.net.Inet4Address
-import java.net.InetAddress
-import java.util.concurrent.CompletableFuture
 import io.libp2p.discovery.mdns.AnswerListener
 import io.libp2p.discovery.mdns.JmDNS
 import io.libp2p.discovery.mdns.ServiceInfo
 import io.libp2p.discovery.mdns.impl.DNSRecord
 import io.libp2p.discovery.mdns.impl.constants.DNSRecordType
+import java.net.Inet4Address
 import java.net.Inet6Address
+import java.net.InetAddress
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.ForkJoinPool
 
 class MDnsDiscovery(
     private val host: Host,
@@ -26,9 +28,11 @@ class MDnsDiscovery(
     private val localhost = InetAddress.getLocalHost()
     private var mDns = JmDNS.create(address ?: localhost)
     private val listeners = mutableListOf<PeerListener>()
+    override val newPeerFoundListeners: MutableCollection<PeerListener> = CopyOnWriteArrayList()
+    private val executor by lazy { ForkJoinPool(1) }
 
     override fun start(): CompletableFuture<Void> {
-        return CompletableFuture.runAsync {
+        return CompletableFuture.runAsync(Runnable {
             mDns.start()
 
             mDns.registerService(
@@ -39,17 +43,13 @@ class MDnsDiscovery(
                 queryInterval,
                 Listener(this)
             )
-        }
+        }, executor)
     }
 
     override fun stop(): CompletableFuture<Void> {
-        return CompletableFuture.runAsync {
+        return CompletableFuture.runAsync(Runnable {
             mDns.stop()
-        }
-    }
-
-    override fun onPeerFound(listener: PeerListener) {
-        listeners += listener
+        }, executor)
     }
 
     internal fun peerFound(peerInfo: PeerInfo) {

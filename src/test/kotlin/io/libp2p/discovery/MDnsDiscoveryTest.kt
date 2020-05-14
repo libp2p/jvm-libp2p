@@ -52,7 +52,7 @@ class MDnsDiscoveryTest {
         var peerInfo: PeerInfo? = null
         val discoverer = MDnsDiscovery(host, testServiceTag)
 
-        discoverer.onPeerFound {
+        discoverer.newPeerFoundListeners += {
             peerInfo = it
         }
 
@@ -73,7 +73,7 @@ class MDnsDiscoveryTest {
         other.start().get(1, TimeUnit.SECONDS)
 
         val discoverer = MDnsDiscovery(host, testServiceTag)
-        discoverer.onPeerFound {
+        discoverer.newPeerFoundListeners += {
             if (it.peerId != host.peerId) {
                 peerInfo = it
             }

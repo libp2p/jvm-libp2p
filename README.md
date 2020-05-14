@@ -66,7 +66,7 @@ Builds are published to JCenter. Maven Central mirrors JCenter, but updates can 
        jcenter()
    }
 
-   implementation 'io.libp2p:jvm-libp2p-minimal:0.3.2-RELEASE'
+   implementation 'io.libp2p:jvm-libp2p-minimal:0.4.0-RELEASE'
 ```
 ### Using Maven
 ``` 
