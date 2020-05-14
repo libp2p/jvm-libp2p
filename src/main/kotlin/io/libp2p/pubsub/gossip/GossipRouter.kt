@@ -1,9 +1,11 @@
 package io.libp2p.pubsub.gossip
 
 import io.libp2p.etc.types.anyComplete
+import io.libp2p.etc.types.millis
 import io.libp2p.etc.types.whenTrue
 import io.libp2p.pubsub.AbstractRouter
 import pubsub.pb.Rpc
+import java.time.Duration
 import java.util.concurrent.CompletableFuture
 
 /**
@@ -12,6 +14,13 @@ import java.util.concurrent.CompletableFuture
 open class GossipRouter(
     val params: GossipParamsCore = GossipParamsCore()
 ) : AbstractRouter() {
+
+    class TopicScores {
+        var timeInMesh: Duration = 0.millis
+        var firstMessageDeliveries: Int = 0
+    }
+
+    class PeerScores
 
     val heartbeat by lazy { Heartbeat.create(executor, params.heartbeatInterval, curTime) }
     val mCache = MCache(params.gossipSize, params.gossipHistoryLength)

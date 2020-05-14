@@ -21,7 +21,7 @@ data class GossipParamsExtGlobal(
     val pruneBackoff: Duration = 1.millis,
     val floodPublish: Boolean = true,
     val gossipFactor: Double = 0.25,
-    val dScore: Int = 5  // depends on D
+    val dScore: Int = 5 // depends on D
 )
 
 data class GossipParamsExtPeerTopicScoring(
@@ -79,4 +79,3 @@ data class GossipParamsExtTopic(
         // TODO validation
     }
 }
-
