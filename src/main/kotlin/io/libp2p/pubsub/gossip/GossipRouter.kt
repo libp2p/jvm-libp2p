@@ -1,49 +1,20 @@
 package io.libp2p.pubsub.gossip
 
-import io.libp2p.etc.types.LimitedList
 import io.libp2p.etc.types.anyComplete
-import io.libp2p.etc.types.lazyVar
 import io.libp2p.etc.types.whenTrue
 import io.libp2p.pubsub.AbstractRouter
 import pubsub.pb.Rpc
-import java.time.Duration
 import java.util.concurrent.CompletableFuture
 
 /**
  * Router implementing this protocol: https://github.com/libp2p/specs/tree/master/pubsub/gossipsub
  */
-open class GossipRouter : AbstractRouter() {
+open class GossipRouter(
+    val params: GossipParamsCore = GossipParamsCore()
+) : AbstractRouter() {
 
-    data class CacheEntry(val msgId: String, val topics: Set<String>)
-
-    inner class MCache(val gossipSize: Int, historyLength: Int) {
-
-        val messages = mutableMapOf<String, Rpc.Message>()
-        private val history = LimitedList<MutableList<CacheEntry>>(historyLength)
-            .also { it.add(mutableListOf()) }
-            .also { it.onDrop { it.forEach { messages.remove(it.msgId) } } }
-
-        fun put(msg: Rpc.Message) = getMessageId(msg).also {
-                messages[it] = msg
-                history.last.add(CacheEntry(it, msg.topicIDsList.toSet()))
-            }
-
-        fun getMessageIds(topic: String) =
-            history.takeLast(gossipSize).flatten().filter { topic in it.topics }.map { it.msgId }.distinct()
-
-        fun shift() = history.add(mutableListOf())
-    }
-
-    var heartbeatInterval by lazyVar { Duration.ofSeconds(1) }
-    var heartbeat by lazyVar { Heartbeat.create(executor, heartbeatInterval, curTime) }
-    var D = 3
-    var DLow = 2
-    var DHigh = 4
-    var DGossip = 3
-    var fanoutTTL = 60 * 1000L
-    var gossipSize by lazyVar { 3 }
-    var gossipHistoryLength by lazyVar { 5 }
-    var mCache by lazyVar { MCache(gossipSize, gossipHistoryLength) }
+    val heartbeat by lazy { Heartbeat.create(executor, params.heartbeatInterval, curTime) }
+    val mCache = MCache(params.gossipSize, params.gossipHistoryLength)
     val fanout: MutableMap<String, MutableSet<PeerHandler>> = linkedMapOf()
     val mesh: MutableMap<String, MutableSet<PeerHandler>> = linkedMapOf()
     val lastPublished = linkedMapOf<String, Long>()
@@ -81,7 +52,7 @@ open class GossipRouter : AbstractRouter() {
                 iwant(receivedFrom, controlMsg.messageIDsList - seenMessages)
             is Rpc.ControlIWant ->
                 controlMsg.messageIDsList
-                    .mapNotNull { mCache.messages[it] }
+                    .mapNotNull { mCache.getMessage(it) }
                     .forEach { submitPublishMessage(receivedFrom, it) }
         }
     }
@@ -100,7 +71,7 @@ open class GossipRouter : AbstractRouter() {
                 .distinct()
                 .filter { it != receivedFrom }
                 .forEach { submitPublishMessage(it, pubMsg) }
-            mCache.put(pubMsg)
+            mCache.put(getMessageId(pubMsg), pubMsg)
         }
         flushAllPending()
     }
@@ -110,7 +81,7 @@ open class GossipRouter : AbstractRouter() {
 
         val list = msg.topicIDsList
             .mapNotNull { topic ->
-                mesh[topic] ?: fanout[topic] ?: getTopicPeers(topic).shuffled(random).take(D)
+                mesh[topic] ?: fanout[topic] ?: getTopicPeers(topic).shuffled(random).take(params.D)
                     .also {
                         if (it.isNotEmpty()) fanout[topic] = it.toMutableSet()
                     }
@@ -118,7 +89,7 @@ open class GossipRouter : AbstractRouter() {
             .flatten()
             .map { submitPublishMessage(it, msg) }
 
-        mCache.put(msg)
+        mCache.put(getMessageId(msg), msg)
         flushAllPending()
         return anyComplete(list)
     }
@@ -128,9 +99,9 @@ open class GossipRouter : AbstractRouter() {
         val fanoutPeers = fanout[topic] ?: mutableSetOf()
         val meshPeers = mesh.getOrPut(topic) { mutableSetOf() }
         val otherPeers = getTopicPeers(topic) - meshPeers - fanoutPeers
-        if (meshPeers.size < D) {
-            val addFromFanout = fanoutPeers.shuffled(random).take(D - meshPeers.size)
-            val addFromOthers = otherPeers.shuffled(random).take(D - meshPeers.size - addFromFanout.size)
+        if (meshPeers.size < params.D) {
+            val addFromFanout = fanoutPeers.shuffled(random).take(params.D - meshPeers.size)
+            val addFromOthers = otherPeers.shuffled(random).take(params.D - meshPeers.size - addFromFanout.size)
 
             meshPeers += (addFromFanout + addFromOthers)
             (addFromFanout + addFromOthers).forEach {
@@ -147,13 +118,13 @@ open class GossipRouter : AbstractRouter() {
     private fun heartBeat(time: Long) {
         try {
             mesh.entries.forEach { (topic, peers) ->
-                if (peers.size < DLow) {
-                    (getTopicPeers(topic) - peers).shuffled(random).take(D - peers.size).forEach { newPeer ->
+                if (peers.size < params.DLow) {
+                    (getTopicPeers(topic) - peers).shuffled(random).take(params.D - peers.size).forEach { newPeer ->
                         peers += newPeer
                         graft(newPeer, topic)
                     }
-                } else if (peers.size > DHigh) {
-                    peers.shuffled(random).take(peers.size - D).forEach { dropPeer ->
+                } else if (peers.size > params.DHigh) {
+                    peers.shuffled(random).take(peers.size - params.D).forEach { dropPeer ->
                         peers -= dropPeer
                         prune(dropPeer, topic)
                     }
@@ -162,20 +133,20 @@ open class GossipRouter : AbstractRouter() {
             }
             fanout.entries.forEach { (topic, peers) ->
                 peers.removeIf { it in getTopicPeers(topic) }
-                val needMore = D - peers.size
+                val needMore = params.D - peers.size
                 if (needMore > 0) {
                     peers += (getTopicPeers(topic) - peers).shuffled(random).take(needMore)
                 }
                 submitGossip(topic, peers)
             }
             lastPublished.entries.removeIf { (topic, lastPub) ->
-                (time - lastPub > fanoutTTL)
+                (time - lastPub > params.fanoutTTL.toMillis())
                     .whenTrue { fanout.remove(topic) }
             }
 
             (mesh.keys.toSet() + fanout.keys).forEach { topic ->
                 val gossipPeers = (getTopicPeers(topic) - mesh[topic]!! - (fanout[topic] ?: emptyList()))
-                    .shuffled(random).take(DGossip)
+                    .shuffled(random).take(params.DGossip)
                 submitGossip(topic, gossipPeers)
             }
 
@@ -224,13 +195,5 @@ open class GossipRouter : AbstractRouter() {
                     Rpc.ControlIHave.newBuilder().addAllMessageIDs(topics)
                 )
             ).build())
-    }
-
-    fun withDConstants(D: Int, DLow: Int = D * 2 / 3, DHigh: Int = D * 2, DGossip: Int = D): GossipRouter {
-        this.D = D
-        this.DLow = DLow
-        this.DHigh = DHigh
-        this.DGossip = DGossip
-        return this
     }
 }
