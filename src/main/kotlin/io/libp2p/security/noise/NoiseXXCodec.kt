@@ -17,22 +17,16 @@ class NoiseXXCodec(val aliceCipher: CipherState, val bobCipher: CipherState) : M
         val buf = ByteArray(plainLength + aliceCipher.macLength)
         msg.readBytes(buf, 0, plainLength)
         val length = aliceCipher.encryptWithAd(null, buf, 0, buf, 0, plainLength)
-        logger.debug("encrypt length: $length")
-        out += Unpooled.wrappedBuffer(
-            Unpooled.buffer().writeShort(length),
-            Unpooled.wrappedBuffer(buf, 0, length))
-        logger.trace("channel outbound handler write: $msg")
+        out += Unpooled.wrappedBuffer(buf, 0, length)
     }
 
     override fun decode(ctx: ChannelHandlerContext, msg: ByteBuf, out: MutableList<Any>) {
-        val length = msg.readShort().toInt()
         val buf = msg.toByteArray()
-        logger.debug("decrypt length: $length")
-        val decryptLen = bobCipher.decryptWithAd(null, buf, 0, buf, 0, length)
+        val decryptLen = bobCipher.decryptWithAd(null, buf, 0, buf, 0, buf.size)
         out += Unpooled.wrappedBuffer(buf, 0, decryptLen)
     }
 
     override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
-        logger.error(cause.message)
+        logger.error(cause)
     }
 }

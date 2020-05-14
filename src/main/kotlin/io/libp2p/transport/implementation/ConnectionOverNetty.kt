@@ -17,8 +17,8 @@ import java.net.InetSocketAddress
 class ConnectionOverNetty(
     ch: Channel,
     private val transport: Transport,
-    override val isInitiator: Boolean
-) : Connection, P2PChannelOverNetty(ch) {
+    initiator: Boolean
+) : Connection, P2PChannelOverNetty(ch, initiator) {
     private lateinit var muxerSession: StreamMuxer.Session
     private lateinit var secureSession: SecureChannel.Session
 

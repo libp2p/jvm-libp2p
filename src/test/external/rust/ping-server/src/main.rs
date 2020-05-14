@@ -1,6 +1,9 @@
 extern crate libp2p;
 extern crate futures;
+extern crate tokio;
+extern crate async_std;
 
+use async_std::task;
 use futures::{prelude::*, future};
 use libp2p::identity;
 use libp2p::PeerId;
@@ -15,8 +18,12 @@ use libp2p::core;
 use libp2p::plaintext;
 use libp2p::NetworkBehaviour;
 use std::time::Duration;
-use libp2p::tokio_io::{AsyncRead, AsyncWrite};
+use tokio::io::{AsyncRead, AsyncWrite};
 use libp2p::swarm::NetworkBehaviourEventProcess;
+use std::{error::Error, task::{Context, Poll}};
+use std::{thread, time};
+use libp2p::noise::{Keypair, X25519, NoiseConfig};
+
 
 
 fn main() {
@@ -24,54 +31,45 @@ fn main() {
     let mut bytes = std::fs::read("../test-rsa-private-key.pk8").unwrap();
     let id_keys = identity::Keypair::rsa_from_pkcs8(&mut bytes).unwrap();
     let peer_id = PeerId::from(id_keys.public());
+    let dh_keys = Keypair::<X25519>::new().into_authentic(&id_keys).unwrap();
+
+//    let id_keys = identity::Keypair::generate_ed25519();
+//    let peer_id = PeerId::from(id_keys.public());
+
 
     // Create a transport.
     let transport = tcp::TcpConfig::new()
         .upgrade(core::upgrade::Version::V1)
-        .authenticate(plaintext::PlainText2Config { local_public_key: id_keys.public() })
-//secio::SecioConfig::new(id_keys.clone()))
+        .authenticate(
+            //plaintext::PlainText2Config { local_public_key: id_keys.public() }
+            //secio::SecioConfig::new(id_keys.clone()))
+            NoiseConfig::xx(dh_keys).into_authenticated()
+        )
         .multiplex(mplex::MplexConfig::new())
         .map(|(peer, muxer), _| (peer, core::muxing::StreamMuxerBox::new(muxer)))
         .timeout(Duration::from_secs(20));
 
-    #[derive(NetworkBehaviour)]
-    struct ServerBehaviour<TSubstream: AsyncRead + AsyncWrite> {
-    	   ping: Ping<TSubstream>,
-           identify: Identify<TSubstream>
-    }
-
-    impl<TSubstream: AsyncRead + AsyncWrite> NetworkBehaviourEventProcess<PingEvent> for ServerBehaviour<TSubstream> {
-        fn inject_event(&mut self, _message: PingEvent) { }
-    }
-    impl<TSubstream: AsyncRead + AsyncWrite> NetworkBehaviourEventProcess<IdentifyEvent> for ServerBehaviour<TSubstream> {
-        fn inject_event(&mut self, _message: IdentifyEvent) { }
-    }
-
-    // Create a Swarm that establishes connections through the given transport
-    // and applies the ping behaviour on each connection.
-    let behaviour = ServerBehaviour {
-        ping: Ping::new(PingConfig::new().with_keep_alive(false)),
-        identify: Identify::new("a".to_string(), "b".to_string(), id_keys.public())
-    };
+    let behaviour = Ping::new(PingConfig::new().with_keep_alive(true));
     let mut swarm = Swarm::new(transport, behaviour, peer_id);
 
     // Tell the swarm to listen on all interfaces and a random, OS-assigned port.
-    Swarm::listen_on(&mut swarm, "/ip4/0.0.0.0/tcp/0".parse().unwrap()).unwrap();
+    Swarm::listen_on(&mut swarm, "/ip4/127.0.0.1/tcp/12345".parse().unwrap()).unwrap();
 
-    // Use tokio to drive the `Swarm`.
-    let mut listening = false;
-    tokio::run(future::poll_fn(move || -> Result<_, ()> {
+
+   let mut listening = false;
+    async_std::task::block_on(futures::future::poll_fn( move |cx: &mut Context| {
         loop {
-            match swarm.poll().expect("Error while polling swarm") {
-                Async::Ready(Some(e)) => println!("{:?}", e),
-                Async::Ready(None) | Async::NotReady => {
+            match swarm.poll_next_unpin(cx) {
+                Poll::Ready(Some(event)) => println!("{:?}", event),
+                Poll::Ready(None) => return Poll::Ready(()),
+                Poll::Pending => {
                     if !listening {
-                        if let Some(a) = Swarm::listeners(&swarm).next() {
-                            println!("{}/ipfs/{}", a, Swarm::local_peer_id(&swarm));
+                        for addr in Swarm::listeners(&swarm) {
+                            println!("Listening on {}", addr);
                             listening = true;
                         }
                     }
-                    return Ok(Async::NotReady)
+                    return Poll::Pending
                 }
             }
         }
