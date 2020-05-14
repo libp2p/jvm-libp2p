@@ -5,6 +5,7 @@ import io.libp2p.core.pubsub.RESULT_INVALID
 import io.libp2p.core.pubsub.RESULT_VALID
 import io.libp2p.core.pubsub.Subscriber
 import io.libp2p.core.pubsub.Topic
+import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.core.pubsub.Validator
 import io.libp2p.etc.types.toByteBuf
 import io.libp2p.etc.types.toBytesBigEndian
@@ -337,15 +338,15 @@ abstract class PubsubRouterTest(val router: RouterCtor) {
             .map { apis[2].subscribe(it.second, it.first); it.second }
 
         val scheduler = fuzz.createControlledExecutor()
-        val delayed = { result: Boolean, delayMs: Long ->
-            CompletableFuture<Boolean>().also {
+        val delayed = { result: ValidationResult, delayMs: Long ->
+            CompletableFuture<ValidationResult>().also {
                 scheduler.schedule({ it.complete(result) }, delayMs, TimeUnit.MILLISECONDS)
             }
         }
         apis[1].subscribe(Validator { RESULT_VALID }, topics[0])
         apis[1].subscribe(Validator { RESULT_INVALID }, topics[1])
-        apis[1].subscribe(Validator { delayed(true, 500) }, topics[2])
-        apis[1].subscribe(Validator { delayed(false, 500) }, topics[3])
+        apis[1].subscribe(Validator { delayed(ValidationResult.Valid, 500) }, topics[2])
+        apis[1].subscribe(Validator { delayed(ValidationResult.Invalid, 500) }, topics[3])
 
         // 2 heartbeats for all
         fuzz.timeController.addTime(Duration.ofSeconds(2))

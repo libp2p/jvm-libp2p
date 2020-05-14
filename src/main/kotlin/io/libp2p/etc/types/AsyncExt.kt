@@ -73,3 +73,7 @@ fun <C> anyComplete(vararg all: CompletableFuture<C>): CompletableFuture<C> {
         val counter = AtomicInteger(all.size)
     }
 }
+
+fun <C, R> Collection<CompletableFuture<C>>.thenApplyAll(func: (List<C>) -> R): CompletableFuture<R> =
+    CompletableFuture.allOf(*this.toTypedArray())
+        .thenApply { func(this.map { it.get() }) }

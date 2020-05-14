@@ -4,6 +4,7 @@ import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.pubsub.RESULT_VALID
+import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.core.pubsub.createPubsubApi
 import io.libp2p.core.security.SecureChannel
 import io.libp2p.etc.types.lazyVar
@@ -28,7 +29,7 @@ val idCnt = AtomicInteger()
 class TestRouter(val name: String = "" + cnt.getAndIncrement()) {
 
     val inboundMessages = LinkedBlockingQueue<Rpc.Message>()
-    var routerHandler: (Rpc.Message) -> CompletableFuture<Boolean> = {
+    var routerHandler: (Rpc.Message) -> CompletableFuture<ValidationResult> = {
         inboundMessages += it
         RESULT_VALID
     }

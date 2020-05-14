@@ -2,6 +2,7 @@ package io.libp2p.pubsub
 
 import io.libp2p.core.Stream
 import io.libp2p.core.pubsub.RESULT_VALID
+import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.etc.types.LRUSet
 import io.libp2p.etc.types.MultiSet
 import io.libp2p.etc.types.completedExceptionally
@@ -31,7 +32,7 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
     override var random by lazyVar { Random() }
 
     val peerTopics = MultiSet<PeerHandler, String>()
-    private var msgHandler: (Rpc.Message) -> CompletableFuture<Boolean> = { RESULT_VALID }
+    private var msgHandler: (Rpc.Message) -> CompletableFuture<ValidationResult> = { RESULT_VALID }
     var maxSeenMessagesSizeSet = 10000
     var validator: PubsubMessageValidator = PubsubMessageValidator.nopValidator()
     val seenMessages by lazy { LRUSet.create<String>(maxSeenMessagesSizeSet) }
@@ -175,7 +176,7 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
         // broadcasting in a single chunk those which were validated synchronously
         val validatedMsgs = done.filter {
                 try {
-                    it.second.get()
+                    it.second.get() == ValidationResult.Valid
                 } catch (e: Exception) {
                     logger.warn("Exception while handling message from peer $peer: ${it.first}", e)
                     false
@@ -190,7 +191,8 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
                 it.second.whenComplete { res, err ->
                     when {
                         err != null -> logger.warn("Exception while handling message from peer $peer: ${it.first}", err)
-                        !res -> logger.info("Invalid pubsub message from peer $peer: ${it.first}")
+                        res == ValidationResult.Invalid -> logger.info("Invalid pubsub message from peer $peer: ${it.first}")
+                        res == ValidationResult.Ignore -> logger.debug("Ingnoring pubsub message from peer $peer: ${it.first}")
                         else -> {
                             broadcastInbound(singletonList(it.first), peer)
                             flushAllPending()
@@ -249,7 +251,7 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
         return peer.writeAndFlush(msg)
     }
 
-    override fun initHandler(handler: (Rpc.Message) -> CompletableFuture<Boolean>) {
+    override fun initHandler(handler: (Rpc.Message) -> CompletableFuture<ValidationResult>) {
         msgHandler = handler
     }
 }

@@ -1,6 +1,7 @@
 package io.libp2p.pubsub
 
 import io.libp2p.core.Stream
+import io.libp2p.core.pubsub.ValidationResult
 import io.netty.channel.ChannelHandler
 import pubsub.pb.Rpc
 import java.util.Random
@@ -30,7 +31,7 @@ interface PubsubMessageRouter {
      * All the messages received by the router are forwarded to the [handler] independently
      * of any client subscriptions. Is it up to the client API to sort out subscriptions
      */
-    fun initHandler(handler: (Rpc.Message) -> CompletableFuture<Boolean>)
+    fun initHandler(handler: (Rpc.Message) -> CompletableFuture<ValidationResult>)
 
     /**
      * Notifies the router that a client wants to receive messages on the following topics

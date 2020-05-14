@@ -12,11 +12,14 @@ import kotlin.random.Random.Default.nextLong
 fun createPubsubApi(router: PubsubRouter): PubsubApi =
     PubsubApiImpl(router)
 
-typealias Subscriber = Consumer<MessageApi>
-typealias Validator = Function<MessageApi, CompletableFuture<Boolean>>
+enum class ValidationResult { Valid, Invalid, Ignore }
 
-val RESULT_VALID = CompletableFuture.completedFuture(true)
-val RESULT_INVALID = CompletableFuture.completedFuture(false)
+typealias Subscriber = Consumer<MessageApi>
+typealias Validator = Function<MessageApi, CompletableFuture<ValidationResult>>
+
+val RESULT_VALID = CompletableFuture.completedFuture(ValidationResult.Valid)
+val RESULT_INVALID = CompletableFuture.completedFuture(ValidationResult.Invalid)
+val RESULT_IGNORE = CompletableFuture.completedFuture(ValidationResult.Ignore)
 
 /**
  * API interface for Pubsub subscriber
@@ -34,7 +37,8 @@ interface PubsubSubscriberApi {
      * thus it is not recommended to run any time consuming task withing callback
      *
      * If the [receiver] is in duty of message validation it should return the
-     * result either synchronously ([RESULT_VALID] or [RESULT_INVALID]) or asynchronously.
+     * result either synchronously ([RESULT_VALID], [RESULT_INVALID] or [RESULT_IGNORE])
+     * or asynchronously.
      *
      * If the [receiver] doesn't validates it should just return [RESULT_VALID]
      *
