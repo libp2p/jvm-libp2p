@@ -57,8 +57,11 @@ class MDnsDiscoveryTest {
         }
 
         discoverer.start().get(1, TimeUnit.SECONDS)
-        (1..5).forEach {
-            TimeUnit.SECONDS.sleep(1)
+        for (i in 0..50) {
+            if (peerInfo != null) {
+                break
+            }
+            TimeUnit.MILLISECONDS.sleep(100)
         }
         discoverer.stop().get(1, TimeUnit.SECONDS)
 
@@ -80,13 +83,16 @@ class MDnsDiscoveryTest {
         }
 
         discoverer.start().get(1, TimeUnit.SECONDS)
-        (1..5).forEach {
-            TimeUnit.SECONDS.sleep(1)
+        for (i in 0..50) {
+            if (peerInfo != null) {
+                break
+            }
+            TimeUnit.MILLISECONDS.sleep(100)
         }
-        discoverer.stop().get(1, TimeUnit.SECONDS)
-        other.stop().get(1, TimeUnit.SECONDS)
-
         assertEquals(otherHost.peerId, peerInfo?.peerId)
         assertEquals(otherHost.listenAddresses().size, peerInfo?.addresses?.size)
+
+        discoverer.stop().get(1, TimeUnit.SECONDS)
+        other.stop().get(1, TimeUnit.SECONDS)
     }
 }
