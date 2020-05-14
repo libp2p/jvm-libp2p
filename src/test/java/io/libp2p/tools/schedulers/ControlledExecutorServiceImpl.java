@@ -33,8 +33,8 @@ public class ControlledExecutorServiceImpl implements ControlledExecutorService 
       timeController.cancelTask(this);
     }
 
-    public void execute() {
-      ControlledExecutorServiceImpl.this.execute(() -> {
+    public CompletableFuture<Void> execute() {
+      delegateExecutor.execute(() -> {
         try {
           V res = callable.call();
           future.delegate.complete(res);
@@ -42,6 +42,7 @@ public class ControlledExecutorServiceImpl implements ControlledExecutorService 
           future.delegate.completeExceptionally(e);
         }
       });
+      return future.delegate.thenApply(i -> null);
     }
 
     @Override
@@ -103,15 +104,24 @@ public class ControlledExecutorServiceImpl implements ControlledExecutorService 
   }
 
   private final Executor delegateExecutor;
+  private final boolean immediateExecute = false;
   private TimeController timeController;
 
   public ControlledExecutorServiceImpl() {
     this(Runnable::run);  // default immediate executor
   }
 
+  public ControlledExecutorServiceImpl(TimeController timeController) {
+    this(Runnable::run, timeController);
+  }
 
   public ControlledExecutorServiceImpl(Executor delegateExecutor) {
+    this(delegateExecutor, null);
+  }
+
+  public ControlledExecutorServiceImpl(Executor delegateExecutor, TimeController timeController) {
     this.delegateExecutor = delegateExecutor;
+    this.timeController = timeController;
   }
 
   @Override
@@ -186,7 +196,11 @@ public class ControlledExecutorServiceImpl implements ControlledExecutorService 
 
   @Override
   public void execute(Runnable command) {
-    delegateExecutor.execute(command);
+    if (immediateExecute) {
+      delegateExecutor.execute(command);
+    } else {
+      schedule(command, 0, TimeUnit.MILLISECONDS);
+    }
   }
 
   @Override

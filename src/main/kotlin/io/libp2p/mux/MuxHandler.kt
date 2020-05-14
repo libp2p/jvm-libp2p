@@ -16,7 +16,7 @@ import io.netty.channel.ChannelHandlerContext
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicLong
 
-class MuxHandler(
+open class MuxHandler(
     private val ready: CompletableFuture<StreamMuxer.Session>?
 ) : AbstractMuxHandler<ByteBuf>(), StreamMuxer.Session {
     private val idGenerator = AtomicLong(0xF)
@@ -66,7 +66,8 @@ class MuxHandler(
     override fun onRemoteCreated(child: MuxChannel<ByteBuf>) {
     }
 
-    override fun generateNextId() = MuxId(idGenerator.incrementAndGet(), true)
+    override fun generateNextId() =
+        MuxId(getChannelHandlerContext().channel().id(), idGenerator.incrementAndGet(), true)
 
     override var inboundStreamHandler: StreamHandler<*>? = null
         set(value) {
