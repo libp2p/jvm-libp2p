@@ -27,7 +27,6 @@ class MDnsDiscovery(
 ) : Discoverer {
     private val localhost = InetAddress.getLocalHost()
     private var mDns = JmDNS.create(address ?: localhost)
-    private val listeners = mutableListOf<PeerListener>()
     override val newPeerFoundListeners: MutableCollection<PeerListener> = CopyOnWriteArrayList()
     private val executor by lazy { ForkJoinPool(1) }
 
@@ -53,7 +52,7 @@ class MDnsDiscovery(
     }
 
     internal fun peerFound(peerInfo: PeerInfo) {
-        listeners.forEach { it(peerInfo) }
+        newPeerFoundListeners.forEach { it(peerInfo) }
     }
 
     private fun ipfsDiscoveryInfo(): ServiceInfo {
