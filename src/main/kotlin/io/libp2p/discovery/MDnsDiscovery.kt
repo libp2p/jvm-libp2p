@@ -29,7 +29,7 @@ class MDnsDiscovery(
     private var mDns = JmDNS.create(address ?: localhost)
     private val listeners = mutableListOf<PeerListener>()
     override val newPeerFoundListeners: MutableCollection<PeerListener> = CopyOnWriteArrayList()
-    private val executor = ForkJoinPool(1)
+    private val executor by lazy { ForkJoinPool(1) }
 
     override fun start(): CompletableFuture<Void> {
         return CompletableFuture.runAsync(Runnable {
