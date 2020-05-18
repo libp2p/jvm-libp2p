@@ -12,7 +12,7 @@ import kotlin.random.Random.Default.nextLong
 fun createPubsubApi(router: PubsubRouter): PubsubApi =
     PubsubApiImpl(router)
 
-enum class ValidationResult { Valid, Invalid, Ignore }
+enum class ValidationResult { Valid, Invalid, Ignore, Pending }
 
 typealias Subscriber = Consumer<MessageApi>
 typealias Validator = Function<MessageApi, CompletableFuture<ValidationResult>>

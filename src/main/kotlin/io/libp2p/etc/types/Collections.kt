@@ -7,15 +7,16 @@ import java.util.function.Predicate
 
 fun <C> Collection<C>.copy(): Collection<C> = this.toMutableList()
 
-class LRUSet {
+class LRUCollections {
     companion object {
-        fun <C> create(maxSize: Int): MutableSet<C> {
-            return Collections.newSetFromMap(object : LinkedHashMap<C, Boolean>() {
-                override fun removeEldestEntry(eldest: MutableMap.MutableEntry<C, Boolean>?): Boolean {
+        fun <C> createSet(maxSize: Int): MutableSet<C> = Collections.newSetFromMap(createMap(maxSize))
+
+        fun <K, V> createMap(maxSize: Int): MutableMap<K, V> =
+            object : LinkedHashMap<K, V>() {
+                override fun removeEldestEntry(eldest: MutableMap.MutableEntry<K, V>?): Boolean {
                     return size > maxSize
                 }
-            })
-        }
+            }
     }
 }
 

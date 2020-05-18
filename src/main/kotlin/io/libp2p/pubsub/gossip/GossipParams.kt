@@ -51,6 +51,13 @@ data class GossipParamsExtPeerScoring(
     }
 }
 
+class GossipParamsExtTopics {
+    private val defaultParams: GossipParamsExtTopic = TODO()
+    private val topicParams: MutableMap<Topic, GossipParamsExtTopic> = mutableMapOf()
+
+    operator fun get(topic: Topic) = topicParams.getOrDefault(topic, defaultParams)
+}
+
 data class GossipParamsExtTopic(
     val TopicWeight: Weight,
     // P₁

@@ -2,17 +2,17 @@ package io.libp2p.etc.types
 
 import java.time.Duration
 
-val Int.millis: Duration
+val Number.millis: Duration
     get() = Duration.ofMillis(this.toLong())
 
-val Int.seconds: Duration
+val Number.seconds: Duration
     get() = Duration.ofSeconds(this.toLong())
 
-val Int.minutes: Duration
+val Number.minutes: Duration
     get() = Duration.ofMinutes(this.toLong())
 
-val Int.hours: Duration
+val Number.hours: Duration
     get() = Duration.ofHours(this.toLong())
 
-val Int.days: Duration
+val Number.days: Duration
     get() = Duration.ofDays(this.toLong())
