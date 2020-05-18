@@ -1,6 +1,7 @@
 package io.libp2p.pubsub.gossip
 
 import io.libp2p.etc.types.millis
+import io.libp2p.etc.types.minutes
 import io.libp2p.etc.types.seconds
 import java.time.Duration
 
@@ -52,35 +53,35 @@ data class GossipParamsExtPeerScoring(
 }
 
 class GossipParamsExtTopics {
-    private val defaultParams: GossipParamsExtTopic = TODO()
+    private val defaultParams: GossipParamsExtTopic = GossipParamsExtTopic()
     private val topicParams: MutableMap<Topic, GossipParamsExtTopic> = mutableMapOf()
 
     operator fun get(topic: Topic) = topicParams.getOrDefault(topic, defaultParams)
 }
 
 data class GossipParamsExtTopic(
-    val TopicWeight: Weight,
+    val TopicWeight: Weight = 1.0,
     // P₁
-    val TimeInMeshWeight: Weight,
-    val TimeInMeshQuantum: Duration,
-    val TimeInMeshCap: Double,
+    val TimeInMeshWeight: Weight = 1.0,
+    val TimeInMeshQuantum: Duration = 1.seconds,
+    val TimeInMeshCap: Double = 100.0,
     // P₂
-    val FirstMessageDeliveriesWeight: Weight,
-    val FirstMessageDeliveriesDecay: Double,
-    val FirstMessageDeliveriesCap: Double,
+    val FirstMessageDeliveriesWeight: Weight = 1.0,
+    val FirstMessageDeliveriesDecay: Double = 1.0,
+    val FirstMessageDeliveriesCap: Double = 100.0,
     // P₃
-    val MeshMessageDeliveriesWeight: Weight,
-    val MeshMessageDeliveriesDecay: Double,
-    val MeshMessageDeliveriesThreshold: Double,
-    val MeshMessageDeliveriesCap: Double,
-    val MeshMessageDeliveriesActivation: Duration,
-    val MeshMessageDeliveryWindow: Duration,
+    val MeshMessageDeliveriesWeight: Weight = 1.0,
+    val MeshMessageDeliveriesDecay: Double = 1.0,
+    val MeshMessageDeliveriesThreshold: Double = 100.0,
+    val MeshMessageDeliveriesCap: Double = 100.0,
+    val MeshMessageDeliveriesActivation: Duration = 1.minutes,
+    val MeshMessageDeliveryWindow: Duration = 10.millis,
     // P₃b
-    val MeshFailurePenaltyWeight: Weight,
-    val MeshFailurePenaltyDecay: Double,
+    val MeshFailurePenaltyWeight: Weight = 1.0,
+    val MeshFailurePenaltyDecay: Double = 100.0,
     // P₄
-    val InvalidMessageDeliveriesWeight: Weight,
-    val InvalidMessageDeliveriesDecay: Double
+    val InvalidMessageDeliveriesWeight: Weight = 1.0,
+    val InvalidMessageDeliveriesDecay: Double = 100.0
 ) {
     init {
         // TODO validation
