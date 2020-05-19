@@ -42,6 +42,7 @@ open class GossipRouter(
 
     override fun onPeerDisconnected(peer: PeerHandler) {
         score.notifyDisconnected(peer)
+        mesh.values.forEach { it.remove(peer) }
         fanout.values.forEach { it.remove(peer) }
         collectPeerMessage(peer) // discard them
         super.onPeerDisconnected(peer)
