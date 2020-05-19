@@ -1,5 +1,6 @@
 package io.libp2p.pubsub.gossip
 
+import io.libp2p.core.PeerId
 import io.libp2p.etc.types.millis
 import io.libp2p.etc.types.minutes
 import io.libp2p.etc.types.seconds
@@ -26,14 +27,14 @@ data class GossipParamsExtGlobal(
 )
 
 data class GossipParamsExtPeerTopicScoring(
-    val gossipThreshold: Double,
-    val publishThreshold: Double,
-    val graylistThreshold: Double,
-    val acceptPXThreshold: Double,
-    val opportunisticGraftThreshold: Double,
-    val decayInterval: Duration,
-    val decayToZero: Double,
-    val retainScore: Duration
+    val gossipThreshold: Double = 1.0,
+    val publishThreshold: Double = 2.0,
+    val graylistThreshold: Double = 3.0,
+    val acceptPXThreshold: Double = 4.0,
+    val opportunisticGraftThreshold: Double = 5.0,
+    val decayInterval: Duration = 1.minutes,
+    val decayToZero: Double = 0.01,
+    val retainScore: Duration = 10.minutes
 ) {
     init {
         // TODO validation
@@ -41,11 +42,14 @@ data class GossipParamsExtPeerTopicScoring(
 }
 
 data class GossipParamsExtPeerScoring(
-    val appSpecificWeight: Weight,
-    val ipColocationFactorWeight: Weight,
-    val ipColocationFactorThreshold: Double,
-    val behaviourPenaltyWeight: Weight,
-    val behaviourPenaltyDecay: Double
+    val topicScoreCap: Double = 10000.0,
+    val appSpecificScore: (PeerId) -> Double = { 0.0 },
+    val appSpecificWeight: Weight = 1.0,
+    val ipWhitelisted: (String) -> Boolean = { false },
+    val ipColocationFactorWeight: Weight = 1.0,
+    val ipColocationFactorThreshold: Int = 100,
+    val behaviourPenaltyWeight: Weight = 1.0,
+    val behaviourPenaltyDecay: Double = 1.0
 ) {
     init {
         // TODO validation

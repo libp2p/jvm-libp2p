@@ -1,18 +1,18 @@
 package io.libp2p.pubsub.gossip
 
+import io.libp2p.core.multiformats.Protocol
 import io.libp2p.core.pubsub.ValidationResult
-import io.libp2p.core.pubsub.ValidationResult.Invalid
-import io.libp2p.core.pubsub.ValidationResult.Pending
-import io.libp2p.etc.types.LRUCollections
 import io.libp2p.etc.types.anyComplete
-import io.libp2p.etc.types.millis
 import io.libp2p.etc.types.whenTrue
+import io.libp2p.etc.util.P2PService
 import io.libp2p.pubsub.AbstractRouter
-import io.libp2p.pubsub.MessageId
 import pubsub.pb.Rpc
 import java.util.concurrent.CompletableFuture
 
 typealias Topic = String
+
+fun P2PService.PeerHandler.getIP(): String? =
+    this.streamHandler.stream.connection.remoteAddress().getStringComponent(Protocol.IP4)
 
 /**
  * Router implementing this protocol: https://github.com/libp2p/specs/tree/master/pubsub/gossipsub
@@ -21,22 +21,7 @@ open class GossipRouter(
     val params: GossipParamsCore = GossipParamsCore()
 ) : AbstractRouter() {
 
-    class TopicScores {
-        var joinedMesh: Long = 0
-        var firstMessageDeliveries: Double = 0.0
-        var meshMessageDeliveries: Double = 0.0
-        var meshFailurePenalty: Double = 0.0
-        var invalidMessages: Double = 0.0
-
-        fun inMesh() = joinedMesh > 0
-    }
-
-    class PeerScores {
-        val topicScores = mutableMapOf<Topic, TopicScores>()
-    }
-
-    val peerScores = mutableMapOf<PeerHandler, PeerScores>()
-    val topicsParams = GossipParamsExtTopics()
+    val score by lazy { GossipScore(curTime) }
 
     val heartbeat by lazy {
         Heartbeat.create(executor, params.heartbeatInterval, curTime)
@@ -55,16 +40,8 @@ open class GossipRouter(
         }
     }
 
-    private fun getTopicScores(peer: PeerHandler, topic: Topic) =
-        peerScores.computeIfAbsent(peer) { PeerScores() }
-            .topicScores.computeIfAbsent(topic) { TopicScores() }
-
     override fun onPeerDisconnected(peer: PeerHandler) {
-        mesh.forEach { (topic, peers) ->
-            peers.remove(peer).whenTrue {
-                notifyPruned(peer, topic)
-            }
-        }
+        score.notifyDisconnected(peer)
         fanout.values.forEach { it.remove(peer) }
         collectPeerMessage(peer) // discard them
         super.onPeerDisconnected(peer)
@@ -72,61 +49,32 @@ open class GossipRouter(
 
     override fun onPeerActive(peer: PeerHandler) {
         super.onPeerActive(peer)
+        score.notifyConnected(peer)
         heartbeat.hashCode() // force lazy initialization
     }
 
-    private val validationTime: MutableMap<MessageId, Long> = LRUCollections.createMap(1024)
     override fun notifyUnseenMessage(peer: PeerHandler, msg: Rpc.Message) {
+        score.notifyUnseenMessage(peer, msg)
     }
 
     override fun notifySeenMessage(peer: PeerHandler, msg: Rpc.Message, validationResult: ValidationResult) {
-        msg.topicIDsList
-            .filter { mesh[it]?.contains(peer) ?: false }
-            .forEach { topic ->
-                val topicScores = getTopicScores(peer, topic)
-                val durationAfterValidation =
-                    (curTime() - validationTime.getOrDefault(getMessageId(msg), 0)).millis
-                when {
-                    validationResult == Invalid -> topicScores.invalidMessages++
-                    validationResult == Pending
-                            || durationAfterValidation < topicsParams[topic].MeshMessageDeliveryWindow ->
-                        topicScores.meshMessageDeliveries++
-                }
-            }
+        score.notifySeenMessage(peer, msg, validationResult)
     }
 
     override fun notifyUnseenInvalidMessage(peer: PeerHandler, msg: Rpc.Message) {
-        validationTime[getMessageId(msg)] = curTime()
-        msg.topicIDsList.forEach { getTopicScores(peer, it).invalidMessages++ }
+        score.notifyUnseenInvalidMessage(peer, msg)
     }
 
     override fun notifyUnseenValidMessage(peer: PeerHandler, msg: Rpc.Message) {
-        validationTime[getMessageId(msg)] = curTime()
-        msg.topicIDsList
-            .onEach { getTopicScores(peer, it).firstMessageDeliveries++ }
-            .filter { mesh[it] != null }
-            .onEach { getTopicScores(peer, it).meshMessageDeliveries++ }
-    }
-
-    private fun isMeshMessageDeliveriesActive(peer: PeerHandler, topic: Topic): Boolean {
-        val topicScores = getTopicScores(peer, topic)
-        topicsParams.get(topic).MeshMessageDeliveriesActivation
-        return topicScores.inMesh() && ((curTime() - topicScores.joinedMesh).millis > topicsParams.get(topic).MeshMessageDeliveriesActivation)
+        score.notifyUnseenValidMessage(peer, msg)
     }
 
     fun notifyMeshed(peer: PeerHandler, topic: Topic) {
-        val topicScores = getTopicScores(peer, topic)
-        topicScores.joinedMesh = curTime()
+        score.notifyMeshed(peer, topic)
     }
 
     fun notifyPruned(peer: PeerHandler, topic: Topic) {
-        val topicScores = getTopicScores(peer, topic)
-        val threshold = topicsParams.get(topic).MeshMessageDeliveriesThreshold
-        if (isMeshMessageDeliveriesActive(peer, topic) && topicScores.meshMessageDeliveries < threshold) {
-            val deficit = threshold - topicScores.meshMessageDeliveries
-            topicScores.meshFailurePenalty += deficit * deficit
-        }
-        topicScores.joinedMesh = 0
+        score.notifyPruned(peer, topic)
     }
 
     private fun processControlMessage(controlMsg: Any, receivedFrom: PeerHandler) {

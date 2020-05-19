@@ -8,7 +8,7 @@ import io.libp2p.etc.types.MultiSet
 import io.libp2p.etc.types.completedExceptionally
 import io.libp2p.etc.types.copy
 import io.libp2p.etc.types.forward
-import io.libp2p.etc.types.lazyVar
+import io.libp2p.etc.types.lazyVarInit
 import io.libp2p.etc.types.toHex
 import io.libp2p.etc.util.P2PServiceSemiDuplex
 import io.netty.channel.ChannelHandler
@@ -26,14 +26,20 @@ import java.util.function.Consumer
 
 typealias MessageId = String
 
+/*
+open class RouterEvent
+open class RouterEventMessage(val peer: P2PService.PeerHandler, val msg: Rpc.Message) : RouterEvent()
+open class RouterEventUnseenMessage(peer: P2PService.PeerHandler, msg: Rpc.Message) : RouterEventMessage(peer, msg)
+*/
+
 /**
  * Implements common logic for pubsub routers
  */
 abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRouterDebug {
     private val logger = LogManager.getLogger(AbstractRouter::class.java)
 
-    override var curTime: () -> Long by lazyVar { { System.currentTimeMillis() } }
-    override var random by lazyVar { Random() }
+    override var curTime: () -> Long by lazyVarInit { { System.currentTimeMillis() } }
+    override var random by lazyVarInit { Random() }
 
     val peerTopics = MultiSet<PeerHandler, String>()
     private var msgHandler: (Rpc.Message) -> CompletableFuture<ValidationResult> = { RESULT_VALID }
