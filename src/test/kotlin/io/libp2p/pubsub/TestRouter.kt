@@ -41,6 +41,7 @@ class TestRouter(val name: String = "" + cnt.getAndIncrement()) {
         routerInstance.also {
             it.initHandler(routerHandler)
             it.executor = testExecutor
+            it.name = name
         }
     }
     var api by lazyVar { createPubsubApi(router) }

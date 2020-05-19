@@ -99,6 +99,8 @@ interface PubsubRouterDebug : PubsubRouter {
      */
     var random: Random
 
+    var name: String
+
     /**
      * The same as [PubsubRouter.addPeer] but adds the [debugHandler] right before
      * the terminal handler
