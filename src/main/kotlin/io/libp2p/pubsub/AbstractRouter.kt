@@ -239,6 +239,7 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
     }
 
     override fun onPeerDisconnected(peer: PeerHandler) {
+        super.onPeerDisconnected(peer)
         peerTopics.removeAll(peer)
     }
 
