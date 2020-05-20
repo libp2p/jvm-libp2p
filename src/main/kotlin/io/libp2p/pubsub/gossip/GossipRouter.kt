@@ -8,6 +8,7 @@ import io.libp2p.etc.util.P2PService
 import io.libp2p.pubsub.AbstractRouter
 import pubsub.pb.Rpc
 import java.util.concurrent.CompletableFuture
+import kotlin.math.max
 
 typealias Topic = String
 
@@ -18,7 +19,8 @@ fun P2PService.PeerHandler.getIP(): String? =
  * Router implementing this protocol: https://github.com/libp2p/specs/tree/master/pubsub/gossipsub
  */
 open class GossipRouter(
-    val params: GossipParamsCore = GossipParamsCore()
+    val params: GossipParamsCore = GossipParamsCore(),
+    val extParams: GossipParamsExtGlobal = GossipParamsExtGlobal()
 ) : AbstractRouter() {
 
     val score by lazy { GossipScore(executor, curTime) }
@@ -209,9 +211,10 @@ open class GossipRouter(
         val shuffledMessageIds = ids.shuffled(random)
         val peers = (getTopicPeers(topic) - excludePeers)
             .filter { score.score(it) >= score.globalParams.gossipThreshold }
-            .shuffled(random)
-            .take(params.DGossip)
-        peers.forEach { ihave(it, shuffledMessageIds) }
+
+        peers.shuffled(random)
+            .take(max((extParams.gossipFactor * peers.size).toInt(), params.DGossip))
+            .forEach { ihave(it, shuffledMessageIds) }
     }
 
     private fun prune(peer: PeerHandler, topic: Topic) = addPendingRpcPart(
