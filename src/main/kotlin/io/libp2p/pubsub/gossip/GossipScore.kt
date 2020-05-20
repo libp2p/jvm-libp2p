@@ -7,11 +7,14 @@ import io.libp2p.etc.types.cappedDouble
 import io.libp2p.etc.types.millis
 import io.libp2p.etc.util.P2PService
 import pubsub.pb.Rpc
+import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.ScheduledFuture
+import java.util.concurrent.TimeUnit
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
 
-class GossipScore(val curTime: () -> Long) {
+class GossipScore(val executor: ScheduledExecutorService, val curTime: () -> Long) {
 
     inner class TopicScores(val topic: Topic) {
         private val params = topicsParams[topic]
@@ -90,6 +93,12 @@ class GossipScore(val curTime: () -> Long) {
     val topicsParams = GossipParamsExtTopics()
     val scoreParams = GossipParamsExtPeerScoring()
     val globalParams = GossipParamsExtPeerTopicScoring()
+    val refreshTask: ScheduledFuture<*>
+
+    init {
+        val refreshPeriod = globalParams.decayInterval.toMillis()
+        refreshTask = executor.scheduleAtFixedRate({ refreshScores() }, refreshPeriod, refreshPeriod, TimeUnit.MILLISECONDS)
+    }
 
     private fun getPeerScores(peer: P2PService.PeerHandler) =
         peerScores.computeIfAbsent(peer.peerId()) { PeerScores() }
@@ -188,5 +197,9 @@ class GossipScore(val curTime: () -> Long) {
 
     fun notifyRouterMisbehavior(peer: P2PService.PeerHandler, count: Int) {
         getPeerScores(peer).behaviorPenalty += count
+    }
+
+    fun stop() {
+        refreshTask.cancel(false)
     }
 }

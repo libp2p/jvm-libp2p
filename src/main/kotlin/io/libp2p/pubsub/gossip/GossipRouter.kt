@@ -21,7 +21,7 @@ open class GossipRouter(
     val params: GossipParamsCore = GossipParamsCore()
 ) : AbstractRouter() {
 
-    val score by lazy { GossipScore(curTime) }
+    val score by lazy { GossipScore(executor, curTime) }
 
     val heartbeat by lazy {
         Heartbeat.create(executor, params.heartbeatInterval, curTime)
@@ -79,6 +79,7 @@ open class GossipRouter(
     }
 
     private fun processControlMessage(controlMsg: Any, receivedFrom: PeerHandler) {
+        val peerScore = score.score(receivedFrom)
         when (controlMsg) {
             is Rpc.ControlGraft -> {
                 if (controlMsg.topicID in mesh) {
@@ -93,12 +94,16 @@ open class GossipRouter(
                     notifyPruned(receivedFrom, controlMsg.topicID)
                 }
             }
-            is Rpc.ControlIHave ->
+            is Rpc.ControlIHave -> {
+                if (peerScore < score.globalParams.gossipThreshold) return
                 iwant(receivedFrom, controlMsg.messageIDsList - seenMessages.keys)
-            is Rpc.ControlIWant ->
+            }
+            is Rpc.ControlIWant -> {
+                if (peerScore < score.globalParams.gossipThreshold) return
                 controlMsg.messageIDsList
                     .mapNotNull { mCache.getMessage(it) }
                     .forEach { submitPublishMessage(receivedFrom, it) }
+            }
         }
     }
 
@@ -174,7 +179,7 @@ open class GossipRouter(
                         prune(dropPeer, topic)
                     }
                 }
-                submitGossip(topic, peers)
+                emitGossip(topic, peers)
             }
             fanout.entries.forEach { (topic, peers) ->
                 peers.removeIf { it in getTopicPeers(topic) }
@@ -182,21 +187,14 @@ open class GossipRouter(
                 if (needMore > 0) {
                     peers += (getTopicPeers(topic) - peers).shuffled(random).take(needMore)
                 }
-                submitGossip(topic, peers)
+                emitGossip(topic, peers)
             }
             lastPublished.entries.removeIf { (topic, lastPub) ->
                 (time - lastPub > params.fanoutTTL.toMillis())
                     .whenTrue { fanout.remove(topic) }
             }
 
-            (mesh.keys.toSet() + fanout.keys).forEach { topic ->
-                val gossipPeers = (getTopicPeers(topic) - mesh[topic]!! - (fanout[topic] ?: emptyList()))
-                    .shuffled(random).take(params.DGossip)
-                submitGossip(topic, gossipPeers)
-            }
-
             mCache.shift()
-            updateScoresOnHeartbeat(time)
 
             flushAllPending()
         } catch (t: Exception) {
@@ -204,7 +202,16 @@ open class GossipRouter(
         }
     }
 
-    private fun updateScoresOnHeartbeat(time: Long) {
+    private fun emitGossip(topic: Topic, excludePeers: Collection<PeerHandler>) {
+        val ids = mCache.getMessageIds(topic)
+        if (ids.isEmpty()) return
+
+        val shuffledMessageIds = ids.shuffled(random)
+        val peers = (getTopicPeers(topic) - excludePeers)
+            .filter { score.score(it) >= score.globalParams.gossipThreshold }
+            .shuffled(random)
+            .take(params.DGossip)
+        peers.forEach { ihave(it, shuffledMessageIds) }
     }
 
     private fun prune(peer: PeerHandler, topic: Topic) = addPendingRpcPart(
