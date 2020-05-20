@@ -27,7 +27,7 @@ data class GossipParamsExtGlobal(
 )
 
 data class GossipParamsExtPeerTopicScoring(
-    val gossipThreshold: Double = 1.0,
+    val gossipThreshold: Double = -1.0,
     val publishThreshold: Double = 2.0,
     val graylistThreshold: Double = 3.0,
     val acceptPXThreshold: Double = 4.0,
