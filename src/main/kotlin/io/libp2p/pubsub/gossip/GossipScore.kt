@@ -1,5 +1,6 @@
 package io.libp2p.pubsub.gossip
 
+import io.libp2p.core.PeerId
 import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.etc.types.LRUCollections
 import io.libp2p.etc.types.cappedDouble
@@ -16,8 +17,16 @@ class GossipScore(val curTime: () -> Long) {
         private val params = topicsParams[topic]
 
         var joinedMeshTime: Long = 0
-        var firstMessageDeliveries: Double by cappedDouble(0.0, globalParams.decayToZero, params.FirstMessageDeliveriesCap)
-        var meshMessageDeliveries: Double by cappedDouble(0.0, globalParams.decayToZero, params.MeshMessageDeliveriesCap)
+        var firstMessageDeliveries: Double by cappedDouble(
+            0.0,
+            globalParams.decayToZero,
+            params.FirstMessageDeliveriesCap
+        )
+        var meshMessageDeliveries: Double by cappedDouble(
+            0.0,
+            globalParams.decayToZero,
+            params.MeshMessageDeliveriesCap
+        )
         var meshFailurePenalty: Double by cappedDouble(0.0, globalParams.decayToZero)
         var invalidMessages: Double by cappedDouble(0.0, globalParams.decayToZero)
 
@@ -62,18 +71,28 @@ class GossipScore(val curTime: () -> Long) {
     }
 
     inner class PeerScores {
+        val ips = mutableSetOf<String>()
+        var connectedTime: Long = 0
+        var disconnectedTime: Long = 0
+
         val topicScores = mutableMapOf<Topic, TopicScores>()
         var behaviorPenalty: Double by cappedDouble(0.0, globalParams.decayToZero)
+
+        fun isConnected() = connectedTime > 0 && disconnectedTime == 0L
+        fun isDisconnected() = disconnectedTime > 0
+        fun getDisconnectDuration() =
+            if (isDisconnected()) (curTime() - disconnectedTime).millis
+            else throw IllegalStateException("Peer is not disconnected")
     }
 
     private val validationTime: MutableMap<Rpc.Message, Long> = LRUCollections.createMap(1024)
-    val peerScores = mutableMapOf<P2PService.PeerHandler, PeerScores>()
+    val peerScores = mutableMapOf<PeerId, PeerScores>()
     val topicsParams = GossipParamsExtTopics()
     val scoreParams = GossipParamsExtPeerScoring()
     val globalParams = GossipParamsExtPeerTopicScoring()
 
     private fun getPeerScores(peer: P2PService.PeerHandler) =
-        peerScores.computeIfAbsent(peer) { PeerScores() }
+        peerScores.computeIfAbsent(peer.peerId()) { PeerScores() }
 
     private fun getTopicScores(peer: P2PService.PeerHandler, topic: Topic) =
         getPeerScores(peer).topicScores.computeIfAbsent(topic) { TopicScores(it) }
@@ -82,14 +101,15 @@ class GossipScore(val curTime: () -> Long) {
 
     fun score(peer: P2PService.PeerHandler): Double {
         val peerScore = getPeerScores(peer)
-        val topicsScore = min(scoreParams.topicScoreCap,
+        val topicsScore = min(
+            scoreParams.topicScoreCap,
             peerScore.topicScores.values.map { it.calcTopicScore() }.sum()
         )
         val appScore = scoreParams.appSpecificScore(peer.peerId()) * scoreParams.appSpecificWeight
 
         val peersInIp: Int = peer.getIP()?.let { thisIp ->
             if (scoreParams.ipWhitelisted(thisIp)) 0 else
-                peerScores.keys.count { it.getIP() == thisIp }
+                peerScores.values.count { thisIp in it.ips }
         } ?: 0
         val ipColocationPenalty = max(
             0,
@@ -102,6 +122,7 @@ class GossipScore(val curTime: () -> Long) {
     }
 
     fun refreshScores() {
+        peerScores.values.removeIf { it.isDisconnected() && it.getDisconnectDuration() > globalParams.retainScore }
         peerScores.values.forEach {
             it.topicScores.values.forEach { it.decayScores() }
             it.behaviorPenalty *= scoreParams.behaviourPenaltyDecay
@@ -109,12 +130,18 @@ class GossipScore(val curTime: () -> Long) {
     }
 
     fun notifyDisconnected(peer: P2PService.PeerHandler) {
-        peerScores[peer]?.topicScores?.filter { it.value.inMesh() }?.forEach { t, _ ->
+        getPeerScores(peer).topicScores.filter { it.value.inMesh() }.forEach { t, _ ->
             notifyPruned(peer, t)
         }
+
+        getPeerScores(peer).disconnectedTime = curTime()
     }
 
     fun notifyConnected(peer: P2PService.PeerHandler) {
+        getPeerScores(peer).apply {
+            connectedTime = curTime()
+            peer.getIP()?.also { ips += it }
+        }
     }
 
     fun notifyUnseenMessage(peer: P2PService.PeerHandler, msg: Rpc.Message) {
