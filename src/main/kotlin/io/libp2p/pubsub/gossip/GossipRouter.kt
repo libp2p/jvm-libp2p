@@ -131,15 +131,22 @@ open class GossipRouter(
     override fun broadcastOutbound(msg: Rpc.Message): CompletableFuture<Unit> {
         msg.topicIDsList.forEach { lastPublished[it] = heartbeat.currentTime() }
 
-        val list = msg.topicIDsList
-            .mapNotNull { topic ->
-                mesh[topic] ?: fanout[topic] ?: getTopicPeers(topic).shuffled(random).take(params.D)
-                    .also {
-                        if (it.isNotEmpty()) fanout[topic] = it.toMutableSet()
+        val peers =
+            if (extParams.floodPublish) {
+                msg.topicIDsList
+                    .flatMap { getTopicPeers(it) }
+                    .filter { score.score(it) >= score.globalParams.publishThreshold }
+            } else {
+                msg.topicIDsList
+                    .mapNotNull { topic ->
+                        mesh[topic] ?: fanout[topic] ?: getTopicPeers(topic).shuffled(random).take(params.D)
+                            .also {
+                                if (it.isNotEmpty()) fanout[topic] = it.toMutableSet()
+                            }
                     }
+                    .flatten()
             }
-            .flatten()
-            .map { submitPublishMessage(it, msg) }
+        val list = peers.map { submitPublishMessage(it, msg) }
 
         mCache.put(getMessageId(msg), msg)
         flushAllPending()
