@@ -60,5 +60,4 @@ class ConnectionOverNetty(
             Protocol.TCP to Protocol.TCP.addressToBytes(addr.port.toString())
         ))
     } // toMultiaddr
-
 }
