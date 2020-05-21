@@ -51,15 +51,6 @@ class SplitEncoderTest {
     }
 
     @Test
-    fun test5() {
-        val buf = "".toByteArray().toByteBuf()
-        val channel = EmbeddedChannel(SplitEncoder(3))
-        assert(channel.writeOutbound(buf))
-        assertEquals("", channel.readOutbound<ByteBuf>().toByteArray().toString(UTF_8))
-        assertNull(channel.readOutbound<ByteBuf>())
-    }
-
-    @Test
     fun testSemiFilledBuf() {
         val buf = "012345".toByteArray().toByteBuf()
         buf.readByte()
