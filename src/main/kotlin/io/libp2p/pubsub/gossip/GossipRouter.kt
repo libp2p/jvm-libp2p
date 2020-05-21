@@ -3,6 +3,7 @@ package io.libp2p.pubsub.gossip
 import io.libp2p.core.multiformats.Protocol
 import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.etc.types.anyComplete
+import io.libp2p.etc.types.median
 import io.libp2p.etc.types.whenTrue
 import io.libp2p.etc.util.P2PService
 import io.libp2p.pubsub.AbstractRouter
@@ -36,6 +37,7 @@ open class GossipRouter(
     val fanout: MutableMap<Topic, MutableSet<PeerHandler>> = linkedMapOf()
     val mesh: MutableMap<Topic, MutableSet<PeerHandler>> = linkedMapOf()
     val lastPublished = linkedMapOf<Topic, Long>()
+    var heartbeatsCount = 0
 
     private fun submitGossip(topic: Topic, peers: Collection<PeerHandler>) {
         val ids = mCache.getMessageIds(topic)
@@ -181,26 +183,55 @@ open class GossipRouter(
     }
 
     private fun heartBeat(time: Long) {
+        heartbeatsCount++
         try {
             mesh.entries.forEach { (topic, peers) ->
+
+                val underscoredPeers = peers.filter { score.score(it) < 0 }
+                underscoredPeers.forEach { prune(it, topic) }
+
                 if (peers.size < coreParams.DLow) {
-                    (getTopicPeers(topic) - peers).shuffled(random).take(coreParams.D - peers.size).forEach { newPeer ->
-                        peers += newPeer
-                        graft(newPeer, topic)
-                    }
+                    (getTopicPeers(topic) - peers - underscoredPeers)
+                        .shuffled(random)
+                        .take(coreParams.D - peers.size)
+                        .forEach { newPeer ->
+                            peers += newPeer
+                            graft(newPeer, topic)
+                            notifyMeshed(newPeer, topic)
+                        }
                 } else if (peers.size > coreParams.DHigh) {
                     peers.shuffled(random).take(peers.size - coreParams.D).forEach { dropPeer ->
                         peers -= dropPeer
                         prune(dropPeer, topic)
+                        notifyPruned(dropPeer, topic)
                     }
                 }
+
+                // opportunistic grafting
+                if (heartbeatsCount % scoreParams.opportunisticGraftTicks == 0 && peers.size > 1) {
+                    val scoreMedian = peers.map { score.score(it) }.median()
+                    if (scoreMedian < scoreParams.opportunisticGraftThreshold) {
+                        (getTopicPeers(topic) - peers)
+                            .filter { score.score(it) > scoreMedian }
+                            .forEach {
+                                graft(it, topic)
+                                notifyMeshed(it, topic)
+                            }
+                    }
+                }
+
                 emitGossip(topic, peers)
             }
             fanout.entries.forEach { (topic, peers) ->
-                peers.removeIf { it in getTopicPeers(topic) }
+                peers.removeIf {
+                    it !in getTopicPeers(topic) || score.score(it) < scoreParams.publishThreshold
+                }
                 val needMore = coreParams.D - peers.size
                 if (needMore > 0) {
-                    peers += (getTopicPeers(topic) - peers).shuffled(random).take(needMore)
+                    peers += (getTopicPeers(topic) - peers)
+                        .filter { score.score(it) >= scoreParams.publishThreshold }
+                        .shuffled(random)
+                        .take(needMore)
                 }
                 emitGossip(topic, peers)
             }

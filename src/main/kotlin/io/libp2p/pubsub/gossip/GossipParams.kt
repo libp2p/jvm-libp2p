@@ -36,6 +36,7 @@ data class GossipScoreParams(
     val graylistThreshold: Double = -3.0,
     val acceptPXThreshold: Double = 1.0,
     val opportunisticGraftThreshold: Double = 2.0,
+    val opportunisticGraftTicks: Int = 60,
 
     val decayInterval: Duration = 1.minutes,
     val decayToZero: Double = 0.01,

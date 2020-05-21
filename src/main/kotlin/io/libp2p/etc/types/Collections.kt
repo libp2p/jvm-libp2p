@@ -118,3 +118,8 @@ class MultiSet<K, V> : Iterable<Map.Entry<K, MutableList<V>>> {
 operator fun <C> List<C>.get(range: IntRange): List<C> {
     return subList(range.first, range.last + 1)
 }
+
+fun <C : Number> Collection<C>.median(): Double {
+    val sorted = map { it.toDouble() }.sorted()
+    return if (size % 2 == 0) (sorted[size / 2 - 1] + sorted[size / 2]) / 2.0 else sorted[size / 2]
+}
