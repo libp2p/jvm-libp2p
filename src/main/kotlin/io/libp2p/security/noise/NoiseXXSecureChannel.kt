@@ -38,7 +38,7 @@ private const val NoiseCodeNettyHandlerName = "NoiseXXCodec"
 private const val MaxCipheredPacketLength = 65535
 
 class UShortLengthCodec : CombinedChannelDuplexHandler<LengthFieldBasedFrameDecoder, LengthFieldPrepender>(
-    LengthFieldBasedFrameDecoder(0xFFFF + 2, 0, 2, 0, 2),
+    LengthFieldBasedFrameDecoder(MaxCipheredPacketLength + 2, 0, 2, 0, 2),
     LengthFieldPrepender(2)
 )
 
