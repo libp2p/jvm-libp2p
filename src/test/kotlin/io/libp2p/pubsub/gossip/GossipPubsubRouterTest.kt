@@ -41,7 +41,7 @@ class GossipPubsubRouterTest : PubsubRouterTest({
         // this is to test ihave/iwant
         fuzz.timeController.addTime(Duration.ofMillis(1))
 
-        val r = GossipRouter(GossipParamsV1_1(GossipParamsCore(3, 3, 3, 1000)))
+        val r = GossipRouter(GossipParamsV1_1(GossipParamsCore(3, 3, 3, 1000), floodPublish = false))
         val routerCenter = fuzz.createTestRouter(r)
         allRouters.add(0, routerCenter)
 
