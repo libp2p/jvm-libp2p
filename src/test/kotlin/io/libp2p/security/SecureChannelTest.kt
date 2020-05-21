@@ -72,7 +72,7 @@ abstract class SecureChannelTest(
 
         val data1: String
         val data2: String
-        if (dataSize > 2) {
+        if (dataSize >= 2) {
             val trimDataSize = dataSize - 2
             val data = (0 until trimDataSize / 10)
                 .map { " x" + Integer.toHexString(it * 10).padStart(8, '0') }
