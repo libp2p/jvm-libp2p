@@ -29,7 +29,6 @@ const val MaxMessageSize = 1 shl 20
  */
 class MplexFrameCodec : ByteToMessageCodec<MuxFrame>() {
 
-
     /**
      * Encodes the given mplex frame into bytes and writes them into the output list.
      * @see [https://github.com/libp2p/specs/tree/master/mplex]

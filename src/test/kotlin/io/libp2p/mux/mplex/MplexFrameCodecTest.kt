@@ -47,7 +47,6 @@ class MplexFrameCodecTest {
             channel.readOutbound<ByteBuf>()
         )
 
-
         for (i in 0..sliceIdx.size) {
             val startIdx = if (i == 0) 0 else sliceIdx[i - 1]
             val endIdx = if (i == sliceIdx.size) rawData.writerIndex() else sliceIdx[i]
