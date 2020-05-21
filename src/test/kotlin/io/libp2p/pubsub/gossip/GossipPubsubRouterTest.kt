@@ -8,7 +8,12 @@ import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import java.time.Duration
 
-class GossipPubsubRouterTest : PubsubRouterTest({ GossipRouter(GossipParamsCore(3, 3, 100)) }) {
+class GossipPubsubRouterTest : PubsubRouterTest({
+    GossipRouter(
+        GossipParamsCore(3, 3, 100),
+        GossipParamsV1_1(floodPublish = false)
+    ) }) {
+
     @Test
     override fun TenNeighborsTopology() {
         for (d in 3..6) {
