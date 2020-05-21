@@ -280,7 +280,7 @@ abstract class HostTest(
         val echoController = echo.controller.get(5, TimeUnit.SECONDS)
         val largeMsg = (0..20000).map { "Hello" }.joinToString("")
 
-        assertEquals(largeMsg, echoController.echo(largeMsg).get(1, TimeUnit.SECONDS))
+        assertEquals(largeMsg, echoController.echo(largeMsg).get(10, TimeUnit.SECONDS))
     }
 
     @Test
