@@ -19,12 +19,16 @@ import io.libp2p.mux.MuxFrame
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 import io.netty.channel.ChannelHandlerContext
-import io.netty.handler.codec.MessageToMessageCodec
+import io.netty.handler.codec.ByteToMessageCodec
+import kotlin.math.min
+
+const val MaxMessageSize = 1 shl 20
 
 /**
  * A Netty codec implementation that converts [MplexFrame] instances to [ByteBuf] and vice-versa.
  */
-class MplexFrameCodec : MessageToMessageCodec<ByteBuf, MuxFrame>() {
+class MplexFrameCodec : ByteToMessageCodec<MuxFrame>() {
+
 
     /**
      * Encodes the given mplex frame into bytes and writes them into the output list.
@@ -33,16 +37,11 @@ class MplexFrameCodec : MessageToMessageCodec<ByteBuf, MuxFrame>() {
      * @param msg the mplex frame.
      * @param out the list to write the bytes to.
      */
-    override fun encode(ctx: ChannelHandlerContext, msg: MuxFrame, out: MutableList<Any>) {
-        out.add(
-            Unpooled.wrappedBuffer(
-                Unpooled.buffer().apply {
-                    writeUvarint(msg.id.id.shl(3).or(MplexFlags.toMplexFlag(msg.flag, msg.id.initiator).toLong()))
-                    writeUvarint(msg.data?.readableBytes() ?: 0)
-                },
-                msg.data?.retainedSlice() ?: Unpooled.EMPTY_BUFFER
-            )
-        )
+//    override fun encode(ctx: ChannelHandlerContext, msg: MuxFrame, out: MutableList<Any>) {
+    override fun encode(ctx: ChannelHandlerContext, msg: MuxFrame, out: ByteBuf) {
+        out.writeUvarint(msg.id.id.shl(3).or(MplexFlags.toMplexFlag(msg.flag, msg.id.initiator).toLong()))
+        out.writeUvarint(msg.data?.readableBytes() ?: 0)
+        out.writeBytes(msg.data ?: Unpooled.EMPTY_BUFFER)
     }
 
     /**
@@ -54,8 +53,16 @@ class MplexFrameCodec : MessageToMessageCodec<ByteBuf, MuxFrame>() {
      */
     override fun decode(ctx: ChannelHandlerContext, msg: ByteBuf, out: MutableList<Any>) {
         while (msg.isReadable) {
+            val readerIndex = msg.readerIndex()
             val header = msg.readUvarint()
             val lenData = msg.readUvarint()
+            if (header < 0 || lenData < 0 || msg.readableBytes() < lenData) {
+                msg.readerIndex(readerIndex)
+                return
+            }
+            if (lenData > MaxMessageSize) {
+                msg.skipBytes(min(lenData, msg.readableBytes().toLong()).toInt())
+            }
             val streamTag = header.and(0x07).toInt()
             val streamId = header.shr(3)
             val data = msg.readSlice(lenData.toInt())
