@@ -17,6 +17,7 @@ import io.libp2p.etc.types.toByteArray
 import io.libp2p.etc.types.toByteBuf
 import io.libp2p.etc.types.toUShortBigEndian
 import io.libp2p.etc.types.uShortToBytesBigEndian
+import io.libp2p.etc.util.netty.SplitEncoder
 import io.libp2p.security.InvalidRemotePubKey
 import io.libp2p.security.SecureHandshakeError
 import io.netty.buffer.ByteBuf
@@ -33,9 +34,11 @@ private enum class Role(val intVal: Int) { INIT(HandshakeState.INITIATOR), RESP(
 
 private val log = LogManager.getLogger(NoiseXXSecureChannel::class.java)
 private const val HandshakeNettyHandlerName = "HandshakeNettyHandler"
+private const val NoiseCodeNettyHandlerName = "NoiseXXCodec"
+private const val MaxCipheredPacketLength = 65535
 
 class UShortLengthCodec : CombinedChannelDuplexHandler<LengthFieldBasedFrameDecoder, LengthFieldPrepender>(
-    LengthFieldBasedFrameDecoder(0xFFFF, 0, 2, 0, 2),
+    LengthFieldBasedFrameDecoder(0xFFFF + 2, 0, 2, 0, 2),
     LengthFieldPrepender(2)
 )
 
@@ -286,12 +289,21 @@ private class NoiseIoHandshake(
     private fun handshakeSucceeded(ctx: ChannelHandlerContext, session: NoiseSecureChannelSession) {
         handshakeComplete.complete(session)
         ctx.pipeline()
-            .addBefore(HandshakeNettyHandlerName, "NoiseXXCodec", NoiseXXCodec(session.aliceCipher, session.bobCipher))
+            .addBefore(
+                HandshakeNettyHandlerName,
+                NoiseCodeNettyHandlerName,
+                NoiseXXCodec(session.aliceCipher, session.bobCipher)
+            )
         // according to Libp2p spec transport payload should also be length-prefixed
         // though Rust Libp2p implementation doesn't do it
         // https://github.com/libp2p/specs/tree/master/noise#wire-format
 //        ctx.pipeline()
 //            .addBefore(HandshakeNettyHandlerName, "NoiseXXPayloadLenCodec", UShortLengthCodec())
+        ctx.pipeline().addAfter(
+            NoiseCodeNettyHandlerName,
+            "NoisePacketSplitter",
+            SplitEncoder(MaxCipheredPacketLength - session.aliceCipher.macLength)
+        )
         ctx.pipeline().remove(this)
         ctx.fireChannelActive()
     } // handshakeSucceeded
