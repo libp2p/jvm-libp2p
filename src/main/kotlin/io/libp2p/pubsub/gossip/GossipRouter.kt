@@ -82,6 +82,10 @@ open class GossipRouter(
         score.notifyPruned(peer, topic)
     }
 
+    override fun acceptRequestsFrom(peer: PeerHandler): Boolean {
+        return score.score(peer) >= score.params.graylistThreshold
+    }
+
     private fun processControlMessage(controlMsg: Any, receivedFrom: PeerHandler) {
         val peerScore = score.score(receivedFrom)
         when (controlMsg) {

@@ -166,8 +166,11 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
     protected open fun notifySeenMessage(peer: PeerHandler, msg: Rpc.Message, validationResult: ValidationResult) {}
     protected open fun notifyUnseenInvalidMessage(peer: PeerHandler, msg: Rpc.Message) {}
     protected open fun notifyUnseenValidMessage(peer: PeerHandler, msg: Rpc.Message) {}
+    protected open fun acceptRequestsFrom(peer: PeerHandler) = true
 
     override fun onInbound(peer: PeerHandler, msg: Any) {
+        if (!acceptRequestsFrom(peer)) return
+
         msg as Rpc.RPC
         msg.subscriptionsList.forEach { handleMessageSubscriptions(peer, it) }
         if (msg.hasControl()) {
