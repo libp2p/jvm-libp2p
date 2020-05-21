@@ -19,18 +19,20 @@ fun P2PService.PeerHandler.getIP(): String? =
  * Router implementing this protocol: https://github.com/libp2p/specs/tree/master/pubsub/gossipsub
  */
 open class GossipRouter(
-    val params: GossipParamsCore = GossipParamsCore(),
-    val extParams: GossipParamsExtGlobal = GossipParamsExtGlobal()
+    val params: GossipParamsV1_1 = GossipParamsV1_1(),
+    val scoreParams: GossipScoreParams = GossipScoreParams()
 ) : AbstractRouter() {
 
-    val score by lazy { GossipScore(executor, curTime) }
+    private val coreParams: GossipParamsCore = params.coreParams
+
+    val score by lazy { GossipScore(scoreParams, executor, curTime) }
 
     val heartbeat by lazy {
-        Heartbeat.create(executor, params.heartbeatInterval, curTime)
+        Heartbeat.create(executor, coreParams.heartbeatInterval, curTime)
             .apply { listeners.add(::heartBeat) }
     }
 
-    val mCache = MCache(params.gossipSize, params.gossipHistoryLength)
+    val mCache = MCache(coreParams.gossipSize, coreParams.gossipHistoryLength)
     val fanout: MutableMap<Topic, MutableSet<PeerHandler>> = linkedMapOf()
     val mesh: MutableMap<Topic, MutableSet<PeerHandler>> = linkedMapOf()
     val lastPublished = linkedMapOf<Topic, Long>()
@@ -97,11 +99,11 @@ open class GossipRouter(
                 }
             }
             is Rpc.ControlIHave -> {
-                if (peerScore < score.globalParams.gossipThreshold) return
+                if (peerScore < score.params.gossipThreshold) return
                 iwant(receivedFrom, controlMsg.messageIDsList - seenMessages.keys)
             }
             is Rpc.ControlIWant -> {
-                if (peerScore < score.globalParams.gossipThreshold) return
+                if (peerScore < score.params.gossipThreshold) return
                 controlMsg.messageIDsList
                     .mapNotNull { mCache.getMessage(it) }
                     .forEach { submitPublishMessage(receivedFrom, it) }
@@ -132,14 +134,14 @@ open class GossipRouter(
         msg.topicIDsList.forEach { lastPublished[it] = heartbeat.currentTime() }
 
         val peers =
-            if (extParams.floodPublish) {
+            if (params.floodPublish) {
                 msg.topicIDsList
                     .flatMap { getTopicPeers(it) }
-                    .filter { score.score(it) >= score.globalParams.publishThreshold }
+                    .filter { score.score(it) >= score.params.publishThreshold }
             } else {
                 msg.topicIDsList
                     .mapNotNull { topic ->
-                        mesh[topic] ?: fanout[topic] ?: getTopicPeers(topic).shuffled(random).take(params.D)
+                        mesh[topic] ?: fanout[topic] ?: getTopicPeers(topic).shuffled(random).take(coreParams.D)
                             .also {
                                 if (it.isNotEmpty()) fanout[topic] = it.toMutableSet()
                             }
@@ -158,9 +160,9 @@ open class GossipRouter(
         val fanoutPeers = fanout[topic] ?: mutableSetOf()
         val meshPeers = mesh.getOrPut(topic) { mutableSetOf() }
         val otherPeers = getTopicPeers(topic) - meshPeers - fanoutPeers
-        if (meshPeers.size < params.D) {
-            val addFromFanout = fanoutPeers.shuffled(random).take(params.D - meshPeers.size)
-            val addFromOthers = otherPeers.shuffled(random).take(params.D - meshPeers.size - addFromFanout.size)
+        if (meshPeers.size < coreParams.D) {
+            val addFromFanout = fanoutPeers.shuffled(random).take(coreParams.D - meshPeers.size)
+            val addFromOthers = otherPeers.shuffled(random).take(coreParams.D - meshPeers.size - addFromFanout.size)
 
             meshPeers += (addFromFanout + addFromOthers)
             (addFromFanout + addFromOthers).forEach {
@@ -177,13 +179,13 @@ open class GossipRouter(
     private fun heartBeat(time: Long) {
         try {
             mesh.entries.forEach { (topic, peers) ->
-                if (peers.size < params.DLow) {
-                    (getTopicPeers(topic) - peers).shuffled(random).take(params.D - peers.size).forEach { newPeer ->
+                if (peers.size < coreParams.DLow) {
+                    (getTopicPeers(topic) - peers).shuffled(random).take(coreParams.D - peers.size).forEach { newPeer ->
                         peers += newPeer
                         graft(newPeer, topic)
                     }
-                } else if (peers.size > params.DHigh) {
-                    peers.shuffled(random).take(peers.size - params.D).forEach { dropPeer ->
+                } else if (peers.size > coreParams.DHigh) {
+                    peers.shuffled(random).take(peers.size - coreParams.D).forEach { dropPeer ->
                         peers -= dropPeer
                         prune(dropPeer, topic)
                     }
@@ -192,14 +194,14 @@ open class GossipRouter(
             }
             fanout.entries.forEach { (topic, peers) ->
                 peers.removeIf { it in getTopicPeers(topic) }
-                val needMore = params.D - peers.size
+                val needMore = coreParams.D - peers.size
                 if (needMore > 0) {
                     peers += (getTopicPeers(topic) - peers).shuffled(random).take(needMore)
                 }
                 emitGossip(topic, peers)
             }
             lastPublished.entries.removeIf { (topic, lastPub) ->
-                (time - lastPub > params.fanoutTTL.toMillis())
+                (time - lastPub > coreParams.fanoutTTL.toMillis())
                     .whenTrue { fanout.remove(topic) }
             }
 
@@ -217,10 +219,10 @@ open class GossipRouter(
 
         val shuffledMessageIds = ids.shuffled(random)
         val peers = (getTopicPeers(topic) - excludePeers)
-            .filter { score.score(it) >= score.globalParams.gossipThreshold }
+            .filter { score.score(it) >= score.params.gossipThreshold }
 
         peers.shuffled(random)
-            .take(max((extParams.gossipFactor * peers.size).toInt(), params.DGossip))
+            .take(max((params.gossipFactor * peers.size).toInt(), coreParams.DGossip))
             .forEach { ihave(it, shuffledMessageIds) }
     }
 

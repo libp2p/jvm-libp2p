@@ -19,29 +19,38 @@ data class GossipParamsCore(
     val heartbeatInterval: Duration = 1.seconds
 )
 
-data class GossipParamsExtGlobal(
+data class GossipParamsV1_1(
+    val coreParams: GossipParamsCore = GossipParamsCore(),
     val pruneBackoff: Duration = 1.millis,
     val floodPublish: Boolean = true,
     val gossipFactor: Double = 0.25,
     val dScore: Int = 5 // depends on D
 )
 
-data class GossipParamsExtPeerTopicScoring(
+data class GossipScoreParams(
+    val peerScoreParams: GossipPeerScoreParams = GossipPeerScoreParams(),
+    val topicsScoreParams: GossipTopicsScoreParams = GossipTopicsScoreParams(),
+
     val gossipThreshold: Double = -1.0,
-    val publishThreshold: Double = 2.0,
-    val graylistThreshold: Double = 3.0,
-    val acceptPXThreshold: Double = 4.0,
-    val opportunisticGraftThreshold: Double = 5.0,
+    val publishThreshold: Double = -2.0,
+    val graylistThreshold: Double = -3.0,
+    val acceptPXThreshold: Double = 1.0,
+    val opportunisticGraftThreshold: Double = 2.0,
+
     val decayInterval: Duration = 1.minutes,
     val decayToZero: Double = 0.01,
     val retainScore: Duration = 10.minutes
 ) {
     init {
-        // TODO validation
+        check(gossipThreshold < 0, "gossipThreshold should be < 0")
+        check(publishThreshold <= gossipThreshold, "publishThreshold should be <= than gossipThreshold")
+        check(graylistThreshold <= publishThreshold, "gossipThreshold should be < publishThreshold")
+        check(acceptPXThreshold > 0, "acceptPXThreshold should be > 0")
+        check(opportunisticGraftThreshold > 0, "opportunisticGraftThreshold should be > 0")
     }
 }
 
-data class GossipParamsExtPeerScoring(
+data class GossipPeerScoreParams(
     val topicScoreCap: Double = 10000.0,
     val appSpecificScore: (PeerId) -> Double = { 0.0 },
     val appSpecificWeight: Weight = 1.0,
@@ -56,14 +65,14 @@ data class GossipParamsExtPeerScoring(
     }
 }
 
-class GossipParamsExtTopics {
-    private val defaultParams: GossipParamsExtTopic = GossipParamsExtTopic()
-    private val topicParams: MutableMap<Topic, GossipParamsExtTopic> = mutableMapOf()
+class GossipTopicsScoreParams {
+    private val defaultParams: GossipTopicScoreParams = GossipTopicScoreParams()
+    private val topicParams: MutableMap<Topic, GossipTopicScoreParams> = mutableMapOf()
 
     operator fun get(topic: Topic) = topicParams.getOrDefault(topic, defaultParams)
 }
 
-data class GossipParamsExtTopic(
+data class GossipTopicScoreParams(
     val TopicWeight: Weight = 1.0,
     // P₁
     val TimeInMeshWeight: Weight = 1.0,
@@ -90,4 +99,8 @@ data class GossipParamsExtTopic(
     init {
         // TODO validation
     }
+}
+
+private fun check(condition: Boolean, errMsg: String) {
+    if (!condition) throw IllegalArgumentException(errMsg)
 }

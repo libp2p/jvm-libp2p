@@ -14,24 +14,28 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
 
-class GossipScore(val executor: ScheduledExecutorService, val curTime: () -> Long) {
+class GossipScore(
+    val params: GossipScoreParams = GossipScoreParams(),
+    val executor: ScheduledExecutorService,
+    val curTime: () -> Long
+) {
 
     inner class TopicScores(val topic: Topic) {
-        private val params = topicsParams[topic]
+        private val params = topicParams[topic]
 
         var joinedMeshTime: Long = 0
         var firstMessageDeliveries: Double by cappedDouble(
             0.0,
-            globalParams.decayToZero,
+            this@GossipScore.params.decayToZero,
             params.FirstMessageDeliveriesCap
         )
         var meshMessageDeliveries: Double by cappedDouble(
             0.0,
-            globalParams.decayToZero,
+            this@GossipScore.params.decayToZero,
             params.MeshMessageDeliveriesCap
         )
-        var meshFailurePenalty: Double by cappedDouble(0.0, globalParams.decayToZero)
-        var invalidMessages: Double by cappedDouble(0.0, globalParams.decayToZero)
+        var meshFailurePenalty: Double by cappedDouble(0.0, this@GossipScore.params.decayToZero)
+        var invalidMessages: Double by cappedDouble(0.0, this@GossipScore.params.decayToZero)
 
         fun inMesh() = joinedMeshTime > 0
 
@@ -79,7 +83,7 @@ class GossipScore(val executor: ScheduledExecutorService, val curTime: () -> Lon
         var disconnectedTime: Long = 0
 
         val topicScores = mutableMapOf<Topic, TopicScores>()
-        var behaviorPenalty: Double by cappedDouble(0.0, globalParams.decayToZero)
+        var behaviorPenalty: Double by cappedDouble(0.0, params.decayToZero)
 
         fun isConnected() = connectedTime > 0 && disconnectedTime == 0L
         fun isDisconnected() = disconnectedTime > 0
@@ -88,15 +92,16 @@ class GossipScore(val executor: ScheduledExecutorService, val curTime: () -> Lon
             else throw IllegalStateException("Peer is not disconnected")
     }
 
+    val peerParams = params.peerScoreParams
+    val topicParams = params.topicsScoreParams
+
     private val validationTime: MutableMap<Rpc.Message, Long> = LRUCollections.createMap(1024)
     val peerScores = mutableMapOf<PeerId, PeerScores>()
-    val topicsParams = GossipParamsExtTopics()
-    val scoreParams = GossipParamsExtPeerScoring()
-    val globalParams = GossipParamsExtPeerTopicScoring()
+
     val refreshTask: ScheduledFuture<*>
 
     init {
-        val refreshPeriod = globalParams.decayInterval.toMillis()
+        val refreshPeriod = params.decayInterval.toMillis()
         refreshTask = executor.scheduleAtFixedRate({ refreshScores() }, refreshPeriod, refreshPeriod, TimeUnit.MILLISECONDS)
     }
 
@@ -111,30 +116,30 @@ class GossipScore(val executor: ScheduledExecutorService, val curTime: () -> Lon
     fun score(peer: P2PService.PeerHandler): Double {
         val peerScore = getPeerScores(peer)
         val topicsScore = min(
-            scoreParams.topicScoreCap,
+            peerParams.topicScoreCap,
             peerScore.topicScores.values.map { it.calcTopicScore() }.sum()
         )
-        val appScore = scoreParams.appSpecificScore(peer.peerId()) * scoreParams.appSpecificWeight
+        val appScore = peerParams.appSpecificScore(peer.peerId()) * peerParams.appSpecificWeight
 
         val peersInIp: Int = peer.getIP()?.let { thisIp ->
-            if (scoreParams.ipWhitelisted(thisIp)) 0 else
+            if (peerParams.ipWhitelisted(thisIp)) 0 else
                 peerScores.values.count { thisIp in it.ips }
         } ?: 0
         val ipColocationPenalty = max(
             0,
-            (peersInIp - scoreParams.ipColocationFactorThreshold)
-        ).toDouble().pow(2) * scoreParams.ipColocationFactorWeight
+            (peersInIp - peerParams.ipColocationFactorThreshold)
+        ).toDouble().pow(2) * peerParams.ipColocationFactorWeight
 
-        val routerPenalty = peerScore.behaviorPenalty * scoreParams.behaviourPenaltyWeight
+        val routerPenalty = peerScore.behaviorPenalty * peerParams.behaviourPenaltyWeight
 
         return topicsScore + appScore + ipColocationPenalty + routerPenalty
     }
 
     fun refreshScores() {
-        peerScores.values.removeIf { it.isDisconnected() && it.getDisconnectDuration() > globalParams.retainScore }
+        peerScores.values.removeIf { it.isDisconnected() && it.getDisconnectDuration() > params.retainScore }
         peerScores.values.forEach {
             it.topicScores.values.forEach { it.decayScores() }
-            it.behaviorPenalty *= scoreParams.behaviourPenaltyDecay
+            it.behaviorPenalty *= peerParams.behaviourPenaltyDecay
         }
     }
 
@@ -165,7 +170,7 @@ class GossipScore(val executor: ScheduledExecutorService, val curTime: () -> Lon
                 when {
                     validationResult == ValidationResult.Invalid -> topicScores.invalidMessages++
                     validationResult == ValidationResult.Pending
-                            || durationAfterValidation < topicsParams[topic].MeshMessageDeliveryWindow ->
+                            || durationAfterValidation < topicParams[topic].MeshMessageDeliveryWindow ->
                         topicScores.meshMessageDeliveries++
                 }
             }
