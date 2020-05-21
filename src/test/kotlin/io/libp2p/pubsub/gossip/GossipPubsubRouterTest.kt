@@ -10,8 +10,7 @@ import java.time.Duration
 
 class GossipPubsubRouterTest : PubsubRouterTest({
     GossipRouter(
-        GossipParamsCore(3, 3, 100),
-        GossipParamsV1_1(floodPublish = false)
+        GossipParamsV1_1(GossipParamsCore(3, 3, 100), floodPublish = false)
     ) }) {
 
     @Test
@@ -19,7 +18,7 @@ class GossipPubsubRouterTest : PubsubRouterTest({
         for (d in 3..6) {
             for (seed in 0..10) {
                 print("D=$d, seed=$seed  ")
-                super.doTenNeighborsTopology(seed) { GossipRouter(GossipParamsCore(d, d, d)) }
+                super.doTenNeighborsTopology(seed) { GossipRouter(GossipParamsV1_1(GossipParamsCore(d, d, d))) }
             }
         }
     }
@@ -32,7 +31,7 @@ class GossipPubsubRouterTest : PubsubRouterTest({
 
         val otherCount = 5
         for (i in 1..otherCount) {
-            val r = GossipRouter(GossipParamsCore(1, 0))
+            val r = GossipRouter(GossipParamsV1_1(GossipParamsCore(1, 0)))
             val routerEnd = fuzz.createTestRouter(r)
             (routerEnd.router as GossipRouter).heartbeat // init heartbeat with current time
             allRouters += routerEnd
@@ -42,7 +41,7 @@ class GossipPubsubRouterTest : PubsubRouterTest({
         // this is to test ihave/iwant
         fuzz.timeController.addTime(Duration.ofMillis(1))
 
-        val r = GossipRouter(GossipParamsCore(3, 3, 3, 1000))
+        val r = GossipRouter(GossipParamsV1_1(GossipParamsCore(3, 3, 3, 1000)))
         val routerCenter = fuzz.createTestRouter(r)
         allRouters.add(0, routerCenter)
 
