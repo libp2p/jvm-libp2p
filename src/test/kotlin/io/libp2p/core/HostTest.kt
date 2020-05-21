@@ -26,6 +26,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.condition.DisabledIf
 import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable
 import java.util.concurrent.TimeUnit
 
@@ -267,6 +268,7 @@ abstract class HostTest(
         assertEquals("world", echoController.echo("world").get(1, TimeUnit.SECONDS))
     }
 
+    @DisabledIf("junitTags.contains('ws-transport')")
     @Test
     fun largeEchoOverSecureConnection() {
         val echo = Echo().dial(
