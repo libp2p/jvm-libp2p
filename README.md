@@ -56,15 +56,29 @@ We are explicitly leaving out the peerstore, DHT, pubsub, connection manager,
 etc. and other subsystems or concepts that are internal to implementations and
 do not impact the ability to hold communications with other libp2p processes.
 
-## Adding as a dependency to your Gradle project:
+## Adding as a dependency to your project:
 
+Builds are published to JCenter. Maven Central mirrors JCenter, but updates can take some time to appear so if possible, pull directly from JCenter.
+
+### Using Gradle
 ```
    repositories {
        jcenter()
    }
 
-   implementation 'io.libp2p:jvm-libp2p-minimal:0.3.0-RELEASE'
+   implementation 'io.libp2p:jvm-libp2p-minimal:0.4.0-RELEASE'
 ```
+### Using Maven
+``` 
+  <dependency>
+    <groupId>io.libp2p</groupId>
+    <artifactId>jvm-libp2p-minimal</artifactId>
+    <version>0.3.2-RELEASE</version>
+    <type>pom</type>
+  </dependency>
+```
+
+
 
 
 ## License

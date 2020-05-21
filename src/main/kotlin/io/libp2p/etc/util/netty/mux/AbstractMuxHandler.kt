@@ -1,14 +1,18 @@
 package io.libp2p.etc.util.netty.mux
 
 import io.libp2p.core.ConnectionClosedException
+import io.libp2p.core.InternalErrorException
 import io.libp2p.core.Libp2pException
 import io.libp2p.etc.types.completedExceptionally
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
+import org.apache.logging.log4j.LogManager
 import java.util.concurrent.CompletableFuture
 import java.util.function.Function
 
 typealias MuxChannelInitializer<TData> = (MuxChannel<TData>) -> Unit
+
+private val log = LogManager.getLogger(AbstractMuxHandler::class.java)
 
 abstract class AbstractMuxHandler<TData>(var inboundInitializer: MuxChannelInitializer<TData>? = null) :
     ChannelInboundHandlerAdapter() {
@@ -34,19 +38,27 @@ abstract class AbstractMuxHandler<TData>(var inboundInitializer: MuxChannelIniti
         super.channelUnregistered(ctx)
     }
 
+    override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
+        when (cause) {
+            is InternalErrorException -> log.warn("Muxer internal error", cause)
+            is Libp2pException -> log.debug("Muxer exception", cause)
+            else -> log.warn("Unexpected exception", cause)
+        }
+    }
+
     fun getChannelHandlerContext(): ChannelHandlerContext {
-        return ctx ?: throw Libp2pException("Internal error: handler context should be initialized at this stage")
+        return ctx ?: throw InternalErrorException("Internal error: handler context should be initialized at this stage")
     }
 
     protected fun childRead(id: MuxId, msg: TData) {
-        val child = streamMap[id] ?: throw Libp2pException("Channel with id $id not opened")
+        val child = streamMap[id] ?: throw ConnectionClosedException("Channel with id $id not opened")
         child.pipeline().fireChannelRead(msg)
     }
 
     abstract fun onChildWrite(child: MuxChannel<TData>, data: TData): Boolean
 
     protected fun onRemoteOpen(id: MuxId) {
-        val initializer = inboundInitializer ?: throw Libp2pException("Illegal state: inbound stream handler is not set up yet")
+        val initializer = inboundInitializer ?: throw InternalErrorException("Illegal state: inbound stream handler is not set up yet")
         val child = createChild(
             id,
             initializer,

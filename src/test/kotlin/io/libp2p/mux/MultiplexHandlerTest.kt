@@ -19,6 +19,7 @@ import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
+import io.netty.channel.DefaultChannelId
 import io.netty.handler.logging.LogLevel
 import io.netty.handler.logging.LoggingHandler
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -33,6 +34,7 @@ import java.util.concurrent.CompletableFuture
  * Created by Anton Nashatyrev on 09.07.2019.
  */
 class MultiplexHandlerTest {
+    val dummyParentChannelId = DefaultChannelId.newInstance()
     val childHandlers = mutableListOf<TestHandler>()
     lateinit var multistreamHandler: MuxHandler
     lateinit var ech: TestChannel
@@ -40,7 +42,7 @@ class MultiplexHandlerTest {
     @BeforeEach
     fun startMultiplexor() {
         childHandlers.clear()
-        multistreamHandler = MuxHandler(
+        multistreamHandler = object : MuxHandler(
             createStreamHandler(
                 nettyInitializer {
                     println("New child channel created")
@@ -48,7 +50,13 @@ class MultiplexHandlerTest {
                     it.pipeline().addLast(handler)
                     childHandlers += handler
                 })
-        )
+        ) {
+            // MuxHandler consumes the exception. Override this behaviour for testing
+            override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
+                super.exceptionCaught(ctx, cause)
+                ctx.fireExceptionCaught(cause)
+            }
+        }
 
         ech = TestChannel("test", true, LoggingHandler(LogLevel.ERROR), multistreamHandler)
     }
@@ -198,7 +206,7 @@ class MultiplexHandlerTest {
     fun writeStream(id: Long, msg: String) = writeFrame(id, DATA, msg.fromHex().toByteBuf())
     fun resetStream(id: Long) = writeFrame(id, RESET)
     fun writeFrame(id: Long, flag: MuxFrame.Flag, data: ByteBuf? = null) =
-        ech.writeInbound(MuxFrame(MuxId(id, true), flag, data))
+        ech.writeInbound(MuxFrame(MuxId(dummyParentChannelId, id, true), flag, data))
 
     fun createStreamHandler(channelInitializer: ChannelHandler) = object : StreamHandler<Unit> {
         override fun handleStream(stream: Stream): CompletableFuture<out Unit> {
