@@ -12,12 +12,19 @@ data class GossipParamsCore(
     val D: Int = 3,
     val DLow: Int = D * 3 / 2,
     val DHigh: Int = D * 2,
+    val DScore: Int = D,
+    val DOut: Int = D / 2,
     val DGossip: Int = D,
     val fanoutTTL: Duration = 60.seconds,
     val gossipSize: Int = 3,
     val gossipHistoryLength: Int = 5,
     val heartbeatInterval: Duration = 1.seconds
-)
+) {
+    init {
+        check(DOut < DLow, "DOut should be < DLow")
+        check(DOut <= D / 2, "DOut should be <= D/2")
+    }
+}
 
 data class GossipParamsV1_1(
     val coreParams: GossipParamsCore = GossipParamsCore(),

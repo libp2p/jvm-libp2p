@@ -14,8 +14,9 @@ import kotlin.math.max
 typealias Topic = String
 
 fun P2PService.PeerHandler.getIP(): String? =
-    this.streamHandler.stream.connection.remoteAddress().getStringComponent(Protocol.IP4)
+    streamHandler.stream.connection.remoteAddress().getStringComponent(Protocol.IP4)
 
+fun P2PService.PeerHandler.isOutbound() = streamHandler.stream.connection.isInitiator
 /**
  * Router implementing this protocol: https://github.com/libp2p/specs/tree/master/pubsub/gossipsub
  */
@@ -38,13 +39,6 @@ open class GossipRouter(
     val mesh: MutableMap<Topic, MutableSet<PeerHandler>> = linkedMapOf()
     val lastPublished = linkedMapOf<Topic, Long>()
     var heartbeatsCount = 0
-
-    private fun submitGossip(topic: Topic, peers: Collection<PeerHandler>) {
-        val ids = mCache.getMessageIds(topic)
-        if (ids.isNotEmpty()) {
-            (peers - (mesh[topic] ?: emptySet())).forEach { ihave(it, ids) }
-        }
-    }
 
     override fun onPeerDisconnected(peer: PeerHandler) {
         score.notifyDisconnected(peer)
@@ -96,7 +90,7 @@ open class GossipRouter(
                     mesh[controlMsg.topicID]!! += receivedFrom
                     notifyMeshed(receivedFrom, controlMsg.topicID)
                 } else {
-                    prune(receivedFrom, controlMsg.topicID)
+                    enqueuePrune(receivedFrom, controlMsg.topicID)
                 }
             }
             is Rpc.ControlPrune -> {
@@ -106,7 +100,7 @@ open class GossipRouter(
             }
             is Rpc.ControlIHave -> {
                 if (peerScore < score.params.gossipThreshold) return
-                iwant(receivedFrom, controlMsg.messageIDsList - seenMessages.keys)
+                enqueueIwant(receivedFrom, controlMsg.messageIDsList - seenMessages.keys)
             }
             is Rpc.ControlIWant -> {
                 if (peerScore < score.params.gossipThreshold) return
@@ -172,14 +166,14 @@ open class GossipRouter(
 
             meshPeers += (addFromFanout + addFromOthers)
             (addFromFanout + addFromOthers).forEach {
-                graft(it, topic)
+                enqueueGraft(it, topic)
             }
         }
     }
 
     override fun unsubscribe(topic: Topic) {
         super.unsubscribe(topic)
-        mesh.remove(topic)?.forEach { prune(it, topic) }
+        mesh.remove(topic)?.forEach { enqueuePrune(it, topic) }
     }
 
     private fun heartBeat(time: Long) {
@@ -187,25 +181,43 @@ open class GossipRouter(
         try {
             mesh.entries.forEach { (topic, peers) ->
 
-                val underscoredPeers = peers.filter { score.score(it) < 0 }
-                underscoredPeers.forEach { prune(it, topic) }
+                // drop underscored peers from mesh
+                peers.filter { score.score(it) < 0 }
+                    .forEach { prune(it, topic) }
 
                 if (peers.size < coreParams.DLow) {
-                    (getTopicPeers(topic) - peers - underscoredPeers)
+                    // need more mesh peers
+                    (getTopicPeers(topic) - peers)
+                        .filter { score.score(it) >= 0 }
                         .shuffled(random)
                         .take(coreParams.D - peers.size)
-                        .forEach { newPeer ->
-                            peers += newPeer
-                            graft(newPeer, topic)
-                            notifyMeshed(newPeer, topic)
-                        }
+                        .forEach { graft(it, topic) }
                 } else if (peers.size > coreParams.DHigh) {
-                    peers.shuffled(random).take(peers.size - coreParams.D).forEach { dropPeer ->
-                        peers -= dropPeer
-                        prune(dropPeer, topic)
-                        notifyPruned(dropPeer, topic)
-                    }
+                    // too many mesh peers
+                    val sortedPeers = peers
+                        .shuffled(random)
+                        .sortedBy { score.score(it) }
+                        .reversed()
+
+                    val bestDPeers = sortedPeers.take(coreParams.DScore)
+                    val restPeers = sortedPeers.drop(coreParams.DScore).shuffled(random)
+                    val outboundCount = bestDPeers.count { it.isOutbound() }
+                    val outPeers = restPeers
+                        .filter { it.isOutbound() }
+                        .take(max(0, coreParams.DOut - outboundCount))
+
+                    val toDropPeers = (outPeers + bestDPeers).drop(coreParams.DScore)
+                    toDropPeers.forEach { prune(it, topic) }
                 }
+
+                // keep outbound peers > DOut
+                val outboundCount = peers.count { it.isOutbound() }
+                (getTopicPeers(topic) - peers)
+                    .filter { score.score(it) >= 0 }
+                    .shuffled(random)
+                    .take(max(0, coreParams.DOut - outboundCount))
+                    .forEach { graft(it, topic) }
+
 
                 // opportunistic grafting
                 if (heartbeatsCount % scoreParams.opportunisticGraftTicks == 0 && peers.size > 1) {
@@ -213,10 +225,7 @@ open class GossipRouter(
                     if (scoreMedian < scoreParams.opportunisticGraftThreshold) {
                         (getTopicPeers(topic) - peers)
                             .filter { score.score(it) > scoreMedian }
-                            .forEach {
-                                graft(it, topic)
-                                notifyMeshed(it, topic)
-                            }
+                            .forEach { graft(it, topic) }
                     }
                 }
 
@@ -258,10 +267,21 @@ open class GossipRouter(
 
         peers.shuffled(random)
             .take(max((params.gossipFactor * peers.size).toInt(), coreParams.DGossip))
-            .forEach { ihave(it, shuffledMessageIds) }
+            .forEach { enqueueIhave(it, shuffledMessageIds) }
     }
 
-    private fun prune(peer: PeerHandler, topic: Topic) = addPendingRpcPart(
+    private fun graft(peer: PeerHandler, topic: Topic) {
+        mesh.getOrPut(topic) { mutableSetOf() }.add(peer)
+        enqueueGraft(peer, topic)
+        notifyMeshed(peer, topic)
+    }
+    private fun prune(peer: PeerHandler, topic: Topic) {
+        mesh[topic]?.remove(peer)
+        enqueuePrune(peer, topic)
+        notifyPruned(peer, topic)
+    }
+
+    private fun enqueuePrune(peer: PeerHandler, topic: Topic) = addPendingRpcPart(
         peer,
         Rpc.RPC.newBuilder().setControl(
             Rpc.ControlMessage.newBuilder().addPrune(
@@ -270,7 +290,7 @@ open class GossipRouter(
         ).build()
     )
 
-    private fun graft(peer: PeerHandler, topic: Topic) = addPendingRpcPart(
+    private fun enqueueGraft(peer: PeerHandler, topic: Topic) = addPendingRpcPart(
         peer,
         Rpc.RPC.newBuilder().setControl(
             Rpc.ControlMessage.newBuilder().addGraft(
@@ -279,7 +299,7 @@ open class GossipRouter(
         ).build()
     )
 
-    private fun iwant(peer: PeerHandler, topics: List<Topic>) {
+    private fun enqueueIwant(peer: PeerHandler, topics: List<Topic>) {
         if (topics.isNotEmpty()) {
             addPendingRpcPart(
                 peer,
@@ -292,7 +312,7 @@ open class GossipRouter(
         }
     }
 
-    private fun ihave(peer: PeerHandler, topics: List<Topic>) {
+    private fun enqueueIhave(peer: PeerHandler, topics: List<Topic>) {
         addPendingRpcPart(
             peer,
             Rpc.RPC.newBuilder().setControl(

@@ -3,6 +3,7 @@ package io.libp2p.etc.types
 import java.util.Collections
 import java.util.LinkedHashMap
 import java.util.LinkedList
+import java.util.Random
 import java.util.function.Predicate
 
 fun <C> Collection<C>.copy(): Collection<C> = this.toMutableList()
@@ -122,4 +123,9 @@ operator fun <C> List<C>.get(range: IntRange): List<C> {
 fun <C : Number> Collection<C>.median(): Double {
     val sorted = map { it.toDouble() }.sorted()
     return if (size % 2 == 0) (sorted[size / 2 - 1] + sorted[size / 2]) / 2.0 else sorted[size / 2]
+}
+
+fun <C> List<C>.shuffledFrom(startFrom: Int, rnd: Random = Random()) = shuffled(startFrom until size, rnd)
+fun <C> List<C>.shuffled(range: IntRange, rnd: Random = Random()): List<C> {
+    return slice(0 until range.first) + slice(range).shuffled(rnd) + slice(range.last + 1 until size)
 }
