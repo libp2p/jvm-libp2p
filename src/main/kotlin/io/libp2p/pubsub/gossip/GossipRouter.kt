@@ -79,14 +79,16 @@ open class GossipRouter(
     }
 
     override fun acceptRequestsFrom(peer: PeerHandler): Boolean {
-        return score.score(peer) >= score.params.graylistThreshold
+        return isDirect(peer) || score.score(peer) >= score.params.graylistThreshold
     }
 
     private fun processControlMessage(controlMsg: Any, receivedFrom: PeerHandler) {
         val peerScore = score.score(receivedFrom)
         when (controlMsg) {
             is Rpc.ControlGraft -> {
-                if (controlMsg.topicID in mesh) {
+                if (isDirect(receivedFrom)) {
+                    enqueuePrune(receivedFrom, controlMsg.topicID)
+                } else if (controlMsg.topicID in mesh) {
                     mesh[controlMsg.topicID]!! += receivedFrom
                     notifyMeshed(receivedFrom, controlMsg.topicID)
                 } else {
@@ -111,6 +113,9 @@ open class GossipRouter(
         }
     }
 
+    private fun getDirectPeers() = peers.filter(::isDirect)
+    private fun isDirect(peer: PeerHandler) = score.peerParams.isDirect(peer.peerId())
+
     override fun processControl(ctrl: Rpc.ControlMessage, receivedFrom: PeerHandler) {
         ctrl.run {
             (graftList + pruneList + ihaveList + iwantList)
@@ -123,6 +128,7 @@ open class GossipRouter(
                 .mapNotNull { mesh[it] }
                 .flatten()
                 .distinct()
+                .plus(getDirectPeers())
                 .filter { it != receivedFrom }
                 .forEach { submitPublishMessage(it, pubMsg) }
             mCache.put(getMessageId(pubMsg), pubMsg)
@@ -138,6 +144,7 @@ open class GossipRouter(
                 msg.topicIDsList
                     .flatMap { getTopicPeers(it) }
                     .filter { score.score(it) >= score.params.publishThreshold }
+                    .plus(getDirectPeers())
             } else {
                 msg.topicIDsList
                     .mapNotNull { topic ->
@@ -188,7 +195,7 @@ open class GossipRouter(
                 if (peers.size < coreParams.DLow) {
                     // need more mesh peers
                     (getTopicPeers(topic) - peers)
-                        .filter { score.score(it) >= 0 }
+                        .filter { score.score(it) >= 0 && !isDirect(it)}
                         .shuffled(random)
                         .take(coreParams.D - peers.size)
                         .forEach { graft(it, topic) }
@@ -213,7 +220,7 @@ open class GossipRouter(
                 // keep outbound peers > DOut
                 val outboundCount = peers.count { it.isOutbound() }
                 (getTopicPeers(topic) - peers)
-                    .filter { score.score(it) >= 0 }
+                    .filter { score.score(it) >= 0 && !isDirect(it) }
                     .shuffled(random)
                     .take(max(0, coreParams.DOut - outboundCount))
                     .forEach { graft(it, topic) }
@@ -223,7 +230,7 @@ open class GossipRouter(
                     val scoreMedian = peers.map { score.score(it) }.median()
                     if (scoreMedian < scoreParams.opportunisticGraftThreshold) {
                         (getTopicPeers(topic) - peers)
-                            .filter { score.score(it) > scoreMedian }
+                            .filter { score.score(it) > scoreMedian && !isDirect(it)}
                             .forEach { graft(it, topic) }
                     }
                 }
@@ -237,7 +244,7 @@ open class GossipRouter(
                 val needMore = coreParams.D - peers.size
                 if (needMore > 0) {
                     peers += (getTopicPeers(topic) - peers)
-                        .filter { score.score(it) >= scoreParams.publishThreshold }
+                        .filter { score.score(it) >= scoreParams.publishThreshold && !isDirect(it) }
                         .shuffled(random)
                         .take(needMore)
                 }
@@ -262,7 +269,7 @@ open class GossipRouter(
 
         val shuffledMessageIds = ids.shuffled(random)
         val peers = (getTopicPeers(topic) - excludePeers)
-            .filter { score.score(it) >= score.params.gossipThreshold }
+            .filter { score.score(it) >= score.params.gossipThreshold && !isDirect(it) }
 
         peers.shuffled(random)
             .take(max((params.gossipFactor * peers.size).toInt(), coreParams.DGossip))
@@ -274,6 +281,7 @@ open class GossipRouter(
         enqueueGraft(peer, topic)
         notifyMeshed(peer, topic)
     }
+
     private fun prune(peer: PeerHandler, topic: Topic) {
         mesh[topic]?.remove(peer)
         enqueuePrune(peer, topic)

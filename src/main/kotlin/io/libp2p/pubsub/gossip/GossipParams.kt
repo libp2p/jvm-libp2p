@@ -62,6 +62,7 @@ data class GossipScoreParams(
 
 data class GossipPeerScoreParams(
     val topicScoreCap: Double = 10000.0,
+    val isDirect: (PeerId) -> Boolean = { false },
     val appSpecificScore: (PeerId) -> Double = { 0.0 },
     val appSpecificWeight: Weight = 1.0,
     val ipWhitelisted: (String) -> Boolean = { false },
