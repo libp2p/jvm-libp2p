@@ -83,6 +83,8 @@ abstract class P2PService {
         open fun peerId() = streamHandler.stream.remotePeerId()
         open fun writeAndFlush(msg: Any): CompletableFuture<Unit> = streamHandler.ctx!!.writeAndFlush(msg).toVoidCompletableFuture()
         open fun isActive() = streamHandler.ctx != null
+        open fun getInboundHandler() : StreamHandler? = streamHandler
+        open fun getOutboundHandler(): StreamHandler? = streamHandler
     }
 
     /**

@@ -13,6 +13,11 @@ import io.libp2p.pubsub.PubsubApiImpl
 import io.netty.channel.ChannelHandler
 import java.util.concurrent.CompletableFuture
 
+enum class GossipProtocol(val announceStr: String) {
+    V_1_0("/meshsub/1.0.0"),
+    V_1_1("/meshsub/1.1.0")
+}
+
 class Gossip @JvmOverloads constructor(
     val router: GossipRouter = GossipRouter(),
     val api: PubsubApi = PubsubApiImpl(router),

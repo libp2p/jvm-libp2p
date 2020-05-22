@@ -21,8 +21,8 @@ abstract class P2PServiceSemiDuplex : P2PService() {
 
         override fun isActive() = getOutboundHandler()?.ctx != null
 
-        fun getInboundHandler() = if (streamHandler.stream.isInitiator) otherStreamHandler else streamHandler
-        fun getOutboundHandler() = if (streamHandler.stream.isInitiator) streamHandler else otherStreamHandler
+        override fun getInboundHandler() = if (streamHandler.stream.isInitiator) otherStreamHandler else streamHandler
+        override fun getOutboundHandler() = if (streamHandler.stream.isInitiator) streamHandler else otherStreamHandler
     }
 
     override fun createPeerHandler(streamHandler: StreamHandler) = SDPeerHandler(streamHandler)

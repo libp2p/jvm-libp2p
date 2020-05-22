@@ -30,7 +30,7 @@ data class GossipParamsCore(
 
 data class GossipParamsV1_1(
     val coreParams: GossipParamsCore = GossipParamsCore(),
-    val pruneBackoff: Duration = 1.millis,
+    val pruneBackoff: Duration = 1.minutes,
     val floodPublish: Boolean = true,
     val gossipFactor: Double = 0.25,
     val dScore: Int = 5 // depends on D
