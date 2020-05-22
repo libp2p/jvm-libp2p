@@ -218,7 +218,6 @@ open class GossipRouter(
                     .take(max(0, coreParams.DOut - outboundCount))
                     .forEach { graft(it, topic) }
 
-
                 // opportunistic grafting
                 if (heartbeatsCount % scoreParams.opportunisticGraftTicks == 0 && peers.size > 1) {
                     val scoreMedian = peers.map { score.score(it) }.median()
