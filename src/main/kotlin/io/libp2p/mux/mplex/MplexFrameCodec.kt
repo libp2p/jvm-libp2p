@@ -12,6 +12,7 @@
  */
 package io.libp2p.mux.mplex
 
+import io.libp2p.core.ProtocolViolationException
 import io.libp2p.etc.types.readUvarint
 import io.libp2p.etc.types.writeUvarint
 import io.libp2p.etc.util.netty.mux.MuxId
@@ -20,7 +21,6 @@ import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.codec.ByteToMessageCodec
-import kotlin.math.min
 
 const val MaxMessageSize = 1 shl 20
 
@@ -55,11 +55,13 @@ class MplexFrameCodec : ByteToMessageCodec<MuxFrame>() {
             val header = msg.readUvarint()
             val lenData = msg.readUvarint()
             if (header < 0 || lenData < 0 || msg.readableBytes() < lenData) {
+                // not enough data to read the frame
+                // will wait for more ...
                 msg.readerIndex(readerIndex)
                 return
             }
             if (lenData > MaxMessageSize) {
-                msg.skipBytes(min(lenData, msg.readableBytes().toLong()).toInt())
+                throw ProtocolViolationException("Mplex frame is too large: $lenData")
             }
             val streamTag = header.and(0x07).toInt()
             val streamId = header.shr(3)
@@ -69,5 +71,12 @@ class MplexFrameCodec : ByteToMessageCodec<MuxFrame>() {
             val mplexFrame = MplexFrame(MuxId(ctx.channel().id(), streamId, initiator), streamTag, data)
             out.add(mplexFrame)
         }
+    }
+
+    override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
+        // notify higher level handlers on the error
+        ctx.fireExceptionCaught(cause)
+        // exceptions in [decode] are very likely unrecoverable so just close the connection
+        ctx.close()
     }
 }
