@@ -5,6 +5,8 @@ import io.libp2p.etc.types.millis
 import io.libp2p.etc.types.minutes
 import io.libp2p.etc.types.seconds
 import java.time.Duration
+import kotlin.math.max
+import kotlin.math.min
 
 typealias Weight = Double
 
@@ -13,7 +15,7 @@ data class GossipParamsCore(
     val DLow: Int = D * 3 / 2,
     val DHigh: Int = D * 2,
     val DScore: Int = D,
-    val DOut: Int = D / 2,
+    val DOut: Int = min(D / 2, max(DLow - 1, 0)),
     val DGossip: Int = D,
     val fanoutTTL: Duration = 60.seconds,
     val gossipSize: Int = 3,
@@ -21,7 +23,7 @@ data class GossipParamsCore(
     val heartbeatInterval: Duration = 1.seconds
 ) {
     init {
-        check(DOut < DLow, "DOut should be < DLow")
+        check(DOut < DLow || (DOut == 0 && DLow == 0), "DOut should be < DLow or both 0")
         check(DOut <= D / 2, "DOut should be <= D/2")
     }
 }
