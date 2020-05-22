@@ -206,7 +206,7 @@ open class GossipRouter(
                         .filter { it.isOutbound() }
                         .take(max(0, coreParams.DOut - outboundCount))
 
-                    val toDropPeers = (outPeers + bestDPeers).drop(coreParams.DScore)
+                    val toDropPeers = (outPeers + bestDPeers + restPeers).drop(coreParams.DScore)
                     toDropPeers.forEach { prune(it, topic) }
                 }
 
