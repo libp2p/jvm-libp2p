@@ -2,10 +2,13 @@ package io.libp2p.pubsub.flood
 
 import io.libp2p.etc.types.anyComplete
 import io.libp2p.pubsub.AbstractRouter
+import io.libp2p.pubsub.PubsubProtocol
 import pubsub.pb.Rpc
 import java.util.concurrent.CompletableFuture
 
 class FloodRouter : AbstractRouter() {
+
+    override val protocol = PubsubProtocol.Floodsub
 
     // msg: validated unseen messages received from api
     override fun broadcastOutbound(msg: Rpc.Message): CompletableFuture<Unit> {

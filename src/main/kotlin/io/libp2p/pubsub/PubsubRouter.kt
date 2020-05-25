@@ -16,6 +16,8 @@ import java.util.concurrent.ScheduledExecutorService
  */
 interface PubsubMessageRouter {
 
+    val protocol: PubsubProtocol
+
     /**
      * Validates and broadcasts the message to suitable peers
      * @return a future which can be used to detect errors during send,

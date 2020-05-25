@@ -10,13 +10,9 @@ import io.libp2p.core.multistream.ProtocolBinding
 import io.libp2p.core.multistream.ProtocolMatcher
 import io.libp2p.core.pubsub.PubsubApi
 import io.libp2p.pubsub.PubsubApiImpl
+import io.libp2p.pubsub.PubsubProtocol
 import io.netty.channel.ChannelHandler
 import java.util.concurrent.CompletableFuture
-
-enum class GossipProtocol(val announceStr: String) {
-    V_1_0("/meshsub/1.0.0"),
-    V_1_1("/meshsub/1.1.0")
-}
 
 class Gossip @JvmOverloads constructor(
     val router: GossipRouter = GossipRouter(),
@@ -25,7 +21,7 @@ class Gossip @JvmOverloads constructor(
 ) :
     ProtocolBinding<Unit>, ConnectionHandler, PubsubApi by api {
 
-    override val announce = "/meshsub/1.0.0"
+    override val announce = PubsubProtocol.Gossip_V_1_0.announceStr
     override val matcher = ProtocolMatcher(Mode.STRICT, announce)
 
     override fun handleConnection(conn: Connection) {

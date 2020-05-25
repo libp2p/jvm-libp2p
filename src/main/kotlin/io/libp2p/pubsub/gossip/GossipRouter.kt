@@ -11,6 +11,7 @@ import io.libp2p.etc.types.seconds
 import io.libp2p.etc.types.whenTrue
 import io.libp2p.etc.util.P2PService
 import io.libp2p.pubsub.AbstractRouter
+import io.libp2p.pubsub.PubsubProtocol
 import pubsub.pb.Rpc
 import java.util.concurrent.CompletableFuture
 import kotlin.math.max
@@ -24,9 +25,9 @@ fun P2PService.PeerHandler.getIP(): String? =
 
 fun P2PService.PeerHandler.isOutbound() = streamHandler.stream.connection.isInitiator
 fun P2PService.PeerHandler.getOutboundProtocol() = getOutboundHandler()?.stream?.getProtocol()?.getNow(null)
-    ?: throw InternalErrorException("Outbound gossip stream appeared uninitialized")
+    ?: throw InternalErrorException("Outbound gossip stream not initialized or protocol is missing")
 
-fun P2PService.PeerHandler.getOutboundGossipProtocol() = GossipProtocol.valueOf(getOutboundProtocol())
+fun P2PService.PeerHandler.getOutboundGossipProtocol() = PubsubProtocol.fromProtocol(getOutboundProtocol())
 
 /**
  * Router implementing this protocol: https://github.com/libp2p/specs/tree/master/pubsub/gossipsub
@@ -36,6 +37,7 @@ open class GossipRouter(
     val scoreParams: GossipScoreParams = GossipScoreParams()
 ) : AbstractRouter() {
 
+    override val protocol = PubsubProtocol.Gossip_V_1_1
     private val coreParams: GossipParamsCore = params.coreParams
 
     val score by lazy { GossipScore(scoreParams, executor, curTime) }
@@ -335,7 +337,7 @@ open class GossipRouter(
 
     private fun enqueuePrune(peer: PeerHandler, topic: Topic) {
         val pruneBuilder = Rpc.ControlPrune.newBuilder().setTopicID(topic);
-        if (peer.getOutboundGossipProtocol() == GossipProtocol.V_1_1) {
+        if (peer.getOutboundGossipProtocol() == PubsubProtocol.Gossip_V_1_1) {
             pruneBuilder.backoff = params.pruneBackoff.seconds
         }
         addPendingRpcPart(
