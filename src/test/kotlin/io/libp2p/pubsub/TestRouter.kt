@@ -13,6 +13,7 @@ import io.libp2p.etc.util.netty.nettyInitializer
 import io.libp2p.pubsub.flood.FloodRouter
 import io.libp2p.tools.NullTransport
 import io.libp2p.tools.TestChannel
+import io.libp2p.tools.TestChannel.TestConnection
 import io.libp2p.transport.implementation.ConnectionOverNetty
 import io.libp2p.transport.implementation.StreamOverNetty
 import io.netty.handler.logging.LogLevel
@@ -26,6 +27,14 @@ import java.util.concurrent.atomic.AtomicInteger
 
 val cnt = AtomicInteger()
 val idCnt = AtomicInteger()
+
+class SemiduplexConnection(val conn1: TestConnection, val conn2: TestConnection) {
+    val connections = listOf(conn1, conn2)
+    fun disconnect() {
+        conn1.disconnect()
+        // conn2 should be dropped by the router
+    }
+}
 
 class TestRouter(val name: String = "" + cnt.getAndIncrement(), val protocol: String = "/test/undefined") {
 
@@ -83,7 +92,7 @@ class TestRouter(val name: String = "" + cnt.getAndIncrement(), val protocol: St
         another: TestRouter,
         wireLogs: LogLevel? = null,
         pubsubLogs: LogLevel? = null
-    ): TestChannel.TestConnection {
+    ): TestConnection {
 
         val thisChannel = newChannel("[${idCnt.incrementAndGet()}]$name=>${another.name}", another, wireLogs, pubsubLogs, true)
         val anotherChannel = another.newChannel("[${idCnt.incrementAndGet()}]${another.name}=>$name", this, wireLogs, pubsubLogs, false)
@@ -97,17 +106,8 @@ class TestRouter(val name: String = "" + cnt.getAndIncrement(), val protocol: St
         another: TestRouter,
         wireLogs: LogLevel? = null,
         pubsubLogs: LogLevel? = null
-    ): TestChannel.TestConnection {
-        connect(another, wireLogs, pubsubLogs)
-        return another.connect(this, wireLogs, pubsubLogs)
-    }
-
-    fun connectSemiDuplex1(
-        another: TestRouter,
-        wireLogs: LogLevel? = null,
-        pubsubLogs: LogLevel? = null
-    ): List<TestChannel.TestConnection> {
-        return listOf(
+    ): SemiduplexConnection {
+        return SemiduplexConnection(
             connect(another, wireLogs, pubsubLogs),
             another.connect(this, wireLogs, pubsubLogs))
 
