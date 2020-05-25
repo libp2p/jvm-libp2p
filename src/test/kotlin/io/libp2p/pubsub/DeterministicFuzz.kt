@@ -16,10 +16,13 @@ class DeterministicFuzz {
     fun createControlledExecutor(): ScheduledExecutorService =
         ControlledExecutorServiceImpl().also { it.setTimeController(timeController) }
 
-    fun createTestRouter(routerInstance: PubsubRouterDebug): TestRouter {
+    fun createTestRouter(
+        routerInstance: PubsubRouterDebug,
+        protocol: PubsubProtocol = routerInstance.protocol
+    ): TestRouter {
         routerInstance.curTime = { timeController.time }
         routerInstance.random = this.random
-        val testRouter = TestRouter("" + (cnt++))
+        val testRouter = TestRouter("" + (cnt++), protocol.announceStr)
         testRouter.routerInstance = routerInstance
         testRouter.testExecutor = createControlledExecutor()
         return testRouter

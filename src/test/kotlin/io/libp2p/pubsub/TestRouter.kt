@@ -7,6 +7,7 @@ import io.libp2p.core.pubsub.RESULT_VALID
 import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.core.pubsub.createPubsubApi
 import io.libp2p.core.security.SecureChannel
+import io.libp2p.etc.PROTOCOL
 import io.libp2p.etc.types.lazyVar
 import io.libp2p.etc.util.netty.nettyInitializer
 import io.libp2p.pubsub.flood.FloodRouter
@@ -26,7 +27,7 @@ import java.util.concurrent.atomic.AtomicInteger
 val cnt = AtomicInteger()
 val idCnt = AtomicInteger()
 
-class TestRouter(val name: String = "" + cnt.getAndIncrement()) {
+class TestRouter(val name: String = "" + cnt.getAndIncrement(), val protocol: String = "/test/undefined") {
 
     val inboundMessages = LinkedBlockingQueue<Rpc.Message>()
     var routerHandler: (Rpc.Message) -> CompletableFuture<ValidationResult> = {
@@ -86,6 +87,9 @@ class TestRouter(val name: String = "" + cnt.getAndIncrement()) {
 
         val thisChannel = newChannel("[${idCnt.incrementAndGet()}]$name=>${another.name}", another, wireLogs, pubsubLogs, true)
         val anotherChannel = another.newChannel("[${idCnt.incrementAndGet()}]${another.name}=>$name", this, wireLogs, pubsubLogs, false)
+        listOf(thisChannel, anotherChannel).forEach {
+            it.attr(PROTOCOL).get().complete(this.protocol)
+        }
         return TestChannel.interConnect(thisChannel, anotherChannel)
     }
 
@@ -96,5 +100,16 @@ class TestRouter(val name: String = "" + cnt.getAndIncrement()) {
     ): TestChannel.TestConnection {
         connect(another, wireLogs, pubsubLogs)
         return another.connect(this, wireLogs, pubsubLogs)
+    }
+
+    fun connectSemiDuplex1(
+        another: TestRouter,
+        wireLogs: LogLevel? = null,
+        pubsubLogs: LogLevel? = null
+    ): List<TestChannel.TestConnection> {
+        return listOf(
+            connect(another, wireLogs, pubsubLogs),
+            another.connect(this, wireLogs, pubsubLogs))
+
     }
 }
