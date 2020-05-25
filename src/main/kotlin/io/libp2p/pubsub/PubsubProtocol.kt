@@ -9,6 +9,5 @@ enum class PubsubProtocol(val announceStr: String) {
     companion object {
         fun fromProtocol(protocol: String) = PubsubProtocol.values().find { protocol == it.announceStr }
             ?: throw NoSuchElementException("No PubsubProtocol found with protocol $protocol")
-
     }
 }

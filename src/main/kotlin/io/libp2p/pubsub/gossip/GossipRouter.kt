@@ -336,7 +336,7 @@ open class GossipRouter(
     }
 
     private fun enqueuePrune(peer: PeerHandler, topic: Topic) {
-        val pruneBuilder = Rpc.ControlPrune.newBuilder().setTopicID(topic);
+        val pruneBuilder = Rpc.ControlPrune.newBuilder().setTopicID(topic)
         if (peer.getOutboundGossipProtocol() == PubsubProtocol.Gossip_V_1_1) {
             pruneBuilder.backoff = params.pruneBackoff.seconds
         }

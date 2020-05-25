@@ -110,6 +110,5 @@ class TestRouter(val name: String = "" + cnt.getAndIncrement(), val protocol: St
         return SemiduplexConnection(
             connect(another, wireLogs, pubsubLogs),
             another.connect(this, wireLogs, pubsubLogs))
-
     }
 }
