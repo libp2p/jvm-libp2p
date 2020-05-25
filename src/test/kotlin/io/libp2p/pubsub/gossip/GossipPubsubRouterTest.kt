@@ -1,5 +1,6 @@
 package io.libp2p.pubsub.gossip
 
+import io.libp2p.etc.types.seconds
 import io.libp2p.pubsub.DeterministicFuzz
 import io.libp2p.pubsub.PubsubRouterTest
 import io.libp2p.pubsub.TestRouter
@@ -18,7 +19,13 @@ class GossipPubsubRouterTest : PubsubRouterTest({
         for (d in 3..6) {
             for (seed in 0..10) {
                 print("D=$d, seed=$seed  ")
-                super.doTenNeighborsTopology(seed) { GossipRouter(GossipParamsV1_1(GossipParamsCore(d, d, d))) }
+                super.doTenNeighborsTopology(seed) {
+                    GossipRouter(
+                        GossipParamsV1_1(
+                            GossipParamsCore(d, d, d),
+                            pruneBackoff = 1.seconds) // small backoff timeout for faster meshes settling down
+                    )
+                }
             }
         }
     }

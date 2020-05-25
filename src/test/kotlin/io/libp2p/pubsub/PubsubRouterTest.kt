@@ -11,8 +11,6 @@ import io.libp2p.core.pubsub.Validator
 import io.libp2p.etc.types.toByteBuf
 import io.libp2p.etc.types.toBytesBigEndian
 import io.libp2p.etc.types.toProtobuf
-import io.libp2p.etc.util.P2PService
-import io.libp2p.pubsub.gossip.GossipRouter
 import io.libp2p.tools.TestChannel.TestConnection
 import io.libp2p.transport.implementation.P2PChannelOverNetty
 import io.netty.handler.logging.LogLevel
@@ -235,8 +233,8 @@ abstract class PubsubRouterTest(val router: RouterCtor) {
 
         allRouters.forEach { it.router.subscribe("topic1") }
 
-        // 2 heartbeats for all
-        fuzz.timeController.addTime(Duration.ofSeconds(2))
+        // 10 heartbeats for all to settle down meshes evenly
+        fuzz.timeController.addTime(Duration.ofSeconds(10))
         val firstCount: Int
         run {
             val msg1 = newMessage("topic1", 0L, "Hello".toByteArray())
