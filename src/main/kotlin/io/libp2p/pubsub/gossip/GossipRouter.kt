@@ -58,7 +58,7 @@ open class GossipRouter(
     }
 
     private fun isBackOff(peer: PeerHandler, topic: Topic) =
-        curTime() > (backoffExpireTimes[peer.peerId() to topic] ?: 0)
+        curTime() < (backoffExpireTimes[peer.peerId() to topic] ?: 0)
 
     override fun onPeerDisconnected(peer: PeerHandler) {
         score.notifyDisconnected(peer)
