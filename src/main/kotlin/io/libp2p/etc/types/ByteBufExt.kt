@@ -19,12 +19,21 @@ fun ByteBuf.writeUvarint(value: Long): ByteBuf {
 
 /**
  * Extends ByteBuf to add a read* method for unsigned varints, as defined in https://github.com/multiformats/unsigned-varint.
+ *
+ * If the buffer doesn't contain enough bytes to read varint then -1 is returned and the
+ * buffer reader index remains on the original position
  */
 fun ByteBuf.readUvarint(): Long {
     var x: Long = 0
     var s = 0
 
+    val originalReaderIndex = readerIndex()
     for (i in 0..9) {
+        if (!this.isReadable) {
+            // buffer contains just a fragment of uint
+            readerIndex(originalReaderIndex)
+            return -1
+        }
         val b = this.readUnsignedByte()
         if (b < 0x80) {
             if (i == 9 && b > 1) {

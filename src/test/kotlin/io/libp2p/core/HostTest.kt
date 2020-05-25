@@ -8,8 +8,8 @@ import io.libp2p.etc.types.getX
 import io.libp2p.mux.mplex.MplexStreamMuxer
 import io.libp2p.protocol.Identify
 import io.libp2p.protocol.Ping
-import io.libp2p.protocol.PingController
 import io.libp2p.protocol.PingBinding
+import io.libp2p.protocol.PingController
 import io.libp2p.security.noise.NoiseXXSecureChannel
 import io.libp2p.security.plaintext.PlaintextInsecureChannel
 import io.libp2p.security.secio.SecIoSecureChannel
@@ -20,12 +20,13 @@ import io.libp2p.transport.tcp.TcpTransport
 import io.libp2p.transport.ws.WsTransport
 import io.netty.handler.logging.LogLevel
 import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Tag
-import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Tag
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.condition.DisabledIf
 import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable
 import java.util.concurrent.TimeUnit
 
@@ -265,6 +266,21 @@ abstract class HostTest(
 
         assertEquals("hello", echoController.echo("hello").get(1, TimeUnit.SECONDS))
         assertEquals("world", echoController.echo("world").get(1, TimeUnit.SECONDS))
+    }
+
+    @DisabledIf("junitTags.contains('ws-transport')")
+    @Test
+    fun largeEchoOverSecureConnection() {
+        val echo = Echo().dial(
+            clientHost,
+            serverHost.peerId,
+            Multiaddr(listenAddress)
+        )
+
+        val echoController = echo.controller.get(5, TimeUnit.SECONDS)
+        val largeMsg = (0..20000).map { "Hello" }.joinToString("")
+
+        assertEquals(largeMsg, echoController.echo(largeMsg).get(10, TimeUnit.SECONDS))
     }
 
     @Test

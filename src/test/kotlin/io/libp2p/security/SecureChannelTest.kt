@@ -20,13 +20,15 @@ import io.netty.handler.logging.LogLevel
 import io.netty.handler.logging.LoggingHandler
 import io.netty.util.ResourceLeakDetector
 import org.apache.logging.log4j.LogManager
-import org.junit.jupiter.api.Assertions
-import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.MethodSource
 import java.nio.charset.StandardCharsets
-import java.util.concurrent.CountDownLatch
+import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 
 typealias SecureChannelCtor = (PrivKey) -> SecureChannel
+
+private val logger = LogManager.getLogger(SecureChannelTest::class.java)
 
 abstract class SecureChannelTest(
     val secureChannelCtor: SecureChannelCtor,
@@ -36,12 +38,23 @@ abstract class SecureChannelTest(
         ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.PARANOID)
     }
 
-    @Test
-    fun secureInterconnect() {
+    companion object {
+        @JvmStatic
+        fun plainDataSizes() = listOf(
+            0,
+            16,
+            65535 - 16, // max length fitting to a single Noise frame
+            65535 - 15, // min length exceeding a single Noise frame
+            65535,
+            65536
+        )
+    }
+
+    @ParameterizedTest
+    @MethodSource("plainDataSizes")
+    fun secureInterconnect(dataSize: Int) {
         val (privKey1, _) = generateKeyPair(KEY_TYPE.ECDSA)
         val (privKey2, _) = generateKeyPair(KEY_TYPE.ECDSA)
-
-        val latch = CountDownLatch(2)
 
         val protocolSelect1 = makeSelector(privKey1)
         val protocolSelect2 = makeSelector(privKey2)
@@ -57,8 +70,23 @@ abstract class SecureChannelTest(
         protocolSelect2.selectedFuture.get(10, TimeUnit.SECONDS)
         logger.debug("Secured!")
 
-        val handler1 = SecureChannelTestHandler("1", latch)
-        val handler2 = SecureChannelTestHandler("2", latch)
+        val data1: String
+        val data2: String
+        if (dataSize >= 2) {
+            val trimDataSize = dataSize - 2
+            val data = (0 until trimDataSize / 10)
+                .map { " x" + Integer.toHexString(it * 10).padStart(8, '0') }
+                .joinToString("")
+                .padEnd(trimDataSize, '_')
+            data1 = "1-$data"
+            data2 = "2-$data"
+        } else {
+            data1 = if (dataSize == 1) "1" else ""
+            data2 = if (dataSize == 1) "2" else ""
+        }
+
+        val handler1 = SecureChannelTestHandler("1", data1)
+        val handler2 = SecureChannelTestHandler("2", data2)
 
         eCh1.pipeline().addLast(handler1)
         eCh2.pipeline().addLast(handler2)
@@ -66,16 +94,12 @@ abstract class SecureChannelTest(
         eCh1.pipeline().fireChannelActive()
         eCh2.pipeline().fireChannelActive()
 
-        latch.await(10, TimeUnit.SECONDS)
-
-        Assertions.assertEquals("Hello World from 1", handler2.received)
-        Assertions.assertEquals("Hello World from 2", handler1.received)
-
-        System.gc()
-        Thread.sleep(500)
-        System.gc()
-        Thread.sleep(500)
-        System.gc()
+        while (data2 != handler1.getAllReceived()) {
+            handler1.receivedQueue.poll(5, TimeUnit.SECONDS)
+        }
+        while (data1 != handler2.getAllReceived()) {
+            handler2.receivedQueue.poll(5, TimeUnit.SECONDS)
+        }
     } // secureInterconnect
 
     private fun makeSelector(key: PrivKey) = ProtocolSelect(listOf(secureChannelCtor(key)))
@@ -100,23 +124,27 @@ abstract class SecureChannelTest(
         )
     } // makeChannel
 
-    class SecureChannelTestHandler(name: String, val latch: CountDownLatch) : TestHandler(name) {
-        lateinit var received: String
+    class SecureChannelTestHandler(
+        name: String,
+        val data: String = "Hello World from $name"
+    ) : TestHandler(name) {
+
+        val received = mutableListOf<String>()
+        val receivedQueue = LinkedBlockingQueue<String>()
 
         override fun channelActive(ctx: ChannelHandlerContext) {
             super.channelActive(ctx)
-            ctx.writeAndFlush("Hello World from $name".toByteArray().toByteBuf())
+            ctx.writeAndFlush(data.toByteArray().toByteBuf())
         }
 
         override fun channelRead(ctx: ChannelHandlerContext, msg: Any?) {
             msg as ByteBuf
-            received = msg.toByteArray().toString(StandardCharsets.UTF_8)
-            logger.debug("==$name== read: $received")
-            latch.countDown()
+            val receivedCunk = msg.toByteArray().toString(StandardCharsets.UTF_8)
+            logger.debug("==$name== read: $receivedCunk")
+            received += receivedCunk
+            receivedQueue += receivedCunk
         }
-    } // SecureChannelTestHandler
 
-    companion object {
-        private val logger = LogManager.getLogger(SecureChannelTest::class.java)
-    }
+        fun getAllReceived() = received.joinToString("")
+    } // SecureChannelTestHandler
 } // class SecureChannelTest
