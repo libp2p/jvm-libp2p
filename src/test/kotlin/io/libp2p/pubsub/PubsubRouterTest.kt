@@ -1,5 +1,6 @@
 package io.libp2p.pubsub
 
+import io.libp2p.core.Stream
 import io.libp2p.core.pubsub.MessageApi
 import io.libp2p.core.pubsub.RESULT_INVALID
 import io.libp2p.core.pubsub.RESULT_VALID
@@ -10,7 +11,10 @@ import io.libp2p.core.pubsub.Validator
 import io.libp2p.etc.types.toByteBuf
 import io.libp2p.etc.types.toBytesBigEndian
 import io.libp2p.etc.types.toProtobuf
+import io.libp2p.etc.util.P2PService
+import io.libp2p.pubsub.gossip.GossipRouter
 import io.libp2p.tools.TestChannel.TestConnection
+import io.libp2p.transport.implementation.P2PChannelOverNetty
 import io.netty.handler.logging.LogLevel
 import io.netty.util.ResourceLeakDetector
 import org.junit.jupiter.api.Assertions
@@ -22,6 +26,8 @@ import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeUnit
 
 typealias RouterCtor = () -> PubsubRouterDebug
+
+fun Stream.nettyChannel() = (this as P2PChannelOverNetty).nettyChannel
 
 abstract class PubsubRouterTest(val router: RouterCtor) {
     init {
