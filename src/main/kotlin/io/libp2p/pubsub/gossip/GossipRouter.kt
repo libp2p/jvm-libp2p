@@ -100,6 +100,10 @@ open class GossipRouter(
         score.notifyPruned(peer, topic)
     }
 
+    fun notifyRouterMisbehavior(peer: PeerHandler, penalty: Int) {
+        score.notifyRouterMisbehavior(peer, penalty)
+    }
+
     override fun acceptRequestsFrom(peer: PeerHandler): Boolean {
         return isDirect(peer) || score.score(peer) >= score.params.graylistThreshold
     }
@@ -129,7 +133,7 @@ open class GossipRouter(
             isDirect(peer) ->
                 enqueuePrune(peer, topic)
             isBackOff(peer, topic) -> {
-                score.notifyRouterMisbehavior(peer, 1)
+                notifyRouterMisbehavior(peer, 1)
                 enqueuePrune(peer, topic)
             }
             score.score(peer) < 0 -> {
@@ -210,23 +214,29 @@ open class GossipRouter(
 
     override fun subscribe(topic: Topic) {
         super.subscribe(topic)
-        val fanoutPeers = fanout[topic] ?: mutableSetOf()
+        val fanoutPeers = (fanout[topic] ?: mutableSetOf())
+            .filter { score.score(it) >= 0 && !isDirect(it) }
         val meshPeers = mesh.getOrPut(topic) { mutableSetOf() }
-        val otherPeers = getTopicPeers(topic) - meshPeers - fanoutPeers
-        if (meshPeers.size < coreParams.D) {
-            val addFromFanout = fanoutPeers.shuffled(random).take(coreParams.D - meshPeers.size)
-            val addFromOthers = otherPeers.shuffled(random).take(coreParams.D - meshPeers.size - addFromFanout.size)
+        val otherPeers = (getTopicPeers(topic) - meshPeers - fanoutPeers)
+            .filter { score.score(it) >= 0 && !isDirect(it) }
 
-            meshPeers += (addFromFanout + addFromOthers)
+        if (meshPeers.size < coreParams.D) {
+            val addFromFanout = fanoutPeers.shuffled(random)
+                .take(coreParams.D - meshPeers.size)
+            val addFromOthers = otherPeers.shuffled(random)
+                .take(coreParams.D - meshPeers.size - addFromFanout.size)
+
             (addFromFanout + addFromOthers).forEach {
-                enqueueGraft(it, topic)
+                graft(it, topic)
             }
+            fanout -= topic
+            lastPublished -= topic
         }
     }
 
     override fun unsubscribe(topic: Topic) {
         super.unsubscribe(topic)
-        mesh.remove(topic)?.forEach { enqueuePrune(it, topic) }
+        mesh[topic]?.forEach { prune(it, topic) }
     }
 
     private fun heartBeat(time: Long) {
