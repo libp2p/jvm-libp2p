@@ -60,3 +60,8 @@ class NoSuchRemoteProtocolException(message: String) : NoSuchProtocolException(m
  * the desired transport is not supported
  */
 open class TransportNotSupportedException(message: String) : Libp2pException(message)
+
+/**
+ * Indicates the message received from a remote party violates protocol
+ */
+open class ProtocolViolationException(message: String) : Libp2pException(message)
