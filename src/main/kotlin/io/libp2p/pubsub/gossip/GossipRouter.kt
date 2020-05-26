@@ -23,6 +23,7 @@ typealias Topic = String
 
 const val MaxBackoffEntries = 10 * 1024
 const val MaxIAskedEntries = 256
+const val MaxPeerIHaveEntries = 256
 
 fun P2PService.PeerHandler.getIP(): String? =
     streamHandler.stream.connection.remoteAddress().getStringComponent(Protocol.IP4)
@@ -58,6 +59,7 @@ open class GossipRouter(
     var heartbeatsCount = 0
     val backoffExpireTimes = LRUCollections.createMap<Pair<PeerId, Topic>, Long>(MaxBackoffEntries)
     val iAsked = LRUCollections.createMap<PeerHandler, AtomicInteger>(MaxIAskedEntries)
+    val peerIHave = LRUCollections.createMap<PeerHandler, AtomicInteger>(MaxPeerIHaveEntries)
 
     private fun setBackOff(peer: PeerHandler, topic: Topic) = setBackOff(peer, topic, params.pruneBackoff.toMillis())
     private fun setBackOff(peer: PeerHandler, topic: Topic, delay: Long) {
@@ -117,23 +119,11 @@ open class GossipRouter(
     }
 
     private fun processControlMessage(controlMsg: Any, receivedFrom: PeerHandler) {
-        val peerScore = score.score(receivedFrom)
         when (controlMsg) {
             is Rpc.ControlGraft -> handleGraft(controlMsg, receivedFrom)
             is Rpc.ControlPrune -> handlePrune(controlMsg, receivedFrom)
-            is Rpc.ControlIHave -> {
-                if (peerScore < score.params.gossipThreshold) return
-                val iWant = controlMsg.messageIDsList - seenMessages.keys
-                val asked = iAsked.computeIfAbsent(receivedFrom) { AtomicInteger() }.addAndGet(iWant.size)
-                val maxToAsk = max(0, min(iWant.size, params.maxIHaveMessages - asked))
-                enqueueIwant(receivedFrom, iWant.shuffled(random).subList(0, maxToAsk))
-            }
-            is Rpc.ControlIWant -> {
-                if (peerScore < score.params.gossipThreshold) return
-                controlMsg.messageIDsList
-                    .mapNotNull { mCache.getMessage(it) }
-                    .forEach { submitPublishMessage(receivedFrom, it) }
-            }
+            is Rpc.ControlIHave -> handleIHave(controlMsg, receivedFrom)
+            is Rpc.ControlIWant -> handleIWant(controlMsg, receivedFrom)
         }
     }
 
@@ -177,6 +167,30 @@ open class GossipRouter(
             setBackOff(peer, topic)
         }
     }
+
+    private fun handleIHave(msg: Rpc.ControlIHave, peer: PeerHandler) {
+        val peerScore = score.score(peer)
+        // we ignore IHAVE gossip from any peer whose score is below the gossip threshold
+        if (peerScore < score.params.gossipThreshold) return
+        if (peerIHave.computeIfAbsent(peer) { AtomicInteger() }.incrementAndGet() > params.maxIHaveMessages) {
+            return
+        }
+
+        val iWant = msg.messageIDsList - seenMessages.keys
+        val asked = iAsked.computeIfAbsent(peer) { AtomicInteger() }
+        val maxToAsk = max(0, min(iWant.size, params.maxIHaveLength - asked.get()))
+        asked.addAndGet(iWant.size)
+        enqueueIwant(peer, iWant.shuffled(random).subList(0, maxToAsk))
+    }
+
+    private fun handleIWant(msg: Rpc.ControlIWant, peer: PeerHandler) {
+        val peerScore = score.score(peer)
+        if (peerScore < score.params.gossipThreshold) return
+        msg.messageIDsList
+            .mapNotNull { mCache.getMessage(it) }
+            .forEach { submitPublishMessage(peer, it) }
+    }
+
 
     private fun getDirectPeers() = peers.filter(::isDirect)
     private fun isDirect(peer: PeerHandler) = score.peerParams.isDirect(peer.peerId())
@@ -257,6 +271,7 @@ open class GossipRouter(
     private fun heartBeat(time: Long) {
         heartbeatsCount++
         iAsked.clear()
+        peerIHave.clear()
         try {
             mesh.entries.forEach { (topic, peers) ->
 
@@ -339,7 +354,7 @@ open class GossipRouter(
         val ids = mCache.getMessageIds(topic)
         if (ids.isEmpty()) return
 
-        val shuffledMessageIds = ids.shuffled(random)
+        val shuffledMessageIds = ids.shuffled(random).take(params.maxIHaveLength)
         val peers = (getTopicPeers(topic) - excludePeers)
             .filter { score.score(it) >= score.params.gossipThreshold && !isDirect(it) }
 
