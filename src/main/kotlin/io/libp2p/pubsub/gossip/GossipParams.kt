@@ -70,13 +70,17 @@ data class GossipPeerScoreParams(
     val appSpecificScore: (PeerId) -> Double = { 0.0 },
     val appSpecificWeight: Weight = 1.0,
     val ipWhitelisted: (String) -> Boolean = { false },
-    val ipColocationFactorWeight: Weight = 1.0,
+    val ipColocationFactorWeight: Weight = -1.0,
     val ipColocationFactorThreshold: Int = 100,
-    val behaviourPenaltyWeight: Weight = 1.0,
-    val behaviourPenaltyDecay: Double = 1.0
+    val behaviourPenaltyWeight: Weight = -1.0,
+    val behaviourPenaltyDecay: Double = 0.9
 ) {
     init {
-        // TODO validation
+        check(appSpecificWeight > 0.0, "appSpecificWeight should be > 0")
+        check(ipColocationFactorWeight < 0.0, "ipColocationFactorWeight should be < 0")
+        check(ipColocationFactorThreshold >= 1, "ipColocationFactorThreshold should be >= 1")
+        check(behaviourPenaltyWeight < 0.0, "behaviourPenaltyWeight should be < 0")
+        check(behaviourPenaltyDecay > 0.0 && behaviourPenaltyDecay <= 1.0, "behaviourPenaltyDecay should be in range (0.0, 1.0]")
     }
 }
 
@@ -95,21 +99,21 @@ data class GossipTopicScoreParams(
     val TimeInMeshCap: Double = 100.0,
     // P₂
     val FirstMessageDeliveriesWeight: Weight = 1.0,
-    val FirstMessageDeliveriesDecay: Double = 1.0,
+    val FirstMessageDeliveriesDecay: Double = 0.9,
     val FirstMessageDeliveriesCap: Double = 100.0,
     // P₃
     val MeshMessageDeliveriesWeight: Weight = 1.0,
-    val MeshMessageDeliveriesDecay: Double = 1.0,
+    val MeshMessageDeliveriesDecay: Double = 0.9,
     val MeshMessageDeliveriesThreshold: Double = 100.0,
     val MeshMessageDeliveriesCap: Double = 100.0,
     val MeshMessageDeliveriesActivation: Duration = 1.minutes,
     val MeshMessageDeliveryWindow: Duration = 10.millis,
     // P₃b
     val MeshFailurePenaltyWeight: Weight = 1.0,
-    val MeshFailurePenaltyDecay: Double = 100.0,
+    val MeshFailurePenaltyDecay: Double = 0.9,
     // P₄
     val InvalidMessageDeliveriesWeight: Weight = 1.0,
-    val InvalidMessageDeliveriesDecay: Double = 100.0
+    val InvalidMessageDeliveriesDecay: Double = 0.9
 ) {
     init {
         // TODO validation
