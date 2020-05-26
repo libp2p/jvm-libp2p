@@ -57,6 +57,7 @@ class TestRouter(val name: String = "" + cnt.getAndIncrement(), val protocol: St
     var api by lazyVar { createPubsubApi(router) }
 
     var keyPair = generateKeyPair(KEY_TYPE.ECDSA)
+    val peerId by lazy { PeerId.fromPubKey(keyPair.second) }
 
     private fun newChannel(
         channelName: String,
@@ -70,9 +71,7 @@ class TestRouter(val name: String = "" + cnt.getAndIncrement(), val protocol: St
         val connection =
             ConnectionOverNetty(parentChannel, NullTransport(), initiator)
         connection.setSecureSession(SecureChannel.Session(
-            PeerId.fromPubKey(keyPair.second),
-            PeerId.fromPubKey(remoteRouter.keyPair.second),
-            remoteRouter.keyPair.second
+            peerId, remoteRouter.peerId, remoteRouter.keyPair.second
         ))
 
         return TestChannel(
