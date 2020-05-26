@@ -358,7 +358,7 @@ open class GossipRouter(
             .filter { score.score(it) >= score.params.gossipThreshold && !isDirect(it) }
 
         peers.shuffled(random)
-            .take(max((params.gossipFactor * peers.size).toInt(), coreParams.DGossip))
+            .take(max((params.gossipFactor * peers.size).toInt(), coreParams.DLazy))
             .forEach { enqueueIhave(it, shuffledMessageIds) }
     }
 

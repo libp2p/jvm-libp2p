@@ -16,7 +16,7 @@ data class GossipParamsCore(
     val DHigh: Int = D * 2,
     val DScore: Int = D,
     val DOut: Int = min(D / 2, max(DLow - 1, 0)),
-    val DGossip: Int = D,
+    val DLazy: Int = D,
     val fanoutTTL: Duration = 60.seconds,
     val gossipSize: Int = 3,
     val gossipHistoryLength: Int = 5,
