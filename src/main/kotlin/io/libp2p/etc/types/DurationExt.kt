@@ -16,3 +16,5 @@ val Number.hours: Duration
 
 val Number.days: Duration
     get() = Duration.ofDays(this.toLong())
+
+operator fun Duration.times(i: Int): Duration = Duration.ofMillis(toMillis() * i)

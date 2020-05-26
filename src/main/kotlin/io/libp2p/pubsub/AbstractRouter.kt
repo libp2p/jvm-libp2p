@@ -295,7 +295,7 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
         subscribedTopics -= topic
     }
 
-    private fun send(peer: PeerHandler, msg: Rpc.RPC): CompletableFuture<Unit> {
+    protected open fun send(peer: PeerHandler, msg: Rpc.RPC): CompletableFuture<Unit> {
         return peer.writeAndFlush(msg)
     }
 
