@@ -11,14 +11,18 @@ import io.libp2p.etc.types.seconds
 import io.libp2p.etc.types.whenTrue
 import io.libp2p.etc.util.P2PService
 import io.libp2p.pubsub.AbstractRouter
+import io.libp2p.pubsub.MessageId
 import io.libp2p.pubsub.PubsubProtocol
 import pubsub.pb.Rpc
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.max
+import kotlin.math.min
 
 typealias Topic = String
 
 const val MaxBackoffEntries = 10 * 1024
+const val MaxIAskedEntries = 256
 
 fun P2PService.PeerHandler.getIP(): String? =
     streamHandler.stream.connection.remoteAddress().getStringComponent(Protocol.IP4)
@@ -53,14 +57,18 @@ open class GossipRouter(
     val lastPublished = linkedMapOf<Topic, Long>()
     var heartbeatsCount = 0
     val backoffExpireTimes = LRUCollections.createMap<Pair<PeerId, Topic>, Long>(MaxBackoffEntries)
+    val iAsked = LRUCollections.createMap<PeerHandler, AtomicInteger>(MaxIAskedEntries)
 
     private fun setBackOff(peer: PeerHandler, topic: Topic) = setBackOff(peer, topic, params.pruneBackoff.toMillis())
     private fun setBackOff(peer: PeerHandler, topic: Topic, delay: Long) {
         backoffExpireTimes[peer.peerId() to topic] = curTime() + delay
     }
-
     private fun isBackOff(peer: PeerHandler, topic: Topic) =
         curTime() < (backoffExpireTimes[peer.peerId() to topic] ?: 0)
+    private fun isBackOffFlood(peer: PeerHandler, topic: Topic): Boolean {
+        val expire = backoffExpireTimes[peer.peerId() to topic] ?: return false
+        return curTime() < expire - (params.pruneBackoff + params.graftFloodThreshold).toMillis()
+    }
 
     override fun onPeerDisconnected(peer: PeerHandler) {
         score.notifyDisconnected(peer)
@@ -115,7 +123,10 @@ open class GossipRouter(
             is Rpc.ControlPrune -> handlePrune(controlMsg, receivedFrom)
             is Rpc.ControlIHave -> {
                 if (peerScore < score.params.gossipThreshold) return
-                enqueueIwant(receivedFrom, controlMsg.messageIDsList - seenMessages.keys)
+                val iWant = controlMsg.messageIDsList - seenMessages.keys
+                val asked = iAsked.computeIfAbsent(receivedFrom) { AtomicInteger() }.addAndGet(iWant.size)
+                val maxToAsk = max(0, min(iWant.size, params.maxIHaveMessages - asked))
+                enqueueIwant(receivedFrom, iWant.shuffled(random).subList(0, maxToAsk))
             }
             is Rpc.ControlIWant -> {
                 if (peerScore < score.params.gossipThreshold) return
@@ -134,6 +145,10 @@ open class GossipRouter(
                 enqueuePrune(peer, topic)
             isBackOff(peer, topic) -> {
                 notifyRouterMisbehavior(peer, 1)
+                if (isBackOffFlood(peer, topic)) {
+                    notifyRouterMisbehavior(peer, 1)
+                }
+                setBackOff(peer, topic)
                 enqueuePrune(peer, topic)
             }
             score.score(peer) < 0 -> {
@@ -241,6 +256,7 @@ open class GossipRouter(
 
     private fun heartBeat(time: Long) {
         heartbeatsCount++
+        iAsked.clear()
         try {
             mesh.entries.forEach { (topic, peers) ->
 
@@ -368,25 +384,25 @@ open class GossipRouter(
         ).build()
     )
 
-    private fun enqueueIwant(peer: PeerHandler, topics: List<Topic>) {
-        if (topics.isNotEmpty()) {
+    private fun enqueueIwant(peer: PeerHandler, messageIds: List<MessageId>) {
+        if (messageIds.isNotEmpty()) {
             addPendingRpcPart(
                 peer,
                 Rpc.RPC.newBuilder().setControl(
                     Rpc.ControlMessage.newBuilder().addIwant(
-                        Rpc.ControlIWant.newBuilder().addAllMessageIDs(topics)
+                        Rpc.ControlIWant.newBuilder().addAllMessageIDs(messageIds)
                     )
                 ).build()
             )
         }
     }
 
-    private fun enqueueIhave(peer: PeerHandler, topics: List<Topic>) {
+    private fun enqueueIhave(peer: PeerHandler, messageIds: List<MessageId>) {
         addPendingRpcPart(
             peer,
             Rpc.RPC.newBuilder().setControl(
                 Rpc.ControlMessage.newBuilder().addIhave(
-                    Rpc.ControlIHave.newBuilder().addAllMessageIDs(topics)
+                    Rpc.ControlIHave.newBuilder().addAllMessageIDs(messageIds)
                 )
             ).build()
         )

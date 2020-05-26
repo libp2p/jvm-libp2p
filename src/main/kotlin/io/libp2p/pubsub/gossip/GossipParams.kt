@@ -33,7 +33,11 @@ data class GossipParamsV1_1(
     val pruneBackoff: Duration = 1.minutes,
     val floodPublish: Boolean = true,
     val gossipFactor: Double = 0.25,
-    val dScore: Int = 5 // depends on D
+    val dScore: Int = 5, // depends on D
+    val graftFloodThreshold: Duration = 10.seconds,
+    val maxIHaveLength: Int = 5000,
+    val maxIHaveMessages: Int = 10,
+    val iWantFollowupTime: Duration = 3.seconds
 )
 
 data class GossipScoreParams(
