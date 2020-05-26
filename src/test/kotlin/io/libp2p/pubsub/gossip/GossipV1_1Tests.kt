@@ -409,7 +409,8 @@ class GossipV1_1Tests {
 
         val publishedCount = test.mockRouters.flatMap { it.inboundMessages }.count { it.publishCount > 0 }
 
-        assertTrue(publishedCount < test.mockRouters.size)
+        // with floodPublish disabled the message should be delivered to mesh peers only
+        assertEquals(topicMesh.size, publishedCount)
     }
 
     @Test
@@ -427,7 +428,7 @@ class GossipV1_1Tests {
 
         test.fuzz.timeController.addTime(2.seconds)
 
-        val topicMesh = test.gossipRouter.mesh["topic1"]!!
+        val topicMesh = test.gossipRouter.mesh["topic1"]!!.map { it.peerId() }
         assertTrue(topicMesh.size > 0 && topicMesh.size < test.routers.size)
 
         test.gossipRouter.publish(newMessage("topic1", 0L, "Hello-0".toByteArray()))
@@ -439,6 +440,13 @@ class GossipV1_1Tests {
             it.waitForMessage { it.publishCount > 0 }
             it.inboundMessages.clear()
         }
+
+        // the message originated from other peer should not be flood published
+        val msg1 = Rpc.RPC.newBuilder().addPublish(newMessage("topic1", 1L, "Hello-1".toByteArray())).build()
+        test.mockRouters[0].sendToSingle(msg1)
+        test.fuzz.timeController.addTime(50.millis)
+        val publishedCount = test.mockRouters.flatMap { it.inboundMessages }.count { it.publishCount > 0 }
+        assertTrue(publishedCount <= topicMesh.size)
 
         val scores1 = test.gossipRouter.peers.map { it.peerId() to test.gossipRouter.score.score(it) }.toMap()
 
@@ -460,7 +468,7 @@ class GossipV1_1Tests {
         assertTrue(scores2[test.routers[3].peerId]!! > scoreParams.publishThreshold)
         assertTrue(scores2[test.routers[3].peerId]!! < 0)
 
-        test.gossipRouter.publish(newMessage("topic1", 1L, "Hello-1".toByteArray()))
+        test.gossipRouter.publish(newMessage("topic1", 2L, "Hello-2".toByteArray()))
 
         test.fuzz.timeController.addTime(50.millis)
 
@@ -473,5 +481,45 @@ class GossipV1_1Tests {
             .count { it.publishCount > 0 })
         assertEquals(0, test.mockRouters[1].inboundMessages
             .count { it.publishCount > 0 })
+    }
+
+    @Test
+    fun testAdaptiveGossip() {
+        val appScore = mutableMapOf<PeerId, Double>().withDefault { 0.0 }
+        val coreParams = GossipParamsCore(3, 3, 3, DLazy = 3)
+        val v1_1Params = GossipParamsV1_1(coreParams, floodPublish = false, gossipFactor = 0.5)
+        val peerScoreParams = GossipPeerScoreParams(appSpecificScore = { appScore.getValue(it) })
+        val scoreParams = GossipScoreParams(peerScoreParams = peerScoreParams)
+        val test = ManyRoutersTest(mockRouterCount = 20, coreParams = coreParams, v1_1Params = v1_1Params, scoreParams = scoreParams)
+
+        test.gossipRouter.subscribe("topic1")
+        test.routers.forEach { it.router.subscribe("topic1") }
+
+        test.connect(0..6)
+        test.fuzz.timeController.addTime(2.seconds)
+
+        test.gossipRouter.publish(newMessage("topic1", 0L, "Hello-0".toByteArray()))
+
+        test.fuzz.timeController.addTime(test.gossipRouter.params.coreParams.heartbeatInterval)
+
+        val gossippedCount1 = test.mockRouters
+            .flatMap { it.inboundMessages }
+            .count { it.hasControl() && it.control.ihaveCount > 0 }
+
+        // DLazy non meshed peers should be gossipped (DLazy < 3 * gossipFactor)
+        assertEquals(3, gossippedCount1)
+        test.mockRouters.forEach { it.inboundMessages.clear() }
+
+        test.connect(7..19)
+        test.fuzz.timeController.addTime(test.gossipRouter.params.coreParams.heartbeatInterval)
+
+        val gossippedCount2 = test.mockRouters
+            .flatMap { it.inboundMessages }
+            .count { it.hasControl() && it.control.ihaveCount > 0 }
+
+        // adaptive gossip dissemination: gossipFactor enters the game
+        assertTrue(gossippedCount2 >= 6)
+        assertTrue(gossippedCount2 < 17)
+        test.mockRouters.forEach { it.inboundMessages.clear() }
     }
 }
