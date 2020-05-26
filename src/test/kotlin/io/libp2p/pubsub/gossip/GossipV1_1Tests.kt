@@ -316,7 +316,6 @@ class GossipV1_1Tests {
 
         test.mockRouter.inboundMessages.clear()
 
-
         for (i in 0..test.gossipRouter.params.maxIHaveMessages) {
             val msgId = "messageId-$i"
             val ihaveMsg = Rpc.RPC.newBuilder().setControl(

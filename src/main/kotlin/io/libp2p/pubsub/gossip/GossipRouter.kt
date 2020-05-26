@@ -191,7 +191,6 @@ open class GossipRouter(
             .forEach { submitPublishMessage(peer, it) }
     }
 
-
     private fun getDirectPeers() = peers.filter(::isDirect)
     private fun isDirect(peer: PeerHandler) = score.peerParams.isDirect(peer.peerId())
 
