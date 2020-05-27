@@ -32,6 +32,7 @@ data class GossipParamsCore(
 
 data class GossipParamsV1_1(
     val coreParams: GossipParamsCore = GossipParamsCore(),
+    val maxPrunePeers: Int = 16,
     val pruneBackoff: Duration = 1.minutes,
     val floodPublish: Boolean = true,
     val gossipFactor: Double = 0.25,
@@ -40,7 +41,10 @@ data class GossipParamsV1_1(
     val graftFloodThreshold: Duration = 10.seconds,
     val maxIHaveLength: Int = 5000,
     val maxIHaveMessages: Int = 10,
-    val iWantFollowupTime: Duration = 3.seconds
+    val iWantFollowupTime: Duration = 3.seconds,
+    // callback to notify outer system to which peers Gossip wants to be connected
+    // The second parameter is a signed peer record: https://github.com/libp2p/specs/pull/217
+    val wishToConnectCallback: (PeerId, ByteArray) -> Unit = { _: PeerId, _: ByteArray -> }
 ) {
     init {
         check(gossipFactor in 0.0..1.0, "gossipFactor should be in range [0.0, 1.1]")

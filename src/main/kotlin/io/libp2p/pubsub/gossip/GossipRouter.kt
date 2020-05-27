@@ -8,6 +8,7 @@ import io.libp2p.etc.types.anyComplete
 import io.libp2p.etc.types.createLRUMap
 import io.libp2p.etc.types.median
 import io.libp2p.etc.types.seconds
+import io.libp2p.etc.types.toProtobuf
 import io.libp2p.etc.types.whenTrue
 import io.libp2p.etc.util.P2PService
 import io.libp2p.pubsub.AbstractRouter
@@ -72,6 +73,7 @@ open class GossipRouter(
     }
     private fun getDirectPeers() = peers.filter(::isDirect)
     private fun isDirect(peer: PeerHandler) = score.peerParams.isDirect(peer.peerId)
+    private fun isConnected(peerId: PeerId) = peers.any { it.peerId == peerId }
 
     override fun onPeerDisconnected(peer: PeerHandler) {
         score.notifyDisconnected(peer)
@@ -161,6 +163,9 @@ open class GossipRouter(
         } else {
             setBackOff(peer, topic)
         }
+        if (score.score(peer) >= scoreParams.acceptPXThreshold) {
+            processPrunePeers(msg.peersList)
+        }
     }
 
     private fun handleIHave(msg: Rpc.ControlIHave, peer: PeerHandler) {
@@ -184,6 +189,13 @@ open class GossipRouter(
         msg.messageIDsList
             .mapNotNull { mCache.getMessage(it) }
             .forEach { submitPublishMessage(peer, it) }
+    }
+
+    private fun processPrunePeers(peersList: List<Rpc.PeerInfo>) {
+        peersList.shuffled(random).take(params.maxPrunePeers)
+            .map { PeerId(it.peerID.toByteArray()) to it.signedPeerRecord.toByteArray() }
+            .filter { (id, _) -> !isConnected(id) }
+            .forEach { (id, record) -> params.wishToConnectCallback(id, record) }
     }
 
     override fun processControl(ctrl: Rpc.ControlMessage, receivedFrom: PeerHandler) {
@@ -373,6 +385,15 @@ open class GossipRouter(
         val pruneBuilder = Rpc.ControlPrune.newBuilder().setTopicID(topic)
         if (peer.getOutboundGossipProtocol() == PubsubProtocol.Gossip_V_1_1) {
             pruneBuilder.backoff = params.pruneBackoff.seconds
+            (getTopicPeers(topic) - peer)
+                .filter { score.score(it) >= 0 }
+                .forEach {
+                    pruneBuilder.addPeers(
+                        Rpc.PeerInfo.newBuilder()
+                            .setPeerID(it.peerId.bytes.toProtobuf())
+                            // TODO skipping address record for now
+                    )
+                }
         }
         addPendingRpcPart(
             peer, Rpc.RPC.newBuilder().setControl(
