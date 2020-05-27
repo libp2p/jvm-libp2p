@@ -145,7 +145,7 @@ open class GossipRouter(
                 enqueuePrune(peer, topic)
                 setBackOff(peer, topic)
             }
-            meshPeers.size > coreParams.DHigh && !peer.isOutbound() -> {
+            meshPeers.size >= coreParams.DHigh && !peer.isOutbound() -> {
                 enqueuePrune(peer, topic)
                 setBackOff(peer, topic)
             }
