@@ -150,8 +150,7 @@ open class GossipRouter(
                 setBackOff(peer, topic)
             }
             peer !in meshPeers -> {
-                meshPeers += peer
-                notifyMeshed(peer, topic)
+                enqueueGraft(peer, topic)
             }
         }
     }
