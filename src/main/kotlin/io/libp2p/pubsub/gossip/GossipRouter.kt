@@ -306,7 +306,7 @@ open class GossipRouter(
                 // keep outbound peers > DOut
                 val outboundCount = peers.count { it.isOutbound() }
                 (getTopicPeers(topic) - peers)
-                    .filter { score.score(it) >= 0 && !isDirect(it) && !isBackOff(it, topic) }
+                    .filter { it.isOutbound() && score.score(it) >= 0 && !isDirect(it) && !isBackOff(it, topic) }
                     .shuffled(random)
                     .take(max(0, coreParams.DOut - outboundCount))
                     .forEach { graft(it, topic) }
