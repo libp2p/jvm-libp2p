@@ -40,7 +40,6 @@ class GossipPubsubRouterTest : PubsubRouterTest({
         for (i in 1..otherCount) {
             val r = GossipRouter(GossipParamsV1_1(GossipParamsCore(1, 0)))
             val routerEnd = fuzz.createTestRouter(r)
-            (routerEnd.router as GossipRouter).heartbeat // init heartbeat with current time
             allRouters += routerEnd
         }
 

@@ -4,8 +4,8 @@ import io.libp2p.core.InternalErrorException
 import io.libp2p.core.PeerId
 import io.libp2p.core.multiformats.Protocol
 import io.libp2p.core.pubsub.ValidationResult
-import io.libp2p.etc.types.LRUCollections
 import io.libp2p.etc.types.anyComplete
+import io.libp2p.etc.types.createLRUMap
 import io.libp2p.etc.types.median
 import io.libp2p.etc.types.seconds
 import io.libp2p.etc.types.whenTrue
@@ -15,6 +15,7 @@ import io.libp2p.pubsub.MessageId
 import io.libp2p.pubsub.PubsubProtocol
 import pubsub.pb.Rpc
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.max
 import kotlin.math.min
@@ -46,20 +47,19 @@ open class GossipRouter(
     private val coreParams: GossipParamsCore = params.coreParams
 
     val score by lazy { GossipScore(scoreParams, executor, curTime) }
-
-    val heartbeat by lazy {
-        Heartbeat.create(executor, coreParams.heartbeatInterval, curTime)
-            .apply { listeners.add(::heartBeat) }
-    }
-
-    val mCache = MCache(coreParams.gossipSize, coreParams.gossipHistoryLength)
     val fanout: MutableMap<Topic, MutableSet<PeerHandler>> = linkedMapOf()
     val mesh: MutableMap<Topic, MutableSet<PeerHandler>> = linkedMapOf()
-    val lastPublished = linkedMapOf<Topic, Long>()
-    var heartbeatsCount = 0
-    val backoffExpireTimes = LRUCollections.createMap<Pair<PeerId, Topic>, Long>(MaxBackoffEntries)
-    val iAsked = LRUCollections.createMap<PeerHandler, AtomicInteger>(MaxIAskedEntries)
-    val peerIHave = LRUCollections.createMap<PeerHandler, AtomicInteger>(MaxPeerIHaveEntries)
+
+    private val mCache = MCache(coreParams.gossipSize, coreParams.gossipHistoryLength)
+    private val lastPublished = linkedMapOf<Topic, Long>()
+    private var heartbeatsCount = 0
+    private val backoffExpireTimes = createLRUMap<Pair<PeerId, Topic>, Long>(MaxBackoffEntries)
+    private val iAsked = createLRUMap<PeerHandler, AtomicInteger>(MaxIAskedEntries)
+    private val peerIHave = createLRUMap<PeerHandler, AtomicInteger>(MaxPeerIHaveEntries)
+    private val heartbeatTask by lazy {
+        executor.scheduleWithFixedDelay(::heartBeat, coreParams.heartbeatInterval.toMillis(), coreParams.heartbeatInterval.toMillis(), TimeUnit.MILLISECONDS)
+    }
+
 
     private fun setBackOff(peer: PeerHandler, topic: Topic) = setBackOff(peer, topic, params.pruneBackoff.toMillis())
     private fun setBackOff(peer: PeerHandler, topic: Topic, delay: Long) {
@@ -71,6 +71,9 @@ open class GossipRouter(
         val expire = backoffExpireTimes[peer.peerId() to topic] ?: return false
         return curTime() < expire - (params.pruneBackoff + params.graftFloodThreshold).toMillis()
     }
+    private fun getDirectPeers() = peers.filter(::isDirect)
+    private fun isDirect(peer: PeerHandler) = score.peerParams.isDirect(peer.peerId())
+
 
     override fun onPeerDisconnected(peer: PeerHandler) {
         score.notifyDisconnected(peer)
@@ -83,7 +86,7 @@ open class GossipRouter(
     override fun onPeerActive(peer: PeerHandler) {
         super.onPeerActive(peer)
         score.notifyConnected(peer)
-        heartbeat.hashCode() // force lazy initialization
+        heartbeatTask.hashCode() // force lazy initialization
     }
 
     override fun notifyUnseenMessage(peer: PeerHandler, msg: Rpc.Message) {
@@ -191,9 +194,6 @@ open class GossipRouter(
             .forEach { submitPublishMessage(peer, it) }
     }
 
-    private fun getDirectPeers() = peers.filter(::isDirect)
-    private fun isDirect(peer: PeerHandler) = score.peerParams.isDirect(peer.peerId())
-
     override fun processControl(ctrl: Rpc.ControlMessage, receivedFrom: PeerHandler) {
         ctrl.run {
             (graftList + pruneList + ihaveList + iwantList)
@@ -215,7 +215,7 @@ open class GossipRouter(
     }
 
     override fun broadcastOutbound(msg: Rpc.Message): CompletableFuture<Unit> {
-        msg.topicIDsList.forEach { lastPublished[it] = heartbeat.currentTime() }
+        msg.topicIDsList.forEach { lastPublished[it] = curTime() }
 
         val peers =
             if (params.floodPublish) {
@@ -267,7 +267,7 @@ open class GossipRouter(
         mesh[topic]?.forEach { prune(it, topic) }
     }
 
-    private fun heartBeat(time: Long) {
+    private fun heartBeat() {
         heartbeatsCount++
         iAsked.clear()
         peerIHave.clear()
@@ -338,7 +338,7 @@ open class GossipRouter(
                 emitGossip(topic, peers)
             }
             lastPublished.entries.removeIf { (topic, lastPub) ->
-                (time - lastPub > coreParams.fanoutTTL.toMillis())
+                (curTime() - lastPub > coreParams.fanoutTTL.toMillis())
                     .whenTrue { fanout.remove(topic) }
             }
 

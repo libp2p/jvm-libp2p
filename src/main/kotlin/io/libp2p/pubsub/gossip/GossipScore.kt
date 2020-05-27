@@ -2,8 +2,8 @@ package io.libp2p.pubsub.gossip
 
 import io.libp2p.core.PeerId
 import io.libp2p.core.pubsub.ValidationResult
-import io.libp2p.etc.types.LRUCollections
 import io.libp2p.etc.types.cappedDouble
+import io.libp2p.etc.types.createLRUMap
 import io.libp2p.etc.types.millis
 import io.libp2p.etc.util.P2PService
 import pubsub.pb.Rpc
@@ -95,7 +95,7 @@ class GossipScore(
     val peerParams = params.peerScoreParams
     val topicParams = params.topicsScoreParams
 
-    private val validationTime: MutableMap<Rpc.Message, Long> = LRUCollections.createMap(1024)
+    private val validationTime: MutableMap<Rpc.Message, Long> = createLRUMap(1024)
     val peerScores = mutableMapOf<PeerId, PeerScores>()
 
     val refreshTask: ScheduledFuture<*>

@@ -3,10 +3,10 @@ package io.libp2p.pubsub
 import io.libp2p.core.Stream
 import io.libp2p.core.pubsub.RESULT_VALID
 import io.libp2p.core.pubsub.ValidationResult
-import io.libp2p.etc.types.LRUCollections
 import io.libp2p.etc.types.MultiSet
 import io.libp2p.etc.types.completedExceptionally
 import io.libp2p.etc.types.copy
+import io.libp2p.etc.types.createLRUMap
 import io.libp2p.etc.types.forward
 import io.libp2p.etc.types.lazyVarInit
 import io.libp2p.etc.types.toHex
@@ -46,7 +46,7 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
     private var msgHandler: (Rpc.Message) -> CompletableFuture<ValidationResult> = { RESULT_VALID }
     var maxSeenMessagesSizeSet = 10000
     var validator: PubsubMessageValidator = PubsubMessageValidator.nopValidator()
-    val seenMessages by lazy { LRUCollections.createMap<MessageId, ValidationResult>(maxSeenMessagesSizeSet) }
+    val seenMessages by lazy { createLRUMap<MessageId, ValidationResult>(maxSeenMessagesSizeSet) }
     val subscribedTopics = linkedSetOf<String>()
     val pendingRpcParts = linkedMapOf<PeerHandler, MutableList<Rpc.RPC>>()
     private var debugHandler: ChannelHandler? = null
