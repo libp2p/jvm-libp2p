@@ -16,8 +16,6 @@ import io.libp2p.tools.TestHandler
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
-import io.netty.handler.logging.LogLevel
-import io.netty.handler.logging.LoggingHandler
 import io.netty.util.ResourceLeakDetector
 import org.apache.logging.log4j.LogManager
 import org.junit.jupiter.params.ParameterizedTest
@@ -118,7 +116,7 @@ abstract class SecureChannelTest(
         return TestChannel(
             name,
             initiator,
-            LoggingHandler(name, LogLevel.ERROR),
+//            LoggingHandler(name, LogLevel.ERROR),
             negotiator,
             selector
         )
