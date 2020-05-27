@@ -317,6 +317,7 @@ open class GossipRouter(
                     if (scoreMedian < scoreParams.opportunisticGraftThreshold) {
                         (getTopicPeers(topic) - peers)
                             .filter { score.score(it) > scoreMedian && !isDirect(it) && !isBackOff(it, topic) }
+                            .take(params.opportunisticGraftPeers)
                             .forEach { graft(it, topic) }
                     }
                 }

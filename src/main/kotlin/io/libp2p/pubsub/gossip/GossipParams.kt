@@ -34,6 +34,7 @@ data class GossipParamsV1_1(
     val floodPublish: Boolean = true,
     val gossipFactor: Double = 0.25,
     val dScore: Int = 5, // depends on D
+    val opportunisticGraftPeers: Int = 2,
     val graftFloodThreshold: Duration = 10.seconds,
     val maxIHaveLength: Int = 5000,
     val maxIHaveMessages: Int = 10,
