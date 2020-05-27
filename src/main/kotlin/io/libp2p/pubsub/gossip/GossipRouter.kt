@@ -129,7 +129,8 @@ open class GossipRouter(
 
     private fun handleGraft(msg: Rpc.ControlGraft, peer: PeerHandler) {
         val topic = msg.topicID
-        val meshPeers = mesh.computeIfAbsent(topic) { mutableSetOf() }
+        // ignore GRAFT for unknown topics
+        val meshPeers = mesh[topic] ?: return
         when {
             isDirect(peer) ->
                 enqueuePrune(peer, topic)
