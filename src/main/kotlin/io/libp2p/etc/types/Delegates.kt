@@ -54,7 +54,7 @@ class LazyMutable<T>(val initializer: () -> T, val rejectSetAfterGet: Boolean = 
     }
 }
 
-class CappedValueDelegate<C : Comparable<C>>(
+data class CappedValueDelegate<C : Comparable<C>>(
     var value: C,
     val lowerBound: C?,
     val lowerBoundVal: C? = lowerBound,

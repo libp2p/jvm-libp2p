@@ -12,7 +12,7 @@ typealias Weight = Double
 
 data class GossipParamsCore(
     val D: Int = 3,
-    val DLow: Int = D * 3 / 2,
+    val DLow: Int = D * 2 / 3,
     val DHigh: Int = D * 2,
     val DScore: Int = D,
     val DOut: Int = min(D / 2, max(DLow - 1, 0)),
@@ -25,6 +25,8 @@ data class GossipParamsCore(
     init {
         check(DOut < DLow || (DOut == 0 && DLow == 0), "DOut should be < DLow or both 0")
         check(DOut <= D / 2, "DOut should be <= D/2")
+        check(DLow <= D, "DLow should be <= D")
+        check(DHigh >= D, "DHigh should be >= D")
     }
 }
 
@@ -39,7 +41,11 @@ data class GossipParamsV1_1(
     val maxIHaveLength: Int = 5000,
     val maxIHaveMessages: Int = 10,
     val iWantFollowupTime: Duration = 3.seconds
-)
+) {
+    init {
+        check(gossipFactor in 0.0..1.0, "gossipFactor should be in range [0.0, 1.1]")
+    }
+}
 
 data class GossipScoreParams(
     val peerScoreParams: GossipPeerScoreParams = GossipPeerScoreParams(),
@@ -66,7 +72,7 @@ data class GossipScoreParams(
 }
 
 data class GossipPeerScoreParams(
-    val topicScoreCap: Double = 10000.0,
+    val topicScoreCap: Double = 100.0,
     val isDirect: (PeerId) -> Boolean = { false },
     val appSpecificScore: (PeerId) -> Double = { 0.0 },
     val appSpecificWeight: Weight = 1.0,
@@ -103,21 +109,28 @@ data class GossipTopicScoreParams(
     val FirstMessageDeliveriesDecay: Double = 0.9,
     val FirstMessageDeliveriesCap: Double = 100.0,
     // P₃
-    val MeshMessageDeliveriesWeight: Weight = 1.0,
+    val MeshMessageDeliveriesWeight: Weight = -1.0,
     val MeshMessageDeliveriesDecay: Double = 0.9,
-    val MeshMessageDeliveriesThreshold: Double = 100.0,
+    val MeshMessageDeliveriesThreshold: Double = 20.0,
     val MeshMessageDeliveriesCap: Double = 100.0,
     val MeshMessageDeliveriesActivation: Duration = 1.minutes,
     val MeshMessageDeliveryWindow: Duration = 10.millis,
     // P₃b
-    val MeshFailurePenaltyWeight: Weight = 1.0,
+    val MeshFailurePenaltyWeight: Weight = -1.0,
     val MeshFailurePenaltyDecay: Double = 0.9,
     // P₄
-    val InvalidMessageDeliveriesWeight: Weight = 1.0,
+    val InvalidMessageDeliveriesWeight: Weight = -1.0,
     val InvalidMessageDeliveriesDecay: Double = 0.9
 ) {
     init {
-        // TODO validation
+        check(TimeInMeshWeight >= 0, "TimeInMeshWeight >= 0")
+        check(TimeInMeshCap >= 0, "TimeInMeshCap >= 0")
+        check(FirstMessageDeliveriesWeight >= 0, "FirstMessageDeliveriesWeight >= 0")
+        check(MeshMessageDeliveriesWeight <= 0, "MeshMessageDeliveriesWeight <= 0")
+        check(MeshMessageDeliveriesThreshold > 0, "MeshMessageDeliveriesThreshold > 0")
+        check(MeshMessageDeliveriesCap >= MeshMessageDeliveriesThreshold, "MeshMessageDeliveriesCap >= MeshMessageDeliveriesThreshold")
+        check(MeshFailurePenaltyWeight <= 0, "MeshFailurePenaltyWeight <= 0")
+        check(InvalidMessageDeliveriesWeight <= 0, "InvalidMessageDeliveriesWeight <= 0")
     }
 }
 

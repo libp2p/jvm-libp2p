@@ -60,13 +60,14 @@ class GossipScore(
             val p3 = meshMessageDeliveriesDeficitSqr()
             val p3b = meshFailurePenalty
             val p4 = invalidMessages.pow(2)
-            return params.TopicWeight * (
+            val ret= params.TopicWeight * (
                     p1 * params.TimeInMeshWeight +
                             p2 * params.FirstMessageDeliveriesWeight +
                             p3 * params.MeshMessageDeliveriesWeight +
                             p3b * params.MeshFailurePenaltyWeight +
                             p4 * params.InvalidMessageDeliveriesWeight
                     )
+            return ret
         }
 
         fun decayScores() {
