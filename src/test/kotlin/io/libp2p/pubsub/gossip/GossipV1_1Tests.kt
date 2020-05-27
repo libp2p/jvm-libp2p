@@ -657,4 +657,27 @@ class GossipV1_1Tests {
             test.gossipRouter.score.peerScores[test.routers[0].peerId]!!.topicScores["topic1"]!!.invalidMessages
         )
     }
+
+    @Test
+    fun testSilenceDoesntReduceScores() {
+        val test = ManyRoutersTest(mockRouterCount = 20)
+        test.connectAll()
+        test.gossipRouter.subscribe("topic1")
+        test.routers.forEach { it.router.subscribe("topic1") }
+
+        val idToPeerHandlers = test.gossipRouter.peers.map { it.peerId() to it }.toMap()
+        var curScores = idToPeerHandlers
+            .mapValues { (_, handler) -> test.gossipRouter.score.score(handler) }
+        assertEquals(0, curScores.values.count { it < 0 })
+        for (i in 0..360) {
+            assertEquals(20, curScores.size)
+            test.fuzz.timeController.addTime(1.seconds)
+            val newScores = idToPeerHandlers
+                .mapValues { (_, handler) -> test.gossipRouter.score.score(handler) }
+            for (id in curScores.keys) {
+                assertTrue(newScores[id]!! >= curScores[id]!!)
+            }
+            curScores = newScores
+        }
+    }
 }
