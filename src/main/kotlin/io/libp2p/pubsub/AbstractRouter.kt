@@ -26,12 +26,6 @@ import java.util.function.Consumer
 
 typealias MessageId = String
 
-/*
-open class RouterEvent
-open class RouterEventMessage(val peer: P2PService.PeerHandler, val msg: Rpc.Message) : RouterEvent()
-open class RouterEventUnseenMessage(peer: P2PService.PeerHandler, msg: Rpc.Message) : RouterEventMessage(peer, msg)
-*/
-
 /**
  * Implements common logic for pubsub routers
  */
