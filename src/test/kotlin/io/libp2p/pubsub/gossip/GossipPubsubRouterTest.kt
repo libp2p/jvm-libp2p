@@ -22,7 +22,7 @@ class GossipPubsubRouterTest : PubsubRouterTest({
                 super.doTenNeighborsTopology(seed) {
                     GossipRouter(
                         GossipParamsV1_1(
-                            GossipParamsCore(d, d, d),
+                            GossipParamsCore(d, d, d, DLazy = 100),
                             pruneBackoff = 1.seconds) // small backoff timeout for faster meshes settling down
                     )
                 }

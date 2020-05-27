@@ -128,7 +128,7 @@ abstract class PubsubRouterTest(val router: RouterCtor) {
         for (i in 1..20) {
             val routerEnd = fuzz.createTestRouter(router())
             allRouters += routerEnd
-            routerEnd.connectSemiDuplex(routerCenter)
+            routerEnd.connectSemiDuplex(routerCenter, pubsubLogs = LogLevel.ERROR)
         }
 
         allRouters.forEach { it.router.subscribe("topic1") }
@@ -138,6 +138,9 @@ abstract class PubsubRouterTest(val router: RouterCtor) {
 
         val msg1 = newMessage("topic1", 0L, "Hello".toByteArray())
         routerCenter.router.publish(msg1)
+
+        // 5 heartbeats for all
+        fuzz.timeController.addTime(Duration.ofSeconds(5))
 
         Assertions.assertTrue(routerCenter.inboundMessages.isEmpty())
 
@@ -242,6 +245,9 @@ abstract class PubsubRouterTest(val router: RouterCtor) {
 
             Assertions.assertTrue(allRouters[0].inboundMessages.isEmpty())
 
+            // 5 heartbeats for all to give a chance for gossiping
+            fuzz.timeController.addTime(Duration.ofSeconds(5))
+
             val receiveRouters = allRouters - allRouters[0]
             val msgCount = receiveRouters.sumBy { it.inboundMessages.size }
             firstCount = allConnections.sumBy { it.getMessageCount().toInt() }
@@ -255,6 +261,9 @@ abstract class PubsubRouterTest(val router: RouterCtor) {
             allRouters[0].router.publish(msg1)
 
             Assertions.assertTrue(allRouters[0].inboundMessages.isEmpty())
+
+            // 5 heartbeats for all to give a chance for gossiping
+            fuzz.timeController.addTime(Duration.ofSeconds(5))
 
             val receiveRouters = allRouters - allRouters[0]
             val msgCount = receiveRouters.sumBy { it.inboundMessages.size }

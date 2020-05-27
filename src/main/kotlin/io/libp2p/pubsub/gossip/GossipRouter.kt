@@ -60,20 +60,18 @@ open class GossipRouter(
         executor.scheduleWithFixedDelay(::heartBeat, coreParams.heartbeatInterval.toMillis(), coreParams.heartbeatInterval.toMillis(), TimeUnit.MILLISECONDS)
     }
 
-
     private fun setBackOff(peer: PeerHandler, topic: Topic) = setBackOff(peer, topic, params.pruneBackoff.toMillis())
     private fun setBackOff(peer: PeerHandler, topic: Topic, delay: Long) {
-        backoffExpireTimes[peer.peerId() to topic] = curTime() + delay
+        backoffExpireTimes[peer.peerId to topic] = curTime() + delay
     }
     private fun isBackOff(peer: PeerHandler, topic: Topic) =
-        curTime() < (backoffExpireTimes[peer.peerId() to topic] ?: 0)
+        curTime() < (backoffExpireTimes[peer.peerId to topic] ?: 0)
     private fun isBackOffFlood(peer: PeerHandler, topic: Topic): Boolean {
-        val expire = backoffExpireTimes[peer.peerId() to topic] ?: return false
+        val expire = backoffExpireTimes[peer.peerId to topic] ?: return false
         return curTime() < expire - (params.pruneBackoff + params.graftFloodThreshold).toMillis()
     }
     private fun getDirectPeers() = peers.filter(::isDirect)
-    private fun isDirect(peer: PeerHandler) = score.peerParams.isDirect(peer.peerId())
-
+    private fun isDirect(peer: PeerHandler) = score.peerParams.isDirect(peer.peerId)
 
     override fun onPeerDisconnected(peer: PeerHandler) {
         score.notifyDisconnected(peer)
@@ -136,26 +134,20 @@ open class GossipRouter(
         val meshPeers = mesh[topic] ?: return
         when {
             isDirect(peer) ->
-                enqueuePrune(peer, topic)
+                prune(peer, topic)
             isBackOff(peer, topic) -> {
                 notifyRouterMisbehavior(peer, 1)
                 if (isBackOffFlood(peer, topic)) {
                     notifyRouterMisbehavior(peer, 1)
                 }
-                setBackOff(peer, topic)
-                enqueuePrune(peer, topic)
+                prune(peer, topic)
             }
-            score.score(peer) < 0 -> {
-                enqueuePrune(peer, topic)
-                setBackOff(peer, topic)
-            }
-            meshPeers.size >= coreParams.DHigh && !peer.isOutbound() -> {
-                enqueuePrune(peer, topic)
-                setBackOff(peer, topic)
-            }
-            peer !in meshPeers -> {
-                enqueueGraft(peer, topic)
-            }
+            score.score(peer) < 0 ->
+                prune(peer, topic)
+            meshPeers.size >= coreParams.DHigh && !peer.isOutbound() ->
+                prune(peer, topic)
+            peer !in meshPeers ->
+                graft(peer, topic)
         }
     }
 
@@ -370,10 +362,11 @@ open class GossipRouter(
     }
 
     private fun prune(peer: PeerHandler, topic: Topic) {
-        mesh[topic]?.remove(peer)
         setBackOff(peer, topic)
         enqueuePrune(peer, topic)
-        notifyPruned(peer, topic)
+        if (mesh[topic]?.remove(peer) == true) {
+            notifyPruned(peer, topic)
+        }
     }
 
     private fun enqueuePrune(peer: PeerHandler, topic: Topic) {

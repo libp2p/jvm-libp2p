@@ -29,7 +29,7 @@ abstract class P2PServiceSemiDuplex : P2PService() {
 
     override fun streamAdded(streamHandler: StreamHandler) {
         val stream = streamHandler.stream
-        val peerHandler = peers.find { it.peerId() == stream.remotePeerId() }
+        val peerHandler = peers.find { it.peerId == stream.remotePeerId() }
         if (peerHandler == null) {
             super.streamAdded(streamHandler)
         } else {
@@ -37,11 +37,11 @@ abstract class P2PServiceSemiDuplex : P2PService() {
             when {
                 peerHandler.otherStreamHandler != null -> {
                     stream.close()
-                    throw BadPeerException("Duplicate steam for peer ${peerHandler.peerId()}. Closing it silently")
+                    throw BadPeerException("Duplicate steam for peer ${peerHandler.peerId}. Closing it silently")
                 }
                 peerHandler.streamHandler.stream.isInitiator == stream.isInitiator -> {
                     stream.close()
-                    throw BadPeerException("Duplicate stream with initiator = ${stream.isInitiator} for peer ${peerHandler.peerId()}")
+                    throw BadPeerException("Duplicate stream with initiator = ${stream.isInitiator} for peer ${peerHandler.peerId}")
                 }
                 else -> {
                     peerHandler.otherStreamHandler = streamHandler

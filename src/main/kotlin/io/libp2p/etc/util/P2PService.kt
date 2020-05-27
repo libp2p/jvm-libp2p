@@ -80,7 +80,7 @@ abstract class P2PService {
      * to write data to the peer
      */
     open inner class PeerHandler(val streamHandler: StreamHandler) {
-        open fun peerId() = streamHandler.stream.remotePeerId()
+        val peerId = streamHandler.stream.remotePeerId()
         open fun writeAndFlush(msg: Any): CompletableFuture<Unit> = streamHandler.ctx!!.writeAndFlush(msg).toVoidCompletableFuture()
         open fun isActive() = streamHandler.ctx != null
         open fun getInboundHandler(): StreamHandler? = streamHandler

@@ -430,7 +430,7 @@ class GossipV1_1Tests {
 
         test.fuzz.timeController.addTime(2.seconds)
 
-        val topicMesh = test.gossipRouter.mesh["topic1"]!!.map { it.peerId() }
+        val topicMesh = test.gossipRouter.mesh["topic1"]!!.map { it.peerId }
         assertTrue(topicMesh.size > 0 && topicMesh.size < test.routers.size)
 
         test.gossipRouter.publish(newMessage("topic1", 0L, "Hello-0".toByteArray()))
@@ -450,7 +450,7 @@ class GossipV1_1Tests {
         val publishedCount = test.mockRouters.flatMap { it.inboundMessages }.count { it.publishCount > 0 }
         assertTrue(publishedCount <= topicMesh.size)
 
-        val scores1 = test.gossipRouter.peers.map { it.peerId() to test.gossipRouter.score.score(it) }.toMap()
+        val scores1 = test.gossipRouter.peers.map { it.peerId to test.gossipRouter.score.score(it) }.toMap()
 
         // peers 0 and 1 should not receive flood publish
         appScore[test.routers[0].peerId] = ((scoreParams.publishThreshold - scores1[test.routers[0].peerId]!!) / peerScoreParams.appSpecificWeight) - 0.001
@@ -462,7 +462,7 @@ class GossipV1_1Tests {
         println(appScore.keys)
 
         // check if scores are correctly calculated
-        val scores2 = test.gossipRouter.peers.map { it.peerId() to test.gossipRouter.score.score(it) }.toMap()
+        val scores2 = test.gossipRouter.peers.map { it.peerId to test.gossipRouter.score.score(it) }.toMap()
         assertTrue(scores2[test.routers[0].peerId]!! < scoreParams.publishThreshold)
         assertTrue(scores2[test.routers[1].peerId]!! < scoreParams.publishThreshold)
         assertTrue(scores2[test.routers[2].peerId]!! > scoreParams.publishThreshold)
@@ -560,7 +560,7 @@ class GossipV1_1Tests {
         test.connect(0..8, outbound = false)
         // mesh from inbound only should be formed
         test.fuzz.timeController.addTime(2.seconds)
-        val meshedPeerIds = test.gossipRouter.mesh["topic1"]!!.map { it.peerId() }
+        val meshedPeerIds = test.gossipRouter.mesh["topic1"]!!.map { it.peerId }
         assertEquals(3, meshedPeerIds.size)
 
         // inbound GRAFT should be rejected when oversubscribed
@@ -612,7 +612,7 @@ class GossipV1_1Tests {
         test.routers.forEach { it.router.subscribe("topic1") }
 
         test.fuzz.timeController.addTime(2.seconds)
-        val meshedPeerIds = test.gossipRouter.mesh["topic1"]!!.map { it.peerId() }
+        val meshedPeerIds = test.gossipRouter.mesh["topic1"]!!.map { it.peerId }
         assertEquals(3, meshedPeerIds.size)
         val opportunisticGraftCandidates =
             (test.routers.map { it.peerId } - meshedPeerIds).take(3)
@@ -624,7 +624,7 @@ class GossipV1_1Tests {
 
         // now [opportunisticGraftPeers] should be added to the mesh
         test.fuzz.timeController.addTime(60.seconds)
-        val meshedPeerIds1 = test.gossipRouter.mesh["topic1"]!!.map { it.peerId() }
+        val meshedPeerIds1 = test.gossipRouter.mesh["topic1"]!!.map { it.peerId }
         assertEquals(5, meshedPeerIds1.size)
         assertEquals(2, meshedPeerIds1.intersect(opportunisticGraftCandidates).size)
     }
@@ -665,7 +665,7 @@ class GossipV1_1Tests {
         test.gossipRouter.subscribe("topic1")
         test.routers.forEach { it.router.subscribe("topic1") }
 
-        val idToPeerHandlers = test.gossipRouter.peers.map { it.peerId() to it }.toMap()
+        val idToPeerHandlers = test.gossipRouter.peers.map { it.peerId to it }.toMap()
         var curScores = idToPeerHandlers
             .mapValues { (_, handler) -> test.gossipRouter.score.score(handler) }
         assertEquals(0, curScores.values.count { it < 0 })

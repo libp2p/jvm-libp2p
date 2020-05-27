@@ -60,7 +60,7 @@ class GossipScore(
             val p3 = meshMessageDeliveriesDeficitSqr()
             val p3b = meshFailurePenalty
             val p4 = invalidMessages.pow(2)
-            val ret= params.TopicWeight * (
+            val ret = params.TopicWeight * (
                     p1 * params.TimeInMeshWeight +
                             p2 * params.FirstMessageDeliveriesWeight +
                             p3 * params.MeshMessageDeliveriesWeight +
@@ -107,7 +107,7 @@ class GossipScore(
     }
 
     private fun getPeerScores(peer: P2PService.PeerHandler) =
-        peerScores.computeIfAbsent(peer.peerId()) { PeerScores() }
+        peerScores.computeIfAbsent(peer.peerId) { PeerScores() }
 
     private fun getTopicScores(peer: P2PService.PeerHandler, topic: Topic) =
         getPeerScores(peer).topicScores.computeIfAbsent(topic) { TopicScores(it) }
@@ -120,7 +120,7 @@ class GossipScore(
             peerParams.topicScoreCap,
             peerScore.topicScores.values.map { it.calcTopicScore() }.sum()
         )
-        val appScore = peerParams.appSpecificScore(peer.peerId()) * peerParams.appSpecificWeight
+        val appScore = peerParams.appSpecificScore(peer.peerId) * peerParams.appSpecificWeight
 
         val peersInIp: Int = peer.getIP()?.let { thisIp ->
             if (peerParams.ipWhitelisted(thisIp)) 0 else
