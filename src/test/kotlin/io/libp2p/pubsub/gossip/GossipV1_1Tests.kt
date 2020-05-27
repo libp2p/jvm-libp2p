@@ -2,6 +2,7 @@ package io.libp2p.pubsub.gossip
 
 import com.google.common.util.concurrent.AtomicDouble
 import io.libp2p.core.PeerId
+import io.libp2p.core.pubsub.RESULT_IGNORE
 import io.libp2p.core.pubsub.RESULT_INVALID
 import io.libp2p.core.pubsub.RESULT_VALID
 import io.libp2p.core.pubsub.ValidationResult
@@ -53,6 +54,7 @@ class GossipV1_1Tests {
             connections += list
             return list
         }
+        fun getMockRouter(peerId: PeerId) = mockRouters[routers.indexOfFirst { it.peerId == peerId } ]
     }
 
     class TwoRoutersTest(
@@ -510,7 +512,9 @@ class GossipV1_1Tests {
         assertEquals(3, gossippedCount1)
         test.mockRouters.forEach { it.inboundMessages.clear() }
 
+        // connecting others
         test.connect(7..19)
+        // should gossip again on the next heartbeat
         test.fuzz.timeController.addTime(test.gossipRouter.params.coreParams.heartbeatInterval)
 
         val gossippedCount2 = test.mockRouters
@@ -518,8 +522,139 @@ class GossipV1_1Tests {
             .count { it.hasControl() && it.control.ihaveCount > 0 }
 
         // adaptive gossip dissemination: gossipFactor enters the game
-        assertTrue(gossippedCount2 >= 6)
+        assertTrue(gossippedCount2 >= 7)
         assertTrue(gossippedCount2 < 17)
         test.mockRouters.forEach { it.inboundMessages.clear() }
+
+        // shouldn't gossip to underscored peers
+        test.routers.slice(0..9).map { it.peerId }.forEach { appScore[it] = -1000.0 }
+        // should gossip again on the next heartbeat
+        test.fuzz.timeController.addTime(test.gossipRouter.params.coreParams.heartbeatInterval)
+
+        val gossippedCount3 = test.mockRouters
+            .flatMap { it.inboundMessages }
+            .count { it.hasControl() && it.control.ihaveCount > 0 }
+        val gossippedUnderscoreCount3 = test.mockRouters.slice(0..9)
+            .flatMap { it.inboundMessages }
+            .count { it.hasControl() && it.control.ihaveCount > 0 }
+        assertTrue(gossippedCount3 > 0)
+        assertEquals(0, gossippedUnderscoreCount3)
+    }
+
+    @Test
+    fun testOutboundMeshQuotas() {
+        val appScore = mutableMapOf<PeerId, Double>().withDefault { 0.0 }
+        val coreParams = GossipParamsCore(3, 3, 3, DLazy = 3, DOut = 1)
+        val v1_1Params = GossipParamsV1_1(coreParams, floodPublish = false)
+        val peerScoreParams = GossipPeerScoreParams(appSpecificScore = { appScore.getValue(it) })
+        val scoreParams = GossipScoreParams(peerScoreParams = peerScoreParams)
+        val test = ManyRoutersTest(
+            coreParams = coreParams,
+            v1_1Params = v1_1Params,
+            scoreParams = scoreParams
+        )
+
+        test.gossipRouter.subscribe("topic1")
+        test.routers.forEach { it.router.subscribe("topic1") }
+
+        test.connect(0..8, outbound = false)
+        // mesh from inbound only should be formed
+        test.fuzz.timeController.addTime(2.seconds)
+        val meshedPeerIds = test.gossipRouter.mesh["topic1"]!!.map { it.peerId() }
+        assertEquals(3, meshedPeerIds.size)
+
+        // inbound GRAFT should be rejected when oversubscribed
+        val someNonMeshedPeer = test.getMockRouter(
+            (test.routers.map { it.peerId } - meshedPeerIds).first())
+        val graftMsg = Rpc.RPC.newBuilder().setControl(
+            Rpc.ControlMessage.newBuilder().addGraft(
+                Rpc.ControlGraft.newBuilder().setTopicID("topic1")
+            )
+        ).build()
+        someNonMeshedPeer.sendToSingle(graftMsg)
+        someNonMeshedPeer.waitForMessage { it.hasControl() && it.control.pruneCount > 0 }
+
+        // making outbound connection
+        val connection = test.connect(9..9, outbound = true)
+        // outbound GRAFT should be accepted despite oversubscription
+        test.mockRouters[9].sendToSingle(graftMsg)
+        test.mockRouters[9].waitForMessage { it.hasControl() && it.control.graftCount > 0 }
+        test.mockRouters[9].inboundMessages.clear()
+
+        // gossip should actively add outbound peer to fill DOut gap
+        connection[0].disconnect()
+        test.fuzz.timeController.addTime(2.seconds)
+        assertEquals(3, test.gossipRouter.mesh["topic1"]!!.size)
+        test.connect(9..9, outbound = true)
+        test.fuzz.timeController.addTime(2.seconds)
+        test.mockRouters[9].waitForMessage { it.hasControl() && it.control.graftCount > 0 }
+    }
+
+    @Test
+    fun testOpportunisticGraft() {
+        val appScore = mutableMapOf<PeerId, Double>().withDefault { 0.0 }
+        val coreParams = GossipParamsCore(3, 3, 10, DLazy = 3, DOut = 1)
+        val v1_1Params = GossipParamsV1_1(coreParams, opportunisticGraftPeers = 2)
+        val peerScoreParams = GossipPeerScoreParams(appSpecificScore = { appScore.getValue(it) })
+        val scoreParams = GossipScoreParams(
+            peerScoreParams = peerScoreParams,
+            opportunisticGraftThreshold = 1000.0,
+            opportunisticGraftTicks = 60
+        )
+
+        val test = ManyRoutersTest(
+            coreParams = coreParams,
+            v1_1Params = v1_1Params,
+            scoreParams = scoreParams
+        )
+        test.connectAll()
+        test.gossipRouter.subscribe("topic1")
+        test.routers.forEach { it.router.subscribe("topic1") }
+
+        test.fuzz.timeController.addTime(2.seconds)
+        val meshedPeerIds = test.gossipRouter.mesh["topic1"]!!.map { it.peerId() }
+        assertEquals(3, meshedPeerIds.size)
+        val opportunisticGraftCandidates =
+            (test.routers.map { it.peerId } - meshedPeerIds).take(3)
+        opportunisticGraftCandidates.forEach { appScore[it] = 100500.0 }
+
+        // opportunistic grafting should be applied only after 60 heartbeats
+        test.fuzz.timeController.addTime(2.seconds)
+        assertEquals(3, test.gossipRouter.mesh["topic1"]!!.size)
+
+        // now [opportunisticGraftPeers] should be added to the mesh
+        test.fuzz.timeController.addTime(60.seconds)
+        val meshedPeerIds1 = test.gossipRouter.mesh["topic1"]!!.map { it.peerId() }
+        assertEquals(5, meshedPeerIds1.size)
+        assertEquals(2, meshedPeerIds1.intersect(opportunisticGraftCandidates).size)
+    }
+
+    @Test
+    fun testValidatorIgnoreResult() {
+        val test = ManyRoutersTest(mockRouterCount = 2)
+        val validator = AtomicReference<CompletableFuture<ValidationResult>>(RESULT_VALID)
+        test.gossipRouter.initHandler { validator.get() }
+        test.connectAll()
+        test.gossipRouter.subscribe("topic1")
+        test.routers.forEach { it.router.subscribe("topic1") }
+        test.fuzz.timeController.addTime(2.seconds)
+
+        // when validator result is VALID the message should be propagated
+        test.mockRouters[0].sendToSingle(
+            Rpc.RPC.newBuilder().addPublish(newMessage("topic1", 0L, "Hello-1".toByteArray())).build())
+        test.mockRouters[1].waitForMessage { it.publishCount > 0 }
+        test.fuzz.timeController.addTime(1.seconds)
+
+        // when validator result is IGNORE the message should not be propagated
+        // and the score shouldn't be decreased
+        validator.set(RESULT_IGNORE)
+        test.mockRouters[0].sendToSingle(
+            Rpc.RPC.newBuilder().addPublish(newMessage("topic1", 0L, "Hello-1".toByteArray())).build())
+        test.fuzz.timeController.addTime(1.seconds)
+        assertEquals(0, test.mockRouters[1].inboundMessages.count { it.publishCount > 0 })
+        assertEquals(
+            0.0,
+            test.gossipRouter.score.peerScores[test.routers[0].peerId]!!.topicScores["topic1"]!!.invalidMessages
+        )
     }
 }
