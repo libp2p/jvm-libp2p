@@ -109,7 +109,7 @@ data class GossipTopicScoreParams(
     val FirstMessageDeliveriesDecay: Double = 0.9,
     val FirstMessageDeliveriesCap: Double = 100.0,
     // P₃
-    val MeshMessageDeliveriesWeight: Weight = -1.0,
+    val MeshMessageDeliveriesWeight: Weight = 0.0 /*-1.0*/, // TODO temporarily exclude this parameter
     val MeshMessageDeliveriesDecay: Double = 0.9,
     val MeshMessageDeliveriesThreshold: Double = 20.0,
     val MeshMessageDeliveriesCap: Double = 100.0,
