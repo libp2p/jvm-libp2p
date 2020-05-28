@@ -44,7 +44,7 @@ data class GossipParamsV1_1(
     val iWantFollowupTime: Duration = 3.seconds,
     // callback to notify outer system to which peers Gossip wants to be connected
     // The second parameter is a signed peer record: https://github.com/libp2p/specs/pull/217
-    val wishToConnectCallback: (PeerId, ByteArray) -> Unit = { _: PeerId, _: ByteArray -> }
+    val connectCallback: (PeerId, ByteArray) -> Unit = { _: PeerId, _: ByteArray -> }
 ) {
     init {
         check(gossipFactor in 0.0..1.0, "gossipFactor should be in range [0.0, 1.1]")

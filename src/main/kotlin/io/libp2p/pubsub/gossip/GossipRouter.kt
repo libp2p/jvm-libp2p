@@ -220,7 +220,7 @@ open class GossipRouter(
         peersList.shuffled(random).take(params.maxPrunePeers)
             .map { PeerId(it.peerID.toByteArray()) to it.signedPeerRecord.toByteArray() }
             .filter { (id, _) -> !isConnected(id) }
-            .forEach { (id, record) -> params.wishToConnectCallback(id, record) }
+            .forEach { (id, record) -> params.connectCallback(id, record) }
     }
 
     override fun processControl(ctrl: Rpc.ControlMessage, receivedFrom: PeerHandler) {
