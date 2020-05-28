@@ -7,6 +7,7 @@ import io.libp2p.etc.types.createLRUMap
 import io.libp2p.etc.types.millis
 import io.libp2p.etc.util.P2PService
 import pubsub.pb.Rpc
+import java.util.Optional
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
@@ -162,15 +163,16 @@ class GossipScore(
     fun notifyUnseenMessage(peer: P2PService.PeerHandler, msg: Rpc.Message) {
     }
 
-    fun notifySeenMessage(peer: P2PService.PeerHandler, msg: Rpc.Message, validationResult: ValidationResult) {
+    fun notifySeenMessage(peer: P2PService.PeerHandler, msg: Rpc.Message, validationResult: Optional<ValidationResult>) {
         msg.topicIDsList
             .filter { isInMesh(peer, it) }
             .forEach { topic ->
                 val topicScores = getTopicScores(peer, topic)
                 val durationAfterValidation = (curTime() - (validationTime[msg] ?: 0)).millis
                 when {
-                    validationResult == ValidationResult.Invalid -> topicScores.invalidMessages++
-                    validationResult == ValidationResult.Pending
+                    validationResult.isPresent && validationResult.get() == ValidationResult.Invalid ->
+                        topicScores.invalidMessages++
+                    !validationResult.isPresent
                             || durationAfterValidation < topicParams[topic].MeshMessageDeliveryWindow ->
                         topicScores.meshMessageDeliveries++
                 }

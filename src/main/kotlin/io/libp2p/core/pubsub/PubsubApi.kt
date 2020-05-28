@@ -12,7 +12,26 @@ import kotlin.random.Random.Default.nextLong
 fun createPubsubApi(router: PubsubRouter): PubsubApi =
     PubsubApiImpl(router)
 
-enum class ValidationResult { Valid, Invalid, Ignore, Pending }
+/**
+ * Application message validation result
+ */
+enum class ValidationResult {
+
+    /**
+     * The message is valid and should be propagated further
+     */
+    Valid,
+
+    /**
+     * The message is invalid
+     */
+    Invalid,
+
+    /**
+     * The message is valid but should NOT be propagated further
+     */
+    Ignore
+}
 
 typealias Subscriber = Consumer<MessageApi>
 typealias Validator = Function<MessageApi, CompletableFuture<ValidationResult>>

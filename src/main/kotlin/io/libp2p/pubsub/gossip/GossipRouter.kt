@@ -15,6 +15,7 @@ import io.libp2p.pubsub.AbstractRouter
 import io.libp2p.pubsub.MessageId
 import io.libp2p.pubsub.PubsubProtocol
 import pubsub.pb.Rpc
+import java.util.Optional
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
@@ -103,9 +104,9 @@ open class GossipRouter(
         score.notifyUnseenMessage(peer, msg)
     }
 
-    override fun notifySeenMessage(peer: PeerHandler, msg: Rpc.Message, validationResult: ValidationResult) {
+    override fun notifySeenMessage(peer: PeerHandler, msg: Rpc.Message, validationResult: Optional<ValidationResult>) {
         score.notifySeenMessage(peer, msg, validationResult)
-        if (validationResult != ValidationResult.Invalid) {
+        if (validationResult.isPresent && validationResult.get() != ValidationResult.Invalid) {
             notifyAnyValidMessage(peer, msg)
         }
     }
