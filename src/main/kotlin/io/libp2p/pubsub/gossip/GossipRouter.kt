@@ -42,10 +42,10 @@ fun P2PService.PeerHandler.getOutboundGossipProtocol() = PubsubProtocol.fromProt
  */
 open class GossipRouter(
     val params: GossipParamsV1_1 = GossipParamsV1_1(),
-    val scoreParams: GossipScoreParams = GossipScoreParams()
+    val scoreParams: GossipScoreParams = GossipScoreParams(),
+    override val protocol: PubsubProtocol = PubsubProtocol.Gossip_V_1_1
 ) : AbstractRouter() {
 
-    override val protocol = PubsubProtocol.Gossip_V_1_1
     private val coreParams: GossipParamsCore = params.coreParams
 
     val score by lazy { GossipScore(scoreParams, executor, curTime) }
@@ -60,19 +60,27 @@ open class GossipRouter(
     private val peerIHave = createLRUMap<PeerHandler, AtomicInteger>(MaxPeerIHaveEntries)
     private val iWantRequests = createLRUMap<Pair<PeerHandler, MessageId>, Long>(MaxIWantRequestsEntries)
     private val heartbeatTask by lazy {
-        executor.scheduleWithFixedDelay(::heartBeat, coreParams.heartbeatInterval.toMillis(), coreParams.heartbeatInterval.toMillis(), TimeUnit.MILLISECONDS)
+        executor.scheduleWithFixedDelay(
+            ::heartBeat,
+            coreParams.heartbeatInterval.toMillis(),
+            coreParams.heartbeatInterval.toMillis(),
+            TimeUnit.MILLISECONDS
+        )
     }
 
     private fun setBackOff(peer: PeerHandler, topic: Topic) = setBackOff(peer, topic, params.pruneBackoff.toMillis())
     private fun setBackOff(peer: PeerHandler, topic: Topic, delay: Long) {
         backoffExpireTimes[peer.peerId to topic] = curTime() + delay
     }
+
     private fun isBackOff(peer: PeerHandler, topic: Topic) =
         curTime() < (backoffExpireTimes[peer.peerId to topic] ?: 0)
+
     private fun isBackOffFlood(peer: PeerHandler, topic: Topic): Boolean {
         val expire = backoffExpireTimes[peer.peerId to topic] ?: return false
         return curTime() < expire - (params.pruneBackoff + params.graftFloodThreshold).toMillis()
     }
+
     private fun getDirectPeers() = peers.filter(::isDirect)
     private fun isDirect(peer: PeerHandler) = score.peerParams.isDirect(peer.peerId)
     private fun isConnected(peerId: PeerId) = peers.any { it.peerId == peerId }
@@ -168,13 +176,19 @@ open class GossipRouter(
         mesh[topic]?.remove(peer)?.also {
             notifyPruned(peer, topic)
         }
-        if (msg.hasBackoff()) {
-            setBackOff(peer, topic, msg.backoff.seconds.toMillis())
+        if (this.protocol == PubsubProtocol.Gossip_V_1_1) {
+            if (msg.hasBackoff()) {
+                setBackOff(peer, topic, msg.backoff.seconds.toMillis())
+            } else {
+                setBackOff(peer, topic)
+            }
+            if (score.score(peer) >= scoreParams.acceptPXThreshold) {
+                processPrunePeers(msg.peersList)
+            }
         } else {
-            setBackOff(peer, topic)
-        }
-        if (score.score(peer) >= scoreParams.acceptPXThreshold) {
-            processPrunePeers(msg.peersList)
+            if (msg.hasBackoff() || msg.peersCount > 0) {
+                notifyRouterMisbehavior(peer, 1)
+            }
         }
     }
 
@@ -405,7 +419,7 @@ open class GossipRouter(
 
     private fun enqueuePrune(peer: PeerHandler, topic: Topic) {
         val pruneBuilder = Rpc.ControlPrune.newBuilder().setTopicID(topic)
-        if (peer.getOutboundGossipProtocol() == PubsubProtocol.Gossip_V_1_1) {
+        if (peer.getOutboundGossipProtocol() == PubsubProtocol.Gossip_V_1_1 && this.protocol == PubsubProtocol.Gossip_V_1_1) {
             pruneBuilder.backoff = params.pruneBackoff.seconds
             (getTopicPeers(topic) - peer)
                 .filter { score.score(it) >= 0 }
@@ -413,7 +427,7 @@ open class GossipRouter(
                     pruneBuilder.addPeers(
                         Rpc.PeerInfo.newBuilder()
                             .setPeerID(it.peerId.bytes.toProtobuf())
-                            // TODO skipping address record for now
+                        // TODO skipping address record for now
                     )
                 }
         }
