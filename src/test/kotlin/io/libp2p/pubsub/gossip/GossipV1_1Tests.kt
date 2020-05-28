@@ -10,8 +10,10 @@ import io.libp2p.etc.types.millis
 import io.libp2p.etc.types.seconds
 import io.libp2p.etc.types.times
 import io.libp2p.etc.types.toBytesBigEndian
+import io.libp2p.etc.types.toHex
 import io.libp2p.etc.types.toProtobuf
 import io.libp2p.pubsub.DeterministicFuzz
+import io.libp2p.pubsub.MessageId
 import io.libp2p.pubsub.MockRouter
 import io.libp2p.pubsub.SemiduplexConnection
 import io.netty.handler.logging.LogLevel
@@ -30,6 +32,9 @@ class GossipV1_1Tests {
             .setSeqno(seqNo.toBytesBigEndian().toProtobuf())
             .setData(data.toProtobuf())
             .build()
+
+    protected open fun getMessageId(msg: Rpc.Message): MessageId =
+        msg.from.toByteArray().toHex() + msg.seqno.toByteArray().toHex()
 
     class ManyRoutersTest(
         val mockRouterCount: Int = 10,
@@ -56,6 +61,7 @@ class GossipV1_1Tests {
             connections += list
             return list
         }
+
         fun getMockRouter(peerId: PeerId) = mockRouters[routers.indexOfFirst { it.peerId == peerId } ]
     }
 
@@ -391,6 +397,7 @@ class GossipV1_1Tests {
 
         assertEquals(maxLen, iWantCount)
     }
+
     @Test
     fun testNotFloodPublish() {
         val appScore = mutableMapOf<PeerId, Double>().withDefault { 0.0 }
@@ -457,11 +464,15 @@ class GossipV1_1Tests {
         val scores1 = test.gossipRouter.peers.map { it.peerId to test.gossipRouter.score.score(it) }.toMap()
 
         // peers 0 and 1 should not receive flood publish
-        appScore[test.routers[0].peerId] = ((scoreParams.publishThreshold - scores1[test.routers[0].peerId]!!) / peerScoreParams.appSpecificWeight) - 0.001
-        appScore[test.routers[1].peerId] = ((scoreParams.publishThreshold - scores1[test.routers[1].peerId]!!) / peerScoreParams.appSpecificWeight) - 0.001
+        appScore[test.routers[0].peerId] =
+            ((scoreParams.publishThreshold - scores1[test.routers[0].peerId]!!) / peerScoreParams.appSpecificWeight) - 0.001
+        appScore[test.routers[1].peerId] =
+            ((scoreParams.publishThreshold - scores1[test.routers[1].peerId]!!) / peerScoreParams.appSpecificWeight) - 0.001
         // peers 2 and 3 should receive flood publish despite with score < 0
-        appScore[test.routers[2].peerId] = ((scoreParams.publishThreshold - scores1[test.routers[2].peerId]!!) / peerScoreParams.appSpecificWeight) + 0.001
-        appScore[test.routers[3].peerId] = ((scoreParams.publishThreshold - scores1[test.routers[3].peerId]!!) / peerScoreParams.appSpecificWeight) + 0.001
+        appScore[test.routers[2].peerId] =
+            ((scoreParams.publishThreshold - scores1[test.routers[2].peerId]!!) / peerScoreParams.appSpecificWeight) + 0.001
+        appScore[test.routers[3].peerId] =
+            ((scoreParams.publishThreshold - scores1[test.routers[3].peerId]!!) / peerScoreParams.appSpecificWeight) + 0.001
 
         println(appScore.keys)
 
@@ -496,7 +507,12 @@ class GossipV1_1Tests {
         val v1_1Params = GossipParamsV1_1(coreParams, floodPublish = false, gossipFactor = 0.5)
         val peerScoreParams = GossipPeerScoreParams(appSpecificScore = { appScore.getValue(it) })
         val scoreParams = GossipScoreParams(peerScoreParams = peerScoreParams)
-        val test = ManyRoutersTest(mockRouterCount = 20, coreParams = coreParams, v1_1Params = v1_1Params, scoreParams = scoreParams)
+        val test = ManyRoutersTest(
+            mockRouterCount = 20,
+            coreParams = coreParams,
+            v1_1Params = v1_1Params,
+            scoreParams = scoreParams
+        )
 
         test.gossipRouter.subscribe("topic1")
         test.routers.forEach { it.router.subscribe("topic1") }
@@ -546,7 +562,7 @@ class GossipV1_1Tests {
     }
 
     @Test
-    fun testOutboundMeshQuotas() {
+    fun testOutboundMeshQuotas1() {
         val appScore = mutableMapOf<PeerId, Double>().withDefault { 0.0 }
         val coreParams = GossipParamsCore(3, 3, 3, DLazy = 3, DOut = 1)
         val v1_1Params = GossipParamsV1_1(coreParams, floodPublish = false)
@@ -645,7 +661,8 @@ class GossipV1_1Tests {
 
         // when validator result is VALID the message should be propagated
         test.mockRouters[0].sendToSingle(
-            Rpc.RPC.newBuilder().addPublish(newMessage("topic1", 0L, "Hello-1".toByteArray())).build())
+            Rpc.RPC.newBuilder().addPublish(newMessage("topic1", 0L, "Hello-1".toByteArray())).build()
+        )
         test.mockRouters[1].waitForMessage { it.publishCount > 0 }
         test.fuzz.timeController.addTime(1.seconds)
 
@@ -653,7 +670,8 @@ class GossipV1_1Tests {
         // and the score shouldn't be decreased
         validator.set(RESULT_IGNORE)
         test.mockRouters[0].sendToSingle(
-            Rpc.RPC.newBuilder().addPublish(newMessage("topic1", 0L, "Hello-1".toByteArray())).build())
+            Rpc.RPC.newBuilder().addPublish(newMessage("topic1", 0L, "Hello-1".toByteArray())).build()
+        )
         test.fuzz.timeController.addTime(1.seconds)
         assertEquals(0, test.mockRouters[1].inboundMessages.count { it.publishCount > 0 })
         assertEquals(
@@ -683,5 +701,78 @@ class GossipV1_1Tests {
             }
             curScores = newScores
         }
+    }
+
+    @Test
+    fun testIWantTimeoutPenalty() {
+        val test = TwoRoutersTest()
+
+        test.mockRouter.subscribe("topic1")
+        test.gossipRouter.subscribe("topic1")
+
+        // 2 heartbeats - the topic should be GRAFTed
+        test.fuzz.timeController.addTime(2.seconds)
+
+        val messages = (0..30).map {
+            newMessage("topic1", it.toLong(), "Hello-$it".toByteArray())
+        }
+        val messageIds = messages.map { getMessageId(it) }
+
+        test.mockRouter.sendToSingle(
+            Rpc.RPC.newBuilder().setControl(
+                Rpc.ControlMessage.newBuilder().addIhave(
+                    Rpc.ControlIHave.newBuilder().addAllMessageIDs(messageIds.slice(0..9))
+                )
+            ).build()
+        )
+
+        test.mockRouter.waitForMessage { it.hasControl() && it.control.iwantCount > 0 }
+        // 3 seconds is the default iwant response timeout
+        test.fuzz.timeController.addTime(2.seconds)
+        test.mockRouter.sendToSingle(
+            Rpc.RPC.newBuilder().addAllPublish(messages.slice(0..9)).build()
+        )
+        test.fuzz.timeController.addTime(10.seconds)
+
+        // responded to IWANT in time - no penalties should be applied
+        assertEquals(0.0, test.gossipRouter.score.peerScores[test.router2.peerId]!!.behaviorPenalty)
+
+        test.mockRouter.sendToSingle(
+            Rpc.RPC.newBuilder().setControl(
+                Rpc.ControlMessage.newBuilder().addIhave(
+                    Rpc.ControlIHave.newBuilder().addAllMessageIDs(messageIds.slice(10..19))
+                )
+            ).build()
+        )
+
+        test.mockRouter.waitForMessage { it.hasControl() && it.control.iwantCount > 0 }
+        // 3 seconds is the default iwant response timeout
+        test.fuzz.timeController.addTime(5.millis)
+        test.mockRouter.sendToSingle(
+            Rpc.RPC.newBuilder().addAllPublish(messages.slice(10..12)).build()
+        )
+        test.fuzz.timeController.addTime(2.seconds)
+        test.mockRouter.sendToSingle(
+            Rpc.RPC.newBuilder().addAllPublish(messages.slice(13..17)).build()
+        )
+        test.fuzz.timeController.addTime(10.seconds)
+        test.mockRouter.sendToSingle(
+            Rpc.RPC.newBuilder().addAllPublish(messages.slice(18..19)).build()
+        )
+
+        // last two messages was sent too late - 2 penalty points should be applied
+        val penalty1 = test.gossipRouter.score.peerScores[test.router2.peerId]!!.behaviorPenalty
+        assertTrue(penalty1 > 0)
+
+        test.mockRouter.sendToSingle(
+            Rpc.RPC.newBuilder().setControl(
+                Rpc.ControlMessage.newBuilder().addIhave(
+                    Rpc.ControlIHave.newBuilder().addAllMessageIDs(messageIds.slice(20..29))
+                )
+            ).build()
+        )
+        test.fuzz.timeController.addTime(10.seconds)
+        // all IWANT were ignored
+        assertTrue(test.gossipRouter.score.peerScores[test.router2.peerId]!!.behaviorPenalty > penalty1)
     }
 }

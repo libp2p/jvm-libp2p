@@ -26,6 +26,7 @@ typealias Topic = String
 const val MaxBackoffEntries = 10 * 1024
 const val MaxIAskedEntries = 256
 const val MaxPeerIHaveEntries = 256
+const val MaxIWantRequestsEntries = 10 * 1024
 
 fun P2PService.PeerHandler.getIP(): String? =
     streamHandler.stream.connection.remoteAddress().getStringComponent(Protocol.IP4)
@@ -57,6 +58,7 @@ open class GossipRouter(
     private val backoffExpireTimes = createLRUMap<Pair<PeerId, Topic>, Long>(MaxBackoffEntries)
     private val iAsked = createLRUMap<PeerHandler, AtomicInteger>(MaxIAskedEntries)
     private val peerIHave = createLRUMap<PeerHandler, AtomicInteger>(MaxPeerIHaveEntries)
+    private val iWantRequests = createLRUMap<Pair<PeerHandler, MessageId>, Long>(MaxIWantRequestsEntries)
     private val heartbeatTask by lazy {
         executor.scheduleWithFixedDelay(::heartBeat, coreParams.heartbeatInterval.toMillis(), coreParams.heartbeatInterval.toMillis(), TimeUnit.MILLISECONDS)
     }
@@ -95,6 +97,9 @@ open class GossipRouter(
 
     override fun notifySeenMessage(peer: PeerHandler, msg: Rpc.Message, validationResult: ValidationResult) {
         score.notifySeenMessage(peer, msg, validationResult)
+        if (validationResult != ValidationResult.Invalid) {
+            notifyAnyValidMessage(peer, msg)
+        }
     }
 
     override fun notifyUnseenInvalidMessage(peer: PeerHandler, msg: Rpc.Message) {
@@ -103,6 +108,11 @@ open class GossipRouter(
 
     override fun notifyUnseenValidMessage(peer: PeerHandler, msg: Rpc.Message) {
         score.notifyUnseenValidMessage(peer, msg)
+        notifyAnyValidMessage(peer, msg)
+    }
+
+    private fun notifyAnyValidMessage(peer: PeerHandler, msg: Rpc.Message) {
+        iWantRequests -= peer to getMessageId(msg)
     }
 
     fun notifyMeshed(peer: PeerHandler, topic: Topic) {
@@ -180,7 +190,7 @@ open class GossipRouter(
         val asked = iAsked.computeIfAbsent(peer) { AtomicInteger() }
         val maxToAsk = max(0, min(iWant.size, params.maxIHaveLength - asked.get()))
         asked.addAndGet(iWant.size)
-        enqueueIwant(peer, iWant.shuffled(random).subList(0, maxToAsk))
+        iWant(peer, iWant.shuffled(random).subList(0, maxToAsk))
     }
 
     private fun handleIWant(msg: Rpc.ControlIWant, peer: PeerHandler) {
@@ -275,6 +285,13 @@ open class GossipRouter(
         heartbeatsCount++
         iAsked.clear()
         peerIHave.clear()
+
+        val staleIWantTime = this.curTime() - params.iWantFollowupTime.toMillis()
+        iWantRequests.entries.removeIf { (key, time) ->
+            (time < staleIWantTime)
+                .whenTrue { notifyRouterMisbehavior(key.first, 1) }
+        }
+
         try {
             mesh.entries.forEach { (topic, peers) ->
 
@@ -379,6 +396,11 @@ open class GossipRouter(
         if (mesh[topic]?.remove(peer) == true) {
             notifyPruned(peer, topic)
         }
+    }
+
+    private fun iWant(peer: PeerHandler, messageIds: List<MessageId>) {
+        messageIds.forEach { iWantRequests[peer to it] = curTime() }
+        enqueueIwant(peer, messageIds)
     }
 
     private fun enqueuePrune(peer: PeerHandler, topic: Topic) {
