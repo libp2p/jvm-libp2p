@@ -36,13 +36,15 @@ class GossipV1_1Tests {
         val coreParams: GossipParamsCore = GossipParamsCore(),
         val v1_1Params: GossipParamsV1_1 = GossipParamsV1_1(coreParams),
         val scoreParams: GossipScoreParams = GossipScoreParams(),
-        val gossipRouter: GossipRouter = GossipRouter(v1_1Params, scoreParams),
-        val mockRouters: List<MockRouter> = (0 until mockRouterCount).map { MockRouter() }
+        gossipRouter: () -> GossipRouter = { GossipRouter(v1_1Params, scoreParams) },
+        mockRouters: () -> List<MockRouter> = { (0 until mockRouterCount).map { MockRouter() } }
     ) {
         val fuzz = DeterministicFuzz()
-        val router0 = fuzz.createTestRouter(gossipRouter)
-        val routers = mockRouters.map { fuzz.createTestRouter(it) }
+        val router0 = fuzz.createTestRouter(gossipRouter())
+        val routers = mockRouters().map { fuzz.createTestRouter(it) }
         val connections = mutableListOf<SemiduplexConnection>()
+        val gossipRouter = router0.router as GossipRouter
+        val mockRouters = routers.map { it.router as MockRouter }
 
         fun connectAll(outbound: Boolean = true) = connect(routers.indices)
         fun connect(routerIndexes: IntRange, outbound: Boolean = true): List<SemiduplexConnection> {
@@ -61,12 +63,14 @@ class GossipV1_1Tests {
         val coreParams: GossipParamsCore = GossipParamsCore(),
         val v1_1Params: GossipParamsV1_1 = GossipParamsV1_1(coreParams),
         val scoreParams: GossipScoreParams = GossipScoreParams(),
-        val gossipRouter: GossipRouter = GossipRouter(v1_1Params, scoreParams),
-        val mockRouter: MockRouter = MockRouter()
+        gossipRouter: () -> GossipRouter = { GossipRouter(v1_1Params, scoreParams) },
+        mockRouter: () -> MockRouter = { MockRouter() }
     ) {
         val fuzz = DeterministicFuzz()
-        val router1 = fuzz.createTestRouter(gossipRouter)
-        val router2 = fuzz.createTestRouter(mockRouter)
+        val router1 = fuzz.createTestRouter(gossipRouter())
+        val router2 = fuzz.createTestRouter(mockRouter())
+        val gossipRouter = router1.router as GossipRouter
+        val mockRouter = router2.router as MockRouter
 
         val connection = router1.connectSemiDuplex(router2, null, LogLevel.ERROR)
     }
