@@ -330,12 +330,12 @@ open class GossipRouter(
 
                     val bestDPeers = sortedPeers.take(coreParams.DScore)
                     val restPeers = sortedPeers.drop(coreParams.DScore).shuffled(random)
-                    val outboundCount = bestDPeers.count { it.isOutbound() }
+                    val outboundCount = (bestDPeers + restPeers).take(coreParams.D).count { it.isOutbound() }
                     val outPeers = restPeers
                         .filter { it.isOutbound() }
                         .take(max(0, coreParams.DOut - outboundCount))
 
-                    val toDropPeers = (outPeers + bestDPeers + restPeers).drop(coreParams.DScore)
+                    val toDropPeers = (outPeers + bestDPeers + restPeers).drop(coreParams.D)
                     toDropPeers.forEach { prune(it, topic) }
                 }
 
