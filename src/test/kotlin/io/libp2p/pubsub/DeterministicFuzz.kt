@@ -23,7 +23,7 @@ class DeterministicFuzz {
         routerInstance: PubsubRouterDebug,
         protocol: PubsubProtocol = routerInstance.protocol
     ): TestRouter {
-        routerInstance.curTime = { timeController.time }
+        routerInstance.curTimeMillis = { timeController.time }
         routerInstance.random = this.random
         val testRouter = TestRouter("" + (cnt++), protocol.announceStr).also {
             val randomBytes = ByteArray(8)
