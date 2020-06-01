@@ -747,20 +747,13 @@ class GossipV1_1Tests {
 
         test.mockRouter.waitForMessage { it.hasControl() && it.control.iwantCount > 0 }
         // 3 seconds is the default iwant response timeout
-        test.fuzz.timeController.addTime(5.millis)
-        test.mockRouter.sendToSingle(
-            Rpc.RPC.newBuilder().addAllPublish(messages.slice(10..12)).build()
-        )
-        test.fuzz.timeController.addTime(2.seconds)
-        test.mockRouter.sendToSingle(
-            Rpc.RPC.newBuilder().addAllPublish(messages.slice(13..17)).build()
-        )
         test.fuzz.timeController.addTime(10.seconds)
         test.mockRouter.sendToSingle(
-            Rpc.RPC.newBuilder().addAllPublish(messages.slice(18..19)).build()
+            Rpc.RPC.newBuilder().addAllPublish(messages.slice(10..19)).build()
         )
+        test.fuzz.timeController.addTime(10.seconds)
 
-        // last two messages was sent too late - 2 penalty points should be applied
+        // messages were sent too late - penalty points should be applied
         val penalty1 = test.gossipRouter.score.peerScores[test.router2.peerId]!!.behaviorPenalty
         assertTrue(penalty1 > 0)
 

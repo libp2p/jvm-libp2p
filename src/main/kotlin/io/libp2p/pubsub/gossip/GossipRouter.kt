@@ -414,7 +414,9 @@ open class GossipRouter(
     }
 
     private fun iWant(peer: PeerHandler, messageIds: List<MessageId>) {
-        messageIds.forEach { iWantRequests[peer to it] = curTimeMillis() }
+        if (messageIds.isEmpty()) return
+        messageIds[random.nextInt(messageIds.size)]
+            .also { iWantRequests[peer to it] = curTimeMillis() }
         enqueueIwant(peer, messageIds)
     }
 
