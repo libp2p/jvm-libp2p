@@ -42,6 +42,7 @@ data class GossipParamsV1_1(
     val maxIHaveLength: Int = 5000,
     val maxIHaveMessages: Int = 10,
     val iWantFollowupTime: Duration = 3.seconds,
+    val gossipRetransmission: Int = 3,
     // callback to notify outer system to which peers Gossip wants to be connected
     // The second parameter is a signed peer record: https://github.com/libp2p/specs/pull/217
     val connectCallback: (PeerId, ByteArray) -> Unit = { _: PeerId, _: ByteArray -> }

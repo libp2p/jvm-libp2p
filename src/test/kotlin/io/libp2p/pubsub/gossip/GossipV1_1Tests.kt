@@ -768,4 +768,57 @@ class GossipV1_1Tests {
         // all IWANT were ignored
         assertTrue(test.gossipRouter.score.peerScores[test.router2.peerId]!!.behaviorPenalty > penalty1)
     }
+
+    @Test
+    fun testGossipRetransmissionLimit() {
+        val test = TwoRoutersTest()
+
+        test.mockRouter.subscribe("topic1")
+        test.gossipRouter.subscribe("topic1")
+
+        test.fuzz.timeController.addTime(2.seconds)
+
+        val message1 = newMessage("topic1", 0L, "Hello-0".toByteArray())
+        val messageId1 = getMessageId(message1)
+        test.gossipRouter.publish(message1)
+
+        test.mockRouter.waitForMessage { it.publishCount > 0 }
+
+        val message2 = newMessage("topic1", 1L, "Hello-1".toByteArray())
+        val messageId2 = getMessageId(message2)
+        test.gossipRouter.publish(message2)
+
+        test.mockRouter.waitForMessage { it.publishCount > 0 }
+
+        test.fuzz.timeController.addTime(1.seconds)
+        test.mockRouter.inboundMessages.clear()
+
+        for (i in 0..test.gossipRouter.params.gossipRetransmission) {
+            test.mockRouter.sendToSingle(
+                Rpc.RPC.newBuilder().setControl(
+                    Rpc.ControlMessage.newBuilder().addIwant(
+                        Rpc.ControlIWant.newBuilder().addMessageIDs(messageId1)
+                    )
+                ).build()
+            )
+            if (i < test.gossipRouter.params.gossipRetransmission) {
+                test.mockRouter.waitForMessage { it.publishCount > 0 }
+            } else {
+                // all IWANT requests above threshold should be ignored
+                test.fuzz.timeController.addTime(1.seconds)
+                assertEquals(0, test.mockRouter.inboundMessages.count { it.publishCount > 0 })
+            }
+            test.mockRouter.inboundMessages.clear()
+        }
+
+        // other message should be returned
+        test.mockRouter.sendToSingle(
+            Rpc.RPC.newBuilder().setControl(
+                Rpc.ControlMessage.newBuilder().addIwant(
+                    Rpc.ControlIWant.newBuilder().addMessageIDs(messageId2)
+                )
+            ).build()
+        )
+        test.mockRouter.waitForMessage { it.publishCount > 0 }
+    }
 }
