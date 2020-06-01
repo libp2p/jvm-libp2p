@@ -23,7 +23,7 @@ enum class ValidationResult {
     Valid,
 
     /**
-     * The message is invalid
+     * The message is invalid, should be rejected, and trigger penalty.
      */
     Invalid,
 
