@@ -33,7 +33,7 @@ typealias MessageId = String
 abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRouterDebug {
     private val logger = LogManager.getLogger(AbstractRouter::class.java)
 
-    override var curTime: () -> Long by lazyVarInit { { System.currentTimeMillis() } }
+    override var curTimeMillis: () -> Long by lazyVarInit { { System.currentTimeMillis() } }
     override var random by lazyVarInit { Random() }
     override var name: String = "router"
 

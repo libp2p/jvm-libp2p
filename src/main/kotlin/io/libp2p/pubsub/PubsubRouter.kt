@@ -91,7 +91,7 @@ interface PubsubRouterDebug : PubsubRouter {
      * System time supplier. Normally defaults to [System.currentTimeMillis]
      * If router needs system time it should refer to this supplier
      */
-    var curTime: () -> Long
+    var curTimeMillis: () -> Long
 
     /**
      * Randomness supplier

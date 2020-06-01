@@ -49,7 +49,7 @@ open class GossipRouter(
 
     private val coreParams: GossipParamsCore = params.coreParams
 
-    val score by lazy { GossipScore(scoreParams, executor, curTime) }
+    val score by lazy { GossipScore(scoreParams, executor, curTimeMillis) }
     val fanout: MutableMap<Topic, MutableSet<PeerHandler>> = linkedMapOf()
     val mesh: MutableMap<Topic, MutableSet<PeerHandler>> = linkedMapOf()
 
@@ -71,15 +71,15 @@ open class GossipRouter(
 
     private fun setBackOff(peer: PeerHandler, topic: Topic) = setBackOff(peer, topic, params.pruneBackoff.toMillis())
     private fun setBackOff(peer: PeerHandler, topic: Topic, delay: Long) {
-        backoffExpireTimes[peer.peerId to topic] = curTime() + delay
+        backoffExpireTimes[peer.peerId to topic] = curTimeMillis() + delay
     }
 
     private fun isBackOff(peer: PeerHandler, topic: Topic) =
-        curTime() < (backoffExpireTimes[peer.peerId to topic] ?: 0)
+        curTimeMillis() < (backoffExpireTimes[peer.peerId to topic] ?: 0)
 
     private fun isBackOffFlood(peer: PeerHandler, topic: Topic): Boolean {
         val expire = backoffExpireTimes[peer.peerId to topic] ?: return false
-        return curTime() < expire - (params.pruneBackoff + params.graftFloodThreshold).toMillis()
+        return curTimeMillis() < expire - (params.pruneBackoff + params.graftFloodThreshold).toMillis()
     }
 
     private fun getDirectPeers() = peers.filter(::isDirect)
@@ -244,7 +244,7 @@ open class GossipRouter(
     }
 
     override fun broadcastOutbound(msg: Rpc.Message): CompletableFuture<Unit> {
-        msg.topicIDsList.forEach { lastPublished[it] = curTime() }
+        msg.topicIDsList.forEach { lastPublished[it] = curTimeMillis() }
 
         val peers =
             if (params.floodPublish) {
@@ -301,7 +301,7 @@ open class GossipRouter(
         iAsked.clear()
         peerIHave.clear()
 
-        val staleIWantTime = this.curTime() - params.iWantFollowupTime.toMillis()
+        val staleIWantTime = this.curTimeMillis() - params.iWantFollowupTime.toMillis()
         iWantRequests.entries.removeIf { (key, time) ->
             (time < staleIWantTime)
                 .whenTrue { notifyRouterMisbehavior(key.first, 1) }
@@ -374,7 +374,7 @@ open class GossipRouter(
                 emitGossip(topic, peers)
             }
             lastPublished.entries.removeIf { (topic, lastPub) ->
-                (curTime() - lastPub > coreParams.fanoutTTL.toMillis())
+                (curTimeMillis() - lastPub > coreParams.fanoutTTL.toMillis())
                     .whenTrue { fanout.remove(topic) }
             }
 
@@ -414,7 +414,7 @@ open class GossipRouter(
     }
 
     private fun iWant(peer: PeerHandler, messageIds: List<MessageId>) {
-        messageIds.forEach { iWantRequests[peer to it] = curTime() }
+        messageIds.forEach { iWantRequests[peer to it] = curTimeMillis() }
         enqueueIwant(peer, messageIds)
     }
 
