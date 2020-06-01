@@ -28,7 +28,7 @@ enum class ValidationResult {
     Invalid,
 
     /**
-     * The message is valid but should NOT be propagated further
+     * The message should not be propagated further but does not trigger a penalty.
      */
     Ignore
 }
