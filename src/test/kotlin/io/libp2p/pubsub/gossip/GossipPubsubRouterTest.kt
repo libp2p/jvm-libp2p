@@ -11,8 +11,9 @@ import java.time.Duration
 
 class GossipPubsubRouterTest : PubsubRouterTest({
     GossipRouter(
-        GossipParamsV1_1(GossipParamsCore(3, 3, 100), floodPublish = false)
-    ) }) {
+        GossipParams(3, 3, 100, floodPublish = false)
+    )
+}) {
 
     @Test
     override fun TenNeighborsTopology() {
@@ -21,9 +22,8 @@ class GossipPubsubRouterTest : PubsubRouterTest({
                 print("D=$d, seed=$seed  ")
                 super.doTenNeighborsTopology(seed) {
                     GossipRouter(
-                        GossipParamsV1_1(
-                            GossipParamsCore(d, d, d, DLazy = 100),
-                            pruneBackoff = 1.seconds) // small backoff timeout for faster meshes settling down
+                        // small backoff timeout for faster meshes settling down
+                        GossipParams(d, d, d, DLazy = 100, pruneBackoff = 1.seconds)
                     )
                 }
             }
@@ -38,7 +38,7 @@ class GossipPubsubRouterTest : PubsubRouterTest({
 
         val otherCount = 5
         for (i in 1..otherCount) {
-            val r = GossipRouter(GossipParamsV1_1(GossipParamsCore(1, 0)))
+            val r = GossipRouter(GossipParams(1, 0))
             val routerEnd = fuzz.createTestRouter(r)
             allRouters += routerEnd
         }
@@ -47,7 +47,7 @@ class GossipPubsubRouterTest : PubsubRouterTest({
         // this is to test ihave/iwant
         fuzz.timeController.addTime(Duration.ofMillis(1))
 
-        val r = GossipRouter(GossipParamsV1_1(GossipParamsCore(3, 3, 3, DOut = 0, DLazy = 1000), floodPublish = false))
+        val r = GossipRouter(GossipParams(3, 3, 3, DOut = 0, DLazy = 1000, floodPublish = false))
         val routerCenter = fuzz.createTestRouter(r)
         allRouters.add(0, routerCenter)
 

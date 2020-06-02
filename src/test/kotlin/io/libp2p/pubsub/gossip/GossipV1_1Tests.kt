@@ -38,10 +38,9 @@ class GossipV1_1Tests {
 
     class ManyRoutersTest(
         val mockRouterCount: Int = 10,
-        val coreParams: GossipParamsCore = GossipParamsCore(),
-        val v1_1Params: GossipParamsV1_1 = GossipParamsV1_1(coreParams),
+        val params: GossipParams = GossipParams(),
         val scoreParams: GossipScoreParams = GossipScoreParams(),
-        gossipRouter: () -> GossipRouter = { GossipRouter(v1_1Params, scoreParams) },
+        gossipRouter: () -> GossipRouter = { GossipRouter(params, scoreParams) },
         mockRouters: () -> List<MockRouter> = { (0 until mockRouterCount).map { MockRouter() } }
     ) {
         val fuzz = DeterministicFuzz()
@@ -66,10 +65,9 @@ class GossipV1_1Tests {
     }
 
     class TwoRoutersTest(
-        val coreParams: GossipParamsCore = GossipParamsCore(),
-        val v1_1Params: GossipParamsV1_1 = GossipParamsV1_1(coreParams),
+        val coreParams: GossipParams = GossipParams(),
         val scoreParams: GossipScoreParams = GossipScoreParams(),
-        gossipRouter: () -> GossipRouter = { GossipRouter(v1_1Params, scoreParams) },
+        gossipRouter: () -> GossipRouter = { GossipRouter(coreParams, scoreParams) },
         mockRouter: () -> MockRouter = { MockRouter() }
     ) {
         val fuzz = DeterministicFuzz()
@@ -196,7 +194,7 @@ class GossipV1_1Tests {
 
         // check the penalty is decayed with time
         val origPenalty = peerScores1.behaviorPenalty
-        test.fuzz.timeController.addTime(test.gossipRouter.score.params.decayInterval * 2)
+        test.fuzz.timeController.addTime(test.gossipRouter.score.peerParams.decayInterval * 2)
         assertTrue(peerScores1.behaviorPenalty < origPenalty)
     }
 
@@ -285,7 +283,7 @@ class GossipV1_1Tests {
         assertTrue(invalidMessages4 > invalidMessages3)
 
         // check invalid message counter is decayed
-        test.fuzz.timeController.addTime(test.gossipRouter.score.params.decayInterval * 2)
+        test.fuzz.timeController.addTime(test.gossipRouter.score.peerParams.decayInterval * 2)
         val invalidMessages5 = peerScores1.topicScores["topic1"]?.invalidMessages ?: 0.0
         assertTrue(invalidMessages5 < invalidMessages4)
     }
@@ -401,11 +399,10 @@ class GossipV1_1Tests {
     @Test
     fun testNotFloodPublish() {
         val appScore = mutableMapOf<PeerId, Double>().withDefault { 0.0 }
-        val coreParams = GossipParamsCore(3, 3, 3)
-        val v1_1Params = GossipParamsV1_1(coreParams, floodPublish = false)
+        val coreParams = GossipParams(3, 3, 3, floodPublish = false)
         val peerScoreParams = GossipPeerScoreParams(appSpecificScore = { appScore.getValue(it) })
         val scoreParams = GossipScoreParams(peerScoreParams = peerScoreParams)
-        val test = ManyRoutersTest(coreParams = coreParams, v1_1Params = v1_1Params, scoreParams = scoreParams)
+        val test = ManyRoutersTest(params = coreParams, scoreParams = scoreParams)
         test.connectAll()
 
         test.gossipRouter.subscribe("topic1")
@@ -429,11 +426,10 @@ class GossipV1_1Tests {
     @Test
     fun testFloodPublish() {
         val appScore = mutableMapOf<PeerId, Double>().withDefault { 0.0 }
-        val coreParams = GossipParamsCore(3, 3, 3)
-        val v1_1Params = GossipParamsV1_1(coreParams, floodPublish = true)
+        val coreParams = GossipParams(3, 3, 3, floodPublish = true)
         val peerScoreParams = GossipPeerScoreParams(appSpecificScore = { appScore.getValue(it) })
         val scoreParams = GossipScoreParams(peerScoreParams = peerScoreParams)
-        val test = ManyRoutersTest(coreParams = coreParams, v1_1Params = v1_1Params, scoreParams = scoreParams)
+        val test = ManyRoutersTest(params = coreParams, scoreParams = scoreParams)
         test.connectAll()
 
         test.gossipRouter.subscribe("topic1")
@@ -503,14 +499,13 @@ class GossipV1_1Tests {
     @Test
     fun testAdaptiveGossip() {
         val appScore = mutableMapOf<PeerId, Double>().withDefault { 0.0 }
-        val coreParams = GossipParamsCore(3, 3, 3, DLazy = 3)
-        val v1_1Params = GossipParamsV1_1(coreParams, floodPublish = false, gossipFactor = 0.5)
+        val coreParams = GossipParams(3, 3, 3, DLazy = 3,
+            floodPublish = false, gossipFactor = 0.5)
         val peerScoreParams = GossipPeerScoreParams(appSpecificScore = { appScore.getValue(it) })
         val scoreParams = GossipScoreParams(peerScoreParams = peerScoreParams)
         val test = ManyRoutersTest(
             mockRouterCount = 20,
-            coreParams = coreParams,
-            v1_1Params = v1_1Params,
+            params = coreParams,
             scoreParams = scoreParams
         )
 
@@ -522,7 +517,7 @@ class GossipV1_1Tests {
 
         test.gossipRouter.publish(newMessage("topic1", 0L, "Hello-0".toByteArray()))
 
-        test.fuzz.timeController.addTime(test.gossipRouter.params.coreParams.heartbeatInterval)
+        test.fuzz.timeController.addTime(test.gossipRouter.params.heartbeatInterval)
 
         val gossippedCount1 = test.mockRouters
             .flatMap { it.inboundMessages }
@@ -535,7 +530,7 @@ class GossipV1_1Tests {
         // connecting others
         test.connect(7..19)
         // should gossip again on the next heartbeat
-        test.fuzz.timeController.addTime(test.gossipRouter.params.coreParams.heartbeatInterval)
+        test.fuzz.timeController.addTime(test.gossipRouter.params.heartbeatInterval)
 
         val gossippedCount2 = test.mockRouters
             .flatMap { it.inboundMessages }
@@ -549,7 +544,7 @@ class GossipV1_1Tests {
         // shouldn't gossip to underscored peers
         test.routers.slice(0..9).map { it.peerId }.forEach { appScore[it] = -1000.0 }
         // should gossip again on the next heartbeat
-        test.fuzz.timeController.addTime(test.gossipRouter.params.coreParams.heartbeatInterval)
+        test.fuzz.timeController.addTime(test.gossipRouter.params.heartbeatInterval)
 
         val gossippedCount3 = test.mockRouters
             .flatMap { it.inboundMessages }
@@ -564,15 +559,10 @@ class GossipV1_1Tests {
     @Test
     fun testOutboundMeshQuotas1() {
         val appScore = mutableMapOf<PeerId, Double>().withDefault { 0.0 }
-        val coreParams = GossipParamsCore(3, 3, 3, DLazy = 3, DOut = 1)
-        val v1_1Params = GossipParamsV1_1(coreParams, floodPublish = false)
+        val coreParams = GossipParams(3, 3, 3, DLazy = 3, DOut = 1, floodPublish = false)
         val peerScoreParams = GossipPeerScoreParams(appSpecificScore = { appScore.getValue(it) })
         val scoreParams = GossipScoreParams(peerScoreParams = peerScoreParams)
-        val test = ManyRoutersTest(
-            coreParams = coreParams,
-            v1_1Params = v1_1Params,
-            scoreParams = scoreParams
-        )
+        val test = ManyRoutersTest(params = coreParams, scoreParams = scoreParams)
 
         test.gossipRouter.subscribe("topic1")
         test.routers.forEach { it.router.subscribe("topic1") }
@@ -613,20 +603,14 @@ class GossipV1_1Tests {
     @Test
     fun testOpportunisticGraft() {
         val appScore = mutableMapOf<PeerId, Double>().withDefault { 0.0 }
-        val coreParams = GossipParamsCore(3, 3, 10, DLazy = 3, DOut = 1)
-        val v1_1Params = GossipParamsV1_1(coreParams, opportunisticGraftPeers = 2)
+        val coreParams = GossipParams(3, 3, 10, DLazy = 3, DOut = 1,
+            opportunisticGraftPeers = 2, opportunisticGraftTicks = 60)
         val peerScoreParams = GossipPeerScoreParams(appSpecificScore = { appScore.getValue(it) })
         val scoreParams = GossipScoreParams(
             peerScoreParams = peerScoreParams,
-            opportunisticGraftThreshold = 1000.0,
-            opportunisticGraftTicks = 60
-        )
+            opportunisticGraftThreshold = 1000.0)
+        val test = ManyRoutersTest(params = coreParams, scoreParams = scoreParams)
 
-        val test = ManyRoutersTest(
-            coreParams = coreParams,
-            v1_1Params = v1_1Params,
-            scoreParams = scoreParams
-        )
         test.connectAll()
         test.gossipRouter.subscribe("topic1")
         test.routers.forEach { it.router.subscribe("topic1") }

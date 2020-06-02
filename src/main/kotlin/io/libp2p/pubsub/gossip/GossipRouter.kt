@@ -42,18 +42,16 @@ fun P2PService.PeerHandler.getOutboundGossipProtocol() = PubsubProtocol.fromProt
  * Router implementing this protocol: https://github.com/libp2p/specs/tree/master/pubsub/gossipsub
  */
 open class GossipRouter(
-    val params: GossipParamsV1_1 = GossipParamsV1_1(),
+    val params: GossipParams = GossipParams(),
     val scoreParams: GossipScoreParams = GossipScoreParams(),
     override val protocol: PubsubProtocol = PubsubProtocol.Gossip_V_1_1
 ) : AbstractRouter() {
-
-    private val coreParams: GossipParamsCore = params.coreParams
 
     val score by lazy { GossipScore(scoreParams, executor, curTimeMillis) }
     val fanout: MutableMap<Topic, MutableSet<PeerHandler>> = linkedMapOf()
     val mesh: MutableMap<Topic, MutableSet<PeerHandler>> = linkedMapOf()
 
-    private val mCache = MCache(coreParams.gossipSize, coreParams.gossipHistoryLength)
+    private val mCache = MCache(params.gossipSize, params.gossipHistoryLength)
     private val lastPublished = linkedMapOf<Topic, Long>()
     private var heartbeatsCount = 0
     private val backoffExpireTimes = createLRUMap<Pair<PeerId, Topic>, Long>(MaxBackoffEntries)
@@ -63,8 +61,8 @@ open class GossipRouter(
     private val heartbeatTask by lazy {
         executor.scheduleWithFixedDelay(
             ::heartBeat,
-            coreParams.heartbeatInterval.toMillis(),
-            coreParams.heartbeatInterval.toMillis(),
+            params.heartbeatInterval.toMillis(),
+            params.heartbeatInterval.toMillis(),
             TimeUnit.MILLISECONDS
         )
     }
@@ -165,7 +163,7 @@ open class GossipRouter(
             }
             score.score(peer) < 0 ->
                 prune(peer, topic)
-            meshPeers.size >= coreParams.DHigh && !peer.isOutbound() ->
+            meshPeers.size >= params.DHigh && !peer.isOutbound() ->
                 prune(peer, topic)
             peer !in meshPeers ->
                 graft(peer, topic)
@@ -198,11 +196,16 @@ open class GossipRouter(
         // we ignore IHAVE gossip from any peer whose score is below the gossip threshold
         if (peerScore < score.params.gossipThreshold) return
         if (peerIHave.computeIfAbsent(peer) { AtomicInteger() }.incrementAndGet() > params.maxIHaveMessages) {
+            // peer has advertised too many times within this heartbeat interval, ignoring
+            return
+        }
+        val asked = iAsked.computeIfAbsent(peer) { AtomicInteger() }
+        if (asked.get() >= params.maxIHaveLength) {
+            // peer has already advertised too many messages, ignoring
             return
         }
 
         val iWant = msg.messageIDsList - seenMessages.keys
-        val asked = iAsked.computeIfAbsent(peer) { AtomicInteger() }
         val maxToAsk = max(0, min(iWant.size, params.maxIHaveLength - asked.get()))
         asked.addAndGet(iWant.size)
         iWant(peer, iWant.shuffled(random).subList(0, maxToAsk))
@@ -257,7 +260,7 @@ open class GossipRouter(
             } else {
                 msg.topicIDsList
                     .mapNotNull { topic ->
-                        mesh[topic] ?: fanout[topic] ?: getTopicPeers(topic).shuffled(random).take(coreParams.D)
+                        mesh[topic] ?: fanout[topic] ?: getTopicPeers(topic).shuffled(random).take(params.D)
                             .also {
                                 if (it.isNotEmpty()) fanout[topic] = it.toMutableSet()
                             }
@@ -279,11 +282,11 @@ open class GossipRouter(
         val otherPeers = (getTopicPeers(topic) - meshPeers - fanoutPeers)
             .filter { score.score(it) >= 0 && !isDirect(it) }
 
-        if (meshPeers.size < coreParams.D) {
+        if (meshPeers.size < params.D) {
             val addFromFanout = fanoutPeers.shuffled(random)
-                .take(coreParams.D - meshPeers.size)
+                .take(params.D - meshPeers.size)
             val addFromOthers = otherPeers.shuffled(random)
-                .take(coreParams.D - meshPeers.size - addFromFanout.size)
+                .take(params.D - meshPeers.size - addFromFanout.size)
 
             (addFromFanout + addFromOthers).forEach {
                 graft(it, topic)
@@ -316,28 +319,28 @@ open class GossipRouter(
                 peers.filter { score.score(it) < 0 }
                     .forEach { prune(it, topic) }
 
-                if (peers.size < coreParams.DLow) {
+                if (peers.size < params.DLow) {
                     // need more mesh peers
                     (getTopicPeers(topic) - peers)
                         .filter { score.score(it) >= 0 && !isDirect(it) && !isBackOff(it, topic) }
                         .shuffled(random)
-                        .take(coreParams.D - peers.size)
+                        .take(params.D - peers.size)
                         .forEach { graft(it, topic) }
-                } else if (peers.size > coreParams.DHigh) {
+                } else if (peers.size > params.DHigh) {
                     // too many mesh peers
                     val sortedPeers = peers
                         .shuffled(random)
                         .sortedBy { score.score(it) }
                         .reversed()
 
-                    val bestDPeers = sortedPeers.take(coreParams.DScore)
-                    val restPeers = sortedPeers.drop(coreParams.DScore).shuffled(random)
-                    val outboundCount = (bestDPeers + restPeers).take(coreParams.D).count { it.isOutbound() }
+                    val bestDPeers = sortedPeers.take(params.DScore)
+                    val restPeers = sortedPeers.drop(params.DScore).shuffled(random)
+                    val outboundCount = (bestDPeers + restPeers).take(params.D).count { it.isOutbound() }
                     val outPeers = restPeers
                         .filter { it.isOutbound() }
-                        .take(max(0, coreParams.DOut - outboundCount))
+                        .take(max(0, params.DOut - outboundCount))
 
-                    val toDropPeers = (outPeers + bestDPeers + restPeers).drop(coreParams.D)
+                    val toDropPeers = (outPeers + bestDPeers + restPeers).drop(params.D)
                     toDropPeers.forEach { prune(it, topic) }
                 }
 
@@ -346,11 +349,11 @@ open class GossipRouter(
                 (getTopicPeers(topic) - peers)
                     .filter { it.isOutbound() && score.score(it) >= 0 && !isDirect(it) && !isBackOff(it, topic) }
                     .shuffled(random)
-                    .take(max(0, coreParams.DOut - outboundCount))
+                    .take(max(0, params.DOut - outboundCount))
                     .forEach { graft(it, topic) }
 
                 // opportunistic grafting
-                if (heartbeatsCount % scoreParams.opportunisticGraftTicks == 0 && peers.size > 1) {
+                if (heartbeatsCount % params.opportunisticGraftTicks == 0 && peers.size > 1) {
                     val scoreMedian = peers.map { score.score(it) }.median()
                     if (scoreMedian < scoreParams.opportunisticGraftThreshold) {
                         (getTopicPeers(topic) - peers)
@@ -366,7 +369,7 @@ open class GossipRouter(
                 peers.removeIf {
                     it !in getTopicPeers(topic) || score.score(it) < scoreParams.publishThreshold
                 }
-                val needMore = coreParams.D - peers.size
+                val needMore = params.D - peers.size
                 if (needMore > 0) {
                     peers += (getTopicPeers(topic) - peers)
                         .filter { score.score(it) >= scoreParams.publishThreshold && !isDirect(it) }
@@ -376,7 +379,7 @@ open class GossipRouter(
                 emitGossip(topic, peers)
             }
             lastPublished.entries.removeIf { (topic, lastPub) ->
-                (curTimeMillis() - lastPub > coreParams.fanoutTTL.toMillis())
+                (curTimeMillis() - lastPub > params.fanoutTTL.toMillis())
                     .whenTrue { fanout.remove(topic) }
             }
 
@@ -397,7 +400,7 @@ open class GossipRouter(
             .filter { score.score(it) >= score.params.gossipThreshold && !isDirect(it) }
 
         peers.shuffled(random)
-            .take(max((params.gossipFactor * peers.size).toInt(), coreParams.DLazy))
+            .take(max((params.gossipFactor * peers.size).toInt(), params.DLazy))
             .forEach { enqueueIhave(it, shuffledMessageIds) }
     }
 
@@ -425,6 +428,7 @@ open class GossipRouter(
     private fun enqueuePrune(peer: PeerHandler, topic: Topic) {
         val pruneBuilder = Rpc.ControlPrune.newBuilder().setTopicID(topic)
         if (peer.getOutboundGossipProtocol() == PubsubProtocol.Gossip_V_1_1 && this.protocol == PubsubProtocol.Gossip_V_1_1) {
+            // add v1.1 specific fields
             pruneBuilder.backoff = params.pruneBackoff.seconds
             (getTopicPeers(topic) - peer)
                 .filter { score.score(it) >= 0 }

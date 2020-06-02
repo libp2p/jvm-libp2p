@@ -27,30 +27,30 @@ class GossipScore(
         var joinedMeshTimeMillis: Long = 0
         var firstMessageDeliveries: Double by cappedDouble(
             0.0,
-            this@GossipScore.params.decayToZero,
-            params.FirstMessageDeliveriesCap
+            this@GossipScore.peerParams.decayToZero,
+            params.firstMessageDeliveriesCap
         )
         var meshMessageDeliveries: Double by cappedDouble(
             0.0,
-            this@GossipScore.params.decayToZero,
-            params.MeshMessageDeliveriesCap
+            this@GossipScore.peerParams.decayToZero,
+            params.meshMessageDeliveriesCap
         )
-        var meshFailurePenalty: Double by cappedDouble(0.0, this@GossipScore.params.decayToZero)
-        var invalidMessages: Double by cappedDouble(0.0, this@GossipScore.params.decayToZero)
+        var meshFailurePenalty: Double by cappedDouble(0.0, this@GossipScore.peerParams.decayToZero)
+        var invalidMessages: Double by cappedDouble(0.0, this@GossipScore.peerParams.decayToZero)
 
         fun inMesh() = joinedMeshTimeMillis > 0
 
         fun meshTimeNorm() = min(
-            (if (inMesh()) curTimeMillis() - joinedMeshTimeMillis else 0).toDouble() / params.TimeInMeshQuantum.toMillis(),
-            params.TimeInMeshCap
+            (if (inMesh()) curTimeMillis() - joinedMeshTimeMillis else 0).toDouble() / params.timeInMeshQuantum.toMillis(),
+            params.timeInMeshCap
         )
 
         fun isMeshMessageDeliveriesActive() =
-            inMesh() && ((curTimeMillis() - joinedMeshTimeMillis).millis > params.MeshMessageDeliveriesActivation)
+            inMesh() && ((curTimeMillis() - joinedMeshTimeMillis).millis > params.meshMessageDeliveriesActivation)
 
         fun meshMessageDeliveriesDeficit() =
             if (isMeshMessageDeliveriesActive())
-                max(0.0, params.MeshMessageDeliveriesThreshold - meshMessageDeliveries)
+                max(0.0, params.meshMessageDeliveriesThreshold - meshMessageDeliveries)
             else 0.0
 
         fun meshMessageDeliveriesDeficitSqr() = meshMessageDeliveriesDeficit().pow(2)
@@ -61,21 +61,21 @@ class GossipScore(
             val p3 = meshMessageDeliveriesDeficitSqr()
             val p3b = meshFailurePenalty
             val p4 = invalidMessages.pow(2)
-            val ret = params.TopicWeight * (
-                    p1 * params.TimeInMeshWeight +
-                            p2 * params.FirstMessageDeliveriesWeight +
-                            p3 * params.MeshMessageDeliveriesWeight +
-                            p3b * params.MeshFailurePenaltyWeight +
-                            p4 * params.InvalidMessageDeliveriesWeight
+            val ret = params.topicWeight * (
+                    p1 * params.timeInMeshWeight +
+                            p2 * params.firstMessageDeliveriesWeight +
+                            p3 * params.meshMessageDeliveriesWeight +
+                            p3b * params.meshFailurePenaltyWeight +
+                            p4 * params.invalidMessageDeliveriesWeight
                     )
             return ret
         }
 
         fun decayScores() {
-            firstMessageDeliveries *= params.FirstMessageDeliveriesDecay
-            meshMessageDeliveries *= params.MeshMessageDeliveriesDecay
-            meshFailurePenalty *= params.MeshFailurePenaltyDecay
-            invalidMessages *= params.InvalidMessageDeliveriesDecay
+            firstMessageDeliveries *= params.firstMessageDeliveriesDecay
+            meshMessageDeliveries *= params.meshMessageDeliveriesDecay
+            meshFailurePenalty *= params.meshFailurePenaltyDecay
+            invalidMessages *= params.invalidMessageDeliveriesDecay
         }
     }
 
@@ -85,7 +85,7 @@ class GossipScore(
         var disconnectedTimeMillis: Long = 0
 
         val topicScores = mutableMapOf<Topic, TopicScores>()
-        var behaviorPenalty: Double by cappedDouble(0.0, params.decayToZero)
+        var behaviorPenalty: Double by cappedDouble(0.0, peerParams.decayToZero)
 
         fun isConnected() = connectedTimeMillis > 0 && disconnectedTimeMillis == 0L
         fun isDisconnected() = disconnectedTimeMillis > 0
@@ -103,7 +103,7 @@ class GossipScore(
     val refreshTask: ScheduledFuture<*>
 
     init {
-        val refreshPeriod = params.decayInterval.toMillis()
+        val refreshPeriod = peerParams.decayInterval.toMillis()
         refreshTask = executor.scheduleAtFixedRate({ refreshScores() }, refreshPeriod, refreshPeriod, TimeUnit.MILLISECONDS)
     }
 
@@ -118,7 +118,7 @@ class GossipScore(
     fun score(peer: P2PService.PeerHandler): Double {
         val peerScore = getPeerScores(peer)
         val topicsScore = min(
-            peerParams.topicScoreCap,
+            if (peerParams.topicScoreCap > 0) peerParams.topicScoreCap else Double.MAX_VALUE,
             peerScore.topicScores.values.map { it.calcTopicScore() }.sum()
         )
         val appScore = peerParams.appSpecificScore(peer.peerId) * peerParams.appSpecificWeight
@@ -138,7 +138,7 @@ class GossipScore(
     }
 
     fun refreshScores() {
-        peerScores.values.removeIf { it.isDisconnected() && it.getDisconnectDuration() > params.retainScore }
+        peerScores.values.removeIf { it.isDisconnected() && it.getDisconnectDuration() > peerParams.retainScore }
         peerScores.values.forEach {
             it.topicScores.values.forEach { it.decayScores() }
             it.behaviorPenalty *= peerParams.behaviourPenaltyDecay
@@ -173,7 +173,7 @@ class GossipScore(
                     validationResult.isPresent && validationResult.get() == ValidationResult.Invalid ->
                         topicScores.invalidMessages++
                     !validationResult.isPresent
-                            || durationAfterValidation < topicParams[topic].MeshMessageDeliveryWindow ->
+                            || durationAfterValidation < topicParams[topic].meshMessageDeliveryWindow ->
                         topicScores.meshMessageDeliveries++
                 }
             }
