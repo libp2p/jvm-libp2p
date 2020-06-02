@@ -8,6 +8,7 @@ import io.libp2p.security.noise.NoiseXXSecureChannel
 import io.libp2p.transport.tcp.TcpTransport
 import io.netty.handler.logging.LogLevel
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.util.concurrent.TimeUnit
@@ -83,13 +84,47 @@ class GossipBackwardCompatibilityTest {
         println("Server Host stopped")
     }
 
-    @Test
-    fun testConnect() {
-        val connect = hostV_1_0.network.connect(hostV_1_1.peerId, Multiaddr.fromString("/ip4/127.0.0.1/tcp/40001"))
-        val connection = connect.get(10, TimeUnit.SECONDS)
+    private fun gossipConnected(router: GossipRouter) =
+        router.peers.isNotEmpty() &&
+                router.peers[0].getInboundHandler() != null &&
+                router.peers[0].getOutboundHandler() != null
 
-        waitFor { routerV_1_0.peers.isNotEmpty() }
-        waitFor { routerV_1_1.peers.isNotEmpty() }
+    @Test
+    fun testConnect_1_0_to_1_1() {
+        val connect = hostV_1_0.network
+            .connect(hostV_1_1.peerId, Multiaddr.fromString("/ip4/127.0.0.1/tcp/40001"))
+        connect.get(10, TimeUnit.SECONDS)
+
+        waitFor { gossipConnected(routerV_1_0) }
+        waitFor { gossipConnected(routerV_1_1) }
+
+        Assertions.assertEquals(PubsubProtocol.Gossip_V_1_0.announceStr,
+            routerV_1_0.peers[0].getInboundHandler()!!.stream.getProtocol().get())
+        Assertions.assertEquals(PubsubProtocol.Gossip_V_1_0.announceStr,
+            routerV_1_0.peers[0].getOutboundHandler()!!.stream.getProtocol().get())
+        Assertions.assertEquals(PubsubProtocol.Gossip_V_1_0.announceStr,
+            routerV_1_1.peers[0].getInboundHandler()!!.stream.getProtocol().get())
+        Assertions.assertEquals(PubsubProtocol.Gossip_V_1_0.announceStr,
+            routerV_1_1.peers[0].getOutboundHandler()!!.stream.getProtocol().get())
+    }
+
+    @Test
+    fun testConnect_1_1_to_1_0() {
+        val connect = hostV_1_1.network
+            .connect(hostV_1_0.peerId, Multiaddr.fromString("/ip4/127.0.0.1/tcp/40002"))
+        connect.get(10, TimeUnit.SECONDS)
+
+        waitFor { gossipConnected(routerV_1_0) }
+        waitFor { gossipConnected(routerV_1_1) }
+
+        Assertions.assertEquals(PubsubProtocol.Gossip_V_1_0.announceStr,
+            routerV_1_0.peers[0].getInboundHandler()!!.stream.getProtocol().get())
+        Assertions.assertEquals(PubsubProtocol.Gossip_V_1_0.announceStr,
+            routerV_1_0.peers[0].getOutboundHandler()!!.stream.getProtocol().get())
+        Assertions.assertEquals(PubsubProtocol.Gossip_V_1_0.announceStr,
+            routerV_1_1.peers[0].getInboundHandler()!!.stream.getProtocol().get())
+        Assertions.assertEquals(PubsubProtocol.Gossip_V_1_0.announceStr,
+            routerV_1_1.peers[0].getOutboundHandler()!!.stream.getProtocol().get())
     }
 
     fun waitFor(predicate: () -> Boolean) {
