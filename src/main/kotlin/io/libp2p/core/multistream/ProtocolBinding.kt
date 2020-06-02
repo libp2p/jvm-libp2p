@@ -19,6 +19,9 @@ import java.util.concurrent.CompletableFuture
  */
 interface ProtocolBinding<out TController> {
 
+    /**
+     * Supported protocol ids for this binding
+     */
     val protocolDescriptor: ProtocolDescriptor
 
     /**
@@ -50,7 +53,7 @@ interface ProtocolBinding<out TController> {
      * _initiator_ binding with explicit protocol id
      */
     @JvmDefault
-    fun toInitiator(protocols: List<String>): ProtocolBinding<TController> {
+    fun toInitiator(protocols: List<ProtocolId>): ProtocolBinding<TController> {
         if (!protocolDescriptor.matchesAny(protocols)) throw Libp2pException("This binding doesn't support $protocols")
         val srcBinding = this
         return object : ProtocolBinding<TController> {
@@ -64,7 +67,7 @@ interface ProtocolBinding<out TController> {
         /**
          * Creates a [ProtocolBinding] instance with [Mode.STRICT] [matcher] and specified [handler]
          */
-        fun <T> createSimple(protocolName: String, handler: P2PChannelHandler<T>): ProtocolBinding<T> {
+        fun <T> createSimple(protocolName: ProtocolId, handler: P2PChannelHandler<T>): ProtocolBinding<T> {
             return object : ProtocolBinding<T> {
                 override val protocolDescriptor = ProtocolDescriptor(protocolName)
                 override fun initChannel(ch: P2PChannel, selectedProtocol: String): CompletableFuture<out T> {

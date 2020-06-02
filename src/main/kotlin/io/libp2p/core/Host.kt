@@ -3,6 +3,7 @@ package io.libp2p.core
 import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multistream.ProtocolBinding
+import io.libp2p.core.multistream.ProtocolId
 import java.util.concurrent.CompletableFuture
 
 /**
@@ -85,6 +86,6 @@ interface Host {
     fun addConnectionHandler(handler: ConnectionHandler)
     fun removeConnectionHandler(handler: ConnectionHandler)
 
-    fun <TController> newStream(protocols: List<String>, conn: Connection): StreamPromise<TController>
-    fun <TController> newStream(protocols: List<String>, peer: PeerId, vararg addr: Multiaddr): StreamPromise<TController>
+    fun <TController> newStream(protocols: List<ProtocolId>, conn: Connection): StreamPromise<TController>
+    fun <TController> newStream(protocols: List<ProtocolId>, peer: PeerId, vararg addr: Multiaddr): StreamPromise<TController>
 }
