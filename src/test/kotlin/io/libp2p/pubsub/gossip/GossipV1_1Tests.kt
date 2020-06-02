@@ -201,8 +201,14 @@ class GossipV1_1Tests {
     @Test
     fun testNoGraftWithNegativeScore() {
         val appScore = AtomicDouble()
-        val peerScoreParams = GossipPeerScoreParams(appSpecificScore = { appScore.get() })
-        val scoreParams = GossipScoreParams(peerScoreParams = peerScoreParams)
+        val peerScoreParams = GossipPeerScoreParams(
+            appSpecificScore = { appScore.get() },
+            appSpecificWeight = 1.0
+        )
+        val scoreParams = GossipScoreParams(
+            peerScoreParams = peerScoreParams,
+            graylistThreshold = -100.0
+        )
         val test = TwoRoutersTest(scoreParams = scoreParams)
 
         appScore.set(-1.0)
@@ -427,8 +433,16 @@ class GossipV1_1Tests {
     fun testFloodPublish() {
         val appScore = mutableMapOf<PeerId, Double>().withDefault { 0.0 }
         val coreParams = GossipParams(3, 3, 3, floodPublish = true)
-        val peerScoreParams = GossipPeerScoreParams(appSpecificScore = { appScore.getValue(it) })
-        val scoreParams = GossipScoreParams(peerScoreParams = peerScoreParams)
+        val peerScoreParams = GossipPeerScoreParams(
+            appSpecificScore = { appScore.getValue(it) },
+            appSpecificWeight = 1.0
+        )
+        val scoreParams = GossipScoreParams(
+            peerScoreParams = peerScoreParams,
+            gossipThreshold = -5.0,
+            publishThreshold = -10.0,
+            graylistThreshold = -15.0
+        )
         val test = ManyRoutersTest(params = coreParams, scoreParams = scoreParams)
         test.connectAll()
 
@@ -499,9 +513,14 @@ class GossipV1_1Tests {
     @Test
     fun testAdaptiveGossip() {
         val appScore = mutableMapOf<PeerId, Double>().withDefault { 0.0 }
-        val coreParams = GossipParams(3, 3, 3, DLazy = 3,
-            floodPublish = false, gossipFactor = 0.5)
-        val peerScoreParams = GossipPeerScoreParams(appSpecificScore = { appScore.getValue(it) })
+        val coreParams = GossipParams(
+            3, 3, 3, DLazy = 3,
+            floodPublish = false, gossipFactor = 0.5
+        )
+        val peerScoreParams = GossipPeerScoreParams(
+            appSpecificScore = { appScore.getValue(it) },
+            appSpecificWeight = 1.0
+        )
         val scoreParams = GossipScoreParams(peerScoreParams = peerScoreParams)
         val test = ManyRoutersTest(
             mockRouterCount = 20,
@@ -603,12 +622,18 @@ class GossipV1_1Tests {
     @Test
     fun testOpportunisticGraft() {
         val appScore = mutableMapOf<PeerId, Double>().withDefault { 0.0 }
-        val coreParams = GossipParams(3, 3, 10, DLazy = 3, DOut = 1,
-            opportunisticGraftPeers = 2, opportunisticGraftTicks = 60)
-        val peerScoreParams = GossipPeerScoreParams(appSpecificScore = { appScore.getValue(it) })
+        val coreParams = GossipParams(
+            3, 3, 10, DLazy = 3, DOut = 1,
+            opportunisticGraftPeers = 2, opportunisticGraftTicks = 60
+        )
+        val peerScoreParams = GossipPeerScoreParams(
+            appSpecificScore = { appScore.getValue(it) },
+            appSpecificWeight = 1.0
+        )
         val scoreParams = GossipScoreParams(
             peerScoreParams = peerScoreParams,
-            opportunisticGraftThreshold = 1000.0)
+            opportunisticGraftThreshold = 1000.0
+        )
         val test = ManyRoutersTest(params = coreParams, scoreParams = scoreParams)
 
         test.connectAll()

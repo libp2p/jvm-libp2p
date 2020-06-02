@@ -111,7 +111,7 @@ data class GossipParams(
      * When this is enabled, published messages are forwarded to all peers with score >=
      * to publishThreshold
      */
-    val floodPublish: Boolean = true,
+    val floodPublish: Boolean = false,
 
     /**
      * [gossipFactor] affects how many peers we will emit gossip to at each heartbeat.
@@ -201,38 +201,38 @@ data class GossipScoreParams(
      * [gossipThreshold] is the score threshold below which gossip propagation is supressed;
      * should be negative.
      */
-    val gossipThreshold: Double = -1.0,
+    val gossipThreshold: Double = 0.0,
 
     /**
      * [publishThreshold] is the score threshold below which we shouldn't publish when using flood
      * publishing (also applies to fanout and floodsub peers); should be negative and <= [gossipThreshold].
      */
-    val publishThreshold: Double = -2.0,
+    val publishThreshold: Double = 0.0,
 
     /**
      * [graylistThreshold] is the score threshold below which message processing is supressed altogether,
      * implementing an effective graylist according to peer score; should be negative and <= [publishThreshold].
      */
-    val graylistThreshold: Double = -3.0,
+    val graylistThreshold: Double = 0.0,
 
     /**
      * [acceptPXThreshold] is the score threshold below which PX will be ignored; this should be positive
      * and limited to scores attainable by bootstrappers and other trusted nodes.
      */
-    val acceptPXThreshold: Double = 1.0,
+    val acceptPXThreshold: Double = 0.0,
 
     /**
      * [opportunisticGraftThreshold] is the median mesh score threshold before triggering opportunistic
      * grafting; this should have a small positive value.
      */
-    val opportunisticGraftThreshold: Double = 2.0
+    val opportunisticGraftThreshold: Double = 0.0
 ) {
     init {
-        check(gossipThreshold < 0, "gossipThreshold should be < 0")
+        check(gossipThreshold <= 0, "gossipThreshold should be < 0")
         check(publishThreshold <= gossipThreshold, "publishThreshold should be <= than gossipThreshold")
         check(graylistThreshold <= publishThreshold, "gossipThreshold should be < publishThreshold")
-        check(acceptPXThreshold > 0, "acceptPXThreshold should be > 0")
-        check(opportunisticGraftThreshold > 0, "opportunisticGraftThreshold should be > 0")
+        check(acceptPXThreshold >= 0, "acceptPXThreshold should be > 0")
+        check(opportunisticGraftThreshold >= 0, "opportunisticGraftThreshold should be > 0")
     }
 }
 
@@ -245,7 +245,7 @@ data class GossipPeerScoreParams(
      * Aggregate topic score cap; this limits the total contribution of topics towards a positive
      * score. It must be positive (or 0 for no cap).
      */
-    val topicScoreCap: Double = 100.0,
+    val topicScoreCap: Double = 0.0,
 
     /**
      * Callback supplied by the client code to determine direct peers
@@ -265,7 +265,7 @@ data class GossipPeerScoreParams(
      * Weight of P₅, the application-specific score.
      * Must be positive, however score values may be negative.
      */
-    val appSpecificWeight: Weight = 1.0,
+    val appSpecificWeight: Weight = 0.0,
 
     /**
      * Client callback which indicates if the IP address is whitelisted
@@ -283,10 +283,10 @@ data class GossipPeerScoreParams(
      * Note: In order to simulate many IPs in a managable manner when testing, you can set the weight to 0
      *       thus disabling the IP colocation penalty.
      */
-    val ipColocationFactorWeight: Weight = -1.0,
+    val ipColocationFactorWeight: Weight = 0.0,
 
     /** See [ipColocationFactorWeight] */
-    val ipColocationFactorThreshold: Int = 100,
+    val ipColocationFactorThreshold: Int = 0,
 
     /**
      * P7: behavioural pattern penalties.
@@ -298,7 +298,7 @@ data class GossipPeerScoreParams(
      * The value of the parameter is the square of the counter, which decays with  [behaviourPenaltyDecay].
      * The weight of the parameter MUST be negative (or zero to disable).
      */
-    val behaviourPenaltyWeight: Weight = -1.0,
+    val behaviourPenaltyWeight: Weight = 0.0,
 
     /** See [behaviourPenaltyDecay] */
     val behaviourPenaltyDecay: Double = 0.9,
@@ -307,19 +307,19 @@ data class GossipPeerScoreParams(
     val decayInterval: Duration = 1.minutes,
 
     /** counter value below which it is considered 0. */
-    val decayToZero: Double = 0.01,
+    val decayToZero: Double = 0.0,
 
     /** time to remember counters for a disconnected peer. */
     val retainScore: Duration = 10.minutes
 ) {
     init {
         check(topicScoreCap >= 0.0, "topicScoreCap should be > 0")
-        check(appSpecificWeight > 0.0, "appSpecificWeight should be > 0")
-        check(ipColocationFactorWeight < 0.0, "ipColocationFactorWeight should be < 0")
-        check(ipColocationFactorThreshold >= 1, "ipColocationFactorThreshold should be >= 1")
-        check(behaviourPenaltyWeight < 0.0, "behaviourPenaltyWeight should be < 0")
-        check(
-            behaviourPenaltyDecay > 0.0 && behaviourPenaltyDecay <= 1.0,
+        check(appSpecificWeight >= 0.0, "appSpecificWeight should be > 0")
+        check(ipColocationFactorWeight <= 0.0, "ipColocationFactorWeight should be < 0")
+        check(ipColocationFactorWeight == 0.0 || ipColocationFactorThreshold >= 1,
+            "ipColocationFactorThreshold should be >= 1")
+        check(behaviourPenaltyWeight <= 0.0, "behaviourPenaltyWeight should be <= 0")
+        check(behaviourPenaltyWeight == 0.0 || (behaviourPenaltyDecay > 0.0 && behaviourPenaltyDecay <= 1.0),
             "behaviourPenaltyDecay should be in range (0.0, 1.0]"
         )
     }
@@ -343,7 +343,7 @@ class GossipTopicsScoreParams(
  */
 data class GossipTopicScoreParams(
     /** The weight of the topic. */
-    val topicWeight: Weight = 1.0,
+    val topicWeight: Weight = 0.0,
 
     /**
      * P1: time in the mesh
@@ -351,11 +351,11 @@ data class GossipTopicScoreParams(
      * The value of of the parameter is the `time/TimeInMeshQuantum`, capped by [timeInMeshCap]
      * The weight of the parameter MUST be positive (or zero to disable).
      */
-    val timeInMeshWeight: Weight = 1.0,
+    val timeInMeshWeight: Weight = 0.0,
     /** @see timeInMeshWeight */
     val timeInMeshQuantum: Duration = 1.seconds,
     /** @see timeInMeshWeight */
-    val timeInMeshCap: Double = 100.0,
+    val timeInMeshCap: Double = 0.0,
 
     /**
      * P2: first message deliveries
@@ -364,11 +364,11 @@ data class GossipTopicScoreParams(
      * by [firstMessageDeliveriesCap].
      * The weight of the parameter MUST be positive (or zero to disable).
      */
-    val firstMessageDeliveriesWeight: Weight = 1.0,
+    val firstMessageDeliveriesWeight: Weight = 0.0,
     /** @see firstMessageDeliveriesWeight */
-    val firstMessageDeliveriesDecay: Double = 0.9,
+    val firstMessageDeliveriesDecay: Double = 0.0,
     /** @see firstMessageDeliveriesWeight */
-    val firstMessageDeliveriesCap: Double = 100.0,
+    val firstMessageDeliveriesCap: Double = 0.0,
 
     /**
      * P3: mesh message deliveries
@@ -388,11 +388,11 @@ data class GossipTopicScoreParams(
      */
     val meshMessageDeliveriesWeight: Weight = 0.0 /*-1.0*/, // TODO temporarily exclude this parameter
     /** @see meshMessageDeliveriesWeight */
-    val meshMessageDeliveriesDecay: Double = 0.9,
+    val meshMessageDeliveriesDecay: Double = 0.0,
     /** @see meshMessageDeliveriesWeight */
-    val meshMessageDeliveriesThreshold: Double = 20.0,
+    val meshMessageDeliveriesThreshold: Double = 0.0,
     /** @see meshMessageDeliveriesWeight */
-    val meshMessageDeliveriesCap: Double = 100.0,
+    val meshMessageDeliveriesCap: Double = 0.0,
     /** @see meshMessageDeliveriesWeight */
     val meshMessageDeliveriesActivation: Duration = 1.minutes,
     /** @see meshMessageDeliveriesWeight */
@@ -404,9 +404,9 @@ data class GossipTopicScoreParams(
      * mesh message delivery penalty.
      * The weight of the parameter MUST be negative (or zero to disable)
      */
-    val meshFailurePenaltyWeight: Weight = -1.0,
+    val meshFailurePenaltyWeight: Weight = 0.0,
     /** @see meshFailurePenaltyWeight */
-    val meshFailurePenaltyDecay: Double = 0.9,
+    val meshFailurePenaltyDecay: Double = 0.0,
 
     /**
      * P4: invalid messages
@@ -415,16 +415,16 @@ data class GossipTopicScoreParams(
      * [invalidMessageDeliveriesDecay].
      * The weight of the parameter MUST be negative (or zero to disable).
      */
-    val invalidMessageDeliveriesWeight: Weight = -1.0,
+    val invalidMessageDeliveriesWeight: Weight = 0.0,
     /** @see invalidMessageDeliveriesWeight */
-    val invalidMessageDeliveriesDecay: Double = 0.9
+    val invalidMessageDeliveriesDecay: Double = 0.0
 ) {
     init {
         check(timeInMeshWeight >= 0, "timeInMeshWeight >= 0")
         check(timeInMeshCap >= 0, "timeInMeshCap >= 0")
         check(firstMessageDeliveriesWeight >= 0, "firstMessageDeliveriesWeight >= 0")
         check(meshMessageDeliveriesWeight <= 0, "meshMessageDeliveriesWeight <= 0")
-        check(meshMessageDeliveriesThreshold > 0, "meshMessageDeliveriesThreshold > 0")
+        check(meshMessageDeliveriesThreshold >= 0, "meshMessageDeliveriesThreshold >= 0")
         check(
             meshMessageDeliveriesCap >= meshMessageDeliveriesThreshold,
             "meshMessageDeliveriesCap >= meshMessageDeliveriesThreshold"
