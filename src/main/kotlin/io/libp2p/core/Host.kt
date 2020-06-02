@@ -85,6 +85,6 @@ interface Host {
     fun addConnectionHandler(handler: ConnectionHandler)
     fun removeConnectionHandler(handler: ConnectionHandler)
 
-    fun <TController> newStream(protocol: String, conn: Connection): StreamPromise<TController>
-    fun <TController> newStream(protocol: String, peer: PeerId, vararg addr: Multiaddr): StreamPromise<TController>
+    fun <TController> newStream(protocols: List<String>, conn: Connection): StreamPromise<TController>
+    fun <TController> newStream(protocols: List<String>, peer: PeerId, vararg addr: Multiaddr): StreamPromise<TController>
 }

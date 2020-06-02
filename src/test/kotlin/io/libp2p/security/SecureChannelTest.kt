@@ -3,7 +3,6 @@ package io.libp2p.security
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.crypto.generateKeyPair
-import io.libp2p.core.multistream.Mode
 import io.libp2p.core.multistream.ProtocolMatcher
 import io.libp2p.core.security.SecureChannel
 import io.libp2p.etc.types.toByteArray
@@ -110,7 +109,7 @@ abstract class SecureChannelTest(
         val negotiator = if (initiator) {
             Negotiator.createRequesterInitializer(announce)
         } else {
-            Negotiator.createResponderInitializer(listOf(ProtocolMatcher(Mode.STRICT, announce)))
+            Negotiator.createResponderInitializer(listOf(ProtocolMatcher.strict(announce)))
         }
 
         return TestChannel(

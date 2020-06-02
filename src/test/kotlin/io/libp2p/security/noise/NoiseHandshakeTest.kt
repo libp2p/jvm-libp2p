@@ -5,11 +5,11 @@ import com.southernstorm.noise.protocol.HandshakeState
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.generateKeyPair
 import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.MethodOrderer.OrderAnnotation
 import org.junit.jupiter.api.Order
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestMethodOrder
-import org.junit.jupiter.api.MethodOrderer.OrderAnnotation
 import spipe.pb.Spipe
 
 @TestMethodOrder(OrderAnnotation::class)
@@ -148,9 +148,8 @@ class NoiseHandshakeTest {
 
         val ch1 = NoiseXXSecureChannel(privKey1)
 
-        val announce = ch1.announce
-        val matcher = ch1.matcher
-        Assertions.assertTrue(matcher.matches(announce))
+        Assertions.assertTrue(
+            ch1.protocolDescriptor.matchesAny(ch1.protocolDescriptor.announceProtocols))
     }
 
     @Test

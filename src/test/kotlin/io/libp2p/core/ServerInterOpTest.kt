@@ -173,7 +173,7 @@ abstract class ServerInterOpTest(
     fun unsupportedServerProtocol() {
         // remote party doesn't support the protocol
         val unsupportedProtocol = clientHost.newStream<DoNothingController>(
-            "/ipfs/do-nothing/1.0.0",
+            listOf("/ipfs/do-nothing/1.0.0"),
             serverPeerId,
             serverMultiAddress
         )
@@ -187,7 +187,7 @@ abstract class ServerInterOpTest(
     @Test
     fun pingOverSecureConnection() {
         val ping = clientHost.newStream<PingController>(
-            "/ipfs/ping/1.0.0",
+            listOf("/ipfs/ping/1.0.0"),
             serverPeerId,
             serverMultiAddress
         )
@@ -212,7 +212,7 @@ abstract class ServerInterOpTest(
     @Test
     fun identifyOverSecureConnection() {
         val identify = clientHost.newStream<IdentifyController>(
-            "/ipfs/id/1.0.0",
+            listOf("/ipfs/id/1.0.0"),
             serverPeerId,
             serverMultiAddress
         )

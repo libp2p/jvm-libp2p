@@ -2,8 +2,8 @@ package io.libp2p.core
 
 import io.libp2p.core.dsl.host
 import io.libp2p.core.multiformats.Multiaddr
-import io.libp2p.core.multistream.Mode
 import io.libp2p.core.multistream.ProtocolBinding
+import io.libp2p.core.multistream.ProtocolDescriptor
 import io.libp2p.core.multistream.ProtocolMatcher
 import io.libp2p.mux.mplex.MplexStreamMuxer
 import io.libp2p.security.secio.SecIoSecureChannel
@@ -30,8 +30,8 @@ const val protoPrefix = "/my-calc"
 const val protoAdd = "/add"
 const val protoMul = "/mul"
 
-class RpcProtocol(override val announce: String = "NOP") : ProtocolBinding<OpController> {
-    override val matcher = ProtocolMatcher(Mode.PREFIX, protoPrefix)
+class RpcProtocol() : ProtocolBinding<OpController> {
+    override val protocolDescriptor = ProtocolDescriptor(ProtocolMatcher.prefix(protoPrefix))
 
     override fun initChannel(ch: P2PChannel, selectedProtocol: String): CompletableFuture<out OpController> {
         val ret = CompletableFuture<OpController>()
@@ -157,7 +157,7 @@ class RpcHandlerTest {
         })
 
         run {
-            val ctr = host1.newStream<OpController>(protoPrefix + protoAdd, host2.peerId, Multiaddr("/ip4/127.0.0.1/tcp/40002"))
+            val ctr = host1.newStream<OpController>(listOf(protoPrefix + protoAdd), host2.peerId, Multiaddr("/ip4/127.0.0.1/tcp/40002"))
                 .controller.get(5, TimeUnit.SECONDS)
             println("Controller created")
             val res = ctr.calculate(100, 10).get(5, TimeUnit.SECONDS)
@@ -178,7 +178,7 @@ class RpcHandlerTest {
         val connection = host1.network.connections[0]
 
         run {
-            val ctr = host1.newStream<OpController>(protoPrefix + protoMul, host2.peerId, Multiaddr("/ip4/127.0.0.1/tcp/40002"))
+            val ctr = host1.newStream<OpController>(listOf(protoPrefix + protoMul), host2.peerId, Multiaddr("/ip4/127.0.0.1/tcp/40002"))
                 .controller.get(5, TimeUnit.SECONDS)
             println("Controller created")
             val res = ctr.calculate(100, 10).get(5, TimeUnit.SECONDS)

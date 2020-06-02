@@ -140,7 +140,7 @@ abstract class HostTest(
     @Test
     fun unknownLocalProtocol() {
         val badProtocol = clientHost.newStream<PingController>(
-            "/__no_such_protocol/1.0.0",
+            listOf("/__no_such_protocol/1.0.0"),
             serverHost.peerId,
             Multiaddr(listenAddress)
         )
