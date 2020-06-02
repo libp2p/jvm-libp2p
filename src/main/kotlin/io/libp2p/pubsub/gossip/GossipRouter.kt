@@ -206,8 +206,8 @@ open class GossipRouter(
         }
 
         val iWant = msg.messageIDsList - seenMessages.keys
-        val maxToAsk = max(0, min(iWant.size, params.maxIHaveLength - asked.get()))
-        asked.addAndGet(iWant.size)
+        val maxToAsk = min(iWant.size, params.maxIHaveLength - asked.get())
+        asked.addAndGet(maxToAsk)
         iWant(peer, iWant.shuffled(random).subList(0, maxToAsk))
     }
 

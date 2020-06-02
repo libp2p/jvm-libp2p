@@ -830,4 +830,65 @@ class GossipV1_1Tests {
         )
         test.mockRouter.waitForMessage { it.publishCount > 0 }
     }
+
+    @Test
+    fun maxIHaveLengthTest() {
+        val test = TwoRoutersTest(GossipParams(maxIHaveLength = 10))
+
+        test.mockRouter.subscribe("topic1")
+
+        test.mockRouter.sendToSingle(
+            Rpc.RPC.newBuilder().setControl(
+                Rpc.ControlMessage.newBuilder().addIhave(
+                    Rpc.ControlIHave.newBuilder().addAllMessageIDs((0..4).map { "Id-$it" })
+                )
+            ).build()
+        )
+        test.mockRouter.sendToSingle(
+            Rpc.RPC.newBuilder().setControl(
+                Rpc.ControlMessage.newBuilder().addIhave(
+                    Rpc.ControlIHave.newBuilder().addAllMessageIDs((5..14).map { "Id-$it" })
+                )
+            ).build()
+        )
+
+        test.fuzz.timeController.addTime(100.millis)
+        val iWandIds = test.mockRouter.inboundMessages
+            .filter { it.hasControl() }
+            .flatMap { it.control.iwantList }
+            .flatMap { it.messageIDsList }
+
+        // Should ask only maxIHaveLength messages others should be ignored
+        assertEquals(10, iWandIds.size)
+        assertEquals(10, iWandIds.distinct().size)
+        test.mockRouter.inboundMessages.clear()
+
+        test.mockRouter.sendToSingle(
+            Rpc.RPC.newBuilder().setControl(
+                Rpc.ControlMessage.newBuilder().addIhave(
+                    Rpc.ControlIHave.newBuilder().addAllMessageIDs((15..19).map { "Id-$it" })
+                )
+            ).build()
+        )
+        // should still ignore IHAVE until next heartbeat
+        assertEquals(0, test.mockRouter.inboundMessages.count { it.hasControl() && it.control.iwantCount > 0 })
+
+        // heartbeat should reset inbound IHAVE counter
+        test.fuzz.timeController.addTime(2.seconds)
+
+        test.mockRouter.sendToSingle(
+            Rpc.RPC.newBuilder().setControl(
+                Rpc.ControlMessage.newBuilder().addIhave(
+                    Rpc.ControlIHave.newBuilder().addAllMessageIDs((20..24).map { "Id-$it" })
+                )
+            ).build()
+        )
+        test.fuzz.timeController.addTime(100.millis)
+        val iWandIds1 = test.mockRouter.inboundMessages
+            .filter { it.hasControl() }
+            .flatMap { it.control.iwantList }
+            .flatMap { it.messageIDsList }
+        assertEquals(5, iWandIds1.size)
+        assertEquals(5, iWandIds1.distinct().size)
+    }
 }
