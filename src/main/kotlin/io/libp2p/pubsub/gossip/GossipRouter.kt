@@ -41,7 +41,7 @@ fun P2PService.PeerHandler.getOutboundGossipProtocol() = PubsubProtocol.fromProt
 /**
  * Router implementing this protocol: https://github.com/libp2p/specs/tree/master/pubsub/gossipsub
  */
-open class GossipRouter(
+open class GossipRouter @JvmOverloads constructor(
     val params: GossipParams = GossipParams(),
     val scoreParams: GossipScoreParams = GossipScoreParams(),
     override val protocol: PubsubProtocol = PubsubProtocol.Gossip_V_1_1
