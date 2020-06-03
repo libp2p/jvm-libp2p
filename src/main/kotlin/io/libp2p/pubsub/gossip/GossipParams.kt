@@ -17,7 +17,7 @@ typealias Weight = Double
 fun defaultDLow(D: Int) = D * 2 / 3
 fun defaultDHigh(D: Int) = D * 2
 fun defaultDLazy(D: Int) = D
-fun defaultDScore(D: Int) = D
+fun defaultDScore(D: Int) = D * 2 / 3
 fun defaultDOut(D: Int, DLow: Int) = min(D / 2, max(DLow - 1, 0))
 
 /**
@@ -29,7 +29,7 @@ data class GossipParams(
      * each peer will want to have about six peers in their mesh for each topic they're subscribed to.
      * [D] should be set somewhere between [DLow] and [DHi].
      */
-    val D: Int = 3,
+    val D: Int = 6,
 
     /**
      * [DLow] sets the lower bound on the number of peers we keep in a GossipSub topic mesh.
