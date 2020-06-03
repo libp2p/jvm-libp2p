@@ -29,6 +29,7 @@ import org.bouncycastle.crypto.util.PrivateKeyInfoFactory
 import java.security.KeyFactory
 import java.security.KeyPair
 import java.security.KeyPairGenerator
+import java.security.SecureRandom
 import java.security.Signature
 import java.security.spec.PKCS8EncodedKeySpec
 import java.security.spec.RSAPublicKeySpec
@@ -92,7 +93,8 @@ class RsaPublicKey(private val k: JavaPublicKey) : PubKey(Crypto.KeyType.RSA) {
  * @param bits the number of bits required in the key.
  * @return a pair of the private and public keys.
  */
-fun generateRsaKeyPair(bits: Int): Pair<PrivKey, PubKey> {
+@JvmOverloads
+fun generateRsaKeyPair(bits: Int, random: SecureRandom = SecureRandom()): Pair<PrivKey, PubKey> {
     if (bits < 2048) {
         throw Libp2pException(ErrRsaKeyTooSmall)
     }
@@ -103,7 +105,7 @@ fun generateRsaKeyPair(bits: Int): Pair<PrivKey, PubKey> {
             Libp2pCrypto.provider
         )
     ) {
-        initialize(bits)
+        initialize(bits, random)
         genKeyPair()
     }
 

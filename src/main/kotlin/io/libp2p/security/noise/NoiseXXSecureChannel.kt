@@ -10,8 +10,7 @@ import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.crypto.PubKey
 import io.libp2p.core.crypto.marshalPublicKey
 import io.libp2p.core.crypto.unmarshalPublicKey
-import io.libp2p.core.multistream.Mode
-import io.libp2p.core.multistream.ProtocolMatcher
+import io.libp2p.core.multistream.ProtocolDescriptor
 import io.libp2p.core.security.SecureChannel
 import io.libp2p.etc.types.toByteArray
 import io.libp2p.etc.types.toByteBuf
@@ -58,8 +57,7 @@ class NoiseXXSecureChannel(private val localKey: PrivKey) :
         var rustInteroperability = false
     }
 
-    override val announce = Companion.announce
-    override val matcher = ProtocolMatcher(Mode.PREFIX, name = announce)
+    override val protocolDescriptor = ProtocolDescriptor(announce)
 
     fun initChannel(ch: P2PChannel): CompletableFuture<SecureChannel.Session> {
         return initChannel(ch, "")

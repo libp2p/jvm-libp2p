@@ -12,11 +12,33 @@ import kotlin.random.Random.Default.nextLong
 fun createPubsubApi(router: PubsubRouter): PubsubApi =
     PubsubApiImpl(router)
 
-typealias Subscriber = Consumer<MessageApi>
-typealias Validator = Function<MessageApi, CompletableFuture<Boolean>>
+/**
+ * Application message validation result
+ */
+enum class ValidationResult {
 
-val RESULT_VALID = CompletableFuture.completedFuture(true)
-val RESULT_INVALID = CompletableFuture.completedFuture(false)
+    /**
+     * The message is valid and should be propagated further
+     */
+    Valid,
+
+    /**
+     * The message is invalid, should be rejected, and trigger penalty.
+     */
+    Invalid,
+
+    /**
+     * The message should not be propagated further but does not trigger a penalty.
+     */
+    Ignore
+}
+
+typealias Subscriber = Consumer<MessageApi>
+typealias Validator = Function<MessageApi, CompletableFuture<ValidationResult>>
+
+val RESULT_VALID = CompletableFuture.completedFuture(ValidationResult.Valid)
+val RESULT_INVALID = CompletableFuture.completedFuture(ValidationResult.Invalid)
+val RESULT_IGNORE = CompletableFuture.completedFuture(ValidationResult.Ignore)
 
 /**
  * API interface for Pubsub subscriber
@@ -34,7 +56,8 @@ interface PubsubSubscriberApi {
      * thus it is not recommended to run any time consuming task withing callback
      *
      * If the [receiver] is in duty of message validation it should return the
-     * result either synchronously ([RESULT_VALID] or [RESULT_INVALID]) or asynchronously.
+     * result either synchronously ([RESULT_VALID], [RESULT_INVALID] or [RESULT_IGNORE])
+     * or asynchronously.
      *
      * If the [receiver] doesn't validates it should just return [RESULT_VALID]
      *

@@ -1,14 +1,16 @@
 package io.libp2p.tools
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder
-import io.libp2p.transport.implementation.ConnectionOverNetty
 import io.libp2p.etc.CONNECTION
 import io.libp2p.etc.types.lazyVar
 import io.libp2p.etc.util.netty.nettyInitializer
+import io.libp2p.transport.implementation.ConnectionOverNetty
 import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelId
 import io.netty.channel.embedded.EmbeddedChannel
 import org.apache.logging.log4j.LogManager
+import java.net.InetSocketAddress
+import java.net.SocketAddress
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicLong
@@ -21,7 +23,12 @@ class TestChannelId(val id: String) : ChannelId {
     override fun asLongText() = id
 }
 
-class TestChannel(id: String = "test", initiator: Boolean, vararg handlers: ChannelHandler?) :
+class TestChannel(
+    id: String = "test",
+    initiator: Boolean,
+    vararg handlers: ChannelHandler?,
+    val dummyIp: String = "0.0.0.0"
+) :
     EmbeddedChannel(
         TestChannelId(id),
         nettyInitializer {
@@ -61,6 +68,15 @@ class TestChannel(id: String = "test", initiator: Boolean, vararg handlers: Chan
             sentMsgCount.incrementAndGet()
             link!!.writeInbound(msg)
         }
+    }
+
+    override fun localAddress(): SocketAddress {
+        // dummyIp can actually be null when this method is called in super constructor
+        return InetSocketAddress(dummyIp ?: "255.255.255.255", 777)
+    }
+
+    override fun remoteAddress(): SocketAddress? {
+        return link?.let { InetSocketAddress(it.dummyIp, 777) } ?: InetSocketAddress("255.255.255.255", 255)
     }
 
     companion object {

@@ -127,11 +127,12 @@ class Secp256k1PublicKey(private val pub: ECPublicKeyParameters) : PubKey(Crypto
  * Generates a new SECP256K1 private and public key.
  * @return a pair of the private and public keys.
  */
-fun generateSecp256k1KeyPair(): Pair<PrivKey, PubKey> = with(ECKeyPairGenerator()) {
+@JvmOverloads
+fun generateSecp256k1KeyPair(random: SecureRandom = SecureRandom()): Pair<PrivKey, PubKey> = with(ECKeyPairGenerator()) {
     val domain = SECNamedCurves.getByName(SECP_256K1_ALGORITHM).let {
         ECDomainParameters(it.curve, it.g, it.n, it.h)
     }
-    init(ECKeyGenerationParameters(domain, SecureRandom()))
+    init(ECKeyGenerationParameters(domain, random))
     val keypair = generateKeyPair()
 
     val privateKey = keypair.private as ECPrivateKeyParameters

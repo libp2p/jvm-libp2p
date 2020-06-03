@@ -14,7 +14,7 @@ import io.netty.channel.ChannelHandler
  * @param nettyChannel the underlying Netty channel
  */
 abstract class P2PChannelOverNetty(
-    protected val nettyChannel: Channel,
+    val nettyChannel: Channel,
     override val isInitiator: Boolean
 ) : P2PChannel {
     override fun pushHandler(handler: ChannelHandler) {

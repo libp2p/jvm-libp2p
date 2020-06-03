@@ -58,7 +58,7 @@ interface Multistream<TController> : P2PChannelHandler<TController> {
          * Creates an _initiator_ [Multistream] with specified [protocol] and [handler]
          */
         @JvmStatic
-        fun <TController> initiator(protocol: String, handler: P2PChannelHandler<TController>): Multistream<TController> =
+        fun <TController> initiator(protocol: ProtocolId, handler: P2PChannelHandler<TController>): Multistream<TController> =
             create(ProtocolBinding.createSimple(protocol, handler))
     }
 }

@@ -2,12 +2,13 @@ package io.libp2p.pubsub
 
 import io.libp2p.core.Stream
 import io.libp2p.core.pubsub.RESULT_VALID
-import io.libp2p.etc.types.LRUSet
+import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.etc.types.MultiSet
 import io.libp2p.etc.types.completedExceptionally
 import io.libp2p.etc.types.copy
+import io.libp2p.etc.types.createLRUMap
 import io.libp2p.etc.types.forward
-import io.libp2p.etc.types.lazyVar
+import io.libp2p.etc.types.lazyVarInit
 import io.libp2p.etc.types.toHex
 import io.libp2p.etc.util.P2PServiceSemiDuplex
 import io.netty.channel.ChannelHandler
@@ -18,8 +19,13 @@ import io.netty.handler.codec.protobuf.ProtobufVarint32LengthFieldPrepender
 import org.apache.logging.log4j.LogManager
 import pubsub.pb.Rpc
 import java.util.Collections.singletonList
+import java.util.Optional
 import java.util.Random
 import java.util.concurrent.CompletableFuture
+import java.util.function.BiConsumer
+import java.util.function.Consumer
+
+typealias MessageId = String
 
 /**
  * Implements common logic for pubsub routers
@@ -27,20 +33,22 @@ import java.util.concurrent.CompletableFuture
 abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRouterDebug {
     private val logger = LogManager.getLogger(AbstractRouter::class.java)
 
-    override var curTime: () -> Long by lazyVar { { System.currentTimeMillis() } }
-    override var random by lazyVar { Random() }
+    override var curTimeMillis: () -> Long by lazyVarInit { { System.currentTimeMillis() } }
+    override var random by lazyVarInit { Random() }
+    override var name: String = "router"
+    var messageIdGenerator: (Rpc.Message) -> MessageId = { it.from.toByteArray().toHex() + it.seqno.toByteArray().toHex() }
 
     val peerTopics = MultiSet<PeerHandler, String>()
-    private var msgHandler: (Rpc.Message) -> CompletableFuture<Boolean> = { RESULT_VALID }
+    private var msgHandler: (Rpc.Message) -> CompletableFuture<ValidationResult> = { RESULT_VALID }
     var maxSeenMessagesSizeSet = 10000
     var validator: PubsubMessageValidator = PubsubMessageValidator.nopValidator()
-    val seenMessages by lazy { LRUSet.create<String>(maxSeenMessagesSizeSet) }
+    val seenMessages by lazy { createLRUMap<MessageId, Optional<ValidationResult>>(maxSeenMessagesSizeSet) }
     val subscribedTopics = linkedSetOf<String>()
     val pendingRpcParts = linkedMapOf<PeerHandler, MutableList<Rpc.RPC>>()
     private var debugHandler: ChannelHandler? = null
     private val pendingMessagePromises = MultiSet<PeerHandler, CompletableFuture<Unit>>()
 
-    protected open fun getMessageId(msg: Rpc.Message): String = msg.from.toByteArray().toHex() + msg.seqno.toByteArray().toHex()
+    protected fun getMessageId(msg: Rpc.Message): MessageId = messageIdGenerator(msg)
 
     override fun publish(msg: Rpc.Message): CompletableFuture<Unit> {
         return submitAsyncOnEventThread {
@@ -48,7 +56,7 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
                 completedExceptionally(MessageAlreadySeenException("Msg: $msg"))
             } else {
                 validator.validate(msg) // check ourselves not to be a bad peer
-                seenMessages += getMessageId(msg)
+                seenMessages[getMessageId(msg)] = Optional.of(ValidationResult.Valid)
                 broadcastOutbound(msg)
             }
         }
@@ -149,20 +157,36 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
         peer.writeAndFlush(helloPubsubMsg)
     }
 
+    protected open fun notifyUnseenMessage(peer: PeerHandler, msg: Rpc.Message) {}
+    protected open fun notifySeenMessage(peer: PeerHandler, msg: Rpc.Message, validationResult: Optional<ValidationResult>) {}
+    protected open fun notifyUnseenInvalidMessage(peer: PeerHandler, msg: Rpc.Message) {}
+    protected open fun notifyUnseenValidMessage(peer: PeerHandler, msg: Rpc.Message) {}
+    protected open fun acceptRequestsFrom(peer: PeerHandler) = true
+
     override fun onInbound(peer: PeerHandler, msg: Any) {
+        if (!acceptRequestsFrom(peer)) return
+
         msg as Rpc.RPC
         msg.subscriptionsList.forEach { handleMessageSubscriptions(peer, it) }
         if (msg.hasControl()) {
             processControl(msg.control, peer)
         }
         val msgUnseen = msg.publishList
-            .filter { seenMessages.add(getMessageId(it)) }
+            .filter { !seenMessages.containsKey(getMessageId(it)) }
+
+        msgUnseen.forEach { seenMessages[getMessageId(it)] = Optional.empty() }
+
+        msgUnseen.forEach { notifyUnseenMessage(peer, it) }
+        (msg.publishList - msgUnseen).forEach { notifySeenMessage(peer, it, seenMessages[getMessageId(it)]!!) }
+
         val msgValid = msgUnseen.filter {
             try {
                 validator.validate(it)
                 true
             } catch (e: Exception) {
                 logger.info("Invalid pubsub message from peer $peer: $it", e)
+                seenMessages[getMessageId(it)] = Optional.of(ValidationResult.Invalid)
+                notifyUnseenInvalidMessage(peer, it)
                 false
             }
         }
@@ -172,35 +196,49 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
         val done = doneUndone.getOrDefault(true, emptyList())
         val undone = doneUndone.getOrDefault(false, emptyList())
 
+        validFuts.forEach { (msg, validationFut) ->
+            validationFut.thenAcceptAsync(Consumer { res ->
+                seenMessages[getMessageId(msg)] = Optional.of(res)
+                if (res == ValidationResult.Invalid) notifyUnseenInvalidMessage(peer, msg)
+            }, executor)
+        }
+
         // broadcasting in a single chunk those which were validated synchronously
         val validatedMsgs = done.filter {
-                try {
-                    it.second.get()
-                } catch (e: Exception) {
-                    logger.warn("Exception while handling message from peer $peer: ${it.first}", e)
-                    false
-                }
+            try {
+                it.second.get() == ValidationResult.Valid
+            } catch (e: Exception) {
+                logger.warn("Exception while handling message from peer $peer: ${it.first}", e)
+                false
             }
+        }
             .map { it.first }
-        broadcastInbound(validatedMsgs, peer)
+        newValidatedMessages(validatedMsgs, peer)
         flushAllPending()
 
         // broadcast others on completion
         undone.forEach {
-                it.second.whenComplete { res, err ->
-                    when {
-                        err != null -> logger.warn("Exception while handling message from peer $peer: ${it.first}", err)
-                        !res -> logger.info("Invalid pubsub message from peer $peer: ${it.first}")
-                        else -> {
-                            broadcastInbound(singletonList(it.first), peer)
-                            flushAllPending()
-                        }
+            it.second.whenCompleteAsync(BiConsumer { res, err ->
+                when {
+                    err != null -> logger.warn("Exception while handling message from peer $peer: ${it.first}", err)
+                    res == ValidationResult.Invalid -> logger.info("Invalid pubsub message from peer $peer: ${it.first}")
+                    res == ValidationResult.Ignore -> logger.debug("Ingnoring pubsub message from peer $peer: ${it.first}")
+                    else -> {
+                        newValidatedMessages(singletonList(it.first), peer)
+                        flushAllPending()
                     }
                 }
-            }
+            }, executor)
+        }
+    }
+
+    private fun newValidatedMessages(msgs: List<Rpc.Message>, receivedFrom: PeerHandler) {
+        msgs.forEach { notifyUnseenValidMessage(receivedFrom, it) }
+        broadcastInbound(msgs, receivedFrom)
     }
 
     override fun onPeerDisconnected(peer: PeerHandler) {
+        super.onPeerDisconnected(peer)
         peerTopics.removeAll(peer)
     }
 
@@ -214,6 +252,7 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
 
     protected fun getTopicsPeers(topics: Collection<String>) =
         activePeers.filter { topics.intersect(peerTopics[it]).isNotEmpty() }
+
     protected fun getTopicPeers(topic: String) =
         activePeers.filter { topic in peerTopics[it] }
 
@@ -225,9 +264,12 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
     }
 
     protected open fun subscribe(topic: String) {
-        activePeers.forEach { addPendingRpcPart(it,
+        activePeers.forEach {
+            addPendingRpcPart(
+                it,
                 Rpc.RPC.newBuilder().addSubscriptions(Rpc.RPC.SubOpts.newBuilder().setSubscribe(true).setTopicid(topic)).build()
-            ) }
+            )
+        }
         subscribedTopics += topic
     }
 
@@ -239,17 +281,20 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
     }
 
     protected open fun unsubscribe(topic: String) {
-        activePeers.forEach { addPendingRpcPart(it,
-            Rpc.RPC.newBuilder().addSubscriptions(Rpc.RPC.SubOpts.newBuilder().setSubscribe(false).setTopicid(topic)).build()
-        ) }
+        activePeers.forEach {
+            addPendingRpcPart(
+                it,
+                Rpc.RPC.newBuilder().addSubscriptions(Rpc.RPC.SubOpts.newBuilder().setSubscribe(false).setTopicid(topic)).build()
+            )
+        }
         subscribedTopics -= topic
     }
 
-    private fun send(peer: PeerHandler, msg: Rpc.RPC): CompletableFuture<Unit> {
+    protected open fun send(peer: PeerHandler, msg: Rpc.RPC): CompletableFuture<Unit> {
         return peer.writeAndFlush(msg)
     }
 
-    override fun initHandler(handler: (Rpc.Message) -> CompletableFuture<Boolean>) {
+    override fun initHandler(handler: (Rpc.Message) -> CompletableFuture<ValidationResult>) {
         msgHandler = handler
     }
 }

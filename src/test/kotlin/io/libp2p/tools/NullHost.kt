@@ -5,10 +5,10 @@ import io.libp2p.core.Connection
 import io.libp2p.core.ConnectionHandler
 import io.libp2p.core.Host
 import io.libp2p.core.Network
+import io.libp2p.core.PeerId
 import io.libp2p.core.Stream
 import io.libp2p.core.StreamHandler
 import io.libp2p.core.StreamPromise
-import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multistream.ProtocolBinding
@@ -63,12 +63,12 @@ open class NullHost : Host {
         TODO("not implemented")
     }
 
-    override fun <TController> newStream(protocol: String, conn: Connection): StreamPromise<TController> {
+    override fun <TController> newStream(protocols: List<String>, conn: Connection): StreamPromise<TController> {
         TODO("not implemented")
     }
 
     override fun <TController> newStream(
-        protocol: String,
+        protocols: List<String>,
         peer: PeerId,
         vararg addr: Multiaddr
     ): StreamPromise<TController> {

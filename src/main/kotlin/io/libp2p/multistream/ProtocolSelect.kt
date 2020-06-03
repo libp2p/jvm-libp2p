@@ -25,7 +25,7 @@ class ProtocolSelect<TController>(val protocols: List<ProtocolBinding<TControlle
     override fun userEventTriggered(ctx: ChannelHandlerContext, evt: Any) {
         when (evt) {
             is ProtocolNegotiationSucceeded -> {
-                val protocolBinding = protocols.find { it.matcher.matches(evt.proto) }
+                val protocolBinding = protocols.find { it.protocolDescriptor.protocolMatcher.matches(evt.proto) }
                     ?: throw NoSuchLocalProtocolException("Protocol negotiation failed: not supported protocol ${evt.proto}")
                 ctx.channel().attr(PROTOCOL).get()?.complete(evt.proto)
                 ctx.pipeline().replace(this, "ProtocolBindingInitializer", nettyInitializer {

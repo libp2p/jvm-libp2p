@@ -12,7 +12,7 @@ import java.nio.file.Paths
 // ./gradlew bintrayUpload -PbintrayUser=<user> -PbintrayApiKey=<api-key>
 
 group = "io.libp2p"
-version = "0.4.1-RELEASE"
+version = "0.5.0-RELEASE"
 description = "a minimal implementation of libp2p for the jvm"
 
 plugins {

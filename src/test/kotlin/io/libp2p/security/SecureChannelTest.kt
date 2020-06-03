@@ -3,7 +3,6 @@ package io.libp2p.security
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.crypto.generateKeyPair
-import io.libp2p.core.multistream.Mode
 import io.libp2p.core.multistream.ProtocolMatcher
 import io.libp2p.core.security.SecureChannel
 import io.libp2p.etc.types.toByteArray
@@ -16,8 +15,6 @@ import io.libp2p.tools.TestHandler
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
-import io.netty.handler.logging.LogLevel
-import io.netty.handler.logging.LoggingHandler
 import io.netty.util.ResourceLeakDetector
 import org.apache.logging.log4j.LogManager
 import org.junit.jupiter.params.ParameterizedTest
@@ -112,13 +109,13 @@ abstract class SecureChannelTest(
         val negotiator = if (initiator) {
             Negotiator.createRequesterInitializer(announce)
         } else {
-            Negotiator.createResponderInitializer(listOf(ProtocolMatcher(Mode.STRICT, announce)))
+            Negotiator.createResponderInitializer(listOf(ProtocolMatcher.strict(announce)))
         }
 
         return TestChannel(
             name,
             initiator,
-            LoggingHandler(name, LogLevel.ERROR),
+//            LoggingHandler(name, LogLevel.ERROR),
             negotiator,
             selector
         )

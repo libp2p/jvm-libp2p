@@ -24,9 +24,8 @@ interface PingController {
 
 class Ping : PingBinding(PingProtocol())
 
-open class PingBinding(ping: PingProtocol) : StrictProtocolBinding<PingController>(ping) {
-    override val announce = "/ipfs/ping/1.0.0"
-}
+open class PingBinding(ping: PingProtocol) :
+    StrictProtocolBinding<PingController>("/ipfs/ping/1.0.0", ping)
 
 class PingTimeoutException : Libp2pException()
 

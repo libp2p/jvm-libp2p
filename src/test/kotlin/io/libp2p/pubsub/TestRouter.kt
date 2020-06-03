@@ -4,13 +4,16 @@ import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.pubsub.RESULT_VALID
+import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.core.pubsub.createPubsubApi
 import io.libp2p.core.security.SecureChannel
+import io.libp2p.etc.PROTOCOL
 import io.libp2p.etc.types.lazyVar
 import io.libp2p.etc.util.netty.nettyInitializer
 import io.libp2p.pubsub.flood.FloodRouter
 import io.libp2p.tools.NullTransport
 import io.libp2p.tools.TestChannel
+import io.libp2p.tools.TestChannel.TestConnection
 import io.libp2p.transport.implementation.ConnectionOverNetty
 import io.libp2p.transport.implementation.StreamOverNetty
 import io.netty.handler.logging.LogLevel
@@ -25,10 +28,18 @@ import java.util.concurrent.atomic.AtomicInteger
 val cnt = AtomicInteger()
 val idCnt = AtomicInteger()
 
-class TestRouter(val name: String = "" + cnt.getAndIncrement()) {
+class SemiduplexConnection(val conn1: TestConnection, val conn2: TestConnection) {
+    val connections = listOf(conn1, conn2)
+    fun disconnect() {
+        conn1.disconnect()
+        // conn2 should be dropped by the router
+    }
+}
+
+class TestRouter(val name: String = "" + cnt.getAndIncrement(), val protocol: String = "/test/undefined") {
 
     val inboundMessages = LinkedBlockingQueue<Rpc.Message>()
-    var routerHandler: (Rpc.Message) -> CompletableFuture<Boolean> = {
+    var routerHandler: (Rpc.Message) -> CompletableFuture<ValidationResult> = {
         inboundMessages += it
         RESULT_VALID
     }
@@ -40,11 +51,13 @@ class TestRouter(val name: String = "" + cnt.getAndIncrement()) {
         routerInstance.also {
             it.initHandler(routerHandler)
             it.executor = testExecutor
+            it.name = name
         }
     }
     var api by lazyVar { createPubsubApi(router) }
 
     var keyPair = generateKeyPair(KEY_TYPE.ECDSA)
+    val peerId by lazy { PeerId.fromPubKey(keyPair.second) }
 
     private fun newChannel(
         channelName: String,
@@ -58,9 +71,7 @@ class TestRouter(val name: String = "" + cnt.getAndIncrement()) {
         val connection =
             ConnectionOverNetty(parentChannel, NullTransport(), initiator)
         connection.setSecureSession(SecureChannel.Session(
-            PeerId.fromPubKey(keyPair.second),
-            PeerId.fromPubKey(remoteRouter.keyPair.second),
-            remoteRouter.keyPair.second
+            peerId, remoteRouter.peerId, remoteRouter.keyPair.second
         ))
 
         return TestChannel(
@@ -80,10 +91,13 @@ class TestRouter(val name: String = "" + cnt.getAndIncrement()) {
         another: TestRouter,
         wireLogs: LogLevel? = null,
         pubsubLogs: LogLevel? = null
-    ): TestChannel.TestConnection {
+    ): TestConnection {
 
         val thisChannel = newChannel("[${idCnt.incrementAndGet()}]$name=>${another.name}", another, wireLogs, pubsubLogs, true)
         val anotherChannel = another.newChannel("[${idCnt.incrementAndGet()}]${another.name}=>$name", this, wireLogs, pubsubLogs, false)
+        listOf(thisChannel, anotherChannel).forEach {
+            it.attr(PROTOCOL).get().complete(this.protocol)
+        }
         return TestChannel.interConnect(thisChannel, anotherChannel)
     }
 
@@ -91,8 +105,9 @@ class TestRouter(val name: String = "" + cnt.getAndIncrement()) {
         another: TestRouter,
         wireLogs: LogLevel? = null,
         pubsubLogs: LogLevel? = null
-    ): TestChannel.TestConnection {
-        connect(another, wireLogs, pubsubLogs)
-        return another.connect(this, wireLogs, pubsubLogs)
+    ): SemiduplexConnection {
+        return SemiduplexConnection(
+            connect(another, wireLogs, pubsubLogs),
+            another.connect(this, wireLogs, pubsubLogs))
     }
 }

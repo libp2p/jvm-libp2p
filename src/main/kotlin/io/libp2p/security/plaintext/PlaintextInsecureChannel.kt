@@ -8,8 +8,7 @@ import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.crypto.PubKey
 import io.libp2p.core.crypto.unmarshalPublicKey
-import io.libp2p.core.multistream.Mode
-import io.libp2p.core.multistream.ProtocolMatcher
+import io.libp2p.core.multistream.ProtocolDescriptor
 import io.libp2p.core.security.SecureChannel
 import io.libp2p.etc.types.toProtobuf
 import io.libp2p.security.InvalidInitialPacket
@@ -24,8 +23,7 @@ import plaintext.pb.Plaintext
 import java.util.concurrent.CompletableFuture
 
 class PlaintextInsecureChannel(private val localKey: PrivKey) : SecureChannel {
-    override val announce = "/plaintext/2.0.0"
-    override val matcher = ProtocolMatcher(Mode.STRICT, name = announce)
+    override val protocolDescriptor = ProtocolDescriptor("/plaintext/2.0.0")
 
     override fun initChannel(ch: P2PChannel, selectedProtocol: String): CompletableFuture<out SecureChannel.Session> {
         val handshakeCompleted = CompletableFuture<SecureChannel.Session>()

@@ -150,7 +150,7 @@ open class Builder {
                 protocolVersion = "p2p/0.1"
                 publicKey = privKey.publicKey().bytes().toProtobuf()
                 addAllListenAddrs(network.listen.map { Multiaddr(it).getBytes().toProtobuf() })
-                addAllProtocols(protocols.map { it.announce })
+                addAllProtocols(protocols.flatMap { it.protocolDescriptor.announceProtocols })
             }.build().also {
                 this.idMessage = it
             }
