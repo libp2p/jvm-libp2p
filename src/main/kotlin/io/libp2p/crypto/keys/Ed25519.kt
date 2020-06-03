@@ -59,6 +59,7 @@ class Ed25519PublicKey(private val pub: Ed25519PublicKeyParameters) : PubKey(Cry
 /**
  * @return a newly-generated ED25519 private and public key pair.
  */
+@JvmOverloads
 fun generateEd25519KeyPair(random: SecureRandom = SecureRandom()): Pair<PrivKey, PubKey> = with(Ed25519KeyPairGenerator()) {
     init(Ed25519KeyGenerationParameters(random))
     val keypair = generateKeyPair()

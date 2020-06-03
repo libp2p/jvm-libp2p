@@ -93,6 +93,7 @@ class RsaPublicKey(private val k: JavaPublicKey) : PubKey(Crypto.KeyType.RSA) {
  * @param bits the number of bits required in the key.
  * @return a pair of the private and public keys.
  */
+@JvmOverloads
 fun generateRsaKeyPair(bits: Int, random: SecureRandom = SecureRandom()): Pair<PrivKey, PubKey> {
     if (bits < 2048) {
         throw Libp2pException(ErrRsaKeyTooSmall)

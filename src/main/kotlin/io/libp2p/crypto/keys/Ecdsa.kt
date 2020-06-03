@@ -123,6 +123,7 @@ private fun generateECDSAKeyPairWithCurve(curve: ECNamedCurveParameterSpec, rand
  * Generates a new ECDSA private and public key pair.
  * @return a pair of private and public keys.
  */
+@JvmOverloads
 fun generateEcdsaKeyPair(random: SecureRandom = SecureRandom()): Pair<PrivKey, PubKey> {
     // http://www.bouncycastle.org/wiki/display/JA1/Supported+Curves+%28ECDSA+and+ECGOST%29
     // and
