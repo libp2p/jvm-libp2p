@@ -51,6 +51,9 @@ implementation:
 - [X] Identify protocol
 - [X] Ping protocol
 - [X] [peer ID](https://github.com/libp2p/specs/pull/100)
+- [X] noise security protocol
+- [X] MDNS
+- [X] Gossip 1.1 pubsub 
 
 We are explicitly leaving out the peerstore, DHT, pubsub, connection manager,
 etc. and other subsystems or concepts that are internal to implementations and
@@ -66,14 +69,14 @@ Builds are published to JCenter. Maven Central mirrors JCenter, but updates can 
        jcenter()
    }
 
-   implementation 'io.libp2p:jvm-libp2p-minimal:0.4.0-RELEASE'
+   implementation 'io.libp2p:jvm-libp2p-minimal:0.5.0-RELEASE'
 ```
 ### Using Maven
 ``` 
   <dependency>
     <groupId>io.libp2p</groupId>
     <artifactId>jvm-libp2p-minimal</artifactId>
-    <version>0.3.2-RELEASE</version>
+    <version>0.5.0-RELEASE</version>
     <type>pom</type>
   </dependency>
 ```
