@@ -36,6 +36,7 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
     override var curTimeMillis: () -> Long by lazyVarInit { { System.currentTimeMillis() } }
     override var random by lazyVarInit { Random() }
     override var name: String = "router"
+    var messageIdGenerator: (Rpc.Message) -> MessageId = { it.from.toByteArray().toHex() + it.seqno.toByteArray().toHex() }
 
     val peerTopics = MultiSet<PeerHandler, String>()
     private var msgHandler: (Rpc.Message) -> CompletableFuture<ValidationResult> = { RESULT_VALID }
@@ -47,8 +48,7 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
     private var debugHandler: ChannelHandler? = null
     private val pendingMessagePromises = MultiSet<PeerHandler, CompletableFuture<Unit>>()
 
-    protected open fun getMessageId(msg: Rpc.Message): MessageId =
-        msg.from.toByteArray().toHex() + msg.seqno.toByteArray().toHex()
+    protected fun getMessageId(msg: Rpc.Message): MessageId = messageIdGenerator(msg)
 
     override fun publish(msg: Rpc.Message): CompletableFuture<Unit> {
         return submitAsyncOnEventThread {
