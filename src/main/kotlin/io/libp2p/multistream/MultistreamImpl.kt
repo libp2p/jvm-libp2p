@@ -16,9 +16,9 @@ class MultistreamImpl<TController>(initList: List<ProtocolBinding<TController>> 
         return with(ch) {
             pushHandler(
                 if (ch.isInitiator) {
-                    Negotiator.createRequesterInitializer(*bindings.map { it.announce }.toTypedArray())
+                    Negotiator.createRequesterInitializer(*bindings.flatMap { it.protocolDescriptor.announceProtocols }.toTypedArray())
                 } else {
-                    Negotiator.createResponderInitializer(bindings.map { it.matcher })
+                    Negotiator.createResponderInitializer(bindings.map { it.protocolDescriptor.protocolMatcher })
                 }
             )
             val protocolSelect = ProtocolSelect(bindings)

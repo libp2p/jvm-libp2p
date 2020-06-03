@@ -1,15 +1,18 @@
 package io.libp2p.pubsub
 
+import io.libp2p.core.Stream
 import io.libp2p.core.pubsub.MessageApi
 import io.libp2p.core.pubsub.RESULT_INVALID
 import io.libp2p.core.pubsub.RESULT_VALID
 import io.libp2p.core.pubsub.Subscriber
 import io.libp2p.core.pubsub.Topic
+import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.core.pubsub.Validator
 import io.libp2p.etc.types.toByteBuf
 import io.libp2p.etc.types.toBytesBigEndian
 import io.libp2p.etc.types.toProtobuf
 import io.libp2p.tools.TestChannel.TestConnection
+import io.libp2p.transport.implementation.P2PChannelOverNetty
 import io.netty.handler.logging.LogLevel
 import io.netty.util.ResourceLeakDetector
 import org.junit.jupiter.api.Assertions
@@ -21,6 +24,8 @@ import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeUnit
 
 typealias RouterCtor = () -> PubsubRouterDebug
+
+fun Stream.nettyChannel() = (this as P2PChannelOverNetty).nettyChannel
 
 abstract class PubsubRouterTest(val router: RouterCtor) {
     init {
@@ -50,12 +55,6 @@ abstract class PubsubRouterTest(val router: RouterCtor) {
         Assertions.assertEquals(msg, router2.inboundMessages.poll(5, TimeUnit.SECONDS))
         Assertions.assertTrue(router1.inboundMessages.isEmpty())
         Assertions.assertTrue(router2.inboundMessages.isEmpty())
-
-        System.gc()
-        Thread.sleep(500)
-        System.gc()
-        Thread.sleep(500)
-        System.gc()
     }
 
     @Test
@@ -129,7 +128,7 @@ abstract class PubsubRouterTest(val router: RouterCtor) {
         for (i in 1..20) {
             val routerEnd = fuzz.createTestRouter(router())
             allRouters += routerEnd
-            routerEnd.connectSemiDuplex(routerCenter)
+            routerEnd.connectSemiDuplex(routerCenter, pubsubLogs = LogLevel.ERROR)
         }
 
         allRouters.forEach { it.router.subscribe("topic1") }
@@ -139,6 +138,9 @@ abstract class PubsubRouterTest(val router: RouterCtor) {
 
         val msg1 = newMessage("topic1", 0L, "Hello".toByteArray())
         routerCenter.router.publish(msg1)
+
+        // 5 heartbeats for all
+        fuzz.timeController.addTime(Duration.ofSeconds(5))
 
         Assertions.assertTrue(routerCenter.inboundMessages.isEmpty())
 
@@ -163,10 +165,10 @@ abstract class PubsubRouterTest(val router: RouterCtor) {
         for (i in 1..20) {
             val routerEnd = fuzz.createTestRouter(router())
             allRouters += routerEnd
-            allConnections += routerEnd.connectSemiDuplex(routerCenter)
+            allConnections += routerEnd.connectSemiDuplex(routerCenter).connections
         }
         for (i in 0..19) {
-            allConnections += allRouters[i + 1].connectSemiDuplex(allRouters[(i + 1) % 20 + 1])
+            allConnections += allRouters[i + 1].connectSemiDuplex(allRouters[(i + 1) % 20 + 1]).connections
         }
 
         allRouters.forEach { it.router.subscribe("topic1") }
@@ -228,19 +230,23 @@ abstract class PubsubRouterTest(val router: RouterCtor) {
         }
         for (i in 0 until nodesCount) {
             for (j in 1..neighboursCount / 2)
-            allConnections += allRouters[i].connectSemiDuplex(allRouters[(i + j) % 21]/*, pubsubLogs = LogLevel.ERROR*/)
+                allConnections += allRouters[i].connectSemiDuplex(allRouters[(i + j) % 21]/*, pubsubLogs = LogLevel.ERROR*/)
+                    .connections
         }
 
         allRouters.forEach { it.router.subscribe("topic1") }
 
-        // 2 heartbeats for all
-        fuzz.timeController.addTime(Duration.ofSeconds(2))
+        // 10 heartbeats for all to settle down meshes evenly
+        fuzz.timeController.addTime(Duration.ofSeconds(10))
         val firstCount: Int
         run {
             val msg1 = newMessage("topic1", 0L, "Hello".toByteArray())
             allRouters[0].router.publish(msg1)
 
             Assertions.assertTrue(allRouters[0].inboundMessages.isEmpty())
+
+            // 5 heartbeats for all to give a chance for gossiping
+            fuzz.timeController.addTime(Duration.ofSeconds(5))
 
             val receiveRouters = allRouters - allRouters[0]
             val msgCount = receiveRouters.sumBy { it.inboundMessages.size }
@@ -256,6 +262,9 @@ abstract class PubsubRouterTest(val router: RouterCtor) {
 
             Assertions.assertTrue(allRouters[0].inboundMessages.isEmpty())
 
+            // 5 heartbeats for all to give a chance for gossiping
+            fuzz.timeController.addTime(Duration.ofSeconds(5))
+
             val receiveRouters = allRouters - allRouters[0]
             val msgCount = receiveRouters.sumBy { it.inboundMessages.size }
             val wireMsgCount = allConnections.sumBy { it.getMessageCount().toInt() }
@@ -269,10 +278,10 @@ abstract class PubsubRouterTest(val router: RouterCtor) {
         }
 
 //        val handler2router: (P2PService.PeerHandler) -> TestRouter = {
-//            val channel = it.streamHandler.stream.nettyChannel
+//            val channel = it.streamHandler.stream.nettyChannel()
 //            val connection = allConnections.find { channel == it.ch1 || channel == it.ch2 }!!
 //            val otherChannel = if (connection.ch1 == channel) connection.ch2 else connection.ch1
-//            allRouters.find { (it.router as AbstractRouter).peers.any { it.streamHandler.stream.nettyChannel == otherChannel } }!!
+//            allRouters.find { (it.router as AbstractRouter).peers.any { it.streamHandler.stream.nettyChannel() == otherChannel } }!!
 //        }
 //        allRouters.forEach {tr ->
 //            (tr.router as? GossipRouter)?.also {
@@ -337,15 +346,15 @@ abstract class PubsubRouterTest(val router: RouterCtor) {
             .map { apis[2].subscribe(it.second, it.first); it.second }
 
         val scheduler = fuzz.createControlledExecutor()
-        val delayed = { result: Boolean, delayMs: Long ->
-            CompletableFuture<Boolean>().also {
+        val delayed = { result: ValidationResult, delayMs: Long ->
+            CompletableFuture<ValidationResult>().also {
                 scheduler.schedule({ it.complete(result) }, delayMs, TimeUnit.MILLISECONDS)
             }
         }
         apis[1].subscribe(Validator { RESULT_VALID }, topics[0])
         apis[1].subscribe(Validator { RESULT_INVALID }, topics[1])
-        apis[1].subscribe(Validator { delayed(true, 500) }, topics[2])
-        apis[1].subscribe(Validator { delayed(false, 500) }, topics[3])
+        apis[1].subscribe(Validator { delayed(ValidationResult.Valid, 500) }, topics[2])
+        apis[1].subscribe(Validator { delayed(ValidationResult.Invalid, 500) }, topics[3])
 
         // 2 heartbeats for all
         fuzz.timeController.addTime(Duration.ofSeconds(2))

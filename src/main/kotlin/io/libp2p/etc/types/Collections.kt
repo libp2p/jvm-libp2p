@@ -3,21 +3,19 @@ package io.libp2p.etc.types
 import java.util.Collections
 import java.util.LinkedHashMap
 import java.util.LinkedList
+import java.util.Random
 import java.util.function.Predicate
 
 fun <C> Collection<C>.copy(): Collection<C> = this.toMutableList()
 
-class LRUSet {
-    companion object {
-        fun <C> create(maxSize: Int): MutableSet<C> {
-            return Collections.newSetFromMap(object : LinkedHashMap<C, Boolean>() {
-                override fun removeEldestEntry(eldest: MutableMap.MutableEntry<C, Boolean>?): Boolean {
-                    return size > maxSize
-                }
-            })
+fun <C> createLRUSet(maxSize: Int): MutableSet<C> = Collections.newSetFromMap(createLRUMap(maxSize))
+
+fun <K, V> createLRUMap(maxSize: Int): MutableMap<K, V> =
+    object : LinkedHashMap<K, V>() {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<K, V>?): Boolean {
+            return size > maxSize
         }
     }
-}
 
 class LimitedList<C>(val maxSize: Int) : LinkedList<C>() {
     var onDropCallback: ((C) -> Unit)? = null
@@ -116,4 +114,14 @@ class MultiSet<K, V> : Iterable<Map.Entry<K, MutableList<V>>> {
 
 operator fun <C> List<C>.get(range: IntRange): List<C> {
     return subList(range.first, range.last + 1)
+}
+
+fun <C : Number> Collection<C>.median(): Double {
+    val sorted = map { it.toDouble() }.sorted()
+    return if (size % 2 == 0) (sorted[size / 2 - 1] + sorted[size / 2]) / 2.0 else sorted[size / 2]
+}
+
+fun <C> List<C>.shuffledFrom(startFrom: Int, rnd: Random = Random()) = shuffled(startFrom until size, rnd)
+fun <C> List<C>.shuffled(range: IntRange, rnd: Random = Random()): List<C> {
+    return slice(0 until range.first) + slice(range).shuffled(rnd) + slice(range.last + 1 until size)
 }

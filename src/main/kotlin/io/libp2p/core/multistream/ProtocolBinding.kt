@@ -2,9 +2,9 @@ package io.libp2p.core.multistream
 
 import io.libp2p.core.Host
 import io.libp2p.core.Libp2pException
-import io.libp2p.core.PeerId
 import io.libp2p.core.P2PChannel
 import io.libp2p.core.P2PChannelHandler
+import io.libp2p.core.PeerId
 import io.libp2p.core.StreamPromise
 import io.libp2p.core.multiformats.Multiaddr
 import java.util.concurrent.CompletableFuture
@@ -18,15 +18,11 @@ import java.util.concurrent.CompletableFuture
  * Stream (e.g. user-land protocols such as pubsub, DHT, etc.)
  */
 interface ProtocolBinding<out TController> {
-    /**
-     * The protocol ID with which we'll announce this protocol to peers.
-     */
-    val announce: String
 
     /**
-     * Matching heuristic to be used on inbound negotiations. If positive, it leads to activation of this protocol.
+     * Supported protocol ids for this binding
      */
-    val matcher: ProtocolMatcher
+    val protocolDescriptor: ProtocolDescriptor
 
     /**
      * Dials the specified peer, and attempts to connect this Protocol
@@ -40,7 +36,7 @@ interface ProtocolBinding<out TController> {
     @JvmDefault
     fun dial(host: Host, peer: PeerId, vararg addr: Multiaddr): StreamPromise<out TController> {
         return host.newStream(
-            announce,
+            protocolDescriptor.announceProtocols,
             peer,
             *addr
         )
@@ -57,12 +53,11 @@ interface ProtocolBinding<out TController> {
      * _initiator_ binding with explicit protocol id
      */
     @JvmDefault
-    fun toInitiator(protocol: String): ProtocolBinding<TController> {
-        if (!matcher.matches(protocol)) throw Libp2pException("This binding doesn't support $protocol")
+    fun toInitiator(protocols: List<ProtocolId>): ProtocolBinding<TController> {
+        if (!protocolDescriptor.matchesAny(protocols)) throw Libp2pException("This binding doesn't support $protocols")
         val srcBinding = this
         return object : ProtocolBinding<TController> {
-            override val announce = protocol
-            override val matcher = ProtocolMatcher(Mode.STRICT, announce)
+            override val protocolDescriptor = ProtocolDescriptor(protocols, srcBinding.protocolDescriptor.protocolMatcher)
             override fun initChannel(ch: P2PChannel, selectedProtocol: String): CompletableFuture<out TController> =
                 srcBinding.initChannel(ch, selectedProtocol)
         }
@@ -72,10 +67,9 @@ interface ProtocolBinding<out TController> {
         /**
          * Creates a [ProtocolBinding] instance with [Mode.STRICT] [matcher] and specified [handler]
          */
-        fun <T> createSimple(protocolName: String, handler: P2PChannelHandler<T>): ProtocolBinding<T> {
+        fun <T> createSimple(protocolName: ProtocolId, handler: P2PChannelHandler<T>): ProtocolBinding<T> {
             return object : ProtocolBinding<T> {
-                override val announce = protocolName
-                override val matcher = ProtocolMatcher(Mode.STRICT, announce)
+                override val protocolDescriptor = ProtocolDescriptor(protocolName)
                 override fun initChannel(ch: P2PChannel, selectedProtocol: String): CompletableFuture<out T> {
                     return handler.initChannel(ch)
                 }

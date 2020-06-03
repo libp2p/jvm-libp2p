@@ -2,7 +2,7 @@ package io.libp2p.etc.util
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder
 import io.libp2p.core.Stream
-import io.libp2p.etc.types.lazyVar
+import io.libp2p.etc.types.lazyVarInit
 import io.libp2p.etc.types.submitAsync
 import io.libp2p.etc.types.toVoidCompletableFuture
 import io.libp2p.pubsub.AbstractRouter
@@ -80,9 +80,11 @@ abstract class P2PService {
      * to write data to the peer
      */
     open inner class PeerHandler(val streamHandler: StreamHandler) {
-        open fun peerId() = streamHandler.stream.remotePeerId()
+        val peerId = streamHandler.stream.remotePeerId()
         open fun writeAndFlush(msg: Any): CompletableFuture<Unit> = streamHandler.ctx!!.writeAndFlush(msg).toVoidCompletableFuture()
         open fun isActive() = streamHandler.ctx != null
+        open fun getInboundHandler(): StreamHandler? = streamHandler
+        open fun getOutboundHandler(): StreamHandler? = streamHandler
     }
 
     /**
@@ -92,7 +94,7 @@ abstract class P2PService {
      * The executor can be altered right after the instance creation.
      * Changing it later may have unpredictable results
      */
-    var executor: ScheduledExecutorService by lazyVar {
+    var executor: ScheduledExecutorService by lazyVarInit {
         Executors.newSingleThreadScheduledExecutor(
             threadFactory
         )

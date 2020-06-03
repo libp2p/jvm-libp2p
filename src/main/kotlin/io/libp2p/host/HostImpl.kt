@@ -87,20 +87,20 @@ class HostImpl(
         connectionHandlers -= handler
     }
 
-    override fun <TController> newStream(protocol: String, peer: PeerId, vararg addr: Multiaddr): StreamPromise<TController> {
+    override fun <TController> newStream(protocols: List<String>, peer: PeerId, vararg addr: Multiaddr): StreamPromise<TController> {
         val retF = network.connect(peer, *addr)
-            .thenApply { newStream<TController>(protocol, it) }
+            .thenApply { newStream<TController>(protocols, it) }
         return StreamPromise(retF.thenCompose { it.stream }, retF.thenCompose { it.controller })
     }
 
-    override fun <TController> newStream(protocol: String, conn: Connection): StreamPromise<TController> {
+    override fun <TController> newStream(protocols: List<String>, conn: Connection): StreamPromise<TController> {
         val binding =
             @Suppress("UNCHECKED_CAST")
-            protocolHandlers.bindings.find { it.matcher.matches(protocol) } as? ProtocolBinding<TController>
-            ?: throw NoSuchLocalProtocolException("Protocol handler not found: $protocol")
+            protocolHandlers.bindings.find { it.protocolDescriptor.matchesAny(protocols) } as? ProtocolBinding<TController>
+            ?: throw NoSuchLocalProtocolException("Protocol handler not found: $protocols")
 
         val multistream: Multistream<TController> =
-            Multistream.create(binding.toInitiator(protocol))
+            Multistream.create(binding.toInitiator(protocols))
         return conn.muxerSession().createStream(object : StreamHandler<TController> {
             override fun handleStream(stream: Stream): CompletableFuture<out TController> {
                 val ret = multistream.toStreamHandler().handleStream(stream)

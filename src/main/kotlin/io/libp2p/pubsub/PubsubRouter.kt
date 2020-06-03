@@ -1,6 +1,7 @@
 package io.libp2p.pubsub
 
 import io.libp2p.core.Stream
+import io.libp2p.core.pubsub.ValidationResult
 import io.netty.channel.ChannelHandler
 import pubsub.pb.Rpc
 import java.util.Random
@@ -14,6 +15,8 @@ import java.util.concurrent.ScheduledExecutorService
  * All the implementation methods should be thread-safe
  */
 interface PubsubMessageRouter {
+
+    val protocol: PubsubProtocol
 
     /**
      * Validates and broadcasts the message to suitable peers
@@ -30,7 +33,7 @@ interface PubsubMessageRouter {
      * All the messages received by the router are forwarded to the [handler] independently
      * of any client subscriptions. Is it up to the client API to sort out subscriptions
      */
-    fun initHandler(handler: (Rpc.Message) -> CompletableFuture<Boolean>)
+    fun initHandler(handler: (Rpc.Message) -> CompletableFuture<ValidationResult>)
 
     /**
      * Notifies the router that a client wants to receive messages on the following topics
@@ -88,7 +91,7 @@ interface PubsubRouterDebug : PubsubRouter {
      * System time supplier. Normally defaults to [System.currentTimeMillis]
      * If router needs system time it should refer to this supplier
      */
-    var curTime: () -> Long
+    var curTimeMillis: () -> Long
 
     /**
      * Randomness supplier
@@ -97,6 +100,8 @@ interface PubsubRouterDebug : PubsubRouter {
      * to perform deterministic testing
      */
     var random: Random
+
+    var name: String
 
     /**
      * The same as [PubsubRouter.addPeer] but adds the [debugHandler] right before

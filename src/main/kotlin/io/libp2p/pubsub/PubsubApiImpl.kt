@@ -7,7 +7,9 @@ import io.libp2p.core.pubsub.PubsubApi
 import io.libp2p.core.pubsub.PubsubPublisherApi
 import io.libp2p.core.pubsub.PubsubSubscription
 import io.libp2p.core.pubsub.Topic
+import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.core.pubsub.Validator
+import io.libp2p.etc.types.thenApplyAll
 import io.libp2p.etc.types.toByteArray
 import io.libp2p.etc.types.toByteBuf
 import io.libp2p.etc.types.toBytesBigEndian
@@ -54,15 +56,21 @@ open class PubsubApiImpl(val router: PubsubRouter) : PubsubApi {
     }
 
     val subscriptions: MutableMap<Topic, MutableList<SubscriptionImpl>> = mutableMapOf()
+    private val validationResultReduce = { r1: ValidationResult, r2: ValidationResult ->
+        when {
+            r1 == ValidationResult.Invalid || r2 == ValidationResult.Invalid -> ValidationResult.Invalid
+            r1 == ValidationResult.Ignore || r2 == ValidationResult.Ignore -> ValidationResult.Ignore
+            else -> ValidationResult.Valid
+        }
+    }
 
-    private fun onNewMessage(msg: Rpc.Message): CompletableFuture<Boolean> {
+    private fun onNewMessage(msg: Rpc.Message): CompletableFuture<ValidationResult> {
         val validationFuts = synchronized(this) {
             msg.topicIDsList.mapNotNull { subscriptions[Topic(it)] }.flatten().distinct()
         }.map {
             it.receiver.apply(rpc2Msg(msg))
         }
-        return CompletableFuture.allOf(*validationFuts.toTypedArray())
-            .thenApply { validationFuts.all { it.get() } }
+        return validationFuts.thenApplyAll { it.reduce(validationResultReduce) }
     }
 
     private fun rpc2Msg(msg: Rpc.Message): MessageApi {

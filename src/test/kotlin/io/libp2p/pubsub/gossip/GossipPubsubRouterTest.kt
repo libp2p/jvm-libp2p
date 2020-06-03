@@ -1,5 +1,6 @@
 package io.libp2p.pubsub.gossip
 
+import io.libp2p.etc.types.seconds
 import io.libp2p.pubsub.DeterministicFuzz
 import io.libp2p.pubsub.PubsubRouterTest
 import io.libp2p.pubsub.TestRouter
@@ -8,13 +9,23 @@ import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import java.time.Duration
 
-class GossipPubsubRouterTest : PubsubRouterTest({ GossipRouter().withDConstants(3, 3, 100) }) {
+class GossipPubsubRouterTest : PubsubRouterTest({
+    GossipRouter(
+        GossipParams(3, 3, 100, floodPublish = false)
+    )
+}) {
+
     @Test
     override fun TenNeighborsTopology() {
         for (d in 3..6) {
             for (seed in 0..10) {
                 print("D=$d, seed=$seed  ")
-                super.doTenNeighborsTopology(seed) { GossipRouter().withDConstants(d, d, d) }
+                super.doTenNeighborsTopology(seed) {
+                    GossipRouter(
+                        // small backoff timeout for faster meshes settling down
+                        GossipParams(d, d, d, DLazy = 100, pruneBackoff = 1.seconds)
+                    )
+                }
             }
         }
     }
@@ -27,9 +38,8 @@ class GossipPubsubRouterTest : PubsubRouterTest({ GossipRouter().withDConstants(
 
         val otherCount = 5
         for (i in 1..otherCount) {
-            val r = GossipRouter().withDConstants(1, 0)
+            val r = GossipRouter(GossipParams(1, 0))
             val routerEnd = fuzz.createTestRouter(r)
-            (routerEnd.router as GossipRouter).heartbeat // init heartbeat with current time
             allRouters += routerEnd
         }
 
@@ -37,7 +47,7 @@ class GossipPubsubRouterTest : PubsubRouterTest({ GossipRouter().withDConstants(
         // this is to test ihave/iwant
         fuzz.timeController.addTime(Duration.ofMillis(1))
 
-        val r = GossipRouter().withDConstants(3, 3, 3, 1000)
+        val r = GossipRouter(GossipParams(3, 3, 3, DOut = 0, DLazy = 1000, floodPublish = false))
         val routerCenter = fuzz.createTestRouter(r)
         allRouters.add(0, routerCenter)
 

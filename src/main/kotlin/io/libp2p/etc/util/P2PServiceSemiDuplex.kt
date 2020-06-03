@@ -21,15 +21,15 @@ abstract class P2PServiceSemiDuplex : P2PService() {
 
         override fun isActive() = getOutboundHandler()?.ctx != null
 
-        fun getInboundHandler() = if (streamHandler.stream.isInitiator) otherStreamHandler else streamHandler
-        fun getOutboundHandler() = if (streamHandler.stream.isInitiator) streamHandler else otherStreamHandler
+        override fun getInboundHandler() = if (streamHandler.stream.isInitiator) otherStreamHandler else streamHandler
+        override fun getOutboundHandler() = if (streamHandler.stream.isInitiator) streamHandler else otherStreamHandler
     }
 
     override fun createPeerHandler(streamHandler: StreamHandler) = SDPeerHandler(streamHandler)
 
     override fun streamAdded(streamHandler: StreamHandler) {
         val stream = streamHandler.stream
-        val peerHandler = peers.find { it.peerId() == stream.remotePeerId() }
+        val peerHandler = peers.find { it.peerId == stream.remotePeerId() }
         if (peerHandler == null) {
             super.streamAdded(streamHandler)
         } else {
@@ -37,11 +37,11 @@ abstract class P2PServiceSemiDuplex : P2PService() {
             when {
                 peerHandler.otherStreamHandler != null -> {
                     stream.close()
-                    throw BadPeerException("Duplicate steam for peer ${peerHandler.peerId()}. Closing it silently")
+                    throw BadPeerException("Duplicate steam for peer ${peerHandler.peerId}. Closing it silently")
                 }
                 peerHandler.streamHandler.stream.isInitiator == stream.isInitiator -> {
                     stream.close()
-                    throw BadPeerException("Duplicate stream with initiator = ${stream.isInitiator} for peer ${peerHandler.peerId()}")
+                    throw BadPeerException("Duplicate stream with initiator = ${stream.isInitiator} for peer ${peerHandler.peerId}")
                 }
                 else -> {
                     peerHandler.otherStreamHandler = streamHandler

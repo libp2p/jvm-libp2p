@@ -15,9 +15,8 @@ interface IdentifyController {
 
 class Identify(idMessage: IdentifyOuterClass.Identify? = null) : IdentifyBinding(IdentifyProtocol(idMessage))
 
-open class IdentifyBinding(override val protocol: IdentifyProtocol) : StrictProtocolBinding<IdentifyController>(protocol) {
-    override val announce = "/ipfs/id/1.0.0"
-}
+open class IdentifyBinding(override val protocol: IdentifyProtocol) :
+    StrictProtocolBinding<IdentifyController>("/ipfs/id/1.0.0", protocol)
 
 class IdentifyProtocol(var idMessage: IdentifyOuterClass.Identify? = null) :
     ProtobufProtocolHandler<IdentifyController>(IdentifyOuterClass.Identify.getDefaultInstance()) {

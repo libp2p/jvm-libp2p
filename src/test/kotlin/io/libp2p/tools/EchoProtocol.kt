@@ -17,9 +17,8 @@ interface EchoController {
 
 class Echo : EchoBinding(EchoProtocol())
 
-open class EchoBinding(echo: EchoProtocol) : StrictProtocolBinding<EchoController>(echo) {
-    override val announce = "/test/echo"
-}
+open class EchoBinding(echo: EchoProtocol) :
+    StrictProtocolBinding<EchoController>("/test/echo", echo)
 
 open class EchoProtocol : ProtocolHandler<EchoController>() {
     override fun onStartInitiator(stream: Stream): CompletableFuture<EchoController> {

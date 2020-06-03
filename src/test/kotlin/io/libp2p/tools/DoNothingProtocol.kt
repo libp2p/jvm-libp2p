@@ -11,9 +11,8 @@ interface DoNothingController
 
 class DoNothing : DoNothingBinding(DoNothingProtocol())
 
-open class DoNothingBinding(nullProtocol: DoNothingProtocol) : StrictProtocolBinding<DoNothingController>(nullProtocol) {
-    override val announce = "/ipfs/do-nothing/1.0.0"
-}
+open class DoNothingBinding(nullProtocol: DoNothingProtocol) :
+    StrictProtocolBinding<DoNothingController>("/ipfs/do-nothing/1.0.0", nullProtocol)
 
 class DoNothingProtocol : ProtocolHandler<DoNothingController>() {
     override fun onStartInitiator(stream: Stream) = addDoNothingHandler(stream)

@@ -4,8 +4,7 @@ import io.libp2p.core.ConnectionClosedException
 import io.libp2p.core.P2PChannel
 import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.PrivKey
-import io.libp2p.core.multistream.Mode
-import io.libp2p.core.multistream.ProtocolMatcher
+import io.libp2p.core.multistream.ProtocolDescriptor
 import io.libp2p.core.security.SecureChannel
 import io.libp2p.etc.REMOTE_PEER_ID
 import io.netty.buffer.ByteBuf
@@ -20,8 +19,7 @@ private val log = LogManager.getLogger(SecIoSecureChannel::class.java)
 private val HandshakeHandlerName = "SecIoHandshake"
 
 class SecIoSecureChannel(private val localKey: PrivKey) : SecureChannel {
-    override val announce = "/secio/1.0.0"
-    override val matcher = ProtocolMatcher(Mode.STRICT, name = "/secio/1.0.0")
+    override val protocolDescriptor = ProtocolDescriptor("/secio/1.0.0")
 
     override fun initChannel(ch: P2PChannel, selectedProtocol: String): CompletableFuture<SecureChannel.Session> {
         val handshakeComplete = CompletableFuture<SecureChannel.Session>()
