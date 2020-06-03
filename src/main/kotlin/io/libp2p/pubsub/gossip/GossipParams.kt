@@ -4,11 +4,21 @@ import io.libp2p.core.PeerId
 import io.libp2p.etc.types.millis
 import io.libp2p.etc.types.minutes
 import io.libp2p.etc.types.seconds
+import io.libp2p.pubsub.gossip.builders.GossipParamsBuilder
+import io.libp2p.pubsub.gossip.builders.GossipPeerScoreParamsBuilder
+import io.libp2p.pubsub.gossip.builders.GossipScoreParamsBuilder
+import io.libp2p.pubsub.gossip.builders.GossipTopicScoreParamsBuilder
 import java.time.Duration
 import kotlin.math.max
 import kotlin.math.min
 
 typealias Weight = Double
+
+fun defaultDLow(D: Int) = D * 2 / 3
+fun defaultDHigh(D: Int) = D * 2
+fun defaultDLazy(D: Int) = D
+fun defaultDScore(D: Int) = D
+fun defaultDOut(D: Int, DLow: Int) = min(D / 2, max(DLow - 1, 0))
 
 /**
  * Parameters of Gossip 1.1 router
@@ -26,20 +36,20 @@ data class GossipParams(
      * If we have fewer than [DLow] peers, we will attempt to graft some more into the mesh at
      * the next heartbeat.
      */
-    val DLow: Int = D * 2 / 3,
+    val DLow: Int = defaultDLow(D),
 
     /**
      * [DHigh] sets the upper bound on the number of peers we keep in a GossipSub topic mesh.
      * If we have more than [DHigh] peers, we will select some to prune from the mesh at the next heartbeat.
      */
-    val DHigh: Int = D * 2,
+    val DHigh: Int = defaultDHigh(D),
 
     /**
      * [DScore] affects how peers are selected when pruning a mesh due to over subscription.
      * At least [DScore] of the retained peers will be high-scoring, while the remainder are
      * chosen randomly.
      */
-    val DScore: Int = D,
+    val DScore: Int = defaultDScore(D),
 
     /**
      * 	[DOut] sets the quota for the number of outbound connections to maintain in a topic mesh.
@@ -49,7 +59,7 @@ data class GossipParams(
      *
      * [DOut] must be set below [DLow], and must not exceed [D / 2].
      */
-    val DOut: Int = min(D / 2, max(DLow - 1, 0)),
+    val DOut: Int = defaultDOut(D, DLow),
 
     /**
      * [DLazy] affects how many peers we will emit gossip to at each heartbeat.
@@ -57,7 +67,7 @@ data class GossipParams(
      * number may be more, depending on GossipSubGossipFactor and how many peers we're
      * connected to.
      */
-    val DLazy: Int = D,
+    val DLazy: Int = defaultDLazy(D),
 
     /**
      * [fanoutTTL] controls how long we keep track of the fanout state. If it's been
@@ -180,6 +190,11 @@ data class GossipParams(
         check(DHigh >= D, "DHigh should be >= D")
         check(gossipFactor in 0.0..1.0, "gossipFactor should be in range [0.0, 1.1]")
     }
+
+    companion object {
+        @JvmStatic
+        fun builder() = GossipParamsBuilder()
+    }
 }
 
 /**
@@ -233,6 +248,11 @@ data class GossipScoreParams(
         check(graylistThreshold <= publishThreshold, "gossipThreshold should be < publishThreshold")
         check(acceptPXThreshold >= 0, "acceptPXThreshold should be > 0")
         check(opportunisticGraftThreshold >= 0, "opportunisticGraftThreshold should be > 0")
+    }
+
+    companion object {
+        @JvmStatic
+        fun builder() = GossipScoreParamsBuilder(GossipScoreParams())
     }
 }
 
@@ -322,6 +342,10 @@ data class GossipPeerScoreParams(
         check(behaviourPenaltyWeight == 0.0 || (behaviourPenaltyDecay > 0.0 && behaviourPenaltyDecay <= 1.0),
             "behaviourPenaltyDecay should be in range (0.0, 1.0]"
         )
+    }
+    companion object {
+        @JvmStatic
+        fun builder() = GossipPeerScoreParamsBuilder(GossipPeerScoreParams())
     }
 }
 
@@ -431,6 +455,10 @@ data class GossipTopicScoreParams(
         )
         check(meshFailurePenaltyWeight <= 0, "meshFailurePenaltyWeight <= 0")
         check(invalidMessageDeliveriesWeight <= 0, "invalidMessageDeliveriesWeight <= 0")
+    }
+    companion object {
+        @JvmStatic
+        fun builder() = GossipTopicScoreParamsBuilder(GossipTopicScoreParams())
     }
 }
 
