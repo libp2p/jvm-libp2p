@@ -95,9 +95,9 @@ abstract class NettyTransport(
 
         val listener = server.clone()
             .childHandler(
-                nettyInitializer { ch ->
-                    registerChannel(ch)
-                    ch.pipeline().addLast(channelHandler)
+                nettyInitializer { init ->
+                    registerChannel(init.channel)
+                    init.addLastLocal(channelHandler)
                 }
             )
 

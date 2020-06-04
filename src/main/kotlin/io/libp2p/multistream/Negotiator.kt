@@ -3,6 +3,7 @@ package io.libp2p.multistream
 import io.libp2p.core.multistream.ProtocolMatcher
 import io.libp2p.etc.events.ProtocolNegotiationFailed
 import io.libp2p.etc.events.ProtocolNegotiationSucceeded
+import io.libp2p.etc.util.netty.NettyInit
 import io.libp2p.etc.util.netty.StringSuffixCodec
 import io.libp2p.etc.util.netty.nettyInitializer
 import io.netty.channel.Channel
@@ -62,9 +63,9 @@ object Negotiator {
         }
     }
 
-    fun initNegotiator(ch: Channel, handler: GenericHandler) {
-        handler.prehandlers.forEach { ch.pipeline().addLast(it) }
-        ch.pipeline().addLast(handler)
+    fun initNegotiator(ch: NettyInit, handler: GenericHandler) {
+        handler.prehandlers.forEach { ch.addLastLocal(it) }
+        ch.addLastLocal(handler)
     }
 
     abstract class GenericHandler : SimpleChannelInboundHandler<String>() {
@@ -94,7 +95,7 @@ object Negotiator {
             } else {
                 processMsg(ctx, msg)?.also { completeEvent ->
                     // first fire event to setup a handler for selected protocol
-                    ctx.pipeline().fireUserEventTriggered(completeEvent)
+                    ctx.fireUserEventTriggered(completeEvent)
                     ctx.pipeline().remove(this@GenericHandler)
                     // DelimiterBasedFrameDecoder should be removed last since it
                     // propagates unhandled bytes on removal

@@ -23,12 +23,12 @@ class TestStreamChannel<TController>(
 ) :
     EmbeddedChannel(
         nettyInitializer {
-            it.attr(STREAM).set(TestStream(it, initiator))
+            it.channel.attr(STREAM).set(TestStream(it.channel, initiator))
         },
         *handlers,
         nettyInitializer {
             if (streamHandler != null) {
-                streamHandler.initChannel(it.getP2PChannel()).forward(controllerFuture)
+                streamHandler.initChannel(it.channel.getP2PChannel()).forward(controllerFuture)
             }
         }
     )
