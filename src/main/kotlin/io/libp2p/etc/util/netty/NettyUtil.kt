@@ -8,7 +8,7 @@ import io.netty.channel.ChannelInitializer
 import io.netty.util.internal.StringUtil
 
 class NettyInit(val channel: Channel, val thisHandler: ChannelHandler) {
-    private var lastLocalHandler = thisHandler;
+    private var lastLocalHandler = thisHandler
     fun addLastLocal(handler: ChannelHandler) {
         channel.pipeline().addAfter(lastLocalHandler, generateName(channel, handler), handler)
         lastLocalHandler = handler
