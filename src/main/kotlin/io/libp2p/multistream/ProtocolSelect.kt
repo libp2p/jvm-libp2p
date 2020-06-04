@@ -23,6 +23,7 @@ class ProtocolSelect<TController>(val protocols: List<ProtocolBinding<TControlle
 
     val selectedFuture = CompletableFuture<TController>()
     var activeFired = false
+    var userEvent = false
 
     override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
         // when protocol data immediately follows protocol id in the same packet
@@ -35,6 +36,9 @@ class ProtocolSelect<TController>(val protocols: List<ProtocolBinding<TControlle
     }
 
     override fun channelActive(ctx: ChannelHandlerContext) {
+        if (!userEvent) {
+            println("Ops")
+        }
         if (!activeFired) {
             ctx.fireChannelActive()
         }
@@ -42,6 +46,7 @@ class ProtocolSelect<TController>(val protocols: List<ProtocolBinding<TControlle
     }
 
     override fun userEventTriggered(ctx: ChannelHandlerContext, evt: Any) {
+        userEvent = true
         when (evt) {
             is ProtocolNegotiationSucceeded -> {
                 val protocolBinding = protocols.find { it.protocolDescriptor.protocolMatcher.matches(evt.proto) }

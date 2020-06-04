@@ -2,12 +2,21 @@ package io.libp2p.etc.util.netty
 
 import io.libp2p.etc.types.fromHex
 import io.netty.channel.Channel
+import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelInitializer
 
 fun nettyInitializer(initer: (Channel) -> Unit): ChannelInitializer<Channel> {
     return object : ChannelInitializer<Channel>() {
         override fun initChannel(ch: Channel) {
             initer.invoke(ch)
+        }
+    }
+}
+
+fun nettyInitializerEx(initer: (Channel, ChannelHandler) -> Unit): ChannelInitializer<Channel> {
+    return object : ChannelInitializer<Channel>() {
+        override fun initChannel(ch: Channel) {
+            initer.invoke(ch, this)
         }
     }
 }
