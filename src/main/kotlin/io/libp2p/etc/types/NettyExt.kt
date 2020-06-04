@@ -26,3 +26,9 @@ fun ChannelPipeline.replace(oldHandler: ChannelHandler, newHandlers: List<Pair<S
         addAfter(newHandlers[i - 1].first, newHandlers[i].first, newHandlers[i].second)
     }
 }
+
+fun ChannelPipeline.getHandlerName(handler: ChannelHandler) = (toMap().entries.find { it.value === handler }?.key
+    ?: throw IllegalArgumentException("Handler $handler not found in pipeline $this"))
+
+fun ChannelPipeline.addAfter(handler: ChannelHandler, newHandlerName: String, newHandler: ChannelHandler) =
+    addAfter(getHandlerName(handler), newHandlerName, newHandler)

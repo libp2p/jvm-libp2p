@@ -8,6 +8,7 @@ import io.libp2p.etc.PROTOCOL
 import io.libp2p.etc.events.ProtocolNegotiationFailed
 import io.libp2p.etc.events.ProtocolNegotiationSucceeded
 import io.libp2p.etc.getP2PChannel
+import io.libp2p.etc.types.addAfter
 import io.libp2p.etc.types.forward
 import io.libp2p.etc.util.netty.nettyInitializer
 import io.netty.channel.ChannelHandlerContext
@@ -21,6 +22,24 @@ class ProtocolSelect<TController>(val protocols: List<ProtocolBinding<TControlle
     ChannelInboundHandlerAdapter() {
 
     val selectedFuture = CompletableFuture<TController>()
+    var activeFired = false
+
+    override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
+        // when protocol data immediately follows protocol id in the same packet
+        // the protocol data may be transmitted during Negotiator pipeline rebuilding
+        // and the `active` event is fired after `read` event
+        // See https://github.com/libp2p/jvm-libp2p/issues/94
+        activeFired = true
+        ctx.fireChannelActive()
+        ctx.fireChannelRead(msg)
+    }
+
+    override fun channelActive(ctx: ChannelHandlerContext) {
+        if (!activeFired) {
+            ctx.fireChannelActive()
+        }
+        ctx.pipeline().remove(this)
+    }
 
     override fun userEventTriggered(ctx: ChannelHandlerContext, evt: Any) {
         when (evt) {
@@ -28,7 +47,7 @@ class ProtocolSelect<TController>(val protocols: List<ProtocolBinding<TControlle
                 val protocolBinding = protocols.find { it.protocolDescriptor.protocolMatcher.matches(evt.proto) }
                     ?: throw NoSuchLocalProtocolException("Protocol negotiation failed: not supported protocol ${evt.proto}")
                 ctx.channel().attr(PROTOCOL).get()?.complete(evt.proto)
-                ctx.pipeline().replace(this, "ProtocolBindingInitializer", nettyInitializer {
+                ctx.pipeline().addAfter(this, "ProtocolBindingInitializer", nettyInitializer {
                     protocolBinding.initChannel(it.getP2PChannel(), evt.proto).forward(selectedFuture)
                 })
             }

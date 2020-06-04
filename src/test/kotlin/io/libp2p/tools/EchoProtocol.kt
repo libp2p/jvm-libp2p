@@ -36,7 +36,7 @@ open class EchoProtocol : ProtocolHandler<EchoController>() {
 
     open inner class EchoResponder : ProtocolMessageHandler<ByteBuf>, EchoController {
         override fun onMessage(stream: Stream, msg: ByteBuf) {
-            stream.writeAndFlush(msg)
+            stream.writeAndFlush(msg.retain())
         }
 
         override fun echo(message: String): Nothing {
