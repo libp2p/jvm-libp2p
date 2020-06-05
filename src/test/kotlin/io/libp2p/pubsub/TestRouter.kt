@@ -78,8 +78,8 @@ class TestRouter(val name: String = "" + cnt.getAndIncrement(), val protocol: St
             channelName,
             initiator,
             nettyInitializer { ch ->
-                wireLogs?.also { ch.pipeline().addFirst(LoggingHandler(channelName, it)) }
-                val stream1 = StreamOverNetty(ch, connection, initiator)
+                wireLogs?.also { ch.channel.pipeline().addFirst(LoggingHandler(channelName, it)) }
+                val stream1 = StreamOverNetty(ch.channel, connection, initiator)
                 router.addPeerWithDebugHandler(stream1, pubsubLogs?.let { LoggingHandler(channelName, it) })
             }
         ).also {

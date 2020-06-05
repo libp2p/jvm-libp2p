@@ -24,7 +24,7 @@ class TCPProxy {
             group(NioEventLoopGroup())
             channel(NioServerSocketChannel::class.java)
             childHandler(nettyInitializer {
-                it.pipeline().addLast(object : ChannelInboundHandlerAdapter() {
+                it.addLastLocal(object : ChannelInboundHandlerAdapter() {
                     val client = CompletableFuture<ChannelHandlerContext>()
                     override fun channelActive(serverCtx: ChannelHandlerContext) {
 

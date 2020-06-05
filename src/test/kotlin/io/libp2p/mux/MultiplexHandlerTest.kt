@@ -47,7 +47,7 @@ class MultiplexHandlerTest {
                 nettyInitializer {
                     println("New child channel created")
                     val handler = TestHandler()
-                    it.pipeline().addLast(handler)
+                    it.addLastLocal(handler)
                     childHandlers += handler
                 })
         ) {

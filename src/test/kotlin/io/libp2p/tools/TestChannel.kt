@@ -32,9 +32,9 @@ class TestChannel(
     EmbeddedChannel(
         TestChannelId(id),
         nettyInitializer {
-            it.attr(CONNECTION).set(
+            it.channel.attr(CONNECTION).set(
                 ConnectionOverNetty(
-                    it,
+                    it.channel,
                     NullTransport(),
                     initiator
                 )

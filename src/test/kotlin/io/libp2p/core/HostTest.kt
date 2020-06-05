@@ -90,7 +90,6 @@ abstract class HostTest(
             +DoNothing()
         }
         debug {
-            afterSecureHandler.setLogger(LogLevel.ERROR)
             muxFramesHandler.setLogger(LogLevel.ERROR)
         }
     }
@@ -116,6 +115,9 @@ abstract class HostTest(
             +PingBinding(countedPingResponder)
             +Identify()
             +Echo()
+        }
+        debug {
+            muxFramesHandler.setLogger(LogLevel.ERROR)
         }
     }
 
