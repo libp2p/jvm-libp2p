@@ -36,9 +36,6 @@ class ProtocolSelect<TController>(val protocols: List<ProtocolBinding<TControlle
     }
 
     override fun channelActive(ctx: ChannelHandlerContext) {
-        if (!userEvent) {
-            println("Ops")
-        }
         if (!activeFired) {
             ctx.fireChannelActive()
         }
