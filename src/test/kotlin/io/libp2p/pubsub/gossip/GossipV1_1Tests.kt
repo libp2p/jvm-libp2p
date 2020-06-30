@@ -2,10 +2,13 @@ package io.libp2p.pubsub.gossip
 
 import com.google.common.util.concurrent.AtomicDouble
 import io.libp2p.core.PeerId
+import io.libp2p.core.pubsub.MessageApi
 import io.libp2p.core.pubsub.RESULT_IGNORE
 import io.libp2p.core.pubsub.RESULT_INVALID
 import io.libp2p.core.pubsub.RESULT_VALID
+import io.libp2p.core.pubsub.Subscriber
 import io.libp2p.core.pubsub.ValidationResult
+import io.libp2p.core.pubsub.createPubsubApi
 import io.libp2p.etc.types.millis
 import io.libp2p.etc.types.seconds
 import io.libp2p.etc.types.times
@@ -21,6 +24,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import pubsub.pb.Rpc
+import java.nio.charset.StandardCharsets
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicReference
 
@@ -87,6 +91,26 @@ class GossipV1_1Tests {
         val msg = newMessage("topic1", 0L, "Hello".toByteArray())
         test.gossipRouter.publish(msg)
         test.mockRouter.waitForMessage { it.publishCount > 0 }
+    }
+
+    @Test
+    fun unknownTopicTest() {
+        val test = TwoRoutersTest()
+
+        val api = createPubsubApi(test.gossipRouter)
+        val apiMessages = mutableListOf<MessageApi>()
+        api.subscribe(Subscriber { apiMessages += it }, io.libp2p.core.pubsub.Topic("topic2"))
+
+        val msg1 = Rpc.RPC.newBuilder()
+            .addPublish(newMessage("topic2", 0L, "Hello-1".toByteArray()))
+            .addPublish(newMessage("topic1", 1L, "Hello-2".toByteArray()))
+            .addPublish(newMessage("topic2", 2L, "Hello-3".toByteArray()))
+            .build()
+        test.mockRouter.sendToSingle(msg1)
+        assertEquals(2, apiMessages.size)
+        val messageBodies = apiMessages.map { it.data.toString(StandardCharsets.UTF_8) }
+        assertTrue("Hello-1" in messageBodies)
+        assertTrue("Hello-3" in messageBodies)
     }
 
     @Test
