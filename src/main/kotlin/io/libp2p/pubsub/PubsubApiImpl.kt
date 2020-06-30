@@ -70,7 +70,10 @@ open class PubsubApiImpl(val router: PubsubRouter) : PubsubApi {
         }.map {
             it.receiver.apply(rpc2Msg(msg))
         }
-        return validationFuts.thenApplyAll { it.reduce(validationResultReduce) }
+        return validationFuts.thenApplyAll {
+            if (it.isEmpty())ValidationResult.Ignore
+            else it.reduce(validationResultReduce)
+        }
     }
 
     private fun rpc2Msg(msg: Rpc.Message): MessageApi {
