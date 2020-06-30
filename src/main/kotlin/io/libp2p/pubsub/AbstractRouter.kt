@@ -158,6 +158,7 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
     }
 
     protected open fun notifyUnseenMessage(peer: PeerHandler, msg: Rpc.Message) {}
+    protected open fun notifyNonSubscribedMessage(peer: PeerHandler, msg: Rpc.Message) {}
     protected open fun notifySeenMessage(peer: PeerHandler, msg: Rpc.Message, validationResult: Optional<ValidationResult>) {}
     protected open fun notifyUnseenInvalidMessage(peer: PeerHandler, msg: Rpc.Message) {}
     protected open fun notifyUnseenValidMessage(peer: PeerHandler, msg: Rpc.Message) {}
@@ -171,13 +172,18 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
         if (msg.hasControl()) {
             processControl(msg.control, peer)
         }
-        val msgUnseen = msg.publishList
+        val msgSubscribed = msg.publishList
+            .filter { it.topicIDsList.any { it in subscribedTopics } }
+
+        (msg.publishList - msgSubscribed).forEach { notifyNonSubscribedMessage(peer, it) }
+
+        val msgUnseen = msgSubscribed
             .filter { !seenMessages.containsKey(getMessageId(it)) }
 
         msgUnseen.forEach { seenMessages[getMessageId(it)] = Optional.empty() }
 
         msgUnseen.forEach { notifyUnseenMessage(peer, it) }
-        (msg.publishList - msgUnseen).forEach { notifySeenMessage(peer, it, seenMessages[getMessageId(it)]!!) }
+        (msgSubscribed - msgUnseen).forEach { notifySeenMessage(peer, it, seenMessages[getMessageId(it)]!!) }
 
         val msgValid = msgUnseen.filter {
             try {
