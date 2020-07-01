@@ -43,6 +43,5 @@ class NoiseXXCodec(val aliceCipher: CipherState, val bobCipher: CipherState) : M
                 logger.error("Unexpected error in Noise channel", cause)
             }
         }
-        logger.error(cause)
     }
 }
