@@ -38,7 +38,7 @@ abstract class P2PService {
         lateinit var peerHandler: PeerHandler
 
         override fun handlerAdded(ctx: ChannelHandlerContext?) {
-            runOnEventThread(peerHandler) {
+            runOnEventThread {
                 streamAdded(this)
             }
         }
