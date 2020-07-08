@@ -44,7 +44,7 @@ abstract class P2PService {
         }
 
         override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
-            runOnEventThread {
+            runOnEventThread(peerHandler, msg) {
                 try {
                     streamInbound(this, msg)
                 } finally {
@@ -55,20 +55,20 @@ abstract class P2PService {
 
         override fun channelActive(ctx: ChannelHandlerContext) {
             this.ctx = ctx
-            runOnEventThread {
+            runOnEventThread(peerHandler) {
                 streamActive(this)
             }
         }
         override fun channelUnregistered(ctx: ChannelHandlerContext?) {
             closed = true
-            runOnEventThread {
+            runOnEventThread(peerHandler) {
                 this.ctx = null
                 streamDisconnected(this)
             }
         }
 
         override fun exceptionCaught(ctx: ChannelHandlerContext?, cause: Throwable) {
-            runOnEventThread {
+            runOnEventThread(peerHandler) {
                 streamException(this, cause)
             }
         }
@@ -190,9 +190,30 @@ abstract class P2PService {
     }
 
     /**
+     * Notifies on internal service error
+     * @param peer optionally indicates which peer event caused error
+     * @param msg optionally indicates what inbound message caused error
+     */
+    protected open fun onServiceException(peer: PeerHandler?, msg: Any?, cause: Throwable) {
+        logger.warn("P2PService internal error on message $msg from peer $peer", cause)
+    }
+
+    /**
      * Executes the code on the service event thread
      */
-    fun runOnEventThread(run: () -> Unit) = executor.execute(run)
+    fun runOnEventThread(run: () -> Unit) = runOnEventThread(null, null, run)
+
+    /**
+     * Executes the code on the service event thread
+     * Supply additional info which is reported to [onServiceException]
+     */
+    fun runOnEventThread(peer: PeerHandler? = null, msg: Any? = null, run: () -> Unit) = executor.execute {
+        try {
+            run()
+        } catch (e: Exception) {
+            onServiceException(peer, msg, e)
+        }
+    }
 
     /**
      * Executes the code on the service event thread
