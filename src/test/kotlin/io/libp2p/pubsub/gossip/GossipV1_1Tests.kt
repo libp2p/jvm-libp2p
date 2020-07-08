@@ -123,7 +123,7 @@ class GossipV1_1Tests {
         class MalformedMockRouter : MockRouter() {
             var malform = false
             override fun initChannel(streamHandler: StreamHandler) {
-                streamHandler.stream.pushHandler(object: ChannelOutboundHandlerAdapter() {
+                streamHandler.stream.pushHandler(object : ChannelOutboundHandlerAdapter() {
                     override fun write(ctx: ChannelHandlerContext, msg: Any, promise: ChannelPromise) {
                         msg as ByteBuf
                         if (malform) {
@@ -148,7 +148,6 @@ class GossipV1_1Tests {
             .addPublish(newMessage("topic1", 0L, "Hello-1".toByteArray()))
             .build()
         mockRouter.malform = true
-
 
         val peerScores = test.gossipRouter.score.peerScores.values.first()
         // no behavior penalty before flooding

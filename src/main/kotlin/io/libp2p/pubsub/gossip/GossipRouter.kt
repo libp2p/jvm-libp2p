@@ -122,7 +122,6 @@ open class GossipRouter @JvmOverloads constructor(
         notifyRouterMisbehavior(peer, 1)
     }
 
-
     private fun notifyAnyValidMessage(peer: PeerHandler, msg: Rpc.Message) {
         iWantRequests -= peer to getMessageId(msg)
     }
