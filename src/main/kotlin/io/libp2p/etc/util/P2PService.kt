@@ -85,6 +85,9 @@ abstract class P2PService {
         open fun isActive() = streamHandler.ctx != null
         open fun getInboundHandler(): StreamHandler? = streamHandler
         open fun getOutboundHandler(): StreamHandler? = streamHandler
+        override fun toString(): String {
+            return "PeerHandler(peerId=$peerId, stream=${streamHandler.stream})"
+        }
     }
 
     /**

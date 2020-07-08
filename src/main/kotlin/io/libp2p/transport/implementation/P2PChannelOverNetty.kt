@@ -31,4 +31,7 @@ abstract class P2PChannelOverNetty(
     override fun close() = nettyChannel.close().toVoidCompletableFuture()
 
     override fun closeFuture() = nettyChannel.closeFuture().toVoidCompletableFuture()
+    override fun toString(): String {
+        return "P2PChannelOverNetty(nettyChannel=$nettyChannel, isInitiator=$isInitiator)"
+    }
 }
