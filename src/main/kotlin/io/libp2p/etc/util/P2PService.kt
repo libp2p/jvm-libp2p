@@ -85,6 +85,9 @@ abstract class P2PService {
         open fun isActive() = streamHandler.ctx != null
         open fun getInboundHandler(): StreamHandler? = streamHandler
         open fun getOutboundHandler(): StreamHandler? = streamHandler
+        override fun toString(): String {
+            return "PeerHandler(peerId=$peerId, stream=${streamHandler.stream})"
+        }
     }
 
     /**
@@ -142,7 +145,7 @@ abstract class P2PService {
     }
 
     protected open fun streamException(stream: StreamHandler, cause: Throwable) {
-        onPeerException(stream.peerHandler, cause)
+        onPeerWireException(stream.peerHandler, cause)
     }
 
     protected open fun streamInbound(stream: StreamHandler, msg: Any) {
@@ -179,10 +182,10 @@ abstract class P2PService {
     protected abstract fun onInbound(peer: PeerHandler, msg: Any)
 
     /**
-     * Notifies on error in peer communication
+     * Notifies on error in peer wire communication
      * Invoked on event thread
      */
-    protected open fun onPeerException(peer: PeerHandler, cause: Throwable) {
+    protected open fun onPeerWireException(peer: PeerHandler, cause: Throwable) {
         logger.warn("Error by peer $peer ", cause)
     }
 

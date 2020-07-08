@@ -118,6 +118,10 @@ open class GossipRouter @JvmOverloads constructor(
         notifyAnyValidMessage(peer, msg)
     }
 
+    override fun notifyMalformedMessage(peer: PeerHandler) {
+        notifyRouterMisbehavior(peer, 1)
+    }
+
     private fun notifyAnyValidMessage(peer: PeerHandler, msg: Rpc.Message) {
         iWantRequests -= peer to getMessageId(msg)
     }

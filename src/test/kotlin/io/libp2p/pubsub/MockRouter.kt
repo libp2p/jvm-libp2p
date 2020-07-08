@@ -7,7 +7,7 @@ import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 
-class MockRouter(
+open class MockRouter(
     override val protocol: PubsubProtocol = PubsubProtocol.Gossip_V_1_1
 ) : AbstractRouter() {
 
