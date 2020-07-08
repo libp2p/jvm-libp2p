@@ -157,6 +157,7 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
         peer.writeAndFlush(helloPubsubMsg)
     }
 
+    protected open fun notifyMalformedMessage(peer: PeerHandler) {}
     protected open fun notifyUnseenMessage(peer: PeerHandler, msg: Rpc.Message) {}
     protected open fun notifyNonSubscribedMessage(peer: PeerHandler, msg: Rpc.Message) {}
     protected open fun notifySeenMessage(peer: PeerHandler, msg: Rpc.Message, validationResult: Optional<ValidationResult>) {}
@@ -246,6 +247,12 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
     override fun onPeerDisconnected(peer: PeerHandler) {
         super.onPeerDisconnected(peer)
         peerTopics.removeAll(peer)
+    }
+
+    override fun onPeerWireException(peer: PeerHandler, cause: Throwable) {
+        // exception occurred in protobuf decoders
+        logger.debug("Malformed message from $peer : $cause")
+        notifyMalformedMessage(peer)
     }
 
     private fun handleMessageSubscriptions(peer: PeerHandler, msg: Rpc.RPC.SubOpts) {
