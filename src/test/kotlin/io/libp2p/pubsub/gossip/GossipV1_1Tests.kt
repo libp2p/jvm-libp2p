@@ -119,7 +119,7 @@ class GossipV1_1Tests {
     }
 
     @Test
-    fun malformedMessageTest() {
+    fun testPenaltyForMalformedMessage() {
         class MalformedMockRouter : MockRouter() {
             var malform = false
             override fun initChannel(streamHandler: StreamHandler) {
@@ -148,7 +148,15 @@ class GossipV1_1Tests {
             .addPublish(newMessage("topic1", 0L, "Hello-1".toByteArray()))
             .build()
         mockRouter.malform = true
+
+
+        val peerScores = test.gossipRouter.score.peerScores.values.first()
+        // no behavior penalty before flooding
+        assertEquals(0.0, peerScores.behaviorPenalty)
+
         test.mockRouter.sendToSingle(msg1)
+
+        assertTrue(peerScores.behaviorPenalty > 0)
     }
 
     @Test
