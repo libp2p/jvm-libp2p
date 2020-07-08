@@ -19,6 +19,11 @@ import io.libp2p.pubsub.DeterministicFuzz
 import io.libp2p.pubsub.MessageId
 import io.libp2p.pubsub.MockRouter
 import io.libp2p.pubsub.SemiduplexConnection
+import io.netty.buffer.ByteBuf
+import io.netty.buffer.Unpooled
+import io.netty.channel.ChannelHandlerContext
+import io.netty.channel.ChannelOutboundHandlerAdapter
+import io.netty.channel.ChannelPromise
 import io.netty.handler.logging.LogLevel
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -111,6 +116,39 @@ class GossipV1_1Tests {
         val messageBodies = apiMessages.map { it.data.toString(StandardCharsets.UTF_8) }
         assertTrue("Hello-1" in messageBodies)
         assertTrue("Hello-3" in messageBodies)
+    }
+
+    @Test
+    fun malformedMessageTest() {
+        class MalformedMockRouter : MockRouter() {
+            var malform = false
+            override fun initChannel(streamHandler: StreamHandler) {
+                streamHandler.stream.pushHandler(object: ChannelOutboundHandlerAdapter() {
+                    override fun write(ctx: ChannelHandlerContext, msg: Any, promise: ChannelPromise) {
+                        msg as ByteBuf
+                        if (malform) {
+                            val malformedPayload = Unpooled.wrappedBuffer(ByteArray(msg.readableBytes() - 5))
+                            ctx.write(Unpooled.wrappedBuffer(msg.slice(0, 5), malformedPayload), promise)
+                        } else {
+                            ctx.write(msg, promise)
+                        }
+                    }
+                })
+                super.initChannel(streamHandler)
+            }
+        }
+        val mockRouter = MalformedMockRouter()
+        val test = TwoRoutersTest(mockRouter = { mockRouter })
+
+        val api = createPubsubApi(test.gossipRouter)
+        val apiMessages = mutableListOf<MessageApi>()
+        api.subscribe(Subscriber { apiMessages += it }, io.libp2p.core.pubsub.Topic("topic1"))
+
+        val msg1 = Rpc.RPC.newBuilder()
+            .addPublish(newMessage("topic1", 0L, "Hello-1".toByteArray()))
+            .build()
+        mockRouter.malform = true
+        test.mockRouter.sendToSingle(msg1)
     }
 
     @Test
