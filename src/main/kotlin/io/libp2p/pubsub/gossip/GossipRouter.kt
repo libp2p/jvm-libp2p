@@ -60,7 +60,7 @@ open class GossipRouter @JvmOverloads constructor(
     private val iWantRequests = createLRUMap<Pair<PeerHandler, MessageId>, Long>(MaxIWantRequestsEntries)
     private val heartbeatTask by lazy {
         executor.scheduleWithFixedDelay(
-            ::heartBeat,
+            ::catchingHeartbeat,
             params.heartbeatInterval.toMillis(),
             params.heartbeatInterval.toMillis(),
             TimeUnit.MILLISECONDS
@@ -305,7 +305,15 @@ open class GossipRouter @JvmOverloads constructor(
         mesh[topic]?.forEach { prune(it, topic) }
     }
 
-    private fun heartBeat() {
+    private fun catchingHeartbeat() {
+        try {
+            heartbeat()
+        } catch (e: Exception) {
+            onServiceException(null, null, e)
+        }
+    }
+
+    private fun heartbeat() {
         heartbeatsCount++
         iAsked.clear()
         peerIHave.clear()
