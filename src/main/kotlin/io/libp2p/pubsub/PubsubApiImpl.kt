@@ -107,7 +107,7 @@ open class PubsubApiImpl(val router: PubsubRouter) : PubsubApi {
     override fun getPeerTopics(): CompletableFuture<Map<PeerId, Set<Topic>>> {
         return router.getPeerTopics().thenApply { peerTopics ->
             peerTopics.mapValues { topicNames ->
-                topicNames.value.mapTo(HashSet()) { topicName -> Topic(topicName) } as Set<Topic>
+                topicNames.value.mapTo(HashSet()) { topicName -> Topic(topicName) }
             }
         }
     }
