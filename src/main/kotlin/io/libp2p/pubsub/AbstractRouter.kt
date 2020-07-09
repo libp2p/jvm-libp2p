@@ -1,5 +1,6 @@
 package io.libp2p.pubsub
 
+import io.libp2p.core.PeerId
 import io.libp2p.core.Stream
 import io.libp2p.core.pubsub.RESULT_VALID
 import io.libp2p.core.pubsub.ValidationResult
@@ -301,6 +302,16 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
             )
         }
         subscribedTopics -= topic
+    }
+
+    override fun getPeerTopics(): CompletableFuture<Map<PeerId, Set<String>>> {
+        return submitOnEventThread {
+            val topicsByPeerId = hashMapOf<PeerId, Set<String>>()
+            peerTopics.forEach { entry ->
+                topicsByPeerId[entry.key.peerId] = HashSet(entry.value)
+            }
+            topicsByPeerId
+        }
     }
 
     protected open fun send(peer: PeerHandler, msg: Rpc.RPC): CompletableFuture<Unit> {
