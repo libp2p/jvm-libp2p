@@ -1,5 +1,6 @@
 package io.libp2p.pubsub
 
+import io.libp2p.core.PeerId
 import io.libp2p.core.Stream
 import io.libp2p.core.pubsub.ValidationResult
 import io.netty.channel.ChannelHandler
@@ -47,6 +48,13 @@ interface PubsubMessageRouter {
      * to receive messages on the following topics any more
      */
     fun unsubscribe(vararg topics: String)
+
+    /**
+     * Get the topics each peer is subscribed to
+     *
+     * @return a map of the peer's {@link PeerId} to the set of topics it is subscribed to
+     */
+    fun getPeerTopics(): CompletableFuture<Map<PeerId, Set<String>>>
 }
 
 /**

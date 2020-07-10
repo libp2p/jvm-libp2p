@@ -5,6 +5,7 @@ import io.libp2p.core.PeerId
 import io.libp2p.core.multiformats.Protocol
 import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.etc.types.anyComplete
+import io.libp2p.etc.types.copy
 import io.libp2p.etc.types.createLRUMap
 import io.libp2p.etc.types.median
 import io.libp2p.etc.types.seconds
@@ -60,7 +61,7 @@ open class GossipRouter @JvmOverloads constructor(
     private val iWantRequests = createLRUMap<Pair<PeerHandler, MessageId>, Long>(MaxIWantRequestsEntries)
     private val heartbeatTask by lazy {
         executor.scheduleWithFixedDelay(
-            ::heartBeat,
+            ::catchingHeartbeat,
             params.heartbeatInterval.toMillis(),
             params.heartbeatInterval.toMillis(),
             TimeUnit.MILLISECONDS
@@ -116,6 +117,10 @@ open class GossipRouter @JvmOverloads constructor(
     override fun notifyUnseenValidMessage(peer: PeerHandler, msg: Rpc.Message) {
         score.notifyUnseenValidMessage(peer, msg)
         notifyAnyValidMessage(peer, msg)
+    }
+
+    override fun notifyMalformedMessage(peer: PeerHandler) {
+        notifyRouterMisbehavior(peer, 1)
     }
 
     private fun notifyAnyValidMessage(peer: PeerHandler, msg: Rpc.Message) {
@@ -298,10 +303,19 @@ open class GossipRouter @JvmOverloads constructor(
 
     override fun unsubscribe(topic: Topic) {
         super.unsubscribe(topic)
-        mesh[topic]?.forEach { prune(it, topic) }
+        mesh[topic]?.copy()?.forEach { prune(it, topic) }
+        mesh -= topic
     }
 
-    private fun heartBeat() {
+    private fun catchingHeartbeat() {
+        try {
+            heartbeat()
+        } catch (e: Exception) {
+            onServiceException(null, null, e)
+        }
+    }
+
+    private fun heartbeat() {
         heartbeatsCount++
         iAsked.clear()
         peerIHave.clear()

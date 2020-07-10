@@ -1,6 +1,7 @@
 package io.libp2p.etc.util
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder
+import io.libp2p.core.InternalErrorException
 import io.libp2p.core.Stream
 import io.libp2p.etc.types.lazyVarInit
 import io.libp2p.etc.types.submitAsync
@@ -35,7 +36,7 @@ abstract class P2PService {
     open inner class StreamHandler(val stream: Stream) : ChannelInboundHandlerAdapter() {
         var ctx: ChannelHandlerContext? = null
         var closed = false
-        lateinit var peerHandler: PeerHandler
+        private var peerHandler: PeerHandler? = null
 
         override fun handlerAdded(ctx: ChannelHandlerContext?) {
             runOnEventThread {
@@ -44,7 +45,7 @@ abstract class P2PService {
         }
 
         override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
-            runOnEventThread {
+            runOnEventThread(peerHandler, msg) {
                 try {
                     streamInbound(this, msg)
                 } finally {
@@ -55,23 +56,29 @@ abstract class P2PService {
 
         override fun channelActive(ctx: ChannelHandlerContext) {
             this.ctx = ctx
-            runOnEventThread {
+            runOnEventThread(peerHandler) {
                 streamActive(this)
             }
         }
         override fun channelUnregistered(ctx: ChannelHandlerContext?) {
             closed = true
-            runOnEventThread {
+            runOnEventThread(peerHandler) {
                 this.ctx = null
                 streamDisconnected(this)
             }
         }
 
         override fun exceptionCaught(ctx: ChannelHandlerContext?, cause: Throwable) {
-            runOnEventThread {
+            runOnEventThread(peerHandler) {
                 streamException(this, cause)
             }
         }
+
+        fun initPeerHandler(handler: PeerHandler) {
+            peerHandler = handler
+        }
+
+        fun getPeerHandler() = peerHandler ?: throw InternalErrorException("[peerHandler] not initialized yet")
     }
 
     /**
@@ -85,6 +92,9 @@ abstract class P2PService {
         open fun isActive() = streamHandler.ctx != null
         open fun getInboundHandler(): StreamHandler? = streamHandler
         open fun getOutboundHandler(): StreamHandler? = streamHandler
+        override fun toString(): String {
+            return "PeerHandler(peerId=$peerId, stream=${streamHandler.stream})"
+        }
     }
 
     /**
@@ -123,30 +133,30 @@ abstract class P2PService {
 
     protected open fun streamAdded(streamHandler: StreamHandler) {
         val peerHandler = createPeerHandler(streamHandler)
-        streamHandler.peerHandler = peerHandler
+        streamHandler.initPeerHandler(peerHandler)
         peers += peerHandler
     }
 
     protected open fun createPeerHandler(streamHandler: StreamHandler) = PeerHandler(streamHandler)
 
     protected open fun streamActive(stream: StreamHandler) {
-        activePeers += stream.peerHandler
-        onPeerActive(stream.peerHandler)
+        activePeers += stream.getPeerHandler()
+        onPeerActive(stream.getPeerHandler())
     }
 
     protected open fun streamDisconnected(stream: StreamHandler) {
-        activePeers -= stream.peerHandler
-        if (peers.remove(stream.peerHandler)) {
-            onPeerDisconnected(stream.peerHandler)
+        activePeers -= stream.getPeerHandler()
+        if (peers.remove(stream.getPeerHandler())) {
+            onPeerDisconnected(stream.getPeerHandler())
         }
     }
 
     protected open fun streamException(stream: StreamHandler, cause: Throwable) {
-        onPeerException(stream.peerHandler, cause)
+        onPeerWireException(stream.getPeerHandler(), cause)
     }
 
     protected open fun streamInbound(stream: StreamHandler, msg: Any) {
-        onInbound(stream.peerHandler, msg)
+        onInbound(stream.getPeerHandler(), msg)
     }
 
     /**
@@ -179,17 +189,38 @@ abstract class P2PService {
     protected abstract fun onInbound(peer: PeerHandler, msg: Any)
 
     /**
-     * Notifies on error in peer communication
+     * Notifies on error in peer wire communication
      * Invoked on event thread
      */
-    protected open fun onPeerException(peer: PeerHandler, cause: Throwable) {
+    protected open fun onPeerWireException(peer: PeerHandler, cause: Throwable) {
         logger.warn("Error by peer $peer ", cause)
+    }
+
+    /**
+     * Notifies on internal service error
+     * @param peer optionally indicates which peer event caused error
+     * @param msg optionally indicates what inbound message caused error
+     */
+    protected open fun onServiceException(peer: PeerHandler?, msg: Any?, cause: Throwable) {
+        logger.warn("P2PService internal error on message $msg from peer $peer", cause)
     }
 
     /**
      * Executes the code on the service event thread
      */
-    fun runOnEventThread(run: () -> Unit) = executor.execute(run)
+    fun runOnEventThread(run: () -> Unit) = runOnEventThread(null, null, run)
+
+    /**
+     * Executes the code on the service event thread
+     * Supply additional info which is reported to [onServiceException]
+     */
+    fun runOnEventThread(peer: PeerHandler? = null, msg: Any? = null, run: () -> Unit) = executor.execute {
+        try {
+            run()
+        } catch (e: Exception) {
+            onServiceException(peer, msg, e)
+        }
+    }
 
     /**
      * Executes the code on the service event thread
