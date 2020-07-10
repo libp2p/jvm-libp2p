@@ -45,14 +45,14 @@ abstract class P2PServiceSemiDuplex : P2PService() {
                 }
                 else -> {
                     peerHandler.otherStreamHandler = streamHandler
-                    streamHandler.peerHandler = peerHandler
+                    streamHandler.initPeerHandler(peerHandler)
                 }
             }
         }
     }
 
     override fun streamActive(stream: StreamHandler) {
-        if (stream == (stream.peerHandler as SDPeerHandler).getOutboundHandler()) {
+        if (stream == (stream.getPeerHandler() as SDPeerHandler).getOutboundHandler()) {
             // invoke streamActive only when outbound handler is activated
             super.streamActive(stream)
         }

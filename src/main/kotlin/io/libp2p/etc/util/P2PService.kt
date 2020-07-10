@@ -1,6 +1,7 @@
 package io.libp2p.etc.util
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder
+import io.libp2p.core.InternalErrorException
 import io.libp2p.core.Stream
 import io.libp2p.etc.types.lazyVarInit
 import io.libp2p.etc.types.submitAsync
@@ -35,7 +36,7 @@ abstract class P2PService {
     open inner class StreamHandler(val stream: Stream) : ChannelInboundHandlerAdapter() {
         var ctx: ChannelHandlerContext? = null
         var closed = false
-        lateinit var peerHandler: PeerHandler
+        private var peerHandler: PeerHandler? = null
 
         override fun handlerAdded(ctx: ChannelHandlerContext?) {
             runOnEventThread {
@@ -72,6 +73,13 @@ abstract class P2PService {
                 streamException(this, cause)
             }
         }
+
+        fun initPeerHandler(handler: PeerHandler) {
+            peerHandler = handler
+        }
+
+        fun getPeerHandler() = peerHandler ?: throw InternalErrorException("[peerHandler] not initialized yet")
+
     }
 
     /**
@@ -126,30 +134,30 @@ abstract class P2PService {
 
     protected open fun streamAdded(streamHandler: StreamHandler) {
         val peerHandler = createPeerHandler(streamHandler)
-        streamHandler.peerHandler = peerHandler
+        streamHandler.initPeerHandler(peerHandler)
         peers += peerHandler
     }
 
     protected open fun createPeerHandler(streamHandler: StreamHandler) = PeerHandler(streamHandler)
 
     protected open fun streamActive(stream: StreamHandler) {
-        activePeers += stream.peerHandler
-        onPeerActive(stream.peerHandler)
+        activePeers += stream.getPeerHandler()
+        onPeerActive(stream.getPeerHandler())
     }
 
     protected open fun streamDisconnected(stream: StreamHandler) {
-        activePeers -= stream.peerHandler
-        if (peers.remove(stream.peerHandler)) {
-            onPeerDisconnected(stream.peerHandler)
+        activePeers -= stream.getPeerHandler()
+        if (peers.remove(stream.getPeerHandler())) {
+            onPeerDisconnected(stream.getPeerHandler())
         }
     }
 
     protected open fun streamException(stream: StreamHandler, cause: Throwable) {
-        onPeerWireException(stream.peerHandler, cause)
+        onPeerWireException(stream.getPeerHandler(), cause)
     }
 
     protected open fun streamInbound(stream: StreamHandler, msg: Any) {
-        onInbound(stream.peerHandler, msg)
+        onInbound(stream.getPeerHandler(), msg)
     }
 
     /**
