@@ -39,7 +39,7 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
     override var name: String = "router"
     var messageIdGenerator: (Rpc.Message) -> MessageId = { it.from.toByteArray().toHex() + it.seqno.toByteArray().toHex() }
 
-    val peerTopics = MultiSet<PeerHandler, String>()
+    private val peerTopics = MultiSet<PeerHandler, String>()
     private var msgHandler: (Rpc.Message) -> CompletableFuture<ValidationResult> = { RESULT_VALID }
     var maxSeenMessagesSizeSet = 10000
     var validator: PubsubMessageValidator = PubsubMessageValidator.nopValidator()
