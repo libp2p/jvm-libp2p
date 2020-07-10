@@ -5,6 +5,7 @@ import io.libp2p.core.PeerId
 import io.libp2p.core.multiformats.Protocol
 import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.etc.types.anyComplete
+import io.libp2p.etc.types.copy
 import io.libp2p.etc.types.createLRUMap
 import io.libp2p.etc.types.median
 import io.libp2p.etc.types.seconds
@@ -302,7 +303,8 @@ open class GossipRouter @JvmOverloads constructor(
 
     override fun unsubscribe(topic: Topic) {
         super.unsubscribe(topic)
-        mesh[topic]?.forEach { prune(it, topic) }
+        mesh[topic]?.copy()?.forEach { prune(it, topic) }
+        mesh -= topic
     }
 
     private fun catchingHeartbeat() {

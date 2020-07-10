@@ -8,9 +8,11 @@ import io.libp2p.core.pubsub.Subscriber
 import io.libp2p.core.pubsub.Topic
 import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.core.pubsub.Validator
+import io.libp2p.etc.types.seconds
 import io.libp2p.etc.types.toByteBuf
 import io.libp2p.etc.types.toBytesBigEndian
 import io.libp2p.etc.types.toProtobuf
+import io.libp2p.pubsub.gossip.GossipRouter
 import io.libp2p.tools.TestChannel.TestConnection
 import io.libp2p.transport.implementation.P2PChannelOverNetty
 import io.netty.handler.logging.LogLevel
@@ -55,6 +57,58 @@ abstract class PubsubRouterTest(val router: RouterCtor) {
         Assertions.assertEquals(msg, router2.inboundMessages.poll(5, TimeUnit.SECONDS))
         Assertions.assertTrue(router1.inboundMessages.isEmpty())
         Assertions.assertTrue(router2.inboundMessages.isEmpty())
+    }
+
+    @Test
+    fun testUnsubscribe() {
+        val fuzz = DeterministicFuzz()
+
+        val router1 = fuzz.createTestRouter(router())
+        val router2 = fuzz.createTestRouter(router())
+        val router3 = fuzz.createTestRouter(router())
+        val router4 = fuzz.createTestRouter(router())
+        router1.router.subscribe("topic1")
+        router1.router.subscribe("topic2")
+        router2.router.subscribe("topic1")
+        router2.router.subscribe("topic2")
+        router3.router.subscribe("topic1")
+        router3.router.subscribe("topic2")
+        router4.router.subscribe("topic1")
+        router4.router.subscribe("topic2")
+
+        router2.connectSemiDuplex(router1, pubsubLogs = LogLevel.ERROR)
+        router2.connectSemiDuplex(router3, pubsubLogs = LogLevel.ERROR)
+        router2.connectSemiDuplex(router4, pubsubLogs = LogLevel.ERROR)
+        fuzz.timeController.addTime(2.seconds)
+
+        val msg1 = newMessage("topic1", 0L, "Hello-1".toByteArray())
+        val msg2 = newMessage("topic2", 1L, "Hello-2".toByteArray())
+        router1.router.publish(msg1)
+        router1.router.publish(msg2)
+
+        Assertions.assertEquals(msg1, router3.inboundMessages.poll(5, TimeUnit.SECONDS))
+        Assertions.assertEquals(msg2, router3.inboundMessages.poll(5, TimeUnit.SECONDS))
+        Assertions.assertTrue(router3.inboundMessages.isEmpty())
+        Assertions.assertEquals(msg1, router4.inboundMessages.poll(5, TimeUnit.SECONDS))
+        Assertions.assertEquals(msg2, router4.inboundMessages.poll(5, TimeUnit.SECONDS))
+        Assertions.assertTrue(router4.inboundMessages.isEmpty())
+
+        router2.router.unsubscribe("topic1")
+        fuzz.timeController.addTime(2.seconds)
+        val router2R = router2.router
+        if (router2R is GossipRouter) {
+            Assertions.assertNull((router2R.mesh["topic1"]))
+        }
+
+        val msg3 = newMessage("topic1", 2L, "Hello-3".toByteArray())
+        val msg4 = newMessage("topic2", 3L, "Hello-4".toByteArray())
+        router1.router.publish(msg3)
+        router1.router.publish(msg4)
+
+        Assertions.assertEquals(msg4, router3.inboundMessages.poll(5, TimeUnit.SECONDS))
+        Assertions.assertTrue(router3.inboundMessages.isEmpty())
+        Assertions.assertEquals(msg4, router4.inboundMessages.poll(5, TimeUnit.SECONDS))
+        Assertions.assertTrue(router4.inboundMessages.isEmpty())
     }
 
     @Test
