@@ -79,7 +79,6 @@ abstract class P2PService {
         }
 
         fun getPeerHandler() = peerHandler ?: throw InternalErrorException("[peerHandler] not initialized yet")
-
     }
 
     /**
