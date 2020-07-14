@@ -36,6 +36,7 @@ abstract class P2PService {
     open inner class StreamHandler(val stream: Stream) : ChannelInboundHandlerAdapter() {
         var ctx: ChannelHandlerContext? = null
         var closed = false
+        var aborted = false // indicates that stream was closed on init and [peerHandler] may not be initialized
         private var peerHandler: PeerHandler? = null
 
         override fun handlerAdded(ctx: ChannelHandlerContext?) {
@@ -79,6 +80,14 @@ abstract class P2PService {
         }
 
         fun getPeerHandler() = peerHandler ?: throw InternalErrorException("[peerHandler] not initialized yet")
+
+        /**
+         * Close on stream initialize without setting the [peerHandler]
+         */
+        fun closeAbruptly() {
+            aborted = true
+            stream.close()
+        }
     }
 
     /**
@@ -140,11 +149,13 @@ abstract class P2PService {
     protected open fun createPeerHandler(streamHandler: StreamHandler) = PeerHandler(streamHandler)
 
     protected open fun streamActive(stream: StreamHandler) {
+        if (stream.aborted) return
         activePeers += stream.getPeerHandler()
         onPeerActive(stream.getPeerHandler())
     }
 
     protected open fun streamDisconnected(stream: StreamHandler) {
+        if (stream.aborted) return
         activePeers -= stream.getPeerHandler()
         if (peers.remove(stream.getPeerHandler())) {
             onPeerDisconnected(stream.getPeerHandler())
@@ -152,10 +163,11 @@ abstract class P2PService {
     }
 
     protected open fun streamException(stream: StreamHandler, cause: Throwable) {
-        onPeerWireException(stream.getPeerHandler(), cause)
+        onPeerWireException(if (!stream.aborted) stream.getPeerHandler() else null, cause)
     }
 
     protected open fun streamInbound(stream: StreamHandler, msg: Any) {
+        if (stream.aborted) return
         onInbound(stream.getPeerHandler(), msg)
     }
 
@@ -192,7 +204,7 @@ abstract class P2PService {
      * Notifies on error in peer wire communication
      * Invoked on event thread
      */
-    protected open fun onPeerWireException(peer: PeerHandler, cause: Throwable) {
+    protected open fun onPeerWireException(peer: PeerHandler?, cause: Throwable) {
         logger.warn("Error by peer $peer ", cause)
     }
 
