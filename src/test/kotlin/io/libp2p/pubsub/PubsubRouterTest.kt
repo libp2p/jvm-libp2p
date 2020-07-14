@@ -60,6 +60,25 @@ abstract class PubsubRouterTest(val router: RouterCtor) {
     }
 
     @Test
+    fun testDoubleConnect() {
+        val fuzz = DeterministicFuzz()
+
+        val router1 = fuzz.createTestRouter(router())
+        val router2 = fuzz.createTestRouter(router())
+        router2.router.subscribe("topic1")
+
+        router1.connectSemiDuplex(router2, LogLevel.ERROR, LogLevel.ERROR)
+        router1.connectSemiDuplex(router2, LogLevel.ERROR, LogLevel.ERROR)
+
+        val msg = newMessage("topic1", 0L, "Hello".toByteArray())
+        router1.router.publish(msg) // .get()
+
+        Assertions.assertEquals(msg, router2.inboundMessages.poll(5, TimeUnit.SECONDS))
+        Assertions.assertTrue(router1.inboundMessages.isEmpty())
+        Assertions.assertTrue(router2.inboundMessages.isEmpty())
+    }
+
+    @Test
     fun testUnsubscribe() {
         val fuzz = DeterministicFuzz()
 
