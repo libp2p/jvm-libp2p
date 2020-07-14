@@ -1,5 +1,6 @@
 package io.libp2p.pubsub
 
+import io.libp2p.core.BadPeerException
 import io.libp2p.core.PeerId
 import io.libp2p.core.Stream
 import io.libp2p.core.pubsub.RESULT_VALID
@@ -250,10 +251,18 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
         peerTopics.removeAll(peer)
     }
 
-    override fun onPeerWireException(peer: PeerHandler, cause: Throwable) {
+    override fun onPeerWireException(peer: PeerHandler?, cause: Throwable) {
         // exception occurred in protobuf decoders
         logger.debug("Malformed message from $peer : $cause")
-        notifyMalformedMessage(peer)
+        peer?.also { notifyMalformedMessage(it) }
+    }
+
+    override fun onServiceException(peer: PeerHandler?, msg: Any?, cause: Throwable) {
+        if (cause is BadPeerException) {
+            logger.debug("Remote peer ($peer) misbehaviour on message $msg: $cause")
+        } else {
+            logger.warn("AbstractRouter internal error on message $msg from peer $peer", cause)
+        }
     }
 
     private fun handleMessageSubscriptions(peer: PeerHandler, msg: Rpc.RPC.SubOpts) {
