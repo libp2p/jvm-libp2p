@@ -23,7 +23,7 @@ abstract class AbstractChildChannel(parent: Channel, id: ChannelId?) : AbstractC
         OPEN, ACTIVE, INACTIVE, CLOSED
     }
 
-    private val closeFuture = parent.closeFuture()
+    private val parentCloseFuture = parent.closeFuture()
     private var state = State.OPEN
     private var closeImplicitly = false
     private val parentCloseListener = GenericFutureListener { _: Future<Void> -> closeImpl() }
@@ -51,7 +51,7 @@ abstract class AbstractChildChannel(parent: Channel, id: ChannelId?) : AbstractC
 
     override fun doRegister() {
         state = State.ACTIVE
-        closeFuture.addListener(parentCloseListener)
+        parentCloseFuture.addListener(parentCloseListener)
     }
 
     override fun doDeregister() {
@@ -68,7 +68,7 @@ abstract class AbstractChildChannel(parent: Channel, id: ChannelId?) : AbstractC
         if (!closeImplicitly) onClientClosed()
         deactivate()
         pipeline().deregister()
-        closeFuture.removeListener(parentCloseListener)
+        parentCloseFuture.removeListener(parentCloseListener)
         state = State.CLOSED
     }
 
