@@ -17,6 +17,8 @@ abstract class P2PChannelOverNetty(
     val nettyChannel: Channel,
     override val isInitiator: Boolean
 ) : P2PChannel {
+    private val closeCompletableFuture by lazy { nettyChannel.closeFuture().toVoidCompletableFuture() }
+
     override fun pushHandler(handler: ChannelHandler) {
         nettyChannel.pipeline().addLast(handler)
     }
@@ -30,5 +32,8 @@ abstract class P2PChannelOverNetty(
 
     override fun close() = nettyChannel.close().toVoidCompletableFuture()
 
-    override fun closeFuture() = nettyChannel.closeFuture().toVoidCompletableFuture()
+    override fun closeFuture() = closeCompletableFuture
+    override fun toString(): String {
+        return "P2PChannelOverNetty(nettyChannel=$nettyChannel, isInitiator=$isInitiator)"
+    }
 }

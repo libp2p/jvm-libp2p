@@ -8,6 +8,8 @@ import io.netty.channel.ChannelMetadata
 import io.netty.channel.ChannelPromise
 import io.netty.channel.DefaultChannelConfig
 import io.netty.channel.EventLoop
+import io.netty.util.concurrent.Future
+import io.netty.util.concurrent.GenericFutureListener
 import java.net.SocketAddress
 
 /**
@@ -21,9 +23,10 @@ abstract class AbstractChildChannel(parent: Channel, id: ChannelId?) : AbstractC
         OPEN, ACTIVE, INACTIVE, CLOSED
     }
 
-    private val closeFuture = parent.closeFuture()
+    private val parentCloseFuture = parent.closeFuture()
     private var state = State.OPEN
     private var closeImplicitly = false
+    private val parentCloseListener = GenericFutureListener { _: Future<Void> -> closeImpl() }
 
     fun closeImpl() {
         closeImplicitly = true
@@ -48,9 +51,7 @@ abstract class AbstractChildChannel(parent: Channel, id: ChannelId?) : AbstractC
 
     override fun doRegister() {
         state = State.ACTIVE
-        closeFuture.addListener {
-            closeImpl()
-        }
+        parentCloseFuture.addListener(parentCloseListener)
     }
 
     override fun doDeregister() {
@@ -67,6 +68,7 @@ abstract class AbstractChildChannel(parent: Channel, id: ChannelId?) : AbstractC
         if (!closeImplicitly) onClientClosed()
         deactivate()
         pipeline().deregister()
+        parentCloseFuture.removeListener(parentCloseListener)
         state = State.CLOSED
     }
 

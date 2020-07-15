@@ -1,5 +1,7 @@
 package io.libp2p.pubsub
 
+import io.libp2p.core.BadPeerException
+import io.libp2p.core.PeerId
 import io.libp2p.core.Stream
 import io.libp2p.core.pubsub.RESULT_VALID
 import io.libp2p.core.pubsub.ValidationResult
@@ -38,7 +40,7 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
     override var name: String = "router"
     var messageIdGenerator: (Rpc.Message) -> MessageId = { it.from.toByteArray().toHex() + it.seqno.toByteArray().toHex() }
 
-    val peerTopics = MultiSet<PeerHandler, String>()
+    private val peerTopics = MultiSet<PeerHandler, String>()
     private var msgHandler: (Rpc.Message) -> CompletableFuture<ValidationResult> = { RESULT_VALID }
     var maxSeenMessagesSizeSet = 10000
     var validator: PubsubMessageValidator = PubsubMessageValidator.nopValidator()
@@ -157,6 +159,7 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
         peer.writeAndFlush(helloPubsubMsg)
     }
 
+    protected open fun notifyMalformedMessage(peer: PeerHandler) {}
     protected open fun notifyUnseenMessage(peer: PeerHandler, msg: Rpc.Message) {}
     protected open fun notifyNonSubscribedMessage(peer: PeerHandler, msg: Rpc.Message) {}
     protected open fun notifySeenMessage(peer: PeerHandler, msg: Rpc.Message, validationResult: Optional<ValidationResult>) {}
@@ -248,6 +251,20 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
         peerTopics.removeAll(peer)
     }
 
+    override fun onPeerWireException(peer: PeerHandler?, cause: Throwable) {
+        // exception occurred in protobuf decoders
+        logger.debug("Malformed message from $peer : $cause")
+        peer?.also { notifyMalformedMessage(it) }
+    }
+
+    override fun onServiceException(peer: PeerHandler?, msg: Any?, cause: Throwable) {
+        if (cause is BadPeerException) {
+            logger.debug("Remote peer ($peer) misbehaviour on message $msg: $cause")
+        } else {
+            logger.warn("AbstractRouter internal error on message $msg from peer $peer", cause)
+        }
+    }
+
     private fun handleMessageSubscriptions(peer: PeerHandler, msg: Rpc.RPC.SubOpts) {
         if (msg.subscribe) {
             peerTopics[peer] += msg.topicid
@@ -294,6 +311,16 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
             )
         }
         subscribedTopics -= topic
+    }
+
+    override fun getPeerTopics(): CompletableFuture<Map<PeerId, Set<String>>> {
+        return submitOnEventThread {
+            val topicsByPeerId = hashMapOf<PeerId, Set<String>>()
+            peerTopics.forEach { entry ->
+                topicsByPeerId[entry.key.peerId] = HashSet(entry.value)
+            }
+            topicsByPeerId
+        }
     }
 
     protected open fun send(peer: PeerHandler, msg: Rpc.RPC): CompletableFuture<Unit> {

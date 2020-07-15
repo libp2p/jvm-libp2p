@@ -1,5 +1,6 @@
 package io.libp2p.core.pubsub
 
+import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.PrivKey
 import io.libp2p.pubsub.PubsubApiImpl
 import io.libp2p.pubsub.PubsubRouter
@@ -77,6 +78,13 @@ interface PubsubSubscriberApi {
             RESULT_VALID
         }, *topics)
     }
+
+    /**
+     * Get the topics each peer is subscribed to
+     *
+     * @return a map of the peer's {@link PeerId} to the set of topics it is subscribed to
+     */
+    fun getPeerTopics(): CompletableFuture<Map<PeerId, Set<Topic>>>
 }
 
 /**

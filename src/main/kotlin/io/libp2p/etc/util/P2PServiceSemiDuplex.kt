@@ -36,23 +36,23 @@ abstract class P2PServiceSemiDuplex : P2PService() {
             peerHandler as SDPeerHandler
             when {
                 peerHandler.otherStreamHandler != null -> {
-                    stream.close()
+                    streamHandler.closeAbruptly()
                     throw BadPeerException("Duplicate steam for peer ${peerHandler.peerId}. Closing it silently")
                 }
                 peerHandler.streamHandler.stream.isInitiator == stream.isInitiator -> {
-                    stream.close()
+                    streamHandler.closeAbruptly()
                     throw BadPeerException("Duplicate stream with initiator = ${stream.isInitiator} for peer ${peerHandler.peerId}")
                 }
                 else -> {
                     peerHandler.otherStreamHandler = streamHandler
-                    streamHandler.peerHandler = peerHandler
+                    streamHandler.initPeerHandler(peerHandler)
                 }
             }
         }
     }
 
     override fun streamActive(stream: StreamHandler) {
-        if (stream == (stream.peerHandler as SDPeerHandler).getOutboundHandler()) {
+        if (stream == (stream.getPeerHandler() as SDPeerHandler).getOutboundHandler()) {
             // invoke streamActive only when outbound handler is activated
             super.streamActive(stream)
         }
