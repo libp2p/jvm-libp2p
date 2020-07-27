@@ -15,6 +15,6 @@ class StringSuffixCodec(val trailingChar: Char) : MessageToMessageCodec<String, 
 
     override fun decode(ctx: ChannelHandlerContext?, msg: String, out: MutableList<Any>) {
         if (!msg.endsWith(trailingChar)) throw DecoderException("Missing message end character")
-        out += msg.substring(0, msg.length - 1);
+        out += msg.substring(0, msg.length - 1)
     }
 }

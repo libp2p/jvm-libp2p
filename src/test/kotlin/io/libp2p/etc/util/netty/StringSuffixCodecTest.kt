@@ -13,21 +13,21 @@ class StringSuffixCodecTest {
     fun encodeAppendTrailingChar() {
         channel.writeOutbound("theMessage")
         val result = channel.readOutbound<String>()
-        assertEquals(result, "theMessage\n");
+        assertEquals(result, "theMessage\n")
     }
 
     @Test
     fun decodeStripsTrailingChar() {
         channel.writeInbound("theMessage\n")
         val result = channel.readInbound<String>()
-        assertEquals(result, "theMessage");
+        assertEquals(result, "theMessage")
     }
 
     @Test
     fun decodeOnlyStripsSingleTrailingChar() {
         channel.writeInbound("theMessage\n\n")
         val result = channel.readInbound<String>()
-        assertEquals(result, "theMessage\n");
+        assertEquals(result, "theMessage\n")
     }
 
     @Test
