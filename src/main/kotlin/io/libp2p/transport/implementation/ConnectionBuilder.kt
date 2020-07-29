@@ -9,7 +9,10 @@ import io.libp2p.etc.types.forward
 import io.libp2p.transport.ConnectionUpgrader
 import io.netty.channel.Channel
 import io.netty.channel.ChannelInitializer
+import io.netty.channel.WriteBufferWaterMark
+import io.netty.handler.timeout.WriteTimeoutHandler
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.TimeUnit
 
 class ConnectionBuilder(
     private val transport: Transport,
@@ -21,7 +24,10 @@ class ConnectionBuilder(
     val connectionEstablished = CompletableFuture<Connection>()
 
     override fun initChannel(ch: Channel) {
+        ch.config().writeBufferWaterMark = WriteBufferWaterMark(100, 1024)
         val connection = ConnectionOverNetty(ch, transport, initiator)
+        connection.pushHandler(WriteTimeoutHandler(30, TimeUnit.SECONDS))
+        connection.pushHandler(ReadLimiter())
         remotePeerId?.also { ch.attr(REMOTE_PEER_ID).set(it) }
 
         upgrader.establishSecureChannel(connection)
