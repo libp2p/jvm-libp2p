@@ -193,7 +193,7 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
                 validator.validate(it)
                 true
             } catch (e: Exception) {
-                logger.info("Invalid pubsub message from peer $peer: $it", e)
+                logger.debug("Invalid pubsub message from peer $peer: $it", e)
                 seenMessages[getMessageId(it)] = Optional.of(ValidationResult.Invalid)
                 notifyUnseenInvalidMessage(peer, it)
                 false
