@@ -38,7 +38,8 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
     override var curTimeMillis: () -> Long by lazyVarInit { { System.currentTimeMillis() } }
     override var random by lazyVarInit { Random() }
     override var name: String = "router"
-    var messageIdGenerator: (Rpc.Message) -> MessageId = { it.from.toByteArray().toHex() + it.seqno.toByteArray().toHex() }
+    var messageIdGenerator: (Rpc.Message) -> MessageId =
+        { it.from.toByteArray().toHex() + it.seqno.toByteArray().toHex() }
 
     private val peerTopics = MultiSet<PeerHandler, String>()
     private var msgHandler: (Rpc.Message) -> CompletableFuture<ValidationResult> = { RESULT_VALID }
@@ -181,12 +182,20 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
         (msg.publishList - msgSubscribed).forEach { notifyNonSubscribedMessage(peer, it) }
 
         val msgUnseen = msgSubscribed
-            .filter { !seenMessages.containsKey(getMessageId(it)) }
-
-        msgUnseen.forEach { seenMessages[getMessageId(it)] = Optional.empty() }
-
-        msgUnseen.forEach { notifyUnseenMessage(peer, it) }
-        (msgSubscribed - msgUnseen).forEach { notifySeenMessage(peer, it, seenMessages[getMessageId(it)]!!) }
+            .filter { subscribedMessage ->
+                val messageId = getMessageId(subscribedMessage)
+                val validationResult = seenMessages[messageId]
+                if (validationResult != null) {
+                    // Message has been seen
+                    notifySeenMessage(peer, subscribedMessage, validationResult)
+                    false
+                } else {
+                    // Message is unseen
+                    seenMessages[messageId] = Optional.empty()
+                    notifyUnseenMessage(peer, subscribedMessage)
+                    true
+                }
+            }
 
         val msgValid = msgUnseen.filter {
             try {
