@@ -181,12 +181,20 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
         (msg.publishList - msgSubscribed).forEach { notifyNonSubscribedMessage(peer, it) }
 
         val msgUnseen = msgSubscribed
-            .filter { !seenMessages.containsKey(getMessageId(it)) }
-
-        msgUnseen.forEach { seenMessages[getMessageId(it)] = Optional.empty() }
-
-        msgUnseen.forEach { notifyUnseenMessage(peer, it) }
-        (msgSubscribed - msgUnseen).forEach { notifySeenMessage(peer, it, seenMessages[getMessageId(it)]!!) }
+            .filter { subscribedMessage ->
+                val messageId = getMessageId(subscribedMessage)
+                val seenMessage = seenMessages[messageId]
+                if (seenMessage != null) {
+                    // Message has been seen
+                    notifySeenMessage(peer, subscribedMessage, seenMessage)
+                    false
+                } else {
+                    // Message is unseen
+                    seenMessages[messageId] = Optional.empty()
+                    notifyUnseenMessage(peer, subscribedMessage)
+                    true
+                }
+            }
 
         val msgValid = msgUnseen.filter {
             try {
