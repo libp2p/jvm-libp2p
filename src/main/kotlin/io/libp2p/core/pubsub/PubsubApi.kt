@@ -6,6 +6,7 @@ import io.libp2p.pubsub.PubsubApiImpl
 import io.libp2p.pubsub.PubsubRouter
 import io.netty.buffer.ByteBuf
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.atomic.AtomicLong
 import java.util.function.Consumer
 import java.util.function.Function
 import kotlin.random.Random.Default.nextLong
@@ -114,7 +115,15 @@ interface PubsubPublisherApi {
      * The future completes normally when the message
      * is transmitted to at least one peer
      */
-    fun publish(data: ByteBuf, vararg topics: Topic): CompletableFuture<Unit>
+    fun publish(data: ByteBuf, vararg topics: Topic): CompletableFuture<Unit> =
+        publishExt(data, null, null, *topics)
+
+    /**
+     * Extended [publish] method where `from` and `seqId` may be customized
+     * @param from If null the field is calculated based on the private key
+     * @param seqId If null the field is calculated from the internal id counter
+     */
+    fun publishExt(data: ByteBuf, from: ByteArray?, seqId: Long?, vararg topics: Topic): CompletableFuture<Unit>
 }
 
 /**
@@ -124,13 +133,29 @@ interface PubsubApi : PubsubSubscriberApi {
 
     /**
      * Creates a Publisher instance for a single sender identified by [privKey]
-     * @param privKey The sender's private key for singing published messages
-     * @param seqId Initial sequence id for the sender. Since messages are
-     * uniquely identified by a pair of `sender + seqId` it is recommended to
-     * initialize the id with the `lastUsedId + 1`
-     * Initialized with random value by default
+     * @param privKey The sender's private key for singing published messages, the
+     *     message `from` field is derived as [PeerId] from this parameter
+     *     If this parameter is [null] then the message `signature` and `from` fields
+     *     are omitted
+     * @param initialSeqId Initial sequence id for the sender. Since messages are
+     *     uniquely identified by a pair of `sender + seqId` it is recommended to
+     *     initialize the id with the `lastUsedId + 1`
+     *     Initialized with random value by default
      */
-    fun createPublisher(privKey: PrivKey, seqId: Long = nextLong()): PubsubPublisherApi
+    fun createPublisher(privKey: PrivKey?, initialSeqId: Long = nextLong()): PubsubPublisherApi {
+        val idGenerator = AtomicLong(initialSeqId)
+        return createPublisher(privKey, idGenerator::incrementAndGet)
+    }
+
+    /**
+     * Creates a Publisher instance for a single sender identified by [privKey]
+     * @param privKey The sender's private key for singing published messages, the
+     *     message `from` field is derived as [PeerId] from this parameter
+     *     If this parameter is [null] then the message `signature` and `from` fields
+     *     are omitted
+     * @param seqIdGenerator supplies `seqId` for published messages
+     */
+    fun createPublisher(privKey: PrivKey?, seqIdGenerator: () -> Long): PubsubPublisherApi
 }
 
 /**
