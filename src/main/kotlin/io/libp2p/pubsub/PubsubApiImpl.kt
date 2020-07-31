@@ -71,7 +71,7 @@ open class PubsubApiImpl(val router: PubsubRouter) : PubsubApi {
             it.receiver.apply(rpc2Msg(msg))
         }
         return validationFuts.thenApplyAll {
-            if (it.isEmpty())ValidationResult.Ignore
+            if (it.isEmpty()) ValidationResult.Ignore
             else it.reduce(validationResultReduce)
         }
     }
@@ -80,7 +80,9 @@ open class PubsubApiImpl(val router: PubsubRouter) : PubsubApi {
         return MessageImpl(
             msg.data.toByteArray().toByteBuf(),
             msg.from.toByteArray(),
-            msg.seqno.toByteArray().copyOfRange(0, 8).toLongBigEndian(),
+            if (msg.hasSeqno())
+                msg.seqno.toByteArray().copyOfRange(0, 8).toLongBigEndian()
+            else 0,
             msg.topicIDsList.map { Topic(it) }
         )
     }
