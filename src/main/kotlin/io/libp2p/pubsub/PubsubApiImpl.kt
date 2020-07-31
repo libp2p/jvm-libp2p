@@ -80,7 +80,7 @@ open class PubsubApiImpl(val router: PubsubRouter) : PubsubApi {
         return MessageImpl(
             msg.data.toByteArray().toByteBuf(),
             msg.from.toByteArray(),
-            if (msg.hasSeqno())
+            if (msg.hasSeqno() && msg.seqno.size() >= 8)
                 msg.seqno.toByteArray().copyOfRange(0, 8).toLongBigEndian()
             else 0,
             msg.topicIDsList.map { Topic(it) }
