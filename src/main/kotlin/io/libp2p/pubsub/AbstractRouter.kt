@@ -202,7 +202,7 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
                 validator.validate(it)
                 true
             } catch (e: Exception) {
-                logger.info("Invalid pubsub message from peer $peer: $it", e)
+                logger.debug("Invalid pubsub message from peer $peer: $it", e)
                 seenMessages[getMessageId(it)] = Optional.of(ValidationResult.Invalid)
                 notifyUnseenInvalidMessage(peer, it)
                 false
@@ -239,7 +239,7 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
             it.second.whenCompleteAsync(BiConsumer { res, err ->
                 when {
                     err != null -> logger.warn("Exception while handling message from peer $peer: ${it.first}", err)
-                    res == ValidationResult.Invalid -> logger.info("Invalid pubsub message from peer $peer: ${it.first}")
+                    res == ValidationResult.Invalid -> logger.debug("Invalid pubsub message from peer $peer: ${it.first}")
                     res == ValidationResult.Ignore -> logger.debug("Ingnoring pubsub message from peer $peer: ${it.first}")
                     else -> {
                         newValidatedMessages(singletonList(it.first), peer)
