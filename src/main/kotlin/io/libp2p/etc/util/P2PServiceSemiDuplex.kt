@@ -52,7 +52,7 @@ abstract class P2PServiceSemiDuplex : P2PService() {
     }
 
     override fun streamActive(stream: StreamHandler) {
-        if (stream == (stream.getPeerHandler() as SDPeerHandler).getOutboundHandler()) {
+        if (!stream.aborted && stream == (stream.getPeerHandler() as SDPeerHandler).getOutboundHandler()) {
             // invoke streamActive only when outbound handler is activated
             super.streamActive(stream)
         }
