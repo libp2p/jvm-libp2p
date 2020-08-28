@@ -2,12 +2,16 @@ package io.libp2p.pubsub.gossip
 
 import io.libp2p.etc.types.seconds
 import io.libp2p.pubsub.DeterministicFuzz
+import io.libp2p.pubsub.MockRouter
 import io.libp2p.pubsub.PubsubRouterTest
 import io.libp2p.pubsub.TestRouter
+import io.libp2p.tools.TestLogAppender
 import io.netty.handler.logging.LogLevel
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
+import pubsub.pb.Rpc
 import java.time.Duration
+import java.util.concurrent.TimeUnit
 
 class GossipPubsubRouterTest : PubsubRouterTest({
     GossipRouter(
@@ -100,4 +104,74 @@ class GossipPubsubRouterTest : PubsubRouterTest({
         Assertions.assertEquals(receiveRouters.size, msgCount3)
         receiveRouters.forEach { it.inboundMessages.clear() }
     }
+
+    @Test
+    fun testOneWayConnect() {
+        // when remote gossip makes connection and immediately send IHAVE
+        // the situation when we fail to send IWANT (as not outbound stream yet)
+        // shouldn't be treated as internal error and no WARN logs should be printed
+        val fuzz = DeterministicFuzz()
+
+        val router1 = fuzz.createTestRouter(MockRouter())
+        val router2 = fuzz.createTestRouter(router())
+        val mockRouter = router1.router as MockRouter
+
+        router2.router.subscribe("topic1")
+        router1.connect(router2, LogLevel.INFO, LogLevel.INFO)
+
+        TestLogAppender().install().use {testLogAppender ->
+            val msg1 = Rpc.RPC.newBuilder()
+                .setControl(
+                    Rpc.ControlMessage.newBuilder().addIhave(
+                        Rpc.ControlIHave.newBuilder().addMessageIDs("messageId")
+                    )
+                ).build()
+
+            mockRouter.sendToSingle(msg1)
+
+            Assertions.assertFalse(testLogAppender.hasAnyWarns())
+        }
+
+    }
+
+    @Test
+    fun testOneWayConnectPublish() {
+        // check that the published message is broadcasted successfully when one
+        // of gossip peers is yet 'partially' connected
+        val fuzz = DeterministicFuzz()
+
+        val router1 = fuzz.createTestRouter(MockRouter())
+        val router2 = fuzz.createTestRouter(router())
+        val router3 = fuzz.createTestRouter(router())
+        val mockRouter = router1.router as MockRouter
+
+        router2.router.subscribe("topic1")
+        router3.router.subscribe("topic1")
+        router1.connect(router2, LogLevel.INFO, LogLevel.INFO)
+        router2.connectSemiDuplex(router3, LogLevel.INFO, LogLevel.INFO)
+
+        TestLogAppender().install().use {testLogAppender ->
+
+            val msg1 = Rpc.RPC.newBuilder()
+                .addSubscriptions(Rpc.RPC.SubOpts.newBuilder()
+                    .setTopicid("topic1")
+                    .setSubscribe(true))
+                .setControl(
+                    Rpc.ControlMessage.newBuilder().addGraft(
+                        Rpc.ControlGraft.newBuilder().setTopicID("topic1")
+                    ))
+                .build()
+            mockRouter.sendToSingle(msg1)
+
+            fuzz.timeController.addTime(3.seconds)
+
+            val msg2 = newMessage("topic1", 1L, "Hello".toByteArray())
+            val future = router2.router.publish(msg2)
+            Assertions.assertDoesNotThrow { future.get(1, TimeUnit.SECONDS) }
+            Assertions.assertEquals(1, router3.inboundMessages.size)
+
+            Assertions.assertFalse(testLogAppender.hasAnyWarns())
+        }
+    }
+
 }

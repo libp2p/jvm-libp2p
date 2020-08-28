@@ -17,4 +17,3 @@ class MessageAlreadySeenException(message: String) : PubsubException(message)
  */
 class InvalidMessageException(message: String) : PubsubException(message)
 
-class InternalError
