@@ -26,7 +26,6 @@ class TestLogAppender : AbstractAppender("test", null, null), AutoCloseable {
     fun hasAny(level: Level) = logs.any { it.level == level }
     fun hasAnyWarns() = hasAny(Level.ERROR) || hasAny(Level.WARN)
 
-
     override fun append(event: LogEvent) {
         logs += event.toImmutable()
     }

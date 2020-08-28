@@ -119,7 +119,7 @@ class GossipPubsubRouterTest : PubsubRouterTest({
         router2.router.subscribe("topic1")
         router1.connect(router2, LogLevel.INFO, LogLevel.INFO)
 
-        TestLogAppender().install().use {testLogAppender ->
+        TestLogAppender().install().use { testLogAppender ->
             val msg1 = Rpc.RPC.newBuilder()
                 .setControl(
                     Rpc.ControlMessage.newBuilder().addIhave(
@@ -131,7 +131,6 @@ class GossipPubsubRouterTest : PubsubRouterTest({
 
             Assertions.assertFalse(testLogAppender.hasAnyWarns())
         }
-
     }
 
     @Test
@@ -150,7 +149,7 @@ class GossipPubsubRouterTest : PubsubRouterTest({
         router1.connect(router2, LogLevel.INFO, LogLevel.INFO)
         router2.connectSemiDuplex(router3, LogLevel.INFO, LogLevel.INFO)
 
-        TestLogAppender().install().use {testLogAppender ->
+        TestLogAppender().install().use { testLogAppender ->
 
             val msg1 = Rpc.RPC.newBuilder()
                 .addSubscriptions(Rpc.RPC.SubOpts.newBuilder()
@@ -173,5 +172,4 @@ class GossipPubsubRouterTest : PubsubRouterTest({
             Assertions.assertFalse(testLogAppender.hasAnyWarns())
         }
     }
-
 }
