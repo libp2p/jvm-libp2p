@@ -1,5 +1,6 @@
 package io.libp2p.etc.types
 
+import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import java.util.concurrent.CompletableFuture
 
@@ -17,5 +18,12 @@ class AsyncExtTest {
         futs[2].complete(3)
         assert(allFut.isDone)
         assert(allFut.get() == 6)
+    }
+
+    @Test
+    fun testAnyCompleteWithCompletedExceptionally() {
+        val anyComplete = anyComplete<Int>(completedExceptionally(RuntimeException("test")))
+
+        Assertions.assertTrue(anyComplete.isCompletedExceptionally)
     }
 }
