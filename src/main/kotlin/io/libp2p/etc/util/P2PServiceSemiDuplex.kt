@@ -1,7 +1,8 @@
 package io.libp2p.etc.util
 
 import io.libp2p.core.BadPeerException
-import io.libp2p.core.InternalErrorException
+import io.libp2p.core.SemiDuplexNoOutboundStreamException
+import io.libp2p.etc.types.completedExceptionally
 import io.libp2p.etc.types.toVoidCompletableFuture
 import java.util.concurrent.CompletableFuture
 
@@ -17,7 +18,8 @@ abstract class P2PServiceSemiDuplex : P2PService() {
         var otherStreamHandler: StreamHandler? = null
 
         override fun writeAndFlush(msg: Any): CompletableFuture<Unit> =
-            getOutboundHandler()?.ctx?.writeAndFlush(msg)?.toVoidCompletableFuture() ?: throw InternalErrorException("No active outbound stream to write data $msg")
+            getOutboundHandler()?.ctx?.writeAndFlush(msg)?.toVoidCompletableFuture() ?: completedExceptionally(
+                SemiDuplexNoOutboundStreamException("No active outbound stream to write data $msg"))
 
         override fun isActive() = getOutboundHandler()?.ctx != null
 

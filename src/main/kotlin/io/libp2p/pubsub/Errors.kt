@@ -16,5 +16,3 @@ class MessageAlreadySeenException(message: String) : PubsubException(message)
  * Throw when message validation failed
  */
 class InvalidMessageException(message: String) : PubsubException(message)
-
-class InternalError
