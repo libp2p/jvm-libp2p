@@ -76,7 +76,7 @@ Builds are published to JCenter. Maven Central mirrors JCenter, but updates can 
   <dependency>
     <groupId>io.libp2p</groupId>
     <artifactId>jvm-libp2p-minimal</artifactId>
-    <version>0.5.5-RELEASE</version>
+    <version>0.5.6-RELEASE</version>
     <type>pom</type>
   </dependency>
 ```
