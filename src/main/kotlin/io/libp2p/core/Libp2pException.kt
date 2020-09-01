@@ -65,3 +65,9 @@ open class TransportNotSupportedException(message: String) : Libp2pException(mes
  * Indicates the message received from a remote party violates protocol
  */
 open class ProtocolViolationException(message: String) : Libp2pException(message)
+
+/**
+ * When trying to write a message to a peer within [io.libp2p.etc.util.P2PServiceSemiDuplex]
+ * but there is no yet outbound stream created.
+ */
+open class SemiDuplexNoOutboundStreamException(message: String) : Libp2pException(message)
