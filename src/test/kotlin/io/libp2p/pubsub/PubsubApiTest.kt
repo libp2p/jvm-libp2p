@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit
 class PubsubApiTest {
 
     @Test
-    fun testNoFromMessageField() {
+    fun testNoFromOrSeqNoMessageField() {
         val fuzz = DeterministicFuzz()
         val router1 = fuzz.createTestRouter(FloodRouter())
         val api1 = createPubsubApi(router1.router)
@@ -36,21 +36,21 @@ class PubsubApiTest {
 
         fuzz.timeController.addTime(Duration.ofSeconds(10))
 
-        val publisher1 = api1.createPublisher(router1.keyPair.first, 777)
+        // No from, signature or seqNo
+        val publisher1 = api1.createPublisher(null) { null }
         val publishFut = publisher1
-            .publishExt("Message".toByteArray().toByteBuf(), byteArrayOf(), null, Topic("myTopic"))
+            .publishExt("Message".toByteArray().toByteBuf(), null, null, Topic("myTopic"))
 
         fuzz.timeController.addTime(Duration.ofSeconds(1))
 
         Assertions.assertTrue(publishFut.isDone)
         val recMsg = receivedMessages2.poll(1, TimeUnit.SECONDS)
-        println(recMsg)
         Assertions.assertNotNull(recMsg)
         assertEquals(1, recMsg.topics.size)
         assertEquals(Topic("myTopic"), recMsg.topics[0])
-        assertEquals(778, recMsg.seqId)
+        Assertions.assertNull(recMsg.seqId)
         assertEquals("Message", recMsg.data.toByteArray().toString(StandardCharsets.UTF_8))
-        assertEquals(0, recMsg.from.size)
+        Assertions.assertNull(recMsg.from)
     }
 
     @Test
