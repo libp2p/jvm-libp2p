@@ -31,7 +31,7 @@ open class PubsubApiImpl(val router: PubsubRouter) : PubsubApi {
         }
     }
 
-    protected open inner class PublisherImpl(val privKey: PrivKey?, val seqIdGenerator: () -> Long) :
+    protected open inner class PublisherImpl(val privKey: PrivKey?, val seqIdGenerator: () -> Long?) :
         PubsubPublisherApi {
 
         val from = privKey?.let { PeerId.fromPubKey(it.publicKey()).bytes.toProtobuf() }
@@ -48,7 +48,9 @@ open class PubsubApiImpl(val router: PubsubRouter) : PubsubApi {
             val msgToSign = Rpc.Message.newBuilder()
                 .addAllTopicIDs(topics.map { it.topic })
                 .setData(data.toByteArray().toProtobuf())
-                .setSeqno(mSeqId.toBytesBigEndian().toProtobuf())
+            mSeqId?.also {
+                msgToSign.setSeqno(it.toBytesBigEndian().toProtobuf())
+            }
             mFrom?.also {
                 msgToSign.setFrom(it)
             }
@@ -87,10 +89,11 @@ open class PubsubApiImpl(val router: PubsubRouter) : PubsubApi {
     private fun rpc2Msg(msg: Rpc.Message): MessageApi {
         return MessageImpl(
             msg.data.toByteArray().toByteBuf(),
-            msg.from.toByteArray(),
+            if (msg.hasFrom()) msg.from.toByteArray()
+            else null,
             if (msg.hasSeqno() && msg.seqno.size() >= 8)
                 msg.seqno.toByteArray().copyOfRange(0, 8).toLongBigEndian()
-            else 0,
+            else null,
             msg.topicIDsList.map { Topic(it) }
         )
     }
@@ -138,13 +141,13 @@ open class PubsubApiImpl(val router: PubsubRouter) : PubsubApi {
         router.unsubscribe(*routerToUnsubscribe.toTypedArray())
     }
 
-    override fun createPublisher(privKey: PrivKey?, seqIdGenerator: () -> Long): PubsubPublisherApi =
+    override fun createPublisher(privKey: PrivKey?, seqIdGenerator: () -> Long?): PubsubPublisherApi =
         PublisherImpl(privKey, seqIdGenerator)
 }
 
 class MessageImpl(
     override val data: ByteBuf,
-    override val from: ByteArray,
-    override val seqId: Long,
+    override val from: ByteArray?,
+    override val seqId: Long?,
     override val topics: List<Topic>
 ) : MessageApi

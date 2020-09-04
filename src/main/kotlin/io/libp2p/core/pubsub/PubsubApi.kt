@@ -155,7 +155,7 @@ interface PubsubApi : PubsubSubscriberApi {
      *     are omitted
      * @param seqIdGenerator supplies `seqId` for published messages
      */
-    fun createPublisher(privKey: PrivKey?, seqIdGenerator: () -> Long): PubsubPublisherApi
+    fun createPublisher(privKey: PrivKey?, seqIdGenerator: () -> Long?): PubsubPublisherApi
 }
 
 /**
@@ -169,11 +169,11 @@ interface MessageApi {
     /**
      * Sender identity. Usually it a [PeerId] derived from the sender's public key
      */
-    val from: ByteArray
+    val from: ByteArray?
     /**
      * Sequence id for the sender. A pair [from]` + `[seqId] should be globally unique
      */
-    val seqId: Long
+    val seqId: Long?
     /**
      * A set of message topics
      */
