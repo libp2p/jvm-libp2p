@@ -26,4 +26,26 @@ interface Stream : P2PChannel {
     }
 
     fun writeAndFlush(msg: Any)
+
+    /**
+     * Resets the [Stream]. That means the stream is to be abruptly terminated.
+     * This method is basically used when any error occurs while communicating
+     * @see close
+     * @see closeWrite
+     */
+    fun reset() = close()
+
+    /**
+     * Equivalent to [reset].
+     * To close the [Stream] just from the local side use [closeWrite]
+     */
+    override fun close(): CompletableFuture<Unit>
+
+    /**
+     * Closes the local side of the [Stream].
+     * [closeWrite] means that local party completed writing to the [Stream]
+     * @see io.libp2p.etc.util.netty.mux.RemoteWriteClosed to be notified on the remote
+     * stream write side closing
+     */
+    fun closeWrite(): CompletableFuture<Unit>
 }

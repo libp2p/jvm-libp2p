@@ -64,7 +64,7 @@ class IdentifyProtocol(var idMessage: IdentifyOuterClass.Identify? = null) :
                 .build()
 
             stream.writeAndFlush(msgWithAddr)
-            stream.close()
+            stream.closeWrite()
         }
 
         override fun id(): CompletableFuture<IdentifyOuterClass.Identify> {
