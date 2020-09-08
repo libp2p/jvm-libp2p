@@ -4,6 +4,7 @@ import io.libp2p.core.Connection
 import io.libp2p.core.PeerId
 import io.libp2p.core.Stream
 import io.libp2p.etc.PROTOCOL
+import io.libp2p.etc.types.toVoidCompletableFuture
 import io.netty.channel.Channel
 import java.util.concurrent.CompletableFuture
 
@@ -29,5 +30,9 @@ class StreamOverNetty(
 
     override fun writeAndFlush(msg: Any) {
         nettyChannel.writeAndFlush(msg)
+    }
+
+    override fun closeWrite(): CompletableFuture<Unit> {
+        return nettyChannel.disconnect().toVoidCompletableFuture()
     }
 }
