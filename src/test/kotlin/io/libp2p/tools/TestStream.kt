@@ -8,6 +8,7 @@ import io.libp2p.etc.PROTOCOL
 import io.libp2p.etc.STREAM
 import io.libp2p.etc.getP2PChannel
 import io.libp2p.etc.types.forward
+import io.libp2p.etc.types.toVoidCompletableFuture
 import io.libp2p.etc.util.netty.nettyInitializer
 import io.libp2p.transport.implementation.P2PChannelOverNetty
 import io.netty.channel.Channel
@@ -50,4 +51,7 @@ private class TestStream(ch: Channel, initiator: Boolean) : P2PChannelOverNetty(
     override fun writeAndFlush(msg: Any) {
         nettyChannel.writeAndFlush(msg)
     }
+
+    override fun closeWrite(): CompletableFuture<Unit> =
+        nettyChannel.disconnect().toVoidCompletableFuture()
 }

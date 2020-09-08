@@ -40,6 +40,7 @@ class IdentifyProtocol(var idMessage: IdentifyOuterClass.Identify? = null) :
 
         override fun onMessage(stream: Stream, msg: IdentifyOuterClass.Identify) {
             resp.complete(msg)
+            stream.closeWrite()
         }
 
         override fun onClosed(stream: Stream) {
@@ -64,7 +65,7 @@ class IdentifyProtocol(var idMessage: IdentifyOuterClass.Identify? = null) :
                 .build()
 
             stream.writeAndFlush(msgWithAddr)
-            stream.close()
+            stream.closeWrite()
         }
 
         override fun id(): CompletableFuture<IdentifyOuterClass.Identify> {
