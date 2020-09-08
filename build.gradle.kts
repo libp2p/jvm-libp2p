@@ -20,8 +20,7 @@ plugins {
     idea
     kotlin("jvm") version "1.3.31"
     id("org.jmailen.kotlinter") version "1.26.0"
-    id("com.google.protobuf") version "0.8.7"
-    `build-scan`
+    id("com.google.protobuf") version "0.8.13"
 
     `maven`
     `maven-publish`
@@ -173,11 +172,6 @@ task("interopTest", Test::class) {
 
 kotlinter {
     allowWildcardImports = false
-}
-
-buildScan {
-    termsOfServiceUrl = "https://gradle.com/terms-of-service"
-    termsOfServiceAgree = "yes"
 }
 
 val sourcesJar by tasks.registering(Jar::class) {
