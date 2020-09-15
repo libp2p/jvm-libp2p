@@ -132,7 +132,10 @@ class GossipScore(
             (peersInIp - peerParams.ipColocationFactorThreshold)
         ).toDouble().pow(2) * peerParams.ipColocationFactorWeight
 
-        val routerPenalty = peerScore.behaviorPenalty * peerParams.behaviourPenaltyWeight
+        val behaviorExcess = peerScore.behaviorPenalty - peerParams.behaviourPenaltyThreshold
+        val routerPenalty =
+            if (behaviorExcess < 0) 0.0
+            else behaviorExcess.pow(2) * peerParams.behaviourPenaltyWeight
 
         return topicsScore + appScore + ipColocationPenalty + routerPenalty
     }
