@@ -12,6 +12,7 @@ import io.libp2p.etc.types.seconds
 import io.libp2p.etc.types.toProtobuf
 import io.libp2p.etc.types.whenTrue
 import io.libp2p.etc.util.P2PService
+import io.libp2p.etc.util.TimeLimitedMap
 import io.libp2p.pubsub.AbstractRouter
 import io.libp2p.pubsub.MessageId
 import io.libp2p.pubsub.PubsubProtocol
@@ -66,6 +67,9 @@ open class GossipRouter @JvmOverloads constructor(
             params.heartbeatInterval.toMillis(),
             TimeUnit.MILLISECONDS
         )
+    }
+    override val seenMessages by lazy {
+        TimeLimitedMap(mutableMapOf<MessageId, Optional<ValidationResult>>(), curTimeMillis, params.seenTTL)
     }
 
     private fun setBackOff(peer: PeerHandler, topic: Topic) = setBackOff(peer, topic, params.pruneBackoff.toMillis())
