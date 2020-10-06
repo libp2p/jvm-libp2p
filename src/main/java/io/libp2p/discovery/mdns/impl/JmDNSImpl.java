@@ -4,6 +4,17 @@
 
 package io.libp2p.discovery.mdns.impl;
 
+import io.libp2p.discovery.mdns.AnswerListener;
+import io.libp2p.discovery.mdns.JmDNS;
+import io.libp2p.discovery.mdns.ServiceInfo;
+import io.libp2p.discovery.mdns.impl.constants.DNSConstants;
+import io.libp2p.discovery.mdns.impl.constants.DNSRecordType;
+import io.libp2p.discovery.mdns.impl.tasks.Responder;
+import io.libp2p.discovery.mdns.impl.tasks.ServiceResolver;
+import io.libp2p.discovery.mdns.impl.util.NamedThreadFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.Inet6Address;
@@ -12,21 +23,18 @@ import java.net.InetSocketAddress;
 import java.net.MulticastSocket;
 import java.net.SocketAddress;
 import java.net.SocketException;
-import java.util.*;
-import java.util.concurrent.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.locks.ReentrantLock;
-
-import io.libp2p.discovery.mdns.AnswerListener;
-import io.libp2p.discovery.mdns.JmDNS;
-import io.libp2p.discovery.mdns.ServiceInfo;
-import io.libp2p.discovery.mdns.impl.constants.DNSRecordType;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
-import io.libp2p.discovery.mdns.impl.constants.DNSConstants;
-import io.libp2p.discovery.mdns.impl.tasks.Responder;
-import io.libp2p.discovery.mdns.impl.tasks.ServiceResolver;
-import io.libp2p.discovery.mdns.impl.util.NamedThreadFactory;
 
 /**
  * Derived from mDNS implementation in Java.
@@ -394,10 +402,6 @@ public class JmDNSImpl extends JmDNS {
 
             if (allDone)
                 break;
-
-            try {
-                TimeUnit.MILLISECONDS.sleep(100);
-            } catch(InterruptedException e) { }
         }
 
         logger.debug("JmDNS Stopping.");
