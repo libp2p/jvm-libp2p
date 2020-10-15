@@ -29,6 +29,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
@@ -400,6 +401,8 @@ public class JmDNSImpl extends JmDNS {
         for (Future<Void> shutdown : shutdowns) {
             try {
                 shutdown.get(10, TimeUnit.SECONDS);
+            } catch (CancellationException e) {
+                logger.trace("Task was already cancelled");
             } catch (InterruptedException | ExecutionException | TimeoutException e) {
                 logger.debug("Exception when stopping JmDNS: ", e);
                 throw new RuntimeException(e);
