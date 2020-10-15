@@ -39,6 +39,11 @@ val log4j2Version = "2.11.2"
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.0-M1")
+    implementation("io.emeraldpay.noise:noise") {
+        version {
+            branch = "master"
+        }
+    }
     compile("io.netty:netty-all:4.1.36.Final")
     compile("com.google.guava:guava:27.1-jre")
     compile("org.bouncycastle:bcprov-jdk15on:1.62")

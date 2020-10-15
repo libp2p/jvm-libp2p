@@ -1,1 +1,9 @@
 rootProject.name = 'jvm-libp2p-minimal'
+
+includeBuild("plugins")
+
+sourceControl {
+    gitRepository("https://github.com/emeraldpay/noise-java") {
+        producesModule("io.emeraldpay.noise:noise")
+    }
+}
