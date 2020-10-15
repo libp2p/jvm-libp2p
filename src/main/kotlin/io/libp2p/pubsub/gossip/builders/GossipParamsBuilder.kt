@@ -30,6 +30,8 @@ class GossipParamsBuilder {
 
     private var heartbeatInterval: Duration? = null
 
+    private var seenTTL: Duration? = null
+
     private var maxPrunePeers: Int? = null
 
     private var pruneBackoff: Duration? = null
@@ -61,6 +63,7 @@ class GossipParamsBuilder {
         this.gossipSize = source.gossipSize
         this.gossipHistoryLength = source.gossipHistoryLength
         this.heartbeatInterval = source.heartbeatInterval
+        this.seenTTL = source.seenTTL
         this.maxPrunePeers = source.maxPrunePeers
         this.pruneBackoff = source.pruneBackoff
         this.floodPublish = source.floodPublish
@@ -94,6 +97,8 @@ class GossipParamsBuilder {
     fun gossipHistoryLength(value: Int): GossipParamsBuilder = apply { gossipHistoryLength = value }
 
     fun heartbeatInterval(value: Duration): GossipParamsBuilder = apply { heartbeatInterval = value }
+
+    fun seenTTL(value: Duration): GossipParamsBuilder = apply { seenTTL = value }
 
     fun maxPrunePeers(value: Int): GossipParamsBuilder = apply { maxPrunePeers = value }
 
@@ -141,6 +146,7 @@ class GossipParamsBuilder {
             gossipSize = gossipSize!!,
             gossipHistoryLength = gossipHistoryLength!!,
             heartbeatInterval = heartbeatInterval!!,
+            seenTTL = seenTTL!!,
             maxPrunePeers = maxPrunePeers!!,
             pruneBackoff = pruneBackoff!!,
             floodPublish = floodPublish!!,
@@ -176,6 +182,7 @@ class GossipParamsBuilder {
         check(gossipSize != null, { "gossipSize must not be null" })
         check(gossipHistoryLength != null, { "gossipHistoryLength must not be null" })
         check(heartbeatInterval != null, { "heartbeatInterval must not be null" })
+        check(seenTTL != null, { "seenTTL must not be null" })
         check(maxPrunePeers != null, { "maxPrunePeers must not be null" })
         check(pruneBackoff != null, { "pruneBackoff must not be null" })
         check(floodPublish != null, { "floodPublish must not be null" })
