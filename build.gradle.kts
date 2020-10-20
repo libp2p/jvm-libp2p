@@ -38,7 +38,7 @@ val log4j2Version = "2.11.2"
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.0-M1")
-    implementation("io.emeraldpay.noise:noise") {
+    implementation("tech.pegasys.teku:noise-java") {
         version {
             branch = "master"
         }
