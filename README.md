@@ -81,8 +81,27 @@ Builds are published to JCenter. Maven Central mirrors JCenter, but updates can 
   </dependency>
 ```
 
+## Building the project 
 
+To build the library you will need just 
+- JDK (Java Development Kit) of version 8 or higher
+ 
+For building a stable release version clone the `master` branch:  
+```bash
+> git clone https://github.com/libp2p/jvm-libp2p -b master
+```
+For building a version with the latest updates clone the `develop` (default) branch:
+```bash
+> git clone https://github.com/libp2p/jvm-libp2p
+```
 
+To build the library:
+```bash
+> cd jvm-libp2p
+> ./gradlew build 
+```
+
+After the build is complete you may find the library `.jar` file here: `jvm-libp2p/build/libs/jvm-libp2p-minimal-0.x.y-RELEASE.jar`
 
 ## License
 
