@@ -402,8 +402,11 @@ public class JmDNSImpl extends JmDNS {
             try {
                 shutdown.get(10, TimeUnit.SECONDS);
             } catch (CancellationException e) {
-                logger.trace("Task was already cancelled");
-            } catch (InterruptedException | ExecutionException | TimeoutException e) {
+                logger.trace("Task was already cancelled", e);
+            } catch (InterruptedException e) {
+                logger.trace("Stopping was interrupted", e);
+                Thread.currentThread().interrupt();
+            } catch (ExecutionException | TimeoutException e) {
                 logger.debug("Exception when stopping JmDNS: ", e);
                 throw new RuntimeException(e);
             }
