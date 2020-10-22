@@ -1,5 +1,7 @@
 package io.libp2p.pubsub.gossip
 
+import com.google.common.base.Ticker
+import com.google.common.cache.CacheBuilder
 import io.libp2p.core.InternalErrorException
 import io.libp2p.core.PeerId
 import io.libp2p.core.multiformats.Protocol
@@ -12,7 +14,6 @@ import io.libp2p.etc.types.seconds
 import io.libp2p.etc.types.toProtobuf
 import io.libp2p.etc.types.whenTrue
 import io.libp2p.etc.util.P2PService
-import io.libp2p.etc.util.TimeLimitedMap
 import io.libp2p.pubsub.AbstractRouter
 import io.libp2p.pubsub.MessageId
 import io.libp2p.pubsub.PubsubProtocol
@@ -69,7 +70,15 @@ open class GossipRouter @JvmOverloads constructor(
         )
     }
     override val seenMessages by lazy {
-        TimeLimitedMap(mutableMapOf<MessageId, Optional<ValidationResult>>(), curTimeMillis, params.seenTTL)
+        val t: Ticker = object : Ticker() {
+            // Ticker operates with nanos and handles overflows correctly
+            override fun read() = curTimeMillis() * 1_000_000
+        }
+        CacheBuilder.newBuilder()
+            .ticker(t)
+            .expireAfterWrite(params.seenTTL)
+            .build<MessageId, Optional<ValidationResult>>()
+            .asMap()
     }
 
     private fun setBackOff(peer: PeerHandler, topic: Topic) = setBackOff(peer, topic, params.pruneBackoff.toMillis())
