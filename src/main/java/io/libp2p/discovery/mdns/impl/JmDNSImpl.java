@@ -4,6 +4,17 @@
 
 package io.libp2p.discovery.mdns.impl;
 
+import io.libp2p.discovery.mdns.AnswerListener;
+import io.libp2p.discovery.mdns.JmDNS;
+import io.libp2p.discovery.mdns.ServiceInfo;
+import io.libp2p.discovery.mdns.impl.constants.DNSConstants;
+import io.libp2p.discovery.mdns.impl.constants.DNSRecordType;
+import io.libp2p.discovery.mdns.impl.tasks.Responder;
+import io.libp2p.discovery.mdns.impl.tasks.ServiceResolver;
+import io.libp2p.discovery.mdns.impl.util.NamedThreadFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.Inet6Address;
@@ -12,21 +23,22 @@ import java.net.InetSocketAddress;
 import java.net.MulticastSocket;
 import java.net.SocketAddress;
 import java.net.SocketException;
-import java.util.*;
-import java.util.concurrent.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.ReentrantLock;
-
-import io.libp2p.discovery.mdns.AnswerListener;
-import io.libp2p.discovery.mdns.JmDNS;
-import io.libp2p.discovery.mdns.ServiceInfo;
-import io.libp2p.discovery.mdns.impl.constants.DNSRecordType;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
-import io.libp2p.discovery.mdns.impl.constants.DNSConstants;
-import io.libp2p.discovery.mdns.impl.tasks.Responder;
-import io.libp2p.discovery.mdns.impl.tasks.ServiceResolver;
-import io.libp2p.discovery.mdns.impl.util.NamedThreadFactory;
 
 /**
  * Derived from mDNS implementation in Java.
@@ -39,7 +51,7 @@ public class JmDNSImpl extends JmDNS {
     /**
      * This is the multicast group, we are listening to for multicast DNS messages.
      */
-    private volatile InetAddress     _group;
+    private volatile InetAddress _group;
     /**
      * This is our multicast socket.
      */
@@ -77,11 +89,9 @@ public class JmDNSImpl extends JmDNS {
     /**
      * Create an instance of JmDNS and bind it to a specific network interface given its IP-address.
      *
-     * @param address
-     *            IP address to bind to.
-     * @param name
-     *            name of the newly created JmDNS
-     * @exception IOException
+     * @param address IP address to bind to.
+     * @param name    name of the newly created JmDNS
+     * @throws IOException
      */
     public JmDNSImpl(InetAddress address, String name) {
         super();
@@ -192,7 +202,7 @@ public class JmDNSImpl extends JmDNS {
 
     void handleServiceAnswers(List<DNSRecord> answers) {
         DNSRecord ptr = answers.get(0);
-        if(!DNSRecordType.TYPE_PTR.equals(ptr.getRecordType()))
+        if (!DNSRecordType.TYPE_PTR.equals(ptr.getRecordType()))
             return;
         List<AnswerListener> list = _answerListeners.get(ptr.getKey());
 
@@ -201,7 +211,7 @@ public class JmDNSImpl extends JmDNS {
             synchronized (list) {
                 listCopy = new ArrayList<>(list);
             }
-            for (final AnswerListener listener: listCopy) {
+            for (final AnswerListener listener : listCopy) {
                 _executor.submit(new Runnable() {
                     @Override
                     public void run() {
@@ -248,7 +258,7 @@ public class JmDNSImpl extends JmDNS {
     /**
      * Handle an incoming response. Cache answers, and pass them on to the appropriate questions.
      *
-     * @exception IOException
+     * @throws IOException
      */
     void handleResponse(DNSIncoming msg) throws IOException {
         List<DNSRecord> allAnswers = msg.getAllAnswers();
@@ -288,7 +298,7 @@ public class JmDNSImpl extends JmDNS {
             DNSRecordType type = answer.getRecordType();
             if (type.equals(DNSRecordType.TYPE_A) || type.equals(DNSRecordType.TYPE_AAAA)) {
                 arecords.add(answer);
-            } else if(type.equals(DNSRecordType.TYPE_PTR)) {
+            } else if (type.equals(DNSRecordType.TYPE_PTR)) {
                 ret.add(0, answer);
             } else {
                 ret.add(answer);
@@ -305,7 +315,7 @@ public class JmDNSImpl extends JmDNS {
      * @param in
      * @param addr
      * @param port
-     * @exception IOException
+     * @throws IOException
      */
     void handleQuery(DNSIncoming in, InetAddress addr, int port) throws IOException {
         logger.debug("{} handle query: {}", this.getName(), in);
@@ -322,7 +332,7 @@ public class JmDNSImpl extends JmDNS {
      * Send an outgoing multicast DNS message.
      *
      * @param out
-     * @exception IOException
+     * @throws IOException
      */
     public void send(DNSOutgoing out) throws IOException {
         if (!out.isEmpty()) {
@@ -386,21 +396,22 @@ public class JmDNSImpl extends JmDNS {
         // close socket
         this.closeMulticastSocket();
 
-        while(true) {
-            boolean allDone = _executor.isShutdown();
+        logger.debug("JmDNS waiting for service stop...");
 
-            for (Future<Void> f : shutdowns)
-                allDone &= f.isDone();
-
-            if (allDone)
-                break;
-
+        for (Future<Void> shutdown : shutdowns) {
             try {
-                TimeUnit.MILLISECONDS.sleep(100);
-            } catch(InterruptedException e) { }
+                shutdown.get(10, TimeUnit.SECONDS);
+            } catch (CancellationException e) {
+                logger.trace("Task was already cancelled", e);
+            } catch (InterruptedException e) {
+                logger.trace("Stopping was interrupted", e);
+                Thread.currentThread().interrupt();
+            } catch (ExecutionException | TimeoutException e) {
+                logger.debug("Exception when stopping JmDNS: ", e);
+                throw new RuntimeException(e);
+            }
         }
-
-        logger.debug("JmDNS Stopping.");
+        logger.debug("JmDNS stopped.");
     }
 
     /**

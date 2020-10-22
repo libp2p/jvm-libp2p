@@ -223,13 +223,7 @@ public abstract class ServiceInfo implements Cloneable {
      * @see java.lang.Object#clone()
      */
     @Override
-    public ServiceInfo clone() {
-        try {
-            return (ServiceInfo) super.clone();
-        } catch (CloneNotSupportedException exception) {
-            // clone is supported
-            return null;
-        }
+    public ServiceInfo clone() throws CloneNotSupportedException {
+        return (ServiceInfo) super.clone();
     }
-
 }
