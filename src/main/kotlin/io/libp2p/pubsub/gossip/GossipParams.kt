@@ -99,6 +99,11 @@ data class GossipParams(
     val heartbeatInterval: Duration = 1.seconds,
 
     /**
+     * Expiry time for cache of seen message ids
+     */
+    val seenTTL: Duration = 2.minutes,
+
+    /**
      * [maxPrunePeers] controls the number of peers to include in prune Peer eXchange.
      * When we prune a peer that's eligible for PX (has a good score, etc), we will try to
      * send them signed peer records for up to [maxPrunePeers] other peers that we
