@@ -2,6 +2,7 @@ import com.google.protobuf.gradle.proto
 import com.google.protobuf.gradle.protobuf
 import com.google.protobuf.gradle.protoc
 import com.jfrog.bintray.gradle.BintrayExtension
+import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.jetbrains.dokka.gradle.DokkaTask
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.net.URL
@@ -38,6 +39,8 @@ val log4j2Version = "2.11.2"
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.0-M1")
+    implementation("tech.pegasys.teku:noise-java:0.1.0")
+
     implementation("io.netty:netty-all:4.1.36.Final")
     implementation("com.google.guava:guava:27.1-jre")
     implementation("org.bouncycastle:bcprov-jdk15on:1.62")
@@ -93,7 +96,11 @@ tasks.test {
     }
 
     testLogging {
-        events("PASSED", "FAILED", "SKIPPED")
+        events("FAILED")
+        exceptionFormat = TestExceptionFormat.FULL
+        showCauses = true
+        showExceptions = true
+        showStackTraces = true
     }
 
     // disabling the parallel test runs for the time being due to port collisions

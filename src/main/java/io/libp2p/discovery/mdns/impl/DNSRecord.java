@@ -4,21 +4,20 @@
 
 package io.libp2p.discovery.mdns.impl;
 
+import io.libp2p.discovery.mdns.impl.DNSOutgoing.MessageOutputStream;
+import io.libp2p.discovery.mdns.impl.constants.DNSRecordClass;
+import io.libp2p.discovery.mdns.impl.constants.DNSRecordType;
+import io.libp2p.discovery.mdns.impl.util.ByteWrangler;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-
-import io.libp2p.discovery.mdns.impl.constants.DNSRecordClass;
-import io.libp2p.discovery.mdns.impl.constants.DNSRecordType;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
-
-import io.libp2p.discovery.mdns.impl.DNSOutgoing.MessageOutputStream;
-
-import io.libp2p.discovery.mdns.impl.util.ByteWrangler;
+import java.util.Objects;
 
 
 /**
@@ -44,6 +43,11 @@ public abstract class DNSRecord extends DNSEntry {
     @Override
     public boolean equals(Object other) {
         return (other instanceof DNSRecord) && super.equals(other) && sameValue((DNSRecord) other);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), _ttl, _created);
     }
 
     abstract boolean sameValue(DNSRecord other);

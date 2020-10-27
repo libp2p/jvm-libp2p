@@ -4,18 +4,25 @@
 
 package io.libp2p.discovery.mdns.impl;
 
+import io.libp2p.discovery.mdns.ServiceInfo;
+import io.libp2p.discovery.mdns.impl.constants.DNSRecordClass;
+import io.libp2p.discovery.mdns.impl.util.ByteWrangler;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.IOException;
 import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
-import java.util.*;
-
-import io.libp2p.discovery.mdns.impl.constants.DNSRecordClass;
-import io.libp2p.discovery.mdns.impl.util.ByteWrangler;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
-
-import io.libp2p.discovery.mdns.ServiceInfo;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * JmDNS service information.
@@ -381,6 +388,7 @@ public class ServiceInfoImpl extends ServiceInfo {
         ServiceInfoImpl serviceInfo = new ServiceInfoImpl(this.getQualifiedNameMap(), _port, _weight, _priority, _text);
         serviceInfo._ipv6Addresses.addAll(Arrays.asList(getInet6Addresses()));
         serviceInfo._ipv4Addresses.addAll(Arrays.asList(getInet4Addresses()));
+        serviceInfo._server = _server;
         return serviceInfo;
     }
 

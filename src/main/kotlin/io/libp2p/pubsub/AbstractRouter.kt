@@ -43,9 +43,11 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
 
     private val peerTopics = MultiSet<PeerHandler, String>()
     private var msgHandler: (Rpc.Message) -> CompletableFuture<ValidationResult> = { RESULT_VALID }
-    var maxSeenMessagesSizeSet = 10000
+    var maxSeenMessagesLimit = 10000
     var validator: PubsubMessageValidator = PubsubMessageValidator.nopValidator()
-    val seenMessages by lazy { createLRUMap<MessageId, Optional<ValidationResult>>(maxSeenMessagesSizeSet) }
+    protected open val seenMessages by lazy {
+        createLRUMap<MessageId, Optional<ValidationResult>>(maxSeenMessagesLimit)
+    }
     val subscribedTopics = linkedSetOf<String>()
     val pendingRpcParts = linkedMapOf<PeerHandler, MutableList<Rpc.RPC>>()
     private var debugHandler: ChannelHandler? = null
