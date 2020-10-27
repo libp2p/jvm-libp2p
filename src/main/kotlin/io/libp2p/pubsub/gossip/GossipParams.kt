@@ -99,6 +99,11 @@ data class GossipParams(
     val heartbeatInterval: Duration = 1.seconds,
 
     /**
+     * Expiry time for cache of seen message ids
+     */
+    val seenTTL: Duration = 2.minutes,
+
+    /**
      * [maxPrunePeers] controls the number of peers to include in prune Peer eXchange.
      * When we prune a peer that's eligible for PX (has a good score, etc), we will try to
      * send them signed peer records for up to [maxPrunePeers] other peers that we
@@ -315,13 +320,17 @@ data class GossipPeerScoreParams(
      * - attempting to re-graft before the prune backoff time has elapsed.
      * - not following up in IWANT requests for messages advertised with IHAVE.
      *
-     * The value of the parameter is the square of the counter, which decays with  [behaviourPenaltyDecay].
+     * The value of the parameter is the square of the counter over the threshold,
+     * which decays with  [behaviourPenaltyDecay].
      * The weight of the parameter MUST be negative (or zero to disable).
      */
     val behaviourPenaltyWeight: Weight = 0.0,
 
-    /** See [behaviourPenaltyDecay] */
+    /** See [behaviourPenaltyWeight] */
     val behaviourPenaltyDecay: Double = 0.9,
+
+    /** See [behaviourPenaltyWeight] */
+    val behaviourPenaltyThreshold: Double = 1.0,
 
     /** the decay interval for parameter counters. */
     val decayInterval: Duration = 1.minutes,
@@ -342,6 +351,7 @@ data class GossipPeerScoreParams(
         check(behaviourPenaltyWeight == 0.0 || (behaviourPenaltyDecay > 0.0 && behaviourPenaltyDecay <= 1.0),
             "behaviourPenaltyDecay should be in range (0.0, 1.0]"
         )
+        check(behaviourPenaltyThreshold >= 0.0, "behaviourPenaltyThreshold should be >= 0")
     }
     companion object {
         @JvmStatic

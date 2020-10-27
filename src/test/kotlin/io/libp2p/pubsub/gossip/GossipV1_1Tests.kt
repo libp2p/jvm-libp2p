@@ -10,6 +10,7 @@ import io.libp2p.core.pubsub.Subscriber
 import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.core.pubsub.createPubsubApi
 import io.libp2p.etc.types.millis
+import io.libp2p.etc.types.minutes
 import io.libp2p.etc.types.seconds
 import io.libp2p.etc.types.times
 import io.libp2p.etc.types.toBytesBigEndian
@@ -96,6 +97,32 @@ class GossipV1_1Tests {
         val msg = newMessage("topic1", 0L, "Hello".toByteArray())
         test.gossipRouter.publish(msg)
         test.mockRouter.waitForMessage { it.publishCount > 0 }
+    }
+
+    @Test
+    fun testSeenTTL() {
+        val test = TwoRoutersTest(GossipParams(seenTTL = 1.minutes))
+
+        test.mockRouter.subscribe("topic1")
+        val msg1 = newMessage("topic1", 0L, "Hello-1".toByteArray())
+        test.gossipRouter.publish(msg1)
+        test.mockRouter.waitForMessage { it.publishCount == 1 }
+        assertTrue(test.mockRouter.inboundMessages.isEmpty())
+
+        test.fuzz.timeController.addTime(30.seconds)
+        val msg2 = newMessage("topic1", 1L, "Hello-2".toByteArray())
+        test.gossipRouter.publish(msg2)
+        test.gossipRouter.publish(msg1) // should be in seen set
+        test.mockRouter.waitForMessage { it.publishCount == 1 }
+        assertTrue(test.mockRouter.inboundMessages.isEmpty())
+
+        test.fuzz.timeController.addTime(31.seconds)
+        val msg3 = newMessage("topic1", 2L, "Hello-3".toByteArray())
+        test.gossipRouter.publish(msg3)
+        test.gossipRouter.publish(msg1) // should be purged from seen and transmitted again
+        test.mockRouter.waitForMessage { it.publishCount == 1 }
+        test.mockRouter.waitForMessage { it.publishCount == 1 }
+        assertTrue(test.mockRouter.inboundMessages.isEmpty())
     }
 
     @Test
