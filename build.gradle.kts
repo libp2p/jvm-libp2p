@@ -37,15 +37,16 @@ repositories {
 val log4j2Version = "2.11.2"
 
 dependencies {
+    api("io.netty:netty-all:4.1.36.Final")
+    api("com.google.protobuf:protobuf-java:3.11.0")
+
     implementation(kotlin("stdlib-jdk8"))
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.0-M1")
     implementation("tech.pegasys:noise-java:1.0.0")
 
-    implementation("io.netty:netty-all:4.1.36.Final")
     implementation("com.google.guava:guava:27.1-jre")
     implementation("org.bouncycastle:bcprov-jdk15on:1.62")
     implementation("org.bouncycastle:bcpkix-jdk15on:1.62")
-    implementation("com.google.protobuf:protobuf-java:3.11.0")
     implementation("commons-codec:commons-codec:1.13")
 
     implementation("org.apache.logging.log4j:log4j-api:${log4j2Version}")
