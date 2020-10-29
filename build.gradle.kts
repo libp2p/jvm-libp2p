@@ -19,7 +19,7 @@ description = "a minimal implementation of libp2p for the jvm"
 plugins {
     java
     idea
-    kotlin("jvm") version "1.3.31"
+    kotlin("jvm") version "1.4.10"
     id("org.jmailen.kotlinter") version "1.26.0"
     id("com.google.protobuf") version "0.8.13"
 
@@ -236,4 +236,9 @@ bintray {
         setLicenses("Apache-2.0", "MIT")
         vcsUrl = "https://github.com/libp2p/jvm-libp2p"
     })
+}
+
+val compileKotlin: KotlinCompile by tasks
+compileKotlin.kotlinOptions {
+    languageVersion = "1.4"
 }
