@@ -6,7 +6,8 @@ import io.libp2p.etc.types.cappedDouble
 import io.libp2p.etc.types.createLRUMap
 import io.libp2p.etc.types.millis
 import io.libp2p.etc.util.P2PService
-import pubsub.pb.Rpc
+import io.libp2p.pubsub.PubsubMessage
+import io.libp2p.pubsub.Topic
 import java.util.Optional
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.ScheduledFuture
@@ -97,7 +98,7 @@ class GossipScore(
     val peerParams = params.peerScoreParams
     val topicParams = params.topicsScoreParams
 
-    private val validationTime: MutableMap<Rpc.Message, Long> = createLRUMap(1024)
+    private val validationTime: MutableMap<PubsubMessage, Long> = createLRUMap(1024)
     val peerScores = mutableMapOf<PeerId, PeerScores>()
 
     val refreshTask: ScheduledFuture<*>
@@ -163,11 +164,11 @@ class GossipScore(
         }
     }
 
-    fun notifyUnseenMessage(peer: P2PService.PeerHandler, msg: Rpc.Message) {
+    fun notifyUnseenMessage(peer: P2PService.PeerHandler, msg: PubsubMessage) {
     }
 
-    fun notifySeenMessage(peer: P2PService.PeerHandler, msg: Rpc.Message, validationResult: Optional<ValidationResult>) {
-        msg.topicIDsList
+    fun notifySeenMessage(peer: P2PService.PeerHandler, msg: PubsubMessage, validationResult: Optional<ValidationResult>) {
+        msg.topics
             .filter { isInMesh(peer, it) }
             .forEach { topic ->
                 val topicScores = getTopicScores(peer, topic)
@@ -182,14 +183,14 @@ class GossipScore(
             }
     }
 
-    fun notifyUnseenInvalidMessage(peer: P2PService.PeerHandler, msg: Rpc.Message) {
+    fun notifyUnseenInvalidMessage(peer: P2PService.PeerHandler, msg: PubsubMessage) {
         validationTime[msg] = curTimeMillis()
-        msg.topicIDsList.forEach { getTopicScores(peer, it).invalidMessages++ }
+        msg.topics.forEach { getTopicScores(peer, it).invalidMessages++ }
     }
 
-    fun notifyUnseenValidMessage(peer: P2PService.PeerHandler, msg: Rpc.Message) {
+    fun notifyUnseenValidMessage(peer: P2PService.PeerHandler, msg: PubsubMessage) {
         validationTime[msg] = curTimeMillis()
-        msg.topicIDsList
+        msg.topics
             .onEach { getTopicScores(peer, it).firstMessageDeliveries++ }
             .filter { isInMesh(peer, it) }
             .onEach { getTopicScores(peer, it).meshMessageDeliveries++ }
