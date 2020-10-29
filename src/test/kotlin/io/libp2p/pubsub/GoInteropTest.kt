@@ -108,7 +108,7 @@ class GoInteropTest {
             println("Local peerID: " + PeerId.fromPubKey(pubKey1).toBase58())
 
             val gossipRouter = GossipRouter().also {
-                it.validator = PubsubMessageValidator.signatureValidator()
+                it.messageValidator = SIGNATURE_ROUTER_VALIDATOR
             }
             val pubsubApi = createPubsubApi(gossipRouter)
             val publisher = pubsubApi.createPublisher(privKey1, 8888)
@@ -126,7 +126,7 @@ class GoInteropTest {
             val tcpTransport = TcpTransport(upgrader)
             val gossip = GossipProtocol(gossipRouter).also {
                 it.debugGossipHandler = LoggingHandler("#4", LogLevel.INFO)
-                (it.router as GossipRouter).validator = PubsubMessageValidator.nopValidator()
+                it.router.messageValidator = NOP_ROUTER_VALIDATOR
             }
 
             val applicationProtocols = listOf(ProtocolBinding.createSimple("/meshsub/1.0.0", gossip), Identify())
@@ -404,8 +404,9 @@ class GoInteropTest {
         val bytes = dump.fromLogHandler()
         testChannel.writeInbound(bytes.toByteBuf())
         val psMsg = testChannel.readInbound<Rpc.RPC>()
-        PubsubMessageValidator.signatureValidator().validate(psMsg)
-//        val seqNo = psMsg.publishList[0].seqno
+        psMsg.publishList.forEach {
+            if (!pubsubValidate(it)) throw InvalidMessageException(it.toString())
+        }
 
         println(psMsg.publishList[0].data.toByteArray().toHex())
     }

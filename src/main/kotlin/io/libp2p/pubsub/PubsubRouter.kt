@@ -9,6 +9,22 @@ import java.util.Random
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ScheduledExecutorService
 
+typealias Topic = String
+typealias MessageId = String
+typealias PubsubMessageFactory = (Rpc.Message) -> PubsubMessage
+
+interface PubsubMessage {
+    val protobufMessage: Rpc.Message
+    val messageId: MessageId
+
+    @JvmDefault
+    val topics: List<Topic>
+        get() = protobufMessage.topicIDsList
+
+    override fun equals(other: Any?): Boolean
+    override fun hashCode(): Int
+}
+
 /**
  * Represents internal pubsub router component to interact with the client API
  * Might be though of as `low-level` [PubsubApi]
@@ -18,6 +34,8 @@ import java.util.concurrent.ScheduledExecutorService
 interface PubsubMessageRouter {
 
     val protocol: PubsubProtocol
+    var messageFactory: PubsubMessageFactory
+    var messageValidator: PubsubRouterMessageValidator
 
     /**
      * Validates and broadcasts the message to suitable peers
@@ -26,7 +44,7 @@ interface PubsubMessageRouter {
      * The future completes normally when the message
      * is transmitted to at least one peer
      */
-    fun publish(msg: Rpc.Message): CompletableFuture<Unit>
+    fun publish(msg: PubsubMessage): CompletableFuture<Unit>
 
     /**
      * Initializes the inbound messages [handler]
@@ -34,27 +52,27 @@ interface PubsubMessageRouter {
      * All the messages received by the router are forwarded to the [handler] independently
      * of any client subscriptions. Is it up to the client API to sort out subscriptions
      */
-    fun initHandler(handler: (Rpc.Message) -> CompletableFuture<ValidationResult>)
+    fun initHandler(handler: (PubsubMessage) -> CompletableFuture<ValidationResult>)
 
     /**
      * Notifies the router that a client wants to receive messages on the following topics
      * Calling subscribe several times for a single topic have no cumulative effect and thus
      * would be canceled with a single [unsubscribe] call for that topic
      */
-    fun subscribe(vararg topics: String)
+    fun subscribe(vararg topics: Topic)
 
     /**
      * Notifies the router that a client doesn't want
      * to receive messages on the following topics any more
      */
-    fun unsubscribe(vararg topics: String)
+    fun unsubscribe(vararg topics: Topic)
 
     /**
      * Get the topics each peer is subscribed to
      *
      * @return a map of the peer's {@link PeerId} to the set of topics it is subscribed to
      */
-    fun getPeerTopics(): CompletableFuture<Map<PeerId, Set<String>>>
+    fun getPeerTopics(): CompletableFuture<Map<PeerId, Set<Topic>>>
 }
 
 /**
@@ -117,4 +135,23 @@ interface PubsubRouterDebug : PubsubRouter {
      * This is useful for example to log decoded pubsub wire messages
      */
     fun addPeerWithDebugHandler(peer: Stream, debugHandler: ChannelHandler? = null) = addPeer(peer)
+}
+
+/**
+ * Validates pubsub messages
+ */
+fun interface PubsubRouterMessageValidator {
+
+    /**
+     * Validates a single publish. Basically this is just a signature validation
+     * @throws InvalidMessageException when the message is not valid
+     */
+    fun validate(msg: PubsubMessage)
+}
+
+val NOP_ROUTER_VALIDATOR = PubsubRouterMessageValidator {}
+val SIGNATURE_ROUTER_VALIDATOR = PubsubRouterMessageValidator {
+    if (!pubsubValidate(it.protobufMessage)) {
+        throw InvalidMessageException(it.toString())
+    }
 }

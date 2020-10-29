@@ -16,7 +16,9 @@ import io.libp2p.etc.types.whenTrue
 import io.libp2p.etc.util.P2PService
 import io.libp2p.pubsub.AbstractRouter
 import io.libp2p.pubsub.MessageId
+import io.libp2p.pubsub.PubsubMessage
 import io.libp2p.pubsub.PubsubProtocol
+import io.libp2p.pubsub.Topic
 import pubsub.pb.Rpc
 import java.util.Optional
 import java.util.concurrent.CompletableFuture
@@ -25,7 +27,6 @@ import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.max
 import kotlin.math.min
 
-typealias Topic = String
 
 const val MaxBackoffEntries = 10 * 1024
 const val MaxIAskedEntries = 256
@@ -77,7 +78,7 @@ open class GossipRouter @JvmOverloads constructor(
         CacheBuilder.newBuilder()
             .ticker(t)
             .expireAfterWrite(params.seenTTL)
-            .build<MessageId, Optional<ValidationResult>>()
+            .build<PubsubMessage, Optional<ValidationResult>>()
             .asMap()
     }
 
@@ -112,22 +113,22 @@ open class GossipRouter @JvmOverloads constructor(
         heartbeatTask.hashCode() // force lazy initialization
     }
 
-    override fun notifyUnseenMessage(peer: PeerHandler, msg: Rpc.Message) {
+    override fun notifyUnseenMessage(peer: PeerHandler, msg: PubsubMessage) {
         score.notifyUnseenMessage(peer, msg)
     }
 
-    override fun notifySeenMessage(peer: PeerHandler, msg: Rpc.Message, validationResult: Optional<ValidationResult>) {
+    override fun notifySeenMessage(peer: PeerHandler, msg: PubsubMessage, validationResult: Optional<ValidationResult>) {
         score.notifySeenMessage(peer, msg, validationResult)
         if (validationResult.isPresent && validationResult.get() != ValidationResult.Invalid) {
             notifyAnyValidMessage(peer, msg)
         }
     }
 
-    override fun notifyUnseenInvalidMessage(peer: PeerHandler, msg: Rpc.Message) {
+    override fun notifyUnseenInvalidMessage(peer: PeerHandler, msg: PubsubMessage) {
         score.notifyUnseenInvalidMessage(peer, msg)
     }
 
-    override fun notifyUnseenValidMessage(peer: PeerHandler, msg: Rpc.Message) {
+    override fun notifyUnseenValidMessage(peer: PeerHandler, msg: PubsubMessage) {
         score.notifyUnseenValidMessage(peer, msg)
         notifyAnyValidMessage(peer, msg)
     }
@@ -136,8 +137,8 @@ open class GossipRouter @JvmOverloads constructor(
         notifyRouterMisbehavior(peer, 1)
     }
 
-    private fun notifyAnyValidMessage(peer: PeerHandler, msg: Rpc.Message) {
-        iWantRequests -= peer to getMessageId(msg)
+    private fun notifyAnyValidMessage(peer: PeerHandler, msg: PubsubMessage) {
+        iWantRequests -= peer to msg.messageId
     }
 
     fun notifyMeshed(peer: PeerHandler, topic: Topic) {
@@ -223,7 +224,7 @@ open class GossipRouter @JvmOverloads constructor(
             return
         }
 
-        val iWant = msg.messageIDsList - seenMessages.keys
+        val iWant = msg.messageIDsList - seenMessages.keys.map { it.messageId }
         val maxToAsk = min(iWant.size, params.maxIHaveLength - asked.get())
         asked.addAndGet(maxToAsk)
         iWant(peer, iWant.shuffled(random).subList(0, maxToAsk))
@@ -252,31 +253,31 @@ open class GossipRouter @JvmOverloads constructor(
         }.forEach { processControlMessage(it, receivedFrom) }
     }
 
-    override fun broadcastInbound(msgs: List<Rpc.Message>, receivedFrom: PeerHandler) {
+    override fun broadcastInbound(msgs: List<PubsubMessage>, receivedFrom: PeerHandler) {
         msgs.forEach { pubMsg ->
-            pubMsg.topicIDsList
+            pubMsg.topics
                 .mapNotNull { mesh[it] }
                 .flatten()
                 .distinct()
                 .plus(getDirectPeers())
                 .filter { it != receivedFrom }
                 .forEach { submitPublishMessage(it, pubMsg) }
-            mCache.put(getMessageId(pubMsg), pubMsg)
+            mCache += pubMsg
         }
         flushAllPending()
     }
 
-    override fun broadcastOutbound(msg: Rpc.Message): CompletableFuture<Unit> {
-        msg.topicIDsList.forEach { lastPublished[it] = curTimeMillis() }
+    override fun broadcastOutbound(msg: PubsubMessage): CompletableFuture<Unit> {
+        msg.topics.forEach { lastPublished[it] = curTimeMillis() }
 
         val peers =
             if (params.floodPublish) {
-                msg.topicIDsList
+                msg.topics
                     .flatMap { getTopicPeers(it) }
                     .filter { score.score(it) >= score.params.publishThreshold }
                     .plus(getDirectPeers())
             } else {
-                msg.topicIDsList
+                msg.topics
                     .mapNotNull { topic ->
                         mesh[topic] ?: fanout[topic] ?: getTopicPeers(topic).shuffled(random).take(params.D)
                             .also {
@@ -287,7 +288,7 @@ open class GossipRouter @JvmOverloads constructor(
             }
         val list = peers.map { submitPublishMessage(it, msg) }
 
-        mCache.put(getMessageId(msg), msg)
+        mCache += msg
         flushAllPending()
         return anyComplete(list)
     }

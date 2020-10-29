@@ -37,7 +37,7 @@ open class MockRouter(
         inboundMessages += msg as Rpc.RPC
     }
 
-    override fun broadcastOutbound(msg: Rpc.Message): CompletableFuture<Unit> = CompletableFuture.completedFuture(null)
-    override fun broadcastInbound(msgs: List<Rpc.Message>, receivedFrom: PeerHandler) {}
+    override fun broadcastOutbound(msg: PubsubMessage): CompletableFuture<Unit> = CompletableFuture.completedFuture(null)
+    override fun broadcastInbound(msgs: List<PubsubMessage>, receivedFrom: PeerHandler) {}
     override fun processControl(ctrl: Rpc.ControlMessage, receivedFrom: PeerHandler) {}
 }

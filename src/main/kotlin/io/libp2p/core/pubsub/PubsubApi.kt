@@ -3,6 +3,7 @@ package io.libp2p.core.pubsub
 import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.PrivKey
 import io.libp2p.pubsub.PubsubApiImpl
+import io.libp2p.pubsub.PubsubMessage
 import io.libp2p.pubsub.PubsubRouter
 import io.netty.buffer.ByteBuf
 import java.util.concurrent.CompletableFuture
@@ -162,6 +163,9 @@ interface PubsubApi : PubsubSubscriberApi {
  * Abstract Pubsub Message API
  */
 interface MessageApi {
+
+    val originalMessage: PubsubMessage
+
     /**
      * Message body
      */
@@ -178,6 +182,7 @@ interface MessageApi {
      * A set of message topics
      */
     val topics: List<Topic>
+
 }
 
 /**

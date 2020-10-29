@@ -4,6 +4,7 @@ import io.libp2p.core.PeerId
 import io.libp2p.etc.types.millis
 import io.libp2p.etc.types.minutes
 import io.libp2p.etc.types.seconds
+import io.libp2p.pubsub.Topic
 import io.libp2p.pubsub.gossip.builders.GossipParamsBuilder
 import io.libp2p.pubsub.gossip.builders.GossipPeerScoreParamsBuilder
 import io.libp2p.pubsub.gossip.builders.GossipScoreParamsBuilder
