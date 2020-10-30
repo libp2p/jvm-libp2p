@@ -15,6 +15,7 @@ import io.libp2p.etc.types.seconds
 import io.libp2p.etc.types.times
 import io.libp2p.etc.types.toBytesBigEndian
 import io.libp2p.etc.types.toProtobuf
+import io.libp2p.etc.types.toWBytes
 import io.libp2p.pubsub.DefaultPubsubMessage
 import io.libp2p.pubsub.DeterministicFuzz
 import io.libp2p.pubsub.MessageId
@@ -46,8 +47,7 @@ class GossipV1_1Tests {
     private fun newMessage(topic: Topic, seqNo: Long, data: ByteArray) =
         DefaultPubsubMessage(newProtoMessage(topic, seqNo, data))
 
-    protected open fun getMessageId(msg: Rpc.Message): MessageId =
-        msg.from.toByteArray() + msg.seqno.toByteArray()
+    protected open fun getMessageId(msg: Rpc.Message): MessageId = msg.from.toWBytes() + msg.seqno.toWBytes()
 
     class ManyRoutersTest(
         val mockRouterCount: Int = 10,
