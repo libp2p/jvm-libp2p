@@ -10,7 +10,7 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ScheduledExecutorService
 
 typealias Topic = String
-typealias MessageId = String
+typealias MessageId = ByteArray
 typealias PubsubMessageFactory = (Rpc.Message) -> PubsubMessage
 
 interface PubsubMessage {

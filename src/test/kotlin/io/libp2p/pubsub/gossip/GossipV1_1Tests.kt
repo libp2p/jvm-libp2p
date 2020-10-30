@@ -14,7 +14,6 @@ import io.libp2p.etc.types.minutes
 import io.libp2p.etc.types.seconds
 import io.libp2p.etc.types.times
 import io.libp2p.etc.types.toBytesBigEndian
-import io.libp2p.etc.types.toHex
 import io.libp2p.etc.types.toProtobuf
 import io.libp2p.pubsub.DefaultPubsubMessage
 import io.libp2p.pubsub.DeterministicFuzz
@@ -48,7 +47,7 @@ class GossipV1_1Tests {
         DefaultPubsubMessage(newProtoMessage(topic, seqNo, data))
 
     protected open fun getMessageId(msg: Rpc.Message): MessageId =
-        msg.from.toByteArray().toHex() + msg.seqno.toByteArray().toHex()
+        msg.from.toByteArray() + msg.seqno.toByteArray()
 
     class ManyRoutersTest(
         val mockRouterCount: Int = 10,
@@ -445,7 +444,7 @@ class GossipV1_1Tests {
         test.mockRouter.inboundMessages.clear()
 
         for (i in 0..test.gossipRouter.params.maxIHaveMessages) {
-            val msgId = "messageId-$i"
+            val msgId = "messageId-$i".toByteArray().toProtobuf()
             val ihaveMsg = Rpc.RPC.newBuilder().setControl(
                 Rpc.ControlMessage.newBuilder().addIhave(
                     Rpc.ControlIHave.newBuilder()
@@ -484,7 +483,7 @@ class GossipV1_1Tests {
         val maxLen = test.gossipRouter.params.maxIHaveLength
         val almostMaxLen = maxLen - maxLen / 10
 
-        val mids1 = (0 until almostMaxLen).map { "Id-$it" }
+        val mids1 = (0 until almostMaxLen).map { "Id-$it".toByteArray().toProtobuf() }
         val ihaveMsg1 = Rpc.RPC.newBuilder().setControl(
             Rpc.ControlMessage.newBuilder().addIhave(
                 Rpc.ControlIHave.newBuilder()
@@ -496,7 +495,7 @@ class GossipV1_1Tests {
 
         test.fuzz.timeController.addTime(100.millis)
 
-        val mids2 = (almostMaxLen until almostMaxLen + maxLen).map { "Id-$it" }
+        val mids2 = (almostMaxLen until almostMaxLen + maxLen).map { "Id-$it".toByteArray().toProtobuf() }
         val ihaveMsg2 = Rpc.RPC.newBuilder().setControl(
             Rpc.ControlMessage.newBuilder().addIhave(
                 Rpc.ControlIHave.newBuilder()
@@ -847,7 +846,7 @@ class GossipV1_1Tests {
         val messages = (0..30).map {
             newMessage("topic1", it.toLong(), "Hello-$it".toByteArray())
         }
-        val messageIds = messages.map { it.messageId }
+        val messageIds = messages.map { it.messageId.toProtobuf() }
 
         test.mockRouter.sendToSingle(
             Rpc.RPC.newBuilder().setControl(
@@ -926,7 +925,7 @@ class GossipV1_1Tests {
             test.mockRouter.sendToSingle(
                 Rpc.RPC.newBuilder().setControl(
                     Rpc.ControlMessage.newBuilder().addIwant(
-                        Rpc.ControlIWant.newBuilder().addMessageIDs(message1.messageId)
+                        Rpc.ControlIWant.newBuilder().addMessageIDs(message1.messageId.toProtobuf())
                     )
                 ).build()
             )
@@ -944,7 +943,7 @@ class GossipV1_1Tests {
         test.mockRouter.sendToSingle(
             Rpc.RPC.newBuilder().setControl(
                 Rpc.ControlMessage.newBuilder().addIwant(
-                    Rpc.ControlIWant.newBuilder().addMessageIDs(message2.messageId)
+                    Rpc.ControlIWant.newBuilder().addMessageIDs(message2.messageId.toProtobuf())
                 )
             ).build()
         )
@@ -960,14 +959,14 @@ class GossipV1_1Tests {
         test.mockRouter.sendToSingle(
             Rpc.RPC.newBuilder().setControl(
                 Rpc.ControlMessage.newBuilder().addIhave(
-                    Rpc.ControlIHave.newBuilder().addAllMessageIDs((0..4).map { "Id-$it" })
+                    Rpc.ControlIHave.newBuilder().addAllMessageIDs((0..4).map { "Id-$it".toByteArray().toProtobuf() })
                 )
             ).build()
         )
         test.mockRouter.sendToSingle(
             Rpc.RPC.newBuilder().setControl(
                 Rpc.ControlMessage.newBuilder().addIhave(
-                    Rpc.ControlIHave.newBuilder().addAllMessageIDs((5..14).map { "Id-$it" })
+                    Rpc.ControlIHave.newBuilder().addAllMessageIDs((5..14).map { "Id-$it".toByteArray().toProtobuf() })
                 )
             ).build()
         )
@@ -986,7 +985,7 @@ class GossipV1_1Tests {
         test.mockRouter.sendToSingle(
             Rpc.RPC.newBuilder().setControl(
                 Rpc.ControlMessage.newBuilder().addIhave(
-                    Rpc.ControlIHave.newBuilder().addAllMessageIDs((15..19).map { "Id-$it" })
+                    Rpc.ControlIHave.newBuilder().addAllMessageIDs((15..19).map { "Id-$it".toByteArray().toProtobuf() })
                 )
             ).build()
         )
@@ -999,7 +998,7 @@ class GossipV1_1Tests {
         test.mockRouter.sendToSingle(
             Rpc.RPC.newBuilder().setControl(
                 Rpc.ControlMessage.newBuilder().addIhave(
-                    Rpc.ControlIHave.newBuilder().addAllMessageIDs((20..24).map { "Id-$it" })
+                    Rpc.ControlIHave.newBuilder().addAllMessageIDs((20..24).map { "Id-$it".toByteArray().toProtobuf() })
                 )
             ).build()
         )
