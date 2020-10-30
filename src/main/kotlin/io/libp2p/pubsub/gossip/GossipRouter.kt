@@ -12,6 +12,7 @@ import io.libp2p.etc.types.createLRUMap
 import io.libp2p.etc.types.median
 import io.libp2p.etc.types.seconds
 import io.libp2p.etc.types.toProtobuf
+import io.libp2p.etc.types.toWBytes
 import io.libp2p.etc.types.whenTrue
 import io.libp2p.etc.util.P2PService
 import io.libp2p.pubsub.AbstractRouter
@@ -223,7 +224,7 @@ open class GossipRouter @JvmOverloads constructor(
             return
         }
 
-        val iWant = msg.messageIDsList.map { it.toByteArray()} - seenMessages.keys.map { it.messageId }
+        val iWant = msg.messageIDsList.map { it.toWBytes() } - seenMessages.keys.map { it.messageId }
         val maxToAsk = min(iWant.size, params.maxIHaveLength - asked.get())
         asked.addAndGet(maxToAsk)
         iWant(peer, iWant.shuffled(random).subList(0, maxToAsk))
@@ -233,7 +234,7 @@ open class GossipRouter @JvmOverloads constructor(
         val peerScore = score.score(peer)
         if (peerScore < score.params.gossipThreshold) return
         msg.messageIDsList
-            .mapNotNull { mCache.getMessageForPeer(peer.peerId, it.toByteArray()) }
+            .mapNotNull { mCache.getMessageForPeer(peer.peerId, it.toWBytes()) }
             .filter { it.sentCount < params.gossipRetransmission }
             .map { it.msg }
             .forEach { submitPublishMessage(peer, it) }

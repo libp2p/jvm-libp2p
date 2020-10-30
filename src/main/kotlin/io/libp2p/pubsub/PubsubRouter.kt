@@ -3,6 +3,7 @@ package io.libp2p.pubsub
 import io.libp2p.core.PeerId
 import io.libp2p.core.Stream
 import io.libp2p.core.pubsub.ValidationResult
+import io.libp2p.etc.types.WBytes
 import io.netty.channel.ChannelHandler
 import pubsub.pb.Rpc
 import java.util.Random
@@ -10,7 +11,7 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ScheduledExecutorService
 
 typealias Topic = String
-typealias MessageId = ByteArray
+typealias MessageId = WBytes
 typealias PubsubMessageFactory = (Rpc.Message) -> PubsubMessage
 
 interface PubsubMessage {

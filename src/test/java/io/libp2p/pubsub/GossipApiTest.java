@@ -2,6 +2,7 @@ package io.libp2p.pubsub;
 
 import com.google.protobuf.ByteString;
 import io.libp2p.core.pubsub.ValidationResult;
+import io.libp2p.etc.types.WBytes;
 import io.libp2p.etc.util.P2PService;
 import io.libp2p.pubsub.gossip.GossipParams;
 import io.libp2p.pubsub.gossip.GossipParamsKt;
@@ -111,8 +112,8 @@ public class GossipApiTest {
 
     static class CustomMessage implements PubsubMessage {
         final Rpc.Message message;
-        Function<Rpc.Message, byte[]> canonicalIdCalculator = m -> ("canon-" + m.getData().toString()).getBytes();
-        byte[] canonicalId = null;
+        Function<Rpc.Message, WBytes> canonicalIdCalculator = m -> new WBytes(("canon-" + m.getData().toString()).getBytes());
+        WBytes canonicalId = null;
 
         public CustomMessage(Rpc.Message message) {
             this.message = message;
@@ -130,7 +131,7 @@ public class GossipApiTest {
 
         @NotNull
         @Override
-        public byte[] getMessageId() {
+        public WBytes getMessageId() {
             if (canonicalId == null) {
                 canonicalId = canonicalIdCalculator.apply(getProtobufMessage());
             }
@@ -152,8 +153,8 @@ public class GossipApiTest {
     }
 
     static class MessageMap<V> extends AbstractMap<PubsubMessage, V> {
-        Map<Object, String> fastToCanonicalId = new HashMap<>();
-        Map<String, Entry<PubsubMessage, V>> canonicalIdToMsg = new HashMap<>();
+        Map<Object, WBytes> fastToCanonicalId = new HashMap<>();
+        Map<WBytes, Entry<PubsubMessage, V>> canonicalIdToMsg = new HashMap<>();
 
         @NotNull
         @Override
@@ -171,7 +172,7 @@ public class GossipApiTest {
         }
 
         public V get(CustomMessage key) {
-            String canonicalId = fastToCanonicalId.get(key.fastMessageId());
+            WBytes canonicalId = fastToCanonicalId.get(key.fastMessageId());
             Entry<PubsubMessage, V> entry = canonicalIdToMsg.get(canonicalId != null ? canonicalId : key.getMessageId());
             return entry == null ? null : entry.getValue();
         }
@@ -185,9 +186,9 @@ public class GossipApiTest {
             }
         }
         public V put(CustomMessage key, V value) {
-            fastToCanonicalId.put(key.fastMessageId(), new String(key.getMessageId()));
+            fastToCanonicalId.put(key.fastMessageId(), key.getMessageId());
             Entry<PubsubMessage, V> oldVal =
-                    canonicalIdToMsg.put(new String(key.getMessageId()), new SimpleEntry<>(key, value));
+                    canonicalIdToMsg.put(key.getMessageId(), new SimpleEntry<>(key, value));
             return oldVal == null ? null : oldVal.getValue();
         }
 
@@ -201,7 +202,7 @@ public class GossipApiTest {
         }
 
         public V remove(CustomMessage key) {
-            String canonicalId = fastToCanonicalId.remove(key.fastMessageId());
+            WBytes canonicalId = fastToCanonicalId.remove(key.fastMessageId());
             Entry<PubsubMessage, V> entry =
                     canonicalIdToMsg.remove(canonicalId != null ? canonicalId : key.getMessageId());
             return entry == null ? null : entry.getValue();

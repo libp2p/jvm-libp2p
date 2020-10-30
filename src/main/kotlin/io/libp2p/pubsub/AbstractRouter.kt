@@ -11,6 +11,7 @@ import io.libp2p.etc.types.copy
 import io.libp2p.etc.types.createLRUMap
 import io.libp2p.etc.types.forward
 import io.libp2p.etc.types.lazyVarInit
+import io.libp2p.etc.types.toWBytes
 import io.libp2p.etc.util.P2PServiceSemiDuplex
 import io.netty.channel.ChannelHandler
 import io.netty.handler.codec.protobuf.ProtobufDecoder
@@ -27,7 +28,7 @@ import java.util.function.BiConsumer
 import java.util.function.Consumer
 
 class DefaultPubsubMessage(override val protobufMessage: Rpc.Message) : PubsubMessage {
-    override val messageId: MessageId = protobufMessage.from.toByteArray() + protobufMessage.seqno.toByteArray()
+    override val messageId: MessageId = protobufMessage.from.toWBytes() + protobufMessage.seqno.toWBytes()
 
     override fun equals(other: Any?) = protobufMessage == (other as? PubsubMessage)?.protobufMessage
     override fun hashCode() = protobufMessage.hashCode()

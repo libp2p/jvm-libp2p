@@ -56,6 +56,10 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.4.2")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.4.2")
     testImplementation("io.mockk:mockk:1.10.0")
+    testRuntimeOnly("org.mockito:mockito-core:3.3.3")
+    testImplementation("org.mockito:mockito-junit-jupiter:3.3.3")
+    testImplementation("org.assertj:assertj-core:3.16.1")
+
 }
 
 sourceSets {
