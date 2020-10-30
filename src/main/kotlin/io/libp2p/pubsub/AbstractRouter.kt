@@ -161,9 +161,11 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
     protected abstract fun processControl(ctrl: Rpc.ControlMessage, receivedFrom: PeerHandler)
 
     override fun onPeerActive(peer: PeerHandler) {
-        val helloPubsubMsg = Rpc.RPC.newBuilder().addAllSubscriptions(subscribedTopics.map {
-            Rpc.RPC.SubOpts.newBuilder().setSubscribe(true).setTopicid(it).build()
-        }).build()
+        val helloPubsubMsg = Rpc.RPC.newBuilder().addAllSubscriptions(
+            subscribedTopics.map {
+                Rpc.RPC.SubOpts.newBuilder().setSubscribe(true).setTopicid(it).build()
+            }
+        ).build()
 
         peer.writeAndFlush(helloPubsubMsg)
     }
@@ -223,10 +225,13 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
         val undone = doneUndone.getOrDefault(false, emptyList())
 
         validFuts.forEach { (msg, validationFut) ->
-            validationFut.thenAcceptAsync(Consumer { res ->
-                seenMessages[msg] = Optional.of(res)
-                if (res == ValidationResult.Invalid) notifyUnseenInvalidMessage(peer, msg)
-            }, executor)
+            validationFut.thenAcceptAsync(
+                Consumer { res ->
+                    seenMessages[msg] = Optional.of(res)
+                    if (res == ValidationResult.Invalid) notifyUnseenInvalidMessage(peer, msg)
+                },
+                executor
+            )
         }
 
         // broadcasting in a single chunk those which were validated synchronously
@@ -244,17 +249,20 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
 
         // broadcast others on completion
         undone.forEach {
-            it.second.whenCompleteAsync(BiConsumer { res, err ->
-                when {
-                    err != null -> logger.warn("Exception while handling message from peer $peer: ${it.first}", err)
-                    res == ValidationResult.Invalid -> logger.debug("Invalid pubsub message from peer $peer: ${it.first}")
-                    res == ValidationResult.Ignore -> logger.debug("Ingnoring pubsub message from peer $peer: ${it.first}")
-                    else -> {
-                        newValidatedMessages(singletonList(it.first), peer)
-                        flushAllPending()
+            it.second.whenCompleteAsync(
+                BiConsumer { res, err ->
+                    when {
+                        err != null -> logger.warn("Exception while handling message from peer $peer: ${it.first}", err)
+                        res == ValidationResult.Invalid -> logger.debug("Invalid pubsub message from peer $peer: ${it.first}")
+                        res == ValidationResult.Ignore -> logger.debug("Ingnoring pubsub message from peer $peer: ${it.first}")
+                        else -> {
+                            newValidatedMessages(singletonList(it.first), peer)
+                            flushAllPending()
+                        }
                     }
-                }
-            }, executor)
+                },
+                executor
+            )
         }
     }
 

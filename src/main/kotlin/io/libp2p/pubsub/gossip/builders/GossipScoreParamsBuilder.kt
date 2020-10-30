@@ -73,7 +73,9 @@ class GossipScoreParamsBuilder() {
         check(publishThreshold != null, { "publishThreshold must not be null" })
         check(graylistThreshold != null, { "graylistThreshold must not be null" })
         check(acceptPXThreshold != null, { "acceptPXThreshold must not be null" })
-        check(opportunisticGraftThreshold != null,
-            { "opportunisticGraftThreshold must not be null" })
+        check(
+            opportunisticGraftThreshold != null,
+            { "opportunisticGraftThreshold must not be null" }
+        )
     }
 }

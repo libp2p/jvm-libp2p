@@ -4,9 +4,8 @@ import io.libp2p.mux.mplex.MplexStreamMuxer
 import io.libp2p.security.secio.SecIoSecureChannel
 import io.libp2p.transport.tcp.TcpTransport
 import org.junit.jupiter.api.Assertions.assertThrows
-import java.util.concurrent.TimeUnit.SECONDS
 import org.junit.jupiter.api.Test
-import java.lang.IllegalStateException
+import java.util.concurrent.TimeUnit.SECONDS
 
 class BuilderDefaultsTest {
     @Test

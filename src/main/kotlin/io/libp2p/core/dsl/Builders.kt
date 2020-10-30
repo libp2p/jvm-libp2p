@@ -159,13 +159,14 @@ open class Builder {
         val protocolsMultistream: Multistream<Any> = Multistream.create(protocols.values)
         val broadcastStreamHandler = StreamHandler.createBroadcast()
         val allStreamHandlers = StreamHandler.createBroadcast(
-            protocolsMultistream.toStreamHandler(), broadcastStreamHandler)
+            protocolsMultistream.toStreamHandler(), broadcastStreamHandler
+        )
 
         val connHandlerProtocols = protocols.values.mapNotNull { it as? ConnectionHandler }
         val broadcastConnHandler = ConnectionHandler.createBroadcast(
             listOf(ConnectionHandler.createStreamHandlerInitializer(allStreamHandlers)) +
-                    connHandlerProtocols +
-                    connectionHandlers.values
+                connHandlerProtocols +
+                connectionHandlers.values
         )
         val networkImpl = NetworkImpl(transports, broadcastConnHandler)
 

@@ -113,18 +113,21 @@ abstract class AbstractMuxHandler<TData>(var inboundInitializer: MuxChannelIniti
     fun newStream(outboundInitializer: MuxChannelInitializer<TData>): CompletableFuture<MuxChannel<TData>> {
         try {
             checkClosed() // if already closed then event loop is already down and async task may never execute
-            return activeFuture.thenApplyAsync(Function {
-                checkClosed() // close may happen after above check and before this point
-                val child = createChild(
-                    generateNextId(),
-                    {
-                        onLocalOpen(it)
-                        outboundInitializer(it)
-                    },
-                    true
-                )
-                child
-            }, getChannelHandlerContext().channel().eventLoop())
+            return activeFuture.thenApplyAsync(
+                Function {
+                    checkClosed() // close may happen after above check and before this point
+                    val child = createChild(
+                        generateNextId(),
+                        {
+                            onLocalOpen(it)
+                            outboundInitializer(it)
+                        },
+                        true
+                    )
+                    child
+                },
+                getChannelHandlerContext().channel().eventLoop()
+            )
         } catch (e: Exception) {
             return completedExceptionally(e)
         }

@@ -49,13 +49,15 @@ class NetworkImpl(
             ?: throw TransportNotSupportedException("no transport to handle addr: $addr")
 
     private fun createHookedConnHandler(handler: ConnectionHandler) =
-        ConnectionHandler.createBroadcast(listOf(
-            handler,
-            ConnectionHandler.create { conn ->
-                connections += conn
-                conn.closeFuture().thenAccept { connections -= conn }
-            }
-        ))
+        ConnectionHandler.createBroadcast(
+            listOf(
+                handler,
+                ConnectionHandler.create { conn ->
+                    connections += conn
+                    conn.closeFuture().thenAccept { connections -= conn }
+                }
+            )
+        )
 
     /**
      * Connects to a peerid with a provided set of {@code Multiaddr}, returning the existing connection if already connected.

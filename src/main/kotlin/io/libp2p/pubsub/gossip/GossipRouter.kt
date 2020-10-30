@@ -27,7 +27,6 @@ import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.max
 import kotlin.math.min
 
-
 const val MaxBackoffEntries = 10 * 1024
 const val MaxIAskedEntries = 256
 const val MaxPeerIHaveEntries = 256
@@ -469,7 +468,8 @@ open class GossipRouter @JvmOverloads constructor(
                 }
         }
         addPendingRpcPart(
-            peer, Rpc.RPC.newBuilder().setControl(
+            peer,
+            Rpc.RPC.newBuilder().setControl(
                 Rpc.ControlMessage.newBuilder().addPrune(
                     pruneBuilder
                 )

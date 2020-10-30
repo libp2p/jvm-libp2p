@@ -95,9 +95,12 @@ open class PingProtocol : ProtocolHandler<PingController>() {
             random.nextBytes(data)
             val dataS = data.toHex()
             requests[dataS] = curTime() to ret
-            scheduler.schedule({
-                requests.remove(dataS)?.second?.completeExceptionally(PingTimeoutException())
-            }, pingTimeout.toMillis(), TimeUnit.MILLISECONDS)
+            scheduler.schedule(
+                {
+                    requests.remove(dataS)?.second?.completeExceptionally(PingTimeoutException())
+                },
+                pingTimeout.toMillis(), TimeUnit.MILLISECONDS
+            )
             stream.writeAndFlush(data.toByteBuf())
             return ret
         }

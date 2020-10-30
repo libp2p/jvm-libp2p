@@ -36,10 +36,10 @@ class Multiaddr(val components: List<Pair<Protocol, ByteArray>>) {
     constructor(bytes: ByteArray) : this(parseBytes(bytes.toByteBuf()))
 
     constructor(parentAddr: Multiaddr, childAddr: Multiaddr) :
-            this(concatProtocols(parentAddr, childAddr))
+        this(concatProtocols(parentAddr, childAddr))
 
     constructor(parentAddr: Multiaddr, peerId: PeerId) :
-            this(concatPeerId(parentAddr, peerId))
+        this(concatPeerId(parentAddr, peerId))
 
     /**
      * Returns only components matching any of supplied protocols
@@ -136,7 +136,8 @@ class Multiaddr(val components: List<Pair<Protocol, ByteArray>>) {
      * (e.g. `/ip6/::1` can be converted to `/ip6/0:0:0:0:0:0:0:1`)
      */
     override fun toString(): String = filterStringComponents().joinToString(separator = "") { p ->
-        "/" + p.first.typeName + if (p.second != null) "/" + p.second else "" }
+        "/" + p.first.typeName + if (p.second != null) "/" + p.second else ""
+    }
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

@@ -115,9 +115,11 @@ class GoInteropTest {
 
             val upgrader = ConnectionUpgrader(
                 listOf(SecIoSecureChannel(privKey1)),
-                listOf(MplexStreamMuxer().also {
-                    it.muxFramesDebugHandler = LoggingHandler("#3", LogLevel.ERROR)
-                })
+                listOf(
+                    MplexStreamMuxer().also {
+                        it.muxFramesDebugHandler = LoggingHandler("#3", LogLevel.ERROR)
+                    }
+                )
             ).also {
                 //                it.beforeSecureHandler = LoggingHandler("#1", LogLevel.INFO)
                 it.afterSecureHandler = LoggingHandler("#2", LogLevel.INFO)

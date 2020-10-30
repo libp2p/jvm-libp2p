@@ -75,7 +75,7 @@ class GossipV1_1Tests {
             return list
         }
 
-        fun getMockRouter(peerId: PeerId) = mockRouters[routers.indexOfFirst { it.peerId == peerId } ]
+        fun getMockRouter(peerId: PeerId) = mockRouters[routers.indexOfFirst { it.peerId == peerId }]
     }
 
     class TwoRoutersTest(
@@ -212,8 +212,11 @@ class GossipV1_1Tests {
 
         // No GRAFT should be sent
         test.fuzz.timeController.addTime(15.seconds)
-        assertEquals(0, test.mockRouter.inboundMessages
-            .count { it.hasControl() && it.control.graftCount > 0 })
+        assertEquals(
+            0,
+            test.mockRouter.inboundMessages
+                .count { it.hasControl() && it.control.graftCount > 0 }
+        )
         test.mockRouter.inboundMessages.clear()
 
         // backoff should affect only one topic
@@ -222,20 +225,23 @@ class GossipV1_1Tests {
         test.fuzz.timeController.addTime(1.seconds)
         test.mockRouter.waitForMessage {
             it.hasControl() &&
-                    it.control.graftCount == 1 && it.control.getGraft(0).topicID == "topic2"
+                it.control.graftCount == 1 && it.control.getGraft(0).topicID == "topic2"
         }
 
         // Still no GRAFT should be sent
         test.fuzz.timeController.addTime(10.seconds)
-        assertEquals(0, test.mockRouter.inboundMessages
-            .count { it.hasControl() && it.control.graftCount > 0 })
+        assertEquals(
+            0,
+            test.mockRouter.inboundMessages
+                .count { it.hasControl() && it.control.graftCount > 0 }
+        )
         test.mockRouter.inboundMessages.clear()
 
         // Expecting GRAFT now
         test.fuzz.timeController.addTime(10.seconds)
         test.mockRouter.waitForMessage {
             it.hasControl() &&
-                    it.control.graftCount > 0 && it.control.getGraft(0).topicID == "topic1"
+                it.control.graftCount > 0 && it.control.getGraft(0).topicID == "topic1"
         }
         test.mockRouter.inboundMessages.clear()
     }
@@ -318,8 +324,11 @@ class GossipV1_1Tests {
 
         // The peer with negative score  shouldn't be added to the mesh even when undersubscribed
         test.fuzz.timeController.addTime(2.seconds)
-        assertEquals(0, test.mockRouter.inboundMessages
-            .count { it.hasControl() && it.control.graftCount > 0 })
+        assertEquals(
+            0,
+            test.mockRouter.inboundMessages
+                .count { it.hasControl() && it.control.graftCount > 0 }
+        )
         test.mockRouter.inboundMessages.clear()
 
         // Underscored peer should be rejected from joining mesh
@@ -405,7 +414,7 @@ class GossipV1_1Tests {
 
         test.mockRouter.waitForMessage {
             it.hasControl() &&
-                    it.control.graftCount > 0 && it.control.getGraft(0).topicID == "topic1"
+                it.control.graftCount > 0 && it.control.getGraft(0).topicID == "topic1"
         }
         test.mockRouter.inboundMessages.clear()
 
@@ -417,8 +426,11 @@ class GossipV1_1Tests {
         test.mockRouter.sendToSingle(graftMsg)
         test.fuzz.timeController.addTime(2.seconds)
 
-        assertEquals(0, test.mockRouter.inboundMessages
-            .count { it.hasControl() && it.control.graftCount + it.control.pruneCount > 0 })
+        assertEquals(
+            0,
+            test.mockRouter.inboundMessages
+                .count { it.hasControl() && it.control.graftCount + it.control.pruneCount > 0 }
+        )
     }
 
     @Test
@@ -447,13 +459,16 @@ class GossipV1_1Tests {
             if (i < test.gossipRouter.params.maxIHaveMessages) {
                 test.mockRouter.waitForMessage {
                     it.hasControl() && it.control.iwantCount > 0 &&
-                            it.control.getIwant(0).getMessageIDs(0) == msgId
+                        it.control.getIwant(0).getMessageIDs(0) == msgId
                 }
             }
         }
         test.fuzz.timeController.addTime(100.millis)
-        assertEquals(0, test.mockRouter.inboundMessages
-            .count { it.hasControl() && it.control.iwantCount > 0 })
+        assertEquals(
+            0,
+            test.mockRouter.inboundMessages
+                .count { it.hasControl() && it.control.iwantCount > 0 }
+        )
     }
 
     @Test
@@ -604,10 +619,16 @@ class GossipV1_1Tests {
                 it.waitForMessage { it.publishCount > 0 }
                 it.inboundMessages.clear()
             }
-        assertEquals(0, test.mockRouters[0].inboundMessages
-            .count { it.publishCount > 0 })
-        assertEquals(0, test.mockRouters[1].inboundMessages
-            .count { it.publishCount > 0 })
+        assertEquals(
+            0,
+            test.mockRouters[0].inboundMessages
+                .count { it.publishCount > 0 }
+        )
+        assertEquals(
+            0,
+            test.mockRouters[1].inboundMessages
+                .count { it.publishCount > 0 }
+        )
     }
 
     @Test
@@ -694,7 +715,8 @@ class GossipV1_1Tests {
 
         // inbound GRAFT should be rejected when oversubscribed
         val someNonMeshedPeer = test.getMockRouter(
-            (test.routers.map { it.peerId } - meshedPeerIds).first())
+            (test.routers.map { it.peerId } - meshedPeerIds).first()
+        )
         val graftMsg = Rpc.RPC.newBuilder().setControl(
             Rpc.ControlMessage.newBuilder().addGraft(
                 Rpc.ControlGraft.newBuilder().setTopicID("topic1")
