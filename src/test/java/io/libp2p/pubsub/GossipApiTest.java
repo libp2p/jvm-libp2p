@@ -1,18 +1,31 @@
 package io.libp2p.pubsub;
 
+import com.google.protobuf.ByteString;
+import io.libp2p.core.pubsub.ValidationResult;
+import io.libp2p.etc.util.P2PService;
 import io.libp2p.pubsub.gossip.GossipParams;
 import io.libp2p.pubsub.gossip.GossipParamsKt;
 import io.libp2p.pubsub.gossip.GossipRouter;
 import org.jetbrains.annotations.NotNull;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import pubsub.pb.Rpc;
 
+import java.nio.charset.StandardCharsets;
 import java.util.AbstractMap;
-import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+
+import static io.libp2p.tools.StubsKt.peerHandlerStub;
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class GossipApiTest {
 
@@ -38,16 +51,68 @@ public class GossipApiTest {
 //        });
 //
 //        Assertions.assertEquals("Hey!", router.(Rpc.Message.getDefaultInstance()));
-        Assertions.assertEquals(10, router.getParams().getD());
-        Assertions.assertEquals(20, router.getParams().getDHigh());
-        Assertions.assertEquals(GossipParamsKt.defaultDScore(10), router.getParams().getDScore());
+        assertThat(router.getParams().getD()).isEqualTo(10);
+        assertThat(router.getParams().getDHigh()).isEqualTo(20);
+        assertThat(router.getParams().getDScore()).isEqualTo(GossipParamsKt.defaultDScore(10));
     }
 
-    class CustomMessage implements PubsubMessage {
+    @Test
+    public void testFastMessageId() throws Exception {
+        GossipRouter router = new GossipRouter() {
+            private final MessageMap<Optional<ValidationResult>> seenMessages = new MessageMap<>();
+
+            @NotNull
+            @Override
+            protected Map<PubsubMessage, Optional<ValidationResult>> getSeenMessages() {
+                return seenMessages;
+            }
+        };
+        List<CustomMessage> createdMessages = new ArrayList<>();
+        router.setMessageFactory(m -> {
+            CustomMessage message = new CustomMessage(m);
+            createdMessages.add(message);
+            return message;
+        });
+        router.subscribe("topic");
+
+        BlockingQueue<PubsubMessage> messages = new LinkedBlockingQueue<>();
+        router.initHandler(m -> {
+            messages.add(m);
+            return CompletableFuture.completedFuture(ValidationResult.Valid);
+        });
+
+        P2PService.PeerHandler peerHandler = peerHandlerStub(router);
+
+        router.onInbound(peerHandler, newMessage("Hello-1"));
+        CustomMessage message1 = (CustomMessage) messages.poll(1, TimeUnit.SECONDS);
+
+        assertThat(message1).isNotNull();
+        assertThat(message1.canonicalId).isNotNull();
+        assertThat(createdMessages.size()).isEqualTo(1);
+        createdMessages.clear();
+
+        router.onInbound(peerHandler, newMessage("Hello-1"));
+        CustomMessage message2 = (CustomMessage) messages.poll(100, TimeUnit.MILLISECONDS);
+
+        assertThat(message2).isNull();
+        assertThat(createdMessages.size()).isEqualTo(1);
+        // assert that 'slow' canonicalId was not calculated and the message was filtered as seen by fastId
+        assertThat(createdMessages.get(0).canonicalId).isNull();
+        createdMessages.clear();
+    }
+
+    Rpc.RPC newMessage(String msg) {
+        return Rpc.RPC.newBuilder().addPublish(
+                Rpc.Message.newBuilder()
+                        .addTopicIDs("topic")
+                        .setData(ByteString.copyFrom("Hello-1", StandardCharsets.US_ASCII))
+        ).build();
+    }
+
+    static class CustomMessage implements PubsubMessage {
         final Rpc.Message message;
-        Function<Rpc.Message, Object> fastIdCalculator;
-        Function<Rpc.Message, String> canonicalIdCalculator;
-        String canonicalId = null;
+        Function<Rpc.Message, byte[]> canonicalIdCalculator = m -> ("canon-" + m.getData().toString()).getBytes();
+        byte[] canonicalId = null;
 
         public CustomMessage(Rpc.Message message) {
             this.message = message;
@@ -65,7 +130,7 @@ public class GossipApiTest {
 
         @NotNull
         @Override
-        public String getMessageId() {
+        public byte[] getMessageId() {
             if (canonicalId == null) {
                 canonicalId = canonicalIdCalculator.apply(getProtobufMessage());
             }
@@ -74,34 +139,72 @@ public class GossipApiTest {
 
         @Override
         public boolean equals(Object o) {
-            throw new UnsupportedOperationException();
-//            if (this == o) return true;
-//            if (o == null || getClass() != o.getClass()) return false;
-//            CustomMessage that = (CustomMessage) o;
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            CustomMessage that = (CustomMessage) o;
+            return message.equals(that.message);
         }
 
         @Override
         public int hashCode() {
-            throw new UnsupportedOperationException();
-//            return Objects.hash(message, fastIdCalculator, canonicalIdCalculator, canonicalId);
+            return message.hashCode();
         }
     }
 
-    class MessageMap<V> extends AbstractMap<CustomMessage, V> {
-        Map<Object, String> fastToCanonicalId;
-        Map<String, Entry<CustomMessage, V>> canonicalIdToMsg;
+    static class MessageMap<V> extends AbstractMap<PubsubMessage, V> {
+        Map<Object, String> fastToCanonicalId = new HashMap<>();
+        Map<String, Entry<PubsubMessage, V>> canonicalIdToMsg = new HashMap<>();
 
         @NotNull
         @Override
-        public Set<Entry<CustomMessage, V>> entrySet() {
-            return new HashSet<>(canonicalIdToMsg.values());
+        public Set<Entry<PubsubMessage, V>> entrySet() {
+            return Set.copyOf(canonicalIdToMsg.values());
         }
 
         @Override
+        public V get(Object key) {
+            if (key instanceof CustomMessage) {
+                return get((CustomMessage) key);
+            } else {
+                throw new IllegalArgumentException();
+            }
+        }
+
+        public V get(CustomMessage key) {
+            String canonicalId = fastToCanonicalId.get(key.fastMessageId());
+            Entry<PubsubMessage, V> entry = canonicalIdToMsg.get(canonicalId != null ? canonicalId : key.getMessageId());
+            return entry == null ? null : entry.getValue();
+        }
+
+        @Override
+        public V put(PubsubMessage key, V value) {
+            if (key instanceof CustomMessage) {
+                return put((CustomMessage) key, value);
+            } else {
+                throw new IllegalArgumentException();
+            }
+        }
         public V put(CustomMessage key, V value) {
-            fastToCanonicalId.put(key.fastMessageId(), key.getMessageId());
-            Entry<CustomMessage, V> oldVal = canonicalIdToMsg.put(key.getMessageId(), new SimpleEntry<>(key, value));
+            fastToCanonicalId.put(key.fastMessageId(), new String(key.getMessageId()));
+            Entry<PubsubMessage, V> oldVal =
+                    canonicalIdToMsg.put(new String(key.getMessageId()), new SimpleEntry<>(key, value));
             return oldVal == null ? null : oldVal.getValue();
+        }
+
+        @Override
+        public V remove(Object key) {
+            if (key instanceof CustomMessage) {
+                return remove((CustomMessage) key);
+            } else {
+                throw new IllegalArgumentException();
+            }
+        }
+
+        public V remove(CustomMessage key) {
+            String canonicalId = fastToCanonicalId.remove(key.fastMessageId());
+            Entry<PubsubMessage, V> entry =
+                    canonicalIdToMsg.remove(canonicalId != null ? canonicalId : key.getMessageId());
+            return entry == null ? null : entry.getValue();
         }
 
         public boolean contains(CustomMessage msg) {

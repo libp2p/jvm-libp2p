@@ -69,7 +69,7 @@ open class GossipRouter @JvmOverloads constructor(
             TimeUnit.MILLISECONDS
         )
     }
-    override val seenMessages by lazy {
+    override val seenMessages: MutableMap<PubsubMessage, Optional<ValidationResult>> by lazy {
         val t: Ticker = object : Ticker() {
             // Ticker operates with nanos and handles overflows correctly
             override fun read() = curTimeMillis() * 1_000_000
@@ -223,7 +223,7 @@ open class GossipRouter @JvmOverloads constructor(
             return
         }
 
-        val iWant = msg.messageIDsList - seenMessages.keys.map { it.messageId }
+        val iWant = msg.messageIDsList.map { it.toByteArray()} - seenMessages.keys.map { it.messageId }
         val maxToAsk = min(iWant.size, params.maxIHaveLength - asked.get())
         asked.addAndGet(maxToAsk)
         iWant(peer, iWant.shuffled(random).subList(0, maxToAsk))
@@ -233,7 +233,7 @@ open class GossipRouter @JvmOverloads constructor(
         val peerScore = score.score(peer)
         if (peerScore < score.params.gossipThreshold) return
         msg.messageIDsList
-            .mapNotNull { mCache.getMessageForPeer(peer.peerId, it) }
+            .mapNotNull { mCache.getMessageForPeer(peer.peerId, it.toByteArray()) }
             .filter { it.sentCount < params.gossipRetransmission }
             .map { it.msg }
             .forEach { submitPublishMessage(peer, it) }
@@ -492,7 +492,7 @@ open class GossipRouter @JvmOverloads constructor(
                 peer,
                 Rpc.RPC.newBuilder().setControl(
                     Rpc.ControlMessage.newBuilder().addIwant(
-                        Rpc.ControlIWant.newBuilder().addAllMessageIDs(messageIds)
+                        Rpc.ControlIWant.newBuilder().addAllMessageIDs(messageIds.map { it.toProtobuf() })
                     )
                 ).build()
             )
@@ -504,7 +504,7 @@ open class GossipRouter @JvmOverloads constructor(
             peer,
             Rpc.RPC.newBuilder().setControl(
                 Rpc.ControlMessage.newBuilder().addIhave(
-                    Rpc.ControlIHave.newBuilder().addAllMessageIDs(messageIds)
+                    Rpc.ControlIHave.newBuilder().addAllMessageIDs(messageIds.map { it.toProtobuf() })
                 )
             ).build()
         )

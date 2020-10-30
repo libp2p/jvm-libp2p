@@ -11,7 +11,6 @@ import io.libp2p.etc.types.copy
 import io.libp2p.etc.types.createLRUMap
 import io.libp2p.etc.types.forward
 import io.libp2p.etc.types.lazyVarInit
-import io.libp2p.etc.types.toHex
 import io.libp2p.etc.util.P2PServiceSemiDuplex
 import io.netty.channel.ChannelHandler
 import io.netty.handler.codec.protobuf.ProtobufDecoder
@@ -28,8 +27,7 @@ import java.util.function.BiConsumer
 import java.util.function.Consumer
 
 class DefaultPubsubMessage(override val protobufMessage: Rpc.Message) : PubsubMessage {
-    override val messageId: MessageId =
-        protobufMessage.from.toByteArray().toHex() + protobufMessage.seqno.toByteArray().toHex()
+    override val messageId: MessageId = protobufMessage.from.toByteArray() + protobufMessage.seqno.toByteArray()
 
     override fun equals(other: Any?) = protobufMessage == (other as? PubsubMessage)?.protobufMessage
     override fun hashCode() = protobufMessage.hashCode()
@@ -48,8 +46,8 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
 
     override var messageFactory: PubsubMessageFactory = { DefaultPubsubMessage(it) }
     var maxSeenMessagesLimit = 10000
-    protected open val seenMessages by lazy {
-        createLRUMap<PubsubMessage, Optional<ValidationResult>>(maxSeenMessagesLimit)
+    protected open val seenMessages: MutableMap<PubsubMessage, Optional<ValidationResult>> by lazy {
+        createLRUMap(maxSeenMessagesLimit)
     }
 
     private val peerTopics = MultiSet<PeerHandler, String>()

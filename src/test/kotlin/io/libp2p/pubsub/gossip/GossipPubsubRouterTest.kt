@@ -1,6 +1,7 @@
 package io.libp2p.pubsub.gossip
 
 import io.libp2p.etc.types.seconds
+import io.libp2p.etc.types.toProtobuf
 import io.libp2p.pubsub.DeterministicFuzz
 import io.libp2p.pubsub.MockRouter
 import io.libp2p.pubsub.PubsubRouterTest
@@ -123,7 +124,7 @@ class GossipPubsubRouterTest : PubsubRouterTest({
             val msg1 = Rpc.RPC.newBuilder()
                 .setControl(
                     Rpc.ControlMessage.newBuilder().addIhave(
-                        Rpc.ControlIHave.newBuilder().addMessageIDs("messageId")
+                        Rpc.ControlIHave.newBuilder().addMessageIDs("messageId".toByteArray().toProtobuf())
                     )
                 ).build()
 
