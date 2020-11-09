@@ -8,7 +8,6 @@ import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.etc.types.MultiSet
 import io.libp2p.etc.types.completedExceptionally
 import io.libp2p.etc.types.copy
-import io.libp2p.etc.types.createLRUMap
 import io.libp2p.etc.types.forward
 import io.libp2p.etc.types.lazyVarInit
 import io.libp2p.etc.types.toWBytes
@@ -47,8 +46,9 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
 
     override var messageFactory: PubsubMessageFactory = { DefaultPubsubMessage(it) }
     var maxSeenMessagesLimit = 10000
-    protected open val seenMessages: MutableMap<PubsubMessage, Optional<ValidationResult>> by lazy {
-        createLRUMap(maxSeenMessagesLimit)
+
+    protected open val seenMessages: SeenCache<Optional<ValidationResult>> by lazy {
+        LRUSeenCache(SimpleSeenCache(), maxSeenMessagesLimit)
     }
 
     private val peerTopics = MultiSet<PeerHandler, String>()
@@ -196,7 +196,7 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
                 val validationResult = seenMessages[subscribedMessage]
                 if (validationResult != null) {
                     // Message has been seen
-                    notifySeenMessage(peer, subscribedMessage, validationResult)
+                    notifySeenMessage(peer, seenMessages.getSeenMessage(subscribedMessage), validationResult)
                     false
                 } else {
                     // Message is unseen
