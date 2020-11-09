@@ -49,9 +49,12 @@ class ProtocolSelect<TController>(val protocols: List<ProtocolBinding<TControlle
                 val protocolBinding = protocols.find { it.protocolDescriptor.protocolMatcher.matches(evt.proto) }
                     ?: throw NoSuchLocalProtocolException("Protocol negotiation failed: not supported protocol ${evt.proto}")
                 ctx.channel().attr(PROTOCOL).get()?.complete(evt.proto)
-                ctx.pipeline().addAfter(this, "ProtocolBindingInitializer", nettyInitializer {
-                    protocolBinding.initChannel(it.channel.getP2PChannel(), evt.proto).forward(selectedFuture)
-                })
+                ctx.pipeline().addAfter(
+                    this, "ProtocolBindingInitializer",
+                    nettyInitializer {
+                        protocolBinding.initChannel(it.channel.getP2PChannel(), evt.proto).forward(selectedFuture)
+                    }
+                )
             }
             is ProtocolNegotiationFailed -> throw NoSuchRemoteProtocolException("ProtocolNegotiationFailed: $evt")
         }

@@ -26,8 +26,8 @@ class TcpTransport(
 
     override fun handles(addr: Multiaddr) =
         handlesHost(addr) &&
-                addr.has(TCP) &&
-                !addr.has(WS)
+            addr.has(TCP) &&
+            !addr.has(WS)
 
     override fun serverTransportBuilder(
         connectionBuilder: ConnectionBuilder,
@@ -45,9 +45,11 @@ class TcpTransport(
             is Inet6Address -> IP6
             else -> throw InternalErrorException("Unknown address type $addr")
         }
-        return Multiaddr(listOf(
-            proto to proto.addressToBytes(addr.address.hostAddress),
-            TCP to TCP.addressToBytes(addr.port.toString())
-        ))
+        return Multiaddr(
+            listOf(
+                proto to proto.addressToBytes(addr.address.hostAddress),
+                TCP to TCP.addressToBytes(addr.port.toString())
+            )
+        )
     } // toMultiaddr
 } // class TcpTransport

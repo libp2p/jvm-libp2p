@@ -152,13 +152,16 @@ class GossipPubsubRouterTest : PubsubRouterTest({
         TestLogAppender().install().use { testLogAppender ->
 
             val msg1 = Rpc.RPC.newBuilder()
-                .addSubscriptions(Rpc.RPC.SubOpts.newBuilder()
-                    .setTopicid("topic1")
-                    .setSubscribe(true))
+                .addSubscriptions(
+                    Rpc.RPC.SubOpts.newBuilder()
+                        .setTopicid("topic1")
+                        .setSubscribe(true)
+                )
                 .setControl(
                     Rpc.ControlMessage.newBuilder().addGraft(
                         Rpc.ControlGraft.newBuilder().setTopicID("topic1")
-                    ))
+                    )
+                )
                 .build()
             mockRouter.sendToSingle(msg1)
 

@@ -106,9 +106,11 @@ class MultiaddrDns {
                 return ipAddresses
                     .filter { desiredAddressType.isInstance(it) }
                     .map {
-                        Multiaddr(listOf(
-                            Pair(resultantProto, it.address)
-                        ))
+                        Multiaddr(
+                            listOf(
+                                Pair(resultantProto, it.address)
+                            )
+                        )
                     }
             }
         }

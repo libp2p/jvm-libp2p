@@ -16,9 +16,11 @@ fun parseProtobufBytesToString(str: String): ByteArray {
                 pos++
                 when (str[pos]) {
                     in '0'..'9' -> {
-                        val r = ((("" + str[pos]).toInt() shl 6) or
+                        val r = (
+                            (("" + str[pos]).toInt() shl 6) or
                                 (("" + str[pos + 1]).toInt() shl 3) or
-                                (("" + str[pos + 2]).toInt())).toByte()
+                                (("" + str[pos + 2]).toInt())
+                            ).toByte()
                         pos += 2
                         r
                     }

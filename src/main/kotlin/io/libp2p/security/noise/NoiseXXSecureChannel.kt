@@ -135,7 +135,7 @@ private class NoiseIoHandshake(
 
         // after reading messages and setting up state, write next message onto the wire
         if (handshakeState.action == HandshakeState.WRITE_MESSAGE) {
-                sendNoiseStaticKeyAsPayload(ctx)
+            sendNoiseStaticKeyAsPayload(ctx)
         }
 
         if (handshakeState.action == HandshakeState.SPLIT) {

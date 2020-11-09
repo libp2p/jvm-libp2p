@@ -35,27 +35,27 @@ fun BigInteger.toBytes(numBytes: Int): ByteArray {
 fun ByteArray.toUShortBigEndian(): Int {
     if (size != 2) throw IllegalArgumentException("Size $size != 2")
     return (this[0].toInt() and 0xFF shl 8) or
-            (this[1].toInt() and 0xFF)
+        (this[1].toInt() and 0xFF)
 }
 
 fun ByteArray.toIntBigEndian(): Int {
     if (size != 4) throw IllegalArgumentException("Size $size != 4")
     return (this[0].toInt() and 0xFF shl 24) or
-            (this[1].toInt() and 0xFF shl 16) or
-            (this[2].toInt() and 0xFF shl 8) or
-            (this[3].toInt() and 0xFF)
+        (this[1].toInt() and 0xFF shl 16) or
+        (this[2].toInt() and 0xFF shl 8) or
+        (this[3].toInt() and 0xFF)
 }
 
 fun ByteArray.toLongBigEndian(): Long {
     if (size != 8) throw IllegalArgumentException("Size $size != 8")
     return (this[0].toLong() and 0xFF shl 56) or
-            (this[1].toLong() and 0xFF shl 48) or
-            (this[2].toLong() and 0xFF shl 40) or
-            (this[3].toLong() and 0xFF shl 32) or
-            (this[4].toLong() and 0xFF shl 24) or
-            (this[5].toLong() and 0xFF shl 16) or
-            (this[6].toLong() and 0xFF shl 8) or
-            (this[7].toLong() and 0xFF)
+        (this[1].toLong() and 0xFF shl 48) or
+        (this[2].toLong() and 0xFF shl 40) or
+        (this[3].toLong() and 0xFF shl 32) or
+        (this[4].toLong() and 0xFF shl 24) or
+        (this[5].toLong() and 0xFF shl 16) or
+        (this[6].toLong() and 0xFF shl 8) or
+        (this[7].toLong() and 0xFF)
 }
 
 fun Long.toBytesBigEndian() =

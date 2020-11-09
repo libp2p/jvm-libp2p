@@ -17,9 +17,9 @@ class TcpTransportTest : TransportTests() {
 
     override fun localAddress(portNumber: Int): Multiaddr {
         return if (ip4DnsAvailable && (portNumber % 2 == 0))
-                Multiaddr("/dns4/localhost/tcp/$portNumber")
-            else
-                Multiaddr("/ip4/127.0.0.1/tcp/$portNumber")
+            Multiaddr("/dns4/localhost/tcp/$portNumber")
+        else
+            Multiaddr("/ip4/127.0.0.1/tcp/$portNumber")
     }
 
     override fun badAddress(): Multiaddr =

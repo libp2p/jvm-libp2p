@@ -53,13 +53,15 @@ class EchoSampleTest {
         val (privKey1, _) = generateKeyPair(KEY_TYPE.ECDSA)
         val upgrader = ConnectionUpgrader(
             listOf(SecIoSecureChannel(privKey1)),
-            listOf(MplexStreamMuxer().also {
-                it.muxFramesDebugHandler = LoggingHandler("#3", LogLevel.INFO)
-            })
+            listOf(
+                MplexStreamMuxer().also {
+                    it.muxFramesDebugHandler = LoggingHandler("#3", LogLevel.INFO)
+                }
+            )
         ).also {
-                it.beforeSecureHandler = LoggingHandler("#1", LogLevel.INFO)
-                it.afterSecureHandler = LoggingHandler("#2", LogLevel.INFO)
-            }
+            it.beforeSecureHandler = LoggingHandler("#1", LogLevel.INFO)
+            it.afterSecureHandler = LoggingHandler("#2", LogLevel.INFO)
+        }
 
         val tcpTransport = TcpTransport(upgrader)
         val applicationProtocols = listOf(createSimpleBinding("/echo/1.0.0") { EchoProtocol() })

@@ -31,24 +31,30 @@ class MDnsDiscovery(
     private val executor by lazy { ForkJoinPool(1) }
 
     override fun start(): CompletableFuture<Void> {
-        return CompletableFuture.runAsync(Runnable {
-            mDns.start()
+        return CompletableFuture.runAsync(
+            Runnable {
+                mDns.start()
 
-            mDns.registerService(
-                ipfsDiscoveryInfo()
-            )
-            mDns.addAnswerListener(
-                serviceTag,
-                queryInterval,
-                Listener(this)
-            )
-        }, executor)
+                mDns.registerService(
+                    ipfsDiscoveryInfo()
+                )
+                mDns.addAnswerListener(
+                    serviceTag,
+                    queryInterval,
+                    Listener(this)
+                )
+            },
+            executor
+        )
     }
 
     override fun stop(): CompletableFuture<Void> {
-        return CompletableFuture.runAsync(Runnable {
-            mDns.stop()
-        }, executor)
+        return CompletableFuture.runAsync(
+            Runnable {
+                mDns.stop()
+            },
+            executor
+        )
     }
 
     internal fun peerFound(peerInfo: PeerInfo) {

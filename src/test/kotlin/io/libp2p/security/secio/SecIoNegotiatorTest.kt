@@ -80,7 +80,9 @@ class SecIoNegotiatorTest {
 
         val privKey = unmarshalPrivateKey(serializedGoKey.fromHex())
         println()
-        Assertions.assertEquals("16Uiu2HAmH6m8pE7pXsfzXHg3Z5kLzgwJ5PWSYELaKXc75Bs2utZM",
-            PeerId.fromPubKey(privKey.publicKey()).toBase58())
+        Assertions.assertEquals(
+            "16Uiu2HAmH6m8pE7pXsfzXHg3Z5kLzgwJ5PWSYELaKXc75Bs2utZM",
+            PeerId.fromPubKey(privKey.publicKey()).toBase58()
+        )
     }
 }

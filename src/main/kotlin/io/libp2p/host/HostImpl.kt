@@ -97,7 +97,7 @@ class HostImpl(
         val binding =
             @Suppress("UNCHECKED_CAST")
             protocolHandlers.bindings.find { it.protocolDescriptor.matchesAny(protocols) } as? ProtocolBinding<TController>
-            ?: throw NoSuchLocalProtocolException("Protocol handler not found: $protocols")
+                ?: throw NoSuchLocalProtocolException("Protocol handler not found: $protocols")
 
         val multistream: Multistream<TController> =
             Multistream.create(binding.toInitiator(protocols))

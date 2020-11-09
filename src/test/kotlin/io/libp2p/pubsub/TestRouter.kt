@@ -70,9 +70,11 @@ class TestRouter(val name: String = "" + cnt.getAndIncrement(), val protocol: St
         val parentChannel = TestChannel("dummy-parent-channel", false)
         val connection =
             ConnectionOverNetty(parentChannel, NullTransport(), initiator)
-        connection.setSecureSession(SecureChannel.Session(
-            peerId, remoteRouter.peerId, remoteRouter.keyPair.second
-        ))
+        connection.setSecureSession(
+            SecureChannel.Session(
+                peerId, remoteRouter.peerId, remoteRouter.keyPair.second
+            )
+        )
 
         return TestChannel(
             channelName,
@@ -108,6 +110,7 @@ class TestRouter(val name: String = "" + cnt.getAndIncrement(), val protocol: St
     ): SemiduplexConnection {
         return SemiduplexConnection(
             connect(another, wireLogs, pubsubLogs),
-            another.connect(this, wireLogs, pubsubLogs))
+            another.connect(this, wireLogs, pubsubLogs)
+        )
     }
 }

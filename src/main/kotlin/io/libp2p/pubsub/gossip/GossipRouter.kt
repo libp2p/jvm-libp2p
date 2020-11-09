@@ -468,7 +468,8 @@ open class GossipRouter @JvmOverloads constructor(
                 }
         }
         addPendingRpcPart(
-            peer, Rpc.RPC.newBuilder().setControl(
+            peer,
+            Rpc.RPC.newBuilder().setControl(
                 Rpc.ControlMessage.newBuilder().addPrune(
                     pruneBuilder
                 )

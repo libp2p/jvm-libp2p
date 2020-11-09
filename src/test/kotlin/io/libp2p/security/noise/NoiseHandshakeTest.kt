@@ -149,7 +149,8 @@ class NoiseHandshakeTest {
         val ch1 = NoiseXXSecureChannel(privKey1)
 
         Assertions.assertTrue(
-            ch1.protocolDescriptor.matchesAny(ch1.protocolDescriptor.announceProtocols))
+            ch1.protocolDescriptor.matchesAny(ch1.protocolDescriptor.announceProtocols)
+        )
     }
 
     @Test
