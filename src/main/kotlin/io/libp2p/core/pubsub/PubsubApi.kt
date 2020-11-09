@@ -185,7 +185,6 @@ interface MessageApi {
      * A set of message topics
      */
     val topics: List<Topic>
-
 }
 
 /**

@@ -224,10 +224,13 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
         val undone = doneUndone.getOrDefault(false, emptyList())
 
         validFuts.forEach { (msg, validationFut) ->
-            validationFut.thenAcceptAsync(Consumer { res ->
-                seenMessages[msg] = Optional.of(res)
-                if (res == ValidationResult.Invalid) notifyUnseenInvalidMessage(peer, msg)
-            }, executor)
+            validationFut.thenAcceptAsync(
+                Consumer { res ->
+                    seenMessages[msg] = Optional.of(res)
+                    if (res == ValidationResult.Invalid) notifyUnseenInvalidMessage(peer, msg)
+                },
+                executor
+            )
         }
 
         // broadcasting in a single chunk those which were validated synchronously

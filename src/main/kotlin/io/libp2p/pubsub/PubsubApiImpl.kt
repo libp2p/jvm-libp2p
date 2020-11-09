@@ -141,6 +141,6 @@ class MessageImpl(override val originalMessage: PubsubMessage) : MessageApi {
     override val from = if (msg.hasFrom()) msg.from.toByteArray() else null
     override val seqId = if (msg.hasSeqno() && msg.seqno.size() >= 8)
         msg.seqno.toByteArray().copyOfRange(0, 8).toLongBigEndian()
-        else null
+    else null
     override val topics = msg.topicIDsList.map { Topic(it) }
 }
