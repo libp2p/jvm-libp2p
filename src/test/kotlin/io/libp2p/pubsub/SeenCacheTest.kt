@@ -25,8 +25,8 @@ fun createPubsubMessage(number: Int, fastId: Int) =
 
 class TestPubsubMessage(override val protobufMessage: Rpc.Message) : PubsubMessage {
     var canonicalIdCalculator: (Rpc.Message) -> WBytes = {
-            WBytes(("canon-" + it.data.toString(US_ASCII)).toByteArray())
-        }
+        WBytes(("canon-" + it.data.toString(US_ASCII)).toByteArray())
+    }
     var canonicalId: WBytes? = null
     lateinit var fastID: Any
     override val messageId: WBytes

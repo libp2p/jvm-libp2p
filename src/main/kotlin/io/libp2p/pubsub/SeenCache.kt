@@ -12,7 +12,7 @@ import java.util.LinkedList
  * In other words the 'key' [PubsubMessage] is rather 'matched' here then checked for equity
  */
 interface SeenCache<TValue> {
-    val size : Int
+    val size: Int
     val messages: Collection<PubsubMessage>
 
     /**
@@ -30,7 +30,7 @@ operator fun <TValue> SeenCache<TValue>.set(msg: PubsubMessage, value: TValue) =
 operator fun <TValue> SeenCache<TValue>.contains(msg: PubsubMessage) = isSeen(msg)
 operator fun <TValue> SeenCache<TValue>.minusAssign(msg: PubsubMessage) = remove(msg)
 
-class SimpleSeenCache<TValue>: SeenCache<TValue> {
+class SimpleSeenCache<TValue> : SeenCache<TValue> {
     private val map: MutableMap<MessageId, Pair<PubsubMessage, TValue>> = mutableMapOf()
 
     override val size: Int
@@ -47,7 +47,7 @@ class SimpleSeenCache<TValue>: SeenCache<TValue> {
     override fun remove(msg: PubsubMessage) { map -= msg.messageId }
 }
 
-class LRUSeenCache<TValue>(val delegate: SeenCache<TValue>, private val maxSize: Int): SeenCache<TValue> by delegate {
+class LRUSeenCache<TValue>(val delegate: SeenCache<TValue>, private val maxSize: Int) : SeenCache<TValue> by delegate {
     val evictingQueue = LinkedList<PubsubMessage>()
 
     override fun put(msg: PubsubMessage, value: TValue) {
@@ -90,7 +90,7 @@ class TTLSeenCache<TValue>(
     }
 }
 
-class FastIdSeenCache<TValue>(private val fastIdFunction: (PubsubMessage) -> Any): SeenCache<TValue> {
+class FastIdSeenCache<TValue>(private val fastIdFunction: (PubsubMessage) -> Any) : SeenCache<TValue> {
     val fastIdMap = mutableMapOf<Any, MessageId>()
     val slowIdMap: MutableMap<MessageId, Pair<PubsubMessage, TValue>> = mutableMapOf()
 
@@ -112,14 +112,13 @@ class FastIdSeenCache<TValue>(private val fastIdFunction: (PubsubMessage) -> Any
     override fun isSeen(msg: PubsubMessage) =
         fastIdFunction(msg) in fastIdMap || msg.messageId in slowIdMap
 
-
     override fun put(msg: PubsubMessage, value: TValue) {
         fastIdMap[fastIdFunction(msg)] = msg.messageId
         slowIdMap[msg.messageId] = msg to value
     }
 
     override fun remove(msg: PubsubMessage) {
-        val slowId = msg.messageId;
+        val slowId = msg.messageId
         slowIdMap -= slowId
         fastIdMap.entries.removeIf { it.value == slowId }
     }
