@@ -20,7 +20,7 @@ plugins {
     java
     idea
     kotlin("jvm") version "1.4.10"
-    id("org.jmailen.kotlinter") version "1.26.0"
+    id("org.jmailen.kotlinter") version "3.2.0"
     id("com.google.protobuf") version "0.8.13"
 
     `maven`
@@ -180,7 +180,7 @@ task("interopTest", Test::class) {
 // End Interop Tests
 
 kotlinter {
-    allowWildcardImports = false
+    disabledRules = arrayOf("no-wildcard-imports")
 }
 
 val sourcesJar by tasks.registering(Jar::class) {
