@@ -345,10 +345,13 @@ data class GossipPeerScoreParams(
         check(topicScoreCap >= 0.0, "topicScoreCap should be > 0")
         check(appSpecificWeight >= 0.0, "appSpecificWeight should be > 0")
         check(ipColocationFactorWeight <= 0.0, "ipColocationFactorWeight should be < 0")
-        check(ipColocationFactorWeight == 0.0 || ipColocationFactorThreshold >= 1,
-            "ipColocationFactorThreshold should be >= 1")
+        check(
+            ipColocationFactorWeight == 0.0 || ipColocationFactorThreshold >= 1,
+            "ipColocationFactorThreshold should be >= 1"
+        )
         check(behaviourPenaltyWeight <= 0.0, "behaviourPenaltyWeight should be <= 0")
-        check(behaviourPenaltyWeight == 0.0 || (behaviourPenaltyDecay > 0.0 && behaviourPenaltyDecay <= 1.0),
+        check(
+            behaviourPenaltyWeight == 0.0 || (behaviourPenaltyDecay > 0.0 && behaviourPenaltyDecay <= 1.0),
             "behaviourPenaltyDecay should be in range (0.0, 1.0]"
         )
         check(behaviourPenaltyThreshold >= 0.0, "behaviourPenaltyThreshold should be >= 0")

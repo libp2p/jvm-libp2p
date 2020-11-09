@@ -34,7 +34,7 @@ class WsTransportTest : TransportTests() {
             "/ip6/fe80::6f77:b303:aa6e:a16/tcp/42/ws",
             "/dns4/localhost/tcp/9999/ws",
             "/dns6/localhost/tcp/9999/ws"
-            ).map { Multiaddr(it) }
+        ).map { Multiaddr(it) }
 
         @JvmStatic
         fun invalidMultiaddrs() = listOf(

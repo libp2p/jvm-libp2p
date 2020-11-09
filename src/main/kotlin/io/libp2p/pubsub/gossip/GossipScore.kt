@@ -62,12 +62,12 @@ class GossipScore(
             val p3b = meshFailurePenalty
             val p4 = invalidMessages.pow(2)
             val ret = params.topicWeight * (
-                    p1 * params.timeInMeshWeight +
-                            p2 * params.firstMessageDeliveriesWeight +
-                            p3 * params.meshMessageDeliveriesWeight +
-                            p3b * params.meshFailurePenaltyWeight +
-                            p4 * params.invalidMessageDeliveriesWeight
-                    )
+                p1 * params.timeInMeshWeight +
+                    p2 * params.firstMessageDeliveriesWeight +
+                    p3 * params.meshMessageDeliveriesWeight +
+                    p3b * params.meshFailurePenaltyWeight +
+                    p4 * params.invalidMessageDeliveriesWeight
+                )
             return ret
         }
 
@@ -176,7 +176,7 @@ class GossipScore(
                     validationResult.isPresent && validationResult.get() == ValidationResult.Invalid ->
                         topicScores.invalidMessages++
                     !validationResult.isPresent
-                            || durationAfterValidation < topicParams[topic].meshMessageDeliveryWindow ->
+                        || durationAfterValidation < topicParams[topic].meshMessageDeliveryWindow ->
                         topicScores.meshMessageDeliveries++
                 }
             }

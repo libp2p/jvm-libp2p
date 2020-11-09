@@ -74,10 +74,13 @@ interface PubsubSubscriberApi {
      * (without validation)
      */
     fun subscribe(receiver: Subscriber, vararg topics: Topic): PubsubSubscription {
-        return subscribe(Validator {
-            receiver.accept(it)
-            RESULT_VALID
-        }, *topics)
+        return subscribe(
+            Validator {
+                receiver.accept(it)
+                RESULT_VALID
+            },
+            *topics
+        )
     }
 
     /**

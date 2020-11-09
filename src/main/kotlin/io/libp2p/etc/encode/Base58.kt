@@ -33,12 +33,14 @@ object Base58 {
         var outputStart = encoded.size
         var inputStart = zeros
         while (inputStart < work.size) {
-            encoded[--outputStart] = ALPHABET[divmod(
-                work,
-                inputStart,
-                256,
-                58
-            ).toInt()]
+            encoded[--outputStart] = ALPHABET[
+                divmod(
+                    work,
+                    inputStart,
+                    256,
+                    58
+                ).toInt()
+            ]
             if (work[inputStart] == ZERO_BYTE) {
                 ++inputStart // optimization - skip leading zeros
             }

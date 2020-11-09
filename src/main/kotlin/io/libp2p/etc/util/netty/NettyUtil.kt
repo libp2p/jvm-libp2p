@@ -25,10 +25,10 @@ fun nettyInitializer(initer: (NettyInit) -> Unit): ChannelInitializer<Channel> {
 
 private val regex = Regex("\\|[0-9a-fA-F]{8}\\| ")
 fun String.fromLogHandler() = lines()
-        .filter { it.contains(regex) }
-        .map { it.substring(11, 59).replace(" ", "") }
-        .flatMap { it.fromHex().asList() }
-        .toByteArray()
+    .filter { it.contains(regex) }
+    .map { it.substring(11, 59).replace(" ", "") }
+    .flatMap { it.fromHex().asList() }
+    .toByteArray()
 
 private fun generateName(ch: Channel, handler: ChannelHandler): String {
     val className = StringUtil.simpleClassName(handler.javaClass)

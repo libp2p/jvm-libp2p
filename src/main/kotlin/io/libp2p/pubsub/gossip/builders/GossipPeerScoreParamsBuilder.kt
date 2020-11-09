@@ -108,8 +108,10 @@ class GossipPeerScoreParamsBuilder() {
         check(appSpecificWeight != null, { "appSpecificWeight must not be null" })
         check(ipWhitelisted != null, { "ipWhitelisted must not be null" })
         check(ipColocationFactorWeight != null, { "ipColocationFactorWeight must not be null" })
-        check(ipColocationFactorThreshold != null,
-            { "ipColocationFactorThreshold must not be null" })
+        check(
+            ipColocationFactorThreshold != null,
+            { "ipColocationFactorThreshold must not be null" }
+        )
         check(behaviourPenaltyWeight != null, { "behaviourPenaltyWeight must not be null" })
         check(behaviourPenaltyDecay != null, { "behaviourPenaltyDecay must not be null" })
         check(decayInterval != null, { "decayInterval must not be null" })

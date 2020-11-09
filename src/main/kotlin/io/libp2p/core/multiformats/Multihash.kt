@@ -38,33 +38,51 @@ class Multihash(val bytes: ByteBuf, val desc: Descriptor, val lengthBits: Int, v
 
         init {
             // TODO: optimise this. We should not look up the MessageDigest every time.
-            register(TableEntry(0x00, Descriptor(Digest.Identity)) {
-                it
-            })
-            register(TableEntry(0X11, Descriptor(Digest.SHA1, 160)) {
-                MessageDigest.getInstance("SHA-1").digest(it)
-            })
-            register(TableEntry(0X12, Descriptor(Digest.SHA2, 256)) {
-                MessageDigest.getInstance("SHA-256").digest(it)
-            })
-            register(TableEntry(0X13, Descriptor(Digest.SHA2, 512)) {
-                MessageDigest.getInstance("SHA-512").digest(it)
-            })
-            register(TableEntry(0XD5, Descriptor(Digest.MD5, 128)) {
-                MessageDigest.getInstance("MD5").digest(it)
-            })
-            register(TableEntry(0X17, Descriptor(Digest.SHA3, 224)) {
-                SHA3.Digest224().digest(it)
-            })
-            register(TableEntry(0X16, Descriptor(Digest.SHA3, 256)) {
-                SHA3.Digest256().digest(it)
-            })
-            register(TableEntry(0X15, Descriptor(Digest.SHA3, 384)) {
-                SHA3.Digest384().digest(it)
-            })
-            register(TableEntry(0X14, Descriptor(Digest.SHA3, 512)) {
-                SHA3.Digest512().digest(it)
-            })
+            register(
+                TableEntry(0x00, Descriptor(Digest.Identity)) {
+                    it
+                }
+            )
+            register(
+                TableEntry(0X11, Descriptor(Digest.SHA1, 160)) {
+                    MessageDigest.getInstance("SHA-1").digest(it)
+                }
+            )
+            register(
+                TableEntry(0X12, Descriptor(Digest.SHA2, 256)) {
+                    MessageDigest.getInstance("SHA-256").digest(it)
+                }
+            )
+            register(
+                TableEntry(0X13, Descriptor(Digest.SHA2, 512)) {
+                    MessageDigest.getInstance("SHA-512").digest(it)
+                }
+            )
+            register(
+                TableEntry(0XD5, Descriptor(Digest.MD5, 128)) {
+                    MessageDigest.getInstance("MD5").digest(it)
+                }
+            )
+            register(
+                TableEntry(0X17, Descriptor(Digest.SHA3, 224)) {
+                    SHA3.Digest224().digest(it)
+                }
+            )
+            register(
+                TableEntry(0X16, Descriptor(Digest.SHA3, 256)) {
+                    SHA3.Digest256().digest(it)
+                }
+            )
+            register(
+                TableEntry(0X15, Descriptor(Digest.SHA3, 384)) {
+                    SHA3.Digest384().digest(it)
+                }
+            )
+            register(
+                TableEntry(0X14, Descriptor(Digest.SHA3, 512)) {
+                    SHA3.Digest512().digest(it)
+                }
+            )
         }
 
         @JvmStatic
@@ -101,8 +119,10 @@ class Multihash(val bytes: ByteBuf, val desc: Descriptor, val lengthBits: Int, v
             val l: Int = when {
                 lengthBits == null ->
                     // if outputSize is not defined, this is the identity function, so the lengthBits == input.
-                    desc.outputSize ?: (content.readableBytes().takeIf { it <= MAX_HASH_LENGTH_BITS }?.times(8)
-                        ?: throw InvalidMultihashException("Content to hash is too long"))
+                    desc.outputSize ?: (
+                        content.readableBytes().takeIf { it <= MAX_HASH_LENGTH_BITS }?.times(8)
+                            ?: throw InvalidMultihashException("Content to hash is too long")
+                        )
                 desc.outputSize != null && lengthBits > desc.outputSize ->
                     throw InvalidMultihashException("Requested lengthBits longer than hash output size")
                 else -> lengthBits

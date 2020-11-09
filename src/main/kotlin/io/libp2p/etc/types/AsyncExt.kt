@@ -63,13 +63,15 @@ fun <C> anyComplete(vararg all: CompletableFuture<C>): CompletableFuture<C> {
     else object : CompletableFuture<C>() {
         init {
             val counter = AtomicInteger(all.size)
-            all.forEach { it.whenComplete { v, t ->
-                if (t == null) {
-                    complete(v)
-                } else if (counter.decrementAndGet() == 0) {
-                    completeExceptionally(NonCompleteException(t))
+            all.forEach {
+                it.whenComplete { v, t ->
+                    if (t == null) {
+                        complete(v)
+                    } else if (counter.decrementAndGet() == 0) {
+                        completeExceptionally(NonCompleteException(t))
+                    }
                 }
-            } }
+            }
         }
     }
 }

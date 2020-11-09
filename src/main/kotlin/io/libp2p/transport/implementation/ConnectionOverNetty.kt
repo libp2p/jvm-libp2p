@@ -55,9 +55,11 @@ class ConnectionOverNetty(
             is Inet6Address -> Protocol.IP6
             else -> throw InternalErrorException("Unknown address type $addr")
         }
-        return Multiaddr(listOf(
-            proto to proto.addressToBytes(addr.address.hostAddress),
-            Protocol.TCP to Protocol.TCP.addressToBytes(addr.port.toString())
-        ))
+        return Multiaddr(
+            listOf(
+                proto to proto.addressToBytes(addr.address.hostAddress),
+                Protocol.TCP to Protocol.TCP.addressToBytes(addr.port.toString())
+            )
+        )
     } // toMultiaddr
 }

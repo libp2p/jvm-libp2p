@@ -7,11 +7,11 @@ import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.transport.Transport
 import org.apache.logging.log4j.LogManager
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit.SECONDS
