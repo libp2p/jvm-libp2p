@@ -73,7 +73,7 @@ class PubsubApiTest {
         fuzz.timeController.addTime(Duration.ofSeconds(1))
 
         Assertions.assertTrue(publishFut.isDone)
-        val rawMsg = router2.inboundMessages.poll(1, TimeUnit.SECONDS)
+        val rawMsg = router2.inboundMessages.poll(1, TimeUnit.SECONDS)!!.protobufMessage
         println(rawMsg)
         assertFalse(rawMsg.hasSignature())
         assertFalse(rawMsg.hasFrom())
@@ -101,7 +101,7 @@ class PubsubApiTest {
         fuzz.timeController.addTime(Duration.ofSeconds(1))
 
         Assertions.assertTrue(publishFut.isDone)
-        val rawMsg = router2.inboundMessages.poll(1, TimeUnit.SECONDS)
+        val rawMsg = router2.inboundMessages.poll(1, TimeUnit.SECONDS)!!.protobufMessage
         println(rawMsg)
         assertFalse(rawMsg.hasSignature())
         assertEquals(333, rawMsg.seqno.toByteArray().copyOfRange(0, 8).toLongBigEndian())

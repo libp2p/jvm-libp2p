@@ -55,7 +55,7 @@ open class PubsubApiImpl(val router: PubsubRouter) : PubsubApi {
                 msgToSign.setFrom(it)
             }
 
-            return router.publish(sign(msgToSign.build()))
+            return router.publish(router.messageFactory(sign(msgToSign.build())))
         }
 
         private fun sign(msg: Rpc.Message) = if (privKey != null) pubsubSign(msg, privKey) else msg
@@ -74,9 +74,9 @@ open class PubsubApiImpl(val router: PubsubRouter) : PubsubApi {
         }
     }
 
-    private fun onNewMessage(msg: Rpc.Message): CompletableFuture<ValidationResult> {
+    private fun onNewMessage(msg: PubsubMessage): CompletableFuture<ValidationResult> {
         val validationFuts = synchronized(this) {
-            msg.topicIDsList.mapNotNull { subscriptions[Topic(it)] }.flatten().distinct()
+            msg.topics.mapNotNull { subscriptions[Topic(it)] }.flatten().distinct()
         }.map {
             it.receiver.apply(rpc2Msg(msg))
         }
@@ -86,17 +86,7 @@ open class PubsubApiImpl(val router: PubsubRouter) : PubsubApi {
         }
     }
 
-    private fun rpc2Msg(msg: Rpc.Message): MessageApi {
-        return MessageImpl(
-            msg.data.toByteArray().toByteBuf(),
-            if (msg.hasFrom()) msg.from.toByteArray()
-            else null,
-            if (msg.hasSeqno() && msg.seqno.size() >= 8)
-                msg.seqno.toByteArray().copyOfRange(0, 8).toLongBigEndian()
-            else null,
-            msg.topicIDsList.map { Topic(it) }
-        )
-    }
+    private fun rpc2Msg(msg: PubsubMessage) = MessageImpl(msg)
 
     override fun subscribe(receiver: Validator, vararg topics: Topic): PubsubSubscription {
         val subscription = SubscriptionImpl(topics, receiver)
@@ -145,9 +135,12 @@ open class PubsubApiImpl(val router: PubsubRouter) : PubsubApi {
         PublisherImpl(privKey, seqIdGenerator)
 }
 
-class MessageImpl(
-    override val data: ByteBuf,
-    override val from: ByteArray?,
-    override val seqId: Long?,
-    override val topics: List<Topic>
-) : MessageApi
+class MessageImpl(override val originalMessage: PubsubMessage) : MessageApi {
+    private val msg = originalMessage.protobufMessage
+    override val data = msg.data.toByteArray().toByteBuf()
+    override val from = if (msg.hasFrom()) msg.from.toByteArray() else null
+    override val seqId = if (msg.hasSeqno() && msg.seqno.size() >= 8)
+        msg.seqno.toByteArray().copyOfRange(0, 8).toLongBigEndian()
+    else null
+    override val topics = msg.topicIDsList.map { Topic(it) }
+}

@@ -35,11 +35,13 @@ abstract class PubsubRouterTest(val router: RouterCtor) {
     }
 
     fun newMessage(topic: String, seqNo: Long, data: ByteArray) =
-        Rpc.Message.newBuilder()
-            .addTopicIDs(topic)
-            .setSeqno(seqNo.toBytesBigEndian().toProtobuf())
-            .setData(data.toProtobuf())
-            .build()
+        DefaultPubsubMessage(
+            Rpc.Message.newBuilder()
+                .addTopicIDs(topic)
+                .setSeqno(seqNo.toBytesBigEndian().toProtobuf())
+                .setData(data.toProtobuf())
+                .build()
+        )
 
     @Test
     fun Fanout() {
