@@ -9,7 +9,7 @@ import java.net.URL
 import java.nio.file.Files
 import java.nio.file.Paths
 
-// To publish the release artifact to JFrog Bintray repo run the following :
+// To publish  the release artifact to JFrog Bintray repo run the following :
 // ./gradlew bintrayUpload -PbintrayUser=<user> -PbintrayApiKey=<api-key>
 
 group = "io.libp2p"
