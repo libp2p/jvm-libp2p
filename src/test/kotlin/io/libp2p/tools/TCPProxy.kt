@@ -23,43 +23,45 @@ class TCPProxy {
         val future = ServerBootstrap().apply {
             group(NioEventLoopGroup())
             channel(NioServerSocketChannel::class.java)
-            childHandler(nettyInitializer {
-                it.addLastLocal(object : ChannelInboundHandlerAdapter() {
-                    val client = CompletableFuture<ChannelHandlerContext>()
-                    override fun channelActive(serverCtx: ChannelHandlerContext) {
+            childHandler(
+                nettyInitializer {
+                    it.addLastLocal(object : ChannelInboundHandlerAdapter() {
+                        val client = CompletableFuture<ChannelHandlerContext>()
+                        override fun channelActive(serverCtx: ChannelHandlerContext) {
 
-                        serverCtx.channel().pipeline().addFirst(LoggingHandler("server", LogLevel.INFO))
+                            serverCtx.channel().pipeline().addFirst(LoggingHandler("server", LogLevel.INFO))
 
-                        Bootstrap().apply {
-                            group(NioEventLoopGroup())
-                            channel(NioSocketChannel::class.java)
-                            option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 5 * 1000)
-                            handler(object : ChannelInboundHandlerAdapter() {
-                                override fun channelRead(ctx: ChannelHandlerContext?, msg: Any?) {
-                                    serverCtx.writeAndFlush(msg)
-                                }
+                            Bootstrap().apply {
+                                group(NioEventLoopGroup())
+                                channel(NioSocketChannel::class.java)
+                                option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 5 * 1000)
+                                handler(object : ChannelInboundHandlerAdapter() {
+                                    override fun channelRead(ctx: ChannelHandlerContext?, msg: Any?) {
+                                        serverCtx.writeAndFlush(msg)
+                                    }
 
-                                override fun channelActive(ctx: ChannelHandlerContext) {
+                                    override fun channelActive(ctx: ChannelHandlerContext) {
 //                                serverCtx.channel().pipeline().addFirst(LoggingHandler("client", LogLevel.INFO))
-                                    client.complete(ctx)
-                                }
+                                        client.complete(ctx)
+                                    }
 
-                                override fun channelUnregistered(ctx: ChannelHandlerContext?) {
-                                    client.get().close()
-                                }
-                            })
-                        }.connect(dialHost, dialPort).await().channel()
-                    }
+                                    override fun channelUnregistered(ctx: ChannelHandlerContext?) {
+                                        client.get().close()
+                                    }
+                                })
+                            }.connect(dialHost, dialPort).await().channel()
+                        }
 
-                    override fun channelRead(ctx: ChannelHandlerContext?, msg: Any?) {
-                        client.get().writeAndFlush(msg)
-                    }
+                        override fun channelRead(ctx: ChannelHandlerContext?, msg: Any?) {
+                            client.get().writeAndFlush(msg)
+                        }
 
-                    override fun channelUnregistered(ctx: ChannelHandlerContext?) {
-                        client.get().close()
-                    }
-                })
-            })
+                        override fun channelUnregistered(ctx: ChannelHandlerContext?) {
+                            client.get().close()
+                        }
+                    })
+                }
+            )
         }.bind(listenPort).sync()
         println("Proxying TCP traffic from port $listenPort to $dialHost:$dialPort...")
         return future

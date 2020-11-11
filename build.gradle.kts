@@ -19,8 +19,8 @@ description = "a minimal implementation of libp2p for the jvm"
 plugins {
     java
     idea
-    kotlin("jvm") version "1.3.31"
-    id("org.jmailen.kotlinter") version "1.26.0"
+    kotlin("jvm") version "1.4.10"
+    id("org.jmailen.kotlinter") version "3.2.0"
     id("com.google.protobuf") version "0.8.13"
 
     `maven`
@@ -37,15 +37,16 @@ repositories {
 val log4j2Version = "2.11.2"
 
 dependencies {
+    api("io.netty:netty-all:4.1.36.Final")
+    api("com.google.protobuf:protobuf-java:3.11.0")
+
     implementation(kotlin("stdlib-jdk8"))
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.0-M1")
-    implementation("tech.pegasys.teku:noise-java:0.1.0")
+    implementation("tech.pegasys:noise-java:1.0.0")
 
-    implementation("io.netty:netty-all:4.1.36.Final")
     implementation("com.google.guava:guava:27.1-jre")
     implementation("org.bouncycastle:bcprov-jdk15on:1.62")
     implementation("org.bouncycastle:bcpkix-jdk15on:1.62")
-    implementation("com.google.protobuf:protobuf-java:3.11.0")
     implementation("commons-codec:commons-codec:1.13")
 
     implementation("org.apache.logging.log4j:log4j-api:${log4j2Version}")
@@ -56,6 +57,10 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.4.2")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.4.2")
     testImplementation("io.mockk:mockk:1.10.0")
+    testRuntimeOnly("org.mockito:mockito-core:3.3.3")
+    testImplementation("org.mockito:mockito-junit-jupiter:3.3.3")
+    testImplementation("org.assertj:assertj-core:3.16.1")
+
 }
 
 sourceSets {
@@ -179,7 +184,7 @@ task("interopTest", Test::class) {
 // End Interop Tests
 
 kotlinter {
-    allowWildcardImports = false
+    disabledRules = arrayOf("no-wildcard-imports")
 }
 
 val sourcesJar by tasks.registering(Jar::class) {
@@ -236,4 +241,9 @@ bintray {
         setLicenses("Apache-2.0", "MIT")
         vcsUrl = "https://github.com/libp2p/jvm-libp2p"
     })
+}
+
+val compileKotlin: KotlinCompile by tasks
+compileKotlin.kotlinOptions {
+    languageVersion = "1.4"
 }

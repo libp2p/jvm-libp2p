@@ -163,8 +163,8 @@ class SecIoNegotiator(
             .setSignature(
                 localKey.sign(
                     proposeMsg.toByteArray() +
-                            remotePropose.toByteArray() +
-                            ephPubKey.toUncompressedBytes()
+                        remotePropose.toByteArray() +
+                        ephPubKey.toUncompressedBytes()
                 ).toProtobuf()
             ).build()
     } // buildExchangeMessage
@@ -197,11 +197,11 @@ class SecIoNegotiator(
 
     private fun validateExchangeMessage(exchangeMsg: Spipe.Exchange) {
         val signatureIsOk = remotePubKey.verify(
-                remotePropose.toByteArray() +
-                        proposeMsg.toByteArray() +
-                        exchangeMsg.epubkey.toByteArray(),
-                exchangeMsg.signature.toByteArray()
-            )
+            remotePropose.toByteArray() +
+                proposeMsg.toByteArray() +
+                exchangeMsg.epubkey.toByteArray(),
+            exchangeMsg.signature.toByteArray()
+        )
 
         if (!signatureIsOk)
             throw InvalidSignature()
@@ -275,7 +275,7 @@ class SecIoNegotiator(
     ): String {
         val intersect =
             linkedSetOf(*(selectFirst(p1, p2)).toTypedArray())
-            .intersect(linkedSetOf(*(selectSecond(p1, p2)).toTypedArray()))
+                .intersect(linkedSetOf(*(selectSecond(p1, p2)).toTypedArray()))
         if (intersect.isEmpty()) throw NoCommonAlgos()
         return intersect.first()
     } // selectBest

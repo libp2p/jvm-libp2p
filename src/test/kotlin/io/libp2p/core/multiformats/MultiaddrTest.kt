@@ -162,8 +162,10 @@ class MultiaddrTest {
         val multiaddr = Multiaddr(addr)
         val bytes = multiaddr.getBytes()
         val multiaddr1 = Multiaddr(bytes)
-        assertEquals(addr.toLowerCase().trimEnd('/').replace("/ipfs/", "/p2p/"),
-            multiaddr1.toString().toLowerCase())
+        assertEquals(
+            addr.toLowerCase().trimEnd('/').replace("/ipfs/", "/p2p/"),
+            multiaddr1.toString().toLowerCase()
+        )
     }
 
     @ParameterizedTest

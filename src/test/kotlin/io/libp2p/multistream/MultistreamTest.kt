@@ -15,13 +15,17 @@ class MultistreamTest {
 
     @Test
     fun testZeroRoundtripNegotiation() {
-        val channel1 = TestStreamChannel(true,
+        val channel1 = TestStreamChannel(
+            true,
             Multistream.create(Echo()),
-            LoggingHandler("1", LogLevel.ERROR))
+            LoggingHandler("1", LogLevel.ERROR)
+        )
 
-        val channel2 = TestStreamChannel(false,
+        val channel2 = TestStreamChannel(
+            false,
             Multistream.create(Echo()),
-            LoggingHandler("2", LogLevel.ERROR))
+            LoggingHandler("2", LogLevel.ERROR)
+        )
 
         val initiatorMessages = mutableListOf<ByteBuf>()
 
@@ -55,9 +59,11 @@ class MultistreamTest {
         channel1.close()
         channel2.close()
 
-        val channel3 = TestStreamChannel(false,
+        val channel3 = TestStreamChannel(
+            false,
             Multistream.create(Echo()),
-            LoggingHandler("2", LogLevel.ERROR))
+            LoggingHandler("2", LogLevel.ERROR)
+        )
         // write all 1 -> 2 messages stick together like below:
         //   /multistream/1.0.0
         //   /test/echo

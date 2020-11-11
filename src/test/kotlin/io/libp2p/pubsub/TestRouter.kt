@@ -18,7 +18,6 @@ import io.libp2p.transport.implementation.ConnectionOverNetty
 import io.libp2p.transport.implementation.StreamOverNetty
 import io.netty.handler.logging.LogLevel
 import io.netty.handler.logging.LoggingHandler
-import pubsub.pb.Rpc
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Executors
 import java.util.concurrent.LinkedBlockingQueue
@@ -38,8 +37,8 @@ class SemiduplexConnection(val conn1: TestConnection, val conn2: TestConnection)
 
 class TestRouter(val name: String = "" + cnt.getAndIncrement(), val protocol: String = "/test/undefined") {
 
-    val inboundMessages = LinkedBlockingQueue<Rpc.Message>()
-    var routerHandler: (Rpc.Message) -> CompletableFuture<ValidationResult> = {
+    val inboundMessages = LinkedBlockingQueue<PubsubMessage>()
+    var routerHandler: (PubsubMessage) -> CompletableFuture<ValidationResult> = {
         inboundMessages += it
         RESULT_VALID
     }
@@ -70,9 +69,11 @@ class TestRouter(val name: String = "" + cnt.getAndIncrement(), val protocol: St
         val parentChannel = TestChannel("dummy-parent-channel", false)
         val connection =
             ConnectionOverNetty(parentChannel, NullTransport(), initiator)
-        connection.setSecureSession(SecureChannel.Session(
-            peerId, remoteRouter.peerId, remoteRouter.keyPair.second
-        ))
+        connection.setSecureSession(
+            SecureChannel.Session(
+                peerId, remoteRouter.peerId, remoteRouter.keyPair.second
+            )
+        )
 
         return TestChannel(
             channelName,
@@ -108,6 +109,7 @@ class TestRouter(val name: String = "" + cnt.getAndIncrement(), val protocol: St
     ): SemiduplexConnection {
         return SemiduplexConnection(
             connect(another, wireLogs, pubsubLogs),
-            another.connect(this, wireLogs, pubsubLogs))
+            another.connect(this, wireLogs, pubsubLogs)
+        )
     }
 }

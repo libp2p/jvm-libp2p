@@ -1,7 +1,1 @@
 rootProject.name = 'jvm-libp2p-minimal'
-
-sourceControl {
-    gitRepository("https://github.com/ConsenSys/noise-java") {
-        producesModule("tech.pegasys.teku:noise-java")
-    }
-}

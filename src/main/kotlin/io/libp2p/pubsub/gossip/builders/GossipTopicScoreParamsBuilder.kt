@@ -150,25 +150,39 @@ class GossipTopicScoreParamsBuilder() {
         check(timeInMeshWeight != null, { "timeInMeshWeight must not be null" })
         check(timeInMeshQuantum != null, { "timeInMeshQuantum must not be null" })
         check(timeInMeshCap != null, { "timeInMeshCap must not be null" })
-        check(firstMessageDeliveriesWeight != null,
-            { "firstMessageDeliveriesWeight must not be null" })
-        check(firstMessageDeliveriesDecay != null,
-            { "firstMessageDeliveriesDecay must not be null" })
+        check(
+            firstMessageDeliveriesWeight != null,
+            { "firstMessageDeliveriesWeight must not be null" }
+        )
+        check(
+            firstMessageDeliveriesDecay != null,
+            { "firstMessageDeliveriesDecay must not be null" }
+        )
         check(firstMessageDeliveriesCap != null, { "firstMessageDeliveriesCap must not be null" })
-        check(meshMessageDeliveriesWeight != null,
-            { "meshMessageDeliveriesWeight must not be null" })
+        check(
+            meshMessageDeliveriesWeight != null,
+            { "meshMessageDeliveriesWeight must not be null" }
+        )
         check(meshMessageDeliveriesDecay != null, { "meshMessageDeliveriesDecay must not be null" })
-        check(meshMessageDeliveriesThreshold != null,
-            { "meshMessageDeliveriesThreshold must not be null" })
+        check(
+            meshMessageDeliveriesThreshold != null,
+            { "meshMessageDeliveriesThreshold must not be null" }
+        )
         check(meshMessageDeliveriesCap != null, { "meshMessageDeliveriesCap must not be null" })
-        check(meshMessageDeliveriesActivation != null,
-            { "meshMessageDeliveriesActivation must not be null" })
+        check(
+            meshMessageDeliveriesActivation != null,
+            { "meshMessageDeliveriesActivation must not be null" }
+        )
         check(meshMessageDeliveryWindow != null, { "meshMessageDeliveryWindow must not be null" })
         check(meshFailurePenaltyWeight != null, { "meshFailurePenaltyWeight must not be null" })
         check(meshFailurePenaltyDecay != null, { "meshFailurePenaltyDecay must not be null" })
-        check(invalidMessageDeliveriesWeight != null,
-            { "invalidMessageDeliveriesWeight must not be null" })
-        check(invalidMessageDeliveriesDecay != null,
-            { "invalidMessageDeliveriesDecay must not be null" })
+        check(
+            invalidMessageDeliveriesWeight != null,
+            { "invalidMessageDeliveriesWeight must not be null" }
+        )
+        check(
+            invalidMessageDeliveriesDecay != null,
+            { "invalidMessageDeliveriesDecay must not be null" }
+        )
     }
 }

@@ -113,7 +113,7 @@ abstract class ServerInterOpTest(
         val exeDir = File(System.getenv(external.serverDirEnvVar))
         if (!exeDir.isDirectory) throw IllegalArgumentException("Client exe directory not found")
         val exeOs = external.serverExe +
-                if (System.getProperty("os.name").contains("win", true)) ".exe" else ""
+            if (System.getProperty("os.name").contains("win", true)) ".exe" else ""
 
         val exeWithPath = File(exeDir, exeOs)
         val exeFinal = if (exeWithPath.canExecute()) exeWithPath.absoluteFile.canonicalPath else exeOs

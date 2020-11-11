@@ -86,8 +86,8 @@ class GossipBackwardCompatibilityTest {
 
     private fun gossipConnected(router: GossipRouter) =
         router.peers.isNotEmpty() &&
-                router.peers[0].getInboundHandler() != null &&
-                router.peers[0].getOutboundHandler() != null
+            router.peers[0].getInboundHandler() != null &&
+            router.peers[0].getOutboundHandler() != null
 
     @Test
     fun testConnect_1_0_to_1_1() {
@@ -98,14 +98,22 @@ class GossipBackwardCompatibilityTest {
         waitFor { gossipConnected(routerV_1_0) }
         waitFor { gossipConnected(routerV_1_1) }
 
-        Assertions.assertEquals(PubsubProtocol.Gossip_V_1_0.announceStr,
-            routerV_1_0.peers[0].getInboundHandler()!!.stream.getProtocol().get())
-        Assertions.assertEquals(PubsubProtocol.Gossip_V_1_0.announceStr,
-            routerV_1_0.peers[0].getOutboundHandler()!!.stream.getProtocol().get())
-        Assertions.assertEquals(PubsubProtocol.Gossip_V_1_0.announceStr,
-            routerV_1_1.peers[0].getInboundHandler()!!.stream.getProtocol().get())
-        Assertions.assertEquals(PubsubProtocol.Gossip_V_1_0.announceStr,
-            routerV_1_1.peers[0].getOutboundHandler()!!.stream.getProtocol().get())
+        Assertions.assertEquals(
+            PubsubProtocol.Gossip_V_1_0.announceStr,
+            routerV_1_0.peers[0].getInboundHandler()!!.stream.getProtocol().get()
+        )
+        Assertions.assertEquals(
+            PubsubProtocol.Gossip_V_1_0.announceStr,
+            routerV_1_0.peers[0].getOutboundHandler()!!.stream.getProtocol().get()
+        )
+        Assertions.assertEquals(
+            PubsubProtocol.Gossip_V_1_0.announceStr,
+            routerV_1_1.peers[0].getInboundHandler()!!.stream.getProtocol().get()
+        )
+        Assertions.assertEquals(
+            PubsubProtocol.Gossip_V_1_0.announceStr,
+            routerV_1_1.peers[0].getOutboundHandler()!!.stream.getProtocol().get()
+        )
     }
 
     @Test
@@ -117,14 +125,22 @@ class GossipBackwardCompatibilityTest {
         waitFor { gossipConnected(routerV_1_0) }
         waitFor { gossipConnected(routerV_1_1) }
 
-        Assertions.assertEquals(PubsubProtocol.Gossip_V_1_0.announceStr,
-            routerV_1_0.peers[0].getInboundHandler()!!.stream.getProtocol().get())
-        Assertions.assertEquals(PubsubProtocol.Gossip_V_1_0.announceStr,
-            routerV_1_0.peers[0].getOutboundHandler()!!.stream.getProtocol().get())
-        Assertions.assertEquals(PubsubProtocol.Gossip_V_1_0.announceStr,
-            routerV_1_1.peers[0].getInboundHandler()!!.stream.getProtocol().get())
-        Assertions.assertEquals(PubsubProtocol.Gossip_V_1_0.announceStr,
-            routerV_1_1.peers[0].getOutboundHandler()!!.stream.getProtocol().get())
+        Assertions.assertEquals(
+            PubsubProtocol.Gossip_V_1_0.announceStr,
+            routerV_1_0.peers[0].getInboundHandler()!!.stream.getProtocol().get()
+        )
+        Assertions.assertEquals(
+            PubsubProtocol.Gossip_V_1_0.announceStr,
+            routerV_1_0.peers[0].getOutboundHandler()!!.stream.getProtocol().get()
+        )
+        Assertions.assertEquals(
+            PubsubProtocol.Gossip_V_1_0.announceStr,
+            routerV_1_1.peers[0].getInboundHandler()!!.stream.getProtocol().get()
+        )
+        Assertions.assertEquals(
+            PubsubProtocol.Gossip_V_1_0.announceStr,
+            routerV_1_1.peers[0].getOutboundHandler()!!.stream.getProtocol().get()
+        )
     }
 
     fun waitFor(predicate: () -> Boolean) {
