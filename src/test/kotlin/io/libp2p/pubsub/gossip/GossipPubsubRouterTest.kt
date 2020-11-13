@@ -176,4 +176,48 @@ class GossipPubsubRouterTest : PubsubRouterTest({
             Assertions.assertFalse(testLogAppender.hasAnyWarns())
         }
     }
+
+    @Test
+    fun `test that no warn when trying to respond prune without outbound gossip stream`() {
+        // when remote gossip makes connection and immediately send GRAFT
+        // the situation when we fail to send PRUNE (as not outbound stream yet)
+        // shouldn't be treated as internal error and no WARN logs should be printed
+        val fuzz = DeterministicFuzz()
+
+        val router1 = fuzz.createTestRouter(MockRouter())
+
+        // when isDirect the gossip router should reply with PRUNE to GRAFT
+        // this would reproduce the case
+        val gossipScoreParams = GossipScoreParams(GossipPeerScoreParams(isDirect = { true }))
+
+        val router2 = fuzz.createTestRouter(GossipRouter(scoreParams = gossipScoreParams))
+        val mockRouter = router1.router as MockRouter
+
+        router2.router.subscribe("topic1")
+        router1.connect(router2, LogLevel.INFO, LogLevel.INFO)
+
+        TestLogAppender().install().use { testLogAppender ->
+            val msg1 = Rpc.RPC.newBuilder()
+                .setControl(
+                    Rpc.ControlMessage.newBuilder().addGraft(
+                        Rpc.ControlGraft.newBuilder().setTopicID("topic1")
+                    )
+                ).build()
+
+            mockRouter.sendToSingle(msg1)
+
+            Assertions.assertFalse(testLogAppender.hasAnyWarns())
+        }
+
+        router2.connect(router1, LogLevel.INFO, LogLevel.INFO)
+
+        val msg1 = Rpc.RPC.newBuilder()
+            .setControl(
+                Rpc.ControlMessage.newBuilder().addIhave(
+                    Rpc.ControlIHave.newBuilder().addMessageIDs("messageId".toByteArray().toProtobuf())
+                )
+            ).build()
+
+        mockRouter.sendToSingle(msg1)
+    }
 }
