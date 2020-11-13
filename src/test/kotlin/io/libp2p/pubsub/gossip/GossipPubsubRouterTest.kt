@@ -208,16 +208,5 @@ class GossipPubsubRouterTest : PubsubRouterTest({
 
             Assertions.assertFalse(testLogAppender.hasAnyWarns())
         }
-
-        router2.connect(router1, LogLevel.INFO, LogLevel.INFO)
-
-        val msg1 = Rpc.RPC.newBuilder()
-            .setControl(
-                Rpc.ControlMessage.newBuilder().addIhave(
-                    Rpc.ControlIHave.newBuilder().addMessageIDs("messageId".toByteArray().toProtobuf())
-                )
-            ).build()
-
-        mockRouter.sendToSingle(msg1)
     }
 }
