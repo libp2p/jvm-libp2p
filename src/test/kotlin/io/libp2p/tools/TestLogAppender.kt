@@ -12,10 +12,12 @@ class TestLogAppender : AbstractAppender("test", null, null), AutoCloseable {
 
     fun install(): TestLogAppender {
         (LogManager.getRootLogger() as Logger).addAppender(this)
+        start()
         return this
     }
 
     fun uninstall() {
+        stop()
         (LogManager.getRootLogger() as Logger).removeAppender(this)
     }
 

@@ -1,7 +1,7 @@
 package io.libp2p.security.noise
 
-import com.google.common.base.Throwables
 import com.southernstorm.noise.protocol.CipherState
+import io.libp2p.etc.types.hasCauseOfType
 import io.libp2p.etc.types.toByteArray
 import io.libp2p.security.CantDecryptInboundException
 import io.libp2p.security.SecureChannelError
@@ -15,7 +15,10 @@ import java.security.GeneralSecurityException
 
 private val logger = LogManager.getLogger(NoiseXXSecureChannel::class.java.name)
 
-class NoiseXXCodec(val aliceCipher: CipherState, val bobCipher: CipherState) : MessageToMessageCodec<ByteBuf, ByteBuf>() {
+class NoiseXXCodec(val aliceCipher: CipherState, val bobCipher: CipherState) :
+    MessageToMessageCodec<ByteBuf, ByteBuf>() {
+
+    private var abruptlyClosing = false
 
     override fun encode(ctx: ChannelHandlerContext, msg: ByteBuf, out: MutableList<Any>) {
         val plainLength = msg.readableBytes()
@@ -26,6 +29,10 @@ class NoiseXXCodec(val aliceCipher: CipherState, val bobCipher: CipherState) : M
     }
 
     override fun decode(ctx: ChannelHandlerContext, msg: ByteBuf, out: MutableList<Any>) {
+        if (abruptlyClosing) {
+            // if abrupt close was initiated by our node we shouldn't try decoding anything else
+            return
+        }
         val buf = msg.toByteArray()
         val decryptLen = try {
             bobCipher.decryptWithAd(null, buf, 0, buf, 0, buf.size)
@@ -36,18 +43,19 @@ class NoiseXXCodec(val aliceCipher: CipherState, val bobCipher: CipherState) : M
     }
 
     override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
-        when (Throwables.getRootCause(cause)) {
-            is IOException -> {
-                // Trace level because having clients unexpectedly disconnect is extremely common
-                logger.trace("IOException in Noise channel", cause)
-            }
-            is SecureChannelError -> {
-                logger.debug("Invalid Noise content", cause)
-                ctx.channel().close()
-            }
-            else -> {
-                logger.error("Unexpected error in Noise channel", cause)
-            }
+        if (cause.hasCauseOfType(IOException::class)) {
+            // Trace level because having clients unexpectedly disconnect is extremely common
+            logger.trace("IOException in Noise channel", cause)
+        } else if (cause.hasCauseOfType(SecureChannelError::class)) {
+            logger.debug("Invalid Noise content", cause)
+            closeAbruptly(ctx)
+        } else {
+            logger.error("Unexpected error in Noise channel", cause)
         }
+    }
+
+    private fun closeAbruptly(ctx: ChannelHandlerContext) {
+        abruptlyClosing = true
+        ctx.close()
     }
 }

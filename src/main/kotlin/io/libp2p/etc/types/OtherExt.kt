@@ -1,5 +1,7 @@
 package io.libp2p.etc.types
 
+import kotlin.reflect.KClass
+
 fun Boolean.whenTrue(run: () -> Unit): Boolean {
     if (this) {
         run()
@@ -36,3 +38,6 @@ fun <T> defer(f: (Deferrable) -> T): T {
         deferrable.execute()
     }
 }
+
+fun <T : Throwable> Throwable.hasCauseOfType(clazz: KClass<T>): Boolean =
+    clazz.isInstance(this) || (cause != null && cause!!.hasCauseOfType(clazz))
