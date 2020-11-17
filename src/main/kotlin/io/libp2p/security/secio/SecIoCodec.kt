@@ -1,8 +1,10 @@
 package io.libp2p.security.secio
 
-import com.google.common.base.Throwables
+import io.libp2p.etc.types.hasCauseOfType
 import io.libp2p.etc.types.toByteArray
 import io.libp2p.etc.types.toByteBuf
+import io.libp2p.security.CantDecryptInboundException
+import io.libp2p.security.InvalidMacException
 import io.libp2p.security.SecureChannelError
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
@@ -21,6 +23,7 @@ class SecIoCodec(val local: SecioParams, val remote: SecioParams) : MessageToMes
 
     private val localCipher = createCipher(local)
     private val remoteCipher = createCipher(remote)
+    private var abruptlyClosing = false
 
     companion object {
         fun createCipher(params: SecioParams): StreamCipher {
@@ -46,32 +49,41 @@ class SecIoCodec(val local: SecioParams, val remote: SecioParams) : MessageToMes
     } // encode
 
     override fun decode(ctx: ChannelHandlerContext, msg: ByteBuf, out: MutableList<Any>) {
-        val (cipherBytes, macBytes) = textAndMac(msg)
+        if (abruptlyClosing) {
+            // if abrupt close was initiated by our node we shouldn't try decoding anything else
+            return
+        }
+        try {
+            val (cipherBytes, macBytes) = textAndMac(msg)
 
-        val macArr = updateMac(remote, cipherBytes)
+            val macArr = updateMac(remote, cipherBytes)
 
-        if (!macBytes.contentEquals(macArr))
-            throw MacMismatch()
+            if (!macBytes.contentEquals(macArr))
+                throw InvalidMacException()
 
-        val clearText = processBytes(remoteCipher, cipherBytes)
-        out.add(clearText.toByteBuf())
+            val clearText = processBytes(remoteCipher, cipherBytes)
+            out.add(clearText.toByteBuf())
+        } catch (e: Exception) {
+            throw CantDecryptInboundException("Error decrypting inbound message", e)
+        }
     } // decode
 
     override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
-        when (Throwables.getRootCause(cause)) {
-            is IOException -> {
-                // Trace level because having clients unexpectedly disconnect is extremely common
-                log.trace("IOException in SecIO channel", cause)
-            }
-            is SecureChannelError -> {
-                log.debug("Invalid SecIO content", cause)
-                ctx.channel().close()
-            }
-            else -> {
-                log.error("Unexpected error in SecIO channel", cause)
-            }
+        if (cause.hasCauseOfType(IOException::class)) {
+            // Trace level because having clients unexpectedly disconnect is extremely common
+            log.trace("IOException in SecIO channel", cause)
+        } else if (cause.hasCauseOfType(SecureChannelError::class)) {
+            log.debug("Invalid SecIO content", cause)
+            closeAbruptly(ctx)
+        } else {
+            log.error("Unexpected error in SecIO channel", cause)
         }
     } // exceptionCaught
+
+    private fun closeAbruptly(ctx: ChannelHandlerContext) {
+        abruptlyClosing = true
+        ctx.close()
+    }
 
     private fun textAndMac(msg: ByteBuf): Pair<ByteArray, ByteArray> {
         val macBytes = msg.toByteArray(from = msg.readableBytes() - remote.mac.macSize)
