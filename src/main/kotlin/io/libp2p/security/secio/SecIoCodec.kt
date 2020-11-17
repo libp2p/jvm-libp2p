@@ -71,12 +71,12 @@ class SecIoCodec(val local: SecioParams, val remote: SecioParams) : MessageToMes
     override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
         if (cause.hasCauseOfType(IOException::class)) {
             // Trace level because having clients unexpectedly disconnect is extremely common
-            log.trace("IOException in Noise channel", cause)
+            log.trace("IOException in SecIO channel", cause)
         } else if (cause.hasCauseOfType(SecureChannelError::class)) {
-            log.debug("Invalid Noise content", cause)
+            log.debug("Invalid SecIO content", cause)
             closeAbruptly(ctx)
         } else {
-            log.error("Unexpected error in Noise channel", cause)
+            log.error("Unexpected error in SecIO channel", cause)
         }
     } // exceptionCaught
 
