@@ -25,7 +25,7 @@ import java.util.concurrent.TimeUnit
 
 typealias SecureChannelCtor = (PrivKey) -> SecureChannel
 
-private val logger = LogManager.getLogger(SecureChannelTest::class.java)
+val logger = LogManager.getLogger(SecureChannelTest::class.java)
 
 abstract class SecureChannelTest(
     val secureChannelCtor: SecureChannelCtor,
@@ -99,9 +99,9 @@ abstract class SecureChannelTest(
         }
     } // secureInterconnect
 
-    private fun makeSelector(key: PrivKey) = ProtocolSelect(listOf(secureChannelCtor(key)))
+    protected fun makeSelector(key: PrivKey) = ProtocolSelect(listOf(secureChannelCtor(key)))
 
-    private fun makeChannel(
+    protected fun makeChannel(
         name: String,
         initiator: Boolean,
         selector: ChannelInboundHandlerAdapter
