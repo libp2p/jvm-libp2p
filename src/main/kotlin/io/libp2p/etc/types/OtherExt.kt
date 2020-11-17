@@ -1,5 +1,6 @@
 package io.libp2p.etc.types
 
+import com.google.common.base.Throwables
 import kotlin.reflect.KClass
 
 fun Boolean.whenTrue(run: () -> Unit): Boolean {
@@ -39,5 +40,7 @@ fun <T> defer(f: (Deferrable) -> T): T {
     }
 }
 
-fun <T : Throwable> Throwable.hasCauseOfType(clazz: KClass<T>): Boolean =
-    clazz.isInstance(this) || (cause != null && cause!!.hasCauseOfType(clazz))
+fun <T : Throwable> Throwable.hasCauseOfType(clazz: KClass<T>) =
+    Throwables.getCausalChain(this)
+        .filter(clazz::isInstance)
+        .any()
