@@ -1,82 +1,129 @@
 package io.libp2p.etc.types
 
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatCode
 import org.junit.jupiter.api.Test
 
 class MutableBiMultiMapTest {
 
+    internal val map = MutableBiMultiMapImpl<String, Int>()
+
     @Test
     fun `sanity test`() {
-        val m = MutableBiMultiMapImpl<String, Int>()
-        assertThat(m.keyToValue).isEmpty()
-        assertThat(m.valueToKeys).isEmpty()
+        assertThat(map.keyToValue).isEmpty()
+        assertThat(map.valueToKeys).isEmpty()
 
-        m["1a"] = 1
-        m["1b"] = 1
-        m["1c"] = 1
-        m["2a"] = 2
+        map["1a"] = 1
+        map["1b"] = 1
+        map["1c"] = 1
+        map["2a"] = 2
 
-        assertThat(m["1a"]).isEqualTo(1)
-        assertThat(m["1b"]).isEqualTo(1)
-        assertThat(m["1c"]).isEqualTo(1)
-        assertThat(m["2a"]).isEqualTo(2)
-        assertThat(m["1d"]).isNull()
-        assertThat(m.size()).isEqualTo(4)
+        assertThat(map["1a"]).isEqualTo(1)
+        assertThat(map["1b"]).isEqualTo(1)
+        assertThat(map["1c"]).isEqualTo(1)
+        assertThat(map["2a"]).isEqualTo(2)
+        assertThat(map["1d"]).isNull()
+        assertThat(map.size()).isEqualTo(4)
 
-        assertThat(m.getKeys(1)).containsExactlyInAnyOrder("1a", "1b", "1c")
-        assertThat(m.getKeys(2)).containsExactlyInAnyOrder("2a")
-        assertThat(m.getKeys(3)).isEmpty()
+        assertThat(map.getKeys(1)).containsExactlyInAnyOrder("1a", "1b", "1c")
+        assertThat(map.getKeys(2)).containsExactlyInAnyOrder("2a")
+        assertThat(map.getKeys(3)).isEmpty()
 
-        m -= "1b"
-        assertThat(m["1b"]).isNull()
-        assertThat(m.getKeys(1)).containsExactlyInAnyOrder("1a", "1c")
-        assertThat(m.size()).isEqualTo(3)
+        map -= "1b"
+        assertThat(map["1b"]).isNull()
+        assertThat(map.getKeys(1)).containsExactlyInAnyOrder("1a", "1c")
+        assertThat(map.size()).isEqualTo(3)
 
-        m["1b"] = 11
-        assertThat(m["1b"]).isEqualTo(11)
-        assertThat(m.getKeys(1)).containsExactlyInAnyOrder("1a", "1c")
-        assertThat(m.getKeys(11)).containsExactlyInAnyOrder("1b")
-        assertThat(m.getKeys(2)).containsExactlyInAnyOrder("2a")
-        assertThat(m.size()).isEqualTo(4)
+        map["1b"] = 11
+        assertThat(map["1b"]).isEqualTo(11)
+        assertThat(map.getKeys(1)).containsExactlyInAnyOrder("1a", "1c")
+        assertThat(map.getKeys(11)).containsExactlyInAnyOrder("1b")
+        assertThat(map.getKeys(2)).containsExactlyInAnyOrder("2a")
+        assertThat(map.size()).isEqualTo(4)
 
-        m.removeAllByValue(11)
-        assertThat(m["1b"]).isNull()
-        assertThat(m.getKeys(11)).isEmpty()
-        assertThat(m.size()).isEqualTo(3)
+        map.removeAllByValue(11)
+        assertThat(map["1b"]).isNull()
+        assertThat(map.getKeys(11)).isEmpty()
+        assertThat(map.size()).isEqualTo(3)
 
-        m.removeAllByValue(1)
-        assertThat(m["1a"]).isNull()
-        assertThat(m["1c"]).isNull()
-        assertThat(m.getKeys(1)).isEmpty()
-        assertThat(m.size()).isEqualTo(1)
+        map.removeAllByValue(1)
+        assertThat(map["1a"]).isNull()
+        assertThat(map["1c"]).isNull()
+        assertThat(map.getKeys(1)).isEmpty()
+        assertThat(map.size()).isEqualTo(1)
 
-        m.removeAllByValue(2)
-        assertThat(m["2a"]).isNull()
-        assertThat(m.getKeys(2)).isEmpty()
-        assertThat(m.size()).isEqualTo(0)
+        map.removeAllByValue(2)
+        assertThat(map["2a"]).isNull()
+        assertThat(map.getKeys(2)).isEmpty()
+        assertThat(map.size()).isEqualTo(0)
 
-        assertThat(m.keyToValue).isEmpty()
-        assertThat(m.valueToKeys).isEmpty()
+        assertThat(map.keyToValue).isEmpty()
+        assertThat(map.valueToKeys).isEmpty()
     }
 
     @Test
     fun `test that removing all keys for the same value clears the map`() {
-        val m = MutableBiMultiMapImpl<String, Int>()
-        assertThat(m.keyToValue).isEmpty()
-        assertThat(m.valueToKeys).isEmpty()
+        assertThat(map.keyToValue).isEmpty()
+        assertThat(map.valueToKeys).isEmpty()
 
-        m["1a"] = 1
-        m["1b"] = 1
-        m["1c"] = 1
+        map["1a"] = 1
+        map["1b"] = 1
+        map["1c"] = 1
 
-        assertThat(m.size()).isEqualTo(3)
+        assertThat(map.size()).isEqualTo(3)
 
-        m -= "1a"
-        m -= "1b"
-        m -= "1c"
+        map -= "1a"
+        map -= "1b"
+        map -= "1c"
 
-        assertThat(m.size()).isEqualTo(0)
-        assertThat(m.keyToValue).isEmpty()
-        assertThat(m.valueToKeys).isEmpty()
+        assertThat(map.size()).isEqualTo(0)
+        assertThat(map.keyToValue).isEmpty()
+        assertThat(map.valueToKeys).isEmpty()
+    }
+
+    @Test
+    fun `test overwriting key with new value`() {
+        map["a"] = 1
+        map["a"] = 2
+
+        assertThat(map.size()).isEqualTo(1)
+        assertThat(map["a"]).isEqualTo(2)
+        assertThat(map.getKeys(1)).isEmpty()
+        assertThat(map.getKeys(2)).containsExactlyInAnyOrder("a")
+
+        map.removeAllByValue(1)
+
+        assertThat(map.size()).isEqualTo(1)
+        assertThat(map["a"]).isEqualTo(2)
+        assertThat(map.getKeys(1)).isEmpty()
+        assertThat(map.getKeys(2)).containsExactlyInAnyOrder("a")
+
+        map.removeAllByValue(2)
+
+        assertThat(map.size()).isEqualTo(0)
+        assertThat(map.keyToValue).isEmpty()
+        assertThat(map.valueToKeys).isEmpty()
+    }
+
+    @Test
+    fun `test remove non existing key`() {
+        assertThatCode {
+            map -= "a"
+        }.doesNotThrowAnyException()
+
+        assertThat(map.size()).isEqualTo(0)
+        assertThat(map.keyToValue).isEmpty()
+        assertThat(map.valueToKeys).isEmpty()
+    }
+
+    @Test
+    fun `test remove non existing value`() {
+        assertThatCode {
+            map.removeAllByValue(1)
+        }.doesNotThrowAnyException()
+
+        assertThat(map.size()).isEqualTo(0)
+        assertThat(map.keyToValue).isEmpty()
+        assertThat(map.valueToKeys).isEmpty()
     }
 }
