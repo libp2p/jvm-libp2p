@@ -1,5 +1,9 @@
 package io.libp2p.pubsub
 
+import io.libp2p.etc.types.contains
+import io.libp2p.etc.types.get
+import io.libp2p.etc.types.mutableBiMultiMap
+import io.libp2p.etc.types.set
 import java.time.Duration
 import java.util.LinkedList
 
@@ -21,6 +25,7 @@ interface SeenCache<TValue> {
     fun getSeenMessage(msg: PubsubMessage): PubsubMessage
     fun getValue(msg: PubsubMessage): TValue?
     fun isSeen(msg: PubsubMessage): Boolean
+    fun isSeen(messageId: MessageId): Boolean
     fun put(msg: PubsubMessage, value: TValue)
     fun remove(msg: PubsubMessage)
 }
@@ -41,6 +46,8 @@ class SimpleSeenCache<TValue> : SeenCache<TValue> {
     override fun getSeenMessage(msg: PubsubMessage) = msg
     override fun getValue(msg: PubsubMessage) = map[msg.messageId]?.second
     override fun isSeen(msg: PubsubMessage) = msg.messageId in map
+    override fun isSeen(messageId: MessageId) = messageId in map
+
     override fun put(msg: PubsubMessage, value: TValue) {
         map[msg.messageId] = msg to value
     }
@@ -72,26 +79,33 @@ class TTLSeenCache<TValue>(
     private val ttl: Duration,
     private val curTime: () -> Long
 ) : SeenCache<TValue> by delegate {
-    val putTimes = mutableMapOf<PubsubMessage, Long>()
+
+    data class TimedMessage(val time: Long, val message: PubsubMessage)
+
+    val putTimes = LinkedList<TimedMessage>()
 
     override fun put(msg: PubsubMessage, value: TValue) {
         delegate[msg] = value
-        putTimes[msg] = curTime()
+        putTimes += TimedMessage(curTime(), msg)
         pruneOld()
     }
 
     private fun pruneOld() {
         val pruneBefore = curTime() - ttl.toMillis()
-        val toPrune = putTimes.filter { (_, time) -> time < pruneBefore }
-        toPrune.forEach { (msg, _) ->
-            putTimes -= msg
-            delegate -= msg
+        val it = putTimes.iterator()
+        while (it.hasNext()) {
+            val n = it.next()
+            if (n.time >= pruneBefore) {
+                break
+            }
+            delegate -= n.message
+            it.remove()
         }
     }
 }
 
 class FastIdSeenCache<TValue>(private val fastIdFunction: (PubsubMessage) -> Any) : SeenCache<TValue> {
-    val fastIdMap = mutableMapOf<Any, MessageId>()
+    val fastIdMap = mutableBiMultiMap<Any, MessageId>()
     val slowIdMap: MutableMap<MessageId, Pair<PubsubMessage, TValue>> = mutableMapOf()
 
     override val size: Int
@@ -111,6 +125,7 @@ class FastIdSeenCache<TValue>(private val fastIdFunction: (PubsubMessage) -> Any
 
     override fun isSeen(msg: PubsubMessage) =
         fastIdFunction(msg) in fastIdMap || msg.messageId in slowIdMap
+    override fun isSeen(messageId: MessageId) = messageId in slowIdMap
 
     override fun put(msg: PubsubMessage, value: TValue) {
         fastIdMap[fastIdFunction(msg)] = msg.messageId
@@ -120,6 +135,6 @@ class FastIdSeenCache<TValue>(private val fastIdFunction: (PubsubMessage) -> Any
     override fun remove(msg: PubsubMessage) {
         val slowId = msg.messageId
         slowIdMap -= slowId
-        fastIdMap.entries.removeIf { it.value == slowId }
+        fastIdMap.removeAllByValue(slowId)
     }
 }

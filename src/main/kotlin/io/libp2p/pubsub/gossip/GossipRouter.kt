@@ -218,7 +218,9 @@ open class GossipRouter @JvmOverloads constructor(
             return
         }
 
-        val iWant = msg.messageIDsList.map { it.toWBytes() } - seenMessages.messages.map { it.messageId }
+        val iWant = msg.messageIDsList
+            .map { it.toWBytes() }
+            .filterNot { seenMessages.isSeen(it) }
         val maxToAsk = min(iWant.size, params.maxIHaveLength - asked.get())
         asked.addAndGet(maxToAsk)
         iWant(peer, iWant.shuffled(random).subList(0, maxToAsk))
