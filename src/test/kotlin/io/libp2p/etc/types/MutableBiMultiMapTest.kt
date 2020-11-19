@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test
 class MutableBiMultiMapTest {
 
     @Test
-    fun `anity test`() {
+    fun `sanity test`() {
         val m = MutableBiMultiMapImpl<String, Int>()
         assertThat(m.keyToValue).isEmpty()
         assertThat(m.valueToKeys).isEmpty()
@@ -55,6 +55,27 @@ class MutableBiMultiMapTest {
         assertThat(m.getKeys(2)).isEmpty()
         assertThat(m.size()).isEqualTo(0)
 
+        assertThat(m.keyToValue).isEmpty()
+        assertThat(m.valueToKeys).isEmpty()
+    }
+
+    @Test
+    fun `test that removing all keys for the same value clears the map`() {
+        val m = MutableBiMultiMapImpl<String, Int>()
+        assertThat(m.keyToValue).isEmpty()
+        assertThat(m.valueToKeys).isEmpty()
+
+        m["1a"] = 1
+        m["1b"] = 1
+        m["1c"] = 1
+
+        assertThat(m.size()).isEqualTo(3)
+
+        m -= "1a"
+        m -= "1b"
+        m -= "1c"
+
+        assertThat(m.size()).isEqualTo(0)
         assertThat(m.keyToValue).isEmpty()
         assertThat(m.valueToKeys).isEmpty()
     }
