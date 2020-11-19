@@ -1,5 +1,9 @@
 package io.libp2p.pubsub
 
+import io.libp2p.etc.types.contains
+import io.libp2p.etc.types.get
+import io.libp2p.etc.types.mutableBiMultiMap
+import io.libp2p.etc.types.set
 import java.time.Duration
 import java.util.LinkedList
 
@@ -101,7 +105,7 @@ class TTLSeenCache<TValue>(
 }
 
 class FastIdSeenCache<TValue>(private val fastIdFunction: (PubsubMessage) -> Any) : SeenCache<TValue> {
-    val fastIdMap = mutableMapOf<Any, MessageId>()
+    val fastIdMap = mutableBiMultiMap<Any, MessageId>()
     val slowIdMap: MutableMap<MessageId, Pair<PubsubMessage, TValue>> = mutableMapOf()
 
     override val size: Int
@@ -131,6 +135,6 @@ class FastIdSeenCache<TValue>(private val fastIdFunction: (PubsubMessage) -> Any
     override fun remove(msg: PubsubMessage) {
         val slowId = msg.messageId
         slowIdMap -= slowId
-        fastIdMap.entries.removeIf { it.value == slowId }
+        fastIdMap.removeAllByValue(slowId)
     }
 }
