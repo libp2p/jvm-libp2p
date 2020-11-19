@@ -52,8 +52,7 @@ operator fun <K, V> MutableBiMultiMap<K, V>.set(key: K, value: V) = put(key, val
 operator fun <K, V> MutableBiMultiMap<K, V>.contains(key: K) = this[key] != null
 operator fun <K, V> MutableBiMultiMap<K, V>.minusAssign(key: K) = removeKey(key)
 
-
-internal class MutableBiMultiMapImpl<Key, Value> : MutableBiMultiMap<Key, Value>{
+internal class MutableBiMultiMapImpl<Key, Value> : MutableBiMultiMap<Key, Value> {
     @VisibleForTesting
     internal val keyToValue: MutableMap<Key, Value> = mutableMapOf()
     @VisibleForTesting
@@ -66,11 +65,11 @@ internal class MutableBiMultiMapImpl<Key, Value> : MutableBiMultiMap<Key, Value>
         }
     }
 
-    override fun getValue(key: Key): Value?  = keyToValue[key]
+    override fun getValue(key: Key): Value? = keyToValue[key]
     override fun getKeys(value: Value): Collection<Key> = valueToKeys[value] ?: emptyList()
 
     override fun removeKey(key: Key) {
-        keyToValue.remove(key)?.also {value ->
+        keyToValue.remove(key)?.also { value ->
             valueToKeys.compute(value) { _, existingKeys ->
                 existingKeys?.minus(key)?.let { resultingKeys ->
                     // return null if resulting key set is empty to remove valueToKeys entry
