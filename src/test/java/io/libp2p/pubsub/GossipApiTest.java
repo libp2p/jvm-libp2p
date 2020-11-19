@@ -66,7 +66,7 @@ public class GossipApiTest {
 
         P2PService.PeerHandler peerHandler = peerHandlerStub(router);
 
-        router.onInbound(peerHandler, newMessage("Hello-1"));
+        router.runOnEventThread(() -> router.onInbound(peerHandler, newMessage("Hello-1")));
         TestPubsubMessage message1 = (TestPubsubMessage) messages.poll(1, TimeUnit.SECONDS);
 
         assertThat(message1).isNotNull();
@@ -74,7 +74,7 @@ public class GossipApiTest {
         assertThat(createdMessages.size()).isEqualTo(1);
         createdMessages.clear();
 
-        router.onInbound(peerHandler, newMessage("Hello-1"));
+        router.runOnEventThread(() -> router.onInbound(peerHandler, newMessage("Hello-1")));
         TestPubsubMessage message2 = (TestPubsubMessage) messages.poll(100, TimeUnit.MILLISECONDS);
 
         assertThat(message2).isNull();

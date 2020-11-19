@@ -2,10 +2,12 @@ package io.libp2p.pubsub
 
 import com.google.protobuf.ByteString
 import io.libp2p.etc.types.WBytes
+import io.libp2p.etc.types.hours
 import io.libp2p.etc.types.seconds
 import io.libp2p.etc.types.toBytesBigEndian
 import io.libp2p.etc.types.toProtobuf
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import pubsub.pb.Rpc
 import java.nio.charset.StandardCharsets.US_ASCII
@@ -327,6 +329,34 @@ class TTLSeenCacheTest {
         )
         assertThat(ttlCache.putTimes.size).isLessThan(2)
     }
+
+    @Test()
+    fun `test large size not quadratic time`() {
+        val backingCache = FastIdSeenCache<String> { it.protobufMessage.data }
+        val time = AtomicLong()
+        val ttlCache = TTLSeenCache(backingCache, 10.hours, time::get)
+        Assertions.assertTimeout(10.seconds) {
+            for (i in 0..100_000) {
+                time.incrementAndGet()
+                ttlCache[createPubsubMessage(i)] = "$i"
+            }
+        }
+
+        time.set(10.hours.toMillis())
+
+        Assertions.assertTimeout(10.seconds) {
+            for (i in 100_000..200_000) {
+                time.incrementAndGet()
+                ttlCache[createPubsubMessage(i)] = "$i"
+            }
+        }
+
+        val size = ttlCache.size
+        for (i in 100_000..110_000) {
+            ttlCache[createPubsubMessage(i)] = "$i"
+        }
+        assertThat(ttlCache.size).isEqualTo(size)
+    }
 }
 
 class FastIdSeenCacheTest {
@@ -337,7 +367,7 @@ class FastIdSeenCacheTest {
 
         genericSanityTest(cache)
 
-        assertThat(cache.fastIdMap).isEmpty()
+        assertThat(cache.fastIdMap.isEmpty()).isTrue()
         assertThat(cache.slowIdMap).isEmpty()
     }
 
@@ -393,7 +423,7 @@ class FastIdSeenCacheTest {
         assertThat(cache.getValue(m1_1)).isNull()
         assertThat(cache.getValue(m1_2)).isNull()
 
-        assertThat(cache.fastIdMap).isEmpty()
+        assertThat(cache.fastIdMap.isEmpty()).isTrue()
         assertThat(cache.slowIdMap).isEmpty()
     }
 }

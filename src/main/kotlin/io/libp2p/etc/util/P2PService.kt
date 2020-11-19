@@ -221,6 +221,7 @@ abstract class P2PService {
      * Executes the code on the service event thread
      */
     fun runOnEventThread(run: () -> Unit) = runOnEventThread(null, null, run)
+    fun runOnEventThread(run: Runnable) = runOnEventThread(null, null) { run.run() }
 
     /**
      * Executes the code on the service event thread
