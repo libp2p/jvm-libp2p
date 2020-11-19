@@ -21,6 +21,7 @@ interface SeenCache<TValue> {
     fun getSeenMessage(msg: PubsubMessage): PubsubMessage
     fun getValue(msg: PubsubMessage): TValue?
     fun isSeen(msg: PubsubMessage): Boolean
+    fun isSeen(messageId: MessageId): Boolean
     fun put(msg: PubsubMessage, value: TValue)
     fun remove(msg: PubsubMessage)
 }
@@ -41,6 +42,8 @@ class SimpleSeenCache<TValue> : SeenCache<TValue> {
     override fun getSeenMessage(msg: PubsubMessage) = msg
     override fun getValue(msg: PubsubMessage) = map[msg.messageId]?.second
     override fun isSeen(msg: PubsubMessage) = msg.messageId in map
+    override fun isSeen(messageId: MessageId) = messageId in map
+
     override fun put(msg: PubsubMessage, value: TValue) {
         map[msg.messageId] = msg to value
     }
@@ -118,6 +121,7 @@ class FastIdSeenCache<TValue>(private val fastIdFunction: (PubsubMessage) -> Any
 
     override fun isSeen(msg: PubsubMessage) =
         fastIdFunction(msg) in fastIdMap || msg.messageId in slowIdMap
+    override fun isSeen(messageId: MessageId) = messageId in slowIdMap
 
     override fun put(msg: PubsubMessage, value: TValue) {
         fastIdMap[fastIdFunction(msg)] = msg.messageId
