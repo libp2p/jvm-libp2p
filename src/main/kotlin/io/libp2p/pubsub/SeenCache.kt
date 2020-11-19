@@ -72,20 +72,27 @@ class TTLSeenCache<TValue>(
     private val ttl: Duration,
     private val curTime: () -> Long
 ) : SeenCache<TValue> by delegate {
-    val putTimes = mutableMapOf<PubsubMessage, Long>()
+
+    data class TimedMessage(val time: Long, val message: PubsubMessage)
+
+    val putTimes = LinkedList<TimedMessage>()
 
     override fun put(msg: PubsubMessage, value: TValue) {
         delegate[msg] = value
-        putTimes[msg] = curTime()
+        putTimes += TimedMessage(curTime(), msg)
         pruneOld()
     }
 
     private fun pruneOld() {
         val pruneBefore = curTime() - ttl.toMillis()
-        val toPrune = putTimes.filter { (_, time) -> time < pruneBefore }
-        toPrune.forEach { (msg, _) ->
-            putTimes -= msg
-            delegate -= msg
+        val it = putTimes.iterator()
+        while (it.hasNext()) {
+            val n = it.next()
+            if (n.time >= pruneBefore) {
+                break
+            }
+            delegate -= n.message
+            it.remove()
         }
     }
 }

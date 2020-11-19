@@ -6,6 +6,7 @@ import io.libp2p.etc.types.seconds
 import io.libp2p.etc.types.toBytesBigEndian
 import io.libp2p.etc.types.toProtobuf
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import pubsub.pb.Rpc
 import java.nio.charset.StandardCharsets.US_ASCII
@@ -326,6 +327,18 @@ class TTLSeenCacheTest {
             createPubsubMessage(6)
         )
         assertThat(ttlCache.putTimes.size).isLessThan(2)
+    }
+
+    @Test()
+    fun `test large size not quadratic time`() {
+        val backingCache = FastIdSeenCache<String> { it.protobufMessage.data }
+        val time = AtomicLong()
+        val ttlCache = TTLSeenCache(backingCache, 1.seconds, time::get)
+        Assertions.assertTimeout(10.seconds) {
+            for (i in 0..100_000) {
+                ttlCache[createPubsubMessage(i)] = "$i"
+            }
+        }
     }
 }
 
