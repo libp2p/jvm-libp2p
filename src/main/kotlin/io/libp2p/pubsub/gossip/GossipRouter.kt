@@ -38,10 +38,15 @@ fun P2PService.PeerHandler.getIP(): String? =
     streamHandler.stream.connection.remoteAddress().getStringComponent(Protocol.IP4)
 
 fun P2PService.PeerHandler.isOutbound() = streamHandler.stream.connection.isInitiator
-fun P2PService.PeerHandler.getOutboundProtocol() = getOutboundHandler()?.stream?.getProtocol()?.getNow(null)
-    ?: throw InternalErrorException("Outbound gossip stream not initialized or protocol is missing")
 
-fun P2PService.PeerHandler.getOutboundGossipProtocol() = PubsubProtocol.fromProtocol(getOutboundProtocol())
+fun P2PService.PeerHandler.getPeerProtocol(): PubsubProtocol {
+    fun P2PService.StreamHandler.getProtocol(): String? = stream.getProtocol().getNow(null)
+    val proto =
+        getOutboundHandler()?.getProtocol()
+            ?: getInboundHandler()?.getProtocol()
+            ?: throw InternalErrorException("Couldn't get peer gossip protocol")
+    return PubsubProtocol.fromProtocol(proto)
+}
 
 /**
  * Router implementing this protocol: https://github.com/libp2p/specs/tree/master/pubsub/gossipsub
@@ -111,7 +116,11 @@ open class GossipRouter @JvmOverloads constructor(
         score.notifyUnseenMessage(peer, msg)
     }
 
-    override fun notifySeenMessage(peer: PeerHandler, msg: PubsubMessage, validationResult: Optional<ValidationResult>) {
+    override fun notifySeenMessage(
+        peer: PeerHandler,
+        msg: PubsubMessage,
+        validationResult: Optional<ValidationResult>
+    ) {
         score.notifySeenMessage(peer, msg, validationResult)
         if (validationResult.isPresent && validationResult.get() != ValidationResult.Invalid) {
             notifyAnyValidMessage(peer, msg)
@@ -451,7 +460,7 @@ open class GossipRouter @JvmOverloads constructor(
 
     private fun enqueuePrune(peer: PeerHandler, topic: Topic) {
         val pruneBuilder = Rpc.ControlPrune.newBuilder().setTopicID(topic)
-        if (peer.getOutboundGossipProtocol() == PubsubProtocol.Gossip_V_1_1 && this.protocol == PubsubProtocol.Gossip_V_1_1) {
+        if (peer.getPeerProtocol() == PubsubProtocol.Gossip_V_1_1 && this.protocol == PubsubProtocol.Gossip_V_1_1) {
             // add v1.1 specific fields
             pruneBuilder.backoff = params.pruneBackoff.seconds
             (getTopicPeers(topic) - peer)
