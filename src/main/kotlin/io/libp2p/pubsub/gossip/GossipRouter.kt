@@ -356,7 +356,7 @@ open class GossipRouter @JvmOverloads constructor(
         val staleIWantTime = this.curTimeMillis() - params.iWantFollowupTime.toMillis()
         iWantRequests.entries.removeIf { (key, time) ->
             (time < staleIWantTime)
-                .whenTrue { notifyRouterMisbehavior(key.first, 1) }
+                .whenTrue { notifyIWantTimeout(key.first, key.second) }
         }
 
         try {
