@@ -155,7 +155,7 @@ open class GossipRouter @JvmOverloads constructor(
     }
 
     protected open fun notifyIWantTimeout(peer: PeerHandler, msgId: MessageId) {
-        notifyRouterMisbehavior(peer, 1, MisbehaviorReason.MissingIWant)
+        notifyRouterMisbehavior(peer, 1)
     }
 
     protected open fun notifyMeshed(peer: PeerHandler, topic: Topic) {

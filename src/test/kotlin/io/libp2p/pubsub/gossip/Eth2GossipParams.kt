@@ -66,10 +66,10 @@ private val subnetTopicParams =
     (0..63).map { "$AttestTopicPrefix$it$AttestTopicSuffix" to Eth2DefaultAttestTopicParams }.toMap()
 val Eth2DefaultTopicsParams = GossipTopicsScoreParams(
     topicParams =
-    mapOf(
-        BlocksTopic to Eth2DefaultBlockTopicParams,
-        AggrAttestTopic to Eth2DefaultAggrAttestTopicParams
-    ) + subnetTopicParams
+        mapOf(
+            BlocksTopic to Eth2DefaultBlockTopicParams,
+            AggrAttestTopic to Eth2DefaultAggrAttestTopicParams
+        ) + subnetTopicParams
 )
 
 val Eth2DefaultPeerScoreParams = GossipPeerScoreParams(
