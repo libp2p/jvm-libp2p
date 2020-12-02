@@ -217,7 +217,7 @@ class GossipPubsubRouterTest : PubsubRouterTest({
     @Test
     fun testIgnoreDoesntReduceScores() {
         // check that with Eth2 Gossip scoring params
-        // a peers which IGNOREs all inbound messages doesn't got underscored
+        // a peers which IGNOREs all inbound messages doesn't get underscored
 
         val fuzz = DeterministicFuzz()
         val gossipScoreParams = GossipScoreParamsBuilder(Eth2DefaultScoreParams)
