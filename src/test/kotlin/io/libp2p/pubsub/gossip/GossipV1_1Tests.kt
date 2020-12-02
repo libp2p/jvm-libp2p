@@ -8,6 +8,7 @@ import io.libp2p.core.pubsub.RESULT_INVALID
 import io.libp2p.core.pubsub.RESULT_VALID
 import io.libp2p.core.pubsub.Subscriber
 import io.libp2p.core.pubsub.ValidationResult
+import io.libp2p.core.pubsub.Validator
 import io.libp2p.core.pubsub.createPubsubApi
 import io.libp2p.etc.types.millis
 import io.libp2p.etc.types.minutes
@@ -29,11 +30,15 @@ import io.netty.channel.ChannelOutboundHandlerAdapter
 import io.netty.channel.ChannelPromise
 import io.netty.handler.logging.LogLevel
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import pubsub.pb.Rpc
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 
 class GossipV1_1Tests {
@@ -897,6 +902,57 @@ class GossipV1_1Tests {
         test.fuzz.timeController.addTime(10.seconds)
         // all IWANT were ignored
         assertTrue(test.gossipRouter.score.peerScores[test.router2.peerId]!!.behaviorPenalty > penalty1)
+    }
+
+    @Test
+    fun `IWANT timeout penalty shouldnt be applied if message received from other peer and not validated yet`() {
+        val test = ManyRoutersTest(mockRouterCount = 2)
+        test.connectAll()
+
+        val api = createPubsubApi(test.gossipRouter)
+
+        val validationResult = CompletableFuture<ValidationResult>()
+        val receivedMessages = LinkedBlockingQueue<MessageApi>()
+        val slowValidator = Validator { receivedMessages += it; validationResult }
+        api.subscribe(slowValidator, io.libp2p.core.pubsub.Topic("topic1"))
+        test.mockRouters.forEach { it.subscribe("topic1") }
+
+        val gossiper = test.mockRouters[0]
+        val gossiperRouter = test.routers[0]
+        val publisher = test.mockRouters[1]
+
+        val message = newMessage("topic1", 1L, "Hello-1".toByteArray())
+        val messageId = message.messageId.toProtobuf()
+
+        // 'gossiper' notifies it has the Message
+        gossiper.sendToSingle(
+            Rpc.RPC.newBuilder().setControl(
+                Rpc.ControlMessage.newBuilder().addIhave(
+                    Rpc.ControlIHave.newBuilder().addMessageIDs(messageId)
+                )
+            ).build()
+        )
+
+        // 'publisher' sends the Message while 'gossiper' responding to IWANT request
+        publisher.sendToSingle(
+            Rpc.RPC.newBuilder().addPublish(message.protobufMessage).build()
+        )
+        // the Message received but not validated yet
+        assertNotNull(receivedMessages.poll(1, TimeUnit.SECONDS))
+
+        // 'gossiper' responds to IWANT with the Message
+        gossiper.sendToSingle(
+            Rpc.RPC.newBuilder().addPublish(message.protobufMessage).build()
+        )
+
+        // the duplicate message shouldn't reach API
+        assertNull(receivedMessages.poll(300, TimeUnit.MILLISECONDS))
+        validationResult.complete(ValidationResult.Valid)
+
+        // ... but should remove IWANT request timeout entry for 'gossiper' peer
+        test.fuzz.timeController.addTime(10.seconds)
+        // and the peer shouldn't be penalized
+        assertTrue(test.gossipRouter.score.peerScores[gossiperRouter.peerId]!!.behaviorPenalty == 0.0)
     }
 
     @Test

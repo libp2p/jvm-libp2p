@@ -38,9 +38,10 @@ class SemiduplexConnection(val conn1: TestConnection, val conn2: TestConnection)
 class TestRouter(val name: String = "" + cnt.getAndIncrement(), val protocol: String = "/test/undefined") {
 
     val inboundMessages = LinkedBlockingQueue<PubsubMessage>()
+    var handlerValidationResult = RESULT_VALID
     var routerHandler: (PubsubMessage) -> CompletableFuture<ValidationResult> = {
         inboundMessages += it
-        RESULT_VALID
+        handlerValidationResult
     }
 
     var testExecutor: ScheduledExecutorService by lazyVar { Executors.newSingleThreadScheduledExecutor() }

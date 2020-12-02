@@ -114,6 +114,7 @@ open class GossipRouter @JvmOverloads constructor(
 
     override fun notifyUnseenMessage(peer: PeerHandler, msg: PubsubMessage) {
         score.notifyUnseenMessage(peer, msg)
+        notifyAnyMessage(peer, msg)
     }
 
     override fun notifySeenMessage(
@@ -122,6 +123,7 @@ open class GossipRouter @JvmOverloads constructor(
         validationResult: Optional<ValidationResult>
     ) {
         score.notifySeenMessage(peer, msg, validationResult)
+        notifyAnyMessage(peer, msg)
         if (validationResult.isPresent && validationResult.get() != ValidationResult.Invalid) {
             notifyAnyValidMessage(peer, msg)
         }
@@ -140,11 +142,23 @@ open class GossipRouter @JvmOverloads constructor(
         notifyRouterMisbehavior(peer, 1)
     }
 
-    private fun notifyAnyValidMessage(peer: PeerHandler, msg: PubsubMessage) {
-        iWantRequests -= peer to msg.messageId
+    protected open fun notifyAnyMessage(peer: PeerHandler, msg: PubsubMessage) {
+        if (iWantRequests.remove(peer to msg.messageId) != null) {
+            notifyIWantComplete(peer, msg)
+        }
     }
 
-    fun notifyMeshed(peer: PeerHandler, topic: Topic) {
+    protected open fun notifyAnyValidMessage(peer: PeerHandler, msg: PubsubMessage) {
+    }
+
+    protected open fun notifyIWantComplete(peer: PeerHandler, msg: PubsubMessage) {
+    }
+
+    protected open fun notifyIWantTimeout(peer: PeerHandler, msgId: MessageId) {
+        notifyRouterMisbehavior(peer, 1)
+    }
+
+    protected open fun notifyMeshed(peer: PeerHandler, topic: Topic) {
         score.notifyMeshed(peer, topic)
     }
 
@@ -342,7 +356,7 @@ open class GossipRouter @JvmOverloads constructor(
         val staleIWantTime = this.curTimeMillis() - params.iWantFollowupTime.toMillis()
         iWantRequests.entries.removeIf { (key, time) ->
             (time < staleIWantTime)
-                .whenTrue { notifyRouterMisbehavior(key.first, 1) }
+                .whenTrue { notifyIWantTimeout(key.first, key.second) }
         }
 
         try {

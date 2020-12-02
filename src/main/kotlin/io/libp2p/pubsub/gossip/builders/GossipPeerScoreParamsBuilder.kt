@@ -31,6 +31,7 @@ class GossipPeerScoreParamsBuilder() {
 
     constructor(source: GossipPeerScoreParams) : this() {
         this.topicScoreCap = source.topicScoreCap
+        this.isDirect = source.isDirect
         this.appSpecificScore = source.appSpecificScore
         this.appSpecificWeight = source.appSpecificWeight
         this.ipWhitelisted = source.ipWhitelisted
