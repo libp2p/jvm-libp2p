@@ -94,7 +94,7 @@ abstract class SecureChannelTest(
 
         while (data2 != handler1.getAllReceived()) {
             if (handler1.receivedQueue.poll(5, TimeUnit.SECONDS) == null) {
-                fail<Any>("Didn't receive all the data1: '${handler1.getAllReceived()}', data2: '${handler1.getAllReceived()}'")
+                fail<Any>("Didn't receive all the data1: '${handler1.getAllReceived()}', data2: '${handler2.getAllReceived()}'")
             }
         }
         while (data1 != handler2.getAllReceived()) {
