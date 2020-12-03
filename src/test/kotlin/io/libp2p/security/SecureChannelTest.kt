@@ -21,7 +21,6 @@ import org.assertj.core.api.Assertions.fail
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
 import java.nio.charset.StandardCharsets
-import java.util.Collections
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 
@@ -87,24 +86,31 @@ abstract class SecureChannelTest(
         val handler1 = SecureChannelTestHandler("1", data1)
         val handler2 = SecureChannelTestHandler("2", data2)
 
-        eCh1.pipeline().addLast(handler1)
-        eCh2.pipeline().addLast(handler2)
+        eCh1.onChannelThread { it.pipeline().addLast(handler1) }
+        eCh2.onChannelThread { it.pipeline().addLast(handler2) }
 
-        eCh1.pipeline().fireChannelActive()
-        eCh2.pipeline().fireChannelActive()
+        eCh1.onChannelThread { it.pipeline().fireChannelActive() }
+        eCh2.onChannelThread { it.pipeline().fireChannelActive() }
 
-        while (data2 != handler1.getAllReceived()) {
+        var allReceived1 = ""
+        while (data2 != allReceived1) {
             val nextChunk = handler1.receivedQueue.poll(30, TimeUnit.SECONDS)
             logger.info("handler1 received chunk of size ${nextChunk?.length}")
             if (nextChunk == null) {
-                fail<Any>("Didn't receive all the data1: '${handler1.getAllReceived()}', data2: '${handler2.getAllReceived()}'")
+                fail<Any>("Didn't receive all the data2: '$allReceived1'")
+            } else {
+                allReceived1 += nextChunk
             }
         }
-        while (data1 != handler2.getAllReceived()) {
+
+        var allReceived2 = ""
+        while (data1 != allReceived2) {
             val nextChunk = handler2.receivedQueue.poll(30, TimeUnit.SECONDS)
             logger.info("handler2 received chunk of size ${nextChunk?.length}")
             if (nextChunk == null) {
-                fail<Any>("Didn't receive all the data2: '${handler2.getAllReceived()}'")
+                fail<Any>("Didn't receive all the data1: '$allReceived2'")
+            } else {
+                allReceived2 += nextChunk
             }
         }
     } // secureInterconnect
@@ -136,7 +142,6 @@ abstract class SecureChannelTest(
         val data: String = "Hello World from $name"
     ) : TestHandler(name) {
 
-        val received = Collections.synchronizedList(mutableListOf<String>())
         val receivedQueue = LinkedBlockingQueue<String>()
 
         override fun channelRegistered(ctx: ChannelHandlerContext?) {
@@ -165,10 +170,7 @@ abstract class SecureChannelTest(
             logger.info("SecureChannelTestHandler $name: channelRead $msg")
             val receivedCunk = msg.toByteArray().toString(StandardCharsets.UTF_8)
             logger.debug("==$name== read: $receivedCunk")
-            received += receivedCunk
             receivedQueue += receivedCunk
         }
-
-        fun getAllReceived() = received.joinToString("")
     } // SecureChannelTestHandler
 } // class SecureChannelTest
