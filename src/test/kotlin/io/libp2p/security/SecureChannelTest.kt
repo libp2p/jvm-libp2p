@@ -21,6 +21,7 @@ import org.assertj.core.api.Assertions.fail
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
 import java.nio.charset.StandardCharsets
+import java.util.Collections
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 
@@ -131,7 +132,7 @@ abstract class SecureChannelTest(
         val data: String = "Hello World from $name"
     ) : TestHandler(name) {
 
-        val received = mutableListOf<String>()
+        val received = Collections.synchronizedList(mutableListOf<String>())
         val receivedQueue = LinkedBlockingQueue<String>()
 
         override fun channelActive(ctx: ChannelHandlerContext) {
