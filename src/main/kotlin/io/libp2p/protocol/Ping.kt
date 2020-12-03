@@ -30,7 +30,7 @@ open class PingBinding(ping: PingProtocol) :
 class PingTimeoutException : Libp2pException()
 
 open class PingProtocol : ProtocolHandler<PingController>() {
-    var scheduler by lazyVar { Executors.newSingleThreadScheduledExecutor() }
+    var timeoutScheduler by lazyVar { Executors.newSingleThreadScheduledExecutor() }
     var curTime: () -> Long = { System.currentTimeMillis() }
     var random = Random()
     var pingSize = 32
@@ -77,30 +77,33 @@ open class PingProtocol : ProtocolHandler<PingController>() {
         }
 
         override fun onClosed(stream: Stream) {
-            closed = true
-
-            scheduler.shutdownNow()
-
-            activeFuture.completeExceptionally(ConnectionClosedException())
             synchronized(requests) {
+                closed = true
                 requests.values.forEach { it.second.completeExceptionally(ConnectionClosedException()) }
                 requests.clear()
+                timeoutScheduler.shutdownNow()
             }
+            activeFuture.completeExceptionally(ConnectionClosedException())
         }
 
         override fun ping(): CompletableFuture<Long> {
-            if (closed) return completedExceptionally(ConnectionClosedException())
             val ret = CompletableFuture<Long>()
             val data = ByteArray(pingSize)
             random.nextBytes(data)
             val dataS = data.toHex()
-            requests[dataS] = curTime() to ret
-            scheduler.schedule(
-                {
-                    requests.remove(dataS)?.second?.completeExceptionally(PingTimeoutException())
-                },
-                pingTimeout.toMillis(), TimeUnit.MILLISECONDS
-            )
+
+            synchronized(requests) {
+                if (closed) return completedExceptionally(ConnectionClosedException())
+                requests[dataS] = curTime() to ret
+
+                timeoutScheduler.schedule(
+                    {
+                        requests.remove(dataS)?.second?.completeExceptionally(PingTimeoutException())
+                    },
+                    pingTimeout.toMillis(), TimeUnit.MILLISECONDS
+                )
+            }
+
             stream.writeAndFlush(data.toByteBuf())
             return ret
         }
