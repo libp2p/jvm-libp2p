@@ -107,8 +107,6 @@ abstract class SecureChannelTest(
                 fail<Any>("Didn't receive all the data2: '${handler2.getAllReceived()}'")
             }
         }
-
-        throw RuntimeException("Test")
     } // secureInterconnect
 
     protected fun makeSelector(key: PrivKey) = ProtocolSelect(listOf(secureChannelCtor(key)))
