@@ -61,13 +61,13 @@ abstract class SecureChannelTest(
         val eCh1 = makeChannel("#1", true, protocolSelect1)
         val eCh2 = makeChannel("#2", false, protocolSelect2)
 
-        logger.debug("Connecting channels...")
+        logger.info("Connecting channels...")
         interConnect(eCh1, eCh2)
 
-        logger.debug("Waiting for negotiation to complete...")
+        logger.info("Waiting for negotiation to complete...")
         protocolSelect1.selectedFuture.get(10, TimeUnit.SECONDS)
         protocolSelect2.selectedFuture.get(10, TimeUnit.SECONDS)
-        logger.debug("Secured!")
+        logger.info("Secured!")
 
         val data1: String
         val data2: String
@@ -94,15 +94,21 @@ abstract class SecureChannelTest(
         eCh2.pipeline().fireChannelActive()
 
         while (data2 != handler1.getAllReceived()) {
-            if (handler1.receivedQueue.poll(5, TimeUnit.SECONDS) == null) {
+            val nextChunk = handler1.receivedQueue.poll(30, TimeUnit.SECONDS)
+            logger.info("handler1 received chunk of size ${nextChunk?.length}")
+            if (nextChunk == null) {
                 fail<Any>("Didn't receive all the data1: '${handler1.getAllReceived()}', data2: '${handler2.getAllReceived()}'")
             }
         }
         while (data1 != handler2.getAllReceived()) {
-            if (handler2.receivedQueue.poll(5, TimeUnit.SECONDS) == null) {
+            val nextChunk = handler2.receivedQueue.poll(30, TimeUnit.SECONDS)
+            logger.info("handler2 received chunk of size ${nextChunk?.length}")
+            if (nextChunk == null) {
                 fail<Any>("Didn't receive all the data2: '${handler2.getAllReceived()}'")
             }
         }
+
+        throw RuntimeException("Test")
     } // secureInterconnect
 
     protected fun makeSelector(key: PrivKey) = ProtocolSelect(listOf(secureChannelCtor(key)))
@@ -135,13 +141,30 @@ abstract class SecureChannelTest(
         val received = Collections.synchronizedList(mutableListOf<String>())
         val receivedQueue = LinkedBlockingQueue<String>()
 
+        override fun channelRegistered(ctx: ChannelHandlerContext?) {
+            logger.info("SecureChannelTestHandler $name: channelRegistered")
+            super.channelRegistered(ctx)
+        }
+
+        override fun channelUnregistered(ctx: ChannelHandlerContext?) {
+            logger.info("SecureChannelTestHandler $name: channelUnregistered")
+            super.channelUnregistered(ctx)
+        }
+
+        override fun exceptionCaught(ctx: ChannelHandlerContext?, cause: Throwable?) {
+            logger.info("SecureChannelTestHandler $name: exceptionCaught: $cause")
+            ctx?.fireExceptionCaught(cause)
+        }
+
         override fun channelActive(ctx: ChannelHandlerContext) {
             super.channelActive(ctx)
+            logger.info("SecureChannelTestHandler $name: channelActive")
             ctx.writeAndFlush(data.toByteArray().toByteBuf())
         }
 
         override fun channelRead(ctx: ChannelHandlerContext, msg: Any?) {
             msg as ByteBuf
+            logger.info("SecureChannelTestHandler $name: channelRead $msg")
             val receivedCunk = msg.toByteArray().toString(StandardCharsets.UTF_8)
             logger.debug("==$name== read: $receivedCunk")
             received += receivedCunk
