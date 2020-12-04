@@ -7,6 +7,7 @@ package io.libp2p.discovery.mdns.impl.tasks;
 import io.libp2p.discovery.mdns.impl.DNSOutgoing;
 import io.libp2p.discovery.mdns.impl.DNSQuestion;
 import io.libp2p.discovery.mdns.impl.JmDNSImpl;
+import io.libp2p.discovery.mdns.impl.constants.DNSConstants;
 import io.libp2p.discovery.mdns.impl.constants.DNSRecordClass;
 import io.libp2p.discovery.mdns.impl.constants.DNSRecordType;
 import org.apache.logging.log4j.LogManager;
@@ -16,8 +17,6 @@ import java.io.IOException;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-
-import io.libp2p.discovery.mdns.impl.constants.DNSConstants;
 
 /**
  * The ServiceResolver queries three times consecutively for services of a given type, and then removes itself from the timer.
@@ -50,6 +49,7 @@ public class ServiceResolver extends DNSTask {
         );
     }
 
+    @SuppressWarnings("unchecked")
     public Future<Void> stop() {
         _scheduler.shutdown();
         return (Future<Void>)_isShutdown;

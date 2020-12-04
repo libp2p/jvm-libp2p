@@ -17,6 +17,7 @@ import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
 import io.netty.util.ResourceLeakDetector
 import org.apache.logging.log4j.LogManager
+import org.assertj.core.api.Assertions.fail
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
 import java.nio.charset.StandardCharsets
@@ -59,13 +60,13 @@ abstract class SecureChannelTest(
         val eCh1 = makeChannel("#1", true, protocolSelect1)
         val eCh2 = makeChannel("#2", false, protocolSelect2)
 
-        logger.debug("Connecting channels...")
+        logger.info("Connecting channels...")
         interConnect(eCh1, eCh2)
 
-        logger.debug("Waiting for negotiation to complete...")
+        logger.info("Waiting for negotiation to complete...")
         protocolSelect1.selectedFuture.get(10, TimeUnit.SECONDS)
         protocolSelect2.selectedFuture.get(10, TimeUnit.SECONDS)
-        logger.debug("Secured!")
+        logger.info("Secured!")
 
         val data1: String
         val data2: String
@@ -85,17 +86,32 @@ abstract class SecureChannelTest(
         val handler1 = SecureChannelTestHandler("1", data1)
         val handler2 = SecureChannelTestHandler("2", data2)
 
-        eCh1.pipeline().addLast(handler1)
-        eCh2.pipeline().addLast(handler2)
+        eCh1.onChannelThread { it.pipeline().addLast(handler1) }
+        eCh2.onChannelThread { it.pipeline().addLast(handler2) }
 
-        eCh1.pipeline().fireChannelActive()
-        eCh2.pipeline().fireChannelActive()
+        eCh1.onChannelThread { it.pipeline().fireChannelActive() }
+        eCh2.onChannelThread { it.pipeline().fireChannelActive() }
 
-        while (data2 != handler1.getAllReceived()) {
-            handler1.receivedQueue.poll(5, TimeUnit.SECONDS)
+        var allReceived1 = ""
+        while (data2 != allReceived1) {
+            val nextChunk = handler1.receivedQueue.poll(30, TimeUnit.SECONDS)
+            logger.info("handler1 received chunk of size ${nextChunk?.length}")
+            if (nextChunk == null) {
+                fail<Any>("Didn't receive all the data2: '$allReceived1'")
+            } else {
+                allReceived1 += nextChunk
+            }
         }
-        while (data1 != handler2.getAllReceived()) {
-            handler2.receivedQueue.poll(5, TimeUnit.SECONDS)
+
+        var allReceived2 = ""
+        while (data1 != allReceived2) {
+            val nextChunk = handler2.receivedQueue.poll(30, TimeUnit.SECONDS)
+            logger.info("handler2 received chunk of size ${nextChunk?.length}")
+            if (nextChunk == null) {
+                fail<Any>("Didn't receive all the data1: '$allReceived2'")
+            } else {
+                allReceived2 += nextChunk
+            }
         }
     } // secureInterconnect
 
@@ -126,22 +142,35 @@ abstract class SecureChannelTest(
         val data: String = "Hello World from $name"
     ) : TestHandler(name) {
 
-        val received = mutableListOf<String>()
         val receivedQueue = LinkedBlockingQueue<String>()
+
+        override fun channelRegistered(ctx: ChannelHandlerContext?) {
+            logger.info("SecureChannelTestHandler $name: channelRegistered")
+            super.channelRegistered(ctx)
+        }
+
+        override fun channelUnregistered(ctx: ChannelHandlerContext?) {
+            logger.info("SecureChannelTestHandler $name: channelUnregistered")
+            super.channelUnregistered(ctx)
+        }
+
+        override fun exceptionCaught(ctx: ChannelHandlerContext?, cause: Throwable?) {
+            logger.info("SecureChannelTestHandler $name: exceptionCaught: $cause")
+            ctx?.fireExceptionCaught(cause)
+        }
 
         override fun channelActive(ctx: ChannelHandlerContext) {
             super.channelActive(ctx)
+            logger.info("SecureChannelTestHandler $name: channelActive")
             ctx.writeAndFlush(data.toByteArray().toByteBuf())
         }
 
         override fun channelRead(ctx: ChannelHandlerContext, msg: Any?) {
             msg as ByteBuf
+            logger.info("SecureChannelTestHandler $name: channelRead $msg")
             val receivedCunk = msg.toByteArray().toString(StandardCharsets.UTF_8)
             logger.debug("==$name== read: $receivedCunk")
-            received += receivedCunk
             receivedQueue += receivedCunk
         }
-
-        fun getAllReceived() = received.joinToString("")
     } // SecureChannelTestHandler
 } // class SecureChannelTest
