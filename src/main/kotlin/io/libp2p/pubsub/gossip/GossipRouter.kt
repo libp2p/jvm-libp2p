@@ -38,10 +38,15 @@ fun P2PService.PeerHandler.getIP(): String? =
     streamHandler.stream.connection.remoteAddress().getStringComponent(Protocol.IP4)
 
 fun P2PService.PeerHandler.isOutbound() = streamHandler.stream.connection.isInitiator
-fun P2PService.PeerHandler.getOutboundProtocol() = getOutboundHandler()?.stream?.getProtocol()?.getNow(null)
-    ?: throw InternalErrorException("Outbound gossip stream not initialized or protocol is missing")
 
-fun P2PService.PeerHandler.getOutboundGossipProtocol() = PubsubProtocol.fromProtocol(getOutboundProtocol())
+fun P2PService.PeerHandler.getPeerProtocol(): PubsubProtocol {
+    fun P2PService.StreamHandler.getProtocol(): String? = stream.getProtocol().getNow(null)
+    val proto =
+        getOutboundHandler()?.getProtocol()
+            ?: getInboundHandler()?.getProtocol()
+            ?: throw InternalErrorException("Couldn't get peer gossip protocol")
+    return PubsubProtocol.fromProtocol(proto)
+}
 
 /**
  * Router implementing this protocol: https://github.com/libp2p/specs/tree/master/pubsub/gossipsub
@@ -109,10 +114,16 @@ open class GossipRouter @JvmOverloads constructor(
 
     override fun notifyUnseenMessage(peer: PeerHandler, msg: PubsubMessage) {
         score.notifyUnseenMessage(peer, msg)
+        notifyAnyMessage(peer, msg)
     }
 
-    override fun notifySeenMessage(peer: PeerHandler, msg: PubsubMessage, validationResult: Optional<ValidationResult>) {
+    override fun notifySeenMessage(
+        peer: PeerHandler,
+        msg: PubsubMessage,
+        validationResult: Optional<ValidationResult>
+    ) {
         score.notifySeenMessage(peer, msg, validationResult)
+        notifyAnyMessage(peer, msg)
         if (validationResult.isPresent && validationResult.get() != ValidationResult.Invalid) {
             notifyAnyValidMessage(peer, msg)
         }
@@ -131,11 +142,23 @@ open class GossipRouter @JvmOverloads constructor(
         notifyRouterMisbehavior(peer, 1)
     }
 
-    private fun notifyAnyValidMessage(peer: PeerHandler, msg: PubsubMessage) {
-        iWantRequests -= peer to msg.messageId
+    protected open fun notifyAnyMessage(peer: PeerHandler, msg: PubsubMessage) {
+        if (iWantRequests.remove(peer to msg.messageId) != null) {
+            notifyIWantComplete(peer, msg)
+        }
     }
 
-    fun notifyMeshed(peer: PeerHandler, topic: Topic) {
+    protected open fun notifyAnyValidMessage(peer: PeerHandler, msg: PubsubMessage) {
+    }
+
+    protected open fun notifyIWantComplete(peer: PeerHandler, msg: PubsubMessage) {
+    }
+
+    protected open fun notifyIWantTimeout(peer: PeerHandler, msgId: MessageId) {
+        notifyRouterMisbehavior(peer, 1)
+    }
+
+    protected open fun notifyMeshed(peer: PeerHandler, topic: Topic) {
         score.notifyMeshed(peer, topic)
     }
 
@@ -333,7 +356,7 @@ open class GossipRouter @JvmOverloads constructor(
         val staleIWantTime = this.curTimeMillis() - params.iWantFollowupTime.toMillis()
         iWantRequests.entries.removeIf { (key, time) ->
             (time < staleIWantTime)
-                .whenTrue { notifyRouterMisbehavior(key.first, 1) }
+                .whenTrue { notifyIWantTimeout(key.first, key.second) }
         }
 
         try {
@@ -451,7 +474,7 @@ open class GossipRouter @JvmOverloads constructor(
 
     private fun enqueuePrune(peer: PeerHandler, topic: Topic) {
         val pruneBuilder = Rpc.ControlPrune.newBuilder().setTopicID(topic)
-        if (peer.getOutboundGossipProtocol() == PubsubProtocol.Gossip_V_1_1 && this.protocol == PubsubProtocol.Gossip_V_1_1) {
+        if (peer.getPeerProtocol() == PubsubProtocol.Gossip_V_1_1 && this.protocol == PubsubProtocol.Gossip_V_1_1) {
             // add v1.1 specific fields
             pruneBuilder.backoff = params.pruneBackoff.seconds
             (getTopicPeers(topic) - peer)

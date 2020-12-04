@@ -1,13 +1,17 @@
 package io.libp2p.pubsub.gossip
 
+import io.libp2p.core.pubsub.RESULT_IGNORE
 import io.libp2p.etc.types.seconds
 import io.libp2p.etc.types.toProtobuf
 import io.libp2p.pubsub.DeterministicFuzz
 import io.libp2p.pubsub.MockRouter
 import io.libp2p.pubsub.PubsubRouterTest
 import io.libp2p.pubsub.TestRouter
+import io.libp2p.pubsub.gossip.builders.GossipPeerScoreParamsBuilder
+import io.libp2p.pubsub.gossip.builders.GossipScoreParamsBuilder
 import io.libp2p.tools.TestLogAppender
 import io.netty.handler.logging.LogLevel
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import pubsub.pb.Rpc
@@ -174,6 +178,85 @@ class GossipPubsubRouterTest : PubsubRouterTest({
             Assertions.assertEquals(1, router3.inboundMessages.size)
 
             Assertions.assertFalse(testLogAppender.hasAnyWarns())
+        }
+    }
+
+    @Test
+    fun `test that no warn when trying to respond prune without outbound gossip stream`() {
+        // when remote gossip makes connection and immediately send GRAFT
+        // the situation when we fail to send PRUNE (as not outbound stream yet)
+        // shouldn't be treated as internal error and no WARN logs should be printed
+        val fuzz = DeterministicFuzz()
+
+        val router1 = fuzz.createTestRouter(MockRouter())
+
+        // when isDirect the gossip router should reply with PRUNE to GRAFT
+        // this would reproduce the case
+        val gossipScoreParams = GossipScoreParams(GossipPeerScoreParams(isDirect = { true }))
+
+        val router2 = fuzz.createTestRouter(GossipRouter(scoreParams = gossipScoreParams))
+        val mockRouter = router1.router as MockRouter
+
+        router2.router.subscribe("topic1")
+        router1.connect(router2, LogLevel.INFO, LogLevel.INFO)
+
+        TestLogAppender().install().use { testLogAppender ->
+            val msg1 = Rpc.RPC.newBuilder()
+                .setControl(
+                    Rpc.ControlMessage.newBuilder().addGraft(
+                        Rpc.ControlGraft.newBuilder().setTopicID("topic1")
+                    )
+                ).build()
+
+            mockRouter.sendToSingle(msg1)
+
+            Assertions.assertFalse(testLogAppender.hasAnyWarns())
+        }
+    }
+
+    @Test
+    fun testIgnoreDoesntReduceScores() {
+        // check that with Eth2 Gossip scoring params
+        // a peers which IGNOREs all inbound messages doesn't get underscored
+
+        val fuzz = DeterministicFuzz()
+        val gossipScoreParams = GossipScoreParamsBuilder(Eth2DefaultScoreParams)
+            .peerScoreParams(
+                // disable colocation factor for simulation
+                GossipPeerScoreParamsBuilder(Eth2DefaultPeerScoreParams).ipColocationFactorWeight(0.0).build()
+            ).build()
+
+        val allCount = 20
+        val allRouters = (1..allCount).map {
+            val r = GossipRouter(Eth2DefaultGossipParams, gossipScoreParams)
+            fuzz.createTestRouter(r)
+        }
+
+        val senderRouter = allRouters[0]
+        val scoringRouter = allRouters[1]
+        val ignoringRouter = allRouters[2]
+        ignoringRouter.handlerValidationResult = RESULT_IGNORE
+        val crowdRouters = allRouters.subList(3, allCount - 1)
+
+        (crowdRouters + ignoringRouter).forEach {
+            senderRouter.connectSemiDuplex(it)
+            it.connectSemiDuplex(scoringRouter)
+        }
+        allRouters.forEach { it.router.subscribe(BlocksTopic) }
+
+        fuzz.timeController.addTime(10.seconds)
+        for (i in 0..100) {
+            val msg = newMessage(BlocksTopic, i.toLong(), "Hello-$i".toByteArray())
+            senderRouter.router.publish(msg)
+
+            fuzz.timeController.addTime(20.seconds)
+            assert(scoringRouter.inboundMessages.size > 0)
+            scoringRouter.inboundMessages.clear()
+        }
+
+        val gossipRouter = scoringRouter.router as GossipRouter
+        gossipRouter.peers.forEach {
+            assertThat(gossipRouter.score.score(it)).isGreaterThanOrEqualTo(0.0)
         }
     }
 }
