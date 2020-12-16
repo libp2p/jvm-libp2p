@@ -9,7 +9,7 @@ import java.util.concurrent.TimeoutException
 
 open class MockRouter(
     override val protocol: PubsubProtocol = PubsubProtocol.Gossip_V_1_1
-) : AbstractRouter() {
+) : AbstractRouter(TopicSubscriptionFilter.AllowAllTopicSubscriptionFilter()) {
 
     val inboundMessages: BlockingQueue<Rpc.RPC> = LinkedBlockingQueue()
 

@@ -21,6 +21,7 @@ import io.libp2p.pubsub.SeenCache
 import io.libp2p.pubsub.SimpleSeenCache
 import io.libp2p.pubsub.TTLSeenCache
 import io.libp2p.pubsub.Topic
+import io.libp2p.pubsub.TopicSubscriptionFilter
 import pubsub.pb.Rpc
 import java.util.Optional
 import java.util.concurrent.CompletableFuture
@@ -54,8 +55,9 @@ fun P2PService.PeerHandler.getPeerProtocol(): PubsubProtocol {
 open class GossipRouter @JvmOverloads constructor(
     val params: GossipParams = GossipParams(),
     val scoreParams: GossipScoreParams = GossipScoreParams(),
-    override val protocol: PubsubProtocol = PubsubProtocol.Gossip_V_1_1
-) : AbstractRouter() {
+    override val protocol: PubsubProtocol = PubsubProtocol.Gossip_V_1_1,
+    subscriptionTopicSubscriptionFilter: TopicSubscriptionFilter = TopicSubscriptionFilter.AllowAllTopicSubscriptionFilter()
+) : AbstractRouter(subscriptionTopicSubscriptionFilter) {
 
     val score by lazy { GossipScore(scoreParams, executor, curTimeMillis) }
     val fanout: MutableMap<Topic, MutableSet<PeerHandler>> = linkedMapOf()

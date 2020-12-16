@@ -4,10 +4,11 @@ import io.libp2p.etc.types.anyComplete
 import io.libp2p.pubsub.AbstractRouter
 import io.libp2p.pubsub.PubsubMessage
 import io.libp2p.pubsub.PubsubProtocol
+import io.libp2p.pubsub.TopicSubscriptionFilter
 import pubsub.pb.Rpc
 import java.util.concurrent.CompletableFuture
 
-class FloodRouter : AbstractRouter() {
+class FloodRouter : AbstractRouter(subscriptionFilter = TopicSubscriptionFilter.AllowAllTopicSubscriptionFilter()) {
 
     override val protocol = PubsubProtocol.Floodsub
 

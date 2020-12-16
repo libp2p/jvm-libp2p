@@ -37,7 +37,9 @@ class DefaultPubsubMessage(override val protobufMessage: Rpc.Message) : PubsubMe
 /**
  * Implements common logic for pubsub routers
  */
-abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRouterDebug {
+abstract class AbstractRouter(
+    val subscriptionFilter: TopicSubscriptionFilter
+) : P2PServiceSemiDuplex(), PubsubRouter, PubsubRouterDebug {
     private val logger = LogManager.getLogger(AbstractRouter::class.java)
 
     override var curTimeMillis: () -> Long by lazyVarInit { { System.currentTimeMillis() } }
@@ -181,7 +183,16 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
         if (!acceptRequestsFrom(peer)) return
 
         msg as Rpc.RPC
-        msg.subscriptionsList.forEach { handleMessageSubscriptions(peer, it) }
+
+        try {
+            val subscriptions = msg.subscriptionsList.map { PubsubSubscription(it.topicid, it.subscribe) }
+            subscriptionFilter.filterIncomingSubscriptions(subscriptions, peerTopics[peer])
+                .forEach { handleMessageSubscriptions(peer, it) }
+        } catch (e: Exception) {
+            logger.debug("Subscription filter error, ignoring message from peer $peer", e)
+            return
+        }
+
         if (msg.hasControl()) {
             processControl(msg.control, peer)
         }
@@ -289,11 +300,11 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
         }
     }
 
-    private fun handleMessageSubscriptions(peer: PeerHandler, msg: Rpc.RPC.SubOpts) {
+    private fun handleMessageSubscriptions(peer: PeerHandler, msg: PubsubSubscription) {
         if (msg.subscribe) {
-            peerTopics[peer] += msg.topicid
+            peerTopics[peer] += msg.topic
         } else {
-            peerTopics[peer] -= msg.topicid
+            peerTopics[peer] -= msg.topic
         }
     }
 
