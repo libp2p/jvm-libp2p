@@ -1,12 +1,12 @@
 package io.libp2p.etc.util.netty.protobuf
 
-import io.netty.handler.codec.ByteToMessageDecoder
-import kotlin.Throws
-import io.netty.channel.ChannelHandlerContext
 import io.netty.buffer.ByteBuf
+import io.netty.channel.ChannelHandlerContext
+import io.netty.handler.codec.ByteToMessageDecoder
 import io.netty.handler.codec.CorruptedFrameException
 import io.netty.handler.codec.TooLongFrameException
 import java.lang.Exception
+import kotlin.Throws
 
 /**
  * This class is a modified version of netty's ProtobufVariant32FrameDecoder that enforces limits on the
@@ -104,12 +104,14 @@ internal class LimitedProtobufVarint32FrameDecoder(private val maxDataLength: In
         if (frameLength > 0) {
             throw TooLongFrameException(
                 "Adjusted frame length exceeds " + maxDataLength +
-                        ": " + frameLength + " - discarded"
+                    ": " + frameLength + " - discarded"
             )
         } else {
             throw TooLongFrameException(
-                ("Adjusted frame length exceeds " + maxDataLength +
-                        " - discarding")
+                (
+                    "Adjusted frame length exceeds " + maxDataLength +
+                        " - discarding"
+                    )
             )
         }
     }
@@ -125,7 +127,7 @@ internal class LimitedProtobufVarint32FrameDecoder(private val maxDataLength: In
                 return 0
             }
             buffer.markReaderIndex()
-            var tmp:Int = buffer.readByte().toInt()
+            var tmp: Int = buffer.readByte().toInt()
             return if (tmp >= 0) {
                 tmp
             } else {

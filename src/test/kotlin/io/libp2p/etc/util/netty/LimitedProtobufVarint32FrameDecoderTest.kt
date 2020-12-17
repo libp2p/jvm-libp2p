@@ -8,21 +8,20 @@ import io.netty.buffer.Unpooled.wrappedBuffer
 import io.netty.channel.embedded.EmbeddedChannel
 import io.netty.handler.codec.CorruptedFrameException
 import io.netty.handler.codec.TooLongFrameException
-import org.junit.jupiter.api.Test
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Test
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.util.Random
 
 class LimitedProtobufVarint32FrameDecoderTest {
 
-    private val rand: Random = Random(1);
+    private val rand: Random = Random(1)
     private val maxDataSize = 300
     private val ch: EmbeddedChannel = EmbeddedChannel(LimitedProtobufVarint32FrameDecoder(maxDataSize))
     private val byteBufs: MutableList<ByteBuf> = mutableListOf()
-
 
     @AfterEach
     fun tearDown() {
@@ -68,7 +67,7 @@ class LimitedProtobufVarint32FrameDecoderTest {
         val msg = createRandomFramedData(dataSize)
 
         // Reading msg should throw and not output anything
-        assertThatThrownBy({ch.writeInbound(wrappedBuffer(msg, 0, msg.size))})
+        assertThatThrownBy({ ch.writeInbound(wrappedBuffer(msg, 0, msg.size)) })
             .isInstanceOf(TooLongFrameException::class.java)
             .hasMessageContaining("Adjusted frame length exceeds $maxDataSize: $dataSize")
         assertThat(readInboundByteBuf()).isNull()
@@ -91,7 +90,7 @@ class LimitedProtobufVarint32FrameDecoderTest {
         // Reading msg should throw and not output anything
         assertThat(ch.writeInbound(wrappedBuffer(msg, 0, 1))).isFalse()
         assertThat(readInboundByteBuf()).isNull()
-        assertThatThrownBy({ch.writeInbound(wrappedBuffer(msg, 1, 1))})
+        assertThatThrownBy({ ch.writeInbound(wrappedBuffer(msg, 1, 1)) })
             .isInstanceOf(TooLongFrameException::class.java)
             .hasMessageContaining("Adjusted frame length exceeds $maxDataSize: $dataSize")
         assertThat(readInboundByteBuf()).isNull()
@@ -124,7 +123,7 @@ class LimitedProtobufVarint32FrameDecoderTest {
         concatenated.retain()
 
         // Read concatenated message
-        assertThatThrownBy({ch.writeInbound(concatenated)})
+        assertThatThrownBy({ ch.writeInbound(concatenated) })
             .isInstanceOf(TooLongFrameException::class.java)
             .hasMessageContaining("Adjusted frame length exceeds $maxDataSize: $tooLargeDataSize")
         assertThat(readInboundByteBuf()).isNull()
@@ -149,7 +148,7 @@ class LimitedProtobufVarint32FrameDecoderTest {
 
         // Read concatenated message
         val msgSizePrefix = concatenated.slice(0, 2)
-        assertThatThrownBy({ch.writeInbound(msgSizePrefix)})
+        assertThatThrownBy({ ch.writeInbound(msgSizePrefix) })
             .isInstanceOf(TooLongFrameException::class.java)
             .hasMessageContaining("Adjusted frame length exceeds $maxDataSize: $tooLargeDataSize")
         assertThat(readInboundByteBuf()).isNull()
@@ -166,7 +165,7 @@ class LimitedProtobufVarint32FrameDecoderTest {
     fun largeMessageAtLimit() {
         val data = createRandomData(maxDataSize)
         val msg = createFramedData(data)
-                assertThat(ch.writeInbound(wrappedBuffer(msg, 0, msg.size))).isTrue()
+        assertThat(ch.writeInbound(wrappedBuffer(msg, 0, msg.size))).isTrue()
 
         val actual = readInboundByteBuf()
         assertThat(actual?.toByteArray()).isEqualTo(data)
@@ -179,7 +178,7 @@ class LimitedProtobufVarint32FrameDecoderTest {
         val msg = byteArrayOf(-1, -1, -1, -1, -1, -1)
 
         // Reading msg should throw and not output anything
-        assertThatThrownBy({ch.writeInbound(wrappedBuffer(msg, 0, msg.size))})
+        assertThatThrownBy({ ch.writeInbound(wrappedBuffer(msg, 0, msg.size)) })
             .isInstanceOf(CorruptedFrameException::class.java)
         assertThat(readInboundByteBuf()).isNull()
 
