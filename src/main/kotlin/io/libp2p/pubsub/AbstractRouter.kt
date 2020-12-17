@@ -12,6 +12,7 @@ import io.libp2p.etc.types.forward
 import io.libp2p.etc.types.lazyVarInit
 import io.libp2p.etc.types.toWBytes
 import io.libp2p.etc.util.P2PServiceSemiDuplex
+import io.libp2p.etc.util.netty.protobuf.LimitedProtobufVarint32FrameDecoder
 import io.netty.channel.ChannelHandler
 import io.netty.handler.codec.protobuf.ProtobufDecoder
 import io.netty.handler.codec.protobuf.ProtobufEncoder
@@ -41,6 +42,7 @@ abstract class AbstractRouter(
     val subscriptionFilter: TopicSubscriptionFilter
 ) : P2PServiceSemiDuplex(), PubsubRouter, PubsubRouterDebug {
     private val logger = LogManager.getLogger(AbstractRouter::class.java)
+    private val maxMsgSize = 1 shl 20
 
     override var curTimeMillis: () -> Long by lazyVarInit { { System.currentTimeMillis() } }
     override var random by lazyVarInit { Random() }
@@ -133,7 +135,7 @@ abstract class AbstractRouter(
 
     override fun initChannel(streamHandler: StreamHandler) {
         with(streamHandler.stream) {
-            pushHandler(ProtobufVarint32FrameDecoder())
+            pushHandler(LimitedProtobufVarint32FrameDecoder(maxMsgSize))
             pushHandler(ProtobufVarint32LengthFieldPrepender())
             pushHandler(ProtobufDecoder(Rpc.RPC.getDefaultInstance()))
             pushHandler(ProtobufEncoder())
