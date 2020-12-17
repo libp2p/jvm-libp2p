@@ -6,6 +6,7 @@ import io.libp2p.etc.util.netty.protobuf.LimitedProtobufVarint32FrameDecoder
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled.wrappedBuffer
 import io.netty.channel.embedded.EmbeddedChannel
+import io.netty.handler.codec.CorruptedFrameException
 import io.netty.handler.codec.TooLongFrameException
 import org.junit.jupiter.api.Test
 import org.assertj.core.api.Assertions.assertThat
@@ -171,6 +172,18 @@ class LimitedProtobufVarint32FrameDecoderTest {
         assertThat(actual?.toByteArray()).isEqualTo(data)
 
         assertThat(ch.finish()).isFalse()
+    }
+
+    @Test
+    fun invalidVarIntPrefix() {
+        val msg = byteArrayOf(-1, -1, -1, -1, -1, -1)
+
+        // Reading msg should throw and not output anything
+        assertThatThrownBy({ch.writeInbound(wrappedBuffer(msg, 0, msg.size))})
+            .isInstanceOf(CorruptedFrameException::class.java)
+        assertThat(readInboundByteBuf()).isNull()
+
+        ch.finish()
     }
 
     private fun createRandomData(size: Int): ByteArray {

@@ -127,7 +127,7 @@ internal class LimitedProtobufVarint32FrameDecoder(private val maxDataLength: In
             buffer.markReaderIndex()
             var tmp:Int = buffer.readByte().toInt()
             return if (tmp >= 0) {
-                tmp.toInt()
+                tmp
             } else {
                 var result: Int = tmp and 127
                 if (!buffer.isReadable) {
