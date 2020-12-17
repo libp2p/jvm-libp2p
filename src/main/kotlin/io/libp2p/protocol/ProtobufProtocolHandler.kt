@@ -13,13 +13,12 @@ import java.util.concurrent.CompletableFuture
 abstract class ProtobufProtocolHandler<out TController>(
     private val protobufMessagePrototype: MessageLite
 ) : ProtocolHandler<TController>() {
-    private val maxMsgSize = 1 shl 13
 
     override fun initChannel(ch: P2PChannel): CompletableFuture<out TController> {
         val stream = ch as Stream
 
         with(stream) {
-            pushHandler(LimitedProtobufVarint32FrameDecoder(maxMsgSize))
+            pushHandler(ProtobufVarint32FrameDecoder())
             pushHandler(ProtobufVarint32LengthFieldPrepender())
             pushHandler(ProtobufDecoder(protobufMessagePrototype))
             pushHandler(ProtobufEncoder())
