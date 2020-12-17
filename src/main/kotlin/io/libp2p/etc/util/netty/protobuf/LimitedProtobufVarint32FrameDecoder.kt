@@ -37,7 +37,6 @@ internal class LimitedProtobufVarint32FrameDecoder(private val maxDataLength: In
     override fun decode(ctx: ChannelHandlerContext, msg: ByteBuf, out: MutableList<Any>) {
         if (discardingTooLongFrame) {
             discardFrame(msg)
-            return
         }
 
         msg.markReaderIndex()
