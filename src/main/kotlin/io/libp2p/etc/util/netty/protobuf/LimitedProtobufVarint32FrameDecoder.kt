@@ -28,7 +28,7 @@ import java.lang.Exception
  *
  * @see CodedInputStream
  */
-internal class LimitedProtobufVarint32FrameDecoder(private val maxFrameLength: Int) : ByteToMessageDecoder() {
+internal class LimitedProtobufVarint32FrameDecoder(private val maxDataLength: Int) : ByteToMessageDecoder() {
     private var discardingTooLongFrame = false
     private var tooLongFrameLength: Int = 0
     private var bytesToDiscard: Int = 0
@@ -37,6 +37,7 @@ internal class LimitedProtobufVarint32FrameDecoder(private val maxFrameLength: I
     override fun decode(ctx: ChannelHandlerContext, msg: ByteBuf, out: MutableList<Any>) {
         if (discardingTooLongFrame) {
             discardFrame(msg)
+            return
         }
 
         msg.markReaderIndex()
@@ -50,7 +51,7 @@ internal class LimitedProtobufVarint32FrameDecoder(private val maxFrameLength: I
         if (length < 0) {
             throw CorruptedFrameException("negative length: $length")
         }
-        if (length > maxFrameLength) {
+        if (length > maxDataLength) {
             handleFrameExceedingMaxLength(msg, length)
             return
         }
@@ -102,12 +103,12 @@ internal class LimitedProtobufVarint32FrameDecoder(private val maxFrameLength: I
     private fun fail(frameLength: Int) {
         if (frameLength > 0) {
             throw TooLongFrameException(
-                "Adjusted frame length exceeds " + maxFrameLength +
+                "Adjusted frame length exceeds " + maxDataLength +
                         ": " + frameLength + " - discarded"
             )
         } else {
             throw TooLongFrameException(
-                ("Adjusted frame length exceeds " + maxFrameLength +
+                ("Adjusted frame length exceeds " + maxDataLength +
                         " - discarding")
             )
         }
