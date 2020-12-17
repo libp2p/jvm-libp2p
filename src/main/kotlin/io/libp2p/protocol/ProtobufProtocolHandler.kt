@@ -3,7 +3,6 @@ package io.libp2p.protocol
 import com.google.protobuf.MessageLite
 import io.libp2p.core.P2PChannel
 import io.libp2p.core.Stream
-import io.libp2p.etc.util.netty.protobuf.LimitedProtobufVarint32FrameDecoder
 import io.netty.handler.codec.protobuf.ProtobufDecoder
 import io.netty.handler.codec.protobuf.ProtobufEncoder
 import io.netty.handler.codec.protobuf.ProtobufVarint32FrameDecoder
