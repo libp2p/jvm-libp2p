@@ -57,7 +57,7 @@ open class GossipRouter @JvmOverloads constructor(
     val scoreParams: GossipScoreParams = GossipScoreParams(),
     override val protocol: PubsubProtocol = PubsubProtocol.Gossip_V_1_1,
     subscriptionTopicSubscriptionFilter: TopicSubscriptionFilter = TopicSubscriptionFilter.AllowAllTopicSubscriptionFilter()
-) : AbstractRouter(subscriptionTopicSubscriptionFilter) {
+) : AbstractRouter(subscriptionTopicSubscriptionFilter, params.maxGossipMessageSize) {
 
     val score by lazy { GossipScore(scoreParams, executor, curTimeMillis) }
     val fanout: MutableMap<Topic, MutableSet<PeerHandler>> = linkedMapOf()
