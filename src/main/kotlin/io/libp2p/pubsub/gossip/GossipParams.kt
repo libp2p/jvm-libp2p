@@ -4,6 +4,7 @@ import io.libp2p.core.PeerId
 import io.libp2p.etc.types.millis
 import io.libp2p.etc.types.minutes
 import io.libp2p.etc.types.seconds
+import io.libp2p.pubsub.DEFAULT_MAX_PUBSUB_MESSAGE_SIZE
 import io.libp2p.pubsub.Topic
 import io.libp2p.pubsub.gossip.builders.GossipParamsBuilder
 import io.libp2p.pubsub.gossip.builders.GossipPeerScoreParamsBuilder
@@ -76,6 +77,12 @@ data class GossipParams(
      * we'll delete the fanout map for that topic.
      */
     val fanoutTTL: Duration = 60.seconds,
+
+    /**
+     * [maxGossipMessageSize] determines the max acceptable gossip message size.  Messages larger than this will
+     * be ignored.
+     */
+    val maxGossipMessageSize: Int = DEFAULT_MAX_PUBSUB_MESSAGE_SIZE,
 
     /**
      * [gossipSize] controls how many cached message ids we will advertise in

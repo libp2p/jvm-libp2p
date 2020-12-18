@@ -12,10 +12,10 @@ import io.libp2p.etc.types.forward
 import io.libp2p.etc.types.lazyVarInit
 import io.libp2p.etc.types.toWBytes
 import io.libp2p.etc.util.P2PServiceSemiDuplex
+import io.libp2p.etc.util.netty.protobuf.LimitedProtobufVarint32FrameDecoder
 import io.netty.channel.ChannelHandler
 import io.netty.handler.codec.protobuf.ProtobufDecoder
 import io.netty.handler.codec.protobuf.ProtobufEncoder
-import io.netty.handler.codec.protobuf.ProtobufVarint32FrameDecoder
 import io.netty.handler.codec.protobuf.ProtobufVarint32LengthFieldPrepender
 import org.apache.logging.log4j.LogManager
 import pubsub.pb.Rpc
@@ -25,6 +25,9 @@ import java.util.Random
 import java.util.concurrent.CompletableFuture
 import java.util.function.BiConsumer
 import java.util.function.Consumer
+
+// 1 MB default max message size
+const val DEFAULT_MAX_PUBSUB_MESSAGE_SIZE = 1 shl 20
 
 class DefaultPubsubMessage(override val protobufMessage: Rpc.Message) : PubsubMessage {
     override val messageId: MessageId = protobufMessage.from.toWBytes() + protobufMessage.seqno.toWBytes()
@@ -38,7 +41,8 @@ class DefaultPubsubMessage(override val protobufMessage: Rpc.Message) : PubsubMe
  * Implements common logic for pubsub routers
  */
 abstract class AbstractRouter(
-    val subscriptionFilter: TopicSubscriptionFilter
+    val subscriptionFilter: TopicSubscriptionFilter,
+    val maxMsgSize: Int = DEFAULT_MAX_PUBSUB_MESSAGE_SIZE
 ) : P2PServiceSemiDuplex(), PubsubRouter, PubsubRouterDebug {
     private val logger = LogManager.getLogger(AbstractRouter::class.java)
 
@@ -133,7 +137,7 @@ abstract class AbstractRouter(
 
     override fun initChannel(streamHandler: StreamHandler) {
         with(streamHandler.stream) {
-            pushHandler(ProtobufVarint32FrameDecoder())
+            pushHandler(LimitedProtobufVarint32FrameDecoder(maxMsgSize))
             pushHandler(ProtobufVarint32LengthFieldPrepender())
             pushHandler(ProtobufDecoder(Rpc.RPC.getDefaultInstance()))
             pushHandler(ProtobufEncoder())

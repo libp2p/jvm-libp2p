@@ -24,6 +24,8 @@ class GossipParamsBuilder {
 
     private var fanoutTTL: Duration? = null
 
+    private var maxGossipMessageSize: Int? = null
+
     private var gossipSize: Int? = null
 
     private var gossipHistoryLength: Int? = null
@@ -60,6 +62,7 @@ class GossipParamsBuilder {
         val source = GossipParams()
         this.D = source.D
         this.fanoutTTL = source.fanoutTTL
+        this.maxGossipMessageSize = source.maxGossipMessageSize
         this.gossipSize = source.gossipSize
         this.gossipHistoryLength = source.gossipHistoryLength
         this.heartbeatInterval = source.heartbeatInterval
@@ -91,6 +94,8 @@ class GossipParamsBuilder {
     fun DLazy(value: Int): GossipParamsBuilder = apply { DLazy = value }
 
     fun fanoutTTL(value: Duration): GossipParamsBuilder = apply { fanoutTTL = value }
+
+    fun maxGossipMessageSize(value: Int): GossipParamsBuilder = apply { maxGossipMessageSize = value }
 
     fun gossipSize(value: Int): GossipParamsBuilder = apply { gossipSize = value }
 
@@ -143,6 +148,7 @@ class GossipParamsBuilder {
             DOut = DOut!!,
             DLazy = DLazy!!,
             fanoutTTL = fanoutTTL!!,
+            maxGossipMessageSize = maxGossipMessageSize!!,
             gossipSize = gossipSize!!,
             gossipHistoryLength = gossipHistoryLength!!,
             heartbeatInterval = heartbeatInterval!!,
@@ -179,6 +185,7 @@ class GossipParamsBuilder {
         check(DOut != null, { "DOut must not be null" })
         check(DLazy != null, { "DLazy must not be null" })
         check(fanoutTTL != null, { "fanoutTTL must not be null" })
+        check(maxGossipMessageSize != null, { "maxGossipMessageSize must not be null" })
         check(gossipSize != null, { "gossipSize must not be null" })
         check(gossipHistoryLength != null, { "gossipHistoryLength must not be null" })
         check(heartbeatInterval != null, { "heartbeatInterval must not be null" })
