@@ -13,7 +13,7 @@ import kotlin.Throws
  * size of the protobuf data. Limit functionality is based on netty's `LengthFieldBasedFrameDecoder`.
  *
  * A decoder that splits the received [ByteBuf]s dynamically by the
- * value of the Google Protocol Buffers 
+ * value of the Google Protocol Buffers
  * [Base 128 Varints](https://developers.google.com/protocol-buffers/docs/encoding#varints)
  * integer length field in the message. For example:
  * ```
