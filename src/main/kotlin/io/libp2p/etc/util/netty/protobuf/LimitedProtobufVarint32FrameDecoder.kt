@@ -101,17 +101,9 @@ internal class LimitedProtobufVarint32FrameDecoder(private val maxDataLength: In
 
     private fun fail(frameLength: Int) {
         if (frameLength > 0) {
-            throw TooLongFrameException(
-                "Adjusted frame length exceeds " + maxDataLength +
-                    ": " + frameLength + " - discarded"
-            )
+            throw TooLongFrameException("Adjusted frame length exceeds $maxDataLength: $frameLength - discarded")
         } else {
-            throw TooLongFrameException(
-                (
-                    "Adjusted frame length exceeds " + maxDataLength +
-                        " - discarding"
-                    )
-            )
+            throw TooLongFrameException("Adjusted frame length exceeds $maxDataLength - discarding")
         }
     }
 
