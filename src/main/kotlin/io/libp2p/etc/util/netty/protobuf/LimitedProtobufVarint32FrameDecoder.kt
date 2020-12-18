@@ -9,23 +9,23 @@ import java.lang.Exception
 import kotlin.Throws
 
 /**
- * This class is a modified version of netty's ProtobufVariant32FrameDecoder that enforces limits on the
- * size of the protobuf data. Limit functionality is based on netty's LengthFieldBasedFrameDecoder.
- * @see [ProtobufVarint32FrameDecoder](https://github.com/netty/netty/blob/e5951d46fc89db507ba7d2968d2ede26378f0b04/codec/src/main/java/io/netty/handler/codec/protobuf/ProtobufVarint32FrameDecoder.java)
- * @see [LengthFieldBasedFrameDecoder] (https://github.com/netty/netty/blob/8ea0d8f41ac5b0b09229a53690cad7febb4332ef/codec/src/main/java/io/netty/handler/codec/LengthFieldBasedFrameDecoder.java)
+ * This class is a modified version of netty's `ProtobufVariant32FrameDecoder` that enforces limits on the
+ * size of the protobuf data. Limit functionality is based on netty's `LengthFieldBasedFrameDecoder`.
  *
- * A decoder that splits the received {@link ByteBuf}s dynamically by the
- * value of the Google Protocol Buffers
- * <a href="https://developers.google.com/protocol-buffers/docs/encoding#varints">Base
- * 128 Varints</a> integer length field in the message. For example:
- * <pre>
+ * A decoder that splits the received [ByteBuf]s dynamically by the
+ * value of the Google Protocol Buffers 
+ * [Base 128 Varints](https://developers.google.com/protocol-buffers/docs/encoding#varints)
+ * integer length field in the message. For example:
+ * ```
  * BEFORE DECODE (302 bytes)       AFTER DECODE (300 bytes)
  * +--------+---------------+      +---------------+
  * | Length | Protobuf Data |----->| Protobuf Data |
  * | 0xAC02 |  (300 bytes)  |      |  (300 bytes)  |
  * +--------+---------------+      +---------------+
- * </pre>
+ * ```
  *
+ * @see [ProtobufVarint32FrameDecoder](https://github.com/netty/netty/blob/e5951d46fc89db507ba7d2968d2ede26378f0b04/codec/src/main/java/io/netty/handler/codec/protobuf/ProtobufVarint32FrameDecoder.java)
+ * @see [LengthFieldBasedFrameDecoder] (https://github.com/netty/netty/blob/8ea0d8f41ac5b0b09229a53690cad7febb4332ef/codec/src/main/java/io/netty/handler/codec/LengthFieldBasedFrameDecoder.java)
  * @see CodedInputStream
  */
 internal class LimitedProtobufVarint32FrameDecoder(private val maxDataLength: Int) : ByteToMessageDecoder() {
