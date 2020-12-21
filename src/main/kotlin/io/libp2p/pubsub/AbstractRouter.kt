@@ -29,12 +29,8 @@ import java.util.function.Consumer
 // 1 MB default max message size
 const val DEFAULT_MAX_PUBSUB_MESSAGE_SIZE = 1 shl 20
 
-class DefaultPubsubMessage(override val protobufMessage: Rpc.Message) : PubsubMessage {
+open class DefaultPubsubMessage(override val protobufMessage: Rpc.Message) : AbstractPubsubMessage() {
     override val messageId: MessageId = protobufMessage.from.toWBytes() + protobufMessage.seqno.toWBytes()
-
-    override fun equals(other: Any?) = protobufMessage == (other as? PubsubMessage)?.protobufMessage
-    override fun hashCode() = protobufMessage.hashCode()
-    override fun toString() = "DefaultPubsubMessage{$protobufMessage}"
 }
 
 /**
@@ -200,10 +196,11 @@ abstract class AbstractRouter(
         if (msg.hasControl()) {
             processControl(msg.control, peer)
         }
-        val msgSubscribed = msg.publishList
-            .filter { it.topicIDsList.any { it in subscribedTopics } }
 
-        (msg.publishList - msgSubscribed).forEach { notifyNonSubscribedMessage(peer, it) }
+        val (msgSubscribed, nonSubscribed) = msg.publishList
+            .partition { it.topicIDsList.any { it in subscribedTopics } }
+
+        nonSubscribed.forEach { notifyNonSubscribedMessage(peer, it) }
 
         val pMsgSubscribed = msgSubscribed.map { messageFactory(it) }
         val msgUnseen = pMsgSubscribed
