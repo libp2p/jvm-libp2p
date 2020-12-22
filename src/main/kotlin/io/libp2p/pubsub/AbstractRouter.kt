@@ -184,6 +184,12 @@ abstract class AbstractRouter(
 
         msg as Rpc.RPC
 
+        // Validate message
+        if (!validateMessageListLimits(msg)) {
+            logger.debug("Dropping msg with lists exceeding limits from peer $peer")
+            return
+        }
+
         try {
             val subscriptions = msg.subscriptionsList.map { PubsubSubscription(it.topicid, it.subscribe) }
             subscriptionFilter.filterIncomingSubscriptions(subscriptions, peerTopics[peer])
@@ -275,6 +281,10 @@ abstract class AbstractRouter(
                 executor
             )
         }
+    }
+
+    internal open fun validateMessageListLimits(msg: Rpc.RPC): Boolean {
+        return true
     }
 
     private fun newValidatedMessages(msgs: List<PubsubMessage>, receivedFrom: PeerHandler) {

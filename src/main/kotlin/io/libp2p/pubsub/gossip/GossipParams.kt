@@ -112,24 +112,6 @@ data class GossipParams(
     val seenTTL: Duration = 2.minutes,
 
     /**
-     * [maxPrunePeers] controls the number of peers to include in prune Peer eXchange.
-     * When we prune a peer that's eligible for PX (has a good score, etc), we will try to
-     * send them signed peer records for up to [maxPrunePeers] other peers that we
-     * know of.
-     */
-    val maxPrunePeers: Int = 16,
-
-    /**
-     * [pruneBackoff] controls the backoff time for pruned peers. This is how long
-     * a peer must wait before attempting to graft into our mesh again after being pruned.
-     * When pruning a peer, we send them our value of [pruneBackoff] so they know
-     * the minimum time to wait. Peers running older versions may not send a backoff time,
-     * so if we receive a prune message without one, we will wait at least [pruneBackoff]
-     * before attempting to re-graft.
-     */
-    val pruneBackoff: Duration = 1.minutes,
-
-    /**
      * [floodPublish] is a gossipsub router option that enables flood publishing.
      * When this is enabled, published messages are forwarded to all peers with score >=
      * to publishThreshold
@@ -163,6 +145,22 @@ data class GossipParams(
     val graftFloodThreshold: Duration = 10.seconds,
 
     /**
+     * [maxPublishedMessages] is the maximum number of messages allowed in the publish list per
+     * gossip message.
+     */
+    val maxPublishedMessages: Int? = null,
+
+    /**
+     * [maxTopicsPerPublishedMessage] is the maximum number of topics a given message can be published to.
+     */
+    val maxTopicsPerPublishedMessage: Int? = null,
+
+    /**
+     * [maxSubscriptions] is the maximum number of subscriptions allowed per gossip message.
+     */
+    val maxSubscriptions: Int? = null,
+
+    /**
      * [maxIHaveLength] is the maximum number of messages to include in an IHAVE message.
      * Also controls the maximum number of IHAVE ids we will accept and request with IWANT from a
      * peer within a heartbeat, to protect from IHAVE floods. You should adjust this value from the
@@ -177,11 +175,45 @@ data class GossipParams(
     val maxIHaveMessages: Int = 10,
 
     /**
+     * [maxIWantMessageIds] The maximum number of message ids that can be included across IWANT messages within
+     * a single gossip message
+     */
+    val maxIWantMessageIds: Int? = null,
+
+    /**
      * Time to wait for a message requested through IWANT following an IHAVE advertisement.
      * If the message is not received within this window, a broken promise is declared and
      * the router may apply behavioural penalties.
      */
     val iWantFollowupTime: Duration = 3.seconds,
+
+    /**
+     * [maxGraftMessages] is the maximum number of graft messages allowed per gossip message
+     */
+    val maxGraftMessages: Int? = null,
+
+    /**
+     * [maxPrunePeers] controls the number of peers to include in prune Peer eXchange.
+     * When we prune a peer that's eligible for PX (has a good score, etc), we will try to
+     * send them signed peer records for up to [maxPrunePeers] other peers that we
+     * know of.
+     */
+    val maxPrunePeers: Int = 16,
+
+    /**
+     * [pruneBackoff] controls the backoff time for pruned peers. This is how long
+     * a peer must wait before attempting to graft into our mesh again after being pruned.
+     * When pruning a peer, we send them our value of [pruneBackoff] so they know
+     * the minimum time to wait. Peers running older versions may not send a backoff time,
+     * so if we receive a prune message without one, we will wait at least [pruneBackoff]
+     * before attempting to re-graft.
+     */
+    val pruneBackoff: Duration = 1.minutes,
+
+    /**
+     * [maxPruneMessages] is the maximum number of prune messages allowed per gossip message
+     */
+    val maxPruneMessages: Int? = null,
 
     /**
      * [gossipRetransmission] controls how many times we will allow a peer to request
