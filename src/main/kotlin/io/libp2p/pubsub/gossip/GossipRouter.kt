@@ -184,7 +184,7 @@ open class GossipRouter @JvmOverloads constructor(
             params.maxIWantMessageIds?.let { countIWantMessageIds(msg) <= it } ?: true &&
             params.maxGraftMessages?.let { msg.control?.graftCount ?: 0 <= it } ?: true &&
             params.maxPruneMessages?.let { msg.control?.pruneCount ?: 0 <= it } ?: true &&
-            params.maxPrunePeers?.let { msg.control?.pruneList?.none { p -> p.peersCount > it } } ?: true
+            params.maxPeersPerPruneMessage?.let { msg.control?.pruneList?.none { p -> p.peersCount > it } } ?: true
     }
 
     private fun countIWantMessageIds(msg: Rpc.RPC): Int {

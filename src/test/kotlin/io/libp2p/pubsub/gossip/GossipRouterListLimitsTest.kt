@@ -24,12 +24,11 @@ class GossipRouterListLimitsTest {
         .maxIWantMessageIds(maxIWantMessageIds)
         .maxGraftMessages(maxGraftMessages)
         .maxPruneMessages(maxPruneMessages)
-        .maxPrunePeers(maxPeersPerPruneMessage)
+        .maxPeersPerPruneMessage(maxPeersPerPruneMessage)
         .build()
 
     private val gossipParamsNoLimits = GossipParamsBuilder()
         .maxIHaveLength(Int.MAX_VALUE)
-        .maxPrunePeers(Int.MAX_VALUE)
         .build()
 
     @Test

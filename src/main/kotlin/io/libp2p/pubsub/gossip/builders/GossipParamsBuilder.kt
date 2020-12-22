@@ -36,6 +36,8 @@ class GossipParamsBuilder {
 
     private var maxPrunePeers: Int? = null
 
+    private var maxPeersPerPruneMessage: Int? = null
+
     private var pruneBackoff: Duration? = null
 
     private var floodPublish: Boolean? = null
@@ -80,6 +82,7 @@ class GossipParamsBuilder {
         this.heartbeatInterval = source.heartbeatInterval
         this.seenTTL = source.seenTTL
         this.maxPrunePeers = source.maxPrunePeers
+        this.maxPeersPerPruneMessage = source.maxPeersPerPruneMessage
         this.pruneBackoff = source.pruneBackoff
         this.floodPublish = source.floodPublish
         this.gossipFactor = source.gossipFactor
@@ -124,6 +127,8 @@ class GossipParamsBuilder {
     fun seenTTL(value: Duration): GossipParamsBuilder = apply { seenTTL = value }
 
     fun maxPrunePeers(value: Int): GossipParamsBuilder = apply { maxPrunePeers = value }
+
+    fun maxPeersPerPruneMessage(value: Int): GossipParamsBuilder = apply { maxPeersPerPruneMessage = value }
 
     fun pruneBackoff(value: Duration): GossipParamsBuilder = apply { pruneBackoff = value }
 
@@ -197,6 +202,7 @@ class GossipParamsBuilder {
             iWantFollowupTime = iWantFollowupTime!!,
             maxGraftMessages = maxGraftMessages,
             maxPrunePeers = maxPrunePeers!!,
+            maxPeersPerPruneMessage = maxPeersPerPruneMessage,
             pruneBackoff = pruneBackoff!!,
             maxPruneMessages = maxPruneMessages,
             gossipRetransmission = gossipRetransmission!!,

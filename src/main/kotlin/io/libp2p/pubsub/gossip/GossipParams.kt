@@ -201,6 +201,11 @@ data class GossipParams(
     val maxPrunePeers: Int = 16,
 
     /**
+     * [maxPeersPerPruneMessage] is the maximum number of peers allowed in an incoming prune message
+     */
+    val maxPeersPerPruneMessage: Int? = null,
+
+    /**
      * [pruneBackoff] controls the backoff time for pruned peers. This is how long
      * a peer must wait before attempting to graft into our mesh again after being pruned.
      * When pruning a peer, we send them our value of [pruneBackoff] so they know
