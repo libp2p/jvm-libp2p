@@ -14,13 +14,14 @@ typealias MuxChannelInitializer<TData> = (MuxChannel<TData>) -> Unit
 
 private val log = LogManager.getLogger(AbstractMuxHandler::class.java)
 
-abstract class AbstractMuxHandler<TData>(var inboundInitializer: MuxChannelInitializer<TData>? = null) :
+abstract class AbstractMuxHandler<TData>() :
     ChannelInboundHandlerAdapter() {
 
     private val streamMap: MutableMap<MuxId, MuxChannel<TData>> = mutableMapOf()
     var ctx: ChannelHandlerContext? = null
     private val activeFuture = CompletableFuture<Void>()
     private var closed = false
+    protected abstract val inboundInitializer: MuxChannelInitializer<TData>
 
     override fun handlerAdded(ctx: ChannelHandlerContext) {
         super.handlerAdded(ctx)

@@ -1,6 +1,5 @@
 package io.libp2p.pubsub
 
-import io.libp2p.core.ConnectionHandler
 import io.libp2p.core.P2PChannel
 import io.libp2p.core.P2PChannelHandler
 import io.libp2p.core.PeerId
@@ -113,13 +112,12 @@ class GoInteropTest {
             val pubsubApi = createPubsubApi(gossipRouter)
             val publisher = pubsubApi.createPublisher(privKey1, 8888)
 
+            val mplex = MplexStreamMuxer().also {
+                it.muxFramesDebugHandler = LoggingHandler("#3", LogLevel.ERROR)
+            }
             val upgrader = ConnectionUpgrader(
                 listOf(SecIoSecureChannel(privKey1)),
-                listOf(
-                    MplexStreamMuxer().also {
-                        it.muxFramesDebugHandler = LoggingHandler("#3", LogLevel.ERROR)
-                    }
-                )
+                listOf(mplex)
             ).also {
                 //                it.beforeSecureHandler = LoggingHandler("#1", LogLevel.INFO)
                 it.afterSecureHandler = LoggingHandler("#2", LogLevel.INFO)
@@ -133,11 +131,11 @@ class GoInteropTest {
 
             val applicationProtocols = listOf(ProtocolBinding.createSimple("/meshsub/1.0.0", gossip), Identify())
             val inboundStreamHandler = StreamHandler.create(Multistream.create(applicationProtocols))
+            mplex.inboundStreamHandler = inboundStreamHandler
             logger.info("Dialing...")
             val connFuture = tcpTransport.dial(
-                Multiaddr("/ip4/127.0.0.1/tcp/45555" + "/p2p/$pdPeerId"),
-                ConnectionHandler.createStreamHandlerInitializer(inboundStreamHandler)
-            )
+                Multiaddr("/ip4/127.0.0.1/tcp/45555/p2p/$pdPeerId"))
+
 
             var pingRes: Long? = null
             connFuture.thenCompose {

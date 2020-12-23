@@ -157,14 +157,10 @@ open class Builder {
         }
 
         val protocolsMultistream: Multistream<Any> = Multistream.create(protocols.values)
-        val broadcastStreamHandler = StreamHandler.createBroadcast()
-        val allStreamHandlers = StreamHandler.createBroadcast(
-            protocolsMultistream.toStreamHandler(), broadcastStreamHandler
-        )
+        muxers.forEach { it.inboundStreamHandler = protocolsMultistream.toStreamHandler() }
 
         val connHandlerProtocols = protocols.values.mapNotNull { it as? ConnectionHandler }
         val broadcastConnHandler = ConnectionHandler.createBroadcast(
-            listOf(ConnectionHandler.createStreamHandlerInitializer(allStreamHandlers)) +
                 connHandlerProtocols +
                 connectionHandlers.values
         )
@@ -177,7 +173,7 @@ open class Builder {
             network.listen.map { Multiaddr(it) },
             protocolsMultistream,
             broadcastConnHandler,
-            broadcastStreamHandler
+            StreamHandler.createBroadcast()
         )
     }
 }

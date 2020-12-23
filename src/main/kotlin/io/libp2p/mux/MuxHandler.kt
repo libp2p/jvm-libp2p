@@ -9,6 +9,7 @@ import io.libp2p.etc.STREAM
 import io.libp2p.etc.types.forward
 import io.libp2p.etc.util.netty.mux.AbstractMuxHandler
 import io.libp2p.etc.util.netty.mux.MuxChannel
+import io.libp2p.etc.util.netty.mux.MuxChannelInitializer
 import io.libp2p.etc.util.netty.mux.MuxId
 import io.libp2p.transport.implementation.StreamOverNetty
 import io.netty.buffer.ByteBuf
@@ -17,9 +18,15 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicLong
 
 open class MuxHandler(
-    private val ready: CompletableFuture<StreamMuxer.Session>?
+    private val ready: CompletableFuture<StreamMuxer.Session>?,
+    inboundStreamHandler: StreamHandler<*>,
 ) : AbstractMuxHandler<ByteBuf>(), StreamMuxer.Session {
     private val idGenerator = AtomicLong(0xF)
+
+
+    override val inboundInitializer: MuxChannelInitializer<ByteBuf> = {
+        inboundStreamHandler.handleStream(createStream(it))
+    }
 
     override fun handlerAdded(ctx: ChannelHandlerContext) {
         super.handlerAdded(ctx)
@@ -64,12 +71,6 @@ open class MuxHandler(
 
     override fun generateNextId() =
         MuxId(getChannelHandlerContext().channel().id(), idGenerator.incrementAndGet(), true)
-
-    override var inboundStreamHandler: StreamHandler<*>? = null
-        set(value) {
-            field = value
-            inboundInitializer = { inboundStreamHandler!!.handleStream(createStream(it)) }
-        }
 
     private fun createStream(channel: MuxChannel<ByteBuf>): Stream {
         val connection = ctx!!.channel().attr(CONNECTION).get()
