@@ -42,16 +42,18 @@ class MultiplexHandlerTest {
     @BeforeEach
     fun startMultiplexor() {
         childHandlers.clear()
-        multistreamHandler = object : MuxHandler(
-            createStreamHandler(
-                nettyInitializer {
-                    println("New child channel created")
-                    val handler = TestHandler()
-                    it.addLastLocal(handler)
-                    childHandlers += handler
-                }
-            )
-        ) {
+        multistreamHandler = object : MuxHandler(null, null) {
+            init {
+                inboundStreamHandler = createStreamHandler(
+                    nettyInitializer {
+                        println("New child channel created")
+                        val handler = TestHandler()
+                        it.addLastLocal(handler)
+                        childHandlers += handler
+                    }
+                )
+            }
+
             // MuxHandler consumes the exception. Override this behaviour for testing
             override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
                 super.exceptionCaught(ctx, cause)

@@ -21,10 +21,6 @@ open class MuxHandler(
 ) : AbstractMuxHandler<ByteBuf>(), StreamMuxer.Session {
     private val idGenerator = AtomicLong(0xF)
 
-    constructor(streamHandler: StreamHandler<*>) : this(null) {
-        this.inboundStreamHandler = streamHandler
-    }
-
     override fun handlerAdded(ctx: ChannelHandlerContext) {
         super.handlerAdded(ctx)
         ready?.complete(this)
