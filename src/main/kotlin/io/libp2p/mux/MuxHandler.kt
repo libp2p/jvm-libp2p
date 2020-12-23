@@ -25,7 +25,6 @@ open class MuxHandler(
 ) : AbstractMuxHandler<ByteBuf>(), StreamMuxer.Session {
     private val idGenerator = AtomicLong(0xF)
 
-
     override val inboundInitializer: MuxChannelInitializer<ByteBuf> = {
         createAndHandleStream(it, inboundStreamHandler)
     }

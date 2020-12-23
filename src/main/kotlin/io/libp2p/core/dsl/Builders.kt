@@ -165,7 +165,7 @@ open class Builder {
 
         val connHandlerProtocols = protocols.values.mapNotNull { it as? ConnectionHandler }
         val broadcastConnHandler = ConnectionHandler.createBroadcast(
-                connHandlerProtocols +
+            connHandlerProtocols +
                 connectionHandlers.values
         )
         val networkImpl = NetworkImpl(transports, broadcastConnHandler)

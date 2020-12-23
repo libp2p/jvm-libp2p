@@ -60,7 +60,7 @@ class HostTest {
             .fold(Unpooled.buffer()) { acc, byteBuf -> acc.writeBytes(byteBuf.slice()) }
             .toByteArray()
 
-        listOf(data1, data2).forEach {data ->
+        listOf(data1, data2).forEach { data ->
             assertThat(data).containsSequence(*"/multistream/".toByteArray(Charsets.UTF_8))
             assertThat(data).containsSequence(*"/ping/".toByteArray(Charsets.UTF_8))
         }

@@ -34,7 +34,6 @@ class HostFactory {
         val port = tcpPort++
         val address = Multiaddr.fromString("/ip4/127.0.0.1/tcp/$port")
 
-
         val host = host {
             identity {
                 factory = { keys.first }
@@ -69,7 +68,7 @@ class HostFactory {
     }
 
     fun shutdown() {
-        createdHosts.map { it.host.stop() }.thenApplyAll {  }.get(createdHosts.size * 1L + 5, TimeUnit.SECONDS)
+        createdHosts.map { it.host.stop() }.thenApplyAll { }.get(createdHosts.size * 1L + 5, TimeUnit.SECONDS)
     }
 }
 

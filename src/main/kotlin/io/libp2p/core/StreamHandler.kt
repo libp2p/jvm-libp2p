@@ -25,7 +25,6 @@ data class StreamPromise<T>(
 fun interface StreamHandler<out TController> {
 
     fun handleStream(stream: Stream): CompletableFuture<out TController>
-
 }
 
 fun interface StreamVisitor {

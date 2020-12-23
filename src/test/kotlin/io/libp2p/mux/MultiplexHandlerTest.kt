@@ -191,8 +191,10 @@ class MultiplexHandlerTest {
         ech.close().await()
 
         val staleStream =
-            multistreamHandler.createStream(StreamVisitor
-            { println("This shouldn't be displayed: parent stream is closed") }.toStreamHandler())
+            multistreamHandler.createStream(
+                StreamVisitor
+                { println("This shouldn't be displayed: parent stream is closed") }.toStreamHandler()
+            )
 
         assertThrows(ConnectionClosedException::class.java) { staleStream.stream.getX(3.0) }
     }
