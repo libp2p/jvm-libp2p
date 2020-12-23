@@ -130,7 +130,7 @@ class GoInteropTest {
             }
 
             val applicationProtocols = listOf(ProtocolBinding.createSimple("/meshsub/1.0.0", gossip), Identify())
-            val inboundStreamHandler = StreamHandler.create(Multistream.create(applicationProtocols))
+            val inboundStreamHandler = StreamHandler { Multistream.create(applicationProtocols).initChannel(it) }
             mplex.inboundStreamHandler = inboundStreamHandler
             logger.info("Dialing...")
             val connFuture = tcpTransport.dial(

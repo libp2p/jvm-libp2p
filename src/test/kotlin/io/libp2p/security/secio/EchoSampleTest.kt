@@ -63,7 +63,7 @@ class EchoSampleTest {
 
         val tcpTransport = TcpTransport(upgrader)
         val applicationProtocols = listOf(createSimpleBinding("/echo/1.0.0") { EchoProtocol() })
-        val inboundStreamHandler = StreamHandler.create(Multistream.create(applicationProtocols))
+        val inboundStreamHandler = StreamHandler { Multistream.create(applicationProtocols).initChannel(it) }
         muxer.inboundStreamHandler = inboundStreamHandler
         logger.info("Dialing...")
         val connFuture: CompletableFuture<Connection> = tcpTransport.dial(Multiaddr("/ip4/127.0.0.1/tcp/10000"))

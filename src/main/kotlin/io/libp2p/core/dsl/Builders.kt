@@ -4,7 +4,7 @@ import identify.pb.IdentifyOuterClass
 import io.libp2p.core.AddressBook
 import io.libp2p.core.ConnectionHandler
 import io.libp2p.core.Host
-import io.libp2p.core.StreamHandler
+import io.libp2p.core.StreamVisitor
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.crypto.generateKeyPair
@@ -133,7 +133,11 @@ open class Builder {
         val secureChannels = secureChannels.values.map { it(privKey) }
         val muxers = muxers.values.map { it() }
 
-        muxers.mapNotNull { it as? StreamMuxerDebug }.forEach { it.muxFramesDebugHandler = debug.muxFramesHandler.handler }
+        val streamVisitors = StreamVisitor.createBroadcast()
+        muxers.mapNotNull { it as? StreamMuxerDebug }.forEach {
+            it.muxFramesDebugHandler = debug.muxFramesHandler.handler
+            it.streamVisitor = streamVisitors
+        }
 
         val upgrader = ConnectionUpgrader(secureChannels, muxers).apply {
             beforeSecureHandler = debug.beforeSecureHandler.handler
@@ -173,7 +177,7 @@ open class Builder {
             network.listen.map { Multiaddr(it) },
             protocolsMultistream,
             broadcastConnHandler,
-            StreamHandler.createBroadcast()
+            streamVisitors
         )
     }
 }

@@ -7,8 +7,8 @@ import io.libp2p.core.Host
 import io.libp2p.core.Network
 import io.libp2p.core.PeerId
 import io.libp2p.core.Stream
-import io.libp2p.core.StreamHandler
 import io.libp2p.core.StreamPromise
+import io.libp2p.core.StreamVisitor
 import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multistream.ProtocolBinding
@@ -39,12 +39,12 @@ open class NullHost : Host {
         TODO("not implemented")
     }
 
-    override fun addStreamHandler(handler: StreamHandler<*>) {
-        TODO("not implemented")
+    override fun addStreamVisitor(handler: StreamVisitor) {
+        TODO("Not yet implemented")
     }
 
-    override fun removeStreamHandler(handler: StreamHandler<*>) {
-        TODO("not implemented")
+    override fun removeStreamVisitor(handler: StreamVisitor) {
+        TODO("Not yet implemented")
     }
 
     override fun addProtocolHandler(protocolBinding: ProtocolBinding<Any>) {
