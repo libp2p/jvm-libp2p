@@ -11,7 +11,7 @@ import io.libp2p.core.dsl.host
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multistream.MultistreamProtocol_v_1_0_0
 import io.libp2p.core.multistream.ProtocolBinding
-import io.libp2p.core.mux.MplexProtocol
+import io.libp2p.core.mux.StreamMuxerProtocol
 import io.libp2p.core.pubsub.MessageApi
 import io.libp2p.core.pubsub.Topic
 import io.libp2p.core.pubsub.createPubsubApi
@@ -118,7 +118,7 @@ class GoInteropTest {
             }
 
             val applicationProtocols = listOf(ProtocolBinding.createSimple("/meshsub/1.0.0", gossip), Identify())
-            val muxer = MplexProtocol.createMuxer(MultistreamProtocol_v_1_0_0, applicationProtocols).also {
+            val muxer = StreamMuxerProtocol.Mplex.createMuxer(MultistreamProtocol_v_1_0_0, applicationProtocols).also {
                 it as MplexStreamMuxer
                 it.muxFramesDebugHandler = LoggingHandler("#3", LogLevel.INFO)
             }
@@ -233,7 +233,7 @@ class GoInteropTest {
                 add(::SecIoSecureChannel)
             }
             muxers {
-                + MplexProtocol
+                + StreamMuxerProtocol.Mplex
             }
             addressBook {
                 memory()

@@ -27,10 +27,6 @@ import io.netty.channel.ChannelHandler
 interface StreamMuxer : ProtocolBinding<StreamMuxer.Session> {
 
     /**
-     * This is the handler for streams opened by the remote side
-     */
-
-    /**
      * The Multiplexer controller which is capable of opening new Streams
      */
     interface Session {

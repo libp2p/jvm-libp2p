@@ -15,9 +15,6 @@ interface P2PChannelHandler<out TController> {
      */
     fun initChannel(ch: P2PChannel): CompletableFuture<out TController>
 
-    fun toStreamHandler(): StreamHandler<TController> = object : StreamHandler<TController> {
-        override fun handleStream(stream: Stream): CompletableFuture<out TController> {
-            return initChannel(stream)
-        }
-    }
+    @JvmDefault
+    fun toStreamHandler(): StreamHandler<TController> = StreamHandler { stream -> initChannel(stream) }
 }

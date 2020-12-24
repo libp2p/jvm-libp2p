@@ -5,7 +5,7 @@ import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multistream.ProtocolBinding
 import io.libp2p.core.multistream.ProtocolDescriptor
 import io.libp2p.core.multistream.ProtocolMatcher
-import io.libp2p.core.mux.MplexProtocol
+import io.libp2p.core.mux.StreamMuxerProtocol
 import io.libp2p.security.secio.SecIoSecureChannel
 import io.libp2p.transport.tcp.TcpTransport
 import io.netty.buffer.ByteBuf
@@ -106,7 +106,7 @@ class RpcHandlerTest {
                 add(::SecIoSecureChannel)
             }
             muxers {
-                + MplexProtocol
+                + StreamMuxerProtocol.Mplex
             }
             protocols {
                 +RpcProtocol()
@@ -127,7 +127,7 @@ class RpcHandlerTest {
                 add(::SecIoSecureChannel)
             }
             muxers {
-                + MplexProtocol
+                + StreamMuxerProtocol.Mplex
             }
             protocols {
                 +RpcProtocol()

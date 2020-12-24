@@ -9,7 +9,7 @@ import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.dsl.host
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multiformats.Protocol
-import io.libp2p.core.mux.MplexProtocol
+import io.libp2p.core.mux.StreamMuxerProtocol
 import io.libp2p.etc.types.thenApplyAll
 import io.libp2p.mux.mplex.MplexStreamMuxer
 import io.libp2p.protocol.Identify
@@ -46,7 +46,7 @@ class HostFactory {
                 add(secureCtor)
             }
             muxers {
-                add(MplexProtocol)
+                add(StreamMuxerProtocol.Mplex)
             }
             network {
                 listen(address.toString())
