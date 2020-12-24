@@ -12,7 +12,6 @@ import io.libp2p.core.StreamPromise
 import io.libp2p.core.StreamVisitor
 import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.multiformats.Multiaddr
-import io.libp2p.core.multistream.Multistream
 import io.libp2p.core.multistream.ProtocolBinding
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CopyOnWriteArrayList
@@ -22,7 +21,7 @@ class HostImpl(
     override val network: Network,
     override val addressBook: AddressBook,
     private val listenAddrs: List<Multiaddr>,
-    private val protocolHandlers: Multistream<Any>,
+    private val protocolHandlers: MutableList<ProtocolBinding<Any>>,
     private val connectionHandlers: ConnectionHandler.Broadcast,
     private val streamHandlers: StreamVisitor.Broadcast
 ) : Host {
@@ -72,11 +71,11 @@ class HostImpl(
     }
 
     override fun addProtocolHandler(protocolBinding: ProtocolBinding<Any>) {
-        protocolHandlers.bindings += protocolBinding
+        protocolHandlers += protocolBinding
     }
 
     override fun removeProtocolHandler(protocolBinding: ProtocolBinding<Any>) {
-        protocolHandlers.bindings -= protocolBinding
+        protocolHandlers -= protocolBinding
     }
 
     override fun addConnectionHandler(handler: ConnectionHandler) {
@@ -96,11 +95,8 @@ class HostImpl(
     override fun <TController> newStream(protocols: List<String>, conn: Connection): StreamPromise<TController> {
         val binding =
             @Suppress("UNCHECKED_CAST")
-            protocolHandlers.bindings.find { it.protocolDescriptor.matchesAny(protocols) } as? ProtocolBinding<TController>
+            protocolHandlers.find { it.protocolDescriptor.matchesAny(protocols) } as? ProtocolBinding<TController>
                 ?: throw NoSuchLocalProtocolException("Protocol handler not found: $protocols")
-
-        val multistream: Multistream<TController> =
-            Multistream.create(binding.toInitiator(protocols))
-        return conn.muxerSession().createStream(multistream.toStreamHandler())
+        return conn.muxerSession().createStream(listOf(binding))
     }
 }

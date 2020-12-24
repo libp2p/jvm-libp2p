@@ -4,8 +4,8 @@ import io.libp2p.core.dsl.SecureChannelCtor
 import io.libp2p.core.dsl.TransportCtor
 import io.libp2p.core.dsl.host
 import io.libp2p.core.multiformats.Multiaddr
+import io.libp2p.core.mux.MplexProtocol
 import io.libp2p.etc.types.getX
-import io.libp2p.mux.mplex.MplexStreamMuxer
 import io.libp2p.protocol.Identify
 import io.libp2p.protocol.Ping
 import io.libp2p.protocol.PingBinding
@@ -81,7 +81,7 @@ abstract class HostTransportsTest(
             add(secureChannelCtor)
         }
         muxers {
-            +::MplexStreamMuxer
+            + MplexProtocol
         }
         protocols {
             +Ping()
@@ -106,7 +106,7 @@ abstract class HostTransportsTest(
             add(secureChannelCtor)
         }
         muxers {
-            +::MplexStreamMuxer
+            + MplexProtocol
         }
         network {
             listen(listenAddress)

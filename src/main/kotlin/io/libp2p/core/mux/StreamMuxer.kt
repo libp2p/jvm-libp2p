@@ -29,7 +29,6 @@ interface StreamMuxer : ProtocolBinding<StreamMuxer.Session> {
     /**
      * This is the handler for streams opened by the remote side
      */
-    var inboundStreamHandler: StreamHandler<*>
 
     /**
      * The Multiplexer controller which is capable of opening new Streams
@@ -43,7 +42,10 @@ interface StreamMuxer : ProtocolBinding<StreamMuxer.Session> {
          * The returned [StreamHandler] contains both a future Stream for lowlevel Stream manipulations
          * and future Controller for the client protocol manipulations
          */
-        fun <T> createStream(streamHandler: StreamHandler<T>): StreamPromise<T>
+        fun <T> createStream(protocols: List<ProtocolBinding<T>>): StreamPromise<T>
+
+        @JvmDefault
+        fun <T> createStream(protocol: ProtocolBinding<T>): StreamPromise<T> = createStream(listOf(protocol))
     }
 }
 

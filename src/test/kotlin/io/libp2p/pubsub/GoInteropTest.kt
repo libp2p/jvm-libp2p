@@ -4,14 +4,14 @@ import io.libp2p.core.P2PChannel
 import io.libp2p.core.P2PChannelHandler
 import io.libp2p.core.PeerId
 import io.libp2p.core.Stream
-import io.libp2p.core.StreamHandler
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.crypto.unmarshalPublicKey
 import io.libp2p.core.dsl.host
 import io.libp2p.core.multiformats.Multiaddr
-import io.libp2p.core.multistream.Multistream
+import io.libp2p.core.multistream.MultistreamProtocol_v_1_0_0
 import io.libp2p.core.multistream.ProtocolBinding
+import io.libp2p.core.mux.MplexProtocol
 import io.libp2p.core.pubsub.MessageApi
 import io.libp2p.core.pubsub.Topic
 import io.libp2p.core.pubsub.createPubsubApi
@@ -112,26 +112,28 @@ class GoInteropTest {
             val pubsubApi = createPubsubApi(gossipRouter)
             val publisher = pubsubApi.createPublisher(privKey1, 8888)
 
-            val mplex = MplexStreamMuxer().also {
-                it.muxFramesDebugHandler = LoggingHandler("#3", LogLevel.ERROR)
-            }
-            val upgrader = ConnectionUpgrader(
-                listOf(SecIoSecureChannel(privKey1)),
-                listOf(mplex)
-            ).also {
-                //                it.beforeSecureHandler = LoggingHandler("#1", LogLevel.INFO)
-                it.afterSecureHandler = LoggingHandler("#2", LogLevel.INFO)
-            }
-
-            val tcpTransport = TcpTransport(upgrader)
             val gossip = GossipProtocol(gossipRouter).also {
                 it.debugGossipHandler = LoggingHandler("#4", LogLevel.INFO)
                 it.router.messageValidator = NOP_ROUTER_VALIDATOR
             }
 
             val applicationProtocols = listOf(ProtocolBinding.createSimple("/meshsub/1.0.0", gossip), Identify())
-            val inboundStreamHandler = StreamHandler { Multistream.create(applicationProtocols).initChannel(it) }
-            mplex.inboundStreamHandler = inboundStreamHandler
+            val muxer = MplexProtocol.createMuxer(MultistreamProtocol_v_1_0_0, applicationProtocols).also {
+                it as MplexStreamMuxer
+                it.muxFramesDebugHandler = LoggingHandler("#3", LogLevel.INFO)
+            }
+
+            val upgrader = ConnectionUpgrader(
+                MultistreamProtocol_v_1_0_0,
+                listOf(SecIoSecureChannel(privKey1)),
+                MultistreamProtocol_v_1_0_0,
+                listOf(muxer)
+            ).also {
+                //                it.beforeSecureHandler = LoggingHandler("#1", LogLevel.INFO)
+                it.afterSecureHandler = LoggingHandler("#2", LogLevel.INFO)
+            }
+
+            val tcpTransport = TcpTransport(upgrader)
             logger.info("Dialing...")
             val connFuture = tcpTransport.dial(
                 Multiaddr("/ip4/127.0.0.1/tcp/45555/p2p/$pdPeerId")
@@ -140,11 +142,10 @@ class GoInteropTest {
             var pingRes: Long? = null
             connFuture.thenCompose {
                 logger.info("Connection made")
-                val ret = it.muxerSession().createStream(Multistream.create(applicationProtocols).toStreamHandler()).controller
+                val ret = it.muxerSession().createStream(applicationProtocols).controller
 
-                val initiator = Multistream.create(Ping())
                 logger.info("Creating ping stream")
-                it.muxerSession().createStream(initiator.toStreamHandler())
+                it.muxerSession().createStream(Ping())
                     .controller.thenCompose {
                         println("Sending ping...")
                         it.ping()
@@ -232,7 +233,7 @@ class GoInteropTest {
                 add(::SecIoSecureChannel)
             }
             muxers {
-                +::MplexStreamMuxer
+                + MplexProtocol
             }
             addressBook {
                 memory()

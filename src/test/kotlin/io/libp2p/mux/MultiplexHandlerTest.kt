@@ -5,6 +5,7 @@ import io.libp2p.core.Libp2pException
 import io.libp2p.core.Stream
 import io.libp2p.core.StreamHandler
 import io.libp2p.core.StreamVisitor
+import io.libp2p.core.multistream.MultistreamProtocol_v_1_0_0
 import io.libp2p.etc.types.fromHex
 import io.libp2p.etc.types.getX
 import io.libp2p.etc.types.toByteArray
@@ -15,6 +16,7 @@ import io.libp2p.etc.util.netty.nettyInitializer
 import io.libp2p.mux.MuxFrame.Flag.DATA
 import io.libp2p.mux.MuxFrame.Flag.OPEN
 import io.libp2p.mux.MuxFrame.Flag.RESET
+import io.libp2p.mux.mplex.MplexHandler
 import io.libp2p.tools.TestChannel
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandler
@@ -51,7 +53,7 @@ class MultiplexHandlerTest {
                 childHandlers += handler
             }
         )
-        multistreamHandler = object : MuxHandler(null, streamHandler, null) {
+        multistreamHandler = object : MplexHandler(MultistreamProtocol_v_1_0_0, null, streamHandler, null) {
             // MuxHandler consumes the exception. Override this behaviour for testing
             override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
                 super.exceptionCaught(ctx, cause)

@@ -1,11 +1,11 @@
 package io.libp2p.security.secio
 
 import io.libp2p.core.Connection
-import io.libp2p.core.StreamHandler
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.multiformats.Multiaddr
-import io.libp2p.core.multistream.Multistream
+import io.libp2p.core.multistream.MultistreamProtocol_v_1_0_0
+import io.libp2p.core.mux.MplexProtocol
 import io.libp2p.etc.SimpleClientHandler
 import io.libp2p.etc.createSimpleBinding
 import io.libp2p.etc.types.toByteArray
@@ -50,28 +50,29 @@ class EchoSampleTest {
         val logger = LogManager.getLogger("test")
 
         val (privKey1, _) = generateKeyPair(KEY_TYPE.ECDSA)
-        val muxer = MplexStreamMuxer().also {
+        val applicationProtocols = listOf(createSimpleBinding("/echo/1.0.0") { EchoProtocol() })
+        val muxer = MplexProtocol.createMuxer(MultistreamProtocol_v_1_0_0, applicationProtocols).also {
+            it as MplexStreamMuxer
             it.muxFramesDebugHandler = LoggingHandler("#3", LogLevel.INFO)
         }
         val upgrader = ConnectionUpgrader(
+            MultistreamProtocol_v_1_0_0,
             listOf(SecIoSecureChannel(privKey1)),
+            MultistreamProtocol_v_1_0_0,
             listOf(muxer)
         ).also {
             it.beforeSecureHandler = LoggingHandler("#1", LogLevel.INFO)
             it.afterSecureHandler = LoggingHandler("#2", LogLevel.INFO)
         }
-
         val tcpTransport = TcpTransport(upgrader)
-        val applicationProtocols = listOf(createSimpleBinding("/echo/1.0.0") { EchoProtocol() })
-        val inboundStreamHandler = StreamHandler { Multistream.create(applicationProtocols).initChannel(it) }
-        muxer.inboundStreamHandler = inboundStreamHandler
+
         logger.info("Dialing...")
         val connFuture: CompletableFuture<Connection> = tcpTransport.dial(Multiaddr("/ip4/127.0.0.1/tcp/10000"))
 
         val echoString = "Helooooooooooooooooooooooooo\n"
         connFuture.thenCompose {
             logger.info("Connection made")
-            it.muxerSession().createStream(Multistream.create(applicationProtocols).toStreamHandler()).controller
+            it.muxerSession().createStream(applicationProtocols).controller
         }.thenCompose {
             logger.info("Stream created, sending echo string...")
             it.echo(echoString)

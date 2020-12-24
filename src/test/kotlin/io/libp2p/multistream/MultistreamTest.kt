@@ -1,6 +1,5 @@
 package io.libp2p.multistream
 
-import io.libp2p.core.multistream.Multistream
 import io.libp2p.tools.Echo
 import io.libp2p.tools.TestStreamChannel
 import io.netty.buffer.ByteBuf
@@ -17,13 +16,13 @@ class MultistreamTest {
     fun testZeroRoundtripNegotiation() {
         val channel1 = TestStreamChannel(
             true,
-            Multistream.create(Echo()),
+            Echo(),
             LoggingHandler("1", LogLevel.ERROR)
         )
 
         val channel2 = TestStreamChannel(
             false,
-            Multistream.create(Echo()),
+            Echo(),
             LoggingHandler("2", LogLevel.ERROR)
         )
 
@@ -61,7 +60,7 @@ class MultistreamTest {
 
         val channel3 = TestStreamChannel(
             false,
-            Multistream.create(Echo()),
+            Echo(),
             LoggingHandler("2", LogLevel.ERROR)
         )
         // write all 1 -> 2 messages stick together like below:

@@ -6,8 +6,7 @@ import io.libp2p.core.crypto.PrivKey;
 import io.libp2p.core.crypto.PubKey;
 import io.libp2p.core.dsl.HostBuilder;
 import io.libp2p.core.multiformats.Multiaddr;
-import io.libp2p.core.multistream.Multistream;
-import io.libp2p.mux.mplex.MplexStreamMuxer;
+import io.libp2p.core.mux.StreamMuxerProtocolKt;
 import io.libp2p.protocol.Ping;
 import io.libp2p.protocol.PingController;
 import io.libp2p.security.secio.SecIoSecureChannel;
@@ -39,13 +38,13 @@ public class HostTestJava {
         Host clientHost = new HostBuilder()
                 .transport(TcpTransport::new)
                 .secureChannel(SecIoSecureChannel::new)
-                .muxer(MplexStreamMuxer::new)
+                .muxer(StreamMuxerProtocolKt::getMplexProtocol)
                 .build();
 
         Host serverHost = new HostBuilder()
                 .transport(TcpTransport::new)
                 .secureChannel(SecIoSecureChannel::new)
-                .muxer(MplexStreamMuxer::new)
+                .muxer(StreamMuxerProtocolKt::getMplexProtocol)
                 .protocol(new Ping())
                 .listen(localListenAddress)
                 .build();
@@ -69,7 +68,7 @@ public class HostTestJava {
                         serverHost.getPeerId(),
                         new Multiaddr(localListenAddress)
                 ).thenApply(
-                        it -> it.muxerSession().createStream(Multistream.create(new Ping()).toStreamHandler())
+                        it -> it.muxerSession().createStream(new Ping())
                 )
                 .get(5, TimeUnit.SECONDS);
 

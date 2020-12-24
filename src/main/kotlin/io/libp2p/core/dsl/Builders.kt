@@ -9,17 +9,17 @@ import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.multiformats.Multiaddr
-import io.libp2p.core.multistream.Multistream
+import io.libp2p.core.multistream.MultistreamProtocol_v_1_0_0
 import io.libp2p.core.multistream.ProtocolBinding
 import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.core.mux.StreamMuxerDebug
+import io.libp2p.core.mux.StreamMuxerProtocol
 import io.libp2p.core.security.SecureChannel
 import io.libp2p.core.transport.Transport
 import io.libp2p.etc.types.lazyVar
 import io.libp2p.etc.types.toProtobuf
 import io.libp2p.host.HostImpl
 import io.libp2p.host.MemoryAddressBook
-import io.libp2p.mux.mplex.MplexStreamMuxer
 import io.libp2p.network.NetworkImpl
 import io.libp2p.protocol.IdentifyBinding
 import io.libp2p.security.secio.SecIoSecureChannel
@@ -58,6 +58,10 @@ open class Builder {
     protected open val connectionHandlers = ConnectionHandlerBuilder()
     protected open val network = NetworkConfigBuilder()
     protected open val debug = DebugBuilder()
+    protected open val multistreamProtocol = MultistreamProtocol_v_1_0_0
+    protected open val secureMultistreamProtocol = multistreamProtocol
+    protected open val muxerMultistreamProtocol = multistreamProtocol
+    protected open val streamMultistreamProtocol = multistreamProtocol
 
     /**
      * Sets an identity for this host. If unset, libp2p will default to a random identity.
@@ -125,27 +129,12 @@ open class Builder {
             if (identity.factory == null) identity.random()
             if (transports.values.isEmpty()) transports { add(::TcpTransport) }
             if (secureChannels.values.isEmpty()) secureChannels { add(::SecIoSecureChannel) }
-            if (muxers.values.isEmpty()) muxers { add(::MplexStreamMuxer) }
+//            if (muxers.values.isEmpty()) muxers { add(::MplexStreamMuxer) }
         }
 
         val privKey = identity.factory!!()
 
         val secureChannels = secureChannels.values.map { it(privKey) }
-        val muxers = muxers.values.map { it() }
-
-        val streamVisitors = StreamVisitor.createBroadcast()
-        muxers.mapNotNull { it as? StreamMuxerDebug }.forEach {
-            it.muxFramesDebugHandler = debug.muxFramesHandler.handler
-            it.streamVisitor = streamVisitors
-        }
-
-        val upgrader = ConnectionUpgrader(secureChannels, muxers).apply {
-            beforeSecureHandler = debug.beforeSecureHandler.handler
-            afterSecureHandler = debug.afterSecureHandler.handler
-        }
-
-        val transports = transports.values.map { it(upgrader) }
-        val addressBook = addressBook.impl
 
         protocols.values.mapNotNull { (it as? IdentifyBinding) }.map { it.protocol }.find { it.idMessage == null }?.apply {
             // initializing Identify with appropriate values
@@ -160,8 +149,22 @@ open class Builder {
             }
         }
 
-        val protocolsMultistream: Multistream<Any> = Multistream.create(protocols.values)
-        muxers.forEach { it.inboundStreamHandler = protocolsMultistream.toStreamHandler() }
+        val muxers = muxers.map { it.createMuxer(streamMultistreamProtocol, protocols.values) }
+
+        val streamVisitors = StreamVisitor.createBroadcast()
+        muxers.mapNotNull { it as? StreamMuxerDebug }.forEach {
+            it.muxFramesDebugHandler = debug.muxFramesHandler.handler
+            it.streamVisitor = streamVisitors
+        }
+
+        val upgrader = ConnectionUpgrader(secureMultistreamProtocol, secureChannels, streamMultistreamProtocol, muxers)
+            .apply {
+                beforeSecureHandler = debug.beforeSecureHandler.handler
+                afterSecureHandler = debug.afterSecureHandler.handler
+            }
+
+        val transports = transports.values.map { it(upgrader) }
+        val addressBook = addressBook.impl
 
         val connHandlerProtocols = protocols.values.mapNotNull { it as? ConnectionHandler }
         val broadcastConnHandler = ConnectionHandler.createBroadcast(
@@ -175,7 +178,7 @@ open class Builder {
             networkImpl,
             addressBook,
             network.listen.map { Multiaddr(it) },
-            protocolsMultistream,
+            protocols.values,
             broadcastConnHandler,
             streamVisitors
         )
@@ -203,7 +206,7 @@ class AddressBookBuilder {
 
 class TransportsBuilder : Enumeration<TransportCtor>()
 class SecureChannelsBuilder : Enumeration<SecureChannelCtor>()
-class MuxersBuilder : Enumeration<StreamMuxerCtor>()
+class MuxersBuilder : Enumeration<StreamMuxerProtocol>()
 class ProtocolsBuilder : Enumeration<ProtocolBinding<Any>>()
 class ConnectionHandlerBuilder : Enumeration<ConnectionHandler>()
 
