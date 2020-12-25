@@ -2,7 +2,6 @@ package io.libp2p.core.mux
 
 import io.libp2p.core.StreamHandler
 import io.libp2p.core.StreamPromise
-import io.libp2p.core.StreamVisitor
 import io.libp2p.core.multistream.ProtocolBinding
 import io.netty.channel.ChannelHandler
 
@@ -55,10 +54,4 @@ interface StreamMuxerDebug {
      * Normally this is an instance of [io.netty.handler.logging.LoggingHandler] for dumping muxer frames
      */
     var muxFramesDebugHandler: ChannelHandler?
-
-    /**
-     * Stream 'interceptor' which would be called prior to the [StreamHandler] of this [StreamMuxer]
-     * on any inbound or outbound [Stream] creation
-     */
-    var streamVisitor: StreamVisitor?
 }

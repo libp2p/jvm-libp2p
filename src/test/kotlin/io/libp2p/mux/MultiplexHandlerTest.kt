@@ -53,10 +53,9 @@ class MultiplexHandlerTest {
                 childHandlers += handler
             }
         )
-        multistreamHandler = object : MplexHandler(MultistreamProtocol_v_1_0_0, null, streamHandler, null) {
+        multistreamHandler = object : MplexHandler(MultistreamProtocol_v_1_0_0, null, streamHandler) {
             // MuxHandler consumes the exception. Override this behaviour for testing
             override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
-                super.exceptionCaught(ctx, cause)
                 ctx.fireExceptionCaught(cause)
             }
         }
