@@ -6,6 +6,7 @@ import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.crypto.PubKey
 import io.libp2p.core.crypto.generateKeyPair
+import io.libp2p.core.dsl.Builder
 import io.libp2p.core.dsl.host
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multiformats.Protocol
@@ -27,6 +28,8 @@ class HostFactory {
     var secureCtor = ::NoiseXXSecureChannel
     var mplexCtor = ::MplexStreamMuxer
     var muxLogLevel: LogLevel? = LogLevel.DEBUG
+
+    var hostBuilderModifier: Builder.() -> Unit = { }
 
     val createdHosts = mutableListOf<TestHost>()
 
@@ -58,9 +61,11 @@ class HostFactory {
             }
             debug {
                 muxLogLevel?.also {
-                    muxFramesHandler.setLogger(it, "host-$port") // don't log all that spam during DoS test
+                    muxFramesHandler.addLogger(it, "host-$port") // don't log all that spam during DoS test
                 }
             }
+
+            hostBuilderModifier()
         }
         host.start().get(5, TimeUnit.SECONDS)
 

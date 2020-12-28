@@ -123,8 +123,8 @@ abstract class ClientInterOpTest(
             +PingBinding(countedPingResponder)
         }
         debug {
-            beforeSecureHandler.setLogger(LogLevel.ERROR)
-            afterSecureHandler.setLogger(LogLevel.ERROR)
+            beforeSecureHandler.addLogger(LogLevel.ERROR)
+            afterSecureHandler.addLogger(LogLevel.ERROR)
         }
     }
 

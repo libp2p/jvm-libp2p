@@ -1,6 +1,9 @@
 package io.libp2p.security.secio
 
+import io.libp2p.core.ChannelVisitor
 import io.libp2p.core.Connection
+import io.libp2p.core.P2PChannel
+import io.libp2p.core.P2PChannelHandler
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.multiformats.Multiaddr
@@ -14,6 +17,7 @@ import io.libp2p.transport.ConnectionUpgrader
 import io.libp2p.transport.tcp.TcpTransport
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
+import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.logging.LogLevel
 import io.netty.handler.logging.LoggingHandler
@@ -53,17 +57,16 @@ class EchoSampleTest {
         val applicationProtocols = listOf(createSimpleBinding("/echo/1.0.0") { EchoProtocol() })
         val muxer = StreamMuxerProtocol.Mplex.createMuxer(MultistreamProtocol_v_1_0_0, applicationProtocols).also {
             it as MplexStreamMuxer
-            it.muxFramesDebugHandler = LoggingHandler("#3", LogLevel.INFO)
+            it.muxFramesDebugHandler = ChannelVisitor {
+                it.pushHandler(LoggingHandler("#3", LogLevel.INFO))
+            }
         }
         val upgrader = ConnectionUpgrader(
-            MultistreamProtocol_v_1_0_0,
+            MultistreamProtocol_v_1_0_0.copyWithHandlers(nettyToChannelHandler(LoggingHandler("#1", LogLevel.INFO))),
             listOf(SecIoSecureChannel(privKey1)),
-            MultistreamProtocol_v_1_0_0,
-            listOf(muxer)
-        ).also {
-            it.beforeSecureHandler = LoggingHandler("#1", LogLevel.INFO)
-            it.afterSecureHandler = LoggingHandler("#2", LogLevel.INFO)
-        }
+            MultistreamProtocol_v_1_0_0.copyWithHandlers(nettyToChannelHandler(LoggingHandler("#2", LogLevel.INFO))),
+            listOf(muxer))
+
         val tcpTransport = TcpTransport(upgrader)
 
         logger.info("Dialing...")
@@ -82,4 +85,9 @@ class EchoSampleTest {
         }.get(5, TimeUnit.SECONDS)
         logger.info("Success!")
     }
+
+    fun nettyToChannelHandler(ch: ChannelHandler): P2PChannelHandler<*> =
+        ChannelVisitor<P2PChannel> {
+            it.pushHandler(ch)
+        }.toChannelHandler()
 }

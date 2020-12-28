@@ -1,9 +1,10 @@
 package io.libp2p.core.mux
 
+import io.libp2p.core.ChannelVisitor
+import io.libp2p.core.Connection
 import io.libp2p.core.StreamHandler
 import io.libp2p.core.StreamPromise
 import io.libp2p.core.multistream.ProtocolBinding
-import io.netty.channel.ChannelHandler
 
 /**
  * Performs stream multiplexing of an abstract channel
@@ -53,5 +54,5 @@ interface StreamMuxerDebug {
      * The Netty handler (if not [null]) which is inserted right after multiplexer _frames_ decoder/encoder
      * Normally this is an instance of [io.netty.handler.logging.LoggingHandler] for dumping muxer frames
      */
-    var muxFramesDebugHandler: ChannelHandler?
+    var muxFramesDebugHandler: ChannelVisitor<Connection>?
 }

@@ -90,7 +90,7 @@ abstract class HostTransportsTest(
             +DoNothing()
         }
         debug {
-            muxFramesHandler.setLogger(LogLevel.ERROR)
+            muxFramesHandler.addLogger(LogLevel.ERROR)
         }
     }
 
@@ -117,7 +117,7 @@ abstract class HostTransportsTest(
             +Echo()
         }
         debug {
-            muxFramesHandler.setLogger(LogLevel.ERROR)
+            muxFramesHandler.addLogger(LogLevel.ERROR)
         }
     }
 

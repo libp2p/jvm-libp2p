@@ -1,5 +1,6 @@
 package io.libp2p.pubsub
 
+import io.libp2p.core.ChannelVisitor
 import io.libp2p.core.P2PChannel
 import io.libp2p.core.P2PChannelHandler
 import io.libp2p.core.PeerId
@@ -120,18 +121,17 @@ class GoInteropTest {
             val applicationProtocols = listOf(ProtocolBinding.createSimple("/meshsub/1.0.0", gossip), Identify())
             val muxer = StreamMuxerProtocol.Mplex.createMuxer(MultistreamProtocol_v_1_0_0, applicationProtocols).also {
                 it as MplexStreamMuxer
-                it.muxFramesDebugHandler = LoggingHandler("#3", LogLevel.INFO)
+                it.muxFramesDebugHandler = ChannelVisitor {
+                    it.pushHandler(LoggingHandler("#3", LogLevel.INFO))
+                }
             }
 
             val upgrader = ConnectionUpgrader(
                 MultistreamProtocol_v_1_0_0,
                 listOf(SecIoSecureChannel(privKey1)),
-                MultistreamProtocol_v_1_0_0,
+                MultistreamProtocol_v_1_0_0.copyWithHandlers(nettyToChannelHandler(LoggingHandler("#2", LogLevel.INFO))),
                 listOf(muxer)
-            ).also {
-                //                it.beforeSecureHandler = LoggingHandler("#1", LogLevel.INFO)
-                it.afterSecureHandler = LoggingHandler("#2", LogLevel.INFO)
-            }
+            )
 
             val tcpTransport = TcpTransport(upgrader)
             logger.info("Dialing...")
@@ -247,8 +247,7 @@ class GoInteropTest {
                 +gossip
             }
             debug {
-//                afterSecureHandler.setLogger(LogLevel.ERROR)
-                muxFramesHandler.setLogger(LogLevel.ERROR)
+                muxFramesHandler.addLogger(LogLevel.ERROR)
             }
         }
         d.defer {
@@ -307,6 +306,12 @@ class GoInteropTest {
 //            System.gc()
 //        }
     }
+
+    fun nettyToChannelHandler(ch: ChannelHandler): P2PChannelHandler<*> =
+        ChannelVisitor<P2PChannel> {
+            it.pushHandler(ch)
+        }.toChannelHandler()
+
 
     @Test
     fun sigTest() {

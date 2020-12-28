@@ -4,7 +4,6 @@ import io.libp2p.core.ConnectionClosedException
 import io.libp2p.core.Libp2pException
 import io.libp2p.core.Stream
 import io.libp2p.core.StreamHandler
-import io.libp2p.core.StreamVisitor
 import io.libp2p.core.multistream.MultistreamProtocol_v_1_0_0
 import io.libp2p.etc.types.fromHex
 import io.libp2p.etc.types.getX
@@ -192,10 +191,10 @@ class MultiplexHandlerTest {
         ech.close().await()
 
         val staleStream =
-            multistreamHandler.createStream(
-                StreamVisitor
-                { println("This shouldn't be displayed: parent stream is closed") }.toStreamHandler()
-            )
+            multistreamHandler.createStream {
+                println("This shouldn't be displayed: parent stream is closed")
+                CompletableFuture.completedFuture(Unit)
+            }
 
         assertThrows(ConnectionClosedException::class.java) { staleStream.stream.getX(3.0) }
     }

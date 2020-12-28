@@ -1,6 +1,5 @@
 package io.libp2p.core
 
-import io.libp2p.etc.BroadcastStreamVisitor
 import java.util.concurrent.CompletableFuture
 
 /**
@@ -25,24 +24,4 @@ data class StreamPromise<T>(
 fun interface StreamHandler<out TController> {
 
     fun handleStream(stream: Stream): CompletableFuture<out TController>
-}
-
-fun interface StreamVisitor {
-
-    fun onNewStream(stream: Stream)
-
-    @JvmDefault
-    fun toStreamHandler(): StreamHandler<Unit> = object : StreamHandler<Unit> {
-        override fun handleStream(stream: Stream): CompletableFuture<out Unit> {
-            onNewStream(stream)
-            return CompletableFuture.completedFuture(Unit)
-        }
-    }
-
-    interface Broadcast : StreamVisitor, MutableList<StreamVisitor>
-
-    companion object {
-        fun createBroadcast(vararg handlers: StreamVisitor) =
-            BroadcastStreamVisitor().also { it += handlers }
-    }
 }

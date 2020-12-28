@@ -1,6 +1,7 @@
 package io.libp2p.tools
 
 import io.libp2p.core.AddressBook
+import io.libp2p.core.ChannelVisitor
 import io.libp2p.core.Connection
 import io.libp2p.core.ConnectionHandler
 import io.libp2p.core.Host
@@ -8,7 +9,6 @@ import io.libp2p.core.Network
 import io.libp2p.core.PeerId
 import io.libp2p.core.Stream
 import io.libp2p.core.StreamPromise
-import io.libp2p.core.StreamVisitor
 import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multistream.ProtocolBinding
@@ -39,11 +39,11 @@ open class NullHost : Host {
         TODO("not implemented")
     }
 
-    override fun addStreamVisitor(handler: StreamVisitor) {
+    override fun addStreamVisitor(handler: ChannelVisitor<Stream>) {
         TODO("Not yet implemented")
     }
 
-    override fun removeStreamVisitor(handler: StreamVisitor) {
+    override fun removeStreamVisitor(handler: ChannelVisitor<Stream>) {
         TODO("Not yet implemented")
     }
 

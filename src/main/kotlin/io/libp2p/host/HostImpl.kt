@@ -1,6 +1,7 @@
 package io.libp2p.host
 
 import io.libp2p.core.AddressBook
+import io.libp2p.core.ChannelVisitor
 import io.libp2p.core.Connection
 import io.libp2p.core.ConnectionHandler
 import io.libp2p.core.Host
@@ -9,7 +10,6 @@ import io.libp2p.core.NoSuchLocalProtocolException
 import io.libp2p.core.PeerId
 import io.libp2p.core.Stream
 import io.libp2p.core.StreamPromise
-import io.libp2p.core.StreamVisitor
 import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multistream.ProtocolBinding
@@ -23,13 +23,13 @@ class HostImpl(
     private val listenAddrs: List<Multiaddr>,
     private val protocolHandlers: MutableList<ProtocolBinding<Any>>,
     private val connectionHandlers: ConnectionHandler.Broadcast,
-    private val streamHandlers: StreamVisitor.Broadcast
+    private val streamHandlers: ChannelVisitor.Broadcast<Stream>
 ) : Host {
 
     override val peerId = PeerId.fromPubKey(privKey.publicKey())
     override val streams = CopyOnWriteArrayList<Stream>()
 
-    private val internalStreamHandler = StreamVisitor { stream ->
+    private val internalStreamHandler = ChannelVisitor<Stream> { stream ->
         streams += stream
         stream.closeFuture().thenAccept { streams -= stream }
     }
@@ -62,11 +62,11 @@ class HostImpl(
         )
     }
 
-    override fun addStreamVisitor(handler: StreamVisitor) {
+    override fun addStreamVisitor(handler: ChannelVisitor<Stream>) {
         streamHandlers += handler
     }
 
-    override fun removeStreamVisitor(handler: StreamVisitor) {
+    override fun removeStreamVisitor(handler: ChannelVisitor<Stream>) {
         streamHandlers -= handler
     }
 

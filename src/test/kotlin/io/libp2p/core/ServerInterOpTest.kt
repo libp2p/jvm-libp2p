@@ -100,9 +100,9 @@ abstract class ServerInterOpTest(
             +DoNothing()
         }
         debug {
-            beforeSecureHandler.setLogger(LogLevel.ERROR)
-            afterSecureHandler.setLogger(LogLevel.ERROR)
-            muxFramesHandler.setLogger(LogLevel.ERROR)
+            beforeSecureHandler.addLogger(LogLevel.ERROR)
+            afterSecureHandler.addLogger(LogLevel.ERROR)
+            muxFramesHandler.addLogger(LogLevel.ERROR)
         }
     }
 

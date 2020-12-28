@@ -112,7 +112,7 @@ class RpcHandlerTest {
                 +RpcProtocol()
             }
             debug {
-                muxFramesHandler.setLogger(LogLevel.ERROR, "Host-1")
+                muxFramesHandler.addLogger(LogLevel.ERROR, "Host-1")
             }
         }
 
@@ -136,7 +136,7 @@ class RpcHandlerTest {
                 listen("/ip4/0.0.0.0/tcp/40002")
             }
             debug {
-                muxFramesHandler.setLogger(LogLevel.ERROR, "Host-2")
+                muxFramesHandler.addLogger(LogLevel.ERROR, "Host-2")
             }
         }
 

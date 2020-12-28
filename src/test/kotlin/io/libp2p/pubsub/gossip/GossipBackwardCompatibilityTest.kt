@@ -37,7 +37,7 @@ class GossipBackwardCompatibilityTest {
             +Gossip(routerV_1_0)
         }
         debug {
-            muxFramesHandler.setLogger(LogLevel.ERROR)
+            muxFramesHandler.addLogger(LogLevel.ERROR)
         }
     }
 
@@ -62,7 +62,7 @@ class GossipBackwardCompatibilityTest {
             +Gossip(routerV_1_1)
         }
         debug {
-            muxFramesHandler.setLogger(LogLevel.ERROR)
+            muxFramesHandler.addLogger(LogLevel.ERROR)
         }
     }
 
