@@ -20,21 +20,20 @@ class NullMultistreamProtocol : MultistreamProtocol {
 class NullConnectionUpgrader :
     ConnectionUpgrader(NullMultistreamProtocol(), emptyList(), NullMultistreamProtocol(), emptyList()) {
 
-
     override fun establishSecureChannel(connection: Connection):
-            CompletableFuture<SecureChannel.Session> {
-        val nonsenseSession = SecureChannel.Session(
-            PeerId.random(),
-            PeerId.random(),
-            generateKeyPair(KEY_TYPE.RSA).second
-        )
-        return CompletableFuture.completedFuture(nonsenseSession)
-    } // establishSecureChannel
+        CompletableFuture<SecureChannel.Session> {
+            val nonsenseSession = SecureChannel.Session(
+                PeerId.random(),
+                PeerId.random(),
+                generateKeyPair(KEY_TYPE.RSA).second
+            )
+            return CompletableFuture.completedFuture(nonsenseSession)
+        } // establishSecureChannel
 
     override fun establishMuxer(connection: Connection):
-            CompletableFuture<StreamMuxer.Session> {
-        return CompletableFuture.completedFuture(DoNothingMuxerSession())
-    } // establishMuxer
+        CompletableFuture<StreamMuxer.Session> {
+            return CompletableFuture.completedFuture(DoNothingMuxerSession())
+        } // establishMuxer
 
     private class DoNothingMuxerSession : StreamMuxer.Session {
         override fun <T> createStream(protocols: List<ProtocolBinding<T>>): StreamPromise<T> {

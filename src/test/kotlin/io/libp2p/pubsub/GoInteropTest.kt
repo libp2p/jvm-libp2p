@@ -312,7 +312,6 @@ class GoInteropTest {
             it.pushHandler(ch)
         }.toChannelHandler()
 
-
     @Test
     fun sigTest() {
         val fromS = "12201133e39444593a3f91c45aba4f44099fc7246866af9917f8648160180b3ec6ac"

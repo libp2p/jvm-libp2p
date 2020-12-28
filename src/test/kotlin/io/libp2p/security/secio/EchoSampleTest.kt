@@ -65,7 +65,8 @@ class EchoSampleTest {
             MultistreamProtocol_v_1_0_0.copyWithHandlers(nettyToChannelHandler(LoggingHandler("#1", LogLevel.INFO))),
             listOf(SecIoSecureChannel(privKey1)),
             MultistreamProtocol_v_1_0_0.copyWithHandlers(nettyToChannelHandler(LoggingHandler("#2", LogLevel.INFO))),
-            listOf(muxer))
+            listOf(muxer)
+        )
 
         val tcpTransport = TcpTransport(upgrader)
 

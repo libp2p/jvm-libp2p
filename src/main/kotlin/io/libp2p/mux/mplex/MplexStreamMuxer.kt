@@ -16,7 +16,7 @@ class MplexStreamMuxer(
 ) : StreamMuxer, StreamMuxerDebug {
 
     override val protocolDescriptor = ProtocolDescriptor("/mplex/6.7.0")
-    override var muxFramesDebugHandler : ChannelVisitor<Connection>? = null
+    override var muxFramesDebugHandler: ChannelVisitor<Connection>? = null
 
     override fun initChannel(ch: P2PChannel, selectedProtocol: String): CompletableFuture<out StreamMuxer.Session> {
         val muxSessionReady = CompletableFuture<StreamMuxer.Session>()

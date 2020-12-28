@@ -14,7 +14,9 @@ fun interface StreamMuxerProtocol {
             MplexStreamMuxer(
                 multistreamProtocol.create(
                     protocols
-                ).toStreamHandler(), multistreamProtocol
-            ) }
+                ).toStreamHandler(),
+                multistreamProtocol
+            )
+        }
     }
 }

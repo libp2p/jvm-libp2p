@@ -10,5 +10,4 @@ open class MplexHandler(
     override val multistreamProtocol: MultistreamProtocol,
     ready: CompletableFuture<StreamMuxer.Session>?,
     inboundStreamHandler: StreamHandler<*>
-) : MuxHandler(ready, inboundStreamHandler) {
-}
+) : MuxHandler(ready, inboundStreamHandler)

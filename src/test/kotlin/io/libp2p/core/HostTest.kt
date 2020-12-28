@@ -116,6 +116,5 @@ class HostTest {
 
         val ret = ctrl.ping().get(5, TimeUnit.SECONDS)
         assertThat(ret).isGreaterThanOrEqualTo(0)
-
     }
 }
