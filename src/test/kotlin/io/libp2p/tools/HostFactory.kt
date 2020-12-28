@@ -10,6 +10,7 @@ import io.libp2p.core.dsl.Builder
 import io.libp2p.core.dsl.host
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multiformats.Protocol
+import io.libp2p.core.multistream.ProtocolBinding
 import io.libp2p.core.mux.StreamMuxerProtocol
 import io.libp2p.etc.types.thenApplyAll
 import io.libp2p.mux.mplex.MplexStreamMuxer
@@ -30,6 +31,7 @@ class HostFactory {
     var muxLogLevel: LogLevel? = LogLevel.DEBUG
 
     var hostBuilderModifier: Builder.() -> Unit = { }
+    var protocols = listOf<ProtocolBinding<Any>>(Ping(), Identify(), Echo())
 
     val createdHosts = mutableListOf<TestHost>()
 
@@ -55,9 +57,7 @@ class HostFactory {
                 listen(address.toString())
             }
             protocols {
-                +Ping()
-                +Identify()
-                +Echo()
+                addAll(protocols)
             }
             debug {
                 muxLogLevel?.also {
