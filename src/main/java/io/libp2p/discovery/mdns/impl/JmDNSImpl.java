@@ -391,8 +391,6 @@ public class JmDNSImpl extends JmDNS {
         for (ServiceResolver resolver : _serviceResolvers.values())
             shutdowns.add(resolver.stop());
 
-        _executor.shutdown();
-
         // close socket
         this.closeMulticastSocket();
 
@@ -411,6 +409,9 @@ public class JmDNSImpl extends JmDNS {
                 throw new RuntimeException(e);
             }
         }
+
+        _executor.shutdown();
+
         logger.debug("JmDNS stopped.");
     }
 

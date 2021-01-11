@@ -90,7 +90,7 @@ abstract class HostTest(
             +DoNothing()
         }
         debug {
-            muxFramesHandler.setLogger(LogLevel.ERROR)
+            muxFramesHandler.setLogger(LogLevel.DEBUG) // don't log all that spam during DoS test
         }
     }
 
@@ -117,7 +117,7 @@ abstract class HostTest(
             +Echo()
         }
         debug {
-            muxFramesHandler.setLogger(LogLevel.ERROR)
+            muxFramesHandler.setLogger(LogLevel.DEBUG) // don't log all that spam during DoS test
         }
     }
 

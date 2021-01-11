@@ -2,8 +2,10 @@ package io.libp2p.pubsub
 
 import io.libp2p.core.PeerId
 import io.libp2p.core.Stream
+import io.libp2p.core.crypto.sha256
 import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.etc.types.WBytes
+import io.libp2p.etc.types.toWBytes
 import io.netty.channel.ChannelHandler
 import pubsub.pb.Rpc
 import java.util.Random
@@ -14,6 +16,8 @@ typealias Topic = String
 typealias MessageId = WBytes
 typealias PubsubMessageFactory = (Rpc.Message) -> PubsubMessage
 
+data class PubsubSubscription(val topic: Topic, val subscribe: Boolean)
+
 interface PubsubMessage {
     val protobufMessage: Rpc.Message
     val messageId: MessageId
@@ -23,7 +27,18 @@ interface PubsubMessage {
         get() = protobufMessage.topicIDsList
 
     override fun equals(other: Any?): Boolean
+
+    /**
+     * WARNING: Use collision resistant functions only
+     * Else the HashMap collision attack vector is open
+     */
     override fun hashCode(): Int
+}
+
+abstract class AbstractPubsubMessage : PubsubMessage {
+    override fun equals(other: Any?) = protobufMessage == (other as? PubsubMessage)?.protobufMessage
+    override fun hashCode() = sha256(protobufMessage.toByteArray()).toWBytes().hashCode()
+    override fun toString() = "PubsubMessage{$protobufMessage}"
 }
 
 /**

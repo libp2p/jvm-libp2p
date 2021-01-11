@@ -14,7 +14,7 @@ class DoNothing : DoNothingBinding(DoNothingProtocol())
 open class DoNothingBinding(nullProtocol: DoNothingProtocol) :
     StrictProtocolBinding<DoNothingController>("/ipfs/do-nothing/1.0.0", nullProtocol)
 
-class DoNothingProtocol : ProtocolHandler<DoNothingController>() {
+class DoNothingProtocol : ProtocolHandler<DoNothingController>(Long.MAX_VALUE, Long.MAX_VALUE) {
     override fun onStartInitiator(stream: Stream) = addDoNothingHandler(stream)
     override fun onStartResponder(stream: Stream) = addDoNothingHandler(stream)
 
