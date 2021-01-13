@@ -4,7 +4,7 @@ import io.libp2p.core.P2PChannel
 import io.libp2p.core.P2PChannelHandler
 import java.util.concurrent.CompletableFuture
 
-abstract class StrictProtocolBinding<out TController>(
+abstract class StrictProtocolBinding<TController>(
     announce: ProtocolId,
     open val protocol: P2PChannelHandler<TController>
 ) : ProtocolBinding<TController> {

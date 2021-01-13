@@ -3,7 +3,8 @@ package io.libp2p.mux
 import io.libp2p.core.Stream
 import io.libp2p.core.StreamHandler
 import io.libp2p.core.StreamPromise
-import io.libp2p.core.StreamVisitor
+import io.libp2p.core.multistream.MultistreamProtocol
+import io.libp2p.core.multistream.ProtocolBinding
 import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.etc.CONNECTION
 import io.libp2p.etc.STREAM
@@ -18,15 +19,16 @@ import io.netty.channel.ChannelHandlerContext
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicLong
 
-open class MuxHandler(
+open abstract class MuxHandler(
     private val ready: CompletableFuture<StreamMuxer.Session>?,
-    inboundStreamHandler: StreamHandler<*>,
-    private val streamVisitor: StreamVisitor?
+    inboundStreamHandler: StreamHandler<*>
 ) : AbstractMuxHandler<ByteBuf>(), StreamMuxer.Session {
     private val idGenerator = AtomicLong(0xF)
 
+    protected abstract val multistreamProtocol: MultistreamProtocol
+
     override val inboundInitializer: MuxChannelInitializer<ByteBuf> = {
-        createAndHandleStream(it, inboundStreamHandler)
+        inboundStreamHandler.handleStream(createStream(it))
     }
 
     override fun handlerAdded(ctx: ChannelHandlerContext) {
@@ -80,19 +82,14 @@ open class MuxHandler(
         return stream
     }
 
-    private fun <T> createAndHandleStream(
-        channel: MuxChannel<ByteBuf>,
-        protocolStreamHandler: StreamHandler<T>
-    ): CompletableFuture<out T> {
-        val stream = createStream(channel)
-        streamVisitor?.onNewStream(stream)
-        return protocolStreamHandler.handleStream(stream)
+    override fun <T> createStream(protocols: List<ProtocolBinding<T>>): StreamPromise<T> {
+        return createStream(multistreamProtocol.createMultistream(protocols).toStreamHandler())
     }
 
-    override fun <T> createStream(streamHandler: StreamHandler<T>): StreamPromise<T> {
+    fun <T> createStream(streamHandler: StreamHandler<T>): StreamPromise<T> {
         val controller = CompletableFuture<T>()
         val stream = newStream {
-            createAndHandleStream(it, streamHandler).forward(controller)
+            streamHandler.handleStream(createStream(it)).forward(controller)
         }.thenApply { it.attr(STREAM).get() }
         return StreamPromise(stream, controller)
     }

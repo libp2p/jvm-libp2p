@@ -2,7 +2,7 @@ package io.libp2p.pubsub.gossip
 
 import io.libp2p.core.dsl.host
 import io.libp2p.core.multiformats.Multiaddr
-import io.libp2p.mux.mplex.MplexStreamMuxer
+import io.libp2p.core.mux.StreamMuxerProtocol
 import io.libp2p.pubsub.PubsubProtocol
 import io.libp2p.security.noise.NoiseXXSecureChannel
 import io.libp2p.transport.tcp.TcpTransport
@@ -31,13 +31,13 @@ class GossipBackwardCompatibilityTest {
             add(::NoiseXXSecureChannel)
         }
         muxers {
-            +::MplexStreamMuxer
+            + StreamMuxerProtocol.Mplex
         }
         protocols {
             +Gossip(routerV_1_0)
         }
         debug {
-            muxFramesHandler.setLogger(LogLevel.ERROR)
+            muxFramesHandler.addLogger(LogLevel.ERROR)
         }
     }
 
@@ -56,13 +56,13 @@ class GossipBackwardCompatibilityTest {
             add(::NoiseXXSecureChannel)
         }
         muxers {
-            +::MplexStreamMuxer
+            + StreamMuxerProtocol.Mplex
         }
         protocols {
             +Gossip(routerV_1_1)
         }
         debug {
-            muxFramesHandler.setLogger(LogLevel.ERROR)
+            muxFramesHandler.addLogger(LogLevel.ERROR)
         }
     }
 

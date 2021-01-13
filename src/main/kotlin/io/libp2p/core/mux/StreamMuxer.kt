@@ -1,10 +1,10 @@
 package io.libp2p.core.mux
 
+import io.libp2p.core.ChannelVisitor
+import io.libp2p.core.Connection
 import io.libp2p.core.StreamHandler
 import io.libp2p.core.StreamPromise
-import io.libp2p.core.StreamVisitor
 import io.libp2p.core.multistream.ProtocolBinding
-import io.netty.channel.ChannelHandler
 
 /**
  * Performs stream multiplexing of an abstract channel
@@ -27,11 +27,6 @@ import io.netty.channel.ChannelHandler
 interface StreamMuxer : ProtocolBinding<StreamMuxer.Session> {
 
     /**
-     * This is the handler for streams opened by the remote side
-     */
-    var inboundStreamHandler: StreamHandler<*>
-
-    /**
      * The Multiplexer controller which is capable of opening new Streams
      */
     interface Session {
@@ -43,7 +38,10 @@ interface StreamMuxer : ProtocolBinding<StreamMuxer.Session> {
          * The returned [StreamHandler] contains both a future Stream for lowlevel Stream manipulations
          * and future Controller for the client protocol manipulations
          */
-        fun <T> createStream(streamHandler: StreamHandler<T>): StreamPromise<T>
+        fun <T> createStream(protocols: List<ProtocolBinding<T>>): StreamPromise<T>
+
+        @JvmDefault
+        fun <T> createStream(protocol: ProtocolBinding<T>): StreamPromise<T> = createStream(listOf(protocol))
     }
 }
 
@@ -56,11 +54,5 @@ interface StreamMuxerDebug {
      * The Netty handler (if not [null]) which is inserted right after multiplexer _frames_ decoder/encoder
      * Normally this is an instance of [io.netty.handler.logging.LoggingHandler] for dumping muxer frames
      */
-    var muxFramesDebugHandler: ChannelHandler?
-
-    /**
-     * Stream 'interceptor' which would be called prior to the [StreamHandler] of this [StreamMuxer]
-     * on any inbound or outbound [Stream] creation
-     */
-    var streamVisitor: StreamVisitor?
+    var muxFramesDebugHandler: ChannelVisitor<Connection>?
 }

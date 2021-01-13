@@ -4,7 +4,7 @@ import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.dsl.SecureChannelCtor
 import io.libp2p.core.dsl.TransportCtor
 import io.libp2p.core.dsl.host
-import io.libp2p.mux.mplex.MplexStreamMuxer
+import io.libp2p.core.mux.StreamMuxerProtocol
 import io.libp2p.protocol.PingBinding
 import io.libp2p.security.noise.NoiseXXSecureChannel
 import io.libp2p.security.plaintext.PlaintextInsecureChannel
@@ -114,7 +114,7 @@ abstract class ClientInterOpTest(
             add(secureChannelCtor)
         }
         muxers {
-            +::MplexStreamMuxer
+            + StreamMuxerProtocol.Mplex
         }
         network {
             listen(listenAddress)
@@ -123,8 +123,8 @@ abstract class ClientInterOpTest(
             +PingBinding(countedPingResponder)
         }
         debug {
-            beforeSecureHandler.setLogger(LogLevel.ERROR)
-            afterSecureHandler.setLogger(LogLevel.ERROR)
+            beforeSecureHandler.addLogger(LogLevel.ERROR)
+            afterSecureHandler.addLogger(LogLevel.ERROR)
         }
     }
 

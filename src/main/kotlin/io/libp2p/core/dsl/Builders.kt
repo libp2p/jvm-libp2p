@@ -2,24 +2,29 @@ package io.libp2p.core.dsl
 
 import identify.pb.IdentifyOuterClass
 import io.libp2p.core.AddressBook
+import io.libp2p.core.ChannelVisitor
+import io.libp2p.core.Connection
 import io.libp2p.core.ConnectionHandler
 import io.libp2p.core.Host
-import io.libp2p.core.StreamVisitor
+import io.libp2p.core.P2PChannel
+import io.libp2p.core.Stream
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.multiformats.Multiaddr
-import io.libp2p.core.multistream.Multistream
+import io.libp2p.core.multistream.MultistreamProtocol
+import io.libp2p.core.multistream.MultistreamProtocolDebug
+import io.libp2p.core.multistream.MultistreamProtocolV1
 import io.libp2p.core.multistream.ProtocolBinding
 import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.core.mux.StreamMuxerDebug
+import io.libp2p.core.mux.StreamMuxerProtocol
 import io.libp2p.core.security.SecureChannel
 import io.libp2p.core.transport.Transport
 import io.libp2p.etc.types.lazyVar
 import io.libp2p.etc.types.toProtobuf
 import io.libp2p.host.HostImpl
 import io.libp2p.host.MemoryAddressBook
-import io.libp2p.mux.mplex.MplexStreamMuxer
 import io.libp2p.network.NetworkImpl
 import io.libp2p.protocol.IdentifyBinding
 import io.libp2p.security.secio.SecIoSecureChannel
@@ -31,8 +36,6 @@ import io.netty.handler.logging.LoggingHandler
 
 typealias TransportCtor = (ConnectionUpgrader) -> Transport
 typealias SecureChannelCtor = (PrivKey) -> SecureChannel
-typealias StreamMuxerCtor = () -> StreamMuxer
-typealias ProtocolCtor = () -> ProtocolBinding<*>
 typealias IdentityFactory = () -> PrivKey
 
 class HostConfigurationException(message: String) : RuntimeException(message)
@@ -58,6 +61,10 @@ open class Builder {
     protected open val connectionHandlers = ConnectionHandlerBuilder()
     protected open val network = NetworkConfigBuilder()
     protected open val debug = DebugBuilder()
+    var multistreamProtocol: MultistreamProtocol = MultistreamProtocolV1
+    var secureMultistreamProtocol: MultistreamProtocol by lazyVar { multistreamProtocol }
+    var muxerMultistreamProtocol: MultistreamProtocol by lazyVar { multistreamProtocol }
+    var streamMultistreamProtocol: MultistreamProtocol by lazyVar { multistreamProtocol }
 
     /**
      * Sets an identity for this host. If unset, libp2p will default to a random identity.
@@ -125,27 +132,35 @@ open class Builder {
             if (identity.factory == null) identity.random()
             if (transports.values.isEmpty()) transports { add(::TcpTransport) }
             if (secureChannels.values.isEmpty()) secureChannels { add(::SecIoSecureChannel) }
-            if (muxers.values.isEmpty()) muxers { add(::MplexStreamMuxer) }
+            if (muxers.values.isEmpty()) muxers { add(StreamMuxerProtocol.Mplex) }
         }
+
+        if (debug.beforeSecureHandler.handlers.isNotEmpty()) {
+            (secureMultistreamProtocol as? MultistreamProtocolDebug)?.also {
+                val broadcast = ChannelVisitor.createBroadcast(*debug.beforeSecureHandler.handlers.toTypedArray())
+                secureMultistreamProtocol = it.copyWithHandlers(preHandler = broadcast.toChannelHandler())
+            } ?: throw IllegalStateException("beforeSecureHandler can't be installed as MultistreamProtocol doesn't support debugging interface: ${secureMultistreamProtocol.javaClass}")
+        }
+
+        if (debug.afterSecureHandler.handlers.isNotEmpty()) {
+            (muxerMultistreamProtocol as? MultistreamProtocolDebug)?.also {
+                val broadcast = ChannelVisitor.createBroadcast(*debug.afterSecureHandler.handlers.toTypedArray())
+                muxerMultistreamProtocol = it.copyWithHandlers(preHandler = broadcast.toChannelHandler())
+            } ?: throw IllegalStateException("afterSecureHandler can't be installed as MultistreamProtocol doesn't support debugging interface: ${muxerMultistreamProtocol.javaClass}")
+        }
+
+        val streamVisitors = ChannelVisitor.createBroadcast<Stream>()
+        (streamMultistreamProtocol as? MultistreamProtocolDebug)?.also {
+            val broadcastPre =
+                ChannelVisitor.createBroadcast(*(debug.streamPreHandler.handlers + (streamVisitors as ChannelVisitor<Stream>)).toTypedArray())
+            val broadcast = ChannelVisitor.createBroadcast(*debug.streamHandler.handlers.toTypedArray())
+            streamMultistreamProtocol =
+                it.copyWithHandlers(broadcastPre.toChannelHandler(), broadcast.toChannelHandler())
+        } ?: throw IllegalStateException("streamPreHandler or streamHandler can't be installed as MultistreamProtocol doesn't support debugging interface: ${streamMultistreamProtocol.javaClass}")
 
         val privKey = identity.factory!!()
 
         val secureChannels = secureChannels.values.map { it(privKey) }
-        val muxers = muxers.values.map { it() }
-
-        val streamVisitors = StreamVisitor.createBroadcast()
-        muxers.mapNotNull { it as? StreamMuxerDebug }.forEach {
-            it.muxFramesDebugHandler = debug.muxFramesHandler.handler
-            it.streamVisitor = streamVisitors
-        }
-
-        val upgrader = ConnectionUpgrader(secureChannels, muxers).apply {
-            beforeSecureHandler = debug.beforeSecureHandler.handler
-            afterSecureHandler = debug.afterSecureHandler.handler
-        }
-
-        val transports = transports.values.map { it(upgrader) }
-        val addressBook = addressBook.impl
 
         protocols.values.mapNotNull { (it as? IdentifyBinding) }.map { it.protocol }.find { it.idMessage == null }?.apply {
             // initializing Identify with appropriate values
@@ -160,8 +175,19 @@ open class Builder {
             }
         }
 
-        val protocolsMultistream: Multistream<Any> = Multistream.create(protocols.values)
-        muxers.forEach { it.inboundStreamHandler = protocolsMultistream.toStreamHandler() }
+        val muxers = muxers.map { it.createMuxer(streamMultistreamProtocol, protocols.values) }
+
+        if (debug.muxFramesHandler.handlers.isNotEmpty()) {
+            val broadcast = ChannelVisitor.createBroadcast(*debug.muxFramesHandler.handlers.toTypedArray())
+            muxers.mapNotNull { it as? StreamMuxerDebug }.forEach {
+                it.muxFramesDebugHandler = broadcast
+            }
+        }
+
+        val upgrader = ConnectionUpgrader(secureMultistreamProtocol, secureChannels, muxerMultistreamProtocol, muxers)
+
+        val transports = transports.values.map { it(upgrader) }
+        val addressBook = addressBook.impl
 
         val connHandlerProtocols = protocols.values.mapNotNull { it as? ConnectionHandler }
         val broadcastConnHandler = ConnectionHandler.createBroadcast(
@@ -175,7 +201,7 @@ open class Builder {
             networkImpl,
             addressBook,
             network.listen.map { Multiaddr(it) },
-            protocolsMultistream,
+            protocols.values,
             broadcastConnHandler,
             streamVisitors
         )
@@ -203,7 +229,7 @@ class AddressBookBuilder {
 
 class TransportsBuilder : Enumeration<TransportCtor>()
 class SecureChannelsBuilder : Enumeration<SecureChannelCtor>()
-class MuxersBuilder : Enumeration<StreamMuxerCtor>()
+class MuxersBuilder : Enumeration<StreamMuxerProtocol>()
 class ProtocolsBuilder : Enumeration<ProtocolBinding<Any>>()
 class ConnectionHandlerBuilder : Enumeration<ConnectionHandler>()
 
@@ -212,24 +238,36 @@ class DebugBuilder {
      * Injects the [ChannelHandler] to the wire closest point.
      * Could be primarily useful for security handshake debugging/monitoring
      */
-    val beforeSecureHandler = DebugHandlerBuilder("wire.sec.before")
+    val beforeSecureHandler = DebugHandlerBuilder<Connection>("wire.sec.before")
     /**
      * Injects the [ChannelHandler] right after the connection cipher
      * to handle plain wire messages
      */
-    val afterSecureHandler = DebugHandlerBuilder("wire.sec.after")
+    val afterSecureHandler = DebugHandlerBuilder<Connection>("wire.sec.after")
     /**
      * Injects the [ChannelHandler] right after the [StreamMuxer] pipeline handler
      * It intercepts [io.libp2p.mux.MuxFrame] instances
      */
-    val muxFramesHandler = DebugHandlerBuilder("wire.mux.frames")
+    val muxFramesHandler = DebugHandlerBuilder<Connection>("wire.mux.frames")
+
+    val streamPreHandler = DebugHandlerBuilder<Stream>("wire.stream.pre")
+
+    val streamHandler = DebugHandlerBuilder<Stream>("wire.stream")
 }
 
-class DebugHandlerBuilder(var name: String) {
-    var handler: ChannelHandler? = null
+class DebugHandlerBuilder<TChannel : P2PChannel>(var name: String) {
+    val handlers = mutableListOf<ChannelVisitor<TChannel>>()
 
-    fun setLogger(level: LogLevel, loggerName: String = name) {
-        handler = LoggingHandler(loggerName, level)
+    fun addHandler(handler: ChannelVisitor<TChannel>) {
+        handlers += handler
+    }
+
+    fun addNettyHandler(handler: ChannelHandler) {
+        addHandler { it.pushHandler(handler) }
+    }
+
+    fun addLogger(level: LogLevel, loggerName: String = name) {
+        addNettyHandler(LoggingHandler(loggerName, level))
     }
 }
 

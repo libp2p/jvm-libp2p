@@ -59,20 +59,20 @@ interface Host {
     fun stop(): CompletableFuture<Void>
 
     /**
-     * Add the [StreamVisitor] which would be invoked prior to any protocol [StreamHandler]s on any
+     * Add the [ChannelVisitor] which would be invoked prior to any protocol [StreamHandler]s on any
      * created inbound or outbound [Stream]
      * The [streamVisitor] is free to setup any handlers on a [Stream] however those handlers
      * should be careful to propagate any events up/down the Netty pipeline and not modify
      * [ByteBuf]s to keep protocol [StreamHandler]s functioning as expected
      */
-    fun addStreamVisitor(streamVisitor: StreamVisitor)
+    fun addStreamVisitor(streamVisitor: ChannelVisitor<Stream>)
 
     /**
      * Removes the visitor added with [addStreamVisitor]
      * Please note that removing a visitor doesn't affect any Netty handlers installed by the visitor
      * on any streams created before
      */
-    fun removeStreamVisitor(streamVisitor: StreamVisitor)
+    fun removeStreamVisitor(streamVisitor: ChannelVisitor<Stream>)
 
     /**
      * Adds a new supported protocol 'on the fly'
