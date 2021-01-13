@@ -12,7 +12,7 @@ fun interface StreamMuxerProtocol {
         @JvmStatic
         val Mplex = StreamMuxerProtocol { multistreamProtocol, protocols ->
             MplexStreamMuxer(
-                multistreamProtocol.create(
+                multistreamProtocol.createMultistream(
                     protocols
                 ).toStreamHandler(),
                 multistreamProtocol

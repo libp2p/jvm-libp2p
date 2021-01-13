@@ -32,7 +32,7 @@ class TestStreamChannel<TController>(
         *handlers,
         nettyInitializer {
             if (binding != null) {
-                multistreamProtocol.create(listOf(binding)).initChannel(it.channel.getP2PChannel()).forward(controllerFuture)
+                multistreamProtocol.createMultistream(listOf(binding)).initChannel(it.channel.getP2PChannel()).forward(controllerFuture)
             }
         }
     )

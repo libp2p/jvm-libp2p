@@ -14,7 +14,7 @@ import java.util.concurrent.CompletableFuture
 class NullMultistreamProtocol : MultistreamProtocol {
     override val version = "0.0.0"
 
-    override fun <TController> create(bindings: List<ProtocolBinding<TController>>) = TODO()
+    override fun <TController> createMultistream(bindings: List<ProtocolBinding<TController>>) = TODO()
 }
 
 class NullConnectionUpgrader :

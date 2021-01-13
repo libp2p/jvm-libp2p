@@ -12,7 +12,7 @@ interface MultistreamProtocol {
     /**
      * Creates [Multistream] implementation with a list of protocol bindings
      */
-    fun <TController> create(bindings: List<ProtocolBinding<TController>>): Multistream<TController>
+    fun <TController> createMultistream(bindings: List<ProtocolBinding<TController>>): Multistream<TController>
 }
 
 interface MultistreamProtocolDebug : MultistreamProtocol {
@@ -30,7 +30,7 @@ class MultistreamProtocolDebug_v_1_0_0(
 
     override val version = "1.0.0"
 
-    override fun <TController> create(bindings: List<ProtocolBinding<TController>>) =
+    override fun <TController> createMultistream(bindings: List<ProtocolBinding<TController>>) =
         MultistreamImpl(bindings, preHandler, postHandler)
 
     override fun copyWithHandlers(

@@ -83,7 +83,7 @@ open abstract class MuxHandler(
     }
 
     override fun <T> createStream(protocols: List<ProtocolBinding<T>>): StreamPromise<T> {
-        return createStream(multistreamProtocol.create(protocols).toStreamHandler())
+        return createStream(multistreamProtocol.createMultistream(protocols).toStreamHandler())
     }
 
     fun <T> createStream(streamHandler: StreamHandler<T>): StreamPromise<T> {
