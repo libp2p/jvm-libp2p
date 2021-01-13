@@ -24,19 +24,19 @@ class HostImpl(
     private val listenAddrs: List<Multiaddr>,
     private val protocolHandlers: Multistream<Any>,
     private val connectionHandlers: ConnectionHandler.Broadcast,
-    private val streamHandlers: StreamVisitor.Broadcast
+    private val streamVisitors: StreamVisitor.Broadcast
 ) : Host {
 
     override val peerId = PeerId.fromPubKey(privKey.publicKey())
     override val streams = CopyOnWriteArrayList<Stream>()
 
-    private val internalStreamHandler = StreamVisitor { stream ->
+    private val internalStreamVisitor = StreamVisitor { stream ->
         streams += stream
         stream.closeFuture().thenAccept { streams -= stream }
     }
 
     init {
-        streamHandlers += internalStreamHandler
+        streamVisitors += internalStreamVisitor
     }
 
     override fun listenAddresses(): List<Multiaddr> {
@@ -63,12 +63,12 @@ class HostImpl(
         )
     }
 
-    override fun addStreamVisitor(handler: StreamVisitor) {
-        streamHandlers += handler
+    override fun addStreamVisitor(streamVisitor: StreamVisitor) {
+        streamVisitors += streamVisitor
     }
 
-    override fun removeStreamVisitor(handler: StreamVisitor) {
-        streamHandlers -= handler
+    override fun removeStreamVisitor(streamVisitor: StreamVisitor) {
+        streamVisitors -= streamVisitor
     }
 
     override fun addProtocolHandler(protocolBinding: ProtocolBinding<Any>) {
