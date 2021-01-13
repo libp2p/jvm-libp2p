@@ -39,7 +39,6 @@ open class ConnectionUpgrader(
         channels: List<T>
     ): CompletableFuture<R> {
         val multistream = multistreamProtocol.createMultistream(channels)
-        // TODO unchecked cast
-        return multistream.initChannel(connection) as CompletableFuture<R>
+        return multistream.initChannel(connection)
     } // establish
 } // ConnectionUpgrader

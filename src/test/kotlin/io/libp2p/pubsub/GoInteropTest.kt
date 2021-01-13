@@ -60,7 +60,7 @@ import java.util.function.Consumer
 class GossipProtocol(val router: PubsubRouterDebug) : P2PChannelHandler<Unit> {
     var debugGossipHandler: ChannelHandler? = null
 
-    override fun initChannel(ch: P2PChannel): CompletableFuture<out Unit> {
+    override fun initChannel(ch: P2PChannel): CompletableFuture<Unit> {
         router.addPeerWithDebugHandler(ch as Stream, debugGossipHandler)
         return CompletableFuture.completedFuture(Unit)
     }

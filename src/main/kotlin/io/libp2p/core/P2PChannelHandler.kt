@@ -6,7 +6,7 @@ import java.util.concurrent.CompletableFuture
 /**
  * The central entry point for every protocol which is responsible for initializing [P2PChannel]
  */
-fun interface P2PChannelHandler<out TController> {
+fun interface P2PChannelHandler<TController> {
 
     /**
      * Should initialize the underlying Netty [io.netty.channel.Channel] **synchronously**
@@ -14,7 +14,7 @@ fun interface P2PChannelHandler<out TController> {
      * Returns the [Future] which is completed with the protocol [TController]
      * when all necessary protocol negotiations are done.
      */
-    fun initChannel(ch: P2PChannel): CompletableFuture<out TController>
+    fun initChannel(ch: P2PChannel): CompletableFuture<TController>
 
     @JvmDefault
     fun toStreamHandler(): StreamHandler<TController> = StreamHandler { stream -> initChannel(stream) }
