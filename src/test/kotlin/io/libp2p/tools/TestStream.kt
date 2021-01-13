@@ -4,7 +4,7 @@ import io.libp2p.core.Connection
 import io.libp2p.core.PeerId
 import io.libp2p.core.Stream
 import io.libp2p.core.multistream.MultistreamProtocol
-import io.libp2p.core.multistream.MultistreamProtocol_v_1_0_0
+import io.libp2p.core.multistream.MultistreamProtocolV1
 import io.libp2p.core.multistream.ProtocolBinding
 import io.libp2p.etc.PROTOCOL
 import io.libp2p.etc.STREAM
@@ -23,7 +23,7 @@ class TestStreamChannel<TController>(
     binding: ProtocolBinding<TController>? = null,
     vararg handlers: ChannelHandler,
     val controllerFuture: CompletableFuture<TController> = CompletableFuture(),
-    val multistreamProtocol: MultistreamProtocol = MultistreamProtocol_v_1_0_0
+    val multistreamProtocol: MultistreamProtocol = MultistreamProtocolV1
 ) :
     EmbeddedChannel(
         nettyInitializer {

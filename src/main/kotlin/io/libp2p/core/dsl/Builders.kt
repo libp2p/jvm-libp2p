@@ -14,7 +14,7 @@ import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multistream.MultistreamProtocol
 import io.libp2p.core.multistream.MultistreamProtocolDebug
-import io.libp2p.core.multistream.MultistreamProtocol_v_1_0_0
+import io.libp2p.core.multistream.MultistreamProtocolV1
 import io.libp2p.core.multistream.ProtocolBinding
 import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.core.mux.StreamMuxerDebug
@@ -61,7 +61,7 @@ open class Builder {
     protected open val connectionHandlers = ConnectionHandlerBuilder()
     protected open val network = NetworkConfigBuilder()
     protected open val debug = DebugBuilder()
-    var multistreamProtocol: MultistreamProtocol = MultistreamProtocol_v_1_0_0
+    var multistreamProtocol: MultistreamProtocol = MultistreamProtocolV1
     var secureMultistreamProtocol: MultistreamProtocol by lazyVar { multistreamProtocol }
     var muxerMultistreamProtocol: MultistreamProtocol by lazyVar { multistreamProtocol }
     var streamMultistreamProtocol: MultistreamProtocol by lazyVar { multistreamProtocol }

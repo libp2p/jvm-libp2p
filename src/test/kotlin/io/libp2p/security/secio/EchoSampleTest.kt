@@ -7,7 +7,7 @@ import io.libp2p.core.P2PChannelHandler
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.multiformats.Multiaddr
-import io.libp2p.core.multistream.MultistreamProtocol_v_1_0_0
+import io.libp2p.core.multistream.MultistreamProtocolV1
 import io.libp2p.core.mux.StreamMuxerProtocol
 import io.libp2p.etc.SimpleClientHandler
 import io.libp2p.etc.createSimpleBinding
@@ -55,16 +55,16 @@ class EchoSampleTest {
 
         val (privKey1, _) = generateKeyPair(KEY_TYPE.ECDSA)
         val applicationProtocols = listOf(createSimpleBinding("/echo/1.0.0") { EchoProtocol() })
-        val muxer = StreamMuxerProtocol.Mplex.createMuxer(MultistreamProtocol_v_1_0_0, applicationProtocols).also {
+        val muxer = StreamMuxerProtocol.Mplex.createMuxer(MultistreamProtocolV1, applicationProtocols).also {
             it as MplexStreamMuxer
             it.muxFramesDebugHandler = ChannelVisitor {
                 it.pushHandler(LoggingHandler("#3", LogLevel.INFO))
             }
         }
         val upgrader = ConnectionUpgrader(
-            MultistreamProtocol_v_1_0_0.copyWithHandlers(nettyToChannelHandler(LoggingHandler("#1", LogLevel.INFO))),
+            MultistreamProtocolV1.copyWithHandlers(nettyToChannelHandler(LoggingHandler("#1", LogLevel.INFO))),
             listOf(SecIoSecureChannel(privKey1)),
-            MultistreamProtocol_v_1_0_0.copyWithHandlers(nettyToChannelHandler(LoggingHandler("#2", LogLevel.INFO))),
+            MultistreamProtocolV1.copyWithHandlers(nettyToChannelHandler(LoggingHandler("#2", LogLevel.INFO))),
             listOf(muxer)
         )
 

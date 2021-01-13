@@ -1,9 +1,9 @@
 package io.libp2p.core.multistream
 
 import io.libp2p.core.P2PChannelHandler
-import io.libp2p.multistream.MultistreamImpl
+import io.libp2p.multistream.MultistreamProtocolV1Impl
 
-val MultistreamProtocol_v_1_0_0: MultistreamProtocolDebug = MultistreamProtocolDebug_v_1_0_0()
+val MultistreamProtocolV1: MultistreamProtocolDebug = MultistreamProtocolV1Impl
 
 interface MultistreamProtocol {
 
@@ -21,20 +21,4 @@ interface MultistreamProtocolDebug : MultistreamProtocol {
         preHandler: P2PChannelHandler<*>? = null,
         postHandler: P2PChannelHandler<*>? = null
     ): MultistreamProtocol
-}
-
-class MultistreamProtocolDebug_v_1_0_0(
-    private val preHandler: P2PChannelHandler<*>? = null,
-    private val postHandler: P2PChannelHandler<*>? = null
-) : MultistreamProtocolDebug {
-
-    override val version = "1.0.0"
-
-    override fun <TController> createMultistream(bindings: List<ProtocolBinding<TController>>) =
-        MultistreamImpl(bindings, preHandler, postHandler)
-
-    override fun copyWithHandlers(
-        preHandler: P2PChannelHandler<*>?,
-        postHandler: P2PChannelHandler<*>?
-    ) = MultistreamProtocolDebug_v_1_0_0(preHandler, postHandler)
 }

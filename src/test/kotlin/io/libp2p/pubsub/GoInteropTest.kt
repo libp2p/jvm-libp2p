@@ -10,7 +10,7 @@ import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.crypto.unmarshalPublicKey
 import io.libp2p.core.dsl.host
 import io.libp2p.core.multiformats.Multiaddr
-import io.libp2p.core.multistream.MultistreamProtocol_v_1_0_0
+import io.libp2p.core.multistream.MultistreamProtocolV1
 import io.libp2p.core.multistream.ProtocolBinding
 import io.libp2p.core.mux.StreamMuxerProtocol
 import io.libp2p.core.pubsub.MessageApi
@@ -119,7 +119,7 @@ class GoInteropTest {
             }
 
             val applicationProtocols = listOf(ProtocolBinding.createSimple("/meshsub/1.0.0", gossip), Identify())
-            val muxer = StreamMuxerProtocol.Mplex.createMuxer(MultistreamProtocol_v_1_0_0, applicationProtocols).also {
+            val muxer = StreamMuxerProtocol.Mplex.createMuxer(MultistreamProtocolV1, applicationProtocols).also {
                 it as MplexStreamMuxer
                 it.muxFramesDebugHandler = ChannelVisitor {
                     it.pushHandler(LoggingHandler("#3", LogLevel.INFO))
@@ -127,9 +127,9 @@ class GoInteropTest {
             }
 
             val upgrader = ConnectionUpgrader(
-                MultistreamProtocol_v_1_0_0,
+                MultistreamProtocolV1,
                 listOf(SecIoSecureChannel(privKey1)),
-                MultistreamProtocol_v_1_0_0.copyWithHandlers(nettyToChannelHandler(LoggingHandler("#2", LogLevel.INFO))),
+                MultistreamProtocolV1.copyWithHandlers(nettyToChannelHandler(LoggingHandler("#2", LogLevel.INFO))),
                 listOf(muxer)
             )
 

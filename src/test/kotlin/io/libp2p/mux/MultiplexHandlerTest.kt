@@ -4,7 +4,7 @@ import io.libp2p.core.ConnectionClosedException
 import io.libp2p.core.Libp2pException
 import io.libp2p.core.Stream
 import io.libp2p.core.StreamHandler
-import io.libp2p.core.multistream.MultistreamProtocol_v_1_0_0
+import io.libp2p.core.multistream.MultistreamProtocolV1
 import io.libp2p.etc.types.fromHex
 import io.libp2p.etc.types.getX
 import io.libp2p.etc.types.toByteArray
@@ -52,7 +52,7 @@ class MultiplexHandlerTest {
                 childHandlers += handler
             }
         )
-        multistreamHandler = object : MplexHandler(MultistreamProtocol_v_1_0_0, null, streamHandler) {
+        multistreamHandler = object : MplexHandler(MultistreamProtocolV1, null, streamHandler) {
             // MuxHandler consumes the exception. Override this behaviour for testing
             override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
                 ctx.fireExceptionCaught(cause)
