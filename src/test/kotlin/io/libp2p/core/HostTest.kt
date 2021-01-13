@@ -16,7 +16,7 @@ import java.util.concurrent.TimeUnit
 class HostTest {
 
     val hostFactory = HostFactory().also {
-        it.muxLogLevel = LogLevel.ERROR
+        it.muxLogLevel = LogLevel.DEBUG
     }
 
     @AfterEach

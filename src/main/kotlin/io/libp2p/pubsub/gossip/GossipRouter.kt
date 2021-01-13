@@ -21,6 +21,7 @@ import io.libp2p.pubsub.SeenCache
 import io.libp2p.pubsub.SimpleSeenCache
 import io.libp2p.pubsub.TTLSeenCache
 import io.libp2p.pubsub.Topic
+import io.libp2p.pubsub.TopicSubscriptionFilter
 import pubsub.pb.Rpc
 import java.util.Optional
 import java.util.concurrent.CompletableFuture
@@ -54,8 +55,9 @@ fun P2PService.PeerHandler.getPeerProtocol(): PubsubProtocol {
 open class GossipRouter @JvmOverloads constructor(
     val params: GossipParams = GossipParams(),
     val scoreParams: GossipScoreParams = GossipScoreParams(),
-    override val protocol: PubsubProtocol = PubsubProtocol.Gossip_V_1_1
-) : AbstractRouter() {
+    override val protocol: PubsubProtocol = PubsubProtocol.Gossip_V_1_1,
+    subscriptionTopicSubscriptionFilter: TopicSubscriptionFilter = TopicSubscriptionFilter.AllowAllTopicSubscriptionFilter()
+) : AbstractRouter(subscriptionTopicSubscriptionFilter, params.maxGossipMessageSize) {
 
     val score by lazy { GossipScore(scoreParams, executor, curTimeMillis) }
     val fanout: MutableMap<Topic, MutableSet<PeerHandler>> = linkedMapOf()
@@ -172,6 +174,25 @@ open class GossipRouter @JvmOverloads constructor(
 
     override fun acceptRequestsFrom(peer: PeerHandler): Boolean {
         return isDirect(peer) || score.score(peer) >= score.params.graylistThreshold
+    }
+
+    override fun validateMessageListLimits(msg: Rpc.RPC): Boolean {
+        return params.maxPublishedMessages?.let { msg.publishCount <= it } ?: true &&
+            params.maxTopicsPerPublishedMessage?.let { msg.publishList.none { m -> m.topicIDsCount > it } } ?: true &&
+            params.maxSubscriptions?.let { msg.subscriptionsCount <= it } ?: true &&
+            params.maxIHaveLength.let { countIHaveMessageIds(msg) <= it } &&
+            params.maxIWantMessageIds?.let { countIWantMessageIds(msg) <= it } ?: true &&
+            params.maxGraftMessages?.let { msg.control?.graftCount ?: 0 <= it } ?: true &&
+            params.maxPruneMessages?.let { msg.control?.pruneCount ?: 0 <= it } ?: true &&
+            params.maxPeersPerPruneMessage?.let { msg.control?.pruneList?.none { p -> p.peersCount > it } } ?: true
+    }
+
+    private fun countIWantMessageIds(msg: Rpc.RPC): Int {
+        return msg.control?.iwantList?.map { w -> w.messageIDsCount }?.sum() ?: 0
+    }
+
+    private fun countIHaveMessageIds(msg: Rpc.RPC): Int {
+        return msg.control?.ihaveList?.map { w -> w.messageIDsCount }?.sum() ?: 0
     }
 
     private fun processControlMessage(controlMsg: Any, receivedFrom: PeerHandler) {
