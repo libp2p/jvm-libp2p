@@ -24,6 +24,8 @@ class GossipParamsBuilder {
 
     private var fanoutTTL: Duration? = null
 
+    private var maxGossipMessageSize: Int? = null
+
     private var gossipSize: Int? = null
 
     private var gossipHistoryLength: Int? = null
@@ -33,6 +35,8 @@ class GossipParamsBuilder {
     private var seenTTL: Duration? = null
 
     private var maxPrunePeers: Int? = null
+
+    private var maxPeersPerPruneMessage: Int? = null
 
     private var pruneBackoff: Duration? = null
 
@@ -46,11 +50,23 @@ class GossipParamsBuilder {
 
     private var graftFloodThreshold: Duration? = null
 
+    private var maxPublishedMessages: Int? = null
+
+    private var maxTopicsPerPublishedMessage: Int? = null
+
+    private var maxSubscriptions: Int? = null
+
     private var maxIHaveLength: Int? = null
 
     private var maxIHaveMessages: Int? = null
 
+    private var maxIWantMessageIds: Int? = null
+
     private var iWantFollowupTime: Duration? = null
+
+    private var maxGraftMessages: Int? = null
+
+    private var maxPruneMessages: Int? = null
 
     private var gossipRetransmission: Int? = null
 
@@ -60,20 +76,28 @@ class GossipParamsBuilder {
         val source = GossipParams()
         this.D = source.D
         this.fanoutTTL = source.fanoutTTL
+        this.maxGossipMessageSize = source.maxGossipMessageSize
         this.gossipSize = source.gossipSize
         this.gossipHistoryLength = source.gossipHistoryLength
         this.heartbeatInterval = source.heartbeatInterval
         this.seenTTL = source.seenTTL
         this.maxPrunePeers = source.maxPrunePeers
+        this.maxPeersPerPruneMessage = source.maxPeersPerPruneMessage
         this.pruneBackoff = source.pruneBackoff
         this.floodPublish = source.floodPublish
         this.gossipFactor = source.gossipFactor
         this.opportunisticGraftPeers = source.opportunisticGraftPeers
         this.opportunisticGraftTicks = source.opportunisticGraftTicks
         this.graftFloodThreshold = source.graftFloodThreshold
+        this.maxPublishedMessages = source.maxPublishedMessages
+        this.maxTopicsPerPublishedMessage = source.maxTopicsPerPublishedMessage
+        this.maxSubscriptions = source.maxSubscriptions
         this.maxIHaveLength = source.maxIHaveLength
         this.maxIHaveMessages = source.maxIHaveMessages
+        this.maxIWantMessageIds = source.maxIWantMessageIds
         this.iWantFollowupTime = source.iWantFollowupTime
+        this.maxGraftMessages = source.maxGraftMessages
+        this.maxPruneMessages = source.maxPruneMessages
         this.gossipRetransmission = source.gossipRetransmission
         this.connectCallback = source.connectCallback
     }
@@ -92,6 +116,8 @@ class GossipParamsBuilder {
 
     fun fanoutTTL(value: Duration): GossipParamsBuilder = apply { fanoutTTL = value }
 
+    fun maxGossipMessageSize(value: Int): GossipParamsBuilder = apply { maxGossipMessageSize = value }
+
     fun gossipSize(value: Int): GossipParamsBuilder = apply { gossipSize = value }
 
     fun gossipHistoryLength(value: Int): GossipParamsBuilder = apply { gossipHistoryLength = value }
@@ -101,6 +127,8 @@ class GossipParamsBuilder {
     fun seenTTL(value: Duration): GossipParamsBuilder = apply { seenTTL = value }
 
     fun maxPrunePeers(value: Int): GossipParamsBuilder = apply { maxPrunePeers = value }
+
+    fun maxPeersPerPruneMessage(value: Int): GossipParamsBuilder = apply { maxPeersPerPruneMessage = value }
 
     fun pruneBackoff(value: Duration): GossipParamsBuilder = apply { pruneBackoff = value }
 
@@ -120,11 +148,23 @@ class GossipParamsBuilder {
         graftFloodThreshold = value
     }
 
+    fun maxPublishedMessages(value: Int): GossipParamsBuilder = apply { maxPublishedMessages = value }
+
+    fun maxTopicsPerPublishedMessage(value: Int): GossipParamsBuilder = apply { maxTopicsPerPublishedMessage = value }
+
+    fun maxSubscriptions(value: Int): GossipParamsBuilder = apply { maxSubscriptions = value }
+
     fun maxIHaveLength(value: Int): GossipParamsBuilder = apply { maxIHaveLength = value }
 
     fun maxIHaveMessages(value: Int): GossipParamsBuilder = apply { maxIHaveMessages = value }
 
+    fun maxIWantMessageIds(value: Int): GossipParamsBuilder = apply { maxIWantMessageIds = value }
+
     fun iWantFollowupTime(value: Duration): GossipParamsBuilder = apply { iWantFollowupTime = value }
+
+    fun maxGraftMessages(value: Int): GossipParamsBuilder = apply { maxGraftMessages = value }
+
+    fun maxPruneMessages(value: Int): GossipParamsBuilder = apply { maxPruneMessages = value }
 
     fun gossipRetransmission(value: Int): GossipParamsBuilder = apply { gossipRetransmission = value }
 
@@ -143,20 +183,28 @@ class GossipParamsBuilder {
             DOut = DOut!!,
             DLazy = DLazy!!,
             fanoutTTL = fanoutTTL!!,
+            maxGossipMessageSize = maxGossipMessageSize!!,
             gossipSize = gossipSize!!,
             gossipHistoryLength = gossipHistoryLength!!,
             heartbeatInterval = heartbeatInterval!!,
             seenTTL = seenTTL!!,
-            maxPrunePeers = maxPrunePeers!!,
-            pruneBackoff = pruneBackoff!!,
             floodPublish = floodPublish!!,
             gossipFactor = gossipFactor!!,
             opportunisticGraftPeers = opportunisticGraftPeers!!,
             opportunisticGraftTicks = opportunisticGraftTicks!!,
             graftFloodThreshold = graftFloodThreshold!!,
+            maxPublishedMessages = maxPublishedMessages,
+            maxTopicsPerPublishedMessage = maxTopicsPerPublishedMessage,
+            maxSubscriptions = maxSubscriptions,
             maxIHaveLength = maxIHaveLength!!,
             maxIHaveMessages = maxIHaveMessages!!,
+            maxIWantMessageIds = maxIWantMessageIds,
             iWantFollowupTime = iWantFollowupTime!!,
+            maxGraftMessages = maxGraftMessages,
+            maxPrunePeers = maxPrunePeers!!,
+            maxPeersPerPruneMessage = maxPeersPerPruneMessage,
+            pruneBackoff = pruneBackoff!!,
+            maxPruneMessages = maxPruneMessages,
             gossipRetransmission = gossipRetransmission!!,
             connectCallback = connectCallback!!
         )
@@ -179,6 +227,7 @@ class GossipParamsBuilder {
         check(DOut != null, { "DOut must not be null" })
         check(DLazy != null, { "DLazy must not be null" })
         check(fanoutTTL != null, { "fanoutTTL must not be null" })
+        check(maxGossipMessageSize != null, { "maxGossipMessageSize must not be null" })
         check(gossipSize != null, { "gossipSize must not be null" })
         check(gossipHistoryLength != null, { "gossipHistoryLength must not be null" })
         check(heartbeatInterval != null, { "heartbeatInterval must not be null" })

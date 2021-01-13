@@ -12,10 +12,10 @@ import io.libp2p.etc.types.forward
 import io.libp2p.etc.types.lazyVarInit
 import io.libp2p.etc.types.toWBytes
 import io.libp2p.etc.util.P2PServiceSemiDuplex
+import io.libp2p.etc.util.netty.protobuf.LimitedProtobufVarint32FrameDecoder
 import io.netty.channel.ChannelHandler
 import io.netty.handler.codec.protobuf.ProtobufDecoder
 import io.netty.handler.codec.protobuf.ProtobufEncoder
-import io.netty.handler.codec.protobuf.ProtobufVarint32FrameDecoder
 import io.netty.handler.codec.protobuf.ProtobufVarint32LengthFieldPrepender
 import org.apache.logging.log4j.LogManager
 import pubsub.pb.Rpc
@@ -26,18 +26,20 @@ import java.util.concurrent.CompletableFuture
 import java.util.function.BiConsumer
 import java.util.function.Consumer
 
-class DefaultPubsubMessage(override val protobufMessage: Rpc.Message) : PubsubMessage {
-    override val messageId: MessageId = protobufMessage.from.toWBytes() + protobufMessage.seqno.toWBytes()
+// 1 MB default max message size
+const val DEFAULT_MAX_PUBSUB_MESSAGE_SIZE = 1 shl 20
 
-    override fun equals(other: Any?) = protobufMessage == (other as? PubsubMessage)?.protobufMessage
-    override fun hashCode() = protobufMessage.hashCode()
-    override fun toString() = "DefaultPubsubMessage{$protobufMessage}"
+open class DefaultPubsubMessage(override val protobufMessage: Rpc.Message) : AbstractPubsubMessage() {
+    override val messageId: MessageId = protobufMessage.from.toWBytes() + protobufMessage.seqno.toWBytes()
 }
 
 /**
  * Implements common logic for pubsub routers
  */
-abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRouterDebug {
+abstract class AbstractRouter(
+    val subscriptionFilter: TopicSubscriptionFilter,
+    val maxMsgSize: Int = DEFAULT_MAX_PUBSUB_MESSAGE_SIZE
+) : P2PServiceSemiDuplex(), PubsubRouter, PubsubRouterDebug {
     private val logger = LogManager.getLogger(AbstractRouter::class.java)
 
     override var curTimeMillis: () -> Long by lazyVarInit { { System.currentTimeMillis() } }
@@ -131,7 +133,7 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
 
     override fun initChannel(streamHandler: StreamHandler) {
         with(streamHandler.stream) {
-            pushHandler(ProtobufVarint32FrameDecoder())
+            pushHandler(LimitedProtobufVarint32FrameDecoder(maxMsgSize))
             pushHandler(ProtobufVarint32LengthFieldPrepender())
             pushHandler(ProtobufDecoder(Rpc.RPC.getDefaultInstance()))
             pushHandler(ProtobufEncoder())
@@ -181,14 +183,30 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
         if (!acceptRequestsFrom(peer)) return
 
         msg as Rpc.RPC
-        msg.subscriptionsList.forEach { handleMessageSubscriptions(peer, it) }
+
+        // Validate message
+        if (!validateMessageListLimits(msg)) {
+            logger.debug("Dropping msg with lists exceeding limits from peer $peer")
+            return
+        }
+
+        try {
+            val subscriptions = msg.subscriptionsList.map { PubsubSubscription(it.topicid, it.subscribe) }
+            subscriptionFilter.filterIncomingSubscriptions(subscriptions, peerTopics[peer])
+                .forEach { handleMessageSubscriptions(peer, it) }
+        } catch (e: Exception) {
+            logger.debug("Subscription filter error, ignoring message from peer $peer", e)
+            return
+        }
+
         if (msg.hasControl()) {
             processControl(msg.control, peer)
         }
-        val msgSubscribed = msg.publishList
-            .filter { it.topicIDsList.any { it in subscribedTopics } }
 
-        (msg.publishList - msgSubscribed).forEach { notifyNonSubscribedMessage(peer, it) }
+        val (msgSubscribed, nonSubscribed) = msg.publishList
+            .partition { it.topicIDsList.any { it in subscribedTopics } }
+
+        nonSubscribed.forEach { notifyNonSubscribedMessage(peer, it) }
 
         val pMsgSubscribed = msgSubscribed.map { messageFactory(it) }
         val msgUnseen = pMsgSubscribed
@@ -265,6 +283,10 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
         }
     }
 
+    internal open fun validateMessageListLimits(msg: Rpc.RPC): Boolean {
+        return true
+    }
+
     private fun newValidatedMessages(msgs: List<PubsubMessage>, receivedFrom: PeerHandler) {
         msgs.forEach { notifyUnseenValidMessage(receivedFrom, it) }
         broadcastInbound(msgs, receivedFrom)
@@ -289,11 +311,11 @@ abstract class AbstractRouter : P2PServiceSemiDuplex(), PubsubRouter, PubsubRout
         }
     }
 
-    private fun handleMessageSubscriptions(peer: PeerHandler, msg: Rpc.RPC.SubOpts) {
+    private fun handleMessageSubscriptions(peer: PeerHandler, msg: PubsubSubscription) {
         if (msg.subscribe) {
-            peerTopics[peer] += msg.topicid
+            peerTopics[peer] += msg.topic
         } else {
-            peerTopics[peer] -= msg.topicid
+            peerTopics[peer] -= msg.topic
         }
     }
 

@@ -9,6 +9,9 @@ import io.libp2p.core.multistream.StrictProtocolBinding
 import io.libp2p.etc.types.toProtobuf
 import java.util.concurrent.CompletableFuture
 
+const val IDENTIFY_MAX_REQUEST_SIZE = 0L
+const val IDENTIFY_MAX_RESPONSE_SIZE = 1L * 1024 * 1024
+
 interface IdentifyController {
     fun id(): CompletableFuture<IdentifyOuterClass.Identify>
 }
@@ -19,7 +22,11 @@ open class IdentifyBinding(override val protocol: IdentifyProtocol) :
     StrictProtocolBinding<IdentifyController>("/ipfs/id/1.0.0", protocol)
 
 class IdentifyProtocol(var idMessage: IdentifyOuterClass.Identify? = null) :
-    ProtobufProtocolHandler<IdentifyController>(IdentifyOuterClass.Identify.getDefaultInstance()) {
+    ProtobufProtocolHandler<IdentifyController>(
+        IdentifyOuterClass.Identify.getDefaultInstance(),
+        IDENTIFY_MAX_REQUEST_SIZE,
+        IDENTIFY_MAX_RESPONSE_SIZE
+    ) {
 
     override fun onStartInitiator(stream: Stream): CompletableFuture<IdentifyController> {
         val handler = IdentifyRequesterChannelHandler()
