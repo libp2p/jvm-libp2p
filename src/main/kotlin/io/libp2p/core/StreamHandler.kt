@@ -21,7 +21,7 @@ data class StreamPromise<T>(
 /**
  * The same as [P2PChannelHandler] with the [Stream] specialized [P2PChannel]
  */
-fun interface StreamHandler<out TController> {
+fun interface StreamHandler<TController> {
 
-    fun handleStream(stream: Stream): CompletableFuture<out TController>
+    fun handleStream(stream: Stream): CompletableFuture<TController>
 }

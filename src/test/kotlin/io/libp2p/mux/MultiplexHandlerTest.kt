@@ -213,7 +213,7 @@ class MultiplexHandlerTest {
         ech.writeInbound(MuxFrame(MuxId(dummyParentChannelId, id, true), flag, data))
 
     fun createStreamHandler(channelInitializer: ChannelHandler) = object : StreamHandler<Unit> {
-        override fun handleStream(stream: Stream): CompletableFuture<out Unit> {
+        override fun handleStream(stream: Stream): CompletableFuture<Unit> {
             stream.pushHandler(channelInitializer)
             return CompletableFuture.completedFuture(Unit)
         }
