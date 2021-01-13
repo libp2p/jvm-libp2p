@@ -34,11 +34,11 @@ open class ConnectionUpgrader(
     } // establishMuxer
 
     private fun <T : ProtocolBinding<R>, R> establish(
-        mulristreamProto: MultistreamProtocol,
+        multistreamProtocol: MultistreamProtocol,
         connection: Connection,
         channels: List<T>
     ): CompletableFuture<R> {
-        val multistream = mulristreamProto.createMultistream(channels)
+        val multistream = multistreamProtocol.createMultistream(channels)
         // TODO unchecked cast
         return multistream.initChannel(connection) as CompletableFuture<R>
     } // establish
