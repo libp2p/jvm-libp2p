@@ -1,7 +1,6 @@
 package io.libp2p.security.secio
 
 import io.libp2p.core.Connection
-import io.libp2p.core.ConnectionHandler
 import io.libp2p.core.StreamHandler
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.generateKeyPair
@@ -51,13 +50,12 @@ class EchoSampleTest {
         val logger = LogManager.getLogger("test")
 
         val (privKey1, _) = generateKeyPair(KEY_TYPE.ECDSA)
+        val muxer = MplexStreamMuxer().also {
+            it.muxFramesDebugHandler = LoggingHandler("#3", LogLevel.INFO)
+        }
         val upgrader = ConnectionUpgrader(
             listOf(SecIoSecureChannel(privKey1)),
-            listOf(
-                MplexStreamMuxer().also {
-                    it.muxFramesDebugHandler = LoggingHandler("#3", LogLevel.INFO)
-                }
-            )
+            listOf(muxer)
         ).also {
             it.beforeSecureHandler = LoggingHandler("#1", LogLevel.INFO)
             it.afterSecureHandler = LoggingHandler("#2", LogLevel.INFO)
@@ -65,10 +63,10 @@ class EchoSampleTest {
 
         val tcpTransport = TcpTransport(upgrader)
         val applicationProtocols = listOf(createSimpleBinding("/echo/1.0.0") { EchoProtocol() })
-        val inboundStreamHandler = StreamHandler.create(Multistream.create(applicationProtocols))
-        val connectionHandler = ConnectionHandler.createStreamHandlerInitializer(inboundStreamHandler)
+        val inboundStreamHandler = StreamHandler { Multistream.create(applicationProtocols).initChannel(it) }
+        muxer.inboundStreamHandler = inboundStreamHandler
         logger.info("Dialing...")
-        val connFuture: CompletableFuture<Connection> = tcpTransport.dial(Multiaddr("/ip4/127.0.0.1/tcp/10000"), connectionHandler)
+        val connFuture: CompletableFuture<Connection> = tcpTransport.dial(Multiaddr("/ip4/127.0.0.1/tcp/10000"))
 
         val echoString = "Helooooooooooooooooooooooooo\n"
         connFuture.thenCompose {

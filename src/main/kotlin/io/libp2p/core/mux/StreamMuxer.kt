@@ -2,6 +2,7 @@ package io.libp2p.core.mux
 
 import io.libp2p.core.StreamHandler
 import io.libp2p.core.StreamPromise
+import io.libp2p.core.StreamVisitor
 import io.libp2p.core.multistream.ProtocolBinding
 import io.netty.channel.ChannelHandler
 
@@ -24,17 +25,16 @@ import io.netty.channel.ChannelHandler
  * Client protocol implementations may perform resetting a stream via [io.libp2p.core.Stream.nettyChannel.close]
  */
 interface StreamMuxer : ProtocolBinding<StreamMuxer.Session> {
+
+    /**
+     * This is the handler for streams opened by the remote side
+     */
+    var inboundStreamHandler: StreamHandler<*>
+
     /**
      * The Multiplexer controller which is capable of opening new Streams
      */
     interface Session {
-        /**
-         * This is the handler for streams opened by the remote side
-         * It should be set synchronously inside the [CompletableFuture<Session>] callback returned
-         * by the [StreamMuxer.initChannel]
-         */
-        var inboundStreamHandler: StreamHandler<*>?
-
         /**
          * Initiates a new Stream creation.
          * The passed [streamHandler] is basically a [io.libp2p.core.multistream.Multistream] _initiator_
@@ -57,4 +57,10 @@ interface StreamMuxerDebug {
      * Normally this is an instance of [io.netty.handler.logging.LoggingHandler] for dumping muxer frames
      */
     var muxFramesDebugHandler: ChannelHandler?
+
+    /**
+     * Stream 'interceptor' which would be called prior to the [StreamHandler] of this [StreamMuxer]
+     * on any inbound or outbound [Stream] creation
+     */
+    var streamVisitor: StreamVisitor?
 }

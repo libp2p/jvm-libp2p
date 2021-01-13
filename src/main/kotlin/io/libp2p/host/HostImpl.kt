@@ -8,8 +8,8 @@ import io.libp2p.core.Network
 import io.libp2p.core.NoSuchLocalProtocolException
 import io.libp2p.core.PeerId
 import io.libp2p.core.Stream
-import io.libp2p.core.StreamHandler
 import io.libp2p.core.StreamPromise
+import io.libp2p.core.StreamVisitor
 import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multistream.Multistream
@@ -24,19 +24,19 @@ class HostImpl(
     private val listenAddrs: List<Multiaddr>,
     private val protocolHandlers: Multistream<Any>,
     private val connectionHandlers: ConnectionHandler.Broadcast,
-    private val streamHandlers: StreamHandler.Broadcast
+    private val streamVisitors: StreamVisitor.Broadcast
 ) : Host {
 
     override val peerId = PeerId.fromPubKey(privKey.publicKey())
     override val streams = CopyOnWriteArrayList<Stream>()
 
-    private val internalStreamHandler = StreamHandler.create { stream ->
+    private val internalStreamVisitor = StreamVisitor { stream ->
         streams += stream
         stream.closeFuture().thenAccept { streams -= stream }
     }
 
     init {
-        streamHandlers += internalStreamHandler
+        streamVisitors += internalStreamVisitor
     }
 
     override fun listenAddresses(): List<Multiaddr> {
@@ -63,12 +63,12 @@ class HostImpl(
         )
     }
 
-    override fun addStreamHandler(handler: StreamHandler<*>) {
-        streamHandlers += handler
+    override fun addStreamVisitor(streamVisitor: StreamVisitor) {
+        streamVisitors += streamVisitor
     }
 
-    override fun removeStreamHandler(handler: StreamHandler<*>) {
-        streamHandlers -= handler
+    override fun removeStreamVisitor(streamVisitor: StreamVisitor) {
+        streamVisitors -= streamVisitor
     }
 
     override fun addProtocolHandler(protocolBinding: ProtocolBinding<Any>) {
@@ -101,12 +101,6 @@ class HostImpl(
 
         val multistream: Multistream<TController> =
             Multistream.create(binding.toInitiator(protocols))
-        return conn.muxerSession().createStream(object : StreamHandler<TController> {
-            override fun handleStream(stream: Stream): CompletableFuture<out TController> {
-                val ret = multistream.toStreamHandler().handleStream(stream)
-                streamHandlers.handleStream(stream)
-                return ret
-            }
-        })
+        return conn.muxerSession().createStream(multistream.toStreamHandler())
     }
 }

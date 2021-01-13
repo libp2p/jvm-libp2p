@@ -4,6 +4,7 @@ import io.libp2p.core.ConnectionClosedException
 import io.libp2p.core.Libp2pException
 import io.libp2p.core.Stream
 import io.libp2p.core.StreamHandler
+import io.libp2p.core.StreamVisitor
 import io.libp2p.etc.types.fromHex
 import io.libp2p.etc.types.getX
 import io.libp2p.etc.types.toByteArray
@@ -42,16 +43,15 @@ class MultiplexHandlerTest {
     @BeforeEach
     fun startMultiplexor() {
         childHandlers.clear()
-        multistreamHandler = object : MuxHandler(
-            createStreamHandler(
-                nettyInitializer {
-                    println("New child channel created")
-                    val handler = TestHandler()
-                    it.addLastLocal(handler)
-                    childHandlers += handler
-                }
-            )
-        ) {
+        val streamHandler = createStreamHandler(
+            nettyInitializer {
+                println("New child channel created")
+                val handler = TestHandler()
+                it.addLastLocal(handler)
+                childHandlers += handler
+            }
+        )
+        multistreamHandler = object : MuxHandler(null, streamHandler, null) {
             // MuxHandler consumes the exception. Override this behaviour for testing
             override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
                 super.exceptionCaught(ctx, cause)
@@ -191,7 +191,10 @@ class MultiplexHandlerTest {
         ech.close().await()
 
         val staleStream =
-            multistreamHandler.createStream(StreamHandler.create { println("This shouldn't be displayed: parent stream is closed") })
+            multistreamHandler.createStream(
+                StreamVisitor
+                { println("This shouldn't be displayed: parent stream is closed") }.toStreamHandler()
+            )
 
         assertThrows(ConnectionClosedException::class.java) { staleStream.stream.getX(3.0) }
     }

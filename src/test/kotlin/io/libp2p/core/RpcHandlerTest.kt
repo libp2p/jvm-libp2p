@@ -148,17 +148,9 @@ class RpcHandlerTest {
         println("Host #2 started")
 
         var streamCounter1 = 0
-        host1.addStreamHandler(
-            StreamHandler.create {
-                streamCounter1++
-            }
-        )
+        host1.addStreamVisitor { streamCounter1++ }
         var streamCounter2 = 0
-        host2.addStreamHandler(
-            StreamHandler.create {
-                streamCounter2++
-            }
-        )
+        host2.addStreamVisitor { streamCounter2++ }
 
         run {
             val ctr = host1.newStream<OpController>(listOf(protoPrefix + protoAdd), host2.peerId, Multiaddr("/ip4/127.0.0.1/tcp/40002"))
