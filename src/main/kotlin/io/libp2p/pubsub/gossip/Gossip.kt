@@ -13,11 +13,15 @@ import io.netty.channel.ChannelHandler
 import java.util.concurrent.CompletableFuture
 
 class Gossip @JvmOverloads constructor(
-    val router: GossipRouter = GossipRouter(),
-    val api: PubsubApi = PubsubApiImpl(router),
-    val debugGossipHandler: ChannelHandler? = null
+    private val router: GossipRouter = GossipRouter(),
+    private val api: PubsubApi = PubsubApiImpl(router),
+    private val debugGossipHandler: ChannelHandler? = null
 ) :
     ProtocolBinding<Unit>, ConnectionHandler, PubsubApi by api {
+
+    fun updateTopicScoreParams(scoreParams: Map<String, GossipTopicScoreParams>) {
+        router.score.updateTopicParams(scoreParams)
+    }
 
     override val protocolDescriptor =
         if (router.protocol == PubsubProtocol.Gossip_V_1_1)

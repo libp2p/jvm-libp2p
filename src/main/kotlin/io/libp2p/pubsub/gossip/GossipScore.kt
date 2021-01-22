@@ -2,9 +2,7 @@ package io.libp2p.pubsub.gossip
 
 import io.libp2p.core.PeerId
 import io.libp2p.core.pubsub.ValidationResult
-import io.libp2p.etc.types.cappedDouble
-import io.libp2p.etc.types.createLRUMap
-import io.libp2p.etc.types.millis
+import io.libp2p.etc.types.*
 import io.libp2p.etc.util.P2PService
 import io.libp2p.pubsub.PubsubMessage
 import io.libp2p.pubsub.Topic
@@ -23,33 +21,42 @@ class GossipScore(
 ) {
 
     inner class TopicScores(val topic: Topic) {
-        private val params = topicParams[topic]
+        private val params: GossipTopicScoreParams
+            get() = topicParams[topic]
 
         var joinedMeshTimeMillis: Long = 0
-        var firstMessageDeliveries: Double by cappedDouble(
+        var firstMessageDeliveriesCapped = cappedDouble(
             0.0,
             this@GossipScore.peerParams.decayToZero,
             params.firstMessageDeliveriesCap
         )
-        var meshMessageDeliveries: Double by cappedDouble(
+        var firstMessageDeliveries: Double by firstMessageDeliveriesCapped
+        var meshMessageDeliveriesCapped = cappedDouble(
             0.0,
             this@GossipScore.peerParams.decayToZero,
             params.meshMessageDeliveriesCap
         )
+        var meshMessageDeliveries: Double by meshMessageDeliveriesCapped
         var meshFailurePenalty: Double by cappedDouble(0.0, this@GossipScore.peerParams.decayToZero)
         var invalidMessages: Double by cappedDouble(0.0, this@GossipScore.peerParams.decayToZero)
 
         fun inMesh() = joinedMeshTimeMillis > 0
 
-        fun meshTimeNorm() = min(
+        // Make sure topic score caps are updated to the latest values
+        fun refreshTopicParams() {
+            firstMessageDeliveriesCapped.setUpperBound(params.firstMessageDeliveriesCap)
+            meshMessageDeliveriesCapped.setUpperBound(params.meshMessageDeliveriesCap)
+        }
+
+        private fun meshTimeNorm() = min(
             (if (inMesh()) curTimeMillis() - joinedMeshTimeMillis else 0).toDouble() / params.timeInMeshQuantum.toMillis(),
             params.timeInMeshCap
         )
 
-        fun isMeshMessageDeliveriesActive() =
+        private fun isMeshMessageDeliveriesActive() =
             inMesh() && ((curTimeMillis() - joinedMeshTimeMillis).millis > params.meshMessageDeliveriesActivation)
 
-        fun meshMessageDeliveriesDeficit() =
+        private fun meshMessageDeliveriesDeficit() =
             if (isMeshMessageDeliveriesActive())
                 max(0.0, params.meshMessageDeliveriesThreshold - meshMessageDeliveries)
             else 0.0
@@ -115,6 +122,17 @@ class GossipScore(
         getPeerScores(peer).topicScores.computeIfAbsent(topic) { TopicScores(it) }
 
     private fun isInMesh(peer: P2PService.PeerHandler, topic: Topic) = getTopicScores(peer, topic).inMesh()
+
+    fun updateTopicParams(topicScoreParams: Map<String, GossipTopicScoreParams>) {
+        executor.execute {
+            for (topicScoreParam in topicScoreParams) {
+                params.topicsScoreParams.setTopicParams(topicScoreParam.key, topicScoreParam.value)
+                for (peerScore in peerScores.values) {
+                    peerScore.topicScores[topicScoreParam.key]?.refreshTopicParams()
+                }
+            }
+        }
+    }
 
     fun score(peer: P2PService.PeerHandler): Double {
         val peerScore = getPeerScores(peer)
