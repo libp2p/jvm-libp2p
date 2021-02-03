@@ -2,7 +2,12 @@ package io.libp2p.pubsub.gossip
 
 import com.google.protobuf.ByteString
 import io.libp2p.core.PeerId
-import io.libp2p.etc.types.*
+import io.libp2p.etc.types.hours
+import io.libp2p.etc.types.millis
+import io.libp2p.etc.types.minutes
+import io.libp2p.etc.types.seconds
+import io.libp2p.etc.types.toBytesBigEndian
+import io.libp2p.etc.types.toProtobuf
 import io.libp2p.etc.util.P2PService
 import io.libp2p.pubsub.DefaultPubsubMessage
 import io.libp2p.pubsub.Topic
@@ -16,7 +21,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import pubsub.pb.Rpc
 import java.nio.charset.StandardCharsets
-import java.util.*
+import java.util.Optional
 
 class GossipScoreTest {
 
