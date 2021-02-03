@@ -61,10 +61,10 @@ class LazyMutable<T>(val initializer: () -> T, val rejectSetAfterGet: Boolean = 
 
 data class CappedValueDelegate<C : Comparable<C>>(
     private var value: C,
-    private var lowerBound: () -> C,
-    private var lowerBoundVal: () -> C = lowerBound,
-    private var upperBound: () -> C,
-    private var upperBoundVal: () -> C = upperBound
+    private val lowerBound: () -> C,
+    private val lowerBoundVal: () -> C = lowerBound,
+    private val upperBound: () -> C,
+    private val upperBoundVal: () -> C = upperBound
 ) : ReadWriteProperty<Any?, C> {
 
     override fun getValue(thisRef: Any?, property: KProperty<*>): C {
