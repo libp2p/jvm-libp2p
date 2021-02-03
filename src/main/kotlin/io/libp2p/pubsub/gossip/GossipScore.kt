@@ -27,28 +27,20 @@ class GossipScore(
             get() = topicParams[topic]
 
         var joinedMeshTimeMillis: Long = 0
-        var firstMessageDeliveriesCapped = cappedDouble(
+        var firstMessageDeliveries: Double by cappedDouble(
             0.0,
             this@GossipScore.peerParams.decayToZero,
-            params.firstMessageDeliveriesCap
+            { params.firstMessageDeliveriesCap }
         )
-        var firstMessageDeliveries: Double by firstMessageDeliveriesCapped
-        var meshMessageDeliveriesCapped = cappedDouble(
+        var meshMessageDeliveries: Double by cappedDouble(
             0.0,
             this@GossipScore.peerParams.decayToZero,
-            params.meshMessageDeliveriesCap
+            { params.meshMessageDeliveriesCap }
         )
-        var meshMessageDeliveries: Double by meshMessageDeliveriesCapped
         var meshFailurePenalty: Double by cappedDouble(0.0, this@GossipScore.peerParams.decayToZero)
         var invalidMessages: Double by cappedDouble(0.0, this@GossipScore.peerParams.decayToZero)
 
         fun inMesh() = joinedMeshTimeMillis > 0
-
-        // Make sure topic score caps are updated to the latest values
-        fun refreshTopicParams() {
-            firstMessageDeliveriesCapped.setUpperBound(params.firstMessageDeliveriesCap)
-            meshMessageDeliveriesCapped.setUpperBound(params.meshMessageDeliveriesCap)
-        }
 
         private fun meshTimeNorm() = min(
             (if (inMesh()) curTimeMillis() - joinedMeshTimeMillis else 0).toDouble() / params.timeInMeshQuantum.toMillis(),
@@ -129,9 +121,6 @@ class GossipScore(
         executor.execute {
             for (topicScoreParam in topicScoreParams) {
                 params.topicsScoreParams.setTopicParams(topicScoreParam.key, topicScoreParam.value)
-                for (peerScore in peerScores.values) {
-                    peerScore.topicScores[topicScoreParam.key]?.refreshTopicParams()
-                }
             }
         }
     }

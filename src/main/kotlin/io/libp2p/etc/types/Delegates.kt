@@ -17,14 +17,21 @@ fun <T> lazyVar(defaultValueInit: () -> T) = LazyMutable(defaultValueInit)
 fun <T> lazyVarInit(defaultValueInit: () -> T) = LazyMutable(defaultValueInit)
 
 fun <T : Comparable<T>> cappedVar(value: T, lowerBound: T, upperBound: T) =
-    CappedValueDelegate(value, lowerBound = lowerBound, upperBound = upperBound)
+    CappedValueDelegate(value, lowerBound = { lowerBound }, upperBound = { upperBound })
+
+/**
+ * Creates a Double delegate which may drop value to [0.0] when the new value is less than [decayToZero]
+ */
+fun cappedDouble(value: Double, decayToZero: Double = Double.MIN_VALUE): CappedValueDelegate<Double> {
+    return cappedDouble(value, decayToZero) { Double.MAX_VALUE }
+}
 
 /**
  * Creates a Double delegate which may cap upper bound (set [upperBound] when the new value is greater)
  * and may drop value to [0.0] when the new value is less than [decayToZero]
  */
-fun cappedDouble(value: Double, decayToZero: Double = Double.MIN_VALUE, upperBound: Double = Double.MAX_VALUE) =
-    CappedValueDelegate(value, decayToZero, 0.0, upperBound)
+fun cappedDouble(value: Double, decayToZero: Double = Double.MIN_VALUE, upperBound: () -> Double) =
+    CappedValueDelegate(value, { decayToZero }, { 0.0 }, upperBound, upperBound)
 
 // thanks to https://stackoverflow.com/a/47948047/9630725
 class LazyMutable<T>(val initializer: () -> T, val rejectSetAfterGet: Boolean = false) : ReadWriteProperty<Any?, T> {
@@ -54,34 +61,21 @@ class LazyMutable<T>(val initializer: () -> T, val rejectSetAfterGet: Boolean = 
 
 data class CappedValueDelegate<C : Comparable<C>>(
     private var value: C,
-    private var lowerBound: C,
-    private var lowerBoundVal: C = lowerBound,
-    private var upperBound: C,
-    private var upperBoundVal: C = upperBound
+    private var lowerBound: () -> C,
+    private var lowerBoundVal: () -> C = lowerBound,
+    private var upperBound: () -> C,
+    private var upperBoundVal: () -> C = upperBound
 ) : ReadWriteProperty<Any?, C> {
 
     override fun getValue(thisRef: Any?, property: KProperty<*>): C {
+        val upper = upperBound.invoke()
+        val lower = lowerBound.invoke()
+        val v1 = if (value > upper) upper else value
+        value = if (value < lower) lower else v1
         return value
     }
 
     override fun setValue(thisRef: Any?, property: KProperty<*>, value: C) {
-        set(value)
-    }
-
-    private fun set(newValue: C) {
-        val v1 = if (newValue > upperBound) upperBoundVal else newValue
-        value = if (newValue < lowerBound) lowerBoundVal else v1
-    }
-
-    fun setUpperBound(upperBound: C, upperBoundVal: C = upperBound) {
-        this.upperBound = upperBound
-        this.upperBoundVal = upperBoundVal
-        set(value)
-    }
-
-    fun setLowerBound(lowerBound: C, lowerBoundVal: C = lowerBound) {
-        this.lowerBound = lowerBound
-        this.lowerBoundVal = lowerBoundVal
-        set(value)
+        this.value = value
     }
 }
