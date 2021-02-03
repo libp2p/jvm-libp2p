@@ -2,7 +2,9 @@ package io.libp2p.pubsub.gossip
 
 import io.libp2p.core.PeerId
 import io.libp2p.core.pubsub.ValidationResult
-import io.libp2p.etc.types.*
+import io.libp2p.etc.types.cappedDouble
+import io.libp2p.etc.types.createLRUMap
+import io.libp2p.etc.types.millis
 import io.libp2p.etc.util.P2PService
 import io.libp2p.pubsub.PubsubMessage
 import io.libp2p.pubsub.Topic
