@@ -31,7 +31,7 @@ fun cappedDouble(value: Double, decayToZero: Double = Double.MIN_VALUE): CappedV
  * and may drop value to [0.0] when the new value is less than [decayToZero]
  */
 fun cappedDouble(value: Double, decayToZero: Double = Double.MIN_VALUE, upperBound: () -> Double) =
-    CappedValueDelegate(value, { decayToZero }, { 0.0 }, upperBound)
+    CappedValueDelegate(value, { decayToZero }, { 0.0 }, upperBound, upperBound)
 
 // thanks to https://stackoverflow.com/a/47948047/9630725
 class LazyMutable<T>(val initializer: () -> T, val rejectSetAfterGet: Boolean = false) : ReadWriteProperty<Any?, T> {
@@ -68,10 +68,8 @@ data class CappedValueDelegate<C : Comparable<C>>(
 ) : ReadWriteProperty<Any?, C> {
 
     override fun getValue(thisRef: Any?, property: KProperty<*>): C {
-        val upper = upperBound.invoke()
-        val lower = lowerBound.invoke()
-        val v1 = if (value > upper) upper else value
-        value = if (value < lower) lower else v1
+        val v1 = if (value > upperBound.invoke()) upperBoundVal.invoke() else value
+        value = if (value < lowerBound.invoke()) lowerBoundVal.invoke() else v1
         return value
     }
 
