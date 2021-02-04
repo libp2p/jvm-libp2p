@@ -23,6 +23,8 @@ class GossipPeerScoreParamsBuilder() {
 
     private var behaviourPenaltyDecay: Double? = null
 
+    private var behaviourPenaltyThreshold: Double? = null
+
     private var decayInterval: Duration? = null
 
     private var decayToZero: Double? = null
@@ -39,6 +41,7 @@ class GossipPeerScoreParamsBuilder() {
         this.ipColocationFactorThreshold = source.ipColocationFactorThreshold
         this.behaviourPenaltyWeight = source.behaviourPenaltyWeight
         this.behaviourPenaltyDecay = source.behaviourPenaltyDecay
+        this.behaviourPenaltyThreshold = source.behaviourPenaltyThreshold
         this.decayInterval = source.decayInterval
         this.decayToZero = source.decayToZero
         this.retainScore = source.retainScore
@@ -78,6 +81,10 @@ class GossipPeerScoreParamsBuilder() {
         behaviourPenaltyDecay = value
     }
 
+    fun behaviourPenaltyThreshold(value: Double): GossipPeerScoreParamsBuilder = apply {
+        behaviourPenaltyThreshold = value
+    }
+
     fun decayInterval(value: Duration): GossipPeerScoreParamsBuilder = apply { decayInterval = value }
 
     fun decayToZero(value: Double): GossipPeerScoreParamsBuilder = apply { decayToZero = value }
@@ -96,6 +103,7 @@ class GossipPeerScoreParamsBuilder() {
             ipColocationFactorThreshold = ipColocationFactorThreshold!!,
             behaviourPenaltyWeight = behaviourPenaltyWeight!!,
             behaviourPenaltyDecay = behaviourPenaltyDecay!!,
+            behaviourPenaltyThreshold = behaviourPenaltyThreshold!!,
             decayInterval = decayInterval!!,
             decayToZero = decayToZero!!,
             retainScore = retainScore!!
@@ -115,6 +123,7 @@ class GossipPeerScoreParamsBuilder() {
         )
         check(behaviourPenaltyWeight != null, { "behaviourPenaltyWeight must not be null" })
         check(behaviourPenaltyDecay != null, { "behaviourPenaltyDecay must not be null" })
+        check(behaviourPenaltyThreshold != null, { "behaviourPenaltyThreshold must not be null" })
         check(decayInterval != null, { "decayInterval must not be null" })
         check(decayToZero != null, { "decayToZero must not be null" })
         check(retainScore != null, { "retainScore must not be null" })
