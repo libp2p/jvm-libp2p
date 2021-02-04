@@ -68,8 +68,8 @@ data class CappedValueDelegate<C : Comparable<C>>(
 ) : ReadWriteProperty<Any?, C> {
 
     override fun getValue(thisRef: Any?, property: KProperty<*>): C {
-        val v1 = if (value > upperBound.invoke()) upperBoundVal.invoke() else value
-        value = if (value < lowerBound.invoke()) lowerBoundVal.invoke() else v1
+        val v1 = if (value > upperBound()) upperBoundVal() else value
+        value = if (value < lowerBound()) lowerBoundVal() else v1
         return value
     }
 
