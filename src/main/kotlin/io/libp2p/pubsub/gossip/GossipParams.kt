@@ -417,10 +417,7 @@ class GossipTopicsScoreParams(
     private val defaultParams: GossipTopicScoreParams = GossipTopicScoreParams(),
     topicParamsMap: Map<Topic, GossipTopicScoreParams> = mapOf()
 ) {
-    val topicParams: MutableMap<Topic, GossipTopicScoreParams>
-    init {
-        this.topicParams = topicParamsMap.toMutableMap()
-    }
+    val topicParams: MutableMap<Topic, GossipTopicScoreParams> = topicParamsMap.toMutableMap()
 
     operator fun get(topic: Topic) = topicParams.getOrDefault(topic, defaultParams)
 
