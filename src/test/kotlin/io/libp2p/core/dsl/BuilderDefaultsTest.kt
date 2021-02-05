@@ -1,6 +1,6 @@
 package io.libp2p.core.dsl
 
-import io.libp2p.mux.mplex.MplexStreamMuxer
+import io.libp2p.core.mux.StreamMuxerProtocol
 import io.libp2p.security.secio.SecIoSecureChannel
 import io.libp2p.transport.tcp.TcpTransport
 import org.junit.jupiter.api.Assertions.assertThrows
@@ -57,7 +57,7 @@ class BuilderDefaultsTest {
             identity { random() }
             transports { +::TcpTransport }
             secureChannels { +::SecIoSecureChannel }
-            muxers { +::MplexStreamMuxer }
+            muxers { + StreamMuxerProtocol.Mplex }
         }
 
         host.start().get(5, SECONDS)

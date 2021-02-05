@@ -1,6 +1,7 @@
 package io.libp2p.host
 
 import io.libp2p.core.AddressBook
+import io.libp2p.core.ChannelVisitor
 import io.libp2p.core.Connection
 import io.libp2p.core.ConnectionHandler
 import io.libp2p.core.Host
@@ -8,11 +9,9 @@ import io.libp2p.core.Network
 import io.libp2p.core.NoSuchLocalProtocolException
 import io.libp2p.core.PeerId
 import io.libp2p.core.Stream
-import io.libp2p.core.StreamHandler
 import io.libp2p.core.StreamPromise
 import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.multiformats.Multiaddr
-import io.libp2p.core.multistream.Multistream
 import io.libp2p.core.multistream.ProtocolBinding
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CopyOnWriteArrayList
@@ -22,21 +21,21 @@ class HostImpl(
     override val network: Network,
     override val addressBook: AddressBook,
     private val listenAddrs: List<Multiaddr>,
-    private val protocolHandlers: Multistream<Any>,
+    private val protocolHandlers: MutableList<ProtocolBinding<Any>>,
     private val connectionHandlers: ConnectionHandler.Broadcast,
-    private val streamHandlers: StreamHandler.Broadcast
+    private val streamVisitors: ChannelVisitor.Broadcast<Stream>
 ) : Host {
 
     override val peerId = PeerId.fromPubKey(privKey.publicKey())
     override val streams = CopyOnWriteArrayList<Stream>()
 
-    private val internalStreamHandler = StreamHandler.create { stream ->
+    private val internalStreamVisitor = ChannelVisitor<Stream> { stream ->
         streams += stream
         stream.closeFuture().thenAccept { streams -= stream }
     }
 
     init {
-        streamHandlers += internalStreamHandler
+        streamVisitors += internalStreamVisitor
     }
 
     override fun listenAddresses(): List<Multiaddr> {
@@ -63,20 +62,20 @@ class HostImpl(
         )
     }
 
-    override fun addStreamHandler(handler: StreamHandler<*>) {
-        streamHandlers += handler
+    override fun addStreamVisitor(streamVisitor: ChannelVisitor<Stream>) {
+        streamVisitors += streamVisitor
     }
 
-    override fun removeStreamHandler(handler: StreamHandler<*>) {
-        streamHandlers -= handler
+    override fun removeStreamVisitor(streamVisitor: ChannelVisitor<Stream>) {
+        streamVisitors -= streamVisitor
     }
 
     override fun addProtocolHandler(protocolBinding: ProtocolBinding<Any>) {
-        protocolHandlers.bindings += protocolBinding
+        protocolHandlers += protocolBinding
     }
 
     override fun removeProtocolHandler(protocolBinding: ProtocolBinding<Any>) {
-        protocolHandlers.bindings -= protocolBinding
+        protocolHandlers -= protocolBinding
     }
 
     override fun addConnectionHandler(handler: ConnectionHandler) {
@@ -96,17 +95,8 @@ class HostImpl(
     override fun <TController> newStream(protocols: List<String>, conn: Connection): StreamPromise<TController> {
         val binding =
             @Suppress("UNCHECKED_CAST")
-            protocolHandlers.bindings.find { it.protocolDescriptor.matchesAny(protocols) } as? ProtocolBinding<TController>
+            protocolHandlers.find { it.protocolDescriptor.matchesAny(protocols) } as? ProtocolBinding<TController>
                 ?: throw NoSuchLocalProtocolException("Protocol handler not found: $protocols")
-
-        val multistream: Multistream<TController> =
-            Multistream.create(binding.toInitiator(protocols))
-        return conn.muxerSession().createStream(object : StreamHandler<TController> {
-            override fun handleStream(stream: Stream): CompletableFuture<out TController> {
-                val ret = multistream.toStreamHandler().handleStream(stream)
-                streamHandlers.handleStream(stream)
-                return ret
-            }
-        })
+        return conn.muxerSession().createStream(listOf(binding.toInitiator(protocols)))
     }
 }

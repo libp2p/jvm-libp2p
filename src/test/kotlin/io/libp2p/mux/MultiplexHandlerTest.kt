@@ -4,6 +4,7 @@ import io.libp2p.core.ConnectionClosedException
 import io.libp2p.core.Libp2pException
 import io.libp2p.core.Stream
 import io.libp2p.core.StreamHandler
+import io.libp2p.core.multistream.MultistreamProtocolV1
 import io.libp2p.etc.types.fromHex
 import io.libp2p.etc.types.getX
 import io.libp2p.etc.types.toByteArray
@@ -14,6 +15,7 @@ import io.libp2p.etc.util.netty.nettyInitializer
 import io.libp2p.mux.MuxFrame.Flag.DATA
 import io.libp2p.mux.MuxFrame.Flag.OPEN
 import io.libp2p.mux.MuxFrame.Flag.RESET
+import io.libp2p.mux.mplex.MplexHandler
 import io.libp2p.tools.TestChannel
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandler
@@ -42,19 +44,17 @@ class MultiplexHandlerTest {
     @BeforeEach
     fun startMultiplexor() {
         childHandlers.clear()
-        multistreamHandler = object : MuxHandler(
-            createStreamHandler(
-                nettyInitializer {
-                    println("New child channel created")
-                    val handler = TestHandler()
-                    it.addLastLocal(handler)
-                    childHandlers += handler
-                }
-            )
-        ) {
+        val streamHandler = createStreamHandler(
+            nettyInitializer {
+                println("New child channel created")
+                val handler = TestHandler()
+                it.addLastLocal(handler)
+                childHandlers += handler
+            }
+        )
+        multistreamHandler = object : MplexHandler(MultistreamProtocolV1, null, streamHandler) {
             // MuxHandler consumes the exception. Override this behaviour for testing
             override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
-                super.exceptionCaught(ctx, cause)
                 ctx.fireExceptionCaught(cause)
             }
         }
@@ -191,7 +191,10 @@ class MultiplexHandlerTest {
         ech.close().await()
 
         val staleStream =
-            multistreamHandler.createStream(StreamHandler.create { println("This shouldn't be displayed: parent stream is closed") })
+            multistreamHandler.createStream {
+                println("This shouldn't be displayed: parent stream is closed")
+                CompletableFuture.completedFuture(Unit)
+            }
 
         assertThrows(ConnectionClosedException::class.java) { staleStream.stream.getX(3.0) }
     }
@@ -210,7 +213,7 @@ class MultiplexHandlerTest {
         ech.writeInbound(MuxFrame(MuxId(dummyParentChannelId, id, true), flag, data))
 
     fun createStreamHandler(channelInitializer: ChannelHandler) = object : StreamHandler<Unit> {
-        override fun handleStream(stream: Stream): CompletableFuture<out Unit> {
+        override fun handleStream(stream: Stream): CompletableFuture<Unit> {
             stream.pushHandler(channelInitializer)
             return CompletableFuture.completedFuture(Unit)
         }

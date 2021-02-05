@@ -1,23 +1,93 @@
 package io.libp2p.etc.types
 
+import com.google.common.util.concurrent.AtomicDouble
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 
 class DelegatesTest {
 
-    var i: Int by cappedVar(10, 5, 20)
+    val max = AtomicDouble(10.0)
+    val maxVal = AtomicDouble(15.0)
+    val min = AtomicDouble(5.0)
+    val minVal = AtomicDouble(0.0)
+
+    var cappedValueDelegate: Double by CappedValueDelegate(0.0, { min.get() }, { minVal.get() }, { max.get() }, { maxVal.get() })
+    var cappedInt: Int by cappedVar(10, 5, 20)
+    var cappedDouble: Double by cappedDouble(0.0, 1.0) { max.get() }
+
     @Test
     fun cappedVarTest() {
-        Assertions.assertEquals(10, i)
-        i--
-        Assertions.assertEquals(9, i)
-        i -= 100
-        Assertions.assertEquals(5, i)
-        i = 19
-        Assertions.assertEquals(19, i)
-        i++
-        Assertions.assertEquals(20, i)
-        i++
-        Assertions.assertEquals(20, i)
+        Assertions.assertEquals(10, cappedInt)
+        cappedInt--
+        Assertions.assertEquals(9, cappedInt)
+        cappedInt -= 100
+        Assertions.assertEquals(5, cappedInt)
+        cappedInt = 19
+        Assertions.assertEquals(19, cappedInt)
+        cappedInt++
+        Assertions.assertEquals(20, cappedInt)
+        cappedInt++
+        Assertions.assertEquals(20, cappedInt)
+    }
+
+    @Test
+    fun cappedDoubleTest() {
+        assertThat(cappedDouble).isEqualTo(0.0)
+
+        cappedDouble = 5.0
+        assertThat(cappedDouble).isEqualTo(5.0)
+
+        cappedDouble = .5
+        assertThat(cappedDouble).isEqualTo(0.0)
+
+        cappedDouble = 10.5
+        assertThat(cappedDouble).isEqualTo(10.0)
+
+        cappedDouble--
+        assertThat(cappedDouble).isEqualTo(9.0)
+
+        max.set(5.0)
+        assertThat(cappedDouble).isEqualTo(5.0)
+    }
+
+    @Test
+    fun cappedValueDelegateTest() {
+        assertThat(cappedValueDelegate).isEqualTo(0.0)
+
+        cappedValueDelegate = 5.0
+        assertThat(cappedValueDelegate).isEqualTo(5.0)
+
+        cappedValueDelegate = 4.0
+        assertThat(cappedValueDelegate).isEqualTo(0.0)
+
+        cappedValueDelegate = 10.0
+        assertThat(cappedValueDelegate).isEqualTo(10.0)
+
+        cappedValueDelegate = 11.0
+        assertThat(cappedValueDelegate).isEqualTo(15.0)
+
+        // Check maxVal update is respected
+        cappedValueDelegate = 11.0
+        maxVal.set(13.0)
+        assertThat(cappedValueDelegate).isEqualTo(13.0)
+        maxVal.set(15.0)
+
+        // Check max update is respected
+        cappedValueDelegate = 10.0
+        max.set(9.0)
+        assertThat(cappedValueDelegate).isEqualTo(15.0)
+        max.set(10.0)
+
+        // Check minVal update is respected
+        cappedValueDelegate = 4.0
+        minVal.set(-1.0)
+        assertThat(cappedValueDelegate).isEqualTo(-1.0)
+        minVal.set(0.0)
+
+        // Check min update is respected
+        cappedValueDelegate = 6.0
+        min.set(7.0)
+        assertThat(cappedValueDelegate).isEqualTo(0.0)
     }
 }

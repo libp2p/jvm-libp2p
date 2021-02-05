@@ -1,9 +1,6 @@
 package io.libp2p.core.multistream
 
-import io.libp2p.core.P2PChannel
 import io.libp2p.core.P2PChannelHandler
-import io.libp2p.multistream.MultistreamImpl
-import java.util.concurrent.CompletableFuture
 
 /**
  * Represents 'multistream' concept: https://github.com/multiformats/multistream-select
@@ -29,36 +26,4 @@ interface Multistream<TController> : P2PChannelHandler<TController> {
      * Basically this is either a single protocol or a protocol versions
      */
     val bindings: MutableList<ProtocolBinding<TController>>
-
-    override fun initChannel(ch: P2PChannel): CompletableFuture<TController>
-
-    companion object {
-        /**
-         * Creates empty [Multistream] implementation
-         */
-        @JvmStatic
-        fun <TController> create(): Multistream<TController> = MultistreamImpl()
-
-        /**
-         * Creates [Multistream] implementation with a list of protocol bindings
-         */
-        @JvmStatic
-        fun <TController> create(
-            vararg bindings: ProtocolBinding<TController>
-        ): Multistream<TController> = MultistreamImpl(listOf(*bindings))
-        /**
-         * Creates [Multistream] implementation with a list of protocol bindings
-         */
-        @JvmStatic
-        fun <TController> create(
-            bindings: List<ProtocolBinding<TController>>
-        ): Multistream<TController> = MultistreamImpl(bindings)
-
-        /**
-         * Creates an _initiator_ [Multistream] with specified [protocol] and [handler]
-         */
-        @JvmStatic
-        fun <TController> initiator(protocol: ProtocolId, handler: P2PChannelHandler<TController>): Multistream<TController> =
-            create(ProtocolBinding.createSimple(protocol, handler))
-    }
 }

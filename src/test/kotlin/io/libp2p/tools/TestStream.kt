@@ -1,9 +1,11 @@
 package io.libp2p.tools
 
 import io.libp2p.core.Connection
-import io.libp2p.core.P2PChannelHandler
 import io.libp2p.core.PeerId
 import io.libp2p.core.Stream
+import io.libp2p.core.multistream.MultistreamProtocol
+import io.libp2p.core.multistream.MultistreamProtocolV1
+import io.libp2p.core.multistream.ProtocolBinding
 import io.libp2p.etc.PROTOCOL
 import io.libp2p.etc.STREAM
 import io.libp2p.etc.getP2PChannel
@@ -18,9 +20,10 @@ import java.util.concurrent.CompletableFuture
 
 class TestStreamChannel<TController>(
     initiator: Boolean,
-    streamHandler: P2PChannelHandler<TController>? = null,
+    binding: ProtocolBinding<TController>? = null,
     vararg handlers: ChannelHandler,
-    val controllerFuture: CompletableFuture<TController> = CompletableFuture()
+    val controllerFuture: CompletableFuture<TController> = CompletableFuture(),
+    val multistreamProtocol: MultistreamProtocol = MultistreamProtocolV1
 ) :
     EmbeddedChannel(
         nettyInitializer {
@@ -28,8 +31,8 @@ class TestStreamChannel<TController>(
         },
         *handlers,
         nettyInitializer {
-            if (streamHandler != null) {
-                streamHandler.initChannel(it.channel.getP2PChannel()).forward(controllerFuture)
+            if (binding != null) {
+                multistreamProtocol.createMultistream(listOf(binding)).initChannel(it.channel.getP2PChannel()).forward(controllerFuture)
             }
         }
     )

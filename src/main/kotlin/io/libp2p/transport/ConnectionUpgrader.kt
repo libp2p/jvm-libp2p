@@ -1,11 +1,10 @@
 package io.libp2p.transport
 
 import io.libp2p.core.Connection
-import io.libp2p.core.multistream.Multistream
+import io.libp2p.core.multistream.MultistreamProtocol
 import io.libp2p.core.multistream.ProtocolBinding
 import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.core.security.SecureChannel
-import io.netty.channel.ChannelHandler
 import java.util.concurrent.CompletableFuture
 
 /**
@@ -13,46 +12,33 @@ import java.util.concurrent.CompletableFuture
  * capabilities are not provided natively by the transport.
  */
 open class ConnectionUpgrader(
+    private val secureMultistream: MultistreamProtocol,
     private val secureChannels: List<SecureChannel>,
-    private val muxers: List<StreamMuxer>
+    private val muxerMultistream: MultistreamProtocol,
+    private val muxers: List<StreamMuxer>,
 ) {
-    var beforeSecureHandler: ChannelHandler? = null
-    var afterSecureHandler: ChannelHandler? = null
-    var beforeMuxHandler: ChannelHandler? = null
-    var afterMuxHandler: ChannelHandler? = null
-
     open fun establishSecureChannel(connection: Connection): CompletableFuture<SecureChannel.Session> {
         return establish(
+            secureMultistream,
             connection,
-            secureChannels,
-            beforeSecureHandler,
-            afterSecureHandler
+            secureChannels
         )
     } // establishSecureChannel
 
     open fun establishMuxer(connection: Connection): CompletableFuture<StreamMuxer.Session> {
         return establish(
+            muxerMultistream,
             connection,
-            muxers,
-            beforeMuxHandler,
-            afterMuxHandler
+            muxers
         )
     } // establishMuxer
 
     private fun <T : ProtocolBinding<R>, R> establish(
+        multistreamProtocol: MultistreamProtocol,
         connection: Connection,
-        channels: List<T>,
-        beforeHandler: ChannelHandler?,
-        afterHandler: ChannelHandler?
+        channels: List<T>
     ): CompletableFuture<R> {
-        beforeHandler?.also { connection.pushHandler(it) }
-
-        val multistream = Multistream.create(channels)
-
+        val multistream = multistreamProtocol.createMultistream(channels)
         return multistream.initChannel(connection)
-            .thenApply {
-                afterHandler?.also { connection.pushHandler(it) }
-                it
-            }
     } // establish
 } // ConnectionUpgrader

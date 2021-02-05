@@ -7,7 +7,7 @@ import io.netty.handler.codec.protobuf.ProtobufEncoder
 import io.netty.handler.codec.protobuf.ProtobufVarint32FrameDecoder
 import io.netty.handler.codec.protobuf.ProtobufVarint32LengthFieldPrepender
 
-abstract class ProtobufProtocolHandler<out TController>(
+abstract class ProtobufProtocolHandler<TController>(
     private val protobufMessagePrototype: MessageLite,
     initiatorTrafficLimit: Long,
     responderTrafficLimit: Long

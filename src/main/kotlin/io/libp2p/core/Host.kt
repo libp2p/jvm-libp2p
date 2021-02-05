@@ -41,7 +41,7 @@ interface Host {
      * List of all streams opened at the moment across all the [Connection]s
      * Please note that this list is updated asynchronously so the streams upon receiving
      * of this list can be already closed or not yet completely initialized
-     * To be synchronously notified on stream creation use [addStreamHandler] and
+     * To be synchronously notified on stream creation use [addStreamVisitor] and
      * use [Stream.closeFuture] to be synchronously notified on stream close
      */
     val streams: List<Stream>
@@ -59,17 +59,20 @@ interface Host {
     fun stop(): CompletableFuture<Void>
 
     /**
-     * Adds a handler which is notified when a new [Stream] is created
-     * Note that this is just a hook to be informed on a stream creation
-     * and no actual [Stream.nettyChannel] initialization should happen here.
-     * Refer to [addProtocolHandler] to setup a specific protocol handler
+     * Add the [ChannelVisitor] which would be invoked prior to any protocol [StreamHandler]s on any
+     * created inbound or outbound [Stream]
+     * The [streamVisitor] is free to setup any handlers on a [Stream] however those handlers
+     * should be careful to propagate any events up/down the Netty pipeline and not modify
+     * [ByteBuf]s to keep protocol [StreamHandler]s functioning as expected
      */
-    fun addStreamHandler(handler: StreamHandler<*>)
+    fun addStreamVisitor(streamVisitor: ChannelVisitor<Stream>)
 
     /**
-     * Removes the handler added with [addStreamHandler]
+     * Removes the visitor added with [addStreamVisitor]
+     * Please note that removing a visitor doesn't affect any Netty handlers installed by the visitor
+     * on any streams created before
      */
-    fun removeStreamHandler(handler: StreamHandler<*>)
+    fun removeStreamVisitor(streamVisitor: ChannelVisitor<Stream>)
 
     /**
      * Adds a new supported protocol 'on the fly'

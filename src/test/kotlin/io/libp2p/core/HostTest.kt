@@ -1,313 +1,316 @@
 package io.libp2p.core
 
-import io.libp2p.core.dsl.SecureChannelCtor
-import io.libp2p.core.dsl.TransportCtor
-import io.libp2p.core.dsl.host
-import io.libp2p.core.multiformats.Multiaddr
-import io.libp2p.etc.types.getX
-import io.libp2p.mux.mplex.MplexStreamMuxer
-import io.libp2p.protocol.Identify
+import io.libp2p.core.multistream.ProtocolMatcher
+import io.libp2p.etc.PROTOCOL
+import io.libp2p.etc.types.seconds
+import io.libp2p.etc.types.toByteArray
+import io.libp2p.mux.MuxFrame
 import io.libp2p.protocol.Ping
 import io.libp2p.protocol.PingBinding
-import io.libp2p.protocol.PingController
-import io.libp2p.security.noise.NoiseXXSecureChannel
-import io.libp2p.security.plaintext.PlaintextInsecureChannel
-import io.libp2p.security.secio.SecIoSecureChannel
-import io.libp2p.tools.CountingPingProtocol
-import io.libp2p.tools.DoNothing
+import io.libp2p.protocol.PingProtocol
 import io.libp2p.tools.Echo
-import io.libp2p.transport.tcp.TcpTransport
-import io.libp2p.transport.ws.WsTransport
+import io.libp2p.tools.HostFactory
+import io.netty.buffer.ByteBuf
+import io.netty.buffer.Unpooled
+import io.netty.channel.ChannelDuplexHandler
+import io.netty.channel.ChannelHandlerContext
+import io.netty.channel.ChannelPromise
 import io.netty.handler.logging.LogLevel
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertThrows
-import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.condition.DisabledIf
-import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable
+import java.util.Random
 import java.util.concurrent.TimeUnit
 
-@Tag("secure-channel")
-class PlaintextTcpTest : TcpTransportHostTest(::PlaintextInsecureChannel)
-@Tag("secure-channel")
-class PlaintextWsTest : WsTransportHostTest(::PlaintextInsecureChannel)
+class HostTest {
 
-@Tag("secure-channel")
-class SecioTcpTest : TcpTransportHostTest(::SecIoSecureChannel)
-@Tag("secure-channel")
-class SecioWsTest : WsTransportHostTest(::SecIoSecureChannel)
-
-@DisabledIfEnvironmentVariable(named = "TRAVIS", matches = "true")
-@Tag("secure-channel")
-class NoiseXXTcpTest : TcpTransportHostTest(::NoiseXXSecureChannel)
-@DisabledIfEnvironmentVariable(named = "TRAVIS", matches = "true")
-@Tag("secure-channel")
-class NoiseXXWsTest : WsTransportHostTest(::NoiseXXSecureChannel)
-
-@Tag("ws-transport")
-abstract class WsTransportHostTest(
-    secureChannelCtor: SecureChannelCtor
-) : HostTest(
-    secureChannelCtor,
-    ::WsTransport,
-    "/ip4/127.0.0.1/tcp/4002/ws"
-)
-
-@Tag("tcp-transport")
-abstract class TcpTransportHostTest(
-    secureChannelCtor: SecureChannelCtor
-) : HostTest(
-    secureChannelCtor,
-    ::TcpTransport,
-    "/ip4/127.0.0.1/tcp/4002"
-)
-
-abstract class HostTest(
-    val secureChannelCtor: SecureChannelCtor,
-    val transportCtor: TransportCtor,
-    val listenAddress: String
-) {
-    val clientHost = host {
-        identity {
-            random()
-        }
-        transports {
-            add(transportCtor)
-        }
-        secureChannels {
-            add(secureChannelCtor)
-        }
-        muxers {
-            +::MplexStreamMuxer
-        }
-        protocols {
-            +Ping()
-            +Identify()
-            +Echo()
-            +DoNothing()
-        }
-        debug {
-            muxFramesHandler.setLogger(LogLevel.DEBUG) // don't log all that spam during DoS test
-        }
-    }
-
-    var countedPingResponder = CountingPingProtocol()
-    val serverHost = host {
-        identity {
-            random()
-        }
-        transports {
-            add(transportCtor)
-        }
-        secureChannels {
-            add(secureChannelCtor)
-        }
-        muxers {
-            +::MplexStreamMuxer
-        }
-        network {
-            listen(listenAddress)
-        }
-        protocols {
-            +PingBinding(countedPingResponder)
-            +Identify()
-            +Echo()
-        }
-        debug {
-            muxFramesHandler.setLogger(LogLevel.DEBUG) // don't log all that spam during DoS test
-        }
-    }
-
-    @BeforeEach
-    fun startHosts() {
-        val client = clientHost.start()
-        val server = serverHost.start()
-        client.get(5, TimeUnit.SECONDS)
-        println("Client started")
-        server.get(5, TimeUnit.SECONDS)
-        println("Server started")
+    val hostFactory = HostFactory().also {
+        it.muxLogLevel = LogLevel.DEBUG
     }
 
     @AfterEach
-    fun stopHosts() {
-        clientHost.stop().get(5, TimeUnit.SECONDS)
-        println("Client Host stopped")
-        serverHost.stop().get(5, TimeUnit.SECONDS)
-        println("Server Host stopped")
+    fun cleanup() {
+        hostFactory.shutdown()
     }
 
     @Test
-    fun unknownLocalProtocol() {
-        val badProtocol = clientHost.newStream<PingController>(
-            listOf("/__no_such_protocol/1.0.0"),
-            serverHost.peerId,
-            Multiaddr(listenAddress)
-        )
-        assertThrows(NoSuchProtocolException::class.java) { badProtocol.stream.getX(500.0) }
-        assertThrows(NoSuchProtocolException::class.java) { badProtocol.controller.getX(500.0) }
-    }
+    fun `test host stream visitor`() {
+        val host1 = hostFactory.createHost()
+        val host2 = hostFactory.createHost()
 
-    @Test
-    fun unsupportedServerProtocol() {
-        // remote party doesn't support the protocol
-        val unsupportedProtocol = DoNothing().dial(
-            clientHost,
-            serverHost.peerId,
-            Multiaddr(listenAddress)
-        )
-        // stream should be created
-        unsupportedProtocol.stream.get(5, TimeUnit.SECONDS)
-        println("Stream created")
-        // ... though protocol controller should fail
-        assertThrows(NoSuchProtocolException::class.java) { unsupportedProtocol.controller.getX(15.0) }
-    }
+        val streamVisitor1 = TestByteBufChannelHandler<Stream>("1")
+        host1.host.addStreamVisitor(streamVisitor1)
+        val streamVisitor2 = TestByteBufChannelHandler<Stream>("2")
+        host2.host.addStreamVisitor(streamVisitor2)
 
-    @Test
-    fun pingOverSecureConnection() {
-        val (pingStream, pingCtr) = dialPing()
+        val ping = Ping().dial(host1.host, host2.peerId, host2.listenAddress)
+        val ctrl = ping.controller.get(5, TimeUnit.SECONDS)
 
-        for (i in 1..10) {
-            val latency = pingCtr.ping().get(1, TimeUnit.SECONDS)
-            println("Ping $i is ${latency}ms")
-        }
-        pingStream.close().get(5, TimeUnit.SECONDS)
-        println("Ping stream closed")
+        val ret = ctrl.ping().get(5, TimeUnit.SECONDS)
+        assertThat(ret).isGreaterThanOrEqualTo(0)
 
-        assertEquals(10, countedPingResponder.pingsReceived)
+        val data1 = mergeBufs(streamVisitor1.inboundData)
+        val data2 = mergeBufs(streamVisitor2.inboundData)
 
-        // stream is closed, the call should fail correctly
-        assertThrows(ConnectionClosedException::class.java) {
-            pingCtr.ping().getX(5.0)
-        }
-    }
-
-    @Test
-    fun multiplePingChannelsOnTheSameConnection() {
-        val controllers = mutableListOf<PingController>()
-        val range = (0..2)
-        val rangeLength = (range.last - range.first) + 1
-
-        range.forEach {
-            val (_, pingCtr) = dialPing()
-            controllers.add(pingCtr)
+        listOf(data1, data2).forEach { data ->
+            assertThat(data).containsSequence(*"/multistream/".toByteArray(Charsets.UTF_8))
+            assertThat(data).containsSequence(*"/ping/".toByteArray(Charsets.UTF_8))
         }
 
-        assertEquals(rangeLength, clientHost.streams.size)
-        assertEquals(1, clientHost.network.connections.size)
-        assertEquals(rangeLength, serverHost.streams.size)
-        assertEquals(1, serverHost.network.connections.size)
+        val packetsCount1 = streamVisitor1.inboundData.size
+        val packetsCount2 = streamVisitor2.inboundData.size
 
-        for (i in 1..10) {
-            range.forEach {
-                val latency = controllers[it].ping().get(1, TimeUnit.SECONDS)
-                println("Ping $it/$i is ${latency}ms")
+        ctrl.ping().get(5, TimeUnit.SECONDS)
+
+        assertThat(streamVisitor1.inboundData.size).isGreaterThan(packetsCount1)
+        assertThat(streamVisitor2.inboundData.size).isGreaterThan(packetsCount2)
+    }
+
+    @Test
+    fun `test protocol stream interceptor`() {
+        val host1 = hostFactory.createHost()
+
+        class TestInterceptor : ProtocolInterceptor(ProtocolMatcher.prefix("/test/echo")) {
+            var interceptRead = false
+            var interceptWrite = false
+            override fun interceptRead(buf: ByteBuf) =
+                if (interceptRead)
+                    Unpooled.wrappedBuffer("RRR".toByteArray(Charsets.UTF_8))
+                else buf
+            override fun interceptWrite(buf: ByteBuf) =
+                if (interceptWrite)
+                    Unpooled.wrappedBuffer("WWW".toByteArray(Charsets.UTF_8))
+                else buf
+        }
+        val interceptor = TestInterceptor()
+
+        hostFactory.hostBuilderModifier = {
+            debug {
+                streamHandler.addHandler(interceptor)
             }
         }
+        val host2 = hostFactory.createHost()
 
-        assertEquals(10 * rangeLength, countedPingResponder.pingsReceived)
-    }
+        val ping = Ping().dial(host1.host, host2.peerId, host2.listenAddress)
+        val pingCtrl = ping.controller.get(5, TimeUnit.SECONDS)
+        val echo = Echo().dial(host1.host, host2.peerId, host2.listenAddress)
+        val echoCtrl = echo.controller.get(5, TimeUnit.SECONDS)
 
-    fun dialPing(): Pair<Stream, PingController> {
-        val ping = Ping().dial(
-            clientHost,
-            serverHost.peerId,
-            Multiaddr(listenAddress)
-        )
+        assertThat(pingCtrl.ping()).succeedsWithin(5.seconds)
+        assertThat(echoCtrl.echo("AAA")).succeedsWithin(5.seconds).isEqualTo("AAA")
 
-        val pingStream = ping.stream.get(5, TimeUnit.SECONDS)
-        println("Ping stream created")
-        val pingCtr = ping.controller.get(5, TimeUnit.SECONDS)
-        println("Ping controller created")
+        interceptor.interceptRead = true
 
-        return Pair(pingStream, pingCtr)
-    } // dialPing
+        // interceptor doesn't affect /ping
+        assertThat(pingCtrl.ping()).succeedsWithin(5.seconds)
+        // ... but modifies /echo
+        assertThat(echoCtrl.echo("AAA")).succeedsWithin(5.seconds).isEqualTo("RRR")
 
-    @Test
-    fun identifyOverSecureConnection() {
-        val identify = Identify().dial(
-            clientHost,
-            serverHost.peerId,
-            Multiaddr(listenAddress)
-        )
-        val identifyStream = identify.stream.get(5, TimeUnit.SECONDS)
-        println("Identify stream created")
-        val identifyController = identify.controller.get(5, TimeUnit.SECONDS)
-        println("Identify controller created")
+        interceptor.interceptRead = false
+        interceptor.interceptWrite = true
 
-        val remoteIdentity = identifyController.id().get(5, TimeUnit.SECONDS)
-        println(remoteIdentity)
-
-        identifyStream.close().get(5, TimeUnit.SECONDS)
-        println("Identify stream closed")
-
-        assertEquals("jvm/0.1", remoteIdentity.agentVersion)
-
-        assertTrue(remoteIdentity.protocolsList.contains("/ipfs/id/1.0.0"))
-        assertTrue(remoteIdentity.protocolsList.contains("/ipfs/ping/1.0.0"))
-
-        assertEquals(identifyStream.connection.localAddress(), Multiaddr(remoteIdentity.observedAddr.toByteArray()))
-
-        assertEquals(1, remoteIdentity.listenAddrsCount)
-        val remoteAddress = Multiaddr(remoteIdentity.listenAddrsList[0].toByteArray())
-        assertEquals(listenAddress, remoteAddress.toString())
-        assertEquals(identifyStream.connection.remoteAddress(), remoteAddress)
+        assertThat(echoCtrl.echo("AAA")).succeedsWithin(5.seconds).isEqualTo("WWW")
     }
 
     @Test
-    fun echoOverSecureConnection() {
-        val echo = Echo().dial(
-            clientHost,
-            serverHost.peerId,
-            Multiaddr(listenAddress)
+    fun `test pre post multistream handlers`() {
+        hostFactory.muxLogLevel = LogLevel.DEBUG
+
+        val pingSize = 256
+        val pingProto = PingBinding(
+            PingProtocol().also {
+                it.pingSize = pingSize
+                it.random = Random(1)
+            }
         )
+        val expectedPingData = ByteArray(pingSize).also { Random(1).nextBytes(it) }
+        hostFactory.protocols = listOf(pingProto)
 
-        val echoController = echo.controller.get(5, TimeUnit.SECONDS)
+        val beforeSecureTestHandler1 = TestByteBufChannelHandler<Connection>("1-beforeSecure")
+        val afterSecureTestHandler1 = TestByteBufChannelHandler<Connection>("1-afterSecure")
+        val preStreamTestHandler1 = TestByteBufChannelHandler<Stream>("1-preStream")
+        val streamTestHandler1 = TestByteBufChannelHandler<Stream>("1-stream")
+        val muxFrameTestHandler1 = TestChannelHandler<Connection, MuxFrame>("1-mux")
 
-        assertEquals("hello", echoController.echo("hello").get(1, TimeUnit.SECONDS))
-        assertEquals("world", echoController.echo("world").get(1, TimeUnit.SECONDS))
+        hostFactory.hostBuilderModifier = {
+            debug {
+                beforeSecureHandler.addHandler(beforeSecureTestHandler1)
+                afterSecureHandler.addHandler(afterSecureTestHandler1)
+                streamPreHandler.addHandler(preStreamTestHandler1)
+                streamHandler.addHandler(streamTestHandler1)
+                muxFramesHandler.addHandler(muxFrameTestHandler1)
+            }
+        }
+        val host1 = hostFactory.createHost()
+
+        val beforeSecureTestHandler2 = TestByteBufChannelHandler<Connection>("2-beforeSecure")
+        val afterSecureTestHandler2 = TestByteBufChannelHandler<Connection>("2-afterSecure")
+        val preStreamTestHandler2 = TestByteBufChannelHandler<Stream>("2-preStream")
+        val streamTestHandler2 = TestByteBufChannelHandler<Stream>("2-stream")
+        val muxFrameTestHandler2 = TestChannelHandler<Connection, MuxFrame>("2-mux")
+
+        hostFactory.hostBuilderModifier = {
+            debug {
+                beforeSecureHandler.addHandler(beforeSecureTestHandler2)
+                afterSecureHandler.addHandler(afterSecureTestHandler2)
+                streamPreHandler.addHandler(preStreamTestHandler2)
+                streamHandler.addHandler(streamTestHandler2)
+                muxFramesHandler.addHandler(muxFrameTestHandler2)
+            }
+        }
+        val host2 = hostFactory.createHost()
+
+        val ping = pingProto.dial(host1.host, host2.peerId, host2.listenAddress)
+        val ctrl = ping.controller.get(5, TimeUnit.SECONDS)
+
+        val ret = ctrl.ping().get(5, TimeUnit.SECONDS)
+        assertThat(ret).isGreaterThanOrEqualTo(0)
+
+        listOf(
+            mergeBufs(beforeSecureTestHandler1.inboundData),
+            mergeBufs(beforeSecureTestHandler1.outboundData),
+            mergeBufs(beforeSecureTestHandler2.inboundData),
+            mergeBufs(beforeSecureTestHandler2.outboundData)
+        ).forEach { data ->
+            assertThat(data).containsSequence(*"/multistream/".toByteArray(Charsets.UTF_8))
+            assertThat(data).containsSequence(*"/noise".toByteArray(Charsets.UTF_8))
+            // mplex multistream negotiation should be ciphered
+            assertDoesntContainSequence(data, "/mplex".toByteArray(Charsets.UTF_8))
+        }
+
+        listOf(
+            mergeBufs(afterSecureTestHandler1.inboundData),
+            mergeBufs(afterSecureTestHandler1.outboundData),
+            mergeBufs(afterSecureTestHandler2.inboundData),
+            mergeBufs(afterSecureTestHandler2.outboundData)
+        ).forEach { data ->
+            assertThat(data).containsSequence(*"/multistream/".toByteArray(Charsets.UTF_8))
+            assertThat(data).containsSequence(*"/mplex/".toByteArray(Charsets.UTF_8))
+            // secure negotiation shouldn't leak to this handler
+            assertDoesntContainSequence(data, "/noise".toByteArray(Charsets.UTF_8))
+            // /ping packets should be visible to this handler
+            assertThat(data).containsSequence(*"/ping/".toByteArray(Charsets.UTF_8))
+            assertThat(data).containsSequence(*expectedPingData)
+        }
+
+        listOf(
+            mergeBufs(preStreamTestHandler1.inboundData),
+            mergeBufs(preStreamTestHandler1.outboundData),
+            mergeBufs(preStreamTestHandler2.inboundData),
+            mergeBufs(preStreamTestHandler2.outboundData)
+        ).forEach { data ->
+            // stream _pre_ handlers 'see' the protocol negotiation
+            assertThat(data).containsSequence(*"/multistream/".toByteArray(Charsets.UTF_8))
+            assertThat(data).containsSequence(*"/ping/".toByteArray(Charsets.UTF_8))
+            assertThat(data).containsSequence(*expectedPingData)
+            // mplex negotiation shouldn't leak to this handler
+            assertDoesntContainSequence(data, "/mplex".toByteArray(Charsets.UTF_8))
+        }
+
+        listOf(
+            mergeBufs(streamTestHandler1.inboundData),
+            mergeBufs(streamTestHandler1.outboundData),
+            mergeBufs(streamTestHandler2.inboundData),
+            mergeBufs(streamTestHandler2.outboundData)
+        ).forEach { data ->
+            assertThat(data).containsOnly(*expectedPingData)
+            // stream handlers see only protocol data without multistream negotiation
+            assertDoesntContainSequence(data, "/multistream/".toByteArray(Charsets.UTF_8))
+            assertDoesntContainSequence(data, "/ping/".toByteArray(Charsets.UTF_8))
+        }
     }
 
-    @DisabledIf("junitTags.contains('ws-transport')")
-    @Test
-    fun largeEchoOverSecureConnection() {
-        val echo = Echo().dial(
-            clientHost,
-            serverHost.peerId,
-            Multiaddr(listenAddress)
-        )
-
-        val echoController = echo.controller.get(5, TimeUnit.SECONDS)
-        val largeMsg = (0..20000).map { "Hello" }.joinToString("")
-
-        assertEquals(largeMsg, echoController.echo(largeMsg).get(10, TimeUnit.SECONDS))
+    fun assertDoesntContainSequence(data: ByteArray, seq: ByteArray) {
+        assertThat(listOf(data)).noneSatisfy { candidate -> assertThat(candidate).containsSequence(*seq) }
     }
 
-    @Test
-    fun twoEchosOverSecureConnection() {
-        val echo = Echo()
-        val echo1 = echo.dial(
-            clientHost,
-            serverHost.peerId,
-            Multiaddr(listenAddress)
-        )
+    fun mergeBufs(bufs: Collection<ByteBuf>): ByteArray =
+        bufs.fold(Unpooled.buffer()) { acc, byteBuf ->
+            acc.writeBytes(byteBuf.slice())
+        }.toByteArray()
 
-        val echo1Controller = echo1.controller.get(5, TimeUnit.SECONDS)
-        assertEquals("hello", echo1Controller.echo("hello").get(1, TimeUnit.SECONDS))
+    open class TestChannelHandler<TChannel : P2PChannel, TMessage>(val id: String) : ChannelVisitor<TChannel> {
+        val inboundData = mutableListOf<TMessage>()
+        val outboundData = mutableListOf<TMessage>()
+        override fun visit(channel: TChannel) {
+            channel.pushHandler(object : ChannelDuplexHandler() {
+                override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
+                    msg as TMessage
+                    inboundData += retainMessage(msg)
+                    println("####   --> [$id]: $msg")
+                    ctx.fireChannelRead(msg)
+                }
 
-        val echo2 = echo.dial(
-            clientHost,
-            serverHost.peerId,
-            Multiaddr(listenAddress)
-        )
+                override fun write(ctx: ChannelHandlerContext, msg: Any, promise: ChannelPromise) {
+                    msg as TMessage
+                    outboundData += retainMessage(msg)
+                    println("#### <--   [$id]: $msg")
+                    ctx.write(msg, promise)
+                }
+            })
+        }
 
-        val echo2Controller = echo2.controller.get(5, TimeUnit.SECONDS)
-        assertEquals("goodbye", echo2Controller.echo("goodbye").get(1, TimeUnit.SECONDS))
+        open fun retainMessage(msg: TMessage): TMessage = msg
+    }
 
-        assertEquals("world", echo1Controller.echo("world").get(1, TimeUnit.SECONDS))
+    class TestByteBufChannelHandler<TChannel : P2PChannel>(id: String) : TestChannelHandler<TChannel, ByteBuf>(id) {
+        override fun retainMessage(msg: ByteBuf) = msg.retainedSlice()
+    }
 
-        assertEquals("to all that", echo2Controller.echo("to all that").get(1, TimeUnit.SECONDS))
+    abstract class ProtocolInterceptor(val protocol: ProtocolMatcher) : ChannelVisitor<Stream> {
+        abstract fun interceptRead(buf: ByteBuf): ByteBuf
+        abstract fun interceptWrite(buf: ByteBuf): ByteBuf
+
+        override fun visit(stream: Stream) {
+            var matched = false
+            stream.pushHandler(object : ChannelDuplexHandler() {
+
+                override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
+                    if (match(ctx)) {
+                        msg as ByteBuf
+                        println("####   --> : $msg")
+                        val modifiedRead = interceptRead(msg)
+                        ctx.fireChannelRead(modifiedRead)
+                    } else {
+                        ctx.fireChannelRead(msg)
+                    }
+                }
+
+                override fun write(ctx: ChannelHandlerContext, msg: Any, promise: ChannelPromise) {
+                    if (match(ctx)) {
+                        msg as ByteBuf
+                        println("#### <--   : $msg")
+                        val modifiedWrite = interceptWrite(msg)
+                        ctx.write(modifiedWrite, promise)
+                    } else {
+                        ctx.write(msg, promise)
+                    }
+                }
+
+                fun match(ctx: ChannelHandlerContext): Boolean {
+                    if (!matched) {
+                        matched = true
+                        val protoFut = ctx.channel().attr(PROTOCOL).get()
+                        assert(protoFut.isDone)
+                        val proto = protoFut.get()
+                        if (!protocol.matches(proto)) {
+                            ctx.pipeline().remove(this)
+                            println("### protocol didn't match: $proto")
+                            return false
+                        } else {
+                            println("### protocol matched: $proto")
+                            return true
+                        }
+                    } else {
+                        return true
+                    }
+                }
+
+                override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
+                    cause.printStackTrace()
+                    ctx.fireExceptionCaught(cause)
+                }
+            })
+        }
     }
 }

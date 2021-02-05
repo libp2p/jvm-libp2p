@@ -23,33 +23,34 @@ class GossipScore(
 ) {
 
     inner class TopicScores(val topic: Topic) {
-        private val params = topicParams[topic]
+        private val params: GossipTopicScoreParams
+            get() = topicParams[topic]
 
         var joinedMeshTimeMillis: Long = 0
         var firstMessageDeliveries: Double by cappedDouble(
             0.0,
             this@GossipScore.peerParams.decayToZero,
-            params.firstMessageDeliveriesCap
+            { params.firstMessageDeliveriesCap }
         )
         var meshMessageDeliveries: Double by cappedDouble(
             0.0,
             this@GossipScore.peerParams.decayToZero,
-            params.meshMessageDeliveriesCap
+            { params.meshMessageDeliveriesCap }
         )
         var meshFailurePenalty: Double by cappedDouble(0.0, this@GossipScore.peerParams.decayToZero)
         var invalidMessages: Double by cappedDouble(0.0, this@GossipScore.peerParams.decayToZero)
 
         fun inMesh() = joinedMeshTimeMillis > 0
 
-        fun meshTimeNorm() = min(
+        private fun meshTimeNorm() = min(
             (if (inMesh()) curTimeMillis() - joinedMeshTimeMillis else 0).toDouble() / params.timeInMeshQuantum.toMillis(),
             params.timeInMeshCap
         )
 
-        fun isMeshMessageDeliveriesActive() =
+        private fun isMeshMessageDeliveriesActive() =
             inMesh() && ((curTimeMillis() - joinedMeshTimeMillis).millis > params.meshMessageDeliveriesActivation)
 
-        fun meshMessageDeliveriesDeficit() =
+        private fun meshMessageDeliveriesDeficit() =
             if (isMeshMessageDeliveriesActive())
                 max(0.0, params.meshMessageDeliveriesThreshold - meshMessageDeliveries)
             else 0.0
@@ -115,6 +116,14 @@ class GossipScore(
         getPeerScores(peer).topicScores.computeIfAbsent(topic) { TopicScores(it) }
 
     private fun isInMesh(peer: P2PService.PeerHandler, topic: Topic) = getTopicScores(peer, topic).inMesh()
+
+    fun updateTopicParams(topicScoreParams: Map<String, GossipTopicScoreParams>) {
+        executor.execute {
+            for (topicScoreParam in topicScoreParams) {
+                params.topicsScoreParams.setTopicParams(topicScoreParam.key, topicScoreParam.value)
+            }
+        }
+    }
 
     fun score(peer: P2PService.PeerHandler): Double {
         val peerScore = getPeerScores(peer)

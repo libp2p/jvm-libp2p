@@ -4,6 +4,7 @@ import io.libp2p.core.ConnectionClosedException
 import io.libp2p.core.InternalErrorException
 import io.libp2p.core.Libp2pException
 import io.libp2p.etc.types.completedExceptionally
+import io.libp2p.etc.types.hasCauseOfType
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
 import org.apache.logging.log4j.LogManager
@@ -14,13 +15,14 @@ typealias MuxChannelInitializer<TData> = (MuxChannel<TData>) -> Unit
 
 private val log = LogManager.getLogger(AbstractMuxHandler::class.java)
 
-abstract class AbstractMuxHandler<TData>(var inboundInitializer: MuxChannelInitializer<TData>? = null) :
+abstract class AbstractMuxHandler<TData>() :
     ChannelInboundHandlerAdapter() {
 
     private val streamMap: MutableMap<MuxId, MuxChannel<TData>> = mutableMapOf()
     var ctx: ChannelHandlerContext? = null
     private val activeFuture = CompletableFuture<Void>()
     private var closed = false
+    protected abstract val inboundInitializer: MuxChannelInitializer<TData>
 
     override fun handlerAdded(ctx: ChannelHandlerContext) {
         super.handlerAdded(ctx)
@@ -39,9 +41,9 @@ abstract class AbstractMuxHandler<TData>(var inboundInitializer: MuxChannelIniti
     }
 
     override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
-        when (cause) {
-            is InternalErrorException -> log.warn("Muxer internal error", cause)
-            is Libp2pException -> log.debug("Muxer exception", cause)
+        when {
+            cause.hasCauseOfType(InternalErrorException::class) -> log.warn("Muxer internal error", cause)
+            cause.hasCauseOfType(Libp2pException::class) -> log.debug("Muxer exception", cause)
             else -> log.warn("Unexpected exception", cause)
         }
     }

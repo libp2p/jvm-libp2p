@@ -5,7 +5,7 @@ import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multistream.ProtocolBinding
 import io.libp2p.core.multistream.ProtocolDescriptor
 import io.libp2p.core.multistream.ProtocolMatcher
-import io.libp2p.mux.mplex.MplexStreamMuxer
+import io.libp2p.core.mux.StreamMuxerProtocol
 import io.libp2p.security.secio.SecIoSecureChannel
 import io.libp2p.transport.tcp.TcpTransport
 import io.netty.buffer.ByteBuf
@@ -106,13 +106,13 @@ class RpcHandlerTest {
                 add(::SecIoSecureChannel)
             }
             muxers {
-                +::MplexStreamMuxer
+                + StreamMuxerProtocol.Mplex
             }
             protocols {
                 +RpcProtocol()
             }
             debug {
-                muxFramesHandler.setLogger(LogLevel.ERROR, "Host-1")
+                muxFramesHandler.addLogger(LogLevel.ERROR, "Host-1")
             }
         }
 
@@ -127,7 +127,7 @@ class RpcHandlerTest {
                 add(::SecIoSecureChannel)
             }
             muxers {
-                +::MplexStreamMuxer
+                + StreamMuxerProtocol.Mplex
             }
             protocols {
                 +RpcProtocol()
@@ -136,7 +136,7 @@ class RpcHandlerTest {
                 listen("/ip4/0.0.0.0/tcp/40002")
             }
             debug {
-                muxFramesHandler.setLogger(LogLevel.ERROR, "Host-2")
+                muxFramesHandler.addLogger(LogLevel.ERROR, "Host-2")
             }
         }
 
@@ -148,17 +148,9 @@ class RpcHandlerTest {
         println("Host #2 started")
 
         var streamCounter1 = 0
-        host1.addStreamHandler(
-            StreamHandler.create {
-                streamCounter1++
-            }
-        )
+        host1.addStreamVisitor { streamCounter1++ }
         var streamCounter2 = 0
-        host2.addStreamHandler(
-            StreamHandler.create {
-                streamCounter2++
-            }
-        )
+        host2.addStreamVisitor { streamCounter2++ }
 
         run {
             val ctr = host1.newStream<OpController>(listOf(protoPrefix + protoAdd), host2.peerId, Multiaddr("/ip4/127.0.0.1/tcp/40002"))

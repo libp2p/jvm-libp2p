@@ -1,18 +1,18 @@
 package io.libp2p.pubsub
 
-import io.libp2p.core.ConnectionHandler
+import io.libp2p.core.ChannelVisitor
 import io.libp2p.core.P2PChannel
 import io.libp2p.core.P2PChannelHandler
 import io.libp2p.core.PeerId
 import io.libp2p.core.Stream
-import io.libp2p.core.StreamHandler
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.crypto.unmarshalPublicKey
 import io.libp2p.core.dsl.host
 import io.libp2p.core.multiformats.Multiaddr
-import io.libp2p.core.multistream.Multistream
+import io.libp2p.core.multistream.MultistreamProtocolV1
 import io.libp2p.core.multistream.ProtocolBinding
+import io.libp2p.core.mux.StreamMuxerProtocol
 import io.libp2p.core.pubsub.MessageApi
 import io.libp2p.core.pubsub.Topic
 import io.libp2p.core.pubsub.createPubsubApi
@@ -60,7 +60,7 @@ import java.util.function.Consumer
 class GossipProtocol(val router: PubsubRouterDebug) : P2PChannelHandler<Unit> {
     var debugGossipHandler: ChannelHandler? = null
 
-    override fun initChannel(ch: P2PChannel): CompletableFuture<out Unit> {
+    override fun initChannel(ch: P2PChannel): CompletableFuture<Unit> {
         router.addPeerWithDebugHandler(ch as Stream, debugGossipHandler)
         return CompletableFuture.completedFuture(Unit)
     }
@@ -113,40 +113,39 @@ class GoInteropTest {
             val pubsubApi = createPubsubApi(gossipRouter)
             val publisher = pubsubApi.createPublisher(privKey1, 8888)
 
-            val upgrader = ConnectionUpgrader(
-                listOf(SecIoSecureChannel(privKey1)),
-                listOf(
-                    MplexStreamMuxer().also {
-                        it.muxFramesDebugHandler = LoggingHandler("#3", LogLevel.ERROR)
-                    }
-                )
-            ).also {
-                //                it.beforeSecureHandler = LoggingHandler("#1", LogLevel.INFO)
-                it.afterSecureHandler = LoggingHandler("#2", LogLevel.INFO)
-            }
-
-            val tcpTransport = TcpTransport(upgrader)
             val gossip = GossipProtocol(gossipRouter).also {
                 it.debugGossipHandler = LoggingHandler("#4", LogLevel.INFO)
                 it.router.messageValidator = NOP_ROUTER_VALIDATOR
             }
 
             val applicationProtocols = listOf(ProtocolBinding.createSimple("/meshsub/1.0.0", gossip), Identify())
-            val inboundStreamHandler = StreamHandler.create(Multistream.create(applicationProtocols))
+            val muxer = StreamMuxerProtocol.Mplex.createMuxer(MultistreamProtocolV1, applicationProtocols).also {
+                it as MplexStreamMuxer
+                it.muxFramesDebugHandler = ChannelVisitor {
+                    it.pushHandler(LoggingHandler("#3", LogLevel.INFO))
+                }
+            }
+
+            val upgrader = ConnectionUpgrader(
+                MultistreamProtocolV1,
+                listOf(SecIoSecureChannel(privKey1)),
+                MultistreamProtocolV1.copyWithHandlers(nettyToChannelHandler(LoggingHandler("#2", LogLevel.INFO))),
+                listOf(muxer)
+            )
+
+            val tcpTransport = TcpTransport(upgrader)
             logger.info("Dialing...")
             val connFuture = tcpTransport.dial(
-                Multiaddr("/ip4/127.0.0.1/tcp/45555" + "/p2p/$pdPeerId"),
-                ConnectionHandler.createStreamHandlerInitializer(inboundStreamHandler)
+                Multiaddr("/ip4/127.0.0.1/tcp/45555/p2p/$pdPeerId")
             )
 
             var pingRes: Long? = null
             connFuture.thenCompose {
                 logger.info("Connection made")
-                val ret = it.muxerSession().createStream(Multistream.create(applicationProtocols).toStreamHandler()).controller
+                val ret = it.muxerSession().createStream(applicationProtocols).controller
 
-                val initiator = Multistream.create(Ping())
                 logger.info("Creating ping stream")
-                it.muxerSession().createStream(initiator.toStreamHandler())
+                it.muxerSession().createStream(Ping())
                     .controller.thenCompose {
                         println("Sending ping...")
                         it.ping()
@@ -234,7 +233,7 @@ class GoInteropTest {
                 add(::SecIoSecureChannel)
             }
             muxers {
-                +::MplexStreamMuxer
+                + StreamMuxerProtocol.Mplex
             }
             addressBook {
                 memory()
@@ -248,8 +247,7 @@ class GoInteropTest {
                 +gossip
             }
             debug {
-//                afterSecureHandler.setLogger(LogLevel.ERROR)
-                muxFramesHandler.setLogger(LogLevel.ERROR)
+                muxFramesHandler.addLogger(LogLevel.ERROR)
             }
         }
         d.defer {
@@ -308,6 +306,11 @@ class GoInteropTest {
 //            System.gc()
 //        }
     }
+
+    fun nettyToChannelHandler(ch: ChannelHandler): P2PChannelHandler<*> =
+        ChannelVisitor<P2PChannel> {
+            it.pushHandler(ch)
+        }.toChannelHandler()
 
     @Test
     fun sigTest() {

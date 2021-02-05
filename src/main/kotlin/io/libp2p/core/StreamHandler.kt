@@ -1,6 +1,5 @@
 package io.libp2p.core
 
-import io.libp2p.etc.BroadcastStreamHandler
 import java.util.concurrent.CompletableFuture
 
 /**
@@ -22,28 +21,7 @@ data class StreamPromise<T>(
 /**
  * The same as [P2PChannelHandler] with the [Stream] specialized [P2PChannel]
  */
-interface StreamHandler<out TController> {
+fun interface StreamHandler<TController> {
 
-    fun handleStream(stream: Stream): CompletableFuture<out TController>
-
-    companion object {
-
-        fun create(fn: (Stream) -> Unit) = object : StreamHandler<Unit> {
-            override fun handleStream(stream: Stream): CompletableFuture<out Unit> {
-                fn(stream)
-                return CompletableFuture.completedFuture(Unit)
-            }
-        }
-
-        fun <T> create(channelHandler: P2PChannelHandler<T>) = object : StreamHandler<T> {
-            override fun handleStream(stream: Stream): CompletableFuture<out T> {
-                return channelHandler.initChannel(stream)
-            }
-        }
-
-        fun createBroadcast(vararg handlers: StreamHandler<*>) =
-            BroadcastStreamHandler().also { it += handlers }
-    }
-
-    interface Broadcast : StreamHandler<Any>, MutableList<StreamHandler<*>>
+    fun handleStream(stream: Stream): CompletableFuture<TController>
 }
