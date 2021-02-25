@@ -23,6 +23,7 @@ abstract class AbstractMuxHandler<TData>() :
     private val activeFuture = CompletableFuture<Void>()
     private var closed = false
     protected abstract val inboundInitializer: MuxChannelInitializer<TData>
+    private val pendingReadComplete = mutableSetOf<MuxId>()
 
     override fun handlerAdded(ctx: ChannelHandlerContext) {
         super.handlerAdded(ctx)
@@ -54,13 +55,19 @@ abstract class AbstractMuxHandler<TData>() :
 
     protected fun childRead(id: MuxId, msg: TData) {
         val child = streamMap[id] ?: throw ConnectionClosedException("Channel with id $id not opened")
+        pendingReadComplete += id
         child.pipeline().fireChannelRead(msg)
+    }
+
+    override fun channelReadComplete(ctx: ChannelHandlerContext) {
+        pendingReadComplete.forEach { streamMap[it]?.pipeline()?.fireChannelReadComplete() }
+        pendingReadComplete.clear()
     }
 
     abstract fun onChildWrite(child: MuxChannel<TData>, data: TData): Boolean
 
     protected fun onRemoteOpen(id: MuxId) {
-        val initializer = inboundInitializer ?: throw InternalErrorException("Illegal state: inbound stream handler is not set up yet")
+        val initializer = inboundInitializer
         val child = createChild(
             id,
             initializer,
