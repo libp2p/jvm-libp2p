@@ -24,6 +24,7 @@ import io.netty.channel.ChannelInboundHandlerAdapter
 import io.netty.channel.DefaultChannelId
 import io.netty.handler.logging.LogLevel
 import io.netty.handler.logging.LoggingHandler
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertThrows
@@ -81,6 +82,40 @@ class MultiplexHandlerTest {
         assertHandlerCount(1)
         assertEquals(3, childHandlers[0].inboundMessages.size)
         assertEquals("66", childHandlers[0].inboundMessages.last())
+    }
+
+    @Test
+    fun `test that readComplete event is fired to child channel`() {
+        openStream(12)
+
+        assertThat(childHandlers[0].readCompleteEventCount).isZero()
+
+        writeStream(12, "22")
+
+        assertThat(childHandlers[0].readCompleteEventCount).isEqualTo(1)
+
+        writeStream(12, "23")
+
+        assertThat(childHandlers[0].readCompleteEventCount).isEqualTo(2)
+    }
+
+    @Test
+    fun `test that readComplete event is fired to reading channels only`() {
+        openStream(12)
+        openStream(13)
+
+        assertThat(childHandlers[0].readCompleteEventCount).isZero()
+        assertThat(childHandlers[1].readCompleteEventCount).isZero()
+
+        writeStream(12, "22")
+
+        assertThat(childHandlers[0].readCompleteEventCount).isEqualTo(1)
+        assertThat(childHandlers[1].readCompleteEventCount).isEqualTo(0)
+
+        writeStream(13, "23")
+
+        assertThat(childHandlers[0].readCompleteEventCount).isEqualTo(1)
+        assertThat(childHandlers[1].readCompleteEventCount).isEqualTo(1)
     }
 
     @Test
@@ -222,6 +257,7 @@ class MultiplexHandlerTest {
     class TestHandler : ChannelInboundHandlerAdapter() {
         val inboundMessages = mutableListOf<String>()
         var ctx: ChannelHandlerContext? = null
+        var readCompleteEventCount = 0
 
         override fun channelInactive(ctx: ChannelHandlerContext?) {
             println("MultiplexHandlerTest.channelInactive")
@@ -246,6 +282,7 @@ class MultiplexHandlerTest {
         }
 
         override fun channelReadComplete(ctx: ChannelHandlerContext?) {
+            readCompleteEventCount++
             println("MultiplexHandlerTest.channelReadComplete")
         }
 

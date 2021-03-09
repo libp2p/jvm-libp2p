@@ -61,25 +61,47 @@ do not impact the ability to hold communications with other libp2p processes.
 
 ## Adding as a dependency to your project:
 
-Builds are published to JCenter. Maven Central mirrors JCenter, but updates can take some time to appear so if possible, pull directly from JCenter.
+[![Hosted By: Cloudsmith](https://img.shields.io/badge/OSS%20hosting%20by-cloudsmith-blue?logo=cloudsmith&style=flat-square)](https://cloudsmith.com) 
+Hosting of artefacts is graciously provided by [Cloudsmith](https://cloudsmith.com).
 
 ### Using Gradle
 ```
    repositories {
-       jcenter()
+    maven { url "https://dl.cloudsmith.io/public/libp2p/jvm-libp2p/maven/" }
    }
 
-   implementation 'io.libp2p:jvm-libp2p-minimal:0.7.0-RELEASE'
+   implementation 'io.libp2p:jvm-libp2p-minimal:0.8.0-RELEASE'
 ```
 ### Using Maven
+Add the repository to the `dependencyManagement` section of the pom file:
+```
+<repositories>
+  <repository>
+    <id>libp2p-jvm-libp2p</id>
+    <url>https://dl.cloudsmith.io/public/libp2p/jvm-libp2p/maven/</url>
+    <releases>
+      <enabled>true</enabled>
+      <updatePolicy>always</updatePolicy>
+    </releases>
+    <snapshots>
+      <enabled>true</enabled>
+      <updatePolicy>always</updatePolicy>
+    </snapshots>
+  </repository>
+</repositories>
+```
+
+And then add jvm-libp2p as a dependency:
 ``` 
   <dependency>
     <groupId>io.libp2p</groupId>
     <artifactId>jvm-libp2p-minimal</artifactId>
-    <version>0.7.0-RELEASE</version>
+    <version>0.8.0-RELEASE</version>
     <type>pom</type>
   </dependency>
 ```
+
+
 
 ## Building the project 
 

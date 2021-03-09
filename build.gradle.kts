@@ -1,7 +1,6 @@
 import com.google.protobuf.gradle.proto
 import com.google.protobuf.gradle.protobuf
 import com.google.protobuf.gradle.protoc
-import com.jfrog.bintray.gradle.BintrayExtension
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.jetbrains.dokka.gradle.DokkaTask
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
@@ -9,11 +8,11 @@ import java.net.URL
 import java.nio.file.Files
 import java.nio.file.Paths
 
-// To publish the release artifact to JFrog Bintray repo run the following :
-// ./gradlew bintrayUpload -PbintrayUser=<user> -PbintrayApiKey=<api-key>
+// To publish the release artifact to CloudSmith repo run the following :
+// ./gradlew publish -PcloudsmithUser=<user> -PcloudsmithApiKey=<api-key>
 
 group = "io.libp2p"
-version = "0.7.0-RELEASE"
+version = "0.8.0-RELEASE"
 description = "a minimal implementation of libp2p for the jvm"
 
 plugins {
@@ -25,7 +24,6 @@ plugins {
 
     `maven`
     `maven-publish`
-    id("com.jfrog.bintray") version "1.8.1"
     id("org.jetbrains.dokka") version "0.9.18"
 }
 
@@ -213,8 +211,12 @@ val dokkaJar by tasks.creating(Jar::class) {
 publishing {
     repositories {
         maven {
-            // change to point to your repo, e.g. http://my.org/repo
-            url = uri("$buildDir/repo")
+            name = "cloudsmith"
+            url = uri("https://api-g.cloudsmith.io/maven/libp2p/jvm-libp2p")
+            credentials {
+                username = findProperty("cloudsmithUser")
+                password = findProperty("cloudsmithApiKey")
+            }
         }
     }
     publications {
@@ -222,26 +224,13 @@ publishing {
             from(components["java"])
             artifact(sourcesJar.get())
             artifact(dokkaJar)
+            groupId = "io.libp2p"
+            artifactId = project.name
         }
     }
 }
 
 fun findProperty(s: String) = project.findProperty(s) as String?
-
-bintray {
-    user = findProperty("bintrayUser")
-    key = findProperty("bintrayApiKey")
-    publish = true
-    setPublications("mavenJava")
-    setConfigurations("archives")
-    pkg(delegateClosureOf<BintrayExtension.PackageConfig> {
-        userOrg = "libp2p"
-        repo = "jvm-libp2p"
-        name = "io.libp2p"
-        setLicenses("Apache-2.0", "MIT")
-        vcsUrl = "https://github.com/libp2p/jvm-libp2p"
-    })
-}
 
 val compileKotlin: KotlinCompile by tasks
 compileKotlin.kotlinOptions {
