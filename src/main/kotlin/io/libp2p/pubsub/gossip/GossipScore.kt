@@ -1,6 +1,7 @@
 package io.libp2p.pubsub.gossip
 
 import io.libp2p.core.PeerId
+import io.libp2p.core.multiformats.Protocol
 import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.etc.types.cappedDouble
 import io.libp2p.etc.types.createLRUMap
@@ -15,6 +16,9 @@ import java.util.concurrent.TimeUnit
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
+
+fun P2PService.PeerHandler.getIP(): String? =
+    streamHandler.stream.connection.remoteAddress().getStringComponent(Protocol.IP4)
 
 class GossipScore(
     val params: GossipScoreParams = GossipScoreParams(),
@@ -101,6 +105,7 @@ class GossipScore(
 
     private val validationTime: MutableMap<PubsubMessage, Long> = createLRUMap(1024)
     val peerScores = mutableMapOf<PeerId, PeerScores>()
+    private val peerIpCache = mutableMapOf<PeerId, String>()
 
     val refreshTask: ScheduledFuture<*>
 
@@ -111,6 +116,8 @@ class GossipScore(
 
     private fun getPeerScores(peer: P2PService.PeerHandler) =
         peerScores.computeIfAbsent(peer.peerId) { PeerScores() }
+
+    private fun getPeerIp(peer: P2PService.PeerHandler): String? = peerIpCache[peer.peerId]
 
     private fun getTopicScores(peer: P2PService.PeerHandler, topic: Topic) =
         getPeerScores(peer).topicScores.computeIfAbsent(topic) { TopicScores(it) }
@@ -133,7 +140,7 @@ class GossipScore(
         )
         val appScore = peerParams.appSpecificScore(peer.peerId) * peerParams.appSpecificWeight
 
-        val peersInIp: Int = peer.getIP()?.let { thisIp ->
+        val peersInIp: Int = getPeerIp(peer)?.let { thisIp ->
             if (peerParams.ipWhitelisted(thisIp)) 0 else
                 peerScores.values.count { thisIp in it.ips }
         } ?: 0
@@ -164,12 +171,17 @@ class GossipScore(
         }
 
         getPeerScores(peer).disconnectedTimeMillis = curTimeMillis()
+        peerIpCache -= peer.peerId
     }
 
     fun notifyConnected(peer: P2PService.PeerHandler) {
+        peer.getIP()?.also { peerIp ->
+            peerIpCache[peer.peerId] = peerIp
+        }
+
         getPeerScores(peer).apply {
             connectedTimeMillis = curTimeMillis()
-            peer.getIP()?.also { ips += it }
+            getPeerIp(peer)?.also { ips += it }
         }
     }
 

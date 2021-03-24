@@ -2,7 +2,6 @@ package io.libp2p.pubsub.gossip
 
 import io.libp2p.core.InternalErrorException
 import io.libp2p.core.PeerId
-import io.libp2p.core.multiformats.Protocol
 import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.etc.types.anyComplete
 import io.libp2p.etc.types.copy
@@ -34,9 +33,6 @@ const val MaxBackoffEntries = 10 * 1024
 const val MaxIAskedEntries = 256
 const val MaxPeerIHaveEntries = 256
 const val MaxIWantRequestsEntries = 10 * 1024
-
-fun P2PService.PeerHandler.getIP(): String? =
-    streamHandler.stream.connection.remoteAddress().getStringComponent(Protocol.IP4)
 
 fun P2PService.PeerHandler.isOutbound() = streamHandler.stream.connection.isInitiator
 
