@@ -55,7 +55,8 @@ open class GossipRouter @JvmOverloads constructor(
     subscriptionTopicSubscriptionFilter: TopicSubscriptionFilter = TopicSubscriptionFilter.AllowAllTopicSubscriptionFilter()
 ) : AbstractRouter(subscriptionTopicSubscriptionFilter, params.maxGossipMessageSize) {
 
-    val acceptRequestsWhitelistThreshold = 0
+    val acceptRequestsWhitelistThresholdScore = 0
+    val acceptRequestsWhitelistMaxMessages = 128
     val acceptRequestsWhitelistDuration = 1.seconds
     val score by lazy { GossipScore(scoreParams, executor, curTimeMillis) }
     val fanout: MutableMap<Topic, MutableSet<PeerHandler>> = linkedMapOf()
@@ -76,7 +77,7 @@ open class GossipRouter @JvmOverloads constructor(
             TimeUnit.MILLISECONDS
         )
     }
-    private val acceptRequestsWhitelist = mutableMapOf<PeerHandler, Long>()
+    private val acceptRequestsWhitelist = mutableMapOf<PeerHandler, AcceptRequestsWhitelistEntry>()
 
     override val seenMessages: SeenCache<Optional<ValidationResult>> by lazy {
         TTLSeenCache(SimpleSeenCache(), params.seenTTL, curTimeMillis)
@@ -178,14 +179,20 @@ open class GossipRouter @JvmOverloads constructor(
         }
 
         val curTime = curTimeMillis()
-        val whitelistedTill = acceptRequestsWhitelist[peer] ?: 0
-        if (curTime <= whitelistedTill) {
+        val whitelistEntry = acceptRequestsWhitelist[peer]
+        if (whitelistEntry != null &&
+            curTime <= whitelistEntry.whitelistedTill &&
+            whitelistEntry.messagesAccepted < acceptRequestsWhitelistMaxMessages
+        ) {
+
+            acceptRequestsWhitelist[peer] = whitelistEntry.incrementMessageCount()
             return true
         }
 
         val peerScore = score.score(peer)
-        if (peerScore >= acceptRequestsWhitelistThreshold) {
-            acceptRequestsWhitelist[peer] = curTime + acceptRequestsWhitelistDuration.toMillis()
+        if (peerScore >= acceptRequestsWhitelistThresholdScore) {
+            acceptRequestsWhitelist[peer] =
+                AcceptRequestsWhitelistEntry(curTime + acceptRequestsWhitelistDuration.toMillis())
         }
 
         return peerScore >= score.params.graylistThreshold
@@ -564,5 +571,9 @@ open class GossipRouter @JvmOverloads constructor(
                 )
             ).build()
         )
+    }
+
+    data class AcceptRequestsWhitelistEntry(val whitelistedTill: Long, val messagesAccepted: Int = 0) {
+        fun incrementMessageCount() = AcceptRequestsWhitelistEntry(whitelistedTill, messagesAccepted + 1)
     }
 }
