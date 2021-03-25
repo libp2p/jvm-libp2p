@@ -6,7 +6,6 @@ import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.etc.types.cappedDouble
 import io.libp2p.etc.types.createLRUMap
 import io.libp2p.etc.types.millis
-import io.libp2p.etc.types.seconds
 import io.libp2p.etc.util.P2PService
 import io.libp2p.pubsub.PubsubMessage
 import io.libp2p.pubsub.Topic
@@ -28,9 +27,9 @@ class GossipScore(
 ) {
 
     inner class TopicScores(val topic: Topic) {
-        private val recalcMaxDuration = 1.seconds
         private val params: GossipTopicScoreParams
             get() = topicParams[topic]
+        private val recalcMaxDuration = params.timeInMeshQuantum
         private var cachedScore: Double = 0.0
         private var cacheValid: Boolean = false
         private var prevParams = params
