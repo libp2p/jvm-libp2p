@@ -103,6 +103,7 @@ open class GossipRouter @JvmOverloads constructor(
         score.notifyDisconnected(peer)
         mesh.values.forEach { it.remove(peer) }
         fanout.values.forEach { it.remove(peer) }
+        acceptRequestsWhitelist -= peer
         collectPeerMessage(peer) // discard them
         super.onPeerDisconnected(peer)
     }
