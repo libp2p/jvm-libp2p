@@ -73,7 +73,7 @@ data class CappedValueDelegate<C : Comparable<C>>(
 ) : ReadWriteProperty<Any?, C> {
 
     override fun getValue(thisRef: Any?, property: KProperty<*>): C {
-        val oldValue = value
+        val oldValue = this.value
         val v1 = if (value > upperBound()) upperBoundVal() else value
         value = if (value < lowerBound()) lowerBoundVal() else v1
         if (oldValue != value) {
@@ -83,7 +83,7 @@ data class CappedValueDelegate<C : Comparable<C>>(
     }
 
     override fun setValue(thisRef: Any?, property: KProperty<*>, value: C) {
-        val oldValue = value
+        val oldValue = this.value
         this.value = value
         if (oldValue != value) {
             updateListener(value)
