@@ -55,6 +55,8 @@ open class GossipRouter @JvmOverloads constructor(
     subscriptionTopicSubscriptionFilter: TopicSubscriptionFilter = TopicSubscriptionFilter.AllowAllTopicSubscriptionFilter()
 ) : AbstractRouter(subscriptionTopicSubscriptionFilter, params.maxGossipMessageSize) {
 
+    val acceptRequestsWhitelistThreshold = 0
+    val acceptRequestsWhitelistDuration = 1.seconds
     val score by lazy { GossipScore(scoreParams, executor, curTimeMillis) }
     val fanout: MutableMap<Topic, MutableSet<PeerHandler>> = linkedMapOf()
     val mesh: MutableMap<Topic, MutableSet<PeerHandler>> = linkedMapOf()
@@ -74,6 +76,7 @@ open class GossipRouter @JvmOverloads constructor(
             TimeUnit.MILLISECONDS
         )
     }
+    private val acceptRequestsWhitelist = mutableMapOf<PeerHandler, Long>()
 
     override val seenMessages: SeenCache<Optional<ValidationResult>> by lazy {
         TTLSeenCache(SimpleSeenCache(), params.seenTTL, curTimeMillis)
@@ -169,7 +172,22 @@ open class GossipRouter @JvmOverloads constructor(
     }
 
     override fun acceptRequestsFrom(peer: PeerHandler): Boolean {
-        return isDirect(peer) || score.score(peer) >= score.params.graylistThreshold
+        if (isDirect(peer)) {
+            return true
+        }
+
+        val curTime = curTimeMillis()
+        val whitelistedTill = acceptRequestsWhitelist[peer] ?: 0
+        if (curTime <= whitelistedTill) {
+            return true
+        }
+
+        val peerScore = score.score(peer)
+        if (peerScore >= acceptRequestsWhitelistThreshold) {
+            acceptRequestsWhitelist[peer] = curTime + acceptRequestsWhitelistDuration.toMillis()
+        }
+
+        return peerScore >= score.params.graylistThreshold
     }
 
     override fun validateMessageListLimits(msg: Rpc.RPC): Boolean {

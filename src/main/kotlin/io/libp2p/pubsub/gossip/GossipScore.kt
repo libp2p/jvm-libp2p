@@ -84,7 +84,7 @@ class GossipScore(
         fun meshMessageDeliveriesDeficitSqr() = meshMessageDeliveriesDeficit().pow(2)
 
         fun calcTopicScore(): Double {
-            val curTime = curTimeMillis();
+            val curTime = curTimeMillis()
             if (cacheValid && prevParams === params && curTime - prevTime < recalcMaxDuration.toMillis()) {
                 return cachedScore
             }
