@@ -14,8 +14,7 @@ class DelegatesTest {
 
     var cappedValueDelegate: Double by CappedValueDelegate(0.0, { min.get() }, { minVal.get() }, { max.get() }, { maxVal.get() })
     var cappedInt: Int by cappedVar(10, 5, 20)
-    var cappedDouble: Double by cappedDouble(0.0, 1.0) { max.get() }
-
+    var cappedDouble: Double by cappedDouble(0.0, 1.0, { -> max.get() })
     @Test
     fun cappedVarTest() {
         Assertions.assertEquals(10, cappedInt)

@@ -6,6 +6,7 @@ import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.etc.types.cappedDouble
 import io.libp2p.etc.types.createLRUMap
 import io.libp2p.etc.types.millis
+import io.libp2p.etc.types.seconds
 import io.libp2p.etc.util.P2PService
 import io.libp2p.pubsub.PubsubMessage
 import io.libp2p.pubsub.Topic
@@ -27,22 +28,43 @@ class GossipScore(
 ) {
 
     inner class TopicScores(val topic: Topic) {
+        private val recalcMaxDuration = 1.seconds
         private val params: GossipTopicScoreParams
             get() = topicParams[topic]
+        private var cachedScore: Double = 0.0
+        private var cacheValid: Boolean = false
+        private var prevParams = params
+        private var prevTime = curTimeMillis()
 
         var joinedMeshTimeMillis: Long = 0
+            set(value) {
+                field = value
+                cacheValid = false
+            }
+
         var firstMessageDeliveries: Double by cappedDouble(
             0.0,
             this@GossipScore.peerParams.decayToZero,
-            { params.firstMessageDeliveriesCap }
+            { params.firstMessageDeliveriesCap },
+            { cacheValid = false }
         )
         var meshMessageDeliveries: Double by cappedDouble(
             0.0,
             this@GossipScore.peerParams.decayToZero,
-            { params.meshMessageDeliveriesCap }
+            { params.meshMessageDeliveriesCap },
+            { cacheValid = false }
         )
-        var meshFailurePenalty: Double by cappedDouble(0.0, this@GossipScore.peerParams.decayToZero)
-        var invalidMessages: Double by cappedDouble(0.0, this@GossipScore.peerParams.decayToZero)
+        var meshFailurePenalty: Double by cappedDouble(
+            0.0,
+            this@GossipScore.peerParams.decayToZero,
+            { _ -> cacheValid = false }
+        )
+
+        var invalidMessages: Double by cappedDouble(
+            0.0,
+            this@GossipScore.peerParams.decayToZero,
+            { _ -> cacheValid = false }
+        )
 
         fun inMesh() = joinedMeshTimeMillis > 0
 
@@ -62,19 +84,26 @@ class GossipScore(
         fun meshMessageDeliveriesDeficitSqr() = meshMessageDeliveriesDeficit().pow(2)
 
         fun calcTopicScore(): Double {
+            val curTime = curTimeMillis();
+            if (cacheValid && prevParams === params && curTime - prevTime < recalcMaxDuration.toMillis()) {
+                return cachedScore
+            }
+            prevParams = params
+            prevTime = curTime
             val p1 = meshTimeNorm()
             val p2 = firstMessageDeliveries
             val p3 = meshMessageDeliveriesDeficitSqr()
             val p3b = meshFailurePenalty
             val p4 = invalidMessages.pow(2)
-            val ret = params.topicWeight * (
+            cachedScore = params.topicWeight * (
                 p1 * params.timeInMeshWeight +
                     p2 * params.firstMessageDeliveriesWeight +
                     p3 * params.meshMessageDeliveriesWeight +
                     p3b * params.meshFailurePenaltyWeight +
                     p4 * params.invalidMessageDeliveriesWeight
                 )
-            return ret
+            cacheValid = true
+            return cachedScore
         }
 
         fun decayScores() {

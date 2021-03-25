@@ -22,16 +22,20 @@ fun <T : Comparable<T>> cappedVar(value: T, lowerBound: T, upperBound: T) =
 /**
  * Creates a Double delegate which may drop value to [0.0] when the new value is less than [decayToZero]
  */
-fun cappedDouble(value: Double, decayToZero: Double = Double.MIN_VALUE): CappedValueDelegate<Double> {
-    return cappedDouble(value, decayToZero) { Double.MAX_VALUE }
+fun cappedDouble(value: Double, decayToZero: Double = Double.MIN_VALUE, updateListener: (Double) -> Unit = { }): CappedValueDelegate<Double> {
+    return cappedDouble(value, decayToZero, { Double.MAX_VALUE }, updateListener)
 }
 
 /**
  * Creates a Double delegate which may cap upper bound (set [upperBound] when the new value is greater)
  * and may drop value to [0.0] when the new value is less than [decayToZero]
  */
-fun cappedDouble(value: Double, decayToZero: Double = Double.MIN_VALUE, upperBound: () -> Double) =
-    CappedValueDelegate(value, { decayToZero }, { 0.0 }, upperBound, upperBound)
+fun cappedDouble(
+    value: Double,
+    decayToZero: Double = Double.MIN_VALUE,
+    upperBound: () -> Double,
+    updateListener: (Double) -> Unit = { }
+) = CappedValueDelegate(value, { decayToZero }, { 0.0 }, upperBound, upperBound, updateListener)
 
 // thanks to https://stackoverflow.com/a/47948047/9630725
 class LazyMutable<T>(val initializer: () -> T, val rejectSetAfterGet: Boolean = false) : ReadWriteProperty<Any?, T> {
@@ -64,16 +68,25 @@ data class CappedValueDelegate<C : Comparable<C>>(
     private val lowerBound: () -> C,
     private val lowerBoundVal: () -> C = lowerBound,
     private val upperBound: () -> C,
-    private val upperBoundVal: () -> C = upperBound
+    private val upperBoundVal: () -> C = upperBound,
+    private val updateListener: (C) -> Unit = { }
 ) : ReadWriteProperty<Any?, C> {
 
     override fun getValue(thisRef: Any?, property: KProperty<*>): C {
+        val oldValue = value
         val v1 = if (value > upperBound()) upperBoundVal() else value
         value = if (value < lowerBound()) lowerBoundVal() else v1
+        if (oldValue != value) {
+            updateListener(value)
+        }
         return value
     }
 
     override fun setValue(thisRef: Any?, property: KProperty<*>, value: C) {
+        val oldValue = value
         this.value = value
+        if (oldValue != value) {
+            updateListener(value)
+        }
     }
 }
