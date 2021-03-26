@@ -21,10 +21,11 @@ class DelegatesTest {
         { minVal.get() },
         { max.get() },
         { maxVal.get() },
-        { cappedValueDelegateUpdates += it })
+        { cappedValueDelegateUpdates += it }
+    )
 
     var cappedInt: Int by cappedVar(10, 5, 20)
-    var cappedDouble: Double by cappedDouble(0.0, 1.0, { -> max.get() }, { cappedDoubleUpdates += it } )
+    var cappedDouble: Double by cappedDouble(0.0, 1.0, { -> max.get() }, { cappedDoubleUpdates += it })
     var blackhole: Double = 0.0
 
     @Test
