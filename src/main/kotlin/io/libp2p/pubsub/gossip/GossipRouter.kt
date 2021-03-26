@@ -55,9 +55,15 @@ open class GossipRouter @JvmOverloads constructor(
     subscriptionTopicSubscriptionFilter: TopicSubscriptionFilter = TopicSubscriptionFilter.AllowAllTopicSubscriptionFilter()
 ) : AbstractRouter(subscriptionTopicSubscriptionFilter, params.maxGossipMessageSize) {
 
+    // The idea behind choosing these specific default values for acceptRequestsWhitelist was
+    // - from one side are pretty small and safe: peer unlikely be able to drop its score to `graylist`
+    //   with 128 messages. But even if so then it's not critical to accept some extra messages before
+    //   blocking - not too much space for DoS here
+    // - from the other side param values are pretty high to yield good performance gain
     val acceptRequestsWhitelistThresholdScore = 0
     val acceptRequestsWhitelistMaxMessages = 128
     val acceptRequestsWhitelistDuration = 1.seconds
+
     val score by lazy { GossipScore(scoreParams, executor, curTimeMillis) }
     val fanout: MutableMap<Topic, MutableSet<PeerHandler>> = linkedMapOf()
     val mesh: MutableMap<Topic, MutableSet<PeerHandler>> = linkedMapOf()
