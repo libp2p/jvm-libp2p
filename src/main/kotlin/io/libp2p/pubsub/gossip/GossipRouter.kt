@@ -199,6 +199,8 @@ open class GossipRouter @JvmOverloads constructor(
         if (peerScore >= acceptRequestsWhitelistThresholdScore) {
             acceptRequestsWhitelist[peer] =
                 AcceptRequestsWhitelistEntry(curTime + acceptRequestsWhitelistDuration.toMillis())
+        } else {
+            acceptRequestsWhitelist -= peer
         }
 
         return peerScore >= score.params.graylistThreshold
