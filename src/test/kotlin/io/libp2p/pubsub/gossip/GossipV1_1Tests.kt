@@ -251,6 +251,60 @@ class GossipV1_1Tests {
     }
 
     @Test
+    fun `test that acceptRequests whitelist is refreshed on timeout`() {
+        val appScore = AtomicDouble()
+        val peerScoreParams = GossipPeerScoreParams(
+            appSpecificScore = { appScore.get() },
+            appSpecificWeight = 1.0
+        )
+        val scoreParams = GossipScoreParams(
+            peerScoreParams = peerScoreParams,
+            graylistThreshold = -100.0
+        )
+        val test = TwoRoutersTest(scoreParams = scoreParams)
+
+        // with this score the peer should be whitelisted for some period
+        appScore.set(test.gossipRouter.acceptRequestsWhitelistThresholdScore.toDouble())
+
+        test.mockRouter.subscribe("topic1")
+        test.gossipRouter.subscribe("topic1")
+
+        // 2 heartbeats - the topic should be GRAFTed
+        test.fuzz.timeController.addTime(2.seconds)
+        test.mockRouter.waitForMessage { it.hasControl() && it.control.graftCount > 0 }
+        test.mockRouter.inboundMessages.clear()
+
+        val msg1 = Rpc.RPC.newBuilder()
+            .addPublish(newProtoMessage("topic1", 0L, "Hello-1".toByteArray()))
+            .build()
+        test.mockRouter.sendToSingle(msg1)
+        // at this point peer is whitelisted for a period
+
+        appScore.set(-101.0)
+
+        val graftMsg = Rpc.RPC.newBuilder().setControl(
+            Rpc.ControlMessage.newBuilder().addGraft(
+                Rpc.ControlGraft.newBuilder().setTopicID("topic1")
+            )
+        ).build()
+        for (i in 0..2) {
+            test.fuzz.timeController.addTime(50.millis)
+
+            // even having the score below gralist threshold the peer should be answered because
+            // it is still in acceptRequests whitelist
+            test.mockRouter.sendToSingle(graftMsg)
+            test.mockRouter.waitForMessage { it.hasControl() && it.control.pruneCount > 0 }
+        }
+
+        test.fuzz.timeController.addTime(test.gossipRouter.acceptRequestsWhitelistDuration)
+        // at this point whitelist should be invalidated and score recalculated
+
+        test.mockRouter.sendToSingle(graftMsg)
+        // the last message should be ignored
+        assertEquals(0, test.mockRouter.inboundMessages.size)
+    }
+
+    @Test
     fun testGraftFloodPenalty() {
         val test = TwoRoutersTest()
 

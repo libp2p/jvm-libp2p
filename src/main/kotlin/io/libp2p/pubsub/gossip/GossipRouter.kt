@@ -2,7 +2,6 @@ package io.libp2p.pubsub.gossip
 
 import io.libp2p.core.InternalErrorException
 import io.libp2p.core.PeerId
-import io.libp2p.core.multiformats.Protocol
 import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.etc.types.anyComplete
 import io.libp2p.etc.types.copy
@@ -35,9 +34,6 @@ const val MaxIAskedEntries = 256
 const val MaxPeerIHaveEntries = 256
 const val MaxIWantRequestsEntries = 10 * 1024
 
-fun P2PService.PeerHandler.getIP(): String? =
-    streamHandler.stream.connection.remoteAddress().getStringComponent(Protocol.IP4)
-
 fun P2PService.PeerHandler.isOutbound() = streamHandler.stream.connection.isInitiator
 
 fun P2PService.PeerHandler.getPeerProtocol(): PubsubProtocol {
@@ -59,6 +55,15 @@ open class GossipRouter @JvmOverloads constructor(
     subscriptionTopicSubscriptionFilter: TopicSubscriptionFilter = TopicSubscriptionFilter.AllowAllTopicSubscriptionFilter()
 ) : AbstractRouter(subscriptionTopicSubscriptionFilter, params.maxGossipMessageSize) {
 
+    // The idea behind choosing these specific default values for acceptRequestsWhitelist was
+    // - from one side are pretty small and safe: peer unlikely be able to drop its score to `graylist`
+    //   with 128 messages. But even if so then it's not critical to accept some extra messages before
+    //   blocking - not too much space for DoS here
+    // - from the other side param values are pretty high to yield good performance gain
+    val acceptRequestsWhitelistThresholdScore = 0
+    val acceptRequestsWhitelistMaxMessages = 128
+    val acceptRequestsWhitelistDuration = 1.seconds
+
     val score by lazy { GossipScore(scoreParams, executor, curTimeMillis) }
     val fanout: MutableMap<Topic, MutableSet<PeerHandler>> = linkedMapOf()
     val mesh: MutableMap<Topic, MutableSet<PeerHandler>> = linkedMapOf()
@@ -78,6 +83,7 @@ open class GossipRouter @JvmOverloads constructor(
             TimeUnit.MILLISECONDS
         )
     }
+    private val acceptRequestsWhitelist = mutableMapOf<PeerHandler, AcceptRequestsWhitelistEntry>()
 
     override val seenMessages: SeenCache<Optional<ValidationResult>> by lazy {
         TTLSeenCache(SimpleSeenCache(), params.seenTTL, curTimeMillis)
@@ -104,6 +110,7 @@ open class GossipRouter @JvmOverloads constructor(
         score.notifyDisconnected(peer)
         mesh.values.forEach { it.remove(peer) }
         fanout.values.forEach { it.remove(peer) }
+        acceptRequestsWhitelist -= peer
         collectPeerMessage(peer) // discard them
         super.onPeerDisconnected(peer)
     }
@@ -173,7 +180,30 @@ open class GossipRouter @JvmOverloads constructor(
     }
 
     override fun acceptRequestsFrom(peer: PeerHandler): Boolean {
-        return isDirect(peer) || score.score(peer) >= score.params.graylistThreshold
+        if (isDirect(peer)) {
+            return true
+        }
+
+        val curTime = curTimeMillis()
+        val whitelistEntry = acceptRequestsWhitelist[peer]
+        if (whitelistEntry != null &&
+            curTime <= whitelistEntry.whitelistedTill &&
+            whitelistEntry.messagesAccepted < acceptRequestsWhitelistMaxMessages
+        ) {
+
+            acceptRequestsWhitelist[peer] = whitelistEntry.incrementMessageCount()
+            return true
+        }
+
+        val peerScore = score.score(peer)
+        if (peerScore >= acceptRequestsWhitelistThresholdScore) {
+            acceptRequestsWhitelist[peer] =
+                AcceptRequestsWhitelistEntry(curTime + acceptRequestsWhitelistDuration.toMillis())
+        } else {
+            acceptRequestsWhitelist -= peer
+        }
+
+        return peerScore >= score.params.graylistThreshold
     }
 
     override fun validateMessageListLimits(msg: Rpc.RPC): Boolean {
@@ -549,5 +579,9 @@ open class GossipRouter @JvmOverloads constructor(
                 )
             ).build()
         )
+    }
+
+    data class AcceptRequestsWhitelistEntry(val whitelistedTill: Long, val messagesAccepted: Int = 0) {
+        fun incrementMessageCount() = AcceptRequestsWhitelistEntry(whitelistedTill, messagesAccepted + 1)
     }
 }
