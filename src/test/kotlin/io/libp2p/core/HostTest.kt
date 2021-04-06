@@ -5,6 +5,7 @@ import io.libp2p.etc.PROTOCOL
 import io.libp2p.etc.types.seconds
 import io.libp2p.etc.types.toByteArray
 import io.libp2p.mux.MuxFrame
+import io.libp2p.protocol.Identify
 import io.libp2p.protocol.Ping
 import io.libp2p.protocol.PingBinding
 import io.libp2p.protocol.PingProtocol
@@ -17,7 +18,9 @@ import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelPromise
 import io.netty.handler.logging.LogLevel
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import java.util.Random
 import java.util.concurrent.TimeUnit
@@ -64,6 +67,73 @@ class HostTest {
 
         assertThat(streamVisitor1.inboundData.size).isGreaterThan(packetsCount1)
         assertThat(streamVisitor2.inboundData.size).isGreaterThan(packetsCount2)
+    }
+
+    @Test
+    fun `test should be able to initiate request after adding handler`() {
+        // 1st host has stripped down protocols
+        hostFactory.protocols = listOf(Identify())
+        val host1 = hostFactory.createHost()
+        // 2nd host has multiple protocols
+        hostFactory.protocols = listOf(Identify(), Ping())
+        val host2 = hostFactory.createHost()
+
+        // Add ping to host1
+        host1.host.addProtocolHandler(Ping())
+
+        val ping = Ping().dial(host1.host, host2.peerId, host2.listenAddress)
+        val ctrl = ping.controller.get(5, TimeUnit.SECONDS)
+
+        val ret = ctrl.ping().get(5, TimeUnit.SECONDS)
+        assertThat(ret).isGreaterThanOrEqualTo(0)
+    }
+
+    @Test
+    @Disabled("This is not currently supported ")
+    fun `test should be able to receive request after adding handler`() {
+        // 1st host has stripped down protocols
+        hostFactory.protocols = listOf(Identify())
+        val host1 = hostFactory.createHost()
+        // 2nd host has multiple protocols
+        hostFactory.protocols = listOf(Identify(), Ping())
+        val host2 = hostFactory.createHost()
+
+        // Add ping to host1
+        host1.host.addProtocolHandler(Ping())
+
+        val ping = Ping().dial(host2.host, host1.peerId, host1.listenAddress)
+        val ctrl = ping.controller.get(5, TimeUnit.SECONDS)
+
+        val ret = ctrl.ping().get(5, TimeUnit.SECONDS)
+        assertThat(ret).isGreaterThanOrEqualTo(0)
+    }
+
+    @Test
+    @Disabled("This is not currently supported ")
+    fun `test should fail to initiate request after removing handler`() {
+        val host1 = hostFactory.createHost()
+        val host2 = hostFactory.createHost()
+
+        // Remove protocol
+        host1.host.removeProtocolHandler(Ping())
+
+        val ping = Ping().dial(host1.host, host2.peerId, host2.listenAddress)
+        assertThatThrownBy { ping.controller.get() }
+            .hasCauseInstanceOf(NoSuchRemoteProtocolException::class.java)
+    }
+
+    @Test
+    @Disabled("This is not currently supported ")
+    fun `test should fail to receive request after removing handler`() {
+        val host1 = hostFactory.createHost()
+        val host2 = hostFactory.createHost()
+
+        // Remove protocol
+        host1.host.removeProtocolHandler(Ping())
+
+        val ping = Ping().dial(host2.host, host1.peerId, host1.listenAddress)
+        assertThatThrownBy { ping.controller.get() }
+            .hasCauseInstanceOf(NoSuchRemoteProtocolException::class.java)
     }
 
     @Test
