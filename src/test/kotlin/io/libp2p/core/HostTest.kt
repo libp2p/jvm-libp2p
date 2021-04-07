@@ -135,6 +135,55 @@ class HostTest {
     }
 
     @Test
+    @Disabled("TODO")
+    fun `test should update identity information after adding handler`() {
+        // 1st host has stripped down protocols
+        hostFactory.protocols = listOf(Identify())
+        val host1 = hostFactory.createHost()
+        // 2nd host has multiple protocols
+        hostFactory.protocols = listOf(Identify(), Ping())
+        val host2 = hostFactory.createHost()
+
+        // Add ping to host1
+        host1.host.addProtocolHandlers(Ping())
+
+        val identify = Identify().dial(host2.host, host1.peerId, host1.listenAddress)
+        val ctrl = identify.controller.get(5, TimeUnit.SECONDS)
+
+        val expectedProtocols: MutableList<ProtocolId> = mutableListOf()
+        Identify().protocolDescriptor.announceProtocols.forEach { expectedProtocols.add(it) }
+        Ping().protocolDescriptor.announceProtocols.forEach { expectedProtocols.add(it) }
+
+        val ret = ctrl.id().get(5, TimeUnit.SECONDS)
+        assertThat(ret.protocolsList.size).isEqualTo(2)
+        assertThat(ret.protocolsList).containsAll(expectedProtocols)
+    }
+
+    @Test
+    @Disabled("TODO")
+    fun `test should update identity information after removing handler`() {
+        // 1st host has stripped down protocols
+        hostFactory.protocols = listOf(Identify(), Ping())
+        val host1 = hostFactory.createHost()
+        // 2nd host has multiple protocols
+        hostFactory.protocols = listOf(Identify(), Ping())
+        val host2 = hostFactory.createHost()
+
+        // Remove ping from host1
+        host1.host.removeProtocolHandlers(Ping().protocolDescriptor.announceProtocols)
+
+        val identify = Identify().dial(host2.host, host1.peerId, host1.listenAddress)
+        val ctrl = identify.controller.get(5, TimeUnit.SECONDS)
+
+        val expectedProtocols: MutableList<ProtocolId> = mutableListOf()
+        Identify().protocolDescriptor.announceProtocols.forEach { expectedProtocols.add(it) }
+
+        val ret = ctrl.id().get(5, TimeUnit.SECONDS)
+        assertThat(ret.protocolsList.size).isEqualTo(1)
+        assertThat(ret.protocolsList).containsAll(expectedProtocols)
+    }
+
+    @Test
     fun `test protocol stream interceptor`() {
         val host1 = hostFactory.createHost()
 
