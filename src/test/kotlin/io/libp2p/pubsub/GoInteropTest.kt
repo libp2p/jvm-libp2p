@@ -12,7 +12,6 @@ import io.libp2p.core.dsl.host
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multistream.MultistreamProtocolV1
 import io.libp2p.core.multistream.ProtocolBinding
-import io.libp2p.core.multistream.ProtocolBindings
 import io.libp2p.core.mux.StreamMuxerProtocol
 import io.libp2p.core.pubsub.MessageApi
 import io.libp2p.core.pubsub.Topic
@@ -119,7 +118,7 @@ class GoInteropTest {
                 it.router.messageValidator = NOP_ROUTER_VALIDATOR
             }
 
-            val applicationProtocols = ProtocolBindings.create(listOf(ProtocolBinding.createSimple("/meshsub/1.0.0", gossip), Identify()))
+            val applicationProtocols = listOf(ProtocolBinding.createSimple("/meshsub/1.0.0", gossip), Identify())
             val muxer = StreamMuxerProtocol.Mplex.createMuxer(MultistreamProtocolV1, applicationProtocols).also {
                 it as MplexStreamMuxer
                 it.muxFramesDebugHandler = ChannelVisitor {

@@ -12,10 +12,7 @@ interface MultistreamProtocol {
     /**
      * Creates [Multistream] implementation with a list of protocol bindings
      */
-    fun <TController> createMultistream(bindings: ProtocolBindings<TController>): Multistream<TController>
-
-    @JvmDefault
-    fun <TController> createMultistream(bindings: List<ProtocolBinding<TController>>): Multistream<TController> = createMultistream(ProtocolBindings.create(bindings))
+    fun <TController> createMultistream(bindings: List<ProtocolBinding<TController>>): Multistream<TController>
 }
 
 interface MultistreamProtocolDebug : MultistreamProtocol {

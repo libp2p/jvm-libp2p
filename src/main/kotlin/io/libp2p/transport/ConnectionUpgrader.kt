@@ -3,7 +3,6 @@ package io.libp2p.transport
 import io.libp2p.core.Connection
 import io.libp2p.core.multistream.MultistreamProtocol
 import io.libp2p.core.multistream.ProtocolBinding
-import io.libp2p.core.multistream.ProtocolBindings
 import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.core.security.SecureChannel
 import java.util.concurrent.CompletableFuture
@@ -39,7 +38,7 @@ open class ConnectionUpgrader(
         connection: Connection,
         channels: List<T>
     ): CompletableFuture<R> {
-        val multistream = multistreamProtocol.createMultistream(ProtocolBindings.create(channels))
+        val multistream = multistreamProtocol.createMultistream(channels)
         return multistream.initChannel(connection)
     } // establish
 } // ConnectionUpgrader

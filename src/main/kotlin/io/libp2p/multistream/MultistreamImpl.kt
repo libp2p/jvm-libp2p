@@ -3,11 +3,11 @@ package io.libp2p.multistream
 import io.libp2p.core.P2PChannel
 import io.libp2p.core.P2PChannelHandler
 import io.libp2p.core.multistream.Multistream
-import io.libp2p.core.multistream.ProtocolBindings
+import io.libp2p.core.multistream.ProtocolBinding
 import java.util.concurrent.CompletableFuture
 
 class MultistreamImpl<TController>(
-    override val bindings: ProtocolBindings<TController>,
+    override val bindings: List<ProtocolBinding<TController>>,
     val preHandler: P2PChannelHandler<*>? = null,
     val postHandler: P2PChannelHandler<*>? = null
 ) : Multistream<TController> {

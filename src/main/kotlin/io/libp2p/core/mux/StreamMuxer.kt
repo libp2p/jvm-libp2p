@@ -5,7 +5,6 @@ import io.libp2p.core.Connection
 import io.libp2p.core.StreamHandler
 import io.libp2p.core.StreamPromise
 import io.libp2p.core.multistream.ProtocolBinding
-import io.libp2p.core.multistream.ProtocolBindings
 
 /**
  * Performs stream multiplexing of an abstract channel
@@ -39,10 +38,7 @@ interface StreamMuxer : ProtocolBinding<StreamMuxer.Session> {
          * The returned [StreamHandler] contains both a future Stream for lowlevel Stream manipulations
          * and future Controller for the client protocol manipulations
          */
-        fun <T> createStream(protocols: ProtocolBindings<T>): StreamPromise<T>
-
-        @JvmDefault
-        fun <T> createStream(protocols: List<ProtocolBinding<T>>): StreamPromise<T> = createStream(ProtocolBindings.create(protocols))
+        fun <T> createStream(protocols: List<ProtocolBinding<T>>): StreamPromise<T>
 
         @JvmDefault
         fun <T> createStream(protocol: ProtocolBinding<T>): StreamPromise<T> = createStream(listOf(protocol))

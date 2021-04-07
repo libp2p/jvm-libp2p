@@ -95,8 +95,7 @@ class HostImpl(
     }
 
     override fun <TController> newStream(protocols: List<String>, conn: Connection): StreamPromise<TController> {
-        val binding =
-            @Suppress("UNCHECKED_CAST")
+        @Suppress("UNCHECKED_CAST") val binding =
             protocolBindings.find { it.protocolDescriptor.matchesAny(protocols) } as? ProtocolBinding<TController>
                 ?: throw NoSuchLocalProtocolException("Protocol handler not found: $protocols")
         return conn.muxerSession().createStream(listOf(binding.toInitiator(protocols)))

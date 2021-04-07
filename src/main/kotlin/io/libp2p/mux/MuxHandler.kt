@@ -4,7 +4,7 @@ import io.libp2p.core.Stream
 import io.libp2p.core.StreamHandler
 import io.libp2p.core.StreamPromise
 import io.libp2p.core.multistream.MultistreamProtocol
-import io.libp2p.core.multistream.ProtocolBindings
+import io.libp2p.core.multistream.ProtocolBinding
 import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.etc.CONNECTION
 import io.libp2p.etc.STREAM
@@ -19,7 +19,7 @@ import io.netty.channel.ChannelHandlerContext
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicLong
 
-open abstract class MuxHandler(
+abstract class MuxHandler(
     private val ready: CompletableFuture<StreamMuxer.Session>?,
     inboundStreamHandler: StreamHandler<*>
 ) : AbstractMuxHandler<ByteBuf>(), StreamMuxer.Session {
@@ -82,7 +82,7 @@ open abstract class MuxHandler(
         return stream
     }
 
-    override fun <T> createStream(protocols: ProtocolBindings<T>): StreamPromise<T> {
+    override fun <T> createStream(protocols: List<ProtocolBinding<T>>): StreamPromise<T> {
         return createStream(multistreamProtocol.createMultistream(protocols).toStreamHandler())
     }
 

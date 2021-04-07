@@ -4,7 +4,6 @@ import io.libp2p.core.ConnectionClosedException
 import io.libp2p.core.NoSuchLocalProtocolException
 import io.libp2p.core.NoSuchRemoteProtocolException
 import io.libp2p.core.multistream.ProtocolBinding
-import io.libp2p.core.multistream.ProtocolBindings
 import io.libp2p.etc.PROTOCOL
 import io.libp2p.etc.events.ProtocolNegotiationFailed
 import io.libp2p.etc.events.ProtocolNegotiationSucceeded
@@ -19,9 +18,8 @@ import java.util.concurrent.CompletableFuture
 /**
  * Created by Anton Nashatyrev on 20.06.2019.
  */
-class ProtocolSelect<TController>(val protocols: ProtocolBindings<TController>) :
+class ProtocolSelect<TController>(val protocols: List<ProtocolBinding<TController>>) :
     ChannelInboundHandlerAdapter() {
-    constructor(protocolBindings: List<ProtocolBinding<TController>>) : this(ProtocolBindings.create(protocolBindings))
 
     val selectedFuture = CompletableFuture<TController>()
     var activeFired = false
