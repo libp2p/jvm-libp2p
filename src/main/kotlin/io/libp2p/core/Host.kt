@@ -79,12 +79,18 @@ interface Host {
      * After the protocol is added it would handle inbound requests
      * and be actively started up with [newStream] method
      */
-    fun addProtocolHandler(protocolBinding: ProtocolBinding<Any>)
+    fun addProtocolHandlers(vararg protocolBindings: ProtocolBinding<Any>)
+
+    @JvmDefault
+    fun addProtocolHandlers(protocolBindings: List<ProtocolBinding<Any>>) = addProtocolHandlers(*protocolBindings.toTypedArray())
 
     /**
-     * Removes the handler added with [addProtocolHandler]
+     * Removes the handler added with [addProtocolHandlers]
      */
-    fun removeProtocolHandler(protocolBinding: ProtocolBinding<Any>)
+    fun removeProtocolHandlers(vararg protocolIds: ProtocolId)
+
+    @JvmDefault
+    fun removeProtocolHandlers(protocolIds: List<ProtocolId>) = removeProtocolHandlers(*protocolIds.toTypedArray())
 
     fun addConnectionHandler(handler: ConnectionHandler)
     fun removeConnectionHandler(handler: ConnectionHandler)

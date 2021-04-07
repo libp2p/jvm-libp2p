@@ -1,5 +1,6 @@
 package io.libp2p.core
 
+import io.libp2p.core.multistream.ProtocolId
 import io.libp2p.core.multistream.ProtocolMatcher
 import io.libp2p.etc.PROTOCOL
 import io.libp2p.etc.types.seconds
@@ -79,7 +80,7 @@ class HostTest {
         val host2 = hostFactory.createHost()
 
         // Add ping to host1
-        host1.host.addProtocolHandler(Ping())
+        host1.host.addProtocolHandlers(Ping())
 
         val ping = Ping().dial(host1.host, host2.peerId, host2.listenAddress)
         val ctrl = ping.controller.get(5, TimeUnit.SECONDS)
@@ -89,7 +90,6 @@ class HostTest {
     }
 
     @Test
-    @Disabled("This is not currently supported ")
     fun `test should be able to receive request after adding handler`() {
         // 1st host has stripped down protocols
         hostFactory.protocols = listOf(Identify())
@@ -99,7 +99,7 @@ class HostTest {
         val host2 = hostFactory.createHost()
 
         // Add ping to host1
-        host1.host.addProtocolHandler(Ping())
+        host1.host.addProtocolHandlers(Ping())
 
         val ping = Ping().dial(host2.host, host1.peerId, host1.listenAddress)
         val ctrl = ping.controller.get(5, TimeUnit.SECONDS)
@@ -109,27 +109,25 @@ class HostTest {
     }
 
     @Test
-    @Disabled("This is not currently supported ")
     fun `test should fail to initiate request after removing handler`() {
         val host1 = hostFactory.createHost()
         val host2 = hostFactory.createHost()
 
         // Remove protocol
-        host1.host.removeProtocolHandler(Ping())
+        host1.host.removeProtocolHandlers(Ping().protocolDescriptor.announceProtocols)
 
         val ping = Ping().dial(host1.host, host2.peerId, host2.listenAddress)
         assertThatThrownBy { ping.controller.get() }
-            .hasCauseInstanceOf(NoSuchRemoteProtocolException::class.java)
+            .hasCauseInstanceOf(NoSuchLocalProtocolException::class.java)
     }
 
     @Test
-    @Disabled("This is not currently supported ")
     fun `test should fail to receive request after removing handler`() {
         val host1 = hostFactory.createHost()
         val host2 = hostFactory.createHost()
 
         // Remove protocol
-        host1.host.removeProtocolHandler(Ping())
+        host1.host.removeProtocolHandlers(Ping().protocolDescriptor.announceProtocols)
 
         val ping = Ping().dial(host2.host, host1.peerId, host1.listenAddress)
         assertThatThrownBy { ping.controller.get() }

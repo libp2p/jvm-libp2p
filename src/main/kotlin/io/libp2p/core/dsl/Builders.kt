@@ -16,6 +16,7 @@ import io.libp2p.core.multistream.MultistreamProtocol
 import io.libp2p.core.multistream.MultistreamProtocolDebug
 import io.libp2p.core.multistream.MultistreamProtocolV1
 import io.libp2p.core.multistream.ProtocolBinding
+import io.libp2p.core.multistream.ProtocolBindings
 import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.core.mux.StreamMuxerDebug
 import io.libp2p.core.mux.StreamMuxerProtocol
@@ -101,6 +102,9 @@ open class Builder {
      *
      * The protocol may implement the [ConnectionHandler] interface if it wishes to
      * actively open an outbound stream for every new [io.libp2p.core.Connection].
+     *
+     * The protocol list can be modified after that fact via [Host.addProtocolHandlers]
+     * and [Host.removeProtocolHandlers].
      */
     fun protocols(fn: ProtocolsBuilder.() -> Unit): Builder = apply { fn(protocols) }
 
@@ -162,20 +166,21 @@ open class Builder {
 
         val secureChannels = secureChannels.values.map { it(privKey) }
 
-        protocols.values.mapNotNull { (it as? IdentifyBinding) }.map { it.protocol }.find { it.idMessage == null }?.apply {
+        val protocolBindings = ProtocolBindings(protocols)
+        protocolBindings.getValues().mapNotNull { (it as? IdentifyBinding) }.map { it.protocol }.find { it.idMessage == null }?.apply {
             // initializing Identify with appropriate values
             IdentifyOuterClass.Identify.newBuilder().apply {
                 agentVersion = "jvm/0.1"
                 protocolVersion = "p2p/0.1"
                 publicKey = privKey.publicKey().bytes().toProtobuf()
                 addAllListenAddrs(network.listen.map { Multiaddr(it).getBytes().toProtobuf() })
-                addAllProtocols(protocols.flatMap { it.protocolDescriptor.announceProtocols })
+                addAllProtocols(protocolBindings.getValues().flatMap { it.protocolDescriptor.announceProtocols })
             }.build().also {
                 this.idMessage = it
             }
         }
 
-        val muxers = muxers.map { it.createMuxer(streamMultistreamProtocol, protocols.values) }
+        val muxers = muxers.map { it.createMuxer(streamMultistreamProtocol, protocolBindings) }
 
         if (debug.muxFramesHandler.handlers.isNotEmpty()) {
             val broadcast = ChannelVisitor.createBroadcast(*debug.muxFramesHandler.handlers.toTypedArray())
@@ -189,7 +194,7 @@ open class Builder {
         val transports = transports.values.map { it(upgrader) }
         val addressBook = addressBook.impl
 
-        val connHandlerProtocols = protocols.values.mapNotNull { it as? ConnectionHandler }
+        val connHandlerProtocols = protocolBindings.getValues().mapNotNull { it as? ConnectionHandler }
         val broadcastConnHandler = ConnectionHandler.createBroadcast(
             connHandlerProtocols +
                 connectionHandlers.values
@@ -201,7 +206,7 @@ open class Builder {
             networkImpl,
             addressBook,
             network.listen.map { Multiaddr(it) },
-            protocols.values,
+            protocolBindings,
             broadcastConnHandler,
             streamVisitors
         )

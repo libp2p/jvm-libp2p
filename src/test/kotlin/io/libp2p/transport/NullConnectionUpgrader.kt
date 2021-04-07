@@ -6,7 +6,7 @@ import io.libp2p.core.StreamPromise
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.multistream.MultistreamProtocol
-import io.libp2p.core.multistream.ProtocolBinding
+import io.libp2p.core.multistream.ProtocolBindings
 import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.core.security.SecureChannel
 import java.util.concurrent.CompletableFuture
@@ -14,7 +14,7 @@ import java.util.concurrent.CompletableFuture
 class NullMultistreamProtocol : MultistreamProtocol {
     override val version = "0.0.0"
 
-    override fun <TController> createMultistream(bindings: List<ProtocolBinding<TController>>) = TODO()
+    override fun <TController> createMultistream(bindings: ProtocolBindings<TController>) = TODO()
 }
 
 class NullConnectionUpgrader :
@@ -36,7 +36,7 @@ class NullConnectionUpgrader :
         } // establishMuxer
 
     private class DoNothingMuxerSession : StreamMuxer.Session {
-        override fun <T> createStream(protocols: List<ProtocolBinding<T>>): StreamPromise<T> {
+        override fun <T> createStream(protocols: ProtocolBindings<T>): StreamPromise<T> {
             throw NotImplementedError("Test only. Shouldn't be called")
         }
     }

@@ -13,6 +13,8 @@ import io.libp2p.core.StreamPromise
 import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multistream.ProtocolBinding
+import io.libp2p.core.multistream.ProtocolBindings
+import io.libp2p.core.multistream.ProtocolId
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CopyOnWriteArrayList
 
@@ -21,7 +23,7 @@ class HostImpl(
     override val network: Network,
     override val addressBook: AddressBook,
     private val listenAddrs: List<Multiaddr>,
-    private val protocolHandlers: MutableList<ProtocolBinding<Any>>,
+    private val protocolBindings: ProtocolBindings<Any>,
     private val connectionHandlers: ConnectionHandler.Broadcast,
     private val streamVisitors: ChannelVisitor.Broadcast<Stream>
 ) : Host {
@@ -70,12 +72,12 @@ class HostImpl(
         streamVisitors -= streamVisitor
     }
 
-    override fun addProtocolHandler(protocolBinding: ProtocolBinding<Any>) {
-        protocolHandlers += protocolBinding
+    override fun addProtocolHandlers(vararg protocolBindings: ProtocolBinding<Any>) {
+        this.protocolBindings.addProtocols(*protocolBindings)
     }
 
-    override fun removeProtocolHandler(protocolBinding: ProtocolBinding<Any>) {
-        protocolHandlers -= protocolBinding
+    override fun removeProtocolHandlers(vararg protocolIds: ProtocolId) {
+        protocolBindings.removeProtocols(*protocolIds)
     }
 
     override fun addConnectionHandler(handler: ConnectionHandler) {
@@ -95,7 +97,7 @@ class HostImpl(
     override fun <TController> newStream(protocols: List<String>, conn: Connection): StreamPromise<TController> {
         val binding =
             @Suppress("UNCHECKED_CAST")
-            protocolHandlers.find { it.protocolDescriptor.matchesAny(protocols) } as? ProtocolBinding<TController>
+            protocolBindings.getValues().find { it.protocolDescriptor.matchesAny(protocols) } as? ProtocolBinding<TController>
                 ?: throw NoSuchLocalProtocolException("Protocol handler not found: $protocols")
         return conn.muxerSession().createStream(listOf(binding.toInitiator(protocols)))
     }

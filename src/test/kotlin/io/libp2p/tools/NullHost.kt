@@ -12,6 +12,7 @@ import io.libp2p.core.StreamPromise
 import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multistream.ProtocolBinding
+import io.libp2p.core.multistream.ProtocolId
 import java.util.concurrent.CompletableFuture
 
 open class NullHost : Host {
@@ -39,20 +40,20 @@ open class NullHost : Host {
         TODO("not implemented")
     }
 
-    override fun addStreamVisitor(handler: ChannelVisitor<Stream>) {
+    override fun addStreamVisitor(streamVisitor: ChannelVisitor<Stream>) {
         TODO("Not yet implemented")
     }
 
-    override fun removeStreamVisitor(handler: ChannelVisitor<Stream>) {
+    override fun removeStreamVisitor(streamVisitor: ChannelVisitor<Stream>) {
         TODO("Not yet implemented")
     }
 
-    override fun addProtocolHandler(protocolBinding: ProtocolBinding<Any>) {
-        TODO("not implemented")
+    override fun addProtocolHandlers(vararg protocolBindings: ProtocolBinding<Any>) {
+        TODO("Not yet implemented")
     }
 
-    override fun removeProtocolHandler(protocolBinding: ProtocolBinding<Any>) {
-        TODO("not implemented")
+    override fun removeProtocolHandlers(vararg protocolIds: ProtocolId) {
+        TODO("Not yet implemented")
     }
 
     override fun addConnectionHandler(handler: ConnectionHandler) {
