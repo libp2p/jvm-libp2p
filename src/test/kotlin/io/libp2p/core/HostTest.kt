@@ -92,6 +92,29 @@ class HostTest {
     }
 
     @Test
+    fun `test should be able to initiate request to already connected peer after adding handler`() {
+        // 1st host has stripped down protocols
+        hostFactory.protocols = listOf(Identify())
+        val host1 = hostFactory.createHost()
+        // 2nd host has multiple protocols
+        hostFactory.protocols = listOf(Identify(), Ping())
+        val host2 = hostFactory.createHost()
+
+        // Connect
+        val identify = Identify().dial(host1.host, host2.peerId, host2.listenAddress)
+        identify.controller.get(5, TimeUnit.SECONDS)
+
+        // Add ping to host1
+        host1.host.addProtocolHandlers(Ping())
+
+        val ping = Ping().dial(host1.host, host2.peerId, host2.listenAddress)
+        val ctrl = ping.controller.get(5, TimeUnit.SECONDS)
+
+        val ret = ctrl.ping().get(5, TimeUnit.SECONDS)
+        assertThat(ret).isGreaterThanOrEqualTo(0)
+    }
+
+    @Test
     fun `test should be able to receive request after adding handler`() {
         // 1st host has stripped down protocols
         hostFactory.protocols = listOf(Identify())
@@ -99,6 +122,29 @@ class HostTest {
         // 2nd host has multiple protocols
         hostFactory.protocols = listOf(Identify(), Ping())
         val host2 = hostFactory.createHost()
+
+        // Add ping to host1
+        host1.host.addProtocolHandlers(Ping())
+
+        val ping = Ping().dial(host2.host, host1.peerId, host1.listenAddress)
+        val ctrl = ping.controller.get(5, TimeUnit.SECONDS)
+
+        val ret = ctrl.ping().get(5, TimeUnit.SECONDS)
+        assertThat(ret).isGreaterThanOrEqualTo(0)
+    }
+
+    @Test
+    fun `test should be able to receive request from already connected peer after adding handler`() {
+        // 1st host has stripped down protocols
+        hostFactory.protocols = listOf(Identify())
+        val host1 = hostFactory.createHost()
+        // 2nd host has multiple protocols
+        hostFactory.protocols = listOf(Identify(), Ping())
+        val host2 = hostFactory.createHost()
+
+        // Connect
+        val identify = Identify().dial(host1.host, host2.peerId, host2.listenAddress)
+        identify.controller.get(5, TimeUnit.SECONDS)
 
         // Add ping to host1
         host1.host.addProtocolHandlers(Ping())
@@ -124,9 +170,43 @@ class HostTest {
     }
 
     @Test
+    fun `test should fail to initiate request to already connected peer after removing handler`() {
+        val host1 = hostFactory.createHost()
+        val host2 = hostFactory.createHost()
+
+        // Connect
+        val identify = Identify().dial(host1.host, host2.peerId, host2.listenAddress)
+        identify.controller.get(5, TimeUnit.SECONDS)
+
+        // Remove protocol
+        host1.host.removeProtocolHandlers(Ping().protocolDescriptor.announceProtocols)
+
+        val ping = Ping().dial(host1.host, host2.peerId, host2.listenAddress)
+        assertThatThrownBy { ping.controller.get() }
+            .hasCauseInstanceOf(NoSuchLocalProtocolException::class.java)
+    }
+
+    @Test
     fun `test should fail to receive request after removing handler`() {
         val host1 = hostFactory.createHost()
         val host2 = hostFactory.createHost()
+
+        // Remove protocol
+        host1.host.removeProtocolHandlers(Ping().protocolDescriptor.announceProtocols)
+
+        val ping = Ping().dial(host2.host, host1.peerId, host1.listenAddress)
+        assertThatThrownBy { ping.controller.get() }
+            .hasCauseInstanceOf(NoSuchRemoteProtocolException::class.java)
+    }
+
+    @Test
+    fun `test should fail to receive request from already connected peer after removing handler`() {
+        val host1 = hostFactory.createHost()
+        val host2 = hostFactory.createHost()
+
+        // Connect
+        val identify = Identify().dial(host1.host, host2.peerId, host2.listenAddress)
+        identify.controller.get(5, TimeUnit.SECONDS)
 
         // Remove protocol
         host1.host.removeProtocolHandlers(Ping().protocolDescriptor.announceProtocols)
@@ -214,6 +294,11 @@ class HostTest {
         // And another
         val identify2 = Identify().dial(host1.host, host3.peerId, host3.listenAddress)
         identify2.controller.get(5, TimeUnit.SECONDS)
+        assertThat(connectionHandler.count).isEqualTo(2)
+
+        // Connection to same peer shouldn't fire connection handler
+        val identify3 = Identify().dial(host1.host, host3.peerId, host3.listenAddress)
+        identify3.controller.get(5, TimeUnit.SECONDS)
         assertThat(connectionHandler.count).isEqualTo(2)
     }
 
