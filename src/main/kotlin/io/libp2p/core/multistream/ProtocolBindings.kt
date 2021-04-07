@@ -3,11 +3,16 @@ package io.libp2p.core.multistream
 import java.util.concurrent.CopyOnWriteArrayList
 
 class ProtocolBindings<TController>(
-    initList: List<ProtocolBinding<TController>> = listOf()
-) {
-
     private val bindings: MutableList<ProtocolBinding<TController>> =
-        CopyOnWriteArrayList(initList)
+        CopyOnWriteArrayList()
+) : List<ProtocolBinding<TController>> by bindings {
+
+    companion object {
+        fun <T> create(protocols: List<ProtocolBinding<T>>): ProtocolBindings<T> {
+            return ProtocolBindings<T>().also { it.bindings.addAll(protocols) }
+        }
+    }
+
     private val listeners: MutableList<ProtocolUpdateListener<TController>> = CopyOnWriteArrayList()
 
     fun addProtocols(vararg protocols: ProtocolBinding<TController>) {
@@ -26,10 +31,6 @@ class ProtocolBindings<TController>(
                 listeners.forEach { it.onUpdate(emptyList(), toRemove) }
             }
         }
-    }
-
-    fun getValues(): List<ProtocolBinding<TController>> {
-        return bindings
     }
 
     fun addListener(listener: ProtocolUpdateListener<TController>) {

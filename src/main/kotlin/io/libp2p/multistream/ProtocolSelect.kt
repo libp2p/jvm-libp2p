@@ -21,7 +21,7 @@ import java.util.concurrent.CompletableFuture
  */
 class ProtocolSelect<TController>(val protocols: ProtocolBindings<TController>) :
     ChannelInboundHandlerAdapter() {
-    constructor(protocolBindings: List<ProtocolBinding<TController>>) : this(ProtocolBindings(protocolBindings))
+    constructor(protocolBindings: List<ProtocolBinding<TController>>) : this(ProtocolBindings.create(protocolBindings))
 
     val selectedFuture = CompletableFuture<TController>()
     var activeFired = false
@@ -48,7 +48,7 @@ class ProtocolSelect<TController>(val protocols: ProtocolBindings<TController>) 
         userEvent = true
         when (evt) {
             is ProtocolNegotiationSucceeded -> {
-                val protocolBinding = protocols.getValues().find { it.protocolDescriptor.protocolMatcher.matches(evt.proto) }
+                val protocolBinding = protocols.find { it.protocolDescriptor.protocolMatcher.matches(evt.proto) }
                     ?: throw NoSuchLocalProtocolException("Protocol negotiation failed: not supported protocol ${evt.proto}")
                 ctx.channel().attr(PROTOCOL).get()?.complete(evt.proto)
                 ctx.pipeline().addAfter(

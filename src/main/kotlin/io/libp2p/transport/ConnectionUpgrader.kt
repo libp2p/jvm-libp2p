@@ -39,7 +39,7 @@ open class ConnectionUpgrader(
         connection: Connection,
         channels: List<T>
     ): CompletableFuture<R> {
-        val multistream = multistreamProtocol.createMultistream(ProtocolBindings(channels))
+        val multistream = multistreamProtocol.createMultistream(ProtocolBindings.create(channels))
         return multistream.initChannel(connection)
     } // establish
 } // ConnectionUpgrader

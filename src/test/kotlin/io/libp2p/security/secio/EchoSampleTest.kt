@@ -55,7 +55,7 @@ class EchoSampleTest {
         val logger = LogManager.getLogger("test")
 
         val (privKey1, _) = generateKeyPair(KEY_TYPE.ECDSA)
-        val applicationProtocols = ProtocolBindings(listOf(createSimpleBinding("/echo/1.0.0") { EchoProtocol() }))
+        val applicationProtocols = ProtocolBindings.create(listOf(createSimpleBinding("/echo/1.0.0") { EchoProtocol() }))
         val muxer = StreamMuxerProtocol.Mplex.createMuxer(MultistreamProtocolV1, applicationProtocols).also {
             it as MplexStreamMuxer
             it.muxFramesDebugHandler = ChannelVisitor {

@@ -167,16 +167,16 @@ open class Builder {
 
         val secureChannels = secureChannels.values.map { it(privKey) }
 
-        val protocolBindings = ProtocolBindings(protocols)
+        val protocolBindings = ProtocolBindings.create(protocols)
 
-        protocolBindings.getValues().mapNotNull { (it as? IdentifyBinding) }.map { it.protocol }.find { it.idMessage == null }?.apply {
+        protocolBindings.mapNotNull { (it as? IdentifyBinding) }.map { it.protocol }.find { it.idMessage == null }?.apply {
             // initializing Identify with appropriate values
             IdentifyOuterClass.Identify.newBuilder().apply {
                 agentVersion = "jvm/0.1"
                 protocolVersion = "p2p/0.1"
                 publicKey = privKey.publicKey().bytes().toProtobuf()
                 addAllListenAddrs(network.listen.map { Multiaddr(it).getBytes().toProtobuf() })
-                addAllProtocols(protocolBindings.getValues().flatMap { it.protocolDescriptor.announceProtocols })
+                addAllProtocols(protocolBindings.flatMap { it.protocolDescriptor.announceProtocols })
             }.build().also {
                 this.idMessage = it
             }
@@ -196,7 +196,7 @@ open class Builder {
         val transports = transports.values.map { it(upgrader) }
         val addressBook = addressBook.impl
 
-        val connHandlerProtocols = protocolBindings.getValues().mapNotNull { it as? ConnectionHandler }
+        val connHandlerProtocols = protocolBindings.mapNotNull { it as? ConnectionHandler }
         val broadcastConnHandler = ConnectionHandler.createBroadcast(
             connHandlerProtocols +
                 connectionHandlers.values
@@ -227,10 +227,10 @@ open class Builder {
             }
 
             private fun updateIdentityProtocol() {
-                protocolBindings.getValues().mapNotNull { (it as? IdentifyBinding) }.map { it.protocol }.forEach {
+                protocolBindings.mapNotNull { (it as? IdentifyBinding) }.map { it.protocol }.forEach {
                     it.idMessage?.toBuilder()?.apply {
                         clearProtocols()
-                        addAllProtocols(protocolBindings.getValues().flatMap { it.protocolDescriptor.announceProtocols })
+                        addAllProtocols(protocolBindings.flatMap { it.protocolDescriptor.announceProtocols })
                     }?.build().also {
                         identifyMessage ->
                         it.idMessage = identifyMessage
