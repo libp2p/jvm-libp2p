@@ -75,9 +75,7 @@ interface Host {
     fun removeStreamVisitor(streamVisitor: ChannelVisitor<Stream>)
 
     /**
-     * Adds a new supported protocol 'on the fly'
-     * After the protocol is added it would handle inbound requests
-     * and be actively started up with [newStream] method
+     * Add new supported protocols 'on the fly'
      */
     fun addProtocolHandlers(vararg protocolBindings: ProtocolBinding<Any>)
 
@@ -85,7 +83,7 @@ interface Host {
     fun addProtocolHandlers(protocolBindings: List<ProtocolBinding<Any>>) = addProtocolHandlers(*protocolBindings.toTypedArray())
 
     /**
-     * Removes the handler added with [addProtocolHandlers]
+     * Remove supported protocols.
      */
     fun removeProtocolHandlers(vararg protocolIds: ProtocolId)
 
