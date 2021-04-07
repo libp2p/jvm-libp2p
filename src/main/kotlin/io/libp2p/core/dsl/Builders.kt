@@ -17,6 +17,7 @@ import io.libp2p.core.multistream.MultistreamProtocolDebug
 import io.libp2p.core.multistream.MultistreamProtocolV1
 import io.libp2p.core.multistream.ProtocolBinding
 import io.libp2p.core.multistream.ProtocolBindings
+import io.libp2p.core.multistream.ProtocolBindings.ProtocolUpdateListener
 import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.core.mux.StreamMuxerDebug
 import io.libp2p.core.mux.StreamMuxerProtocol
@@ -167,6 +168,7 @@ open class Builder {
         val secureChannels = secureChannels.values.map { it(privKey) }
 
         val protocolBindings = ProtocolBindings(protocols)
+
         protocolBindings.getValues().mapNotNull { (it as? IdentifyBinding) }.map { it.protocol }.find { it.idMessage == null }?.apply {
             // initializing Identify with appropriate values
             IdentifyOuterClass.Identify.newBuilder().apply {
@@ -201,6 +203,7 @@ open class Builder {
         )
         val networkImpl = NetworkImpl(transports, broadcastConnHandler)
 
+        addProtocolBindingsListener(protocolBindings, broadcastConnHandler)
         return HostImpl(
             privKey,
             networkImpl,
@@ -210,6 +213,38 @@ open class Builder {
             broadcastConnHandler,
             streamVisitors
         )
+    }
+
+    private fun addProtocolBindingsListener(
+        protocolBindings: ProtocolBindings<Any>,
+        broadcastConnHandler: ConnectionHandler.Broadcast
+    ) {
+        val listener = object : ProtocolUpdateListener<Any> {
+
+            override fun onUpdate(added: List<ProtocolBinding<Any>>, removed: List<ProtocolBinding<Any>>) {
+                updateIdentityProtocol()
+                updateConnectionHandlers(added, removed)
+            }
+
+            private fun updateIdentityProtocol() {
+                protocolBindings.getValues().mapNotNull { (it as? IdentifyBinding) }.map { it.protocol }.forEach {
+                    it.idMessage?.toBuilder()?.apply {
+                        clearProtocols()
+                        addAllProtocols(protocolBindings.getValues().flatMap { it.protocolDescriptor.announceProtocols })
+                    }?.build().also {
+                        identifyMessage ->
+                        it.idMessage = identifyMessage
+                    }
+                }
+            }
+
+            private fun updateConnectionHandlers(added: List<ProtocolBinding<Any>>, removed: List<ProtocolBinding<Any>>) {
+                broadcastConnHandler.removeAll(removed.mapNotNull { it as? ConnectionHandler })
+                broadcastConnHandler.addAll(added.mapNotNull { it as? ConnectionHandler })
+            }
+        }
+
+        protocolBindings.addListener(listener)
     }
 }
 

@@ -1,5 +1,7 @@
 package io.libp2p.core
 
+import io.libp2p.core.multistream.ProtocolBinding
+import io.libp2p.core.multistream.ProtocolDescriptor
 import io.libp2p.core.multistream.ProtocolId
 import io.libp2p.core.multistream.ProtocolMatcher
 import io.libp2p.etc.PROTOCOL
@@ -21,9 +23,9 @@ import io.netty.handler.logging.LogLevel
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import java.util.Random
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 
 class HostTest {
@@ -135,7 +137,6 @@ class HostTest {
     }
 
     @Test
-    @Disabled("TODO")
     fun `test should update identity information after adding handler`() {
         // 1st host has stripped down protocols
         hostFactory.protocols = listOf(Identify())
@@ -144,7 +145,7 @@ class HostTest {
         hostFactory.protocols = listOf(Identify(), Ping())
         val host2 = hostFactory.createHost()
 
-        // Add ping to host1
+        // Add handler
         host1.host.addProtocolHandlers(Ping())
 
         val identify = Identify().dial(host2.host, host1.peerId, host1.listenAddress)
@@ -160,7 +161,6 @@ class HostTest {
     }
 
     @Test
-    @Disabled("TODO")
     fun `test should update identity information after removing handler`() {
         // 1st host has stripped down protocols
         hostFactory.protocols = listOf(Identify(), Ping())
@@ -169,7 +169,7 @@ class HostTest {
         hostFactory.protocols = listOf(Identify(), Ping())
         val host2 = hostFactory.createHost()
 
-        // Remove ping from host1
+        // Remove handler
         host1.host.removeProtocolHandlers(Ping().protocolDescriptor.announceProtocols)
 
         val identify = Identify().dial(host2.host, host1.peerId, host1.listenAddress)
@@ -181,6 +181,75 @@ class HostTest {
         val ret = ctrl.id().get(5, TimeUnit.SECONDS)
         assertThat(ret.protocolsList.size).isEqualTo(1)
         assertThat(ret.protocolsList).containsAll(expectedProtocols)
+    }
+
+    @Test
+    fun `test should register added connection handler protocol`() {
+        val connectionHandler = object : ConnectionHandler, ProtocolBinding<Any> {
+            var count = 0
+            override val protocolDescriptor: ProtocolDescriptor = ProtocolDescriptor("connectionHandler")
+
+            override fun handleConnection(conn: Connection) {
+                ++count
+            }
+
+            override fun initChannel(ch: P2PChannel, selectedProtocol: String): CompletableFuture<out Any> {
+                return CompletableFuture.completedFuture("testing")
+            }
+        }
+
+        val host1 = hostFactory.createHost()
+        val host2 = hostFactory.createHost()
+        val host3 = hostFactory.createHost()
+
+        // Add handler
+        host1.host.addProtocolHandlers(connectionHandler)
+        assertThat(connectionHandler.count).isEqualTo(0)
+
+        // Initiate a connection
+        val identify = Identify().dial(host2.host, host1.peerId, host1.listenAddress)
+        identify.controller.get(5, TimeUnit.SECONDS)
+        assertThat(connectionHandler.count).isEqualTo(1)
+
+        // And another
+        val identify2 = Identify().dial(host1.host, host3.peerId, host3.listenAddress)
+        identify2.controller.get(5, TimeUnit.SECONDS)
+        assertThat(connectionHandler.count).isEqualTo(2)
+    }
+
+    @Test
+    fun `test should deregister removed connection handler protocol`() {
+        val connectionHandler = object : ConnectionHandler, ProtocolBinding<Any> {
+            var count = 0
+            override val protocolDescriptor: ProtocolDescriptor = ProtocolDescriptor("connectionHandler")
+
+            override fun handleConnection(conn: Connection) {
+                ++count
+            }
+
+            override fun initChannel(ch: P2PChannel, selectedProtocol: String): CompletableFuture<out Any> {
+                return CompletableFuture.completedFuture("testing")
+            }
+        }
+
+        hostFactory.protocols = listOf(Identify(), Ping(), connectionHandler)
+        val host1 = hostFactory.createHost()
+        hostFactory.protocols = listOf(Identify(), Ping())
+        val host2 = hostFactory.createHost()
+        val host3 = hostFactory.createHost()
+
+        // Initiate a connection
+        val identify = Identify().dial(host2.host, host1.peerId, host1.listenAddress)
+        identify.controller.get(5, TimeUnit.SECONDS)
+        assertThat(connectionHandler.count).isEqualTo(1)
+
+        // Remove connection handling protocol
+        host1.host.removeProtocolHandlers(connectionHandler.protocolDescriptor.announceProtocols)
+
+        // Add new connection
+        val identify2 = Identify().dial(host1.host, host3.peerId, host3.listenAddress)
+        identify2.controller.get(5, TimeUnit.SECONDS)
+        assertThat(connectionHandler.count).isEqualTo(1)
     }
 
     @Test
