@@ -4,6 +4,7 @@ import io.libp2p.core.Connection
 import io.libp2p.core.ConnectionHandler
 import io.libp2p.core.P2PChannel
 import io.libp2p.core.Stream
+import io.libp2p.core.PeerId
 import io.libp2p.core.multistream.ProtocolBinding
 import io.libp2p.core.multistream.ProtocolDescriptor
 import io.libp2p.core.pubsub.PubsubApi
@@ -21,6 +22,10 @@ class Gossip @JvmOverloads constructor(
 
     fun updateTopicScoreParams(scoreParams: Map<String, GossipTopicScoreParams>) {
         router.score.updateTopicParams(scoreParams)
+    }
+
+    fun getGossipScore(peerId: PeerId): GossipScore.PeerScores {
+        return router.score.getPeerScore(peerId)
     }
 
     override val protocolDescriptor =

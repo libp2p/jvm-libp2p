@@ -193,6 +193,10 @@ class GossipScore(
         }
     }
 
+    fun getPeerScore(peerId: PeerId): PeerScores {
+        return peerScores.computeIfAbsent(peerId) { PeerScores() }
+    }
+
     fun notifyDisconnected(peer: P2PService.PeerHandler) {
         getPeerScores(peer).topicScores.filter { it.value.inMesh() }.forEach { t, _ ->
             notifyPruned(peer, t)
