@@ -132,6 +132,7 @@ class GossipScore(
     val topicParams = params.topicsScoreParams
 
     private val validationTime: MutableMap<PubsubMessage, Long> = createLRUMap(1024)
+    val cachedScores = mutableMapOf<PeerId, Double>()
     val peerScores = mutableMapOf<PeerId, PeerScores>()
     private val peerIpCache = mutableMapOf<PeerId, String>()
 
@@ -182,7 +183,9 @@ class GossipScore(
             if (behaviorExcess < 0) 0.0
             else behaviorExcess.pow(2) * peerParams.behaviourPenaltyWeight
 
-        return topicsScore + appScore + ipColocationPenalty + routerPenalty
+        val computedScore = topicsScore + appScore + ipColocationPenalty + routerPenalty
+        cachedScores[peer.peerId] = computedScore
+        return computedScore
     }
 
     fun refreshScores() {
@@ -193,8 +196,8 @@ class GossipScore(
         }
     }
 
-    fun getPeerScore(peerId: PeerId): PeerScores {
-        return peerScores.computeIfAbsent(peerId) { PeerScores() }
+    fun getCachedScore(peerId: PeerId): Double {
+        return cachedScores.computeIfAbsent(peerId) { 0.0 }
     }
 
     fun notifyDisconnected(peer: P2PService.PeerHandler) {
