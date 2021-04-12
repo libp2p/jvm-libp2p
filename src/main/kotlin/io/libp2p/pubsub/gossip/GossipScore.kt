@@ -13,6 +13,7 @@ import java.util.Optional
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
@@ -117,6 +118,7 @@ class GossipScore(
         val ips = mutableSetOf<String>()
         var connectedTimeMillis: Long = 0
         var disconnectedTimeMillis: Long = 0
+        var cachedScore: AtomicReference<Double> = AtomicReference(0.0)
 
         val topicScores = mutableMapOf<Topic, TopicScores>()
         var behaviorPenalty: Double by cappedDouble(0.0, peerParams.decayToZero)
@@ -132,7 +134,6 @@ class GossipScore(
     val topicParams = params.topicsScoreParams
 
     private val validationTime: MutableMap<PubsubMessage, Long> = createLRUMap(1024)
-    val cachedScores = mutableMapOf<PeerId, Double>()
     val peerScores = mutableMapOf<PeerId, PeerScores>()
     private val peerIpCache = mutableMapOf<PeerId, String>()
 
@@ -184,7 +185,7 @@ class GossipScore(
             else behaviorExcess.pow(2) * peerParams.behaviourPenaltyWeight
 
         val computedScore = topicsScore + appScore + ipColocationPenalty + routerPenalty
-        cachedScores[peer.peerId] = computedScore
+        peerScore.cachedScore.set(computedScore)
         return computedScore
     }
 
@@ -197,7 +198,7 @@ class GossipScore(
     }
 
     fun getCachedScore(peerId: PeerId): Double {
-        return cachedScores.computeIfAbsent(peerId) { 0.0 }
+        return peerScores[peerId]?.cachedScore?.get() ?: 0.0
     }
 
     fun notifyDisconnected(peer: P2PService.PeerHandler) {

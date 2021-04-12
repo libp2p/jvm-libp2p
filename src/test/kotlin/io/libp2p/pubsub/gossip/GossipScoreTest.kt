@@ -180,10 +180,12 @@ class GossipScoreTest {
         val msg = DefaultPubsubMessage(createRpcMessage(topic))
         score.notifyUnseenValidMessage(peer, msg)
         assertThat(score.score(peer)).isEqualTo(2.0)
+        assertThat(score.getCachedScore(peer.peerId)).isEqualTo(2.0)
 
         // Refresh to decay score
         score.refreshScores()
         assertThat(score.score(peer)).isEqualTo(1.0)
+        assertThat(score.getCachedScore(peer.peerId)).isEqualTo(1.0)
     }
 
     @Test
