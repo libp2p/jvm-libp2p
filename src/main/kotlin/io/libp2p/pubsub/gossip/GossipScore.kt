@@ -118,7 +118,7 @@ class GossipScore(
         val ips = mutableSetOf<String>()
         var connectedTimeMillis: Long = 0
         var disconnectedTimeMillis: Long = 0
-        var cachedScore: AtomicReference<Double> = AtomicReference(0.0)
+        val cachedScore: AtomicReference<Double> = AtomicReference(0.0)
 
         val topicScores = mutableMapOf<Topic, TopicScores>()
         var behaviorPenalty: Double by cappedDouble(0.0, peerParams.decayToZero)
