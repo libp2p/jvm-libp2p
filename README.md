@@ -70,7 +70,7 @@ Hosting of artefacts is graciously provided by [Cloudsmith](https://cloudsmith.c
     maven { url "https://dl.cloudsmith.io/public/libp2p/jvm-libp2p/maven/" }
    }
 
-   implementation 'io.libp2p:jvm-libp2p-minimal:0.8.1-RELEASE'
+   implementation 'io.libp2p:jvm-libp2p-minimal:0.8.2-RELEASE'
 ```
 ### Using Maven
 Add the repository to the `dependencyManagement` section of the pom file:
@@ -96,7 +96,7 @@ And then add jvm-libp2p as a dependency:
   <dependency>
     <groupId>io.libp2p</groupId>
     <artifactId>jvm-libp2p-minimal</artifactId>
-    <version>0.8.1-RELEASE</version>
+    <version>0.8.2-RELEASE</version>
     <type>pom</type>
   </dependency>
 ```
