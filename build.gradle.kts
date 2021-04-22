@@ -12,7 +12,7 @@ import java.nio.file.Paths
 // ./gradlew publish -PcloudsmithUser=<user> -PcloudsmithApiKey=<api-key>
 
 group = "io.libp2p"
-version = "0.7.0-RELEASE"
+version = "0.8.1-RELEASE"
 description = "a minimal implementation of libp2p for the jvm"
 
 plugins {
