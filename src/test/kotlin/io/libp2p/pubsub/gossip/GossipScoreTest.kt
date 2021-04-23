@@ -187,6 +187,59 @@ class GossipScoreTest {
     }
 
     @Test
+    fun `test getCachedScore returns expected values`() {
+        val peer = mockPeer()
+
+        // Setup score params with topic config
+        val peerScoreParams = GossipPeerScoreParams.builder().build()
+        val topic: Topic = "testTopic"
+        val topicScoreParams = GossipTopicScoreParams.builder()
+            .topicWeight(1.0)
+            .firstMessageDeliveriesCap(4.0)
+            .firstMessageDeliveriesWeight(2.0)
+            .firstMessageDeliveriesDecay(0.5)
+            .build()
+
+        val defaultScoreParams = GossipTopicScoreParams.builder().build()
+        val topicsScoreParams = GossipTopicsScoreParams(defaultScoreParams, mutableMapOf(Pair(topic, topicScoreParams)))
+        val scoreParams = GossipScoreParams(
+            peerScoreParams = peerScoreParams,
+            topicsScoreParams = topicsScoreParams
+        )
+
+        // Setup time provider - apply non-zero time so that we don't get 0-valued timestamps that may be interpreted
+        // as empty
+        val timeController = TimeControllerImpl()
+        timeController.addTime(1.hours)
+        val executor = ControlledExecutorServiceImpl(timeController)
+
+        // Check initial value
+        val score = GossipScore(scoreParams, executor, { timeController.time })
+        // Check value before interacting with peer
+        assertThat(score.getCachedScore(peer.peerId)).isEqualTo(0.0)
+
+        // Check value after accessing score
+        assertEquals(0.0, score.score(peer))
+        assertThat(score.getCachedScore(peer.peerId)).isEqualTo(0.0)
+
+        // Add peer to mesh
+        score.notifyMeshed(peer, topic)
+        assertThat(score.score(peer)).isEqualTo(0.0)
+        assertThat(score.getCachedScore(peer.peerId)).isEqualTo(0.0)
+
+        // After delivering a message, we should increase our score by firstMessageDeliveriesWeight
+        val msg = DefaultPubsubMessage(createRpcMessage(topic))
+        score.notifyUnseenValidMessage(peer, msg)
+        assertThat(score.score(peer)).isEqualTo(2.0)
+        assertThat(score.getCachedScore(peer.peerId)).isEqualTo(2.0)
+
+        // Refresh to decay score
+        score.refreshScores()
+        assertThat(score.score(peer)).isEqualTo(1.0)
+        assertThat(score.getCachedScore(peer.peerId)).isEqualTo(1.0)
+    }
+
+    @Test
     fun `test mesh message delivery decay`() {
         val peer = mockPeer()
         val otherPeer = mockPeer()

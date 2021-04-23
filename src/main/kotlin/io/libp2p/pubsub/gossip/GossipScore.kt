@@ -10,6 +10,7 @@ import io.libp2p.etc.util.P2PService
 import io.libp2p.pubsub.PubsubMessage
 import io.libp2p.pubsub.Topic
 import java.util.Optional
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
@@ -114,6 +115,10 @@ class GossipScore(
     }
 
     inner class PeerScores {
+        // Cached values are accessed across threads
+        @Volatile
+        var cachedScore: Double = 0.0
+
         val ips = mutableSetOf<String>()
         var connectedTimeMillis: Long = 0
         var disconnectedTimeMillis: Long = 0
@@ -132,7 +137,7 @@ class GossipScore(
     val topicParams = params.topicsScoreParams
 
     private val validationTime: MutableMap<PubsubMessage, Long> = createLRUMap(1024)
-    val peerScores = mutableMapOf<PeerId, PeerScores>()
+    val peerScores = ConcurrentHashMap<PeerId, PeerScores>()
     private val peerIpCache = mutableMapOf<PeerId, String>()
 
     val refreshTask: ScheduledFuture<*>
@@ -182,7 +187,9 @@ class GossipScore(
             if (behaviorExcess < 0) 0.0
             else behaviorExcess.pow(2) * peerParams.behaviourPenaltyWeight
 
-        return topicsScore + appScore + ipColocationPenalty + routerPenalty
+        val computedScore = topicsScore + appScore + ipColocationPenalty + routerPenalty
+        peerScore.cachedScore = computedScore
+        return computedScore
     }
 
     fun refreshScores() {
@@ -191,6 +198,10 @@ class GossipScore(
             it.topicScores.values.forEach { it.decayScores() }
             it.behaviorPenalty *= peerParams.behaviourPenaltyDecay
         }
+    }
+
+    fun getCachedScore(peerId: PeerId): Double {
+        return peerScores[peerId]?.cachedScore ?: 0.0
     }
 
     fun notifyDisconnected(peer: P2PService.PeerHandler) {
