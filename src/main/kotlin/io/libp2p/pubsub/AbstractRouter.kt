@@ -271,7 +271,7 @@ abstract class AbstractRouter(
                     when {
                         err != null -> logger.warn("Exception while handling message from peer $peer: ${it.first}", err)
                         res == ValidationResult.Invalid -> logger.debug("Invalid pubsub message from peer $peer: ${it.first}")
-                        res == ValidationResult.Ignore -> logger.debug("Ingnoring pubsub message from peer $peer: ${it.first}")
+                        res == ValidationResult.Ignore -> logger.trace("Ignoring pubsub message from peer $peer: ${it.first}")
                         else -> {
                             newValidatedMessages(singletonList(it.first), peer)
                             flushAllPending()

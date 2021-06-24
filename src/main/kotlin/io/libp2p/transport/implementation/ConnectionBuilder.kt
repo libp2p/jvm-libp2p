@@ -9,7 +9,9 @@ import io.libp2p.etc.types.forward
 import io.libp2p.transport.ConnectionUpgrader
 import io.netty.channel.Channel
 import io.netty.channel.ChannelInitializer
+import org.apache.logging.log4j.LogManager
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.TimeUnit
 
 class ConnectionBuilder(
     private val transport: Transport,
@@ -18,6 +20,9 @@ class ConnectionBuilder(
     private val initiator: Boolean,
     private val remotePeerId: PeerId? = null
 ) : ChannelInitializer<Channel>() {
+
+    private val log = LogManager.getLogger(ConnectionBuilder::class.java)
+
     val connectionEstablished = CompletableFuture<Connection>()
 
     override fun initChannel(ch: Channel) {
@@ -32,6 +37,12 @@ class ConnectionBuilder(
                 connection.setMuxerSession(it)
                 connHandler.handleConnection(connection)
                 connection
+            }
+            .orTimeout(5, TimeUnit.SECONDS)
+            .exceptionally {
+                log.debug("Failed to establish secure channel with {}", ch.remoteAddress(), it)
+                ch.close()
+                throw it
             }
             .forward(connectionEstablished)
     } // initChannel
