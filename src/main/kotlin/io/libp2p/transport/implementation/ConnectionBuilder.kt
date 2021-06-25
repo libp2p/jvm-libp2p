@@ -9,9 +9,7 @@ import io.libp2p.etc.types.forward
 import io.libp2p.transport.ConnectionUpgrader
 import io.netty.channel.Channel
 import io.netty.channel.ChannelInitializer
-import org.apache.logging.log4j.LogManager
 import java.util.concurrent.CompletableFuture
-import java.util.concurrent.TimeUnit
 
 class ConnectionBuilder(
     private val transport: Transport,
