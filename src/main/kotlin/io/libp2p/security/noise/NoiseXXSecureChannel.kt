@@ -25,6 +25,7 @@ import io.netty.channel.CombinedChannelDuplexHandler
 import io.netty.channel.SimpleChannelInboundHandler
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder
 import io.netty.handler.codec.LengthFieldPrepender
+import io.netty.handler.timeout.ReadTimeoutHandler
 import org.apache.logging.log4j.LogManager
 import spipe.pb.Spipe
 import java.util.concurrent.CompletableFuture
@@ -33,8 +34,10 @@ private enum class Role(val intVal: Int) { INIT(HandshakeState.INITIATOR), RESP(
 
 private val log = LogManager.getLogger(NoiseXXSecureChannel::class.java)
 private const val HandshakeNettyHandlerName = "HandshakeNettyHandler"
+private const val HandshakeReadTimeoutNettyHandlerName = "HandshakeReadTimeoutNettyHandler"
 private const val NoiseCodeNettyHandlerName = "NoiseXXCodec"
 private const val MaxCipheredPacketLength = 65535
+private const val HandshakeTimeoutSec = 5
 
 class UShortLengthCodec : CombinedChannelDuplexHandler<LengthFieldBasedFrameDecoder, LengthFieldPrepender>(
     LengthFieldBasedFrameDecoder(MaxCipheredPacketLength + 2, 0, 2, 0, 2),
@@ -70,7 +73,8 @@ class NoiseXXSecureChannel(private val localKey: PrivKey) :
         val handshakeComplete = CompletableFuture<SecureChannel.Session>()
         // Packet length codec should stay forever.
         ch.pushHandler(UShortLengthCodec())
-        // Handshake handle is to be removed when handshake is complete
+        // Handshake and ReadTimeout handlers are to be removed when handshake is complete
+        ch.pushHandler(HandshakeReadTimeoutNettyHandlerName, ReadTimeoutHandler(HandshakeTimeoutSec))
         ch.pushHandler(
             HandshakeNettyHandlerName,
             NoiseIoHandshake(localKey, handshakeComplete, if (ch.isInitiator) Role.INIT else Role.RESP)
@@ -302,6 +306,7 @@ private class NoiseIoHandshake(
             "NoisePacketSplitter",
             SplitEncoder(MaxCipheredPacketLength - session.aliceCipher.macLength)
         )
+        ctx.pipeline().remove(HandshakeReadTimeoutNettyHandlerName)
         ctx.pipeline().remove(this)
         ctx.fireChannelActive()
     } // handshakeSucceeded
@@ -313,6 +318,7 @@ private class NoiseIoHandshake(
         log.debug("Noise handshake failed", cause)
 
         handshakeComplete.completeExceptionally(cause)
+        ctx.pipeline().remove(HandshakeReadTimeoutNettyHandlerName)
         ctx.pipeline().remove(this)
     }
 } // class NoiseIoHandshake
