@@ -38,12 +38,6 @@ class ConnectionBuilder(
                 connHandler.handleConnection(connection)
                 connection
             }
-            .orTimeout(5, TimeUnit.SECONDS)
-            .exceptionally {
-                log.debug("Failed to establish secure channel with {}", ch.remoteAddress(), it)
-                ch.close()
-                throw it
-            }
             .forward(connectionEstablished)
     } // initChannel
 } // ConnectionBuilder
