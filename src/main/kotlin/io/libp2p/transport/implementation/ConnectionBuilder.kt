@@ -18,7 +18,6 @@ class ConnectionBuilder(
     private val initiator: Boolean,
     private val remotePeerId: PeerId? = null
 ) : ChannelInitializer<Channel>() {
-
     val connectionEstablished = CompletableFuture<Connection>()
 
     override fun initChannel(ch: Channel) {
