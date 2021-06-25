@@ -21,8 +21,6 @@ class ConnectionBuilder(
     private val remotePeerId: PeerId? = null
 ) : ChannelInitializer<Channel>() {
 
-    private val log = LogManager.getLogger(ConnectionBuilder::class.java)
-
     val connectionEstablished = CompletableFuture<Connection>()
 
     override fun initChannel(ch: Channel) {
