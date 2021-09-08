@@ -14,6 +14,7 @@ import io.libp2p.etc.types.whenTrue
 import io.libp2p.etc.util.P2PService
 import io.libp2p.pubsub.AbstractRouter
 import io.libp2p.pubsub.MessageId
+import io.libp2p.pubsub.NoPeersForOutboundMessageException
 import io.libp2p.pubsub.PubsubMessage
 import io.libp2p.pubsub.PubsubProtocol
 import io.libp2p.pubsub.SeenCache
@@ -360,7 +361,14 @@ open class GossipRouter @JvmOverloads constructor(
 
         mCache += msg
         flushAllPending()
-        return anyComplete(list)
+
+        if (list.isNotEmpty()) {
+            return anyComplete(list)
+        } else {
+            return CompletableFuture.failedFuture(
+                NoPeersForOutboundMessageException("No peers for message topics ${msg.topics} found")
+            )
+        }
     }
 
     override fun subscribe(topic: Topic) {
