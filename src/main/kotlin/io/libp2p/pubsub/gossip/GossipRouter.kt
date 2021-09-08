@@ -4,6 +4,7 @@ import io.libp2p.core.InternalErrorException
 import io.libp2p.core.PeerId
 import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.etc.types.anyComplete
+import io.libp2p.etc.types.completedExceptionally
 import io.libp2p.etc.types.copy
 import io.libp2p.etc.types.createLRUMap
 import io.libp2p.etc.types.median
@@ -365,7 +366,7 @@ open class GossipRouter @JvmOverloads constructor(
         if (list.isNotEmpty()) {
             return anyComplete(list)
         } else {
-            return CompletableFuture.failedFuture(
+            return completedExceptionally(
                 NoPeersForOutboundMessageException("No peers for message topics ${msg.topics} found")
             )
         }
