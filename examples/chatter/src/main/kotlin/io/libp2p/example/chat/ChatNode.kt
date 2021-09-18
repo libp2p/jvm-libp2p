@@ -5,9 +5,7 @@ import io.libp2p.core.PeerId
 import io.libp2p.core.PeerInfo
 import io.libp2p.core.Stream
 import io.libp2p.core.dsl.host
-import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.discovery.MDnsDiscovery
-import java.lang.Exception
 import java.net.Inet4Address
 import java.net.InetAddress
 import java.net.NetworkInterface
@@ -43,7 +41,7 @@ class ChatNode(private val printMsg: OnMessage) {
         currentAlias = chatHost.peerId.toBase58()
 
         peerFinder = MDnsDiscovery(chatHost, address = privateAddress)
-        peerFinder.onPeerFound { peerFound(it) }
+        peerFinder.newPeerFoundListeners += { peerFound(it) }
         peerFinder.start()
     } // init
 

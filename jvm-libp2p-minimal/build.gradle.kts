@@ -9,7 +9,7 @@ import java.nio.file.Files
 import java.nio.file.Paths
 
 // To publish the release artifact to CloudSmith repo run the following :
-// ./gradlew publish -PcloudsmithUser=<user> -PcloudsmithApiKey=<api-key>
+// ./gradlew :jvm-libp2p-minimal:publish -PcloudsmithUser=<user> -PcloudsmithApiKey=<api-key>
 
 group = "io.libp2p"
 version = "0.7.0-RELEASE"

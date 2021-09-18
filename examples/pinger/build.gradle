@@ -8,7 +8,7 @@ version '1.0-SNAPSHOT'
 sourceCompatibility = 1.8
 
 dependencies {
-  compile 'io.libp2p:jvm-libp2p-minimal:0.4.0-SNAPSHOT'
+  compile project(':jvm-libp2p-minimal')
 }
 
 application {

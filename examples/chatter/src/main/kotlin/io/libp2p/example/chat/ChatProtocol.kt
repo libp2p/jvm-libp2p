@@ -17,13 +17,17 @@ interface ChatController {
 typealias OnChatMessage = (PeerId, String) -> Unit
 class Chat(chatCallback: OnChatMessage) : ChatBinding(ChatProtocol(chatCallback))
 
-open class ChatBinding(echo: ChatProtocol) : StrictProtocolBinding<ChatController>(echo) {
-    override val announce = ChatProtocol.announce
-}
+open class ChatBinding(echo: ChatProtocol) : StrictProtocolBinding<ChatController>(
+  announce = ChatProtocol.announce,
+  protocol = echo
+)
 
 open class ChatProtocol(
         private val chatCallback : OnChatMessage
-) : ProtocolHandler<ChatController>() {
+) : ProtocolHandler<ChatController>(
+  initiatorTrafficLimit = Long.MAX_VALUE,
+  responderTrafficLimit = Long.MAX_VALUE
+) {
     companion object {
         val announce = "/example/chat/0.1.0"
     }
