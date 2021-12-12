@@ -32,7 +32,7 @@ repositories {
     mavenCentral()
 }
 
-val log4j2Version = "2.11.2"
+val log4j2Version = "2.15.0"
 
 dependencies {
     api("io.netty:netty-all:4.1.69.Final")
