@@ -25,11 +25,15 @@ class MultistreamImpl<TController>(
             }
             pushHandler(
                 if (ch.isInitiator) {
-                    Negotiator.createRequesterInitializer(negotiationTimeLimit,
-                        *bindings.flatMap { it.protocolDescriptor.announceProtocols }.toTypedArray())
+                    Negotiator.createRequesterInitializer(
+                        negotiationTimeLimit,
+                        *bindings.flatMap { it.protocolDescriptor.announceProtocols }.toTypedArray()
+                    )
                 } else {
-                    Negotiator.createResponderInitializer(negotiationTimeLimit,
-                        bindings.map { it.protocolDescriptor.protocolMatcher })
+                    Negotiator.createResponderInitializer(
+                        negotiationTimeLimit,
+                        bindings.map { it.protocolDescriptor.protocolMatcher }
+                    )
                 }
             )
             postHandler?.also {
