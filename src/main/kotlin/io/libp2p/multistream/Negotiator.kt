@@ -39,14 +39,16 @@ class ProtocolNegotiationException(message: String) : RuntimeException(message)
  * We set a read timeout of 10 seconds.
  */
 object Negotiator {
-    const val MAX_MULTISTREAM_MESSAGE_LENGTH = 1024
-    const val MAX_PROTOCOL_ID_LENGTH = MAX_MULTISTREAM_MESSAGE_LENGTH - 1
-
     private const val TIMEOUT_MILLIS: Long = 10_000
     private const val MULTISTREAM_PROTO = "/multistream/1.0.0"
 
+    private val MESSAGE_SUFFIX = '\n'
     private val NA = "na"
     private val LS = "ls"
+
+    val MAX_MULTISTREAM_MESSAGE_LENGTH = 1024
+    val MESSAGE_SUFFIX_LENGTH = MESSAGE_SUFFIX.toString().toByteArray(Charsets.UTF_8).size
+    val MAX_PROTOCOL_ID_LENGTH = MAX_MULTISTREAM_MESSAGE_LENGTH - MESSAGE_SUFFIX_LENGTH
 
     fun createRequesterInitializer(vararg protocols: String): ChannelInitializer<Channel> {
         return nettyInitializer {
@@ -80,7 +82,7 @@ object Negotiator {
             ProtobufVarint32LengthFieldPrepender(),
             StringDecoder(Charsets.UTF_8),
             StringEncoder(Charsets.UTF_8),
-            StringSuffixCodec('\n')
+            StringSuffixCodec(MESSAGE_SUFFIX)
         )
 
         var headerRead = false
