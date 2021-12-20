@@ -5,6 +5,7 @@ import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.multistream.ProtocolMatcher
 import io.libp2p.core.security.SecureChannel
+import io.libp2p.etc.types.seconds
 import io.libp2p.etc.types.toByteArray
 import io.libp2p.etc.types.toByteBuf
 import io.libp2p.multistream.Negotiator
@@ -123,9 +124,9 @@ abstract class SecureChannelTest(
         selector: ChannelInboundHandlerAdapter
     ): TestChannel {
         val negotiator = if (initiator) {
-            Negotiator.createRequesterInitializer(announce)
+            Negotiator.createRequesterInitializer(10.seconds, announce)
         } else {
-            Negotiator.createResponderInitializer(listOf(ProtocolMatcher.strict(announce)))
+            Negotiator.createResponderInitializer(10.seconds, listOf(ProtocolMatcher.strict(announce)))
         }
 
         return TestChannel(
