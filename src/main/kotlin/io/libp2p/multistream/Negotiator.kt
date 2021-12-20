@@ -6,11 +6,11 @@ import io.libp2p.etc.events.ProtocolNegotiationSucceeded
 import io.libp2p.etc.util.netty.NettyInit
 import io.libp2p.etc.util.netty.StringSuffixCodec
 import io.libp2p.etc.util.netty.nettyInitializer
+import io.libp2p.etc.util.netty.protobuf.LimitedProtobufVarint32FrameDecoder
 import io.netty.channel.Channel
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInitializer
 import io.netty.channel.SimpleChannelInboundHandler
-import io.netty.handler.codec.protobuf.ProtobufVarint32FrameDecoder
 import io.netty.handler.codec.protobuf.ProtobufVarint32LengthFieldPrepender
 import io.netty.handler.codec.string.StringDecoder
 import io.netty.handler.codec.string.StringEncoder
@@ -39,6 +39,9 @@ class ProtocolNegotiationException(message: String) : RuntimeException(message)
  * We set a read timeout of 10 seconds.
  */
 object Negotiator {
+    const val MAX_MULTISTREAM_MESSAGE_LENGTH = 1024
+    const val MAX_PROTOCOL_ID_LENGTH = MAX_MULTISTREAM_MESSAGE_LENGTH - 1
+
     private const val TIMEOUT_MILLIS: Long = 10_000
     private const val MULTISTREAM_PROTO = "/multistream/1.0.0"
 
@@ -73,7 +76,7 @@ object Negotiator {
 
         val prehandlers = listOf(
             ReadTimeoutHandler(TIMEOUT_MILLIS, TimeUnit.MILLISECONDS),
-            ProtobufVarint32FrameDecoder(),
+            LimitedProtobufVarint32FrameDecoder(MAX_MULTISTREAM_MESSAGE_LENGTH),
             ProtobufVarint32LengthFieldPrepender(),
             StringDecoder(Charsets.UTF_8),
             StringEncoder(Charsets.UTF_8),
@@ -112,6 +115,10 @@ object Negotiator {
     class RequesterHandler(val protocols: List<String>) : GenericHandler() {
         override val initialProtocolAnnounce = protocols[0]
         var i = 0
+
+        init {
+            protocols.forEach { require(it.length <= MAX_PROTOCOL_ID_LENGTH) { "Too long protocol ID: '$it'" } }
+        }
 
         override fun processMsg(ctx: ChannelHandlerContext, msg: String): Any? {
             return when {

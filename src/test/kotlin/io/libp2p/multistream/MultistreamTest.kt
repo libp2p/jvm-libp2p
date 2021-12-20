@@ -1,5 +1,7 @@
 package io.libp2p.multistream
 
+import io.libp2p.etc.types.writeUvarint
+import io.libp2p.multistream.Negotiator.MAX_MULTISTREAM_MESSAGE_LENGTH
 import io.libp2p.tools.Echo
 import io.libp2p.tools.TestStreamChannel
 import io.netty.buffer.ByteBuf
@@ -11,6 +13,20 @@ import org.junit.jupiter.api.Test
 import java.nio.charset.StandardCharsets
 
 class MultistreamTest {
+
+    @Test
+    fun testShouldCloseConnectionOnLongMessage() {
+        val channel1 = TestStreamChannel(
+            false,
+            Echo(),
+            LoggingHandler("1", LogLevel.ERROR)
+        )
+
+        val buf = Unpooled.buffer().writeUvarint(MAX_MULTISTREAM_MESSAGE_LENGTH + 1)
+        channel1.writeInbound(buf)
+
+        Assertions.assertFalse(channel1.isOpen)
+    }
 
     @Test
     fun testZeroRoundtripNegotiation() {
