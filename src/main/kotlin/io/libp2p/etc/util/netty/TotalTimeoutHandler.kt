@@ -7,6 +7,9 @@ import java.time.Duration
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 
+/**
+ * Handler which closes connection on timeout unless removed
+ */
 class TotalTimeoutHandler(val timeout: Duration) : ChannelHandlerAdapter() {
     private var timeoutTask: ScheduledFuture<*>? = null
 

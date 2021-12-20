@@ -36,7 +36,7 @@ class ProtocolNegotiationException(message: String) : RuntimeException(message)
  * user event on the context. If we exhaust all our options without agreement, we emit the [ProtocolNegotiationFailed]
  * event.
  *
- * We set a read timeout of 10 seconds.
+ * The negotiation is expected to complete within specified time limit else the connection is closed
  */
 object Negotiator {
     private const val MULTISTREAM_PROTO = "/multistream/1.0.0"
