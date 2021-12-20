@@ -7,8 +7,6 @@ import io.libp2p.core.multistream.ProtocolBinding
 import io.libp2p.etc.types.seconds
 import java.time.Duration
 
-val MultistreamProtocolV1Impl: MultistreamProtocolDebug = MultistreamProtocolDebugV1()
-
 val DEFAULT_NEGOTIATION_TIME_LIMIT = 10.seconds
 
 class MultistreamProtocolDebugV1(
