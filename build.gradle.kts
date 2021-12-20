@@ -32,10 +32,10 @@ repositories {
     mavenCentral()
 }
 
-val log4j2Version = "2.11.2"
+val log4j2Version = "2.17.0"
 
 dependencies {
-    api("io.netty:netty-all:4.1.36.Final")
+    api("io.netty:netty-all:4.1.69.Final")
     api("com.google.protobuf:protobuf-java:3.11.0")
 
     implementation(kotlin("stdlib-jdk8"))

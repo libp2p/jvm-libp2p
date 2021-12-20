@@ -120,19 +120,15 @@ class LimitedProtobufVarint32FrameDecoderTest {
         val validMsg = createFramedData(validData)
 
         val concatenated = wrappedBuffer(tooLargeMsg + validMsg)
-        concatenated.retain()
 
         // Read concatenated message
         assertThatThrownBy({ ch.writeInbound(concatenated) })
             .isInstanceOf(TooLongFrameException::class.java)
             .hasMessageContaining("Adjusted frame length exceeds $maxDataSize: $tooLargeDataSize")
-        assertThat(readInboundByteBuf()).isNull()
-        assertThat(concatenated.readerIndex()).isEqualTo(tooLargeMsg.size)
+        ch.close()
 
-        // Next read should bypass bad message and output valid message
-        ch.writeInbound(concatenated)
+        // Despite the first message caused exception the second one should still be decoded finally
         assertThat(readInboundByteBuf()?.toByteArray()).isEqualTo(validData)
-
         assertThat(ch.finish()).isFalse()
     }
 

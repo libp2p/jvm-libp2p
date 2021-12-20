@@ -16,3 +16,8 @@ class MessageAlreadySeenException(message: String) : PubsubException(message)
  * Throw when message validation failed
  */
 class InvalidMessageException(message: String) : PubsubException(message)
+
+/**
+ * Thrown when no suitable peers found to broadcast outbound exception
+ */
+class NoPeersForOutboundMessageException(message: String) : PubsubException(message)
