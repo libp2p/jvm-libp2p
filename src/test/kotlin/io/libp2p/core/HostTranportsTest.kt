@@ -6,6 +6,7 @@ import io.libp2p.core.dsl.host
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.mux.StreamMuxerProtocol
 import io.libp2p.etc.types.getX
+import io.libp2p.etc.util.netty.LoggingHandlerShort
 import io.libp2p.protocol.Identify
 import io.libp2p.protocol.Ping
 import io.libp2p.protocol.PingBinding
@@ -104,7 +105,7 @@ abstract class HostTransportsTest(
             +DoNothing()
         }
         debug {
-            muxFramesHandler.addLogger(LogLevel.ERROR)
+            muxFramesHandler.addNettyHandler(LoggingHandlerShort("client-host", LogLevel.INFO))
         }
     }
 
@@ -131,7 +132,7 @@ abstract class HostTransportsTest(
             +Echo()
         }
         debug {
-            muxFramesHandler.addLogger(LogLevel.ERROR)
+            muxFramesHandler.addNettyHandler(LoggingHandlerShort("server-host", LogLevel.INFO))
         }
     }
 
