@@ -51,9 +51,9 @@ dependencies {
     implementation("org.apache.logging.log4j:log4j-core:${log4j2Version}")
     implementation("javax.xml.bind:jaxb-api:2.3.1")
 
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.4.2")
-    testImplementation("org.junit.jupiter:junit-jupiter-params:5.4.2")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.4.2")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.8.2")
+    testImplementation("org.junit.jupiter:junit-jupiter-params:5.8.2")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.8.2")
     testImplementation("io.mockk:mockk:1.10.0")
     testRuntimeOnly("org.mockito:mockito-core:3.3.3")
     testImplementation("org.mockito:mockito-junit-jupiter:3.3.3")
