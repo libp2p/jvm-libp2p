@@ -63,6 +63,7 @@ class MplexFrameCodec(
                 return
             }
             if (lenData > maxFrameDataLength) {
+                msg.skipBytes(msg.readableBytes())
                 throw ProtocolViolationException("Mplex frame is too large: $lenData")
             }
             if (msg.readableBytes() < lenData) {
