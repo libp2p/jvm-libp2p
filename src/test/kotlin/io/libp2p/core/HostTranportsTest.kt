@@ -26,7 +26,6 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.condition.DisabledIf
 import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable
 import java.util.concurrent.TimeUnit
 
@@ -63,7 +62,22 @@ abstract class TcpTransportHostTest(
     secureChannelCtor,
     ::TcpTransport,
     "/ip4/127.0.0.1/tcp/4002"
-)
+) {
+
+    @Test
+    fun largeEchoOverSecureConnection() {
+        val echo = Echo().dial(
+            clientHost,
+            serverHost.peerId,
+            Multiaddr(listenAddress)
+        )
+
+        val echoController = echo.controller.get(5, TimeUnit.SECONDS)
+        val largeMsg = (0..20000).map { "Hello" }.joinToString("")
+
+        assertEquals(largeMsg, echoController.echo(largeMsg).get(10, TimeUnit.SECONDS))
+    }
+}
 
 abstract class HostTransportsTest(
     val secureChannelCtor: SecureChannelCtor,
@@ -268,21 +282,6 @@ abstract class HostTransportsTest(
 
         assertEquals("hello", echoController.echo("hello").get(1, TimeUnit.SECONDS))
         assertEquals("world", echoController.echo("world").get(1, TimeUnit.SECONDS))
-    }
-
-    @DisabledIf("junitTags.contains('ws-transport')")
-    @Test
-    fun largeEchoOverSecureConnection() {
-        val echo = Echo().dial(
-            clientHost,
-            serverHost.peerId,
-            Multiaddr(listenAddress)
-        )
-
-        val echoController = echo.controller.get(5, TimeUnit.SECONDS)
-        val largeMsg = (0..20000).map { "Hello" }.joinToString("")
-
-        assertEquals(largeMsg, echoController.echo(largeMsg).get(10, TimeUnit.SECONDS))
     }
 
     @Test
