@@ -64,7 +64,7 @@ abstract class AbstractMuxHandler<TData>() :
         pendingReadComplete.clear()
     }
 
-    abstract fun onChildWrite(child: MuxChannel<TData>, data: TData): Boolean
+    abstract fun onChildWrite(child: MuxChannel<TData>, data: TData)
 
     protected fun onRemoteOpen(id: MuxId) {
         val initializer = inboundInitializer

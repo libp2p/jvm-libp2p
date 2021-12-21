@@ -8,6 +8,7 @@ import java.util.concurrent.CompletableFuture
 
 open class MplexHandler(
     override val multistreamProtocol: MultistreamProtocol,
+    override val maxFrameDataLength: Int,
     ready: CompletableFuture<StreamMuxer.Session>?,
     inboundStreamHandler: StreamHandler<*>
 ) : MuxHandler(ready, inboundStreamHandler)

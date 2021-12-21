@@ -21,9 +21,17 @@ class MplexStreamMuxer(
     override fun initChannel(ch: P2PChannel, selectedProtocol: String): CompletableFuture<out StreamMuxer.Session> {
         val muxSessionReady = CompletableFuture<StreamMuxer.Session>()
 
-        ch.pushHandler(MplexFrameCodec())
+        val mplexFrameCodec = MplexFrameCodec()
+        ch.pushHandler(mplexFrameCodec)
         muxFramesDebugHandler?.also { it.visit(ch as Connection) }
-        ch.pushHandler(MplexHandler(multistreamProtocol, muxSessionReady, inboundStreamHandler))
+        ch.pushHandler(
+            MplexHandler(
+                multistreamProtocol,
+                mplexFrameCodec.maxFrameDataLength,
+                muxSessionReady,
+                inboundStreamHandler
+            )
+        )
 
         return muxSessionReady
     }

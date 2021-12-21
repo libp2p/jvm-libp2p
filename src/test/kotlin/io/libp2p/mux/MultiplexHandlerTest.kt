@@ -15,6 +15,7 @@ import io.libp2p.etc.util.netty.nettyInitializer
 import io.libp2p.mux.MuxFrame.Flag.DATA
 import io.libp2p.mux.MuxFrame.Flag.OPEN
 import io.libp2p.mux.MuxFrame.Flag.RESET
+import io.libp2p.mux.mplex.DEFAULT_MAX_MPLEX_FRAME_DATA_LENGTH
 import io.libp2p.mux.mplex.MplexHandler
 import io.libp2p.tools.TestChannel
 import io.netty.buffer.ByteBuf
@@ -53,7 +54,8 @@ class MultiplexHandlerTest {
                 childHandlers += handler
             }
         )
-        multistreamHandler = object : MplexHandler(MultistreamProtocolV1, null, streamHandler) {
+        multistreamHandler = object : MplexHandler(
+            MultistreamProtocolV1, DEFAULT_MAX_MPLEX_FRAME_DATA_LENGTH, null, streamHandler) {
             // MuxHandler consumes the exception. Override this behaviour for testing
             override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
                 ctx.fireExceptionCaught(cause)

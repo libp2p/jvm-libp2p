@@ -9,6 +9,7 @@ import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.etc.CONNECTION
 import io.libp2p.etc.STREAM
 import io.libp2p.etc.types.forward
+import io.libp2p.etc.types.sliceMaxSize
 import io.libp2p.etc.util.netty.mux.AbstractMuxHandler
 import io.libp2p.etc.util.netty.mux.MuxChannel
 import io.libp2p.etc.util.netty.mux.MuxChannelInitializer
@@ -19,13 +20,14 @@ import io.netty.channel.ChannelHandlerContext
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicLong
 
-open abstract class MuxHandler(
+abstract class MuxHandler(
     private val ready: CompletableFuture<StreamMuxer.Session>?,
     inboundStreamHandler: StreamHandler<*>
 ) : AbstractMuxHandler<ByteBuf>(), StreamMuxer.Session {
     private val idGenerator = AtomicLong(0xF)
 
     protected abstract val multistreamProtocol: MultistreamProtocol
+    protected abstract val maxFrameDataLength: Int
 
     override val inboundInitializer: MuxChannelInitializer<ByteBuf> = {
         inboundStreamHandler.handleStream(createStream(it))
@@ -46,15 +48,15 @@ open abstract class MuxHandler(
         }
     }
 
-    override fun onChildWrite(child: MuxChannel<ByteBuf>, data: ByteBuf): Boolean {
-        getChannelHandlerContext().writeAndFlush(
-            MuxFrame(
-                child.id,
-                MuxFrame.Flag.DATA,
-                data
-            )
-        )
-        return true
+    override fun onChildWrite(child: MuxChannel<ByteBuf>, data: ByteBuf) {
+        val ctx = getChannelHandlerContext()
+        data.sliceMaxSize(maxFrameDataLength)
+            .map { frameSliceBuf ->
+                MuxFrame(child.id, MuxFrame.Flag.DATA, frameSliceBuf)
+            }.forEach { muxFrame->
+                ctx.write(muxFrame)
+            }
+        ctx.flush()
     }
 
     override fun onLocalOpen(child: MuxChannel<ByteBuf>) {
