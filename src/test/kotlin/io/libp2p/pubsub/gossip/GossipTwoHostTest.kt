@@ -21,7 +21,7 @@ class GossipTwoHostTest : TwoGossipHostTestBase() {
         val topic = Topic("topic")
 
         val messages = mutableListOf<MessageApi>()
-        gossip2.subscribe( Subscriber { messages += it }, topic)
+        gossip2.subscribe(Subscriber { messages += it }, topic)
 
         waitForSubscribed(router1, topic.topic)
 

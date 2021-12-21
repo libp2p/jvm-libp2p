@@ -4,7 +4,7 @@ import io.libp2p.pubsub.PubsubProtocol
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 
-class GossipBackwardCompatibilityTest: TwoGossipHostTestBase() {
+class GossipBackwardCompatibilityTest : TwoGossipHostTestBase() {
     override val router1 = GossipRouter(protocol = PubsubProtocol.Gossip_V_1_0)
     override val router2 = GossipRouter(protocol = PubsubProtocol.Gossip_V_1_1)
 

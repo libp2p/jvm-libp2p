@@ -35,8 +35,10 @@ class MplexFrameCodecTest {
     fun `check max frame size limit`() {
         val channelLarge = EmbeddedChannel(MplexFrameCodec(maxFrameDataLength = 1024))
 
-        val mplexFrame = MplexFrame(MuxId(dummyId, 777, true), MplexFlags.MessageInitiator,
-            ByteArray(1024).toByteBuf())
+        val mplexFrame = MplexFrame(
+            MuxId(dummyId, 777, true), MplexFlags.MessageInitiator,
+            ByteArray(1024).toByteBuf()
+        )
 
         assertTrue(
             channelLarge.writeOutbound(mplexFrame)

@@ -36,10 +36,10 @@ class LoggingHandlerShort : LoggingHandler {
         val lessLines =
             if (extraLines > linesCutThreshold) {
                 lines.take(maxHeadingLines) +
-                        "" +
-                        "............. more $extraLines lines ............." +
-                        "" +
-                        lines.takeLast(maxTrailingLines)
+                    "" +
+                    "............. more $extraLines lines ............." +
+                    "" +
+                    lines.takeLast(maxTrailingLines)
             } else {
                 lines
             }
@@ -47,8 +47,8 @@ class LoggingHandlerShort : LoggingHandler {
             val extraChars = it.length - (maxLineHeadingChars + maxLineTrailingChars)
             if (extraChars > charsCutThreshold) {
                 it.take(maxLineHeadingChars) +
-                        " ... more $extraChars chars ... " +
-                        it.takeLast(maxLineTrailingChars)
+                    " ... more $extraChars chars ... " +
+                    it.takeLast(maxLineTrailingChars)
             } else {
                 it
             }

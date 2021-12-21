@@ -53,7 +53,7 @@ abstract class MuxHandler(
         data.sliceMaxSize(maxFrameDataLength)
             .map { frameSliceBuf ->
                 MuxFrame(child.id, MuxFrame.Flag.DATA, frameSliceBuf)
-            }.forEach { muxFrame->
+            }.forEach { muxFrame ->
                 ctx.write(muxFrame)
             }
         ctx.flush()

@@ -98,8 +98,8 @@ abstract class TwoGossipHostTestBase {
 
     private fun gossipConnected(router: GossipRouter) =
         router.peers.isNotEmpty() &&
-                router.peers[0].getInboundHandler() != null &&
-                router.peers[0].getOutboundHandler() != null
+            router.peers[0].getInboundHandler() != null &&
+            router.peers[0].getOutboundHandler() != null
 
     protected fun connect() {
         val connect = host1.network
@@ -122,4 +122,3 @@ abstract class TwoGossipHostTestBase {
         throw TimeoutException("Timeout waiting for condition")
     }
 }
-
