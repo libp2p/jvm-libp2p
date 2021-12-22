@@ -7,8 +7,12 @@ import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 import io.netty.channel.DefaultChannelId
 import io.netty.channel.embedded.EmbeddedChannel
+import io.netty.handler.codec.DecoderException
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
 import java.nio.charset.StandardCharsets.UTF_8
@@ -26,6 +30,30 @@ class MplexFrameCodecTest {
         )
     }
     val dummyId = DefaultChannelId.newInstance()
+
+    @Test
+    fun `check max frame size limit`() {
+        val channelLarge = EmbeddedChannel(MplexFrameCodec(maxFrameDataLength = 1024))
+
+        val mplexFrame = MplexFrame(
+            MuxId(dummyId, 777, true), MplexFlags.MessageInitiator,
+            ByteArray(1024).toByteBuf()
+        )
+
+        assertTrue(
+            channelLarge.writeOutbound(mplexFrame)
+        )
+        val largeFrameBytes = channelLarge.readOutbound<ByteBuf>()
+        val largeFrameBytesTrunc = largeFrameBytes.slice(0, largeFrameBytes.readableBytes() - 1)
+
+        val channelSmall = EmbeddedChannel(MplexFrameCodec(maxFrameDataLength = 128))
+
+        assertThrows<DecoderException> {
+            channelSmall.writeInbound(largeFrameBytesTrunc)
+        }
+
+        assertFalse(channelSmall.isOpen)
+    }
 
     @ParameterizedTest
     @MethodSource("splitIndexes")

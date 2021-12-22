@@ -12,7 +12,7 @@ import java.nio.file.Paths
 // ./gradlew publish -PcloudsmithUser=<user> -PcloudsmithApiKey=<api-key>
 
 group = "io.libp2p"
-version = "0.8.3-RELEASE"
+version = "0.8.4-RELEASE"
 description = "a minimal implementation of libp2p for the jvm"
 
 plugins {
@@ -32,10 +32,10 @@ repositories {
     mavenCentral()
 }
 
-val log4j2Version = "2.11.2"
+val log4j2Version = "2.17.0"
 
 dependencies {
-    api("io.netty:netty-all:4.1.36.Final")
+    api("io.netty:netty-all:4.1.69.Final")
     api("com.google.protobuf:protobuf-java:3.11.0")
 
     implementation(kotlin("stdlib-jdk8"))
@@ -51,9 +51,9 @@ dependencies {
     implementation("org.apache.logging.log4j:log4j-core:${log4j2Version}")
     implementation("javax.xml.bind:jaxb-api:2.3.1")
 
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.4.2")
-    testImplementation("org.junit.jupiter:junit-jupiter-params:5.4.2")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.4.2")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.8.2")
+    testImplementation("org.junit.jupiter:junit-jupiter-params:5.8.2")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.8.2")
     testImplementation("io.mockk:mockk:1.10.0")
     testRuntimeOnly("org.mockito:mockito-core:3.3.3")
     testImplementation("org.mockito:mockito-junit-jupiter:3.3.3")

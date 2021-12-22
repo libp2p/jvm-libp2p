@@ -22,12 +22,14 @@ import io.netty.buffer.Unpooled
 import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.codec.ByteToMessageCodec
 
-const val MaxMessageSize = 1 shl 20
+const val DEFAULT_MAX_MPLEX_FRAME_DATA_LENGTH = 1 shl 20
 
 /**
  * A Netty codec implementation that converts [MplexFrame] instances to [ByteBuf] and vice-versa.
  */
-class MplexFrameCodec : ByteToMessageCodec<MuxFrame>() {
+class MplexFrameCodec(
+    val maxFrameDataLength: Int = DEFAULT_MAX_MPLEX_FRAME_DATA_LENGTH
+) : ByteToMessageCodec<MuxFrame>() {
 
     /**
      * Encodes the given mplex frame into bytes and writes them into the output list.
@@ -54,14 +56,21 @@ class MplexFrameCodec : ByteToMessageCodec<MuxFrame>() {
             val readerIndex = msg.readerIndex()
             val header = msg.readUvarint()
             val lenData = msg.readUvarint()
-            if (header < 0 || lenData < 0 || msg.readableBytes() < lenData) {
-                // not enough data to read the frame
+            if (header < 0 || lenData < 0) {
+                // not enough data to read the frame length
                 // will wait for more ...
                 msg.readerIndex(readerIndex)
                 return
             }
-            if (lenData > MaxMessageSize) {
+            if (lenData > maxFrameDataLength) {
+                msg.skipBytes(msg.readableBytes())
                 throw ProtocolViolationException("Mplex frame is too large: $lenData")
+            }
+            if (msg.readableBytes() < lenData) {
+                // not enough data to read the frame content
+                // will wait for more ...
+                msg.readerIndex(readerIndex)
+                return
             }
             val streamTag = header.and(0x07).toInt()
             val streamId = header.shr(3)

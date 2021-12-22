@@ -1,6 +1,7 @@
 package io.libp2p.etc.types
 
 import io.netty.buffer.ByteBuf
+import java.lang.Integer.min
 
 /**
  * Extends ByteBuf to add a write* method for unsigned varints, as defined in https://github.com/multiformats/unsigned-varint.
@@ -45,4 +46,24 @@ fun ByteBuf.readUvarint(): Long {
         s += 7
     }
     throw IllegalStateException("uvarint too long")
+}
+
+fun ByteBuf.sliceMaxSize(maxSize: Int): List<ByteBuf> {
+    val length = this.readableBytes()
+    return when {
+        length == 0 -> {
+            this.release()
+            listOf()
+        }
+        length < maxSize -> listOf(this)
+        else -> {
+            val ret = generateSequence(0) { it + maxSize }
+                .map { off -> min(length - off, maxSize) }
+                .takeWhile { size -> size > 0 }
+                .map { size -> this.readSlice(size).retain() }
+                .toList()
+            this.release()
+            ret
+        }
+    }
 }

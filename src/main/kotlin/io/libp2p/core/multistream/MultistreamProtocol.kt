@@ -1,9 +1,9 @@
 package io.libp2p.core.multistream
 
 import io.libp2p.core.P2PChannelHandler
-import io.libp2p.multistream.MultistreamProtocolV1Impl
+import io.libp2p.multistream.MultistreamProtocolDebugV1
 
-val MultistreamProtocolV1: MultistreamProtocolDebug = MultistreamProtocolV1Impl
+val MultistreamProtocolV1: MultistreamProtocolDebug = MultistreamProtocolDebugV1()
 
 interface MultistreamProtocol {
 
