@@ -29,7 +29,7 @@ interface PubsubMessage {
     override fun equals(other: Any?): Boolean
 
     /**
-     * WARNING: Use collision free functions only
+     * WARNING: Use collision resistant functions only
      * Else the HashMap collision attack vector is open
      */
     override fun hashCode(): Int
