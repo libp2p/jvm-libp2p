@@ -28,6 +28,7 @@ plugins {
 
 repositories {
     mavenCentral()
+    maven("https://artifacts.consensys.net/public/maven/maven/")
 }
 
 val log4j2Version = "2.17.0"
