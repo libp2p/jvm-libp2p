@@ -28,7 +28,6 @@ plugins {
 
 repositories {
     mavenCentral()
-    jcenter()
 }
 
 val log4j2Version = "2.17.0"
@@ -39,7 +38,7 @@ dependencies {
 
     implementation(kotlin("stdlib-jdk8"))
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.0-M1")
-    implementation("tech.pegasys:noise-java:1.0.0")
+    implementation("tech.pegasys:noise-java:22.1.0")
 
     implementation("com.google.guava:guava:27.1-jre")
     implementation("org.bouncycastle:bcprov-jdk15on:1.62")
