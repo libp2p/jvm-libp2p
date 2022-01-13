@@ -12,7 +12,7 @@ import java.nio.file.Paths
 // ./gradlew publish -PcloudsmithUser=<user> -PcloudsmithApiKey=<api-key>
 
 group = "io.libp2p"
-version = "0.8.4-RELEASE"
+version = "0.8.5-RELEASE"
 description = "a minimal implementation of libp2p for the jvm"
 
 plugins {
@@ -22,25 +22,24 @@ plugins {
     id("org.jmailen.kotlinter") version "3.2.0"
     id("com.google.protobuf") version "0.8.13"
 
-    `maven`
     `maven-publish`
     id("org.jetbrains.dokka") version "0.9.18"
 }
 
 repositories {
-    jcenter()
     mavenCentral()
+    maven("https://artifacts.consensys.net/public/maven/maven/")
 }
 
 val log4j2Version = "2.17.0"
 
 dependencies {
     api("io.netty:netty-all:4.1.69.Final")
-    api("com.google.protobuf:protobuf-java:3.11.0")
+    api("com.google.protobuf:protobuf-java:3.19.1")
 
     implementation(kotlin("stdlib-jdk8"))
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.0-M1")
-    implementation("tech.pegasys:noise-java:1.0.0")
+    implementation("tech.pegasys:noise-java:22.1.0")
 
     implementation("com.google.guava:guava:27.1-jre")
     implementation("org.bouncycastle:bcprov-jdk15on:1.62")
@@ -71,7 +70,7 @@ sourceSets {
 
 protobuf {
     protoc {
-        artifact = "com.google.protobuf:protoc:3.0.0"
+        artifact = "com.google.protobuf:protoc:3.18.1"
     }
 
     tasks.get("clean").doFirst({ delete(generatedFilesBaseDir) })
@@ -88,6 +87,9 @@ tasks.withType<KotlinCompile> {
     kotlinOptions {
         freeCompilerArgs = listOf("-Xjvm-default=enable")
     }
+}
+tasks.withType<Copy> {
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
 }
 
 // Parallel build execution
