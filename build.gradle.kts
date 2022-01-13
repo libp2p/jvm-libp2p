@@ -40,7 +40,7 @@ dependencies {
     api("com.google.protobuf:protobuf-java:3.19.2")
 
     implementation(kotlin("stdlib-jdk8"))
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.0-M1")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.0")
     implementation("tech.pegasys:noise-java:22.1.0")
 
     implementation("com.google.guava:guava:31.0.1-jre")
