@@ -12,7 +12,7 @@ import java.nio.file.Paths
 // ./gradlew publish -PcloudsmithUser=<user> -PcloudsmithApiKey=<api-key>
 
 group = "io.libp2p"
-version = "0.8.5-RELEASE"
+version = "0.8.6-RELEASE"
 description = "a minimal implementation of libp2p for the jvm"
 
 plugins {
@@ -23,7 +23,7 @@ plugins {
     id("com.google.protobuf") version "0.8.13"
 
     `maven-publish`
-    id("org.jetbrains.dokka") version "0.9.18"
+    id("org.jetbrains.dokka") version "1.6.10"
 }
 
 repositories {
@@ -192,22 +192,25 @@ val sourcesJar by tasks.registering(Jar::class) {
     from(sourceSets.main.get().allSource)
 }
 
-val dokka by tasks.getting(DokkaTask::class) {
-    outputFormat = "html"
-    outputDirectory = "$buildDir/dokka"
-    jdkVersion = 8
-    reportUndocumented = false
-    externalDocumentationLink {
-        url = URL("https://netty.io/4.1/api/")
+tasks.dokkaHtml.configure {
+    outputDirectory.set(buildDir.resolve("dokka"))
+    dokkaSourceSets {
+        configureEach {
+            jdkVersion.set(8)
+            reportUndocumented.set(false)
+            externalDocumentationLink {
+                url.set(URL("https://netty.io/4.1/api/"))
+            }
+        }
     }
 }
 
-val dokkaJar by tasks.creating(Jar::class) {
+val dokkaJar: TaskProvider<Jar> by tasks.registering(Jar::class) {
     group = JavaBasePlugin.DOCUMENTATION_GROUP
-    description = "Assembles Kotlin docs with Dokka"
+    val dokkaJavadocTask = tasks.getByName("dokkaJavadoc")
+    dependsOn(dokkaJavadocTask)
     archiveClassifier.set("javadoc")
-    from(tasks.dokka)
-    dependsOn(tasks.dokka)
+    from(dokkaJavadocTask.outputs)
 }
 
 publishing {
@@ -225,7 +228,7 @@ publishing {
         register("mavenJava", MavenPublication::class) {
             from(components["java"])
             artifact(sourcesJar.get())
-            artifact(dokkaJar)
+            artifact(dokkaJar.get())
             groupId = "io.libp2p"
             artifactId = project.name
         }
