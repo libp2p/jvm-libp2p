@@ -39,8 +39,8 @@ class NoiseHandshakeTest {
             localKeyPair.getPrivateKey(prk, 0)
             localKeyPair.getPublicKey(puk, 0)
 
-            assert(prk.max()?.compareTo(0) != 0)
-            assert(puk.max()?.compareTo(0) != 0)
+            assert(prk.maxOrNull()?.compareTo(0) != 0)
+            assert(puk.maxOrNull()?.compareTo(0) != 0)
             assert(aliceHS.hasLocalKeyPair())
         }
 
@@ -121,7 +121,7 @@ class NoiseHandshakeTest {
         // use it for encoding and decoding peer identities from the wire
         // this identity is intended to be sent as a Noise transport payload
         val (privKey, pubKey) = generateKeyPair(KEY_TYPE.ECDSA)
-        assert(pubKey.bytes().max()?.compareTo(0) != 0)
+        assert(pubKey.bytes().maxOrNull()?.compareTo(0) != 0)
 
         // sign the identity using the identity's private key
         val signed = privKey.sign(pubKey.bytes())
@@ -139,7 +139,7 @@ class NoiseHandshakeTest {
         val msgLength = aliceHS.writeMessage(msgBuffer, 0, bs.toByteArray(), 0, bs.toByteArray().size)
 
         assert(msgLength > 0)
-        assert(msgBuffer.max()?.compareTo(0) != 0)
+        assert(msgBuffer.maxOrNull()?.compareTo(0) != 0)
     }
 
     @Test

@@ -18,12 +18,13 @@ description = "a minimal implementation of libp2p for the jvm"
 plugins {
     java
     idea
-    kotlin("jvm") version "1.4.10"
-    id("org.jmailen.kotlinter") version "3.2.0"
-    id("com.google.protobuf") version "0.8.13"
+    kotlin("jvm") version "1.6.10"
+    id("org.jmailen.kotlinter") version "3.8.0"
+    id("com.google.protobuf") version "0.8.18"
 
     `maven-publish`
     id("org.jetbrains.dokka") version "1.6.10"
+    id("com.github.ben-manes.versions") version "0.41.0"
 }
 
 repositories {
@@ -31,20 +32,21 @@ repositories {
     maven("https://artifacts.consensys.net/public/maven/maven/")
 }
 
-val log4j2Version = "2.17.0"
+
+val log4j2Version = "2.17.1"
 
 dependencies {
     api("io.netty:netty-all:4.1.69.Final")
-    api("com.google.protobuf:protobuf-java:3.19.1")
+    api("com.google.protobuf:protobuf-java:3.19.2")
 
     implementation(kotlin("stdlib-jdk8"))
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.0-M1")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.0")
     implementation("tech.pegasys:noise-java:22.1.0")
 
-    implementation("com.google.guava:guava:27.1-jre")
-    implementation("org.bouncycastle:bcprov-jdk15on:1.62")
-    implementation("org.bouncycastle:bcpkix-jdk15on:1.62")
-    implementation("commons-codec:commons-codec:1.13")
+    implementation("com.google.guava:guava:31.0.1-jre")
+    implementation("org.bouncycastle:bcprov-jdk15on:1.70")
+    implementation("org.bouncycastle:bcpkix-jdk15on:1.70")
+    implementation("commons-codec:commons-codec:1.15")
 
     implementation("org.apache.logging.log4j:log4j-api:${log4j2Version}")
     implementation("org.apache.logging.log4j:log4j-core:${log4j2Version}")
@@ -53,10 +55,10 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.8.2")
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.8.2")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.8.2")
-    testImplementation("io.mockk:mockk:1.10.0")
-    testRuntimeOnly("org.mockito:mockito-core:3.3.3")
-    testImplementation("org.mockito:mockito-junit-jupiter:3.3.3")
-    testImplementation("org.assertj:assertj-core:3.16.1")
+    testImplementation("io.mockk:mockk:1.12.2")
+    testRuntimeOnly("org.mockito:mockito-core:4.2.0")
+    testImplementation("org.mockito:mockito-junit-jupiter:4.2.0")
+    testImplementation("org.assertj:assertj-core:3.22.0")
 
 }
 
@@ -70,7 +72,7 @@ sourceSets {
 
 protobuf {
     protoc {
-        artifact = "com.google.protobuf:protoc:3.18.1"
+        artifact = "com.google.protobuf:protoc:3.19.2"
     }
 
     tasks.get("clean").doFirst({ delete(generatedFilesBaseDir) })
@@ -80,6 +82,11 @@ protobuf {
             sourceDirs.add(file("${generatedFilesBaseDir}/main/java"))
         }
     }
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
 }
 
 tasks.withType<KotlinCompile> {
