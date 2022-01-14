@@ -21,6 +21,7 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import java.util.Random
 import java.util.concurrent.TimeUnit
+import java.util.function.Consumer
 
 class HostTest {
 
@@ -221,7 +222,7 @@ class HostTest {
     }
 
     fun assertDoesntContainSequence(data: ByteArray, seq: ByteArray) {
-        assertThat(listOf(data)).noneSatisfy { candidate -> assertThat(candidate).containsSequence(*seq) }
+        assertThat(listOf(data)).noneSatisfy(Consumer { candidate -> assertThat(candidate).containsSequence(*seq) })
     }
 
     fun mergeBufs(bufs: Collection<ByteBuf>): ByteArray =

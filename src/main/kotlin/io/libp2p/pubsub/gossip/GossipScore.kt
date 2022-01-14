@@ -236,8 +236,8 @@ class GossipScore(
                 when {
                     validationResult.isPresent && validationResult.get() == ValidationResult.Invalid ->
                         topicScores.invalidMessages++
-                    !validationResult.isPresent
-                        || durationAfterValidation < topicParams[topic].meshMessageDeliveryWindow ->
+                    !validationResult.isPresent ||
+                        durationAfterValidation < topicParams[topic].meshMessageDeliveryWindow ->
                         topicScores.meshMessageDeliveries++
                 }
             }

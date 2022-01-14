@@ -129,20 +129,20 @@ abstract class NettyTransport(
 
     override fun dial(addr: Multiaddr, connHandler: ConnectionHandler):
         CompletableFuture<Connection> {
-            if (closed) throw Libp2pException("Transport is closed")
+        if (closed) throw Libp2pException("Transport is closed")
 
-            val remotePeerId = addr.getStringComponent(Protocol.P2P)?.let { PeerId.fromBase58(it) }
-            val connectionBuilder = makeConnectionBuilder(connHandler, true, remotePeerId)
-            val channelHandler = clientTransportBuilder(connectionBuilder, addr) ?: connectionBuilder
+        val remotePeerId = addr.getStringComponent(Protocol.P2P)?.let { PeerId.fromBase58(it) }
+        val connectionBuilder = makeConnectionBuilder(connHandler, true, remotePeerId)
+        val channelHandler = clientTransportBuilder(connectionBuilder, addr) ?: connectionBuilder
 
-            val chanFuture = client.clone()
-                .handler(channelHandler)
-                .connect(fromMultiaddr(addr))
-                .also { registerChannel(it.channel()) }
+        val chanFuture = client.clone()
+            .handler(channelHandler)
+            .connect(fromMultiaddr(addr))
+            .also { registerChannel(it.channel()) }
 
-            return chanFuture.toCompletableFuture()
-                .thenCompose { connectionBuilder.connectionEstablished }
-        } // dial
+        return chanFuture.toCompletableFuture()
+            .thenCompose { connectionBuilder.connectionEstablished }
+    } // dial
 
     protected abstract fun clientTransportBuilder(
         connectionBuilder: ConnectionBuilder,
