@@ -12,6 +12,7 @@ import io.libp2p.core.crypto.marshalPublicKey
 import io.libp2p.core.crypto.unmarshalPublicKey
 import io.libp2p.core.multistream.ProtocolDescriptor
 import io.libp2p.core.security.SecureChannel
+import io.libp2p.etc.REMOTE_PEER_ID
 import io.libp2p.etc.types.toByteArray
 import io.libp2p.etc.types.toByteBuf
 import io.libp2p.etc.types.toUShortBigEndian
@@ -97,6 +98,7 @@ private class NoiseIoHandshake(
     private var instancePayload: ByteArray? = null
     private var activated = false
     private var remotePeerId: PeerId? = null
+    private var expectedRemotePeerId: PeerId? = null
 
     init {
         log.debug("Starting handshake")
@@ -117,6 +119,10 @@ private class NoiseIoHandshake(
         // the Noise protocol only permits alice to send a packet first
         if (role == Role.INIT) {
             sendNoiseMessage(ctx)
+            if (!ctx.channel().hasAttr(REMOTE_PEER_ID)) {
+                throw SecureHandshakeError("Remote Peer ID missing for initiating party")
+            }
+            expectedRemotePeerId = ctx.channel().attr(REMOTE_PEER_ID).get()
         }
     } // channelActive
 
@@ -131,9 +137,11 @@ private class NoiseIoHandshake(
 
         // verify the signature of the remote's noise static public key once
         // the remote public key has been provided by the XX protocol
-        with(handshakeState.remotePublicKey) {
-            if (hasPublicKey()) {
-                remotePeerId = verifyPayload(ctx, instancePayload!!, this)
+        val derivedRemotePublicKey = handshakeState.remotePublicKey
+        if (derivedRemotePublicKey.hasPublicKey()) {
+            remotePeerId = verifyPayload(ctx, instancePayload!!, derivedRemotePublicKey)
+            if (role == Role.INIT && expectedRemotePeerId != remotePeerId) {
+                throw InvalidRemotePubKey()
             }
         }
 
