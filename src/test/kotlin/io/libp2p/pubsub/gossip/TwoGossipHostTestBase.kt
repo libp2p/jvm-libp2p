@@ -103,7 +103,7 @@ abstract class TwoGossipHostTestBase {
 
     protected fun connect() {
         val connect = host1.network
-            .connect(host2.peerId, Multiaddr.fromString("/ip4/127.0.0.1/tcp/40001"))
+            .connect(host2.peerId, Multiaddr.fromString("/ip4/127.0.0.1/tcp/40001/p2p/" + host2.peerId))
         connect.get(10, TimeUnit.SECONDS)
 
         waitFor { gossipConnected(router1) }

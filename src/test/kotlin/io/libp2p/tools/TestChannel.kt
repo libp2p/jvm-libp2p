@@ -1,7 +1,9 @@
 package io.libp2p.tools
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder
+import io.libp2p.core.PeerId
 import io.libp2p.etc.CONNECTION
+import io.libp2p.etc.REMOTE_PEER_ID
 import io.libp2p.etc.types.lazyVar
 import io.libp2p.etc.util.netty.nettyInitializer
 import io.libp2p.transport.implementation.ConnectionOverNetty
@@ -28,7 +30,8 @@ class TestChannel(
     id: String = "test",
     initiator: Boolean,
     vararg handlers: ChannelHandler?,
-    val dummyIp: String = "0.0.0.0"
+    val dummyIp: String = "0.0.0.0",
+    remotePeerId: PeerId? = null
 ) :
     EmbeddedChannel(
         TestChannelId(id),
@@ -43,6 +46,12 @@ class TestChannel(
         },
         *handlers
     ) {
+
+    init {
+        if (remotePeerId != null) {
+            attr(REMOTE_PEER_ID).set(remotePeerId)
+        }
+    }
 
     var link: TestChannel? = null
     val sentMsgCount = AtomicLong()

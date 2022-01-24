@@ -71,15 +71,17 @@ class NetworkImpl(
         connections.find { it.secureSession().remoteId == id }
             ?.apply { return CompletableFuture.completedFuture(this) }
 
+        val addrsWithP2P = addrs.map { it.withP2P(id) }
+
         // 1. check that some transport can dial at least one addr.
         // 2. trigger dials in parallel via all transports.
         // 3. when the first dial succeeds, cancel all pending dials and return the connection. // TODO cancel
         // 4. if no emitted dial succeeds, or if we time out, fail the future. make sure to cancel
         //    pending dials to avoid leaking.
-        val connectionFuts = addrs.mapNotNull { addr ->
+        val connectionFuts = addrsWithP2P.mapNotNull { addr ->
             transports.firstOrNull { tpt -> tpt.handles(addr) }?.let { addr to it }
-        }.map {
-            it.second.dial(it.first, createHookedConnHandler(connectionHandler))
+        }.map { (addr, transport) ->
+            transport.dial(addr, createHookedConnHandler(connectionHandler))
         }
         return anyComplete(connectionFuts)
     }
