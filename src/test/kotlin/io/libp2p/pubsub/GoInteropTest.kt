@@ -89,7 +89,7 @@ class GoInteropTest {
 
     val idPrivateKey: PrivKey = generateKeyPair(KEY_TYPE.SECP256K1, random = SecureRandom(byteArrayOf(0))).first
     val daemonPeerId = PeerId.fromPubKey(idPrivateKey.publicKey())
-    val skFile = File.createTempFile("p2pd_pkey_",".bin").also { file ->
+    val skFile = File.createTempFile("p2pd_pkey_", ".bin").also { file ->
         file.outputStream().use { os ->
             os.write(idPrivateKey.bytes())
         }
