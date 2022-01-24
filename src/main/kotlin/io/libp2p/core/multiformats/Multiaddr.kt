@@ -114,6 +114,12 @@ class Multiaddr(val components: List<Pair<Protocol, ByteArray>>) {
     }
 
     /**
+     * Returns [Multiaddr] with concatenated components of `this` and [other] `Multiaddr`
+     * No cross component checks or merge is performed
+     */
+    fun concatenated(other: Multiaddr) = Multiaddr(this.components + other.components)
+
+    /**
      * Merges components of this [Multiaddr] with [other]
      * Has the same effect as appending [other] components subsequently by [withComponent]
      * @throws IllegalArgumentException if any of `this` component value doesn't match the value for the same protocol in [other]

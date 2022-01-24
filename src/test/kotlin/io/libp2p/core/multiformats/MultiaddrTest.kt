@@ -206,6 +206,18 @@ class MultiaddrTest {
     }
 
     @Test
+    fun `concatenated() should just concat components`() {
+        val parentAddr = Multiaddr("/ip4/127.0.0.1/tcp/20000")
+        val childAddr = Multiaddr("/p2p-circuit/ip4/127.0.0.2")
+
+        val addr = parentAddr.concatenated(childAddr)
+        assertEquals(
+            "/ip4/127.0.0.1/tcp/20000/p2p-circuit/ip4/127.0.0.2",
+            addr.toString()
+        )
+    }
+
+    @Test
     fun `merged() should succeed with distinct components`() {
         val parentAddr = Multiaddr("/ip4/127.0.0.1/tcp/20000")
         val childAddr = Multiaddr("/p2p-circuit/dns4/trousers.org")
