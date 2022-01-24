@@ -72,7 +72,7 @@ class MultiaddrDns {
             else
                 addressMatrix[0].flatMap { parent ->
                     crossProduct(addressMatrix.subList(1, addressMatrix.size))
-                        .map { child -> Multiaddr(parent, child) }
+                        .map { child -> parent.merged(child) }
                 }
         }
 
