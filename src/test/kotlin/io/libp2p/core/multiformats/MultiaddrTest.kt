@@ -196,12 +196,12 @@ class MultiaddrTest {
         val parentAddr = Multiaddr("/ip4/127.0.0.1/tcp/20000")
         val peerId = testPeerId()
 
-        val addr = parentAddr.withPeerId(peerId)
+        val addr = parentAddr.withP2P(peerId)
         assertEquals("/ip4/127.0.0.1/tcp/20000/p2p/QmULzn6KtFUCKpkFymEUgUvkLtv9j2Eo4utZPELmQEebR6", addr.toString())
-        assertEquals(addr.withPeerId(peerId), addr)
+        assertEquals(addr.withP2P(peerId), addr)
 
         assertThrows(IllegalArgumentException::class.java) {
-            addr.withPeerId(PeerId.random()) // parent has another peer id
+            addr.withP2P(PeerId.random()) // parent has another peer id
         }
     }
 

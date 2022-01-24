@@ -100,7 +100,7 @@ class Multiaddr(val components: List<Pair<Protocol, ByteArray>>) {
      * Appends `/p2p/` component if absent or checks that existing and supplied ids are equal
      * @throws IllegalArgumentException if existing `/p2p/` identity doesn't match [peerId]
      */
-    fun withPeerId(peerId: PeerId) = withComponent(PEER_ID_PROTOCOL, peerId.bytes)
+    fun withP2P(peerId: PeerId) = withComponent(Protocol.P2P, peerId.bytes)
 
     /**
      * Appends new component if absent or checks that existing and supplied component values are equal

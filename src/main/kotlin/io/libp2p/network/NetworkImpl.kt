@@ -71,7 +71,7 @@ class NetworkImpl(
         connections.find { it.secureSession().remoteId == id }
             ?.apply { return CompletableFuture.completedFuture(this) }
 
-        val addrsWithP2P = addrs.map { it.withPeerId(id) }
+        val addrsWithP2P = addrs.map { it.withP2P(id) }
 
         // 1. check that some transport can dial at least one addr.
         // 2. trigger dials in parallel via all transports.

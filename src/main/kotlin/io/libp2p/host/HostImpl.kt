@@ -43,7 +43,7 @@ class HostImpl(
 
         network.transports.forEach {
             listening.addAll(
-                it.listenAddresses().map { it.withPeerId(peerId) }
+                it.listenAddresses().map { it.withP2P(peerId) }
             )
         }
 
