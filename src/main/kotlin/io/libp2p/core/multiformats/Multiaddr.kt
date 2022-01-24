@@ -7,8 +7,6 @@ import io.libp2p.etc.types.toByteBuf
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 
-private val PEER_ID_PROTOCOL = Protocol.P2P
-
 /**
  * Class implements Multiaddress concept: https://github.com/multiformats/multiaddr
  *
@@ -86,15 +84,11 @@ class Multiaddr(val components: List<Pair<Protocol, ByteArray>>) {
      */
     fun getBytes(): ByteArray = writeBytes(Unpooled.buffer()).toByteArray()
 
-    fun toPeerIdAndAddr(): Pair<PeerId, Multiaddr> {
-        if (!has(PEER_ID_PROTOCOL))
-            throw IllegalArgumentException("Multiaddr has no peer id")
-
-        return Pair(
-            PeerId.fromBase58(getStringComponent(PEER_ID_PROTOCOL)!!),
-            Multiaddr(components.subList(0, components.lastIndex))
-        )
-    }
+    /**
+     * Returns [PeerId] from either `/ipfs/` or `/p2p/` component value. `null` if none of those components exists
+     */
+    fun getPeerId(): PeerId? =
+        components.filter { it.first in Protocol.PEER_ID_PROTOCOLS }.map { PeerId(it.second) }.firstOrNull()
 
     /**
      * Appends `/p2p/` component if absent or checks that existing and supplied ids are equal
@@ -110,7 +104,7 @@ class Multiaddr(val components: List<Pair<Protocol, ByteArray>>) {
         val curVal = getComponent(protocol)
         return if (curVal != null) {
             if (!curVal.contentEquals(value)) {
-                throw IllegalArgumentException("Value ($value) for $protocol doesn't match existing value in $this")
+                throw IllegalArgumentException("Value (${protocol.bytesToAddress(value)}) for $protocol doesn't match existing value in $this")
             } else {
                 this
             }

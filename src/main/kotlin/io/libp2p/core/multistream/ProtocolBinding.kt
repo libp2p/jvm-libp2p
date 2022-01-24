@@ -29,8 +29,9 @@ interface ProtocolBinding<out TController> {
      */
     @JvmDefault
     fun dial(host: Host, addrWithPeer: Multiaddr): StreamPromise<out TController> {
-        val (peerId, addr) = addrWithPeer.toPeerIdAndAddr()
-        return dial(host, peerId, addr)
+        val peerId = addrWithPeer.getPeerId()
+            ?: throw IllegalArgumentException("Expected remote peer ID in the dial Multiaddr: $addrWithPeer")
+        return dial(host, peerId, addrWithPeer)
     }
 
     @JvmDefault

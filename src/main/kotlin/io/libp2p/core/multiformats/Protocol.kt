@@ -147,6 +147,9 @@ enum class Protocol(val code: Int, val size: Int, val typeName: String) {
     }
 
     companion object {
+        @JvmStatic
+        val PEER_ID_PROTOCOLS = listOf(P2P, IPFS)
+
         private val byCode = values().associate { p -> p.code to p }
         private val byName = values().associate { p -> p.typeName to p }
 

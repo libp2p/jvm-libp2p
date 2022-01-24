@@ -240,16 +240,11 @@ class MultiaddrTest {
     }
 
     @Test
-    fun testSplitIntoPeerAndMultiaddr() {
+    fun testGetPeerId() {
         val addr = Multiaddr("/ip4/127.0.0.1/tcp/20000/p2p/QmULzn6KtFUCKpkFymEUgUvkLtv9j2Eo4utZPELmQEebR6")
 
-        val (splitPeerId, addrWithoutPeer) = addr.toPeerIdAndAddr()
-        assertEquals(testPeerId(), splitPeerId)
-        assertEquals("/ip4/127.0.0.1/tcp/20000", addrWithoutPeer.toString())
-
-        assertThrows(java.lang.IllegalArgumentException::class.java) {
-            addrWithoutPeer.toPeerIdAndAddr()
-        }
+        assertEquals(testPeerId(), addr.getPeerId())
+        assertEquals(Multiaddr("/ip4/127.0.0.1/tcp/20000").getPeerId(), null)
     }
 
     @ParameterizedTest
