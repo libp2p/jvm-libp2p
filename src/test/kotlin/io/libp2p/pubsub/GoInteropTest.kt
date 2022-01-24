@@ -6,6 +6,7 @@ import io.libp2p.core.P2PChannelHandler
 import io.libp2p.core.PeerId
 import io.libp2p.core.Stream
 import io.libp2p.core.crypto.KEY_TYPE
+import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.crypto.unmarshalPublicKey
 import io.libp2p.core.dsl.host
@@ -51,7 +52,9 @@ import org.junit.jupiter.api.extension.ExecutionCondition
 import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.api.extension.ExtensionContext
 import pubsub.pb.Rpc
+import java.io.File
 import java.nio.charset.StandardCharsets
+import java.security.SecureRandom
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
@@ -83,6 +86,16 @@ annotation class AssumeP2PAvailable()
 @AssumeP2PAvailable
 @Tag("interop")
 class GoInteropTest {
+
+    val idPrivateKey: PrivKey = generateKeyPair(KEY_TYPE.SECP256K1, random = SecureRandom(byteArrayOf(0))).first
+    val daemonPeerId = PeerId.fromPubKey(idPrivateKey.publicKey())
+    val skFile = File.createTempFile("p2pd_pkey_",".bin").also { file ->
+        file.outputStream().use { os ->
+            os.write(idPrivateKey.bytes())
+        }
+        file.deleteOnExit()
+    }
+
     init {
         ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.PARANOID)
     }
@@ -91,10 +104,7 @@ class GoInteropTest {
     fun connect1() {
         val logger = LogManager.getLogger("test")
         val daemonLauncher = P2pdRunner().launcher()!!
-        val identityFileArgs = arrayOf<String>()
-
-        // uncomment the following line and set the generated (with p2p-keygen tool) key file path
-        // val identityFileArgs = arrayOf<String>("-id", "E:\\ws\\jvm-libp2p-minimal\\p2pd.key")
+        val identityFileArgs = arrayOf<String>("-id", skFile.absoluteFile.canonicalPath)
 
         val pdHost = daemonLauncher
             .launch(45555, "-pubsub", *identityFileArgs)
@@ -211,8 +221,9 @@ class GoInteropTest {
     fun hostTest() = defer { d ->
         val logger = LogManager.getLogger("test")
         val daemonLauncher = P2pdRunner().launcher()!!
+        val identityFileArgs = arrayOf<String>("-id", skFile.absoluteFile.canonicalPath)
         val pdHost = daemonLauncher
-            .launch(45555, "-pubsub")
+            .launch(45555, "-pubsub", *identityFileArgs)
 
         d.defer {
             println("Killing p2pd process")
@@ -258,7 +269,7 @@ class GoInteropTest {
         host.start().get(5, TimeUnit.SECONDS)
         println("Host started")
 
-        val connFuture = host.network.connect(PeerId.random(), Multiaddr("/ip4/127.0.0.1/tcp/45555"))
+        val connFuture = host.network.connect(daemonPeerId, Multiaddr("/ip4/127.0.0.1/tcp/45555"))
 
         connFuture.thenAccept {
             logger.info("Connection made")
