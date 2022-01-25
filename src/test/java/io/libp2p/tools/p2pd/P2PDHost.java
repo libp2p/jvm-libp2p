@@ -61,7 +61,7 @@ public class P2PDHost implements Host {
     public List<Multiaddr> getListenAddresses() {
         try {
             return identify().get().getAddrsList().stream()
-                    .map(bs -> new Multiaddr(bs.toByteArray()))
+                    .map(bs -> Multiaddr.deserialize(bs.toByteArray()))
                     .collect(Collectors.toList());
         } catch (Exception e) {
             throw new RuntimeException(e);

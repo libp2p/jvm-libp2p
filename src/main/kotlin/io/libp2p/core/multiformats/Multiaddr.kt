@@ -28,16 +28,6 @@ data class Multiaddr(val components: List<MultiaddrComponent>) {
     constructor(addr: String) : this(parseString(addr))
 
     /**
-     * Creates instance from serialized form from [ByteBuf]
-     */
-    constructor(bytes: ByteBuf) : this(parseBytes(bytes))
-
-    /**
-     * Creates instance from serialized form from [ByteBuf]
-     */
-    constructor(bytes: ByteArray) : this(parseBytes(bytes.toByteBuf()))
-
-    /**
      * Returns only components matching any of supplied protocols
      */
     fun filterComponents(vararg proto: Protocol): List<MultiaddrComponent> =

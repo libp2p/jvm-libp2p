@@ -263,10 +263,10 @@ abstract class HostTransportsTest(
         assertTrue(remoteIdentity.protocolsList.contains("/ipfs/id/1.0.0"))
         assertTrue(remoteIdentity.protocolsList.contains("/ipfs/ping/1.0.0"))
 
-        assertEquals(identifyStream.connection.localAddress(), Multiaddr(remoteIdentity.observedAddr.toByteArray()))
+        assertEquals(identifyStream.connection.localAddress(), Multiaddr.deserialize(remoteIdentity.observedAddr.toByteArray()))
 
         assertEquals(1, remoteIdentity.listenAddrsCount)
-        val remoteAddress = Multiaddr(remoteIdentity.listenAddrsList[0].toByteArray())
+        val remoteAddress = Multiaddr.deserialize(remoteIdentity.listenAddrsList[0].toByteArray())
         assertEquals(listenAddress, remoteAddress.toString())
         assertEquals(identifyStream.connection.remoteAddress(), remoteAddress)
     }

@@ -161,7 +161,7 @@ class MultiaddrTest {
     fun validStringAddress(addr: String) {
         val multiaddr = Multiaddr(addr)
         val bytes = multiaddr.serialize()
-        val multiaddr1 = Multiaddr(bytes)
+        val multiaddr1 = Multiaddr.deserialize(bytes)
         assertEquals(
             addr.toLowerCase().trimEnd('/').replace("/ipfs/", "/p2p/"),
             multiaddr1.toString().toLowerCase()
@@ -172,7 +172,7 @@ class MultiaddrTest {
     @MethodSource("toBytesParams")
     fun toBytes(str: String, bytes: ByteArray) {
         assertEquals(bytes.toHex(), Multiaddr(str).serialize().toHex())
-        assertEquals(str, Multiaddr(bytes).toString())
+        assertEquals(str, Multiaddr.deserialize(bytes).toString())
     }
 
     @Test
