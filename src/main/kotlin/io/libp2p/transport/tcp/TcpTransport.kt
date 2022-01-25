@@ -45,11 +45,8 @@ class TcpTransport(
             is Inet6Address -> IP6
             else -> throw InternalErrorException("Unknown address type $addr")
         }
-        return Multiaddr(
-            listOf(
-                proto to proto.addressToBytes(addr.address.hostAddress),
-                TCP to TCP.addressToBytes(addr.port.toString())
-            )
-        )
+        return Multiaddr.empty()
+            .withComponent(proto, addr.address.hostAddress)
+            .withComponent(TCP, addr.port.toString())
     } // toMultiaddr
 } // class TcpTransport

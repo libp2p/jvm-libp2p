@@ -131,7 +131,7 @@ abstract class NettyTransport(
         CompletableFuture<Connection> {
         if (closed) throw Libp2pException("Transport is closed")
 
-        val remotePeerId = addr.getStringComponent(Protocol.P2P)?.let { PeerId.fromBase58(it) }
+        val remotePeerId = addr.getPeerId()
         val connectionBuilder = makeConnectionBuilder(connHandler, true, remotePeerId)
         val channelHandler = clientTransportBuilder(connectionBuilder, addr) ?: connectionBuilder
 
@@ -185,14 +185,14 @@ abstract class NettyTransport(
         if (resolvedAddresses.isEmpty())
             throw Libp2pException("Could not resolve $addr to an IP address")
 
-        return resolvedAddresses[0].filterStringComponents().find {
-            it.first in arrayOf(Protocol.IP4, Protocol.IP6)
-        }?.second ?: throw Libp2pException("Missing IP4/IP6 in multiaddress $addr")
+        return resolvedAddresses[0].components.find {
+            it.protocol in arrayOf(Protocol.IP4, Protocol.IP6)
+        }?.stringValue ?: throw Libp2pException("Missing IP4/IP6 in multiaddress $addr")
     }
 
     protected fun portFromMultiaddr(addr: Multiaddr) =
-        addr.filterStringComponents().find { p -> p.first == Protocol.TCP }
-            ?.second?.toInt() ?: throw Libp2pException("Missing TCP in multiaddress $addr")
+        addr.components.find { p -> p.protocol == Protocol.TCP }
+            ?.stringValue?.toInt() ?: throw Libp2pException("Missing TCP in multiaddress $addr")
 
     private fun fromMultiaddr(addr: Multiaddr): InetSocketAddress {
         val host = hostFromMultiaddr(addr)

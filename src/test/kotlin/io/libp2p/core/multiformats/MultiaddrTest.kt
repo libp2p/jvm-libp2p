@@ -110,16 +110,16 @@ class MultiaddrTest {
         fun protocolLists() = listOf(
             Arguments.of(
                 listOf(
-                    Pair(Protocol.IP4, "7f000001".fromHex()),
-                    Pair(Protocol.TCP, "2328".fromHex())
+                    MultiaddrComponent(Protocol.IP4, "7f000001".fromHex()),
+                    MultiaddrComponent(Protocol.TCP, "2328".fromHex())
                 ),
                 "/ip4/127.0.0.1/tcp/9000"
             ),
             Arguments.of(
                 listOf(
-                    Pair(Protocol.IP4, "7f000001".fromHex()),
-                    Pair(Protocol.TCP, "2328".fromHex()),
-                    Pair(Protocol.WS, ByteArray(0))
+                    MultiaddrComponent(Protocol.IP4, "7f000001".fromHex()),
+                    MultiaddrComponent(Protocol.TCP, "2328".fromHex()),
+                    MultiaddrComponent(Protocol.WS, null)
                 ),
                 "/ip4/127.0.0.1/tcp/9000/ws"
             )
@@ -187,7 +187,7 @@ class MultiaddrTest {
 
     @ParameterizedTest
     @MethodSource("protocolLists")
-    fun testFromProtocolList(protocols: List<Pair<Protocol, ByteArray>>, expected: String) {
+    fun testFromProtocolList(protocols: List<MultiaddrComponent>, expected: String) {
         assertEquals(expected, Multiaddr(protocols).toString())
     }
 

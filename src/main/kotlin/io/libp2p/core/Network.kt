@@ -1,7 +1,6 @@
 package io.libp2p.core
 
 import io.libp2p.core.multiformats.Multiaddr
-import io.libp2p.core.multiformats.Protocol
 import io.libp2p.core.transport.Transport
 import java.util.concurrent.CompletableFuture
 
@@ -47,11 +46,10 @@ interface Network {
      */
     fun connect(vararg addrs: Multiaddr): CompletableFuture<Connection> {
         val peerIdSet = addrs.map {
-            it.getStringComponent(Protocol.P2P)
-                ?: throw Libp2pException("Multiaddress should contain /p2p/<peerId> component")
+            it.getPeerId() ?: throw Libp2pException("Multiaddress should contain /p2p/<peerId> component")
         }.toSet()
         if (peerIdSet.size != 1) throw Libp2pException("All multiaddresses should nave the same peerId")
-        return connect(PeerId.fromBase58(peerIdSet.first()), *addrs)
+        return connect(peerIdSet.first(), *addrs)
     }
 
     /**

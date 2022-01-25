@@ -22,9 +22,9 @@ class MultiaddrDns {
 
             val resolvedAddresses = mutableListOf<List<Multiaddr>>()
             for (address in addressesToResolve) {
-                val toResolve = address.filterStringComponents(*dnsProtocols).firstOrNull()
+                val toResolve = address.filterComponents(*dnsProtocols).firstOrNull()
                 val resolved = if (toResolve != null)
-                    resolve(toResolve.first, toResolve.second!!, address, resolver)
+                    resolve(toResolve.protocol, toResolve.stringValue!!, address, resolver)
                 else
                     listOf(address)
                 resolvedAddresses.add(resolved)
@@ -108,7 +108,7 @@ class MultiaddrDns {
                     .map {
                         Multiaddr(
                             listOf(
-                                Pair(resultantProto, it.address)
+                                MultiaddrComponent(resultantProto, it.address)
                             )
                         )
                     }
