@@ -68,6 +68,8 @@ enum class Protocol(
     fun readAddressBytes(buf: ByteBuf): ByteArray? {
         if (!hasValue) return null
         val size = if (sizeBits != LENGTH_PREFIXED_VAR_SIZE) sizeBits / 8 else buf.readUvarint().toInt()
+        require(size >= 0) { "Invalid size: $size" }
+        require(size <= buf.readableBytes()) { "Var size $size > readable bytes: ${buf.readableBytes()}" }
         val bb = ByteArray(size)
         buf.readBytes(bb)
         return bb
