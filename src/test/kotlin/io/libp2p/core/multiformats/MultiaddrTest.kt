@@ -196,20 +196,33 @@ class MultiaddrTest {
         val parentAddr = Multiaddr("/ip4/127.0.0.1/tcp/20000")
         val peerId = testPeerId()
 
-        val addr = Multiaddr(parentAddr, peerId)
-        assertEquals("/ip4/127.0.0.1/tcp/20000/ipfs/QmULzn6KtFUCKpkFymEUgUvkLtv9j2Eo4utZPELmQEebR6", addr.toString())
+        val addr = parentAddr.withP2P(peerId)
+        assertEquals("/ip4/127.0.0.1/tcp/20000/p2p/QmULzn6KtFUCKpkFymEUgUvkLtv9j2Eo4utZPELmQEebR6", addr.toString())
+        assertEquals(addr.withP2P(peerId), addr)
 
-        assertThrows(java.lang.IllegalArgumentException::class.java) {
-            Multiaddr(addr, peerId) // parent already has peer id
+        assertThrows(IllegalArgumentException::class.java) {
+            addr.withP2P(PeerId.random()) // parent has another peer id
         }
     }
 
     @Test
-    fun concatTwoMultiaddrs() {
+    fun `concatenated() should just concat components`() {
+        val parentAddr = Multiaddr("/ip4/127.0.0.1/tcp/20000")
+        val childAddr = Multiaddr("/p2p-circuit/ip4/127.0.0.2")
+
+        val addr = parentAddr.concatenated(childAddr)
+        assertEquals(
+            "/ip4/127.0.0.1/tcp/20000/p2p-circuit/ip4/127.0.0.2",
+            addr.toString()
+        )
+    }
+
+    @Test
+    fun `merged() should succeed with distinct components`() {
         val parentAddr = Multiaddr("/ip4/127.0.0.1/tcp/20000")
         val childAddr = Multiaddr("/p2p-circuit/dns4/trousers.org")
 
-        val addr = Multiaddr(parentAddr, childAddr)
+        val addr = parentAddr.merged(childAddr)
         assertEquals(
             "/ip4/127.0.0.1/tcp/20000/p2p-circuit/dns4/trousers.org",
             addr.toString()
@@ -217,16 +230,33 @@ class MultiaddrTest {
     }
 
     @Test
-    fun testSplitIntoPeerAndMultiaddr() {
-        val addr = Multiaddr("/ip4/127.0.0.1/tcp/20000/ipfs/QmULzn6KtFUCKpkFymEUgUvkLtv9j2Eo4utZPELmQEebR6")
+    fun `merged() should succeed with matching component values`() {
+        val parentAddr = Multiaddr("/ip4/127.0.0.1/tcp/20000")
+        val childAddr = Multiaddr("/ip4/127.0.0.1/p2p-circuit/dns4/trousers.org")
 
-        val (splitPeerId, addrWithoutPeer) = addr.toPeerIdAndAddr()
-        assertEquals(testPeerId(), splitPeerId)
-        assertEquals("/ip4/127.0.0.1/tcp/20000", addrWithoutPeer.toString())
+        val addr = parentAddr.merged(childAddr)
+        assertEquals(
+            "/ip4/127.0.0.1/tcp/20000/p2p-circuit/dns4/trousers.org",
+            addr.toString()
+        )
+    }
 
-        assertThrows(java.lang.IllegalArgumentException::class.java) {
-            addrWithoutPeer.toPeerIdAndAddr()
+    @Test
+    fun `merged() should throw with non-matching component values`() {
+        val parentAddr = Multiaddr("/ip4/127.0.0.1/tcp/20000")
+        val childAddr = Multiaddr("/ip4/127.0.0.1/tcp/30000/p2p-circuit/dns4/trousers.org")
+
+        assertThrows(IllegalArgumentException::class.java) {
+            parentAddr.merged(childAddr)
         }
+    }
+
+    @Test
+    fun testGetPeerId() {
+        val addr = Multiaddr("/ip4/127.0.0.1/tcp/20000/p2p/QmULzn6KtFUCKpkFymEUgUvkLtv9j2Eo4utZPELmQEebR6")
+
+        assertEquals(testPeerId(), addr.getPeerId())
+        assertEquals(Multiaddr("/ip4/127.0.0.1/tcp/20000").getPeerId(), null)
     }
 
     @ParameterizedTest

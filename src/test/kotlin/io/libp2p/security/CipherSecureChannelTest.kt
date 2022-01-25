@@ -1,34 +1,56 @@
 package io.libp2p.security
 
+import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.tools.TestChannel
 import io.libp2p.tools.TestLogAppender
 import io.netty.buffer.Unpooled
 import org.assertj.core.api.Assertions
+import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeUnit.SECONDS
 
 abstract class CipherSecureChannelTest(secureChannelCtor: SecureChannelCtor, announce: String) :
-    SecureChannelTest(secureChannelCtor, announce) {
+    SecureChannelTestBase(secureChannelCtor, announce) {
 
     @Test
-    fun `test that on malformed message from remote the connection closes and no log noise`() {
+    fun `incorrect initiator remote PeerId should throw`() {
         val (privKey1, _) = generateKeyPair(KEY_TYPE.ECDSA)
         val (privKey2, _) = generateKeyPair(KEY_TYPE.ECDSA)
+        val (_, wrongPubKey) = generateKeyPair(KEY_TYPE.ECDSA)
 
         val protocolSelect1 = makeSelector(privKey1)
         val protocolSelect2 = makeSelector(privKey2)
 
-        val eCh1 = makeChannel("#1", true, protocolSelect1)
-        val eCh2 = makeChannel("#2", false, protocolSelect2)
+        val eCh1 = makeDialChannel("#1", protocolSelect1, PeerId.fromPubKey(wrongPubKey))
+        val eCh2 = makeListenChannel("#2", protocolSelect2)
+
+        logger.debug("Connecting channels...")
+        TestChannel.interConnect(eCh1, eCh2)
+
+        assertThatThrownBy { protocolSelect1.selectedFuture.get(10, SECONDS) }
+            .hasCauseInstanceOf(InvalidRemotePubKey::class.java)
+    }
+
+    @Test
+    fun `test that on malformed message from remote the connection closes and no log noise`() {
+        val (privKey1, _) = generateKeyPair(KEY_TYPE.ECDSA)
+        val (privKey2, pubKey2) = generateKeyPair(KEY_TYPE.ECDSA)
+
+        val protocolSelect1 = makeSelector(privKey1)
+        val protocolSelect2 = makeSelector(privKey2)
+
+        val eCh1 = makeDialChannel("#1", protocolSelect1, PeerId.fromPubKey(pubKey2))
+        val eCh2 = makeListenChannel("#2", protocolSelect2)
 
         logger.debug("Connecting channels...")
         TestChannel.interConnect(eCh1, eCh2)
 
         logger.debug("Waiting for negotiation to complete...")
-        protocolSelect1.selectedFuture.get(10, TimeUnit.SECONDS)
-        protocolSelect2.selectedFuture.get(10, TimeUnit.SECONDS)
+        protocolSelect1.selectedFuture.get(10, SECONDS)
+        protocolSelect2.selectedFuture.get(10, SECONDS)
         logger.debug("Secured!")
 
         TestLogAppender().install().use { testLogAppender ->
@@ -37,8 +59,8 @@ abstract class CipherSecureChannelTest(secureChannelCtor: SecureChannelCtor, ann
                 eCh1.writeInbound(Unpooled.wrappedBuffer(ByteArray(128)))
             }.doesNotThrowAnyException()
 
-            Assertions.assertThat(eCh1.isOpen).isFalse()
-            org.junit.jupiter.api.Assertions.assertFalse(testLogAppender.hasAnyWarns())
+            assertThat(eCh1.isOpen).isFalse()
+            assertThat(testLogAppender.hasAnyWarns()).isFalse()
         }
     }
 }

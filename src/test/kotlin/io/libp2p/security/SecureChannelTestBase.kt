@@ -1,5 +1,6 @@
 package io.libp2p.security
 
+import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.crypto.generateKeyPair
@@ -27,9 +28,9 @@ import java.util.concurrent.TimeUnit
 
 typealias SecureChannelCtor = (PrivKey) -> SecureChannel
 
-val logger = LogManager.getLogger(SecureChannelTest::class.java)
+val logger = LogManager.getLogger(SecureChannelTestBase::class.java)
 
-abstract class SecureChannelTest(
+abstract class SecureChannelTestBase(
     val secureChannelCtor: SecureChannelCtor,
     val announce: String
 ) {
@@ -53,13 +54,13 @@ abstract class SecureChannelTest(
     @MethodSource("plainDataSizes")
     fun secureInterconnect(dataSize: Int) {
         val (privKey1, _) = generateKeyPair(KEY_TYPE.ECDSA)
-        val (privKey2, _) = generateKeyPair(KEY_TYPE.ECDSA)
+        val (privKey2, pubKey2) = generateKeyPair(KEY_TYPE.ECDSA)
 
         val protocolSelect1 = makeSelector(privKey1)
         val protocolSelect2 = makeSelector(privKey2)
 
-        val eCh1 = makeChannel("#1", true, protocolSelect1)
-        val eCh2 = makeChannel("#2", false, protocolSelect2)
+        val eCh1 = makeDialChannel("#1", protocolSelect1, PeerId.fromPubKey(pubKey2))
+        val eCh2 = makeListenChannel("#2", protocolSelect2)
 
         logger.info("Connecting channels...")
         interConnect(eCh1, eCh2)
@@ -118,10 +119,22 @@ abstract class SecureChannelTest(
 
     protected fun makeSelector(key: PrivKey) = ProtocolSelect(listOf(secureChannelCtor(key)))
 
-    protected fun makeChannel(
+    protected fun makeDialChannel(
+        name: String,
+        selector: ChannelInboundHandlerAdapter,
+        remotePeerId: PeerId
+    ) = makeChannel(name, true, selector, remotePeerId)
+
+    protected fun makeListenChannel(
+        name: String,
+        selector: ChannelInboundHandlerAdapter,
+    ) = makeChannel(name, false, selector, null)
+
+    private fun makeChannel(
         name: String,
         initiator: Boolean,
-        selector: ChannelInboundHandlerAdapter
+        selector: ChannelInboundHandlerAdapter,
+        remotePeerId: PeerId? = null
     ): TestChannel {
         val negotiator = if (initiator) {
             Negotiator.createRequesterInitializer(10.seconds, announce)
@@ -134,7 +147,8 @@ abstract class SecureChannelTest(
             initiator,
 //            LoggingHandler(name, LogLevel.ERROR),
             negotiator,
-            selector
+            selector,
+            remotePeerId = remotePeerId
         )
     } // makeChannel
 

@@ -1,10 +1,10 @@
 package io.libp2p.security.plaintext
 
-import io.libp2p.security.SecureChannelTest
+import io.libp2p.security.SecureChannelTestBase
 import org.junit.jupiter.api.Tag
 
 @Tag("secure-channel")
-class PlaintextInsecureChannelTest : SecureChannelTest(
+class PlaintextInsecureChannelTest : SecureChannelTestBase(
     ::PlaintextInsecureChannel,
     "/plaintext/2.0.0"
 )

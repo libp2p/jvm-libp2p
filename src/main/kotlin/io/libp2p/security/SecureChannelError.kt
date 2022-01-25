@@ -6,7 +6,10 @@ open class SecureChannelError : Exception {
     constructor(message: String) : super(message)
 }
 
-open class SecureHandshakeError : SecureChannelError()
+open class SecureHandshakeError : SecureChannelError {
+    constructor() : super()
+    constructor(message: String) : super(message)
+}
 
 class InvalidRemotePubKey : SecureHandshakeError()
 class InvalidInitialPacket : SecureHandshakeError()

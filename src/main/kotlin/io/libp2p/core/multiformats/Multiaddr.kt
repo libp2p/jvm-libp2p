@@ -35,12 +35,6 @@ class Multiaddr(val components: List<Pair<Protocol, ByteArray>>) {
      */
     constructor(bytes: ByteArray) : this(parseBytes(bytes.toByteBuf()))
 
-    constructor(parentAddr: Multiaddr, childAddr: Multiaddr) :
-        this(concatProtocols(parentAddr, childAddr))
-
-    constructor(parentAddr: Multiaddr, peerId: PeerId) :
-        this(concatPeerId(parentAddr, peerId))
-
     /**
      * Returns only components matching any of supplied protocols
      */
@@ -90,15 +84,50 @@ class Multiaddr(val components: List<Pair<Protocol, ByteArray>>) {
      */
     fun getBytes(): ByteArray = writeBytes(Unpooled.buffer()).toByteArray()
 
-    fun toPeerIdAndAddr(): Pair<PeerId, Multiaddr> {
-        if (!has(Protocol.IPFS))
-            throw IllegalArgumentException("Multiaddr has no peer id")
+    /**
+     * Returns [PeerId] from either `/ipfs/` or `/p2p/` component value. `null` if none of those components exists
+     */
+    fun getPeerId(): PeerId? =
+        components.filter { it.first in Protocol.PEER_ID_PROTOCOLS }.map { PeerId(it.second) }.firstOrNull()
 
-        return Pair(
-            PeerId.fromBase58(getStringComponent(Protocol.IPFS)!!),
-            Multiaddr(components.subList(0, components.lastIndex))
-        )
+    /**
+     * Appends `/p2p/` component if absent or checks that existing and supplied ids are equal
+     * @throws IllegalArgumentException if existing `/p2p/` identity doesn't match [peerId]
+     */
+    fun withP2P(peerId: PeerId) = withComponent(Protocol.P2P, peerId.bytes)
+
+    /**
+     * Appends new component if absent or checks that existing and supplied component values are equal
+     * @throws IllegalArgumentException if existing component value doesn't match [value]
+     */
+    fun withComponent(protocol: Protocol, value: ByteArray): Multiaddr {
+        val curVal = getComponent(protocol)
+        return if (curVal != null) {
+            if (!curVal.contentEquals(value)) {
+                throw IllegalArgumentException("Value (${protocol.bytesToAddress(value)}) for $protocol doesn't match existing value in $this")
+            } else {
+                this
+            }
+        } else {
+            Multiaddr(this.components + (protocol to value))
+        }
     }
+
+    /**
+     * Returns [Multiaddr] with concatenated components of `this` and [other] `Multiaddr`
+     * No cross component checks or merge is performed
+     */
+    fun concatenated(other: Multiaddr) = Multiaddr(this.components + other.components)
+
+    /**
+     * Merges components of this [Multiaddr] with [other]
+     * Has the same effect as appending [other] components subsequently by [withComponent]
+     * @throws IllegalArgumentException if any of `this` component value doesn't match the value for the same protocol in [other]
+     */
+    fun merged(other: Multiaddr) = other.components
+        .fold(this) { accumulator, component ->
+            accumulator.withComponent(component.first, component.second)
+        }
 
     internal fun split(pred: (Protocol) -> Boolean): List<Multiaddr> {
         val addresses = mutableListOf<Multiaddr>()
@@ -198,18 +227,6 @@ class Multiaddr(val components: List<Pair<Protocol, ByteArray>>) {
                 ret.add(protocol to protocol.readAddressBytes(buf))
             }
             return ret
-        }
-
-        private fun concatProtocols(parentAddr: Multiaddr, childAddr: Multiaddr): List<Pair<Protocol, ByteArray>> {
-            return parentAddr.components + childAddr.components
-        }
-
-        private fun concatPeerId(addr: Multiaddr, peerId: PeerId): List<Pair<Protocol, ByteArray>> {
-            if (addr.has(Protocol.IPFS))
-                throw IllegalArgumentException("Multiaddr already has peer id")
-            val protocols = addr.components.toMutableList()
-            protocols.add(Pair(Protocol.IPFS, peerId.bytes))
-            return protocols
         }
     }
 }
