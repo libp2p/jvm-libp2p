@@ -13,20 +13,12 @@ class MultiaddrComponent(
     val stringValue by lazy { if (value != null) protocol.bytesToAddress(value) else null }
 
     init {
-        validate()
+        protocol.validate(value)
     }
 
     fun serialize(buf: ByteBuf) {
         buf.writeBytes(protocol.encoded)
-        if (value != null) {
-            protocol.writeAddressBytes(buf, value)
-        }
-    }
-
-    private fun validate() {
-        require((protocol.hasValue && value != null) || (!protocol.hasValue && value === null)) {
-            "Value presence ($value) doesn't match protocol ($protocol)"
-        }
+        protocol.writeAddressBytes(buf, value)
     }
 
     override fun equals(other: Any?): Boolean {

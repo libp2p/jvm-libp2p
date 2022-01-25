@@ -31,6 +31,7 @@ data class Multiaddr(val components: List<MultiaddrComponent>) {
      * Creates instance from serialized form from [ByteBuf]
      */
     constructor(bytes: ByteBuf) : this(parseBytes(bytes))
+
     /**
      * Creates instance from serialized form from [ByteBuf]
      */
@@ -39,7 +40,8 @@ data class Multiaddr(val components: List<MultiaddrComponent>) {
     /**
      * Returns only components matching any of supplied protocols
      */
-    fun filterComponents(vararg proto: Protocol): List<MultiaddrComponent> = components.filter { proto.contains(it.protocol) }
+    fun filterComponents(vararg proto: Protocol): List<MultiaddrComponent> =
+        components.filter { proto.contains(it.protocol) }
 
     /**
      * Returns the first found protocol value. [null] if the protocol not found
@@ -101,8 +103,10 @@ data class Multiaddr(val components: List<MultiaddrComponent>) {
 
     fun withComponent(protocol: Protocol, value: ByteArray): Multiaddr =
         withComponentImpl(protocol, value)
+
     fun withComponent(protocol: Protocol, stringValue: String): Multiaddr =
         withComponentImpl(protocol, protocol.addressToBytes(stringValue))
+
     fun withComponent(protocol: Protocol): Multiaddr =
         withComponentImpl(protocol, null)
 
@@ -177,9 +181,7 @@ data class Multiaddr(val components: List<MultiaddrComponent>) {
             val ret: MutableList<MultiaddrComponent> = mutableListOf()
 
             try {
-                var addr = addr_
-                while (addr.endsWith("/"))
-                    addr = addr.dropLast(1)
+                val addr = addr_.dropLastWhile { it == '/'}
                 val parts = addr.split("/")
                 if (parts[0].isNotEmpty()) throw IllegalArgumentException("MultiAddress must start with a /")
 
@@ -188,19 +190,19 @@ data class Multiaddr(val components: List<MultiaddrComponent>) {
                     val part = parts[i++]
                     val p = Protocol.getOrThrow(part)
 
-                    val bytes = if (!p.hasValue) null else {
-                        val component = if (p.isPath())
-                            "/" + parts.subList(i, parts.size).reduce { a, b -> "$a/$b" }
-                        else parts[i++]
-
-                        if (component.isEmpty())
-                            throw IllegalArgumentException("Protocol requires address, but non provided!")
+                    val bytes = if (!p.hasValue) {
+                        null
+                    } else {
+                        val component = if (p.isPath) {
+                            val remainingParts = parts.drop(i)
+                            i = parts.size
+                            "/" + remainingParts.joinToString("/")
+                        } else {
+                            parts[i++]
+                        }
                         p.addressToBytes(component)
                     }
                     ret += MultiaddrComponent(p, bytes)
-
-                    if (p.isPath())
-                        break
                 }
             } catch (e: Exception) {
                 throw IllegalArgumentException("Malformed multiaddr: '$addr_", e)
