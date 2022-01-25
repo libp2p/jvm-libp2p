@@ -48,8 +48,6 @@ data class Multiaddr(val components: List<MultiaddrComponent>) {
      */
     fun getFirstComponent(proto: Protocol): MultiaddrComponent? = filterComponents(proto).firstOrNull()
 
-    fun getStringComponent(proto: Protocol): String? = getFirstComponent(proto)?.stringValue
-
     /**
      * Queries the address to confirm if it contains the given protocol
      */
