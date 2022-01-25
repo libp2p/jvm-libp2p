@@ -55,21 +55,6 @@ data class Multiaddr(val components: List<MultiaddrComponent>) {
     fun hasAny(vararg protos: Protocol) = protos.any { has(it) }
 
     /**
-     * Serializes this instance to supplied [ByteBuf]
-     */
-    fun writeBytes(buf: ByteBuf): ByteBuf {
-        for (component in components) {
-            component.serialize(buf)
-        }
-        return buf
-    }
-
-    /**
-     * Returns serialized form as [ByteArray]
-     */
-    fun getBytes(): ByteArray = writeBytes(Unpooled.buffer()).toByteArray()
-
-    /**
      * Returns [PeerId] from either `/ipfs/` or `/p2p/` component value. `null` if none of those components exists
      */
     fun getPeerId(): PeerId? =
@@ -155,6 +140,21 @@ data class Multiaddr(val components: List<MultiaddrComponent>) {
     }
 
     /**
+     * Serializes this instance to supplied [ByteBuf]
+     */
+    fun serializeToBuf(buf: ByteBuf): ByteBuf {
+        for (component in components) {
+            component.serialize(buf)
+        }
+        return buf
+    }
+
+    /**
+     * Returns serialized form as [ByteArray]
+     */
+    fun serialize(): ByteArray = serializeToBuf(Unpooled.buffer()).toByteArray()
+
+    /**
      * Returns the string representation of this multiaddress
      * Note that `Multiaddress(strAddr).toString` is not always equal to `strAddr`
      * (e.g. `/ip6/::1` can be converted to `/ip6/0:0:0:0:0:0:0:1`)
@@ -167,10 +167,10 @@ data class Multiaddr(val components: List<MultiaddrComponent>) {
         fun fromString(addr: String) = Multiaddr(parseString(addr))
 
         @JvmStatic
-        fun fromBytes(bytes: ByteArray) = Multiaddr(parseBytes(bytes.toByteBuf()))
+        fun deserialize(bytes: ByteArray) = Multiaddr(parseBytes(bytes.toByteBuf()))
 
         @JvmStatic
-        fun readFromBuf(bytes: ByteBuf) = Multiaddr(parseBytes(bytes))
+        fun deserializeFromBuf(bytes: ByteBuf) = Multiaddr(parseBytes(bytes))
 
         @JvmStatic
         fun empty() = Multiaddr(emptyList())
