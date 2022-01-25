@@ -196,4 +196,3 @@ private val ONION_DESERIALIZER: (Protocol, ByteArray) -> String = { _, bytes ->
     val port = byteBuf.readUnsignedShort()
     String(Base32().encode(host)).toLowerCase() + ":" + port
 }
-

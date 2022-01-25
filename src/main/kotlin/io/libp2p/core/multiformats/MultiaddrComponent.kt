@@ -30,5 +30,5 @@ class MultiaddrComponent(
     }
     override fun hashCode() = Objects.hash(protocol, value.contentHashCode())
     override fun toString() = "/${protocol.typeName}" +
-            (if (stringValue != null) "/$stringValue" else "")
+        (if (stringValue != null) "/$stringValue" else "")
 }

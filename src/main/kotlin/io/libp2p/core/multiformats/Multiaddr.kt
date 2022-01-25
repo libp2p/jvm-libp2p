@@ -169,7 +169,7 @@ data class Multiaddr(val components: List<MultiaddrComponent>) {
             val ret: MutableList<MultiaddrComponent> = mutableListOf()
 
             try {
-                val addr = addr_.dropLastWhile { it == '/'}
+                val addr = addr_.dropLastWhile { it == '/' }
                 val parts = addr.split("/")
                 if (parts[0].isNotEmpty()) throw IllegalArgumentException("MultiAddress must start with a /")
 
