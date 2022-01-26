@@ -22,29 +22,29 @@ enum class Protocol(
     val code: Int,
     val sizeBits: Int,
     val typeName: String,
-    private val serializer: (Protocol, String) -> ByteArray = NO_SERIALIZER,
+    private val parser: (Protocol, String) -> ByteArray = NO_PARSER,
     private val deserializer: (Protocol, ByteArray) -> String = NO_DESERIALIZER,
     private val validator: (Protocol, ByteArray?) -> Unit = SIZE_VALIDATOR,
     val isPath: Boolean = false
 ) {
 
-    IP4(4, 32, "ip4", IP4_SERIALIZER, IP4_DESERIALIZER),
-    TCP(6, 16, "tcp", UINT16_SERIALIZER, UINT16_DESERIALIZER),
-    UDP(273, 16, "udp", UINT16_SERIALIZER, UINT16_DESERIALIZER),
-    DCCP(33, 16, "dccp", UINT16_SERIALIZER, UINT16_DESERIALIZER),
-    IP6(41, 128, "ip6", IP6_SERIALIZER, IP6_DESERIALIZER),
-    IP6ZONE(42, LENGTH_PREFIXED_VAR_SIZE, "ip6zone", UTF8_SERIALIZER, UTF8_DESERIALIZER, NON_EMPTY_VALIDATOR),
-    DNS4(54, LENGTH_PREFIXED_VAR_SIZE, "dns4", UTF8_SERIALIZER, UTF8_DESERIALIZER, NON_EMPTY_VALIDATOR),
-    DNS6(55, LENGTH_PREFIXED_VAR_SIZE, "dns6", UTF8_SERIALIZER, UTF8_DESERIALIZER, NON_EMPTY_VALIDATOR),
-    DNSADDR(56, LENGTH_PREFIXED_VAR_SIZE, "dnsaddr", UTF8_SERIALIZER, UTF8_DESERIALIZER, NON_EMPTY_VALIDATOR),
-    SCTP(132, 16, "sctp", UINT16_SERIALIZER, UINT16_DESERIALIZER),
+    IP4(4, 32, "ip4", IP4_PARSER, IP4_DESERIALIZER),
+    TCP(6, 16, "tcp", UINT16_PARSER, UINT16_DESERIALIZER),
+    UDP(273, 16, "udp", UINT16_PARSER, UINT16_DESERIALIZER),
+    DCCP(33, 16, "dccp", UINT16_PARSER, UINT16_DESERIALIZER),
+    IP6(41, 128, "ip6", IP6_PARSER, IP6_DESERIALIZER),
+    IP6ZONE(42, LENGTH_PREFIXED_VAR_SIZE, "ip6zone", UTF8_PARSER, UTF8_DESERIALIZER, NON_EMPTY_VALIDATOR),
+    DNS4(54, LENGTH_PREFIXED_VAR_SIZE, "dns4", UTF8_PARSER, UTF8_DESERIALIZER, NON_EMPTY_VALIDATOR),
+    DNS6(55, LENGTH_PREFIXED_VAR_SIZE, "dns6", UTF8_PARSER, UTF8_DESERIALIZER, NON_EMPTY_VALIDATOR),
+    DNSADDR(56, LENGTH_PREFIXED_VAR_SIZE, "dnsaddr", UTF8_PARSER, UTF8_DESERIALIZER, NON_EMPTY_VALIDATOR),
+    SCTP(132, 16, "sctp", UINT16_PARSER, UINT16_DESERIALIZER),
     UTP(301, 0, "utp"),
     UDT(302, 0, "udt"),
-    UNIX(400, LENGTH_PREFIXED_VAR_SIZE, "unix", UNIX_PATH_SERIALIZER, UTF8_DESERIALIZER, NON_EMPTY_VALIDATOR, isPath = true),
-    IPFS(421, LENGTH_PREFIXED_VAR_SIZE, "ipfs", BASE58_SERIALIZER, BASE58_DESERIALIZER, PEER_ID_VALIDATOR),
-    P2P(421, LENGTH_PREFIXED_VAR_SIZE, "p2p", BASE58_SERIALIZER, BASE58_DESERIALIZER, PEER_ID_VALIDATOR),
+    UNIX(400, LENGTH_PREFIXED_VAR_SIZE, "unix", UNIX_PATH_PARSER, UTF8_DESERIALIZER, NON_EMPTY_VALIDATOR, isPath = true),
+    IPFS(421, LENGTH_PREFIXED_VAR_SIZE, "ipfs", BASE58_PARSER, BASE58_DESERIALIZER, PEER_ID_VALIDATOR),
+    P2P(421, LENGTH_PREFIXED_VAR_SIZE, "p2p", BASE58_PARSER, BASE58_DESERIALIZER, PEER_ID_VALIDATOR),
     HTTPS(443, 0, "https"),
-    ONION(444, 96, "onion", ONION_SERIALIZER, ONION_DESERIALIZER),
+    ONION(444, 96, "onion", ONION_PARSER, ONION_DESERIALIZER),
     QUIC(460, 0, "quic"),
     WS(477, 0, "ws"),
     P2PCIRCUIT(290, 0, "p2p-circuit"),
@@ -60,7 +60,7 @@ enum class Protocol(
         validator(this, bytes)
     }
 
-    fun addressToBytes(addr: String): ByteArray = serializer(this, addr)
+    fun addressToBytes(addr: String): ByteArray = parser(this, addr)
 
     fun bytesToAddress(addressBytes: ByteArray): String {
         return deserializer(this, addressBytes)
@@ -126,13 +126,13 @@ private val PEER_ID_VALIDATOR: (Protocol, ByteArray?) -> Unit = { protocol, byte
     PeerId(bytes) // constructor validates array size
 }
 
-private val NO_SERIALIZER: (Protocol, String) -> ByteArray = { protocol, _ ->
+private val NO_PARSER: (Protocol, String) -> ByteArray = { protocol, _ ->
     throw IllegalArgumentException("No value serializer for protocol $protocol")
 }
 private val NO_DESERIALIZER: (Protocol, ByteArray) -> String = { protocol, _ ->
     throw IllegalArgumentException("No value deserializer for protocol $protocol")
 }
-private val IP4_SERIALIZER: (Protocol, String) -> ByteArray = { _, addr ->
+private val IP4_PARSER: (Protocol, String) -> ByteArray = { _, addr ->
     if (!InetAddresses.isInetAddress(addr)) {
         throw IllegalArgumentException("Couldn't parse IPv4 IP: `$addr`")
     }
@@ -145,13 +145,13 @@ private val IP4_SERIALIZER: (Protocol, String) -> ByteArray = { _, addr ->
 private val IP4_DESERIALIZER: (Protocol, ByteArray) -> String = { _, bytes ->
     Inet4Address.getByAddress(bytes).toString().drop(1)
 }
-private val IP6_SERIALIZER: (Protocol, String) -> ByteArray = { _, addr ->
+private val IP6_PARSER: (Protocol, String) -> ByteArray = { _, addr ->
     Inet6Address.getByName(addr).address
 }
 private val IP6_DESERIALIZER: (Protocol, ByteArray) -> String = { _, bytes ->
     Inet6Address.getByAddress(bytes).toString().drop(1)
 }
-private val UINT16_SERIALIZER: (Protocol, String) -> ByteArray = { _, addr ->
+private val UINT16_PARSER: (Protocol, String) -> ByteArray = { _, addr ->
     val x = Integer.parseInt(addr)
     if (x < 0 || x > 65535) throw IllegalArgumentException("Failed to parse $addr value (expected 0 <= $x < 65536")
     byteBuf(2).writeShort(x).toByteArray()
@@ -159,23 +159,23 @@ private val UINT16_SERIALIZER: (Protocol, String) -> ByteArray = { _, addr ->
 private val UINT16_DESERIALIZER: (Protocol, ByteArray) -> String = { _, bytes ->
     bytes.toByteBuf().readUnsignedShort().toString()
 }
-private val UTF8_SERIALIZER: (Protocol, String) -> ByteArray = { _, addr ->
+private val UTF8_PARSER: (Protocol, String) -> ByteArray = { _, addr ->
     addr.toByteArray(StandardCharsets.UTF_8)
 }
 private val UTF8_DESERIALIZER: (Protocol, ByteArray) -> String = { _, bytes ->
     String(bytes, StandardCharsets.UTF_8)
 }
-private val UNIX_PATH_SERIALIZER: (Protocol, String) -> ByteArray = { _, addr ->
+private val UNIX_PATH_PARSER: (Protocol, String) -> ByteArray = { _, addr ->
     val addr1 = if (addr.startsWith("/")) addr.substring(1) else addr
     addr1.toByteArray(StandardCharsets.UTF_8)
 }
-private val BASE58_SERIALIZER: (Protocol, String) -> ByteArray = { _, addr ->
+private val BASE58_PARSER: (Protocol, String) -> ByteArray = { _, addr ->
     Base58.decode(addr)
 }
 private val BASE58_DESERIALIZER: (Protocol, ByteArray) -> String = { _, bytes ->
     Base58.encode(bytes)
 }
-private val ONION_SERIALIZER: (Protocol, String) -> ByteArray = { _, addr ->
+private val ONION_PARSER: (Protocol, String) -> ByteArray = { _, addr ->
     val split = addr.split(":")
     if (split.size != 2) throw IllegalArgumentException("Onion address needs a port: $addr")
     // onion address without the ".onion" substring
