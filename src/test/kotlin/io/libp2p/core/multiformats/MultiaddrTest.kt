@@ -302,19 +302,19 @@ class MultiaddrTest {
             Multiaddr.deserialize(Protocol.DNS4.encoded + (-1L).toVarInt())
         }
         assertThrows(IllegalArgumentException::class.java) {
-            Multiaddr.deserialize(Protocol.DNS4.encoded + 10L.toVarInt() + ByteArray(9, {0}))
+            Multiaddr.deserialize(Protocol.DNS4.encoded + 10L.toVarInt() + ByteArray(9, { 0 }))
         }
         assertThrows(IllegalArgumentException::class.java) {
-            Multiaddr.deserialize(Protocol.DNS4.encoded + 65535L.toVarInt() + ByteArray(9, {0}))
+            Multiaddr.deserialize(Protocol.DNS4.encoded + 65535L.toVarInt() + ByteArray(9, { 0 }))
         }
         assertThrows(IllegalArgumentException::class.java) {
-            Multiaddr.deserialize(Protocol.DNS4.encoded + Int.MAX_VALUE.toLong().toVarInt() + ByteArray(9, {0}))
+            Multiaddr.deserialize(Protocol.DNS4.encoded + Int.MAX_VALUE.toLong().toVarInt() + ByteArray(9, { 0 }))
         }
         assertThrows(IllegalArgumentException::class.java) {
-            Multiaddr.deserialize(Protocol.DNS4.encoded + (Int.MAX_VALUE.toLong() + 1).toVarInt() + ByteArray(9, {0}))
+            Multiaddr.deserialize(Protocol.DNS4.encoded + (Int.MAX_VALUE.toLong() + 1).toVarInt() + ByteArray(9, { 0 }))
         }
         assertThrows(IllegalArgumentException::class.java) {
-            Multiaddr.deserialize(Protocol.DNS4.encoded + Long.MAX_VALUE.toVarInt() + ByteArray(9, {0}))
+            Multiaddr.deserialize(Protocol.DNS4.encoded + Long.MAX_VALUE.toVarInt() + ByteArray(9, { 0 }))
         }
     }
 
