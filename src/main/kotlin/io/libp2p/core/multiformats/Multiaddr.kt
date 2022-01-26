@@ -165,12 +165,11 @@ data class Multiaddr(val components: List<MultiaddrComponent>) {
         @JvmStatic
         fun empty() = Multiaddr(emptyList())
 
-        private fun parseString(addr_: String): List<MultiaddrComponent> {
+        private fun parseString(addr: String): List<MultiaddrComponent> {
             val ret: MutableList<MultiaddrComponent> = mutableListOf()
 
             try {
-                val addr = addr_.dropLastWhile { it == '/' }
-                val parts = addr.split("/")
+                val parts = addr.trimEnd('/').split("/")
                 if (parts[0].isNotEmpty()) throw IllegalArgumentException("MultiAddress must start with a /")
 
                 var i = 1
@@ -193,7 +192,7 @@ data class Multiaddr(val components: List<MultiaddrComponent>) {
                     ret += MultiaddrComponent(p, bytes)
                 }
             } catch (e: Exception) {
-                throw IllegalArgumentException("Malformed multiaddr: '$addr_", e)
+                throw IllegalArgumentException("Malformed multiaddr: '$addr", e)
             }
             return ret
         }

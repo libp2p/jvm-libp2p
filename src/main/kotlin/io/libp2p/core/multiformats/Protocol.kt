@@ -1,5 +1,6 @@
 package io.libp2p.core.multiformats
 
+import com.google.common.net.InetAddresses
 import io.libp2p.core.PeerId
 import io.libp2p.etc.encode.Base58
 import io.libp2p.etc.types.readUvarint
@@ -132,9 +133,12 @@ private val NO_DESERIALIZER: (Protocol, ByteArray) -> String = { protocol, _ ->
     throw IllegalArgumentException("No value deserializer for protocol $protocol")
 }
 private val IP4_SERIALIZER: (Protocol, String) -> ByteArray = { _, addr ->
+    if (!InetAddresses.isInetAddress(addr)) {
+        throw IllegalArgumentException("Couldn't parse IPv4 IP: `$addr`")
+    }
     val inetAddr = Inet4Address.getByName(addr)
     if (inetAddr !is Inet4Address) {
-        throw IllegalArgumentException("The address is not IP4 address: $addr")
+        throw IllegalArgumentException("The address is not IPv4 address: $addr")
     }
     inetAddr.address
 }
@@ -149,7 +153,7 @@ private val IP6_DESERIALIZER: (Protocol, ByteArray) -> String = { _, bytes ->
 }
 private val UINT16_SERIALIZER: (Protocol, String) -> ByteArray = { _, addr ->
     val x = Integer.parseInt(addr)
-    if (x > 65535) throw IllegalArgumentException("Failed to parse $addr value $x > 65535")
+    if (x < 0 || x > 65535) throw IllegalArgumentException("Failed to parse $addr value (expected 0 <= $x < 65536")
     byteBuf(2).writeShort(x).toByteArray()
 }
 private val UINT16_DESERIALIZER: (Protocol, ByteArray) -> String = { _, bytes ->
