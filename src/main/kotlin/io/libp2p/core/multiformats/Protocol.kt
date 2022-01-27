@@ -133,10 +133,7 @@ private val NO_DESERIALIZER: (Protocol, ByteArray) -> String = { protocol, _ ->
     throw IllegalArgumentException("No value deserializer for protocol $protocol")
 }
 private val IP4_PARSER: (Protocol, String) -> ByteArray = { _, addr ->
-    if (!InetAddresses.isInetAddress(addr)) {
-        throw IllegalArgumentException("Couldn't parse IPv4 IP: `$addr`")
-    }
-    val inetAddr = Inet4Address.getByName(addr)
+    val inetAddr = InetAddresses.forString(addr)
     if (inetAddr !is Inet4Address) {
         throw IllegalArgumentException("The address is not IPv4 address: $addr")
     }
@@ -146,7 +143,11 @@ private val IP4_DESERIALIZER: (Protocol, ByteArray) -> String = { _, bytes ->
     Inet4Address.getByAddress(bytes).toString().drop(1)
 }
 private val IP6_PARSER: (Protocol, String) -> ByteArray = { _, addr ->
-    Inet6Address.getByName(addr).address
+    val inetAddr = InetAddresses.forString(addr)
+    if (inetAddr !is Inet6Address) {
+        throw IllegalArgumentException("The address is not IPv6 address: $addr")
+    }
+    inetAddr.address
 }
 private val IP6_DESERIALIZER: (Protocol, ByteArray) -> String = { _, bytes ->
     Inet6Address.getByAddress(bytes).toString().drop(1)
