@@ -11,6 +11,7 @@ import io.netty.buffer.ByteBuf
 import org.apache.commons.codec.binary.Base32
 import java.net.Inet4Address
 import java.net.Inet6Address
+import java.net.InetAddress
 import java.nio.charset.StandardCharsets
 import io.netty.buffer.Unpooled.buffer as byteBuf
 
@@ -140,7 +141,7 @@ private val IP4_PARSER: (Protocol, String) -> ByteArray = { _, addr ->
     inetAddr.address
 }
 private val IP4_DESERIALIZER: (Protocol, ByteArray) -> String = { _, bytes ->
-    Inet4Address.getByAddress(bytes).toString().drop(1)
+    InetAddresses.toAddrString(InetAddress.getByAddress(bytes))
 }
 private val IP6_PARSER: (Protocol, String) -> ByteArray = { _, addr ->
     val inetAddr = InetAddresses.forString(addr)
@@ -150,7 +151,7 @@ private val IP6_PARSER: (Protocol, String) -> ByteArray = { _, addr ->
     inetAddr.address
 }
 private val IP6_DESERIALIZER: (Protocol, ByteArray) -> String = { _, bytes ->
-    Inet6Address.getByAddress(bytes).toString().drop(1)
+    InetAddresses.toAddrString(InetAddress.getByAddress(bytes))
 }
 private val UINT16_PARSER: (Protocol, String) -> ByteArray = { _, addr ->
     val x = Integer.parseInt(addr)

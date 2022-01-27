@@ -1,5 +1,6 @@
 package io.libp2p.core.multiformats
 
+import com.google.common.net.InetAddresses
 import io.libp2p.core.PeerId
 import io.libp2p.etc.types.fromHex
 import io.libp2p.etc.types.toByteArray
@@ -28,6 +29,11 @@ class MultiaddrTest {
             "/ip4/123.2.3.256",
             "/ip4/fdpsofodsajfdoisa",
             "/ip6",
+            "/ip6/consensys.net",
+            "/ip6/127.0.0.1",
+            "/ip6/0:0:0:0:0:0:0:1::",
+            "/ip6/0:0:0:0:0:0:0:1:2",
+            "/ip6/0:0:0:0:0:0:1",
             "/ip6zone",
             "/ip6zone/",
             "/ip6zone//ip6/fe80::1",
@@ -84,6 +90,10 @@ class MultiaddrTest {
             "/ip6/0:0:0:0:0:0:0:1",
             "/ip6/2601:9:4f81:9700:803e:ca65:66e8:c21",
             "/ip6/2601:9:4f81:9700:803e:ca65:66e8:c21/udp/1234/quic",
+            "/ip6/1::",
+            "/ip6/1::2323:abcd",
+            "/ip6/::",
+            "/ip6/::ffff",
             "/ip6zone/x/ip6/fe80:0:0:0:0:0:0:1",
             "/ip6zone/x%y/ip6/fe80:0:0:0:0:0:0:1",
             "/ip6zone/x%y/ip6/0:0:0:0:0:0:0:0",
@@ -189,9 +199,26 @@ class MultiaddrTest {
         val bytes = multiaddr.serialize()
         val multiaddr1 = Multiaddr.deserialize(bytes)
         assertEquals(
-            addr.lowercase().trimEnd('/').replace("/ipfs/", "/p2p/"),
+            toCanonical(addr),
             multiaddr1.toString().lowercase()
         )
+    }
+
+    fun toCanonical(multiaddr: String): String {
+        val multiaddr1 = multiaddr
+            .lowercase().trimEnd('/').replace("/ipfs/", "/p2p/")
+        val idx1 = multiaddr1.indexOf("/ip6/")
+        return if (idx1 >= 0) {
+            val ip6Idx = idx1 + "/ip6/".length
+            val idx2 = multiaddr1.indexOf("/", ip6Idx).let {
+                if (it < 0) multiaddr1.length else it
+            }
+            val ip6 = multiaddr1.substring(ip6Idx, idx2)
+            val canonIp6 = InetAddresses.toAddrString(InetAddresses.forString(ip6))
+            multiaddr1.take(ip6Idx) + canonIp6 + multiaddr1.drop(idx2)
+        } else {
+            multiaddr1
+        }
     }
 
     @ParameterizedTest
