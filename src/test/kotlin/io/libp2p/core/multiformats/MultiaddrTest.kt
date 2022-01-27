@@ -18,6 +18,8 @@ import org.junit.jupiter.params.provider.MethodSource
 class MultiaddrTest {
 
     companion object {
+        private fun Long.toVarInt() = Unpooled.buffer().writeUvarint(this).toByteArray()
+
         @JvmStatic
         fun paramsInvalid() = listOf(
             "/ip4",
@@ -184,6 +186,21 @@ class MultiaddrTest {
                 listOf("/dns4/made.up.host/tcp/20000", "/dns4/a.different.host/ipfs/QmULzn6KtFUCKpkFymEUgUvkLtv9j2Eo4utZPELmQEebR6", "/dns4/lets.go.crazy")
             )
         )
+
+        @JvmStatic
+        fun invalidSerializations() = listOf(
+            // Invalid var lengths
+            Arguments.of(Protocol.DNS4.encoded + 1L.toVarInt()),
+            Arguments.of(Protocol.DNS4.encoded + (-1L).toVarInt()),
+            Arguments.of(Protocol.DNS4.encoded + 10L.toVarInt() + ByteArray(9, { 0 })),
+            Arguments.of(Protocol.DNS4.encoded + 65535L.toVarInt() + ByteArray(9, { 0 })),
+            Arguments.of(Protocol.DNS4.encoded + Int.MAX_VALUE.toLong().toVarInt() + ByteArray(9, { 0 })),
+            Arguments.of(Protocol.DNS4.encoded + (Int.MAX_VALUE.toLong() + 1).toVarInt() + ByteArray(9, { 0 })),
+            Arguments.of(Protocol.DNS4.encoded + Long.MAX_VALUE.toVarInt() + ByteArray(9, { 0 })),
+            // Invalid UTF-8
+            Arguments.of(Protocol.DNS4.encoded + 1L.toVarInt() + 0x80.toByte()),
+            Arguments.of(Protocol.DNS4.encoded + 1L.toVarInt() + 0xbf.toByte()),
+        )
     }
 
     @ParameterizedTest
@@ -320,32 +337,13 @@ class MultiaddrTest {
         assertEquals(expected, split.map { it.toString() })
     }
 
-    @Test
-    fun `deserialize() with invalid var length prefix should throw`() {
+    @ParameterizedTest
+    @MethodSource("invalidSerializations")
+    fun `deserialize() with invalid bytes should throw`(bytes: ByteArray) {
         assertThrows(IllegalArgumentException::class.java) {
-            Multiaddr.deserialize(Protocol.DNS4.encoded + 1L.toVarInt())
-        }
-        assertThrows(IllegalArgumentException::class.java) {
-            Multiaddr.deserialize(Protocol.DNS4.encoded + (-1L).toVarInt())
-        }
-        assertThrows(IllegalArgumentException::class.java) {
-            Multiaddr.deserialize(Protocol.DNS4.encoded + 10L.toVarInt() + ByteArray(9, { 0 }))
-        }
-        assertThrows(IllegalArgumentException::class.java) {
-            Multiaddr.deserialize(Protocol.DNS4.encoded + 65535L.toVarInt() + ByteArray(9, { 0 }))
-        }
-        assertThrows(IllegalArgumentException::class.java) {
-            Multiaddr.deserialize(Protocol.DNS4.encoded + Int.MAX_VALUE.toLong().toVarInt() + ByteArray(9, { 0 }))
-        }
-        assertThrows(IllegalArgumentException::class.java) {
-            Multiaddr.deserialize(Protocol.DNS4.encoded + (Int.MAX_VALUE.toLong() + 1).toVarInt() + ByteArray(9, { 0 }))
-        }
-        assertThrows(IllegalArgumentException::class.java) {
-            Multiaddr.deserialize(Protocol.DNS4.encoded + Long.MAX_VALUE.toVarInt() + ByteArray(9, { 0 }))
+            Multiaddr.deserialize(bytes)
         }
     }
-
-    private fun Long.toVarInt() = Unpooled.buffer().writeUvarint(this).toByteArray()
 
     private fun testPeerId(): PeerId {
         val idHex = "1220593cd036d6ac062ca1c332c15aca7a7b8ed7c9a004b34046e58f2aa6439102b5"

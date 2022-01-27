@@ -1,5 +1,6 @@
 package io.libp2p.core.multiformats
 
+import com.google.common.base.Utf8
 import com.google.common.net.InetAddresses
 import io.libp2p.core.PeerId
 import io.libp2p.etc.encode.Base58
@@ -34,14 +35,14 @@ enum class Protocol(
     UDP(273, 16, "udp", UINT16_PARSER, UINT16_DESERIALIZER),
     DCCP(33, 16, "dccp", UINT16_PARSER, UINT16_DESERIALIZER),
     IP6(41, 128, "ip6", IP6_PARSER, IP6_DESERIALIZER),
-    IP6ZONE(42, LENGTH_PREFIXED_VAR_SIZE, "ip6zone", UTF8_PARSER, UTF8_DESERIALIZER, NON_EMPTY_VALIDATOR),
-    DNS4(54, LENGTH_PREFIXED_VAR_SIZE, "dns4", UTF8_PARSER, UTF8_DESERIALIZER, NON_EMPTY_VALIDATOR),
-    DNS6(55, LENGTH_PREFIXED_VAR_SIZE, "dns6", UTF8_PARSER, UTF8_DESERIALIZER, NON_EMPTY_VALIDATOR),
-    DNSADDR(56, LENGTH_PREFIXED_VAR_SIZE, "dnsaddr", UTF8_PARSER, UTF8_DESERIALIZER, NON_EMPTY_VALIDATOR),
+    IP6ZONE(42, LENGTH_PREFIXED_VAR_SIZE, "ip6zone", UTF8_PARSER, UTF8_DESERIALIZER, UTF8_VALIDATOR),
+    DNS4(54, LENGTH_PREFIXED_VAR_SIZE, "dns4", UTF8_PARSER, UTF8_DESERIALIZER, UTF8_VALIDATOR),
+    DNS6(55, LENGTH_PREFIXED_VAR_SIZE, "dns6", UTF8_PARSER, UTF8_DESERIALIZER, UTF8_VALIDATOR),
+    DNSADDR(56, LENGTH_PREFIXED_VAR_SIZE, "dnsaddr", UTF8_PARSER, UTF8_DESERIALIZER, UTF8_VALIDATOR),
     SCTP(132, 16, "sctp", UINT16_PARSER, UINT16_DESERIALIZER),
     UTP(301, 0, "utp"),
     UDT(302, 0, "udt"),
-    UNIX(400, LENGTH_PREFIXED_VAR_SIZE, "unix", UNIX_PATH_PARSER, UTF8_DESERIALIZER, NON_EMPTY_VALIDATOR, isPath = true),
+    UNIX(400, LENGTH_PREFIXED_VAR_SIZE, "unix", UNIX_PATH_PARSER, UTF8_DESERIALIZER, UTF8_VALIDATOR, isPath = true),
     IPFS(421, LENGTH_PREFIXED_VAR_SIZE, "ipfs", BASE58_PARSER, BASE58_DESERIALIZER, PEER_ID_VALIDATOR),
     P2P(421, LENGTH_PREFIXED_VAR_SIZE, "p2p", BASE58_PARSER, BASE58_DESERIALIZER, PEER_ID_VALIDATOR),
     HTTPS(443, 0, "https"),
@@ -117,13 +118,15 @@ private val SIZE_VALIDATOR: (Protocol, ByteArray?) -> Unit = { protocol, bytes -
         }
     }
 }
-private val NON_EMPTY_VALIDATOR: (Protocol, ByteArray?) -> Unit = { protocol, bytes ->
+private val UTF8_VALIDATOR: (Protocol, ByteArray?) -> Unit = { protocol, bytes ->
     requireNotNull(bytes) { "Non-null value expected for protocol $protocol" }
     require(bytes.isNotEmpty()) { "Non-empty value expected for protocol $protocol" }
+    if (!Utf8.isWellFormed(bytes)) {
+        throw IllegalArgumentException("Malformed UTF-8")
+    }
 }
 private val PEER_ID_VALIDATOR: (Protocol, ByteArray?) -> Unit = { protocol, bytes ->
-    if (bytes == null)
-        throw IllegalArgumentException("Non-null value expected for PeerId in $protocol")
+    requireNotNull(bytes) { "Non-null value expected for PeerId in $protocol" }
     PeerId(bytes) // constructor validates array size
 }
 
