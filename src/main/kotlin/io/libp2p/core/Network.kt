@@ -48,7 +48,7 @@ interface Network {
         val peerIdSet = addrs.map {
             it.getPeerId() ?: throw Libp2pException("Multiaddress should contain /p2p/<peerId> component")
         }.toSet()
-        if (peerIdSet.size != 1) throw Libp2pException("All multiaddresses should nave the same peerId")
+        if (peerIdSet.size != 1) throw Libp2pException("All multiaddresses should have the same peerId")
         return connect(peerIdSet.first(), *addrs)
     }
 
