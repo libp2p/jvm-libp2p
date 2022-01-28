@@ -232,10 +232,10 @@ abstract class ServerInterOpTest(
 
         assertEquals(
             identifyStream.connection.localAddress(),
-            Multiaddr(remoteIdentity.observedAddr.toByteArray())
+            Multiaddr.deserialize(remoteIdentity.observedAddr.toByteArray())
         )
 
-        val remoteAddress = Multiaddr(remoteIdentity.listenAddrsList[0].toByteArray())
+        val remoteAddress = Multiaddr.deserialize(remoteIdentity.listenAddrsList[0].toByteArray())
         assertEquals(serverMultiAddress, remoteAddress)
         assertEquals(identifyStream.connection.remoteAddress(), remoteAddress)
     }

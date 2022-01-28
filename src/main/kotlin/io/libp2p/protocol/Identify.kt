@@ -68,7 +68,7 @@ class IdentifyProtocol(var idMessage: IdentifyOuterClass.Identify? = null) :
                 .build()
 
             val msgWithAddr = msg.toBuilder()
-                .setObservedAddr(remoteAddr.getBytes().toProtobuf())
+                .setObservedAddr(remoteAddr.serialize().toProtobuf())
                 .build()
 
             stream.writeAndFlush(msgWithAddr)
