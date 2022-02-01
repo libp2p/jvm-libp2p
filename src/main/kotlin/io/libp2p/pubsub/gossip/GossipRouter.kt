@@ -219,11 +219,31 @@ open class GossipRouter @JvmOverloads constructor(
             params.maxPeersPerPruneMessage?.let { msg.control?.pruneList?.none { p -> p.peersCount > it } } ?: true
     }
 
-    private fun countIWantMessageIds(msg: Rpc.RPC): Int {
+    override fun validateMergedMessageListLimits(msg1: Rpc.RPCOrBuilder, msg2: Rpc.RPCOrBuilder): Boolean {
+        return params.maxPublishedMessages?.let { msg1.publishCount + msg2.publishCount <= it } ?: true &&
+
+            params.maxTopicsPerPublishedMessage?.let { msg1.publishList.none { m -> m.topicIDsCount > it } } ?: true &&
+            params.maxTopicsPerPublishedMessage?.let { msg2.publishList.none { m -> m.topicIDsCount > it } } ?: true &&
+
+            params.maxSubscriptions?.let { msg1.subscriptionsCount + msg2.subscriptionsCount <= it } ?: true &&
+            params.maxIHaveLength.let { countIHaveMessageIds(msg1) + countIHaveMessageIds(msg2) <= it } &&
+            params.maxIWantMessageIds?.let { countIWantMessageIds(msg1) + countIWantMessageIds(msg2) <= it } ?: true &&
+            params.maxGraftMessages?.let {
+                (msg1.control?.graftCount ?: 0) + (msg2.control?.graftCount ?: 0) <= it
+            } ?: true &&
+            params.maxPruneMessages?.let {
+                (msg1.control?.pruneCount ?: 0) + (msg2.control?.pruneCount ?: 0) <= it
+            } ?: true &&
+
+            params.maxPeersPerPruneMessage?.let { msg1.control?.pruneList?.none { p -> p.peersCount > it } } ?: true &&
+            params.maxPeersPerPruneMessage?.let { msg2.control?.pruneList?.none { p -> p.peersCount > it } } ?: true
+    }
+
+    private fun countIWantMessageIds(msg: Rpc.RPCOrBuilder): Int {
         return msg.control?.iwantList?.map { w -> w.messageIDsCount }?.sum() ?: 0
     }
 
-    private fun countIHaveMessageIds(msg: Rpc.RPC): Int {
+    private fun countIHaveMessageIds(msg: Rpc.RPCOrBuilder): Int {
         return msg.control?.ihaveList?.map { w -> w.messageIDsCount }?.sum() ?: 0
     }
 

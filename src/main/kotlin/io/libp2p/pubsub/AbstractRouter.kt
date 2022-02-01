@@ -97,7 +97,13 @@ abstract class AbstractRouter(
         if (msgs.isEmpty()) return null
 
         val bld = Rpc.RPC.newBuilder()
-        msgs.forEach { bld.mergeFrom(it) }
+        msgs.forEach {
+            if (validateMergedMessageListLimits(it, bld)) {
+                bld.mergeFrom(it)
+            } else {
+                addPendingRpcPart(toPeer, it)
+            }
+        }
         return bld.build()
     }
 
@@ -284,6 +290,10 @@ abstract class AbstractRouter(
     }
 
     internal open fun validateMessageListLimits(msg: Rpc.RPC): Boolean {
+        return true
+    }
+
+    internal open fun validateMergedMessageListLimits(msg1: Rpc.RPCOrBuilder, msg2: Rpc.RPCOrBuilder): Boolean {
         return true
     }
 
