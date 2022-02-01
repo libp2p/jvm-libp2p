@@ -10,6 +10,7 @@ import io.libp2p.etc.types.completedExceptionally
 import io.libp2p.etc.types.copy
 import io.libp2p.etc.types.forward
 import io.libp2p.etc.types.lazyVarInit
+import io.libp2p.etc.types.thenApplyAll
 import io.libp2p.etc.types.toWBytes
 import io.libp2p.etc.util.P2PServiceSemiDuplex
 import io.libp2p.etc.util.netty.protobuf.LimitedProtobufVarint32FrameDecoder
@@ -92,19 +93,42 @@ abstract class AbstractRouter(
     /**
      * Drains all partial messages for [toPeer] and returns merged message
      */
-    protected fun collectPeerMessage(toPeer: PeerHandler): Rpc.RPC? {
-        val msgs = pendingRpcParts.remove(toPeer) ?: emptyList<Rpc.RPC>()
-        if (msgs.isEmpty()) return null
+    protected fun collectPeerMessages(toPeer: PeerHandler): List<Rpc.RPC> =
+        mergeMessageParts(pendingRpcParts.remove(toPeer) ?: emptyList())
 
-        val bld = Rpc.RPC.newBuilder()
-        msgs.forEach {
-            if (validateMergedMessageListLimits(it, bld)) {
-                bld.mergeFrom(it)
-            } else {
-                addPendingRpcPart(toPeer, it)
-            }
+    protected fun mergeMessageParts(parts: List<Rpc.RPC>): List<Rpc.RPC> {
+        if (parts.isEmpty()) return emptyList()
+
+        val optimisticBuilder = parts.fold(Rpc.RPC.newBuilder()) { builder, part ->
+            builder.mergeFrom(part)
         }
-        return bld.build()
+        return if (validateMessageListLimits(optimisticBuilder)) {
+            // optimistic case
+            listOf(optimisticBuilder.build())
+        } else {
+            // need to split to multiple messages
+            splitToLimitedMessages(parts)
+        }
+    }
+
+    private fun splitToLimitedMessages(parts: List<Rpc.RPC>): List<Rpc.RPC> {
+        val ret = mutableListOf<Rpc.RPC>()
+        val partQueue = ArrayDeque(parts)
+        while (partQueue.isNotEmpty()) {
+            var builder = Rpc.RPC.newBuilder()
+            while (partQueue.isNotEmpty()) {
+                val validationBuilder = builder.clone()
+                val part = partQueue.first()
+                validationBuilder.mergeFrom(part)
+                if (!validateMessageListLimits(validationBuilder)) {
+                    break
+                }
+                partQueue.removeFirst()
+                builder = validationBuilder
+            }
+            ret += builder.build()
+        }
+        return ret
     }
 
     /**
@@ -116,11 +140,10 @@ abstract class AbstractRouter(
     }
 
     protected fun flushPending(peer: PeerHandler) {
-        collectPeerMessage(peer)?.also {
-            val future = send(peer, it)
-            pendingMessagePromises.removeAll(peer)?.forEach {
-                future.forward(it)
-            }
+        val peerMessages = collectPeerMessages(peer)
+        val allSendPromise = peerMessages.map { send(peer, it) }.thenApplyAll { }
+        pendingMessagePromises.removeAll(peer)?.forEach {
+            allSendPromise.forward(it)
         }
     }
 
@@ -289,11 +312,7 @@ abstract class AbstractRouter(
         }
     }
 
-    internal open fun validateMessageListLimits(msg: Rpc.RPC): Boolean {
-        return true
-    }
-
-    internal open fun validateMergedMessageListLimits(msg1: Rpc.RPCOrBuilder, msg2: Rpc.RPCOrBuilder): Boolean {
+    internal open fun validateMessageListLimits(msg: Rpc.RPCOrBuilder): Boolean {
         return true
     }
 
