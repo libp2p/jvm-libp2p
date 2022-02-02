@@ -54,11 +54,11 @@ abstract class AbstractRouter(
         LRUSeenCache(SimpleSeenCache(), maxSeenMessagesLimit)
     }
 
-    private val peerTopics = MultiSet<PeerHandler, String>()
+    private val peerTopics = MultiSet<PeerHandler, Topic>()
     private var msgHandler: (PubsubMessage) -> CompletableFuture<ValidationResult> = { RESULT_VALID }
     override var messageValidator = NOP_ROUTER_VALIDATOR
 
-    val subscribedTopics = linkedSetOf<String>()
+    val subscribedTopics = linkedSetOf<Topic>()
     val pendingRpcParts = linkedMapOf<PeerHandler, MutableList<Rpc.RPC>>()
     private var debugHandler: ChannelHandler? = null
     private val pendingMessagePromises = MultiSet<PeerHandler, CompletableFuture<Unit>>()
@@ -88,6 +88,17 @@ abstract class AbstractRouter(
      */
     protected fun addPendingRpcPart(toPeer: PeerHandler, msgPart: Rpc.RPC) {
         pendingRpcParts.getOrPut(toPeer, { mutableListOf() }) += msgPart
+    }
+
+    private fun addPendingSubscription(toPeer: PeerHandler, topic: Topic, subscriptionStatus: SubscriptionStatus) {
+        addPendingRpcPart(
+            toPeer,
+            Rpc.RPC.newBuilder()
+                .addSubscriptions(Rpc.RPC.SubOpts.newBuilder()
+                    .setSubscribe(subscriptionStatus == SubscriptionStatus.Subscribed)
+                    .setTopicid(topic))
+                .build()
+        )
     }
 
     /**
@@ -191,13 +202,10 @@ abstract class AbstractRouter(
     protected abstract fun processControl(ctrl: Rpc.ControlMessage, receivedFrom: PeerHandler)
 
     override fun onPeerActive(peer: PeerHandler) {
-        val helloPubsubMsg = Rpc.RPC.newBuilder().addAllSubscriptions(
-            subscribedTopics.map {
-                Rpc.RPC.SubOpts.newBuilder().setSubscribe(true).setTopicid(it).build()
-            }
-        ).build()
-
-        peer.writeAndFlush(helloPubsubMsg)
+        subscribedTopics.forEach {
+            addPendingSubscription(peer, it, SubscriptionStatus.Subscribed)
+        }
+        flushPending(peer)
     }
 
     protected open fun notifyMalformedMessage(peer: PeerHandler) {}
@@ -361,36 +369,26 @@ abstract class AbstractRouter(
         }
     }
 
-    protected open fun subscribe(topic: String) {
-        activePeers.forEach {
-            addPendingRpcPart(
-                it,
-                Rpc.RPC.newBuilder().addSubscriptions(Rpc.RPC.SubOpts.newBuilder().setSubscribe(true).setTopicid(topic)).build()
-            )
-        }
+    protected open fun subscribe(topic: Topic) {
+        activePeers.forEach { addPendingSubscription(it, topic, SubscriptionStatus.Subscribed)}
         subscribedTopics += topic
     }
 
-    override fun unsubscribe(vararg topics: String) {
+    override fun unsubscribe(vararg topics: Topic) {
         runOnEventThread {
             topics.forEach(::unsubscribe)
             flushAllPending()
         }
     }
 
-    protected open fun unsubscribe(topic: String) {
-        activePeers.forEach {
-            addPendingRpcPart(
-                it,
-                Rpc.RPC.newBuilder().addSubscriptions(Rpc.RPC.SubOpts.newBuilder().setSubscribe(false).setTopicid(topic)).build()
-            )
-        }
+    protected open fun unsubscribe(topic: Topic) {
+        activePeers.forEach { addPendingSubscription(it, topic, SubscriptionStatus.Unsubscribed)}
         subscribedTopics -= topic
     }
 
-    override fun getPeerTopics(): CompletableFuture<Map<PeerId, Set<String>>> {
+    override fun getPeerTopics(): CompletableFuture<Map<PeerId, Set<Topic>>> {
         return submitOnEventThread {
-            val topicsByPeerId = hashMapOf<PeerId, Set<String>>()
+            val topicsByPeerId = hashMapOf<PeerId, Set<Topic>>()
             peerTopics.forEach { entry ->
                 topicsByPeerId[entry.key.peerId] = HashSet(entry.value)
             }
@@ -405,4 +403,6 @@ abstract class AbstractRouter(
     override fun initHandler(handler: (PubsubMessage) -> CompletableFuture<ValidationResult>) {
         msgHandler = handler
     }
+
+    protected enum class SubscriptionStatus { Subscribed, Unsubscribed }
 }
