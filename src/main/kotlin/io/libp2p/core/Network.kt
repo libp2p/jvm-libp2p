@@ -28,7 +28,7 @@ interface Network {
      * notifies on success or error
      * All the incoming connections are handled with [connectionHandler]
      */
-    fun listen(addr: Multiaddr): CompletableFuture<Unit>
+    fun listen(addr: Multiaddr, preHandler: ChannelVisitor<P2PChannel>? = null): CompletableFuture<Unit>
 
     /**
      * Stops listening on specified address. The returned future asynchronously
@@ -62,7 +62,13 @@ interface Network {
      *
      * @throws TransportNotSupportedException if any of [addrs] represents the transport which is not supported
      */
-    fun connect(id: PeerId, vararg addrs: Multiaddr): CompletableFuture<Connection>
+    fun connect(id: PeerId, vararg addrs: Multiaddr): CompletableFuture<Connection> =
+        connect(id, null, *addrs)
+
+    /**
+     * Dials the specified multiaddr via [Proxy] and returns a promise of a Connection.
+     */
+    fun connect(id: PeerId, preHandler: ChannelVisitor<P2PChannel>? = null, vararg addrs: Multiaddr): CompletableFuture<Connection>
 
     /**
      * Closes the specified [Connection]

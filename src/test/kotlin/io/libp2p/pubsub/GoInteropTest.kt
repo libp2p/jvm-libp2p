@@ -146,7 +146,7 @@ class GoInteropTest {
             val tcpTransport = TcpTransport(upgrader)
             logger.info("Dialing...")
             val connFuture = tcpTransport.dial(
-                Multiaddr("/ip4/127.0.0.1/tcp/45555/p2p/$pdPeerId")
+                Multiaddr("/ip4/127.0.0.1/tcp/45555/p2p/$pdPeerId"), { }
             )
 
             var pingRes: Long? = null

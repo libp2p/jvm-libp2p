@@ -1,8 +1,10 @@
 package io.libp2p.transport.implementation
 
+import io.libp2p.core.ChannelVisitor
 import io.libp2p.core.Connection
 import io.libp2p.core.ConnectionHandler
 import io.libp2p.core.Libp2pException
+import io.libp2p.core.P2PChannel
 import io.libp2p.core.PeerId
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multiformats.MultiaddrDns
@@ -87,10 +89,10 @@ abstract class NettyTransport(
         }
     } // close
 
-    override fun listen(addr: Multiaddr, connHandler: ConnectionHandler): CompletableFuture<Unit> {
+    override fun listen(addr: Multiaddr, connHandler: ConnectionHandler, preHandler: ChannelVisitor<P2PChannel>?): CompletableFuture<Unit> {
         if (closed) throw Libp2pException("Transport is closed")
 
-        val connectionBuilder = makeConnectionBuilder(connHandler, false)
+        val connectionBuilder = makeConnectionBuilder(connHandler, false, preHandler = preHandler)
         val channelHandler = serverTransportBuilder(connectionBuilder, addr) ?: connectionBuilder
 
         val listener = server.clone()
@@ -127,12 +129,12 @@ abstract class NettyTransport(
             ?: throw Libp2pException("No listeners on address $addr")
     } // unlisten
 
-    override fun dial(addr: Multiaddr, connHandler: ConnectionHandler):
+    override fun dial(addr: Multiaddr, connHandler: ConnectionHandler, preHandler: ChannelVisitor<P2PChannel>?):
         CompletableFuture<Connection> {
         if (closed) throw Libp2pException("Transport is closed")
 
         val remotePeerId = addr.getPeerId()
-        val connectionBuilder = makeConnectionBuilder(connHandler, true, remotePeerId)
+        val connectionBuilder = makeConnectionBuilder(connHandler, true, remotePeerId, preHandler)
         val channelHandler = clientTransportBuilder(connectionBuilder, addr) ?: connectionBuilder
 
         val chanFuture = client.clone()
@@ -168,13 +170,15 @@ abstract class NettyTransport(
     private fun makeConnectionBuilder(
         connHandler: ConnectionHandler,
         initiator: Boolean,
-        remotePeerId: PeerId? = null
+        remotePeerId: PeerId? = null,
+        preHandler: ChannelVisitor<P2PChannel>?
     ) = ConnectionBuilder(
         this,
         upgrader,
         connHandler,
         initiator,
-        remotePeerId
+        remotePeerId,
+        preHandler
     )
 
     protected fun handlesHost(addr: Multiaddr) =
