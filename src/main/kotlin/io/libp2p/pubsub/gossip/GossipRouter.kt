@@ -113,7 +113,7 @@ open class GossipRouter @JvmOverloads constructor(
         mesh.values.forEach { it.remove(peer) }
         fanout.values.forEach { it.remove(peer) }
         acceptRequestsWhitelist -= peer
-        collectPeerMessage(peer) // discard them
+        collectPeerMessages(peer) // discard them
         super.onPeerDisconnected(peer)
     }
 
@@ -208,7 +208,7 @@ open class GossipRouter @JvmOverloads constructor(
         return peerScore >= score.params.graylistThreshold
     }
 
-    override fun validateMessageListLimits(msg: Rpc.RPC): Boolean {
+    override fun validateMessageListLimits(msg: Rpc.RPCOrBuilder): Boolean {
         return params.maxPublishedMessages?.let { msg.publishCount <= it } ?: true &&
             params.maxTopicsPerPublishedMessage?.let { msg.publishList.none { m -> m.topicIDsCount > it } } ?: true &&
             params.maxSubscriptions?.let { msg.subscriptionsCount <= it } ?: true &&
@@ -219,11 +219,11 @@ open class GossipRouter @JvmOverloads constructor(
             params.maxPeersPerPruneMessage?.let { msg.control?.pruneList?.none { p -> p.peersCount > it } } ?: true
     }
 
-    private fun countIWantMessageIds(msg: Rpc.RPC): Int {
+    private fun countIWantMessageIds(msg: Rpc.RPCOrBuilder): Int {
         return msg.control?.iwantList?.map { w -> w.messageIDsCount }?.sum() ?: 0
     }
 
-    private fun countIHaveMessageIds(msg: Rpc.RPC): Int {
+    private fun countIHaveMessageIds(msg: Rpc.RPCOrBuilder): Int {
         return msg.control?.ihaveList?.map { w -> w.messageIDsCount }?.sum() ?: 0
     }
 
