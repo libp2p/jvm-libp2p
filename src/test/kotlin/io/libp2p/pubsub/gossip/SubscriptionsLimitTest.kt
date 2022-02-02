@@ -15,9 +15,9 @@ class SubscriptionsLimitTest : TwoGossipHostTestBase() {
     @Test
     fun `new peer subscribed to many topics`() {
         val topics = (0..13).map { Topic("topic-$it") }.toTypedArray()
-        gossip1.subscribe( Subscriber {}, *topics)
+        gossip1.subscribe(Subscriber {}, *topics)
         val messages2 = mutableListOf<MessageApi>()
-        gossip2.subscribe( Subscriber { messages2 += it }, *topics)
+        gossip2.subscribe(Subscriber { messages2 += it }, *topics)
 
         connect()
         waitForSubscribed(router1, "topic-13")
@@ -37,15 +37,15 @@ class SubscriptionsLimitTest : TwoGossipHostTestBase() {
             .hasSize(1)
             .allMatch {
                 it.topics == listOf(Topic("topic-13")) &&
-                        it.data.toByteArray().contentEquals(byteArrayOf(11))
+                    it.data.toByteArray().contentEquals(byteArrayOf(11))
             }
     }
 
     @Test
     fun `new peer subscribed to few topics`() {
         val topics = (0..4).map { Topic("topic-$it") }.toTypedArray()
-        gossip1.subscribe( Subscriber { }, *topics)
-        gossip2.subscribe( Subscriber { }, *topics)
+        gossip1.subscribe(Subscriber { }, *topics)
+        gossip2.subscribe(Subscriber { }, *topics)
 
         connect()
         waitForSubscribed(router1, "topic-4")
@@ -59,16 +59,16 @@ class SubscriptionsLimitTest : TwoGossipHostTestBase() {
 
     @Test
     fun `existing peer subscribed to many topics`() {
-        gossip1.subscribe( Subscriber { }, Topic("test-topic"))
-        gossip2.subscribe( Subscriber { }, Topic("test-topic"))
+        gossip1.subscribe(Subscriber { }, Topic("test-topic"))
+        gossip2.subscribe(Subscriber { }, Topic("test-topic"))
 
         connect()
         waitForSubscribed(router1, "test-topic")
         waitForSubscribed(router2, "test-topic")
 
         val topics = (0..13).map { Topic("topic-$it") }.toTypedArray()
-        gossip1.subscribe( Subscriber { }, *topics)
-        gossip2.subscribe( Subscriber { }, *topics)
+        gossip1.subscribe(Subscriber { }, *topics)
+        gossip2.subscribe(Subscriber { }, *topics)
 
         waitForSubscribed(router1, "topic-13")
         waitForSubscribed(router2, "topic-13")

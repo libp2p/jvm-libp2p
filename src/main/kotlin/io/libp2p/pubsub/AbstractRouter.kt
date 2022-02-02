@@ -94,9 +94,11 @@ abstract class AbstractRouter(
         addPendingRpcPart(
             toPeer,
             Rpc.RPC.newBuilder()
-                .addSubscriptions(Rpc.RPC.SubOpts.newBuilder()
-                    .setSubscribe(subscriptionStatus == SubscriptionStatus.Subscribed)
-                    .setTopicid(topic))
+                .addSubscriptions(
+                    Rpc.RPC.SubOpts.newBuilder()
+                        .setSubscribe(subscriptionStatus == SubscriptionStatus.Subscribed)
+                        .setTopicid(topic)
+                )
                 .build()
         )
     }
@@ -370,7 +372,7 @@ abstract class AbstractRouter(
     }
 
     protected open fun subscribe(topic: Topic) {
-        activePeers.forEach { addPendingSubscription(it, topic, SubscriptionStatus.Subscribed)}
+        activePeers.forEach { addPendingSubscription(it, topic, SubscriptionStatus.Subscribed) }
         subscribedTopics += topic
     }
 
@@ -382,7 +384,7 @@ abstract class AbstractRouter(
     }
 
     protected open fun unsubscribe(topic: Topic) {
-        activePeers.forEach { addPendingSubscription(it, topic, SubscriptionStatus.Unsubscribed)}
+        activePeers.forEach { addPendingSubscription(it, topic, SubscriptionStatus.Unsubscribed) }
         subscribedTopics -= topic
     }
 
