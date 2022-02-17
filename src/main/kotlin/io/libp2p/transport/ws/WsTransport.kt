@@ -51,12 +51,9 @@ class WsTransport(
             is Inet6Address -> IP6
             else -> throw InternalErrorException("Unknown address type $addr")
         }
-        return Multiaddr(
-            listOf(
-                proto to proto.addressToBytes(addr.address.hostAddress),
-                TCP to TCP.addressToBytes(addr.port.toString()),
-                WS to ByteArray(0)
-            )
-        )
+        return Multiaddr.empty()
+            .withComponent(proto, addr.address.hostAddress)
+            .withComponent(TCP, addr.port.toString())
+            .withComponent(WS)
     } // toMultiaddr
 } // class WsTransport

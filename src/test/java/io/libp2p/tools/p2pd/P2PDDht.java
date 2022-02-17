@@ -142,7 +142,7 @@ public class P2PDDht implements DHT {
     private static PeerInfo fromResp(P2Pd.PeerInfo pi) {
         return new PeerInfo(new Peer(pi.getId().toByteArray()),
                 pi.getAddrsList().stream()
-                        .map(addr -> new Multiaddr(addr.toByteArray()))
+                        .map(addr -> Multiaddr.deserialize(addr.toByteArray()))
                         .collect(Collectors.toList()));
     }
 

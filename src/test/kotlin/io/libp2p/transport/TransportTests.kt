@@ -70,7 +70,14 @@ abstract class TransportTests {
         dialConnections(client, address, connectionCount)
         assertEquals(connectionCount, client.activeConnections)
 
-        SECONDS.sleep(5) // let things settle
+        // give the server time to acknowledge connections
+        for (attempt in 1..30) {
+            if (connectionCount == inboundConnections.count) {
+                break
+            }
+            SECONDS.sleep(1)
+        }
+
         assertEquals(connectionCount, inboundConnections.count, "Connections not acknowledged by server")
         assertEquals(connectionCount, server.activeConnections)
 

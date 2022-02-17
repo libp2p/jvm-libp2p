@@ -31,14 +31,14 @@ import org.apache.logging.log4j.LogManager
 import spipe.pb.Spipe
 import java.util.concurrent.CompletableFuture
 
-private enum class Role(val intVal: Int) { INIT(HandshakeState.INITIATOR), RESP(HandshakeState.RESPONDER) }
+enum class Role(val intVal: Int) { INIT(HandshakeState.INITIATOR), RESP(HandshakeState.RESPONDER) }
 
 private val log = LogManager.getLogger(NoiseXXSecureChannel::class.java)
-private const val HandshakeNettyHandlerName = "HandshakeNettyHandler"
-private const val HandshakeReadTimeoutNettyHandlerName = "HandshakeReadTimeoutNettyHandler"
-private const val NoiseCodeNettyHandlerName = "NoiseXXCodec"
-private const val MaxCipheredPacketLength = 65535
-private const val HandshakeTimeoutSec = 5
+const val HandshakeNettyHandlerName = "HandshakeNettyHandler"
+const val HandshakeReadTimeoutNettyHandlerName = "HandshakeReadTimeoutNettyHandler"
+const val NoiseCodeNettyHandlerName = "NoiseXXCodec"
+const val MaxCipheredPacketLength = 65535
+const val HandshakeTimeoutSec = 5
 
 class UShortLengthCodec : CombinedChannelDuplexHandler<LengthFieldBasedFrameDecoder, LengthFieldPrepender>(
     LengthFieldBasedFrameDecoder(MaxCipheredPacketLength + 2, 0, 2, 0, 2),
@@ -85,7 +85,7 @@ class NoiseXXSecureChannel(private val localKey: PrivKey) :
     } // initChannel
 } // class NoiseXXSecureChannel
 
-private class NoiseIoHandshake(
+class NoiseIoHandshake(
     private val localKey: PrivKey,
     private val handshakeComplete: CompletableFuture<SecureChannel.Session>,
     private val role: Role

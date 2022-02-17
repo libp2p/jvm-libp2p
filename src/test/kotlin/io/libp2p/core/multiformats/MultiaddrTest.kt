@@ -1,8 +1,12 @@
 package io.libp2p.core.multiformats
 
+import com.google.common.net.InetAddresses
 import io.libp2p.core.PeerId
 import io.libp2p.etc.types.fromHex
+import io.libp2p.etc.types.toByteArray
 import io.libp2p.etc.types.toHex
+import io.libp2p.etc.types.writeUvarint
+import io.netty.buffer.Unpooled
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertThrows
@@ -14,12 +18,24 @@ import org.junit.jupiter.params.provider.MethodSource
 class MultiaddrTest {
 
     companion object {
+        private fun Long.toVarInt() = Unpooled.buffer().writeUvarint(this).toByteArray()
+
         @JvmStatic
         fun paramsInvalid() = listOf(
             "/ip4",
             "/ip4/::1",
+            "/ip4/0:0:0:0:0:0:0:1",
+            "/ip4/consensys.net",
+            "/ip4/123.2.3",
+            "/ip4/123.2.3.5.6",
+            "/ip4/123.2.3.256",
             "/ip4/fdpsofodsajfdoisa",
             "/ip6",
+            "/ip6/consensys.net",
+            "/ip6/127.0.0.1",
+            "/ip6/0:0:0:0:0:0:0:1::",
+            "/ip6/0:0:0:0:0:0:0:1:2",
+            "/ip6/0:0:0:0:0:0:1",
             "/ip6zone",
             "/ip6zone/",
             "/ip6zone//ip6/fe80::1",
@@ -27,6 +43,20 @@ class MultiaddrTest {
             "/tcp",
             "/sctp",
             "/udp/65536",
+            "/udp/-2",
+            "/udp/abc",
+            "/udp/",
+            "/udp//",
+            "/udp/ /",
+            "/udp /123",
+            "/udp/123 ",
+            "/udp/123\n",
+            "/udp/\n123",
+            "/udp\n/123",
+            "/\nudp/123",
+            "\n/udp/123",
+            "/ udp/123",
+            "udp/123",
             "/tcp/65536",
             "/quic/65536",
             "/onion/9imaq4ygg2iegci7:80",
@@ -48,7 +78,11 @@ class MultiaddrTest {
             "/ip4/127.0.0.1/p2p",
             "/ip4/127.0.0.1/p2p/tcp",
             "/unix",
-            "/ip4/1.2.3.4/tcp/80/unix"
+            "/ip4/1.2.3.4/tcp/80/unix",
+            // too short PeerId
+            "/p2p/QmcgpsyWgH8Y8ajJz1Cu72",
+            // too long PeerId
+            "/p2p/QmcgpsyWgH8Y8ajJz1Cu72KnS5uo2Aa2LpzU7kinSupNKC55555555555555555555555555555555555"
         )
 
         @JvmStatic
@@ -58,6 +92,10 @@ class MultiaddrTest {
             "/ip6/0:0:0:0:0:0:0:1",
             "/ip6/2601:9:4f81:9700:803e:ca65:66e8:c21",
             "/ip6/2601:9:4f81:9700:803e:ca65:66e8:c21/udp/1234/quic",
+            "/ip6/1::",
+            "/ip6/1::2323:abcd",
+            "/ip6/::",
+            "/ip6/::ffff",
             "/ip6zone/x/ip6/fe80:0:0:0:0:0:0:1",
             "/ip6zone/x%y/ip6/fe80:0:0:0:0:0:0:1",
             "/ip6zone/x%y/ip6/0:0:0:0:0:0:0:0",
@@ -110,16 +148,16 @@ class MultiaddrTest {
         fun protocolLists() = listOf(
             Arguments.of(
                 listOf(
-                    Pair(Protocol.IP4, "7f000001".fromHex()),
-                    Pair(Protocol.TCP, "2328".fromHex())
+                    MultiaddrComponent(Protocol.IP4, "7f000001".fromHex()),
+                    MultiaddrComponent(Protocol.TCP, "2328".fromHex())
                 ),
                 "/ip4/127.0.0.1/tcp/9000"
             ),
             Arguments.of(
                 listOf(
-                    Pair(Protocol.IP4, "7f000001".fromHex()),
-                    Pair(Protocol.TCP, "2328".fromHex()),
-                    Pair(Protocol.WS, ByteArray(0))
+                    MultiaddrComponent(Protocol.IP4, "7f000001".fromHex()),
+                    MultiaddrComponent(Protocol.TCP, "2328".fromHex()),
+                    MultiaddrComponent(Protocol.WS, null)
                 ),
                 "/ip4/127.0.0.1/tcp/9000/ws"
             )
@@ -148,6 +186,21 @@ class MultiaddrTest {
                 listOf("/dns4/made.up.host/tcp/20000", "/dns4/a.different.host/ipfs/QmULzn6KtFUCKpkFymEUgUvkLtv9j2Eo4utZPELmQEebR6", "/dns4/lets.go.crazy")
             )
         )
+
+        @JvmStatic
+        fun invalidSerializations() = listOf(
+            // Invalid var lengths
+            Arguments.of(Protocol.DNS4.encoded + 1L.toVarInt()),
+            Arguments.of(Protocol.DNS4.encoded + (-1L).toVarInt()),
+            Arguments.of(Protocol.DNS4.encoded + 10L.toVarInt() + ByteArray(9, { 0 })),
+            Arguments.of(Protocol.DNS4.encoded + 65535L.toVarInt() + ByteArray(9, { 0 })),
+            Arguments.of(Protocol.DNS4.encoded + Int.MAX_VALUE.toLong().toVarInt() + ByteArray(9, { 0 })),
+            Arguments.of(Protocol.DNS4.encoded + (Int.MAX_VALUE.toLong() + 1).toVarInt() + ByteArray(9, { 0 })),
+            Arguments.of(Protocol.DNS4.encoded + Long.MAX_VALUE.toVarInt() + ByteArray(9, { 0 })),
+            // Invalid UTF-8
+            Arguments.of(Protocol.DNS4.encoded + 1L.toVarInt() + 0x80.toByte()),
+            Arguments.of(Protocol.DNS4.encoded + 1L.toVarInt() + 0xbf.toByte()),
+        )
     }
 
     @ParameterizedTest
@@ -160,19 +213,36 @@ class MultiaddrTest {
     @MethodSource("paramsValid")
     fun validStringAddress(addr: String) {
         val multiaddr = Multiaddr(addr)
-        val bytes = multiaddr.getBytes()
-        val multiaddr1 = Multiaddr(bytes)
+        val bytes = multiaddr.serialize()
+        val multiaddr1 = Multiaddr.deserialize(bytes)
         assertEquals(
-            addr.toLowerCase().trimEnd('/').replace("/ipfs/", "/p2p/"),
-            multiaddr1.toString().toLowerCase()
+            toCanonical(addr),
+            multiaddr1.toString().lowercase()
         )
+    }
+
+    fun toCanonical(multiaddr: String): String {
+        val multiaddr1 = multiaddr
+            .lowercase().trimEnd('/').replace("/ipfs/", "/p2p/")
+        val idx1 = multiaddr1.indexOf("/ip6/")
+        return if (idx1 >= 0) {
+            val ip6Idx = idx1 + "/ip6/".length
+            val idx2 = multiaddr1.indexOf("/", ip6Idx).let {
+                if (it < 0) multiaddr1.length else it
+            }
+            val ip6 = multiaddr1.substring(ip6Idx, idx2)
+            val canonIp6 = InetAddresses.toAddrString(InetAddresses.forString(ip6))
+            multiaddr1.take(ip6Idx) + canonIp6 + multiaddr1.drop(idx2)
+        } else {
+            multiaddr1
+        }
     }
 
     @ParameterizedTest
     @MethodSource("toBytesParams")
     fun toBytes(str: String, bytes: ByteArray) {
-        assertEquals(bytes.toHex(), Multiaddr(str).getBytes().toHex())
-        assertEquals(str, Multiaddr(bytes).toString())
+        assertEquals(bytes.toHex(), Multiaddr(str).serialize().toHex())
+        assertEquals(str, Multiaddr.deserialize(bytes).toString())
     }
 
     @Test
@@ -187,7 +257,7 @@ class MultiaddrTest {
 
     @ParameterizedTest
     @MethodSource("protocolLists")
-    fun testFromProtocolList(protocols: List<Pair<Protocol, ByteArray>>, expected: String) {
+    fun testFromProtocolList(protocols: List<MultiaddrComponent>, expected: String) {
         assertEquals(expected, Multiaddr(protocols).toString())
     }
 
@@ -265,6 +335,14 @@ class MultiaddrTest {
         val split = addr.split { it.equals(Protocol.DNS4) }
 
         assertEquals(expected, split.map { it.toString() })
+    }
+
+    @ParameterizedTest
+    @MethodSource("invalidSerializations")
+    fun `deserialize() with invalid bytes should throw`(bytes: ByteArray) {
+        assertThrows(IllegalArgumentException::class.java) {
+            Multiaddr.deserialize(bytes)
+        }
     }
 
     private fun testPeerId(): PeerId {

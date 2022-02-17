@@ -61,7 +61,7 @@ public class P2PDHost implements Host {
     public List<Multiaddr> getListenAddresses() {
         try {
             return identify().get().getAddrsList().stream()
-                    .map(bs -> new Multiaddr(bs.toByteArray()))
+                    .map(bs -> Multiaddr.deserialize(bs.toByteArray()))
                     .collect(Collectors.toList());
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -85,7 +85,7 @@ public class P2PDHost implements Host {
                             .setConnect(P2Pd.ConnectRequest.newBuilder()
                                     .setPeer(ByteString.copyFrom(peerId.getIdBytes()))
                                     .addAllAddrs(peerAddresses.stream()
-                                                    .map(addr -> ByteString.copyFrom(addr.getBytes()))
+                                                    .map(addr -> ByteString.copyFrom(addr.serialize()))
                                                     .collect(Collectors.toList()))
                                     .setTimeout(requestTimeoutSec)
                                     .build()
@@ -173,7 +173,7 @@ public class P2PDHost implements Host {
                             handler.call(P2Pd.Request.newBuilder()
                                         .setType(P2Pd.Request.Type.STREAM_HANDLER)
                                         .setStreamHandler(P2Pd.StreamHandlerRequest.newBuilder()
-                                            .setAddr(ByteString.copyFrom(listenMultiaddr.getBytes()))
+                                            .setAddr(ByteString.copyFrom(listenMultiaddr.serialize()))
                                             .addAllProto(muxerAdress.getProtocols().stream()
                                                 .map(Protocol::getName).collect(Collectors.toList()))
                                             .build()

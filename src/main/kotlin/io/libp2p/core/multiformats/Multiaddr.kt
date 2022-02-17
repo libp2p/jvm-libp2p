@@ -20,75 +20,35 @@ import io.netty.buffer.Unpooled
  * represented as a known [Protocol] and its value (if any) serialized to bytes according
  * to this protocol rule
  */
-class Multiaddr(val components: List<Pair<Protocol, ByteArray>>) {
+data class Multiaddr(val components: List<MultiaddrComponent>) {
+
     /**
      * Creates instance from the string representation
      */
     constructor(addr: String) : this(parseString(addr))
 
     /**
-     * Creates instance from serialized form from [ByteBuf]
-     */
-    constructor(bytes: ByteBuf) : this(parseBytes(bytes))
-    /**
-     * Creates instance from serialized form from [ByteBuf]
-     */
-    constructor(bytes: ByteArray) : this(parseBytes(bytes.toByteBuf()))
-
-    /**
      * Returns only components matching any of supplied protocols
      */
-    fun filterComponents(vararg proto: Protocol): List<Pair<Protocol, ByteArray>> = components.filter { proto.contains(it.first) }
+    fun filterComponents(vararg proto: Protocol): List<MultiaddrComponent> =
+        components.filter { proto.contains(it.protocol) }
 
     /**
      * Returns the first found protocol value. [null] if the protocol not found
      */
-    fun getComponent(proto: Protocol): ByteArray? = filterComponents(proto).firstOrNull()?.second
+    fun getFirstComponent(proto: Protocol): MultiaddrComponent? = filterComponents(proto).firstOrNull()
 
     /**
      * Queries the address to confirm if it contains the given protocol
      */
-    fun has(proto: Protocol): Boolean = getComponent(proto) != null
+    fun has(proto: Protocol): Boolean = getFirstComponent(proto) != null
     fun hasAny(vararg protos: Protocol) = protos.any { has(it) }
-
-    /**
-     * Returns [components] in a human readable form where each protocol value
-     * is deserialized and represented as String
-     */
-    fun filterStringComponents(): List<Pair<Protocol, String?>> =
-        components.map { p -> p.first to if (p.first.size == 0) null else p.first.bytesToAddress(p.second) }
-
-    /**
-     * Returns only components (String representation) matching any of supplied protocols
-     */
-    fun filterStringComponents(vararg proto: Protocol): List<Pair<Protocol, String?>> = filterStringComponents().filter { proto.contains(it.first) }
-
-    /**
-     * Returns the first found protocol String value representation . [null] if the protocol not found
-     */
-    fun getStringComponent(proto: Protocol): String? = filterStringComponents(proto).firstOrNull()?.second
-
-    /**
-     * Serializes this instance to supplied [ByteBuf]
-     */
-    fun writeBytes(buf: ByteBuf): ByteBuf {
-        for (component in components) {
-            buf.writeBytes(component.first.encoded)
-            component.first.writeAddressBytes(buf, component.second)
-        }
-        return buf
-    }
-
-    /**
-     * Returns serialized form as [ByteArray]
-     */
-    fun getBytes(): ByteArray = writeBytes(Unpooled.buffer()).toByteArray()
 
     /**
      * Returns [PeerId] from either `/ipfs/` or `/p2p/` component value. `null` if none of those components exists
      */
     fun getPeerId(): PeerId? =
-        components.filter { it.first in Protocol.PEER_ID_PROTOCOLS }.map { PeerId(it.second) }.firstOrNull()
+        components.filter { it.protocol in Protocol.PEER_ID_PROTOCOLS }.map { PeerId(it.value!!) }.firstOrNull()
 
     /**
      * Appends `/p2p/` component if absent or checks that existing and supplied ids are equal
@@ -100,18 +60,28 @@ class Multiaddr(val components: List<Pair<Protocol, ByteArray>>) {
      * Appends new component if absent or checks that existing and supplied component values are equal
      * @throws IllegalArgumentException if existing component value doesn't match [value]
      */
-    fun withComponent(protocol: Protocol, value: ByteArray): Multiaddr {
-        val curVal = getComponent(protocol)
-        return if (curVal != null) {
-            if (!curVal.contentEquals(value)) {
-                throw IllegalArgumentException("Value (${protocol.bytesToAddress(value)}) for $protocol doesn't match existing value in $this")
+    private fun withComponentImpl(protocol: Protocol, value: ByteArray?): Multiaddr {
+        val existingComponent = getFirstComponent(protocol)
+        val newComponent = MultiaddrComponent(protocol, value)
+        return if (existingComponent != null) {
+            if (!existingComponent.value.contentEquals(value)) {
+                throw IllegalArgumentException("Value (${newComponent.stringValue}) for $protocol doesn't match existing value in $this")
             } else {
                 this
             }
         } else {
-            Multiaddr(this.components + (protocol to value))
+            Multiaddr(this.components + newComponent)
         }
     }
+
+    fun withComponent(protocol: Protocol, value: ByteArray): Multiaddr =
+        withComponentImpl(protocol, value)
+
+    fun withComponent(protocol: Protocol, stringValue: String): Multiaddr =
+        withComponentImpl(protocol, protocol.addressToBytes(stringValue))
+
+    fun withComponent(protocol: Protocol): Multiaddr =
+        withComponentImpl(protocol, null)
 
     /**
      * Returns [Multiaddr] with concatenated components of `this` and [other] `Multiaddr`
@@ -126,7 +96,7 @@ class Multiaddr(val components: List<Pair<Protocol, ByteArray>>) {
      */
     fun merged(other: Multiaddr) = other.components
         .fold(this) { accumulator, component ->
-            accumulator.withComponent(component.first, component.second)
+            accumulator.withComponentImpl(component.protocol, component.value)
         }
 
     internal fun split(pred: (Protocol) -> Boolean): List<Multiaddr> {
@@ -141,10 +111,10 @@ class Multiaddr(val components: List<Pair<Protocol, ByteArray>>) {
 
     private fun split(
         accumulated: MutableList<Multiaddr>,
-        remainingComponents: List<Pair<Protocol, ByteArray>>,
+        remainingComponents: List<MultiaddrComponent>,
         pred: (Protocol) -> Boolean
     ) {
-        val splitIndex = remainingComponents.indexOfLast { pred(it.first) }
+        val splitIndex = remainingComponents.indexOfLast { pred(it.protocol) }
 
         if (splitIndex > 0) {
             accumulated.add(0, Multiaddr(remainingComponents.subList(splitIndex, remainingComponents.size)))
@@ -160,39 +130,46 @@ class Multiaddr(val components: List<Pair<Protocol, ByteArray>>) {
     }
 
     /**
+     * Serializes this instance to supplied [ByteBuf]
+     */
+    fun serializeToBuf(buf: ByteBuf): ByteBuf {
+        for (component in components) {
+            component.serialize(buf)
+        }
+        return buf
+    }
+
+    /**
+     * Returns serialized form as [ByteArray]
+     */
+    fun serialize(): ByteArray = serializeToBuf(Unpooled.buffer()).toByteArray()
+
+    /**
      * Returns the string representation of this multiaddress
      * Note that `Multiaddress(strAddr).toString` is not always equal to `strAddr`
      * (e.g. `/ip6/::1` can be converted to `/ip6/0:0:0:0:0:0:0:1`)
      */
-    override fun toString(): String = filterStringComponents().joinToString(separator = "") { p ->
-        "/" + p.first.typeName + if (p.second != null) "/" + p.second else ""
-    }
-
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (javaClass != other?.javaClass) return false
-        other as Multiaddr
-        return toString() == other.toString()
-    }
-
-    override fun hashCode(): Int {
-        return toString().hashCode()
-    }
+    override fun toString(): String = components.joinToString(separator = "")
 
     companion object {
-        @JvmStatic
-        fun fromString(addr: String): Multiaddr { // helper method for Java access
-            return Multiaddr(addr)
-        }
 
-        private fun parseString(addr_: String): List<Pair<Protocol, ByteArray>> {
-            val ret: MutableList<Pair<Protocol, ByteArray>> = mutableListOf()
+        @JvmStatic
+        fun fromString(addr: String) = Multiaddr(parseString(addr))
+
+        @JvmStatic
+        fun deserialize(bytes: ByteArray) = Multiaddr(parseBytes(bytes.toByteBuf()))
+
+        @JvmStatic
+        fun deserializeFromBuf(bytes: ByteBuf) = Multiaddr(parseBytes(bytes))
+
+        @JvmStatic
+        fun empty() = Multiaddr(emptyList())
+
+        private fun parseString(addr: String): List<MultiaddrComponent> {
+            val ret: MutableList<MultiaddrComponent> = mutableListOf()
 
             try {
-                var addr = addr_
-                while (addr.endsWith("/"))
-                    addr = addr.substring(0, addr.length - 1)
-                val parts = addr.split("/")
+                val parts = addr.trimEnd('/').split("/")
                 if (parts[0].isNotEmpty()) throw IllegalArgumentException("MultiAddress must start with a /")
 
                 var i = 1
@@ -200,31 +177,31 @@ class Multiaddr(val components: List<Pair<Protocol, ByteArray>>) {
                     val part = parts[i++]
                     val p = Protocol.getOrThrow(part)
 
-                    val bytes = if (p.size == 0) ByteArray(0) else {
-                        val component = if (p.isPath())
-                            "/" + parts.subList(i, parts.size).reduce { a, b -> "$a/$b" }
-                        else parts[i++]
-
-                        if (component.isEmpty())
-                            throw IllegalArgumentException("Protocol requires address, but non provided!")
+                    val bytes = if (!p.hasValue) {
+                        null
+                    } else {
+                        val component = if (p.isPath) {
+                            val remainingParts = parts.drop(i)
+                            i = parts.size
+                            "/" + remainingParts.joinToString("/")
+                        } else {
+                            parts[i++]
+                        }
                         p.addressToBytes(component)
                     }
-                    ret.add(p to bytes)
-
-                    if (p.isPath())
-                        break
+                    ret += MultiaddrComponent(p, bytes)
                 }
             } catch (e: Exception) {
-                throw IllegalArgumentException("Malformed multiaddr: '$addr_", e)
+                throw IllegalArgumentException("Malformed multiaddr: '$addr", e)
             }
             return ret
         }
 
-        private fun parseBytes(buf: ByteBuf): List<Pair<Protocol, ByteArray>> {
-            val ret: MutableList<Pair<Protocol, ByteArray>> = mutableListOf()
+        private fun parseBytes(buf: ByteBuf): List<MultiaddrComponent> {
+            val ret: MutableList<MultiaddrComponent> = mutableListOf()
             while (buf.isReadable) {
                 val protocol = Protocol.getOrThrow(buf.readUvarint().toInt())
-                ret.add(protocol to protocol.readAddressBytes(buf))
+                ret += MultiaddrComponent(protocol, protocol.readAddressBytes(buf))
             }
             return ret
         }

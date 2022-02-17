@@ -168,7 +168,7 @@ open class Builder {
                 agentVersion = "jvm/0.1"
                 protocolVersion = "p2p/0.1"
                 publicKey = privKey.publicKey().bytes().toProtobuf()
-                addAllListenAddrs(network.listen.map { Multiaddr(it).getBytes().toProtobuf() })
+                addAllListenAddrs(network.listen.map { Multiaddr(it).serialize().toProtobuf() })
                 addAllProtocols(protocols.flatMap { it.protocolDescriptor.announceProtocols })
             }.build().also {
                 this.idMessage = it

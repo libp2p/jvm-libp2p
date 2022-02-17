@@ -84,5 +84,5 @@ data class TestHost(
     val pubKey: PubKey,
     val peerId: PeerId,
     val listenAddress: Multiaddr,
-    val listenPort: Int? = listenAddress?.getStringComponent(Protocol.TCP)?.toInt()
+    val listenPort: Int? = listenAddress.getFirstComponent(Protocol.TCP)?.stringValue?.toInt()
 )

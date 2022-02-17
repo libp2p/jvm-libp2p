@@ -19,7 +19,7 @@ import kotlin.math.min
 import kotlin.math.pow
 
 fun P2PService.PeerHandler.getIP(): String? =
-    streamHandler.stream.connection.remoteAddress().getStringComponent(Protocol.IP4)
+    streamHandler.stream.connection.remoteAddress().getFirstComponent(Protocol.IP4)?.stringValue
 
 class GossipScore(
     val params: GossipScoreParams = GossipScoreParams(),
