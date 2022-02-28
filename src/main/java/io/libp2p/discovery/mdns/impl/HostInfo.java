@@ -23,7 +23,7 @@ public class HostInfo {
 
     protected InetAddress       _address;
 
-    protected NetworkInterface  _interfaze;
+    protected NetworkInterface  _interface;
 
     /**
      * @param address
@@ -135,7 +135,7 @@ public class HostInfo {
         this._name = name;
         if (address != null) {
             try {
-                _interfaze = NetworkInterface.getByInetAddress(address);
+                _interface = NetworkInterface.getByInetAddress(address);
             } catch (Exception exception) {
                 logger.warn("LocalHostInfo() exception ", exception);
             }
@@ -151,7 +151,7 @@ public class HostInfo {
     }
 
     public NetworkInterface getInterface() {
-        return _interfaze;
+        return _interface;
     }
 
     boolean shouldIgnorePacket(DatagramPacket packet) {
