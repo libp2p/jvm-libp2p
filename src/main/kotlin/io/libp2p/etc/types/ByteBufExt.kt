@@ -29,7 +29,7 @@ fun ByteBuf.readUvarint(): Long {
     var s = 0
 
     val originalReaderIndex = readerIndex()
-    for (i in 0..9) {
+    for (i in 0..8) {
         if (!this.isReadable) {
             // buffer contains just a fragment of uint
             readerIndex(originalReaderIndex)
@@ -37,9 +37,6 @@ fun ByteBuf.readUvarint(): Long {
         }
         val b = this.readUnsignedByte()
         if (b < 0x80) {
-            if (i == 9 && b > 1) {
-                throw IllegalStateException("Overflow reading uvarint")
-            }
             return x or (b.toLong() shl s)
         }
         x = x or (b.toLong() and 0x7f shl s)

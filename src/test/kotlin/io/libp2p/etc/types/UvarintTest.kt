@@ -34,9 +34,25 @@ class UvarintTest {
 
     @Test
     fun testDecodeInvalid() {
-        val buf = Unpooled.buffer()
-        buf.writeBytes(ByteArray(11) { 0x81.toByte() })
+        // Helper function for creating uvarint buffer.
+        fun byteArrayOfInts(vararg ints: Int) = ByteArray(ints.size) {
+            pos ->
+            ints[pos].toByte()
+        }
 
+        val arr: ByteArray = byteArrayOfInts(
+            Integer.parseInt("10000000", 2), // 1
+            Integer.parseInt("10000000", 2), // 2
+            Integer.parseInt("10000000", 2), // 3
+            Integer.parseInt("10000000", 2), // 4
+            Integer.parseInt("10000000", 2), // 5
+            Integer.parseInt("10000000", 2), // 6
+            Integer.parseInt("10000000", 2), // 7
+            Integer.parseInt("10000000", 2), // 8
+            Integer.parseInt("10000000", 2), // 9
+            Integer.parseInt("00000001", 2) // 10
+        )
+        val buf = Unpooled.copiedBuffer(arr)
         val exception = assertThrows<IllegalStateException> { buf.readUvarint() }
         assertEquals("uvarint too long", exception.message)
     }
