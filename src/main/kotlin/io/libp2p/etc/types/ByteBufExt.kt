@@ -9,6 +9,10 @@ import java.lang.Integer.min
 fun ByteBuf.writeUvarint(value: Int): ByteBuf = writeUvarint(value.toLong())
 
 fun ByteBuf.writeUvarint(value: Long): ByteBuf {
+    if (value < 0) {
+        throw IllegalArgumentException("uvarint value must be positive")
+    }
+
     var v = value
     while (v >= 0x80) {
         this.writeByte((v or 0x80).toInt())
