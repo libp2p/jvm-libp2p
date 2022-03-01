@@ -158,7 +158,7 @@ fun marshalPublicKey(pubKey: PubKey): ByteArray =
 
 /**
  * Converts a protobuf serialized private key into its representative object.
- * @param data the byte array of hte protobuf private key.
+ * @param data the byte array of the protobuf private key.
  * @return the equivalent private key.
  */
 fun unmarshalPrivateKey(data: ByteArray): PrivKey {

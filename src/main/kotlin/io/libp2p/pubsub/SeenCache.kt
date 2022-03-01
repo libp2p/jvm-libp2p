@@ -9,7 +9,7 @@ import java.util.LinkedList
 
 /**
  * The interface which is very similar to `Map<PubsubMessage, TValue>`
- * (and can behave as a regular `Map`see [SimpleSeenCache] for example)
+ * (and can behave as a regular `Map` see [SimpleSeenCache] for example)
  * Though the 'key' [PubsubMessage] may be handled slightly differently here in the sense
  * its [PubsubMessage.messageId] can be accessed lazily (see [FastIdSeenCache] for example)
  * and thus [PubsubMessage.hashCode] can't be calculated as for regular `Map`

@@ -54,7 +54,7 @@ data class GossipParams(
     val DScore: Int = defaultDScore(D),
 
     /**
-     * 	[DOut] sets the quota for the number of outbound connections to maintain in a topic mesh.
+     * [DOut] sets the quota for the number of outbound connections to maintain in a topic mesh.
      * When the mesh is pruned due to over subscription, we make sure that we have outbound connections
      * to at least [DOut] of the survivor peers. This prevents sybil attackers from overwhelming
      * our mesh with incoming connections.
@@ -79,7 +79,7 @@ data class GossipParams(
     val fanoutTTL: Duration = 60.seconds,
 
     /**
-     * [maxGossipMessageSize] determines the max acceptable gossip message size.  Messages larger than this will
+     * [maxGossipMessageSize] determines the max acceptable gossip message size. Messages larger than this will
      * be ignored.
      */
     val maxGossipMessageSize: Int = DEFAULT_MAX_PUBSUB_MESSAGE_SIZE,
@@ -170,7 +170,7 @@ data class GossipParams(
     val maxIHaveLength: Int = 5000,
 
     /**
-     *  [maxIHaveMessages] is the maximum number of IHAVE messages to accept from a peer within a heartbeat.
+     * [maxIHaveMessages] is the maximum number of IHAVE messages to accept from a peer within a heartbeat.
      */
     val maxIHaveMessages: Int = 10,
 
@@ -366,7 +366,7 @@ data class GossipPeerScoreParams(
      * - not following up in IWANT requests for messages advertised with IHAVE.
      *
      * The value of the parameter is the square of the counter over the threshold,
-     * which decays with  [behaviourPenaltyDecay].
+     * which decays with [behaviourPenaltyDecay].
      * The weight of the parameter MUST be negative (or zero to disable).
      */
     val behaviourPenaltyWeight: Weight = 0.0,
@@ -387,9 +387,9 @@ data class GossipPeerScoreParams(
     val retainScore: Duration = 10.minutes
 ) {
     init {
-        check(topicScoreCap >= 0.0, "topicScoreCap should be > 0")
-        check(appSpecificWeight >= 0.0, "appSpecificWeight should be > 0")
-        check(ipColocationFactorWeight <= 0.0, "ipColocationFactorWeight should be < 0")
+        check(topicScoreCap >= 0.0, "topicScoreCap should be >= 0")
+        check(appSpecificWeight >= 0.0, "appSpecificWeight should be >= 0")
+        check(ipColocationFactorWeight <= 0.0, "ipColocationFactorWeight should be <= 0")
         check(
             ipColocationFactorWeight == 0.0 || ipColocationFactorThreshold >= 1,
             "ipColocationFactorThreshold should be >= 1"
@@ -439,7 +439,7 @@ data class GossipTopicScoreParams(
 
     /**
      * P1: time in the mesh
-     * This is the time the peer has ben grafted in the mesh.
+     * This is the time the peer has been grafted in the mesh.
      * The value of of the parameter is the `time/TimeInMeshQuantum`, capped by [timeInMeshCap]
      * The weight of the parameter MUST be positive (or zero to disable).
      */
