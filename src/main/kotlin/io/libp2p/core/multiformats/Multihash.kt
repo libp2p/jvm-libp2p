@@ -114,7 +114,7 @@ class Multihash(val bytes: ByteBuf, val desc: Descriptor, val lengthBits: Int, v
         }
         @JvmStatic
         fun digest(desc: Descriptor, content: ByteBuf, lengthBits: Int? = null): Multihash {
-            val entry = REGISTRY[desc] ?: throw InvalidMultihashException("Unrecognized multihash descriptor")
+            val entry = REGISTRY[desc] ?: throw InvalidMultihashException("Unrecognised multihash descriptor")
             val digest = entry.hashFunc(content)
             val l: Int = when {
                 lengthBits == null ->

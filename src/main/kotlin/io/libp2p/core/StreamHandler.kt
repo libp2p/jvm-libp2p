@@ -11,7 +11,7 @@ import java.util.concurrent.CompletableFuture
  * @property controller Is completed when the underlying client protocol is initiated.
  *           When the [stream] future is failed this future is also failed
  *           While the [stream] can be created successfully the protocol may fail
- *           to instantiateand this future would fail
+ *           to instantiate and this future would fail
  */
 data class StreamPromise<T>(
     val stream: CompletableFuture<Stream> = CompletableFuture(),
