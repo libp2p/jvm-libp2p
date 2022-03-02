@@ -16,15 +16,16 @@ version = "0.7.0-RELEASE"
 description = "a minimal implementation of libp2p for the jvm"
 
 plugins {
-    java
-    idea
-    kotlin("jvm") version "1.6.10"
-    id("org.jmailen.kotlinter") version "3.8.0"
-    id("com.google.protobuf") version "0.8.18"
+    kotlin("jvm").version("1.6.10")
 
-    `maven-publish`
-    id("org.jetbrains.dokka") version "1.6.10"
-    id("com.github.ben-manes.versions") version "0.41.0"
+    id("com.github.ben-manes.versions").version("0.41.0")
+    id("com.google.protobuf").version("0.8.18")
+    id("idea")
+    id("io.gitlab.arturbosch.detekt").version("1.20.0-RC1")
+    id("java")
+    id("maven-publish")
+    id("org.jetbrains.dokka").version("1.6.10")
+    id("org.jmailen.kotlinter").version("3.8.0")
 }
 
 repositories {
@@ -247,4 +248,8 @@ fun findProperty(s: String) = project.findProperty(s) as String?
 val compileKotlin: KotlinCompile by tasks
 compileKotlin.kotlinOptions {
     languageVersion = "1.4"
+}
+
+detekt {
+    baseline = file("$projectDir/config/baseline.xml")
 }

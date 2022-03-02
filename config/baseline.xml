@@ -1,0 +1,384 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ClassNaming:Delegates.kt$LazyMutable$UNINITIALIZED_VALUE</ID>
+    <ID>ClassNaming:GossipV1_1Tests.kt$GossipV1_1Tests</ID>
+    <ID>ClassNaming:Key.kt$KEY_TYPE</ID>
+    <ID>ComplexMethod:AbstractRouter.kt$AbstractRouter$override fun onInbound(peer: PeerHandler, msg: Any)</ID>
+    <ID>ComplexMethod:Builders.kt$Builder$ fun build(def: Defaults): Host</ID>
+    <ID>ComplexMethod:GossipRouter.kt$GossipRouter$override fun validateMessageListLimits(msg: Rpc.RPCOrBuilder): Boolean</ID>
+    <ID>ComplexMethod:GossipRouter.kt$GossipRouter$private fun heartbeat()</ID>
+    <ID>ComplexMethod:LimitedProtobufVarint32FrameDecoder.kt$LimitedProtobufVarint32FrameDecoder.Companion$ private fun readRawVarint32(buffer: ByteBuf): Int</ID>
+    <ID>ComplexMethod:ProtobufUtils.kt$ fun parseProtobufBytesToString(str: String): ByteArray</ID>
+    <ID>ConstructorParameterNaming:GossipParams.kt$GossipParams$/** * [DHigh] sets the upper bound on the number of peers we keep in a GossipSub topic mesh. * If we have more than [DHigh] peers, we will select some to prune from the mesh at the next heartbeat. */ val DHigh: Int = defaultDHigh(D)</ID>
+    <ID>ConstructorParameterNaming:GossipParams.kt$GossipParams$/** * [DLazy] affects how many peers we will emit gossip to at each heartbeat. * We will send gossip to at least [DLazy] peers outside our mesh. The actual * number may be more, depending on GossipSubGossipFactor and how many peers we're * connected to. */ val DLazy: Int = defaultDLazy(D)</ID>
+    <ID>ConstructorParameterNaming:GossipParams.kt$GossipParams$/** * [DLow] sets the lower bound on the number of peers we keep in a GossipSub topic mesh. * If we have fewer than [DLow] peers, we will attempt to graft some more into the mesh at * the next heartbeat. */ val DLow: Int = defaultDLow(D)</ID>
+    <ID>ConstructorParameterNaming:GossipParams.kt$GossipParams$/** * [DOut] sets the quota for the number of outbound connections to maintain in a topic mesh. * When the mesh is pruned due to over subscription, we make sure that we have outbound connections * to at least [DOut] of the survivor peers. This prevents sybil attackers from overwhelming * our mesh with incoming connections. * * [DOut] must be set below [DLow], and must not exceed [D / 2]. */ val DOut: Int = defaultDOut(D, DLow)</ID>
+    <ID>ConstructorParameterNaming:GossipParams.kt$GossipParams$/** * [DScore] affects how peers are selected when pruning a mesh due to over subscription. * At least [DScore] of the retained peers will be high-scoring, while the remainder are * chosen randomly. */ val DScore: Int = defaultDScore(D)</ID>
+    <ID>ConstructorParameterNaming:GossipParams.kt$GossipParams$/** * [D] sets the optimal degree for a GossipSub topic mesh. For example, if [D == 6], * each peer will want to have about six peers in their mesh for each topic they're subscribed to. * [D] should be set somewhere between [DLow] and [DHi]. */ val D: Int = 6</ID>
+    <ID>EmptyDefaultConstructor:AbstractMuxHandler.kt$AbstractMuxHandler$()</ID>
+    <ID>EmptyDefaultConstructor:AsyncExt.kt$NothingToCompleteException$()</ID>
+    <ID>EmptyDefaultConstructor:GoInteropTest.kt$AssumeP2PAvailable$()</ID>
+    <ID>EmptyDefaultConstructor:RpcHandlerTest.kt$RpcProtocol$()</ID>
+    <ID>EmptyFunctionBlock:AbstractRouterTest.kt$AbstractRouterTest.TestRouter${}</ID>
+    <ID>EmptyFunctionBlock:GossipScore.kt$GossipScore${ }</ID>
+    <ID>EmptyFunctionBlock:MockRouter.kt$MockRouter${}</ID>
+    <ID>EmptyFunctionBlock:MuxHandler.kt$MuxHandler${ }</ID>
+    <ID>EmptyFunctionBlock:NettyTransport.kt$NettyTransport${ }</ID>
+    <ID>EmptyFunctionBlock:TransportTests.kt$TransportTests.&lt;no name provided>${ }</ID>
+    <ID>EmptySecondaryConstructor:Libp2pException.kt$Libp2pException${}</ID>
+    <ID>EqualsWithHashCodeExist:Curve25519.kt$Curve25519PrivateKey : PrivKey</ID>
+    <ID>EqualsWithHashCodeExist:Curve25519.kt$Curve25519PublicKey : PubKey</ID>
+    <ID>EqualsWithHashCodeExist:Ecdsa.kt$EcdsaPrivateKey : PrivKey</ID>
+    <ID>EqualsWithHashCodeExist:Ecdsa.kt$EcdsaPublicKey : PubKey</ID>
+    <ID>EqualsWithHashCodeExist:Ed25519.kt$Ed25519PrivateKey : PrivKey</ID>
+    <ID>EqualsWithHashCodeExist:Ed25519.kt$Ed25519PublicKey : PubKey</ID>
+    <ID>EqualsWithHashCodeExist:Key.kt$PrivKey : Key</ID>
+    <ID>EqualsWithHashCodeExist:Key.kt$PubKey : Key</ID>
+    <ID>EqualsWithHashCodeExist:Rsa.kt$RsaPrivateKey : PrivKey</ID>
+    <ID>EqualsWithHashCodeExist:Rsa.kt$RsaPublicKey : PubKey</ID>
+    <ID>EqualsWithHashCodeExist:Secp256k1.kt$Secp256k1PrivateKey : PrivKey</ID>
+    <ID>EqualsWithHashCodeExist:Secp256k1.kt$Secp256k1PublicKey : PubKey</ID>
+    <ID>ExplicitGarbageCollectionCall:GoInteropTest.kt$GoInteropTest$gc()</ID>
+    <ID>ForbiddenComment:Multihash.kt$Multihash.Companion$// TODO: optimise this. We should not look up the MessageDigest every time.</ID>
+    <ID>ForbiddenComment:Transport.kt$Transport$* A Transport represents an adapter to integrate (typically) a L2, L3 or L7 protocol into libp2p, to allow incoming * and outgoing connections to be established. * * TODO: * * Expose transport qualities/attributes (dial only, listen only, reliable, connectionful, costly, etc.)</ID>
+    <ID>FunctionNaming:GossipParamsBuilder.kt$GossipParamsBuilder$fun D(value: Int): GossipParamsBuilder</ID>
+    <ID>FunctionNaming:GossipParamsBuilder.kt$GossipParamsBuilder$fun DHigh(value: Int): GossipParamsBuilder</ID>
+    <ID>FunctionNaming:GossipParamsBuilder.kt$GossipParamsBuilder$fun DLazy(value: Int): GossipParamsBuilder</ID>
+    <ID>FunctionNaming:GossipParamsBuilder.kt$GossipParamsBuilder$fun DLow(value: Int): GossipParamsBuilder</ID>
+    <ID>FunctionNaming:GossipParamsBuilder.kt$GossipParamsBuilder$fun DOut(value: Int): GossipParamsBuilder</ID>
+    <ID>FunctionNaming:GossipParamsBuilder.kt$GossipParamsBuilder$fun DScore(value: Int): GossipParamsBuilder</ID>
+    <ID>FunctionParameterNaming:GossipParams.kt$D: Int</ID>
+    <ID>FunctionParameterNaming:GossipParams.kt$DLow: Int</ID>
+    <ID>LargeClass:GossipV1_1Tests.kt$GossipV1_1Tests</ID>
+    <ID>LongMethod:AbstractRouter.kt$AbstractRouter$override fun onInbound(peer: PeerHandler, msg: Any)</ID>
+    <ID>LongMethod:Builders.kt$Builder$ fun build(def: Defaults): Host</ID>
+    <ID>LongMethod:GoInteropTest.kt$GoInteropTest$@Test @Disabled fun jsInteropTest()</ID>
+    <ID>LongMethod:GoInteropTest.kt$GoInteropTest$@Test fun connect1()</ID>
+    <ID>LongMethod:GoInteropTest.kt$GoInteropTest$@Test fun hostTest()</ID>
+    <ID>LongMethod:GossipRouter.kt$GossipRouter$private fun heartbeat()</ID>
+    <ID>LongMethod:GossipScoreTest.kt$GossipScoreTest$@Test fun `update topic params for untracked topic`()</ID>
+    <ID>LongMethod:GossipV1_1Tests.kt$GossipV1_1Tests$@Test fun testFloodPublish()</ID>
+    <ID>LongMethod:HostTest.kt$HostTest$@Test fun `test pre post multistream handlers`()</ID>
+    <ID>LongMethod:MultiaddrTest.kt$MultiaddrTest.Companion$@JvmStatic fun paramsInvalid()</ID>
+    <ID>LongMethod:MultihashTest.kt$MultihashTest.Companion$@JvmStatic fun params()</ID>
+    <ID>LongMethod:RpcHandlerTest.kt$RpcHandlerTest$@Test fun test1()</ID>
+    <ID>LongParameterList:HostImpl.kt$HostImpl$( override val privKey: PrivKey, override val network: Network, override val addressBook: AddressBook, private val listenAddrs: List&lt;Multiaddr>, private val protocolHandlers: MutableList&lt;ProtocolBinding&lt;Any>>, private val connectionHandlers: ConnectionHandler.Broadcast, private val streamVisitors: ChannelVisitor.Broadcast&lt;Stream> )</ID>
+    <ID>LongParameterList:Protocol.kt$Protocol$( val code: Int, val sizeBits: Int, val typeName: String, private val parser: (Protocol, String) -> ByteArray = NO_PARSER, private val stringifier: (Protocol, ByteArray) -> String = NO_STRINGIFIER, private val validator: (Protocol, ByteArray?) -> Unit = SIZE_VALIDATOR, val isPath: Boolean = false )</ID>
+    <ID>MagicNumber:AbstractRouter.kt$AbstractRouter$10000</ID>
+    <ID>MagicNumber:AsyncExt.kt$1000</ID>
+    <ID>MagicNumber:Base58.kt$Base58$0xFF</ID>
+    <ID>MagicNumber:Base58.kt$Base58$128</ID>
+    <ID>MagicNumber:Base58.kt$Base58$256</ID>
+    <ID>MagicNumber:Base58.kt$Base58$58</ID>
+    <ID>MagicNumber:ByteArrayExt.kt$0x7f</ID>
+    <ID>MagicNumber:ByteArrayExt.kt$0x80</ID>
+    <ID>MagicNumber:ByteArrayExt.kt$0xFF</ID>
+    <ID>MagicNumber:ByteArrayExt.kt$0xff</ID>
+    <ID>MagicNumber:ByteArrayExt.kt$16</ID>
+    <ID>MagicNumber:ByteArrayExt.kt$24</ID>
+    <ID>MagicNumber:ByteArrayExt.kt$3</ID>
+    <ID>MagicNumber:ByteArrayExt.kt$32</ID>
+    <ID>MagicNumber:ByteArrayExt.kt$4</ID>
+    <ID>MagicNumber:ByteArrayExt.kt$40</ID>
+    <ID>MagicNumber:ByteArrayExt.kt$48</ID>
+    <ID>MagicNumber:ByteArrayExt.kt$5</ID>
+    <ID>MagicNumber:ByteArrayExt.kt$56</ID>
+    <ID>MagicNumber:ByteArrayExt.kt$6</ID>
+    <ID>MagicNumber:ByteArrayExt.kt$7</ID>
+    <ID>MagicNumber:ByteArrayExt.kt$8</ID>
+    <ID>MagicNumber:ByteArrayExt.kt$9</ID>
+    <ID>MagicNumber:ByteBufExt.kt$0x7f</ID>
+    <ID>MagicNumber:ByteBufExt.kt$0x80</ID>
+    <ID>MagicNumber:ByteBufExt.kt$7</ID>
+    <ID>MagicNumber:ByteBufExt.kt$9</ID>
+    <ID>MagicNumber:Ecdsa.kt$EcdsaPublicKey$0x04</ID>
+    <ID>MagicNumber:Ecdsa.kt$EcdsaPublicKey$32</ID>
+    <ID>MagicNumber:GossipParams.kt$3</ID>
+    <ID>MagicNumber:GossipRouter.kt$GossipRouter$128</ID>
+    <ID>MagicNumber:GossipScore.kt$GossipScore$1024</ID>
+    <ID>MagicNumber:Libp2pCrypto.kt$16</ID>
+    <ID>MagicNumber:Libp2pCrypto.kt$20</ID>
+    <ID>MagicNumber:Libp2pCrypto.kt$32</ID>
+    <ID>MagicNumber:LimitedProtobufVarint32FrameDecoder.kt$LimitedProtobufVarint32FrameDecoder.Companion$127</ID>
+    <ID>MagicNumber:LimitedProtobufVarint32FrameDecoder.kt$LimitedProtobufVarint32FrameDecoder.Companion$14</ID>
+    <ID>MagicNumber:LimitedProtobufVarint32FrameDecoder.kt$LimitedProtobufVarint32FrameDecoder.Companion$21</ID>
+    <ID>MagicNumber:LimitedProtobufVarint32FrameDecoder.kt$LimitedProtobufVarint32FrameDecoder.Companion$28</ID>
+    <ID>MagicNumber:LimitedProtobufVarint32FrameDecoder.kt$LimitedProtobufVarint32FrameDecoder.Companion$7</ID>
+    <ID>MagicNumber:LoggingHandlerShort.kt$LoggingHandlerShort$10</ID>
+    <ID>MagicNumber:LoggingHandlerShort.kt$LoggingHandlerShort$1024</ID>
+    <ID>MagicNumber:LoggingHandlerShort.kt$LoggingHandlerShort$128</ID>
+    <ID>MagicNumber:LoggingHandlerShort.kt$LoggingHandlerShort$256</ID>
+    <ID>MagicNumber:LoggingHandlerShort.kt$LoggingHandlerShort$30</ID>
+    <ID>MagicNumber:LoggingHandlerShort.kt$LoggingHandlerShort$50</ID>
+    <ID>MagicNumber:MplexFrameCodec.kt$MplexFrameCodec$0x07</ID>
+    <ID>MagicNumber:MplexFrameCodec.kt$MplexFrameCodec$3</ID>
+    <ID>MagicNumber:Multihash.kt$Multihash$127</ID>
+    <ID>MagicNumber:Multihash.kt$Multihash$8</ID>
+    <ID>MagicNumber:Multihash.kt$Multihash.Companion$0X11</ID>
+    <ID>MagicNumber:Multihash.kt$Multihash.Companion$0X12</ID>
+    <ID>MagicNumber:Multihash.kt$Multihash.Companion$0X13</ID>
+    <ID>MagicNumber:Multihash.kt$Multihash.Companion$0X14</ID>
+    <ID>MagicNumber:Multihash.kt$Multihash.Companion$0X15</ID>
+    <ID>MagicNumber:Multihash.kt$Multihash.Companion$0X16</ID>
+    <ID>MagicNumber:Multihash.kt$Multihash.Companion$0X17</ID>
+    <ID>MagicNumber:Multihash.kt$Multihash.Companion$0XD5</ID>
+    <ID>MagicNumber:Multihash.kt$Multihash.Companion$10</ID>
+    <ID>MagicNumber:Multihash.kt$Multihash.Companion$128</ID>
+    <ID>MagicNumber:Multihash.kt$Multihash.Companion$160</ID>
+    <ID>MagicNumber:Multihash.kt$Multihash.Companion$224</ID>
+    <ID>MagicNumber:Multihash.kt$Multihash.Companion$256</ID>
+    <ID>MagicNumber:Multihash.kt$Multihash.Companion$384</ID>
+    <ID>MagicNumber:Multihash.kt$Multihash.Companion$512</ID>
+    <ID>MagicNumber:Multihash.kt$Multihash.Companion$8</ID>
+    <ID>MagicNumber:Negotiator.kt$Negotiator$1024</ID>
+    <ID>MagicNumber:NettyTransport.kt$NettyTransport$15</ID>
+    <ID>MagicNumber:NettyUtil.kt$11</ID>
+    <ID>MagicNumber:NettyUtil.kt$59</ID>
+    <ID>MagicNumber:NoiseXXSecureChannel.kt$NoiseIoHandshake$16</ID>
+    <ID>MagicNumber:PeerId.kt$PeerId$32</ID>
+    <ID>MagicNumber:PeerId.kt$PeerId$50</ID>
+    <ID>MagicNumber:PeerId.kt$PeerId.Companion$256</ID>
+    <ID>MagicNumber:PeerId.kt$PeerId.Companion$32</ID>
+    <ID>MagicNumber:PeerId.kt$PeerId.Companion$42</ID>
+    <ID>MagicNumber:Ping.kt$PingProtocol$10</ID>
+    <ID>MagicNumber:Ping.kt$PingProtocol$32</ID>
+    <ID>MagicNumber:PlaintextInsecureChannel.kt$PlaintextInsecureChannel$4</ID>
+    <ID>MagicNumber:Protocol.kt$10</ID>
+    <ID>MagicNumber:Protocol.kt$16</ID>
+    <ID>MagicNumber:Protocol.kt$18</ID>
+    <ID>MagicNumber:Protocol.kt$65535</ID>
+    <ID>MagicNumber:Protocol.kt$8</ID>
+    <ID>MagicNumber:Protocol.kt$Protocol$4</ID>
+    <ID>MagicNumber:Protocol.kt$Protocol$8</ID>
+    <ID>MagicNumber:Protocol.kt$Protocol.DCCP$16</ID>
+    <ID>MagicNumber:Protocol.kt$Protocol.DCCP$33</ID>
+    <ID>MagicNumber:Protocol.kt$Protocol.DNS4$54</ID>
+    <ID>MagicNumber:Protocol.kt$Protocol.DNS6$55</ID>
+    <ID>MagicNumber:Protocol.kt$Protocol.DNSADDR$56</ID>
+    <ID>MagicNumber:Protocol.kt$Protocol.HTTP$480</ID>
+    <ID>MagicNumber:Protocol.kt$Protocol.HTTPS$443</ID>
+    <ID>MagicNumber:Protocol.kt$Protocol.IP4$32</ID>
+    <ID>MagicNumber:Protocol.kt$Protocol.IP4$4</ID>
+    <ID>MagicNumber:Protocol.kt$Protocol.IP6$128</ID>
+    <ID>MagicNumber:Protocol.kt$Protocol.IP6$41</ID>
+    <ID>MagicNumber:Protocol.kt$Protocol.IP6ZONE$42</ID>
+    <ID>MagicNumber:Protocol.kt$Protocol.IPFS$421</ID>
+    <ID>MagicNumber:Protocol.kt$Protocol.ONION$444</ID>
+    <ID>MagicNumber:Protocol.kt$Protocol.ONION$96</ID>
+    <ID>MagicNumber:Protocol.kt$Protocol.P2P$421</ID>
+    <ID>MagicNumber:Protocol.kt$Protocol.P2PCIRCUIT$290</ID>
+    <ID>MagicNumber:Protocol.kt$Protocol.QUIC$460</ID>
+    <ID>MagicNumber:Protocol.kt$Protocol.SCTP$132</ID>
+    <ID>MagicNumber:Protocol.kt$Protocol.SCTP$16</ID>
+    <ID>MagicNumber:Protocol.kt$Protocol.TCP$16</ID>
+    <ID>MagicNumber:Protocol.kt$Protocol.TCP$6</ID>
+    <ID>MagicNumber:Protocol.kt$Protocol.UDP$16</ID>
+    <ID>MagicNumber:Protocol.kt$Protocol.UDP$273</ID>
+    <ID>MagicNumber:Protocol.kt$Protocol.UDT$302</ID>
+    <ID>MagicNumber:Protocol.kt$Protocol.UNIX$400</ID>
+    <ID>MagicNumber:Protocol.kt$Protocol.UTP$301</ID>
+    <ID>MagicNumber:Protocol.kt$Protocol.WS$477</ID>
+    <ID>MagicNumber:PubsubApiImpl.kt$MessageImpl$8</ID>
+    <ID>MagicNumber:Rsa.kt$2048</ID>
+    <ID>MagicNumber:SecIoNegotiator.kt$SecIoNegotiator$16</ID>
+    <ID>MagicNumber:SecIoSecureChannel.kt$SecIoSecureChannel$4</ID>
+    <ID>MagicNumber:Secp256k1.kt$16</ID>
+    <ID>MagicNumber:WebSocketClientInitializer.kt$WebSocketClientInitializer$65536</ID>
+    <ID>MagicNumber:WebSocketServerInitializer.kt$WebSocketServerInitializer$65536</ID>
+    <ID>MatchingDeclarationName:NettyUtil.kt$NettyInit</ID>
+    <ID>MatchingDeclarationName:TestStream.kt$TestStreamChannel&lt;TController> : EmbeddedChannel</ID>
+    <ID>MaxLineLength:AbstractMuxHandler.kt$AbstractMuxHandler$private fun checkClosed()</ID>
+    <ID>MaxLineLength:AbstractMuxHandler.kt$AbstractMuxHandler$return ctx ?: throw InternalErrorException("Internal error: handler context should be initialized at this stage")</ID>
+    <ID>MaxLineLength:AbstractRouter.kt$AbstractRouter$protected open fun notifySeenMessage(peer: PeerHandler, msg: PubsubMessage, validationResult: Optional&lt;ValidationResult>)</ID>
+    <ID>MaxLineLength:AbstractRouter.kt$AbstractRouter$res == ValidationResult.Ignore -> logger.trace("Ignoring pubsub message from peer $peer: ${it.first}")</ID>
+    <ID>MaxLineLength:AbstractRouter.kt$AbstractRouter$res == ValidationResult.Invalid -> logger.debug("Invalid pubsub message from peer $peer: ${it.first}")</ID>
+    <ID>MaxLineLength:Builders.kt$Builder$ChannelVisitor.createBroadcast(*(debug.streamPreHandler.handlers + (streamVisitors as ChannelVisitor&lt;Stream>)).toTypedArray())</ID>
+    <ID>MaxLineLength:Builders.kt$Builder$if (secureChannels.values.isEmpty()) throw HostConfigurationException("at least one secure channel is required")</ID>
+    <ID>MaxLineLength:Builders.kt$Builder$protocols.values.mapNotNull { (it as? IdentifyBinding) }.map { it.protocol }.find { it.idMessage == null }</ID>
+    <ID>MaxLineLength:Builders.kt$Builder$}</ID>
+    <ID>MaxLineLength:Delegates.kt$fun</ID>
+    <ID>MaxLineLength:Ecdsa.kt$private</ID>
+    <ID>MaxLineLength:EchoProtocol.kt$EchoProtocol.EchoInitiator$open inner</ID>
+    <ID>MaxLineLength:Ed25519.kt$fun</ID>
+    <ID>MaxLineLength:GoInteropTest.kt$GoInteropTest$val keyS = "080012a60230820122300d06092a864886f70d01010105000382010f003082010a0282010100baa3fd95db3f6179ce6b0f1c0c130f2fafbb3ddb20b77bac8a1a408c84af6e3de7dc09dc74cc117360ec6100fe146b7e1a298a546aa8b7b2e1de81780cc0bf888b53bf9cb5fc8145b83b34a6eb93fa41e15d5e03bb492d87f9d76b6b3b77f2d7c879cf1715ce2bde1552050f3556d42fb466e7a5eb2b9fd74f8c6dad741d4dcfde046173cb0385c498a781ea5bccb253175868384f32ac9b2579374d2e9a187acba3abb4f16a5c01c6cbfafddfb75793062e3b7a5c753e6fdfa6f7c7654466f33164680c37545a3954fd1636fdc985f6fd2237f96c949d492df0ad7686f9a72760182d3264103825e4277e1f68c03b906b3e747d5a73b6673c73890128c565170203010001"</ID>
+    <ID>MaxLineLength:GoInteropTest.kt$GoInteropTest$val sigS = "6a02496047297b019d027cde79e74c9bb95a341aa8e45b473d44684229028f6ec34fe97145399fe5e07dcb653110ff1d8cfb41e0747bd94880321005feb1d97bfa6db4850aa9b364cc1d4943644b5b8d7644ca47fbf3c44264eb3d4e474675a44caa83c196b7257cdff8dbef050326d3b4e739eea09b9c8e39027513fd7d842e13f861735a1cccadbc211137f1c119d84d260daade5acc9c78dda31f550bf569b6fdb90402ababece7832b2058967d5268249898eaae9a56988b304c229e159b61952f5e6a46758447bb06274d1069bdc1865ce3d2f0a406be3236b38b96502e888c23b84190ab972637011e572031ea97747d7e1bad3bd1a4f5643ed6f9990f"</ID>
+    <ID>MaxLineLength:GossipRouter.kt$GossipRouter$subscriptionTopicSubscriptionFilter: TopicSubscriptionFilter = TopicSubscriptionFilter.AllowAllTopicSubscriptionFilter()</ID>
+    <ID>MaxLineLength:GossipScore.kt$GossipScore$fun</ID>
+    <ID>MaxLineLength:GossipScore.kt$GossipScore$refreshTask = executor.scheduleAtFixedRate({ refreshScores() }, refreshPeriod, refreshPeriod, TimeUnit.MILLISECONDS)</ID>
+    <ID>MaxLineLength:GossipScore.kt$GossipScore.TopicScores$(if (inMesh()) curTimeMillis() - joinedMeshTimeMillis else 0).toDouble() / params.timeInMeshQuantum.toMillis()</ID>
+    <ID>MaxLineLength:GossipScoreTest.kt$GossipScoreTest$val topicsScoreParams = GossipTopicsScoreParams(defaultScoreParams, mutableMapOf(Pair(topicA, topicScoreParams)))</ID>
+    <ID>MaxLineLength:GossipV1_1Tests.kt$GossipV1_1Tests$((scoreParams.publishThreshold - scores1[test.routers[0].peerId]!!) / peerScoreParams.appSpecificWeight) - 0.001</ID>
+    <ID>MaxLineLength:GossipV1_1Tests.kt$GossipV1_1Tests$((scoreParams.publishThreshold - scores1[test.routers[1].peerId]!!) / peerScoreParams.appSpecificWeight) - 0.001</ID>
+    <ID>MaxLineLength:GossipV1_1Tests.kt$GossipV1_1Tests$((scoreParams.publishThreshold - scores1[test.routers[2].peerId]!!) / peerScoreParams.appSpecificWeight) + 0.001</ID>
+    <ID>MaxLineLength:GossipV1_1Tests.kt$GossipV1_1Tests$((scoreParams.publishThreshold - scores1[test.routers[3].peerId]!!) / peerScoreParams.appSpecificWeight) + 0.001</ID>
+    <ID>MaxLineLength:Host.kt$Host$fun &lt;TController> newStream(protocols: List&lt;ProtocolId>, peer: PeerId, vararg addr: Multiaddr): StreamPromise&lt;TController></ID>
+    <ID>MaxLineLength:HostImpl.kt$HostImpl$override</ID>
+    <ID>MaxLineLength:HostTranportsTest.kt$HostTransportsTest$assertEquals(identifyStream.connection.localAddress(), Multiaddr.deserialize(remoteIdentity.observedAddr.toByteArray()))</ID>
+    <ID>MaxLineLength:LimitedProtobufVarint32FrameDecoder.kt$LimitedProtobufVarint32FrameDecoder$*</ID>
+    <ID>MaxLineLength:MockRouter.kt$MockRouter$override fun broadcastOutbound(msg: PubsubMessage): CompletableFuture&lt;Unit></ID>
+    <ID>MaxLineLength:Multiaddr.kt$Multiaddr$*</ID>
+    <ID>MaxLineLength:Multiaddr.kt$Multiaddr$throw IllegalArgumentException("Value (${newComponent.stringValue}) for $protocol doesn't match existing value in $this")</ID>
+    <ID>MaxLineLength:MultiaddrDns.kt$MultiaddrDns.Companion$private</ID>
+    <ID>MaxLineLength:MultiaddrTest.kt$MultiaddrTest.Companion$"/dns4/made.up.host/tcp/20000/dns4/a.different.host/ipfs/QmULzn6KtFUCKpkFymEUgUvkLtv9j2Eo4utZPELmQEebR6"</ID>
+    <ID>MaxLineLength:MultiaddrTest.kt$MultiaddrTest.Companion$"/dns4/made.up.host/tcp/20000/dns4/a.different.host/ipfs/QmULzn6KtFUCKpkFymEUgUvkLtv9j2Eo4utZPELmQEebR6/dns4/lets.go.crazy"</ID>
+    <ID>MaxLineLength:MultiaddrTest.kt$MultiaddrTest.Companion$Arguments.of("/ip4/127.0.0.1/udp/1234/ip4/127.0.0.1/tcp/4321", "047f000001910204d2047f0000010610e1".fromHex())</ID>
+    <ID>MaxLineLength:MultiaddrTest.kt$MultiaddrTest.Companion$listOf("/dns4/made.up.host/tcp/20000", "/dns4/a.different.host/ipfs/QmULzn6KtFUCKpkFymEUgUvkLtv9j2Eo4utZPELmQEebR6")</ID>
+    <ID>MaxLineLength:MultiaddrTest.kt$MultiaddrTest.Companion$listOf("/dns4/made.up.host/tcp/20000", "/dns4/a.different.host/ipfs/QmULzn6KtFUCKpkFymEUgUvkLtv9j2Eo4utZPELmQEebR6", "/dns4/lets.go.crazy")</ID>
+    <ID>MaxLineLength:MultiaddrTest.kt$MultiaddrTest.Companion$listOf("/ip4/127.0.0.1/tcp/20000", "/dns4/made.up.host/ipfs/QmULzn6KtFUCKpkFymEUgUvkLtv9j2Eo4utZPELmQEebR6")</ID>
+    <ID>MaxLineLength:Multihash.kt$Multihash.Companion$val mhCode = code ?: REGISTRY[desc]?.code ?: throw InvalidMultihashException("Unrecognised multihash descriptor")</ID>
+    <ID>MaxLineLength:MultihashTest.kt$MultihashTest.Companion$"1340f7fbba6e0636f890e56fbbf3283e524c6fa3204ae298382d624741d0dc6638326e282c41be5e4254d8820772c5518a2c5a8c0c7f7eda19594a7eb539453e1ed7"</ID>
+    <ID>MaxLineLength:MultihashTest.kt$MultihashTest.Companion$"14404bca2b137edc580fe50a88983ef860ebaca36c857b1f492839d6d7392452a63c82cbebc68e3b70a2a1480b4bb5d437a7cba6ecf9d89f9ff3ccd14cd6146ea7e7"</ID>
+    <ID>MaxLineLength:Negotiator.kt$Negotiator$fun</ID>
+    <ID>MaxLineLength:Negotiator.kt$Negotiator.RequesterHandler$class</ID>
+    <ID>MaxLineLength:Negotiator.kt$Negotiator.ResponderHandler$class</ID>
+    <ID>MaxLineLength:NetworkImpl.kt$NetworkImpl$* Connects to a peerid with a provided set of {@code Multiaddr}, returning the existing connection if already connected.</ID>
+    <ID>MaxLineLength:NoiseXXSecureChannel.kt$NoiseIoHandshake$val outputBuffer = ByteArray(msgLength + (2 * (handshakeState.localKeyPair.publicKeyLength + 16))) // 16 is MAC length</ID>
+    <ID>MaxLineLength:P2PService.kt$P2PService$fun</ID>
+    <ID>MaxLineLength:P2PService.kt$P2PService.Companion$private val threadFactory = ThreadFactoryBuilder().setDaemon(true).setNameFormat("P2PService-event-thread-%d").build()</ID>
+    <ID>MaxLineLength:P2PService.kt$P2PService.PeerHandler$open fun writeAndFlush(msg: Any): CompletableFuture&lt;Unit></ID>
+    <ID>MaxLineLength:P2PServiceSemiDuplex.kt$P2PServiceSemiDuplex$throw BadPeerException("Duplicate stream with initiator = ${stream.isInitiator} for peer ${peerHandler.peerId}")</ID>
+    <ID>MaxLineLength:P2pdRunner.kt$P2pdRunner$class</ID>
+    <ID>MaxLineLength:PeerIdTest.kt$PeerIdTest$"080012a60230820122300d06092a864886f70d01010105000382010f003082010a0282010100baa3fd95db3f6179ce6b0f1c0c130f2fafbb3ddb20b77bac8a1a408c84af6e3de7dc09dc74cc117360ec6100fe146b7e1a298a546aa8b7b2e1de81780cc0bf888b53bf9cb5fc8145b83b34a6eb93fa41e15d5e03bb492d87f9d76b6b3b77f2d7c879cf1715ce2bde1552050f3556d42fb466e7a5eb2b9fd74f8c6dad741d4dcfde046173cb0385c498a781ea5bccb253175868384f32ac9b2579374d2e9a187acba3abb4f16a5c01c6cbfafddfb75793062e3b7a5c753e6fdfa6f7c7654466f33164680c37545a3954fd1636fdc985f6fd2237f96c949d492df0ad7686f9a72760182d3264103825e4277e1f68c03b906b3e747d5a73b6673c73890128c565170203010001"</ID>
+    <ID>MaxLineLength:Protocol.kt$if (!base32.isInAlphabet(base32Text)) throw IllegalArgumentException("Invalid Base32 string in the Onion address: $base32Text")</ID>
+    <ID>MaxLineLength:Protocol.kt$throw IllegalArgumentException("Value of size ${protocol.sizeBits / 8} expected for protocol $protocol but got ${bytes.contentToString()}")</ID>
+    <ID>MaxLineLength:ProtocolBinding.kt$ProtocolBinding.&lt;no name provided>$override val protocolDescriptor = ProtocolDescriptor(protocols, srcBinding.protocolDescriptor.protocolMatcher)</ID>
+    <ID>MaxLineLength:ProtocolSelect.kt$ProtocolSelect$?:</ID>
+    <ID>MaxLineLength:PubsubCrypto.kt$if (msg.hasKey() || msg.hasSignature()) throw IllegalArgumentException("Message to sign should not contain 'key' or 'signature' fields")</ID>
+    <ID>MaxLineLength:PubsubRouterTest.kt$PubsubRouterTest$// allRouters.find { (it.router as AbstractRouter).peers.any { it.streamHandler.stream.nettyChannel() == otherChannel } }!!</ID>
+    <ID>MaxLineLength:PubsubRouterTest.kt$PubsubRouterTest$allConnections</ID>
+    <ID>MaxLineLength:PubsubRouterTest.kt$PubsubRouterTest$println(" Messages received: $msgCount, wire count: warm up: $firstCount, regular: ${wireMsgCount - firstCount}")</ID>
+    <ID>MaxLineLength:RpcHandlerTest.kt$RpcHandlerTest$val</ID>
+    <ID>MaxLineLength:Secp256k1.kt$fun</ID>
+    <ID>MaxLineLength:StreamMuxer.kt$StreamMuxer$*</ID>
+    <ID>MaxLineLength:TestChannel.kt$private val threadFactory = ThreadFactoryBuilder().setDaemon(true).setNameFormat("TestChannel-interconnect-executor-%d").build()</ID>
+    <ID>MaxLineLength:TestRouter.kt$TestRouter$val anotherChannel = another.newChannel("[${idCnt.incrementAndGet()}]${another.name}=>$name", this, wireLogs, pubsubLogs, false)</ID>
+    <ID>MaxLineLength:TestRouter.kt$TestRouter$val thisChannel = newChannel("[${idCnt.incrementAndGet()}]$name=>${another.name}", another, wireLogs, pubsubLogs, true)</ID>
+    <ID>MaxLineLength:TestStream.kt$TestStreamChannel$multistreamProtocol.createMultistream(listOf(binding)).initChannel(it.channel.getP2PChannel()).forward(controllerFuture)</ID>
+    <ID>MayBeConst:Eth2GossipParams.kt$val AggrAttestTopic = "/eth2/00000000/beacon_aggregate_and_proof/ssz_snappy"</ID>
+    <ID>MayBeConst:Eth2GossipParams.kt$val AttestTopicPrefix = "/eth2/00000000/beacon_attestation_"</ID>
+    <ID>MayBeConst:Eth2GossipParams.kt$val AttestTopicSuffix = "/ssz_snappy"</ID>
+    <ID>MayBeConst:Eth2GossipParams.kt$val BlocksTopic = "/eth2/00000000/beacon_block/ssz_snappy"</ID>
+    <ID>MayBeConst:Eth2GossipParams.kt$val SlotsPerEpoch = 32</ID>
+    <ID>MayBeConst:MDnsDiscovery.kt$MDnsDiscovery.Companion$val QueryInterval = 120</ID>
+    <ID>MayBeConst:MDnsDiscovery.kt$MDnsDiscovery.Companion$val ServiceTag = "_ipfs-discovery._udp"</ID>
+    <ID>MayBeConst:Negotiator.kt$Negotiator$private val LS = "ls"</ID>
+    <ID>MayBeConst:Negotiator.kt$Negotiator$private val MESSAGE_SUFFIX = '\n'</ID>
+    <ID>MayBeConst:Negotiator.kt$Negotiator$private val NA = "na"</ID>
+    <ID>MayBeConst:Negotiator.kt$Negotiator$val MAX_MULTISTREAM_MESSAGE_LENGTH = 1024</ID>
+    <ID>MayBeConst:SecIoSecureChannel.kt$private val HandshakeHandlerName = "SecIoHandshake"</ID>
+    <ID>NestedBlockDepth:GossipRouter.kt$GossipRouter$private fun heartbeat()</ID>
+    <ID>NestedBlockDepth:LimitedProtobufVarint32FrameDecoder.kt$LimitedProtobufVarint32FrameDecoder.Companion$ private fun readRawVarint32(buffer: ByteBuf): Int</ID>
+    <ID>NestedBlockDepth:Multiaddr.kt$Multiaddr.Companion$private fun parseString(addr: String): List&lt;MultiaddrComponent></ID>
+    <ID>ProtectedMemberInFinalClass:GossipV1_1Tests.kt$GossipV1_1Tests$protected open fun getMessageId(msg: Rpc.Message): MessageId</ID>
+    <ID>ReturnCount:AbstractRouter.kt$AbstractRouter$override fun onInbound(peer: PeerHandler, msg: Any)</ID>
+    <ID>ReturnCount:ByteArrayExt.kt$ @kotlin.ExperimentalUnsignedTypes fun ByteArray.readUvarint(): Pair&lt;Long, ByteArray>?</ID>
+    <ID>ReturnCount:ByteArrayExt.kt$operator fun ByteArray.compareTo(other: ByteArray): Int</ID>
+    <ID>ReturnCount:GossipRouter.kt$GossipRouter$override fun acceptRequestsFrom(peer: PeerHandler): Boolean</ID>
+    <ID>ReturnCount:GossipRouter.kt$GossipRouter$private fun handleIHave(msg: Rpc.ControlIHave, peer: PeerHandler)</ID>
+    <ID>ReturnCount:HostTest.kt$HostTest.ProtocolInterceptor.&lt;no name provided>$fun match(ctx: ChannelHandlerContext): Boolean</ID>
+    <ID>ReturnCount:LimitedProtobufVarint32FrameDecoder.kt$LimitedProtobufVarint32FrameDecoder.Companion$ private fun readRawVarint32(buffer: ByteBuf): Int</ID>
+    <ID>SpreadOperator:AsyncExt.kt$(*all.toTypedArray())</ID>
+    <ID>SpreadOperator:AsyncExt.kt$(*this.toTypedArray())</ID>
+    <ID>SpreadOperator:Builders.kt$Builder$(*(debug.streamPreHandler.handlers + (streamVisitors as ChannelVisitor&lt;Stream>)).toTypedArray())</ID>
+    <ID>SpreadOperator:Builders.kt$Builder$(*debug.afterSecureHandler.handlers.toTypedArray())</ID>
+    <ID>SpreadOperator:Builders.kt$Builder$(*debug.beforeSecureHandler.handlers.toTypedArray())</ID>
+    <ID>SpreadOperator:Builders.kt$Builder$(*debug.muxFramesHandler.handlers.toTypedArray())</ID>
+    <ID>SpreadOperator:Builders.kt$Builder$(*debug.streamHandler.handlers.toTypedArray())</ID>
+    <ID>SpreadOperator:HostImpl.kt$HostImpl$( *listenAddrs.map { network.listen(it) }.toTypedArray() )</ID>
+    <ID>SpreadOperator:MultiaddrDns.kt$MultiaddrDns.Companion$(*dnsProtocols)</ID>
+    <ID>SpreadOperator:MultistreamImpl.kt$MultistreamImpl$( negotiationTimeLimit, *bindings.flatMap { it.protocolDescriptor.announceProtocols }.toTypedArray() )</ID>
+    <ID>SpreadOperator:NettyTransport.kt$NettyTransport$(*everythingThatNeedsToClose.toTypedArray())</ID>
+    <ID>SpreadOperator:NetworkImpl.kt$NetworkImpl$(*everythingThatNeedsToClose.toTypedArray())</ID>
+    <ID>SpreadOperator:ProtocolDescriptor.kt$ProtocolDescriptor$(*protocols)</ID>
+    <ID>SpreadOperator:PubsubApiImpl.kt$PubsubApiImpl$(*routerToSubscribe.toTypedArray())</ID>
+    <ID>SpreadOperator:PubsubApiImpl.kt$PubsubApiImpl$(*routerToUnsubscribe.toTypedArray())</ID>
+    <ID>SpreadOperator:SecIoNegotiator.kt$SecIoNegotiator$(*(selectFirst(p1, p2)).toTypedArray())</ID>
+    <ID>SpreadOperator:SecIoNegotiator.kt$SecIoNegotiator$(*(selectSecond(p1, p2)).toTypedArray())</ID>
+    <ID>SwallowedException:AsyncExt.kt$t: Exception</ID>
+    <ID>SwallowedException:MultiaddrDns.kt$MultiaddrDns.Companion$e: UnknownHostException</ID>
+    <ID>ThrowingExceptionsWithoutMessageOrCause:PubsubApiImpl.kt$PubsubApiImpl$IllegalStateException()</ID>
+    <ID>ThrowsCount:Builders.kt$Builder$ fun build(def: Defaults): Host</ID>
+    <ID>ThrowsCount:Multihash.kt$Multihash.Companion$@JvmStatic fun digest(desc: Descriptor, content: ByteBuf, lengthBits: Int? = null): Multihash</ID>
+    <ID>TooGenericExceptionCaught:AbstractMuxHandler.kt$AbstractMuxHandler$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:AbstractRouter.kt$AbstractRouter$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:AsyncExt.kt$t: Exception</ID>
+    <ID>TooGenericExceptionCaught:GossipRouter.kt$GossipRouter$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:GossipRouter.kt$GossipRouter$t: Exception</ID>
+    <ID>TooGenericExceptionCaught:Multiaddr.kt$Multiaddr.Companion$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:MuxChannel.kt$MuxChannel$cause: Throwable</ID>
+    <ID>TooGenericExceptionCaught:OtherExt.kt$Deferrable$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:P2PService.kt$P2PService$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:SecIoCodec.kt$SecIoCodec$e: Exception</ID>
+    <ID>TooGenericExceptionThrown:Base58.kt$Base58$throw RuntimeException("invalid base58 encoded form")</ID>
+    <ID>TooGenericExceptionThrown:LimitedProtobufVarint32FrameDecoderTest.kt$LimitedProtobufVarint32FrameDecoderTest$throw RuntimeException(e)</ID>
+    <ID>TooManyFunctions:AbstractChildChannel.kt$AbstractChildChannel : AbstractChannel</ID>
+    <ID>TooManyFunctions:AbstractMuxHandler.kt$AbstractMuxHandler&lt;TData> : ChannelInboundHandlerAdapter</ID>
+    <ID>TooManyFunctions:AbstractRouter.kt$AbstractRouter : P2PServiceSemiDuplexPubsubRouterPubsubRouterDebug</ID>
+    <ID>TooManyFunctions:ByteArrayExt.kt$io.libp2p.etc.types.ByteArrayExt.kt</ID>
+    <ID>TooManyFunctions:Collections.kt$MultiSet$MSList : ArrayList</ID>
+    <ID>TooManyFunctions:GossipParamsBuilder.kt$GossipParamsBuilder</ID>
+    <ID>TooManyFunctions:GossipPeerScoreParamsBuilder.kt$GossipPeerScoreParamsBuilder</ID>
+    <ID>TooManyFunctions:GossipRouter.kt$GossipRouter : AbstractRouter</ID>
+    <ID>TooManyFunctions:GossipScore.kt$GossipScore</ID>
+    <ID>TooManyFunctions:GossipTopicScoreParamsBuilder.kt$GossipTopicScoreParamsBuilder</ID>
+    <ID>TooManyFunctions:Host.kt$Host</ID>
+    <ID>TooManyFunctions:HostImpl.kt$HostImpl : Host</ID>
+    <ID>TooManyFunctions:Multiaddr.kt$Multiaddr</ID>
+    <ID>TooManyFunctions:MuxHandler.kt$MuxHandler : AbstractMuxHandlerSession</ID>
+    <ID>TooManyFunctions:NettyTransport.kt$NettyTransport : Transport</ID>
+    <ID>TooManyFunctions:NoiseXXSecureChannel.kt$NoiseIoHandshake : SimpleChannelInboundHandler</ID>
+    <ID>TooManyFunctions:P2PService.kt$P2PService</ID>
+    <ID>TooManyFunctions:SecIoNegotiator.kt$SecIoNegotiator</ID>
+    <ID>TooManyFunctions:SimpleClientHandler.kt$SimpleClientHandler : SimpleChannelInboundHandler</ID>
+    <ID>TopLevelPropertyNaming:GossipRouter.kt$const val MaxBackoffEntries = 10 * 1024</ID>
+    <ID>TopLevelPropertyNaming:GossipRouter.kt$const val MaxIAskedEntries = 256</ID>
+    <ID>TopLevelPropertyNaming:GossipRouter.kt$const val MaxIWantRequestsEntries = 10 * 1024</ID>
+    <ID>TopLevelPropertyNaming:GossipRouter.kt$const val MaxPeerIHaveEntries = 256</ID>
+    <ID>TopLevelPropertyNaming:Libp2pCrypto.kt$/** * ErrRsaKeyTooSmall is returned when trying to generate or parse an RSA key * that's smaller than 512 bits. Keys need to be larger enough to sign a 256bit * hash so this is a reasonable absolute minimum. */ const val ErrRsaKeyTooSmall = "rsa keys must be >= 512 bits to be useful"</ID>
+    <ID>TopLevelPropertyNaming:NoiseXXSecureChannel.kt$const val HandshakeNettyHandlerName = "HandshakeNettyHandler"</ID>
+    <ID>TopLevelPropertyNaming:NoiseXXSecureChannel.kt$const val HandshakeReadTimeoutNettyHandlerName = "HandshakeReadTimeoutNettyHandler"</ID>
+    <ID>TopLevelPropertyNaming:NoiseXXSecureChannel.kt$const val HandshakeTimeoutSec = 5</ID>
+    <ID>TopLevelPropertyNaming:NoiseXXSecureChannel.kt$const val MaxCipheredPacketLength = 65535</ID>
+    <ID>TopLevelPropertyNaming:NoiseXXSecureChannel.kt$const val NoiseCodeNettyHandlerName = "NoiseXXCodec"</ID>
+    <ID>TopLevelPropertyNaming:RpcHandlerTest.kt$/** * This is service to add or multiple numbers with corresponding protocol names: * - /my-calc/add/1.0.0 * - /my-calc/mul/1.0.0 * * Requester opens a stream, writes two longs (BE serialized), * Responder performs operation, sends one long (BE serialized) as result and resets the stream */ const val protoPrefix = "/my-calc"</ID>
+    <ID>TopLevelPropertyNaming:RpcHandlerTest.kt$const val protoAdd = "/add"</ID>
+    <ID>TopLevelPropertyNaming:RpcHandlerTest.kt$const val protoMul = "/mul"</ID>
+    <ID>UnnecessaryAbstractClass:ClientInterOpTest.kt$ClientInterOpTest</ID>
+    <ID>UnnecessaryAbstractClass:HostTranportsTest.kt$HostTransportsTest</ID>
+    <ID>UnnecessaryAbstractClass:HostTranportsTest.kt$WsTransportHostTest : HostTransportsTest</ID>
+    <ID>UnnecessaryAbstractClass:PubsubRouterTest.kt$PubsubRouterTest</ID>
+    <ID>UnnecessaryAbstractClass:RpcHandlerTest.kt$OpHandler : SimpleChannelInboundHandlerOpController</ID>
+    <ID>UnnecessaryAbstractClass:SecureChannelTestBase.kt$SecureChannelTestBase</ID>
+    <ID>UnnecessaryAbstractClass:ServerInterOpTest.kt$ServerInterOpTest</ID>
+    <ID>UnnecessaryAbstractClass:TwoGossipHostTestBase.kt$TwoGossipHostTestBase</ID>
+    <ID>UnusedPrivateMember:GossipScore.kt$GossipScore$msg: PubsubMessage</ID>
+    <ID>UnusedPrivateMember:GossipScore.kt$GossipScore$peer: P2PService.PeerHandler</ID>
+    <ID>UnusedPrivateMember:GossipV1_1Tests.kt$GossipV1_1Tests.ManyRoutersTest$outbound: Boolean = true</ID>
+    <ID>UnusedPrivateMember:MDnsDiscoveryTest.kt$MDnsDiscoveryTest$i</ID>
+    <ID>UnusedPrivateMember:Negotiator.kt$Negotiator$private val LS = "ls"</ID>
+    <ID>UnusedPrivateMember:RpcHandlerTest.kt$RpcHandlerTest$i</ID>
+    <ID>UnusedPrivateMember:ServerInterOpTest.kt$ServerInterOpTest$i</ID>
+    <ID>UnusedPrivateMember:TestChannel.kt$TestChannel.Companion$private val logger = LogManager.getLogger(TestChannel::class.java)</ID>
+    <ID>UnusedPrivateMember:TransportTests.kt$TransportTests$attempt</ID>
+    <ID>UnusedPrivateMember:TwoGossipHostTestBase.kt$TwoGossipHostTestBase$i</ID>
+    <ID>UtilityClassWithPublicConstructor:DnsAvailability.kt$DnsAvailability</ID>
+    <ID>VariableNaming:GossipParamsBuilder.kt$GossipParamsBuilder$private var D: Int? = null</ID>
+    <ID>VariableNaming:GossipParamsBuilder.kt$GossipParamsBuilder$private var DHigh: Int? = null</ID>
+    <ID>VariableNaming:GossipParamsBuilder.kt$GossipParamsBuilder$private var DLazy: Int? = null</ID>
+    <ID>VariableNaming:GossipParamsBuilder.kt$GossipParamsBuilder$private var DLow: Int? = null</ID>
+    <ID>VariableNaming:GossipParamsBuilder.kt$GossipParamsBuilder$private var DOut: Int? = null</ID>
+    <ID>VariableNaming:GossipParamsBuilder.kt$GossipParamsBuilder$private var DScore: Int? = null</ID>
+    <ID>VariableNaming:PubsubRouterTest.kt$PubsubRouterTest$val conn_1_2 = router1.connectSemiDuplex(router2, pubsubLogs = LogLevel.ERROR)</ID>
+    <ID>VariableNaming:PubsubRouterTest.kt$PubsubRouterTest$val conn_2_3 = router2.connectSemiDuplex(router3, pubsubLogs = LogLevel.ERROR)</ID>
+    <ID>VariableNaming:PubsubRouterTest.kt$PubsubRouterTest$val conn_3_1 = router3.connectSemiDuplex(router1, pubsubLogs = LogLevel.ERROR)</ID>
+    <ID>VariableNaming:Secp256k1.kt$Secp256k1PrivateKey$val s_ = if (s &lt;= S_UPPER_BOUND) s else S_FIXER_VALUE - s</ID>
+    <ID>VariableNaming:SeenCacheTest.kt$FastIdSeenCacheTest$val m1_1 = createPubsubMessage(1, 1)</ID>
+    <ID>VariableNaming:SeenCacheTest.kt$FastIdSeenCacheTest$val m1_1_1 = createPubsubMessage(1, 1)</ID>
+    <ID>VariableNaming:SeenCacheTest.kt$FastIdSeenCacheTest$val m1_2 = createPubsubMessage(1, 1)</ID>
+    <ID>VariableNaming:SeenCacheTest.kt$FastIdSeenCacheTest$val m1_2 = createPubsubMessage(1, 2)</ID>
+    <ID>VariableNaming:SeenCacheTest.kt$FastIdSeenCacheTest$val m1_2_1 = createPubsubMessage(1, 2)</ID>
+    <ID>VariableNaming:SeenCacheTest.kt$FastIdSeenCacheTest$val m1_3 = cache.getSeenMessage(m1_2) as TestPubsubMessage</ID>
+  </CurrentIssues>
+</SmellBaseline>
