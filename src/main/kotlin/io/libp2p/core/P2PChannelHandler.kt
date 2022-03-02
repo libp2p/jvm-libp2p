@@ -24,6 +24,7 @@ fun interface ChannelVisitor<TChannel : P2PChannel> {
     fun visit(channel: TChannel)
 
     fun toChannelHandler(): P2PChannelHandler<Unit> = P2PChannelHandler {
+        @Suppress("UNCHECKED_CAST")
         visit(it as TChannel)
         CompletableFuture.completedFuture(Unit)
     }
