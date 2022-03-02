@@ -40,7 +40,6 @@ interface StreamMuxer : ProtocolBinding<StreamMuxer.Session> {
          */
         fun <T> createStream(protocols: List<ProtocolBinding<T>>): StreamPromise<T>
 
-        @JvmDefault
         fun <T> createStream(protocol: ProtocolBinding<T>): StreamPromise<T> = createStream(listOf(protocol))
     }
 }
