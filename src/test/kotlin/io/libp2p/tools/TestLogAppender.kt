@@ -7,7 +7,7 @@ import org.apache.logging.log4j.core.Logger
 import org.apache.logging.log4j.core.appender.AbstractAppender
 import java.util.ArrayList
 
-class TestLogAppender : AbstractAppender("test", null, null), AutoCloseable {
+class TestLogAppender : AbstractAppender("test", null, null, false, null), AutoCloseable {
     val logs: MutableList<LogEvent> = ArrayList()
 
     fun install(): TestLogAppender {
