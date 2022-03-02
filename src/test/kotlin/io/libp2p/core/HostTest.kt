@@ -262,9 +262,9 @@ class HostTest {
         abstract fun interceptRead(buf: ByteBuf): ByteBuf
         abstract fun interceptWrite(buf: ByteBuf): ByteBuf
 
-        override fun visit(stream: Stream) {
+        override fun visit(channel: Stream) {
             var matched = false
-            stream.pushHandler(object : ChannelDuplexHandler() {
+            channel.pushHandler(object : ChannelDuplexHandler() {
 
                 override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
                     if (match(ctx)) {
