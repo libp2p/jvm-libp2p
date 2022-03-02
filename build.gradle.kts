@@ -246,5 +246,5 @@ fun findProperty(s: String) = project.findProperty(s) as String?
 
 val compileKotlin: KotlinCompile by tasks
 compileKotlin.kotlinOptions {
-    languageVersion = "1.4"
+    languageVersion = "1.6"
 }
