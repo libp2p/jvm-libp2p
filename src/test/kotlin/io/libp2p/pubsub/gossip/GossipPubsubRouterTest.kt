@@ -76,7 +76,7 @@ class GossipPubsubRouterTest : PubsubRouterTest({
 
         Assertions.assertTrue(routerCenter.inboundMessages.isEmpty())
 
-        val msgCount1 = receiveRouters.sumBy { it.inboundMessages.size }
+        val msgCount1 = receiveRouters.sumOf { it.inboundMessages.size }
         println("Messages received on first turn: $msgCount1")
 
         // The message shouldn't be broadcasted to all peers (mesh size is limited to 3)
@@ -86,7 +86,7 @@ class GossipPubsubRouterTest : PubsubRouterTest({
         // heartbeat where ihave/iwant should be used to deliver to all peers
         fuzz.timeController.addTime(Duration.ofSeconds(1))
 
-        val msgCount2 = receiveRouters.sumBy { it.inboundMessages.size }
+        val msgCount2 = receiveRouters.sumOf { it.inboundMessages.size }
         println("Messages received on second turn: $msgCount2")
 
         // now all peers should receive the message
@@ -102,7 +102,7 @@ class GossipPubsubRouterTest : PubsubRouterTest({
         // all routers should receive after 100 sec
         fuzz.timeController.addTime(Duration.ofSeconds(100))
 
-        val msgCount3 = receiveRouters.sumBy { it.inboundMessages.size }
+        val msgCount3 = receiveRouters.sumOf { it.inboundMessages.size }
         println("Messages received on third turn: $msgCount3")
 
         // now all peers should receive the message

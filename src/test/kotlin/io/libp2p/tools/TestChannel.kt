@@ -86,6 +86,7 @@ class TestChannel(
 
     override fun localAddress(): SocketAddress {
         // dummyIp can actually be null when this method is called in super constructor
+        @Suppress("USELESS_ELVIS")
         return InetSocketAddress(dummyIp ?: "255.255.255.255", 777)
     }
 
