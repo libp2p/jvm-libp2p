@@ -224,6 +224,7 @@ class GossipScore(
         }
     }
 
+    @Suppress("UNUSED_PARAMETER")
     fun notifyUnseenMessage(peer: P2PService.PeerHandler, msg: PubsubMessage) {
     }
 

@@ -53,7 +53,7 @@ interface Network {
     }
 
     /**
-     * Tries ot connect to the remote peer with [id] PeerId by specified addresses
+     * Tries to connect to the remote peer with [id] PeerId by specified addresses
      * If connection to this peer already exist, returns existing connection
      * Else tries to connect the peer by all supplied addresses in parallel
      * and completes the returned [Future] when any of connections succeeds

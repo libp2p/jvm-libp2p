@@ -22,7 +22,6 @@ interface PubsubMessage {
     val protobufMessage: Rpc.Message
     val messageId: MessageId
 
-    @JvmDefault
     val topics: List<Topic>
         get() = protobufMessage.topicIDsList
 

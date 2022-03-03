@@ -39,11 +39,11 @@ open class NullHost : Host {
         TODO("not implemented")
     }
 
-    override fun addStreamVisitor(handler: ChannelVisitor<Stream>) {
+    override fun addStreamVisitor(streamVisitor: ChannelVisitor<Stream>) {
         TODO("Not yet implemented")
     }
 
-    override fun removeStreamVisitor(handler: ChannelVisitor<Stream>) {
+    override fun removeStreamVisitor(streamVisitor: ChannelVisitor<Stream>) {
         TODO("Not yet implemented")
     }
 

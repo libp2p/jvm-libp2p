@@ -27,14 +27,12 @@ interface ProtocolBinding<out TController> {
     /**
      * Dials the specified peer, and attempts to connect this Protocol
      */
-    @JvmDefault
     fun dial(host: Host, addrWithPeer: Multiaddr): StreamPromise<out TController> {
         val peerId = addrWithPeer.getPeerId()
             ?: throw IllegalArgumentException("Expected remote peer ID in the dial Multiaddr: $addrWithPeer")
         return dial(host, peerId, addrWithPeer)
     }
 
-    @JvmDefault
     fun dial(host: Host, peer: PeerId, vararg addr: Multiaddr): StreamPromise<out TController> {
         return host.newStream(
             protocolDescriptor.announceProtocols,
@@ -53,7 +51,6 @@ interface ProtocolBinding<out TController> {
      * it doesn't know the exact protocol ids. This method converts this binding to
      * _initiator_ binding with explicit protocol id
      */
-    @JvmDefault
     fun toInitiator(protocols: List<ProtocolId>): ProtocolBinding<TController> {
         if (!protocolDescriptor.matchesAny(protocols)) throw Libp2pException("This binding doesn't support $protocols")
         val srcBinding = this

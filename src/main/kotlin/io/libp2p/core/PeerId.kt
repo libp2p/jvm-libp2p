@@ -12,7 +12,7 @@ import kotlin.random.Random
 
 /**
  * Represents the peer identity which is basically derived from the peer public key
- * @property bytes The peer id bytes which size should be  >= 32 and <= 50
+ * @property bytes The peer id bytes which size should be >= 32 and <= 50
  */
 class PeerId(val bytes: ByteArray) {
 

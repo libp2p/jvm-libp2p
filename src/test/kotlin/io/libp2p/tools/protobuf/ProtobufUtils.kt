@@ -25,19 +25,19 @@ fun parseProtobufBytesToString(str: String): ByteArray {
                         r
                     }
                     'a' -> 0x07
-                    'b' -> '\b'.toByte()
+                    'b' -> '\b'.code.toByte()
                     'f' -> 0xC
-                    'n' -> '\n'.toByte()
-                    'r' -> '\r'.toByte()
-                    't' -> '\t'.toByte()
+                    'n' -> '\n'.code.toByte()
+                    'r' -> '\r'.code.toByte()
+                    't' -> '\t'.code.toByte()
                     'v' -> 0x0b
-                    '\\' -> '\\'.toByte()
-                    '\'' -> '\''.toByte()
-                    '"' -> '"'.toByte()
+                    '\\' -> '\\'.code.toByte()
+                    '\'' -> '\''.code.toByte()
+                    '"' -> '"'.code.toByte()
                     else -> throw IllegalArgumentException("Invalid escape char")
                 }.also { pos++ }
             }
-            else -> str[pos++].toByte()
+            else -> str[pos++].code.toByte()
         }
     }
     return bytes.toByteArray()
