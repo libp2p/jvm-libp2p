@@ -59,6 +59,13 @@ class UvarintTest {
     }
 
     @Test
+    fun testRoundTripMaximumValue() {
+        val buf = Unpooled.buffer()
+        buf.writeUvarint(Long.MAX_VALUE)
+        assertEquals(Long.MAX_VALUE, buf.readUvarint())
+    }
+
+    @Test
     fun testEncodeNegativeValue() {
         val buf = Unpooled.buffer()
         val exception = assertThrows<IllegalArgumentException> { buf.writeUvarint(-1) }
