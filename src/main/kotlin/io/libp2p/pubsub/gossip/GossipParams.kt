@@ -238,7 +238,7 @@ data class GossipParams(
         check(DOut <= D / 2, "DOut should be <= D/2")
         check(DLow <= D, "DLow should be <= D")
         check(DHigh >= D, "DHigh should be >= D")
-        check(gossipFactor in 0.0..1.0, "gossipFactor should be in range [0.0, 1.1]")
+        check(gossipFactor in 0.0..1.0, "gossipFactor should be in range [0.0, 1.0]")
     }
 
     companion object {
@@ -293,11 +293,11 @@ data class GossipScoreParams(
     val opportunisticGraftThreshold: Double = 0.0
 ) {
     init {
-        check(gossipThreshold <= 0, "gossipThreshold should be < 0")
+        check(gossipThreshold <= 0, "gossipThreshold should be <= 0")
         check(publishThreshold <= gossipThreshold, "publishThreshold should be <= than gossipThreshold")
-        check(graylistThreshold <= publishThreshold, "gossipThreshold should be < publishThreshold")
-        check(acceptPXThreshold >= 0, "acceptPXThreshold should be > 0")
-        check(opportunisticGraftThreshold >= 0, "opportunisticGraftThreshold should be > 0")
+        check(graylistThreshold <= publishThreshold, "graylistThreshold should be <= publishThreshold")
+        check(acceptPXThreshold >= 0, "acceptPXThreshold should be >= 0")
+        check(opportunisticGraftThreshold >= 0, "opportunisticGraftThreshold should be >= 0")
     }
 
     companion object {
