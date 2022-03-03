@@ -77,12 +77,9 @@ fun ByteArray.readUvarint(): Pair<Long, ByteArray>? {
 
     var index = 0
     var result: Long? = null
-    for (i in 0..9) {
+    for (i in 0..8) {
         val b = this.get(index++).toUByte().toShort()
         if (b < 0x80) {
-            if (i == 9 && b > 1) {
-                return null
-            }
             result = x or (b.toLong() shl s)
             break
         }
@@ -90,9 +87,10 @@ fun ByteArray.readUvarint(): Pair<Long, ByteArray>? {
         s += 7
     }
 
-    if (result != null && result <= size) {
+    // Check that we didn't break early.
+    if (result != null && index <= size) {
         return Pair(result, slice(IntRange(index, size - 1)).toByteArray())
     }
 
-    return null
+    throw IllegalStateException("uvarint too long")
 }
