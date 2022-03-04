@@ -107,6 +107,45 @@ class GossipParamsTest {
     }
 
     @Test
+    fun `test invalid dout greater than d div 2`() {
+        val exception = assertThrows<IllegalArgumentException> {
+            GossipParams.builder()
+                .D(2)
+                .DOut(2)
+                .DLow(3)
+                .DHigh(2)
+                .build()
+        }
+        assertEquals("DOut should be <= D/2", exception.message)
+    }
+
+    @Test
+    fun `test invalid dlow greater than d`() {
+        val exception = assertThrows<IllegalArgumentException> {
+            GossipParams.builder()
+                .D(2)
+                .DOut(1)
+                .DLow(3)
+                .DHigh(2)
+                .build()
+        }
+        assertEquals("DLow should be <= D", exception.message)
+    }
+
+    @Test
+    fun `test invalid dhigh less than d`() {
+        val exception = assertThrows<IllegalArgumentException> {
+            GossipParams.builder()
+                .D(2)
+                .DOut(1)
+                .DLow(2)
+                .DHigh(1)
+                .build()
+        }
+        assertEquals("DHigh should be >= D", exception.message)
+    }
+
+    @Test
     fun `test invalid gossip factor less than zero`() {
         val exception = assertThrows<IllegalArgumentException> {
             GossipParams.builder()
