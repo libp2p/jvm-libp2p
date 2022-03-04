@@ -236,6 +236,7 @@ class HostTest {
         override fun visit(channel: TChannel) {
             channel.pushHandler(object : ChannelDuplexHandler() {
                 override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
+                    @Suppress("UNCHECKED_CAST")
                     msg as TMessage
                     inboundData += retainMessage(msg)
                     println("####   --> [$id]: $msg")
@@ -243,6 +244,7 @@ class HostTest {
                 }
 
                 override fun write(ctx: ChannelHandlerContext, msg: Any, promise: ChannelPromise) {
+                    @Suppress("UNCHECKED_CAST")
                     msg as TMessage
                     outboundData += retainMessage(msg)
                     println("#### <--   [$id]: $msg")
@@ -262,9 +264,9 @@ class HostTest {
         abstract fun interceptRead(buf: ByteBuf): ByteBuf
         abstract fun interceptWrite(buf: ByteBuf): ByteBuf
 
-        override fun visit(stream: Stream) {
+        override fun visit(channel: Stream) {
             var matched = false
-            stream.pushHandler(object : ChannelDuplexHandler() {
+            channel.pushHandler(object : ChannelDuplexHandler() {
 
                 override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
                     if (match(ctx)) {

@@ -52,7 +52,7 @@ class GossipV1_1Tests {
     private fun newMessage(topic: Topic, seqNo: Long, data: ByteArray) =
         DefaultPubsubMessage(newProtoMessage(topic, seqNo, data))
 
-    protected open fun getMessageId(msg: Rpc.Message): MessageId = msg.from.toWBytes() + msg.seqno.toWBytes()
+    protected fun getMessageId(msg: Rpc.Message): MessageId = msg.from.toWBytes() + msg.seqno.toWBytes()
 
     class ManyRoutersTest(
         val mockRouterCount: Int = 10,
@@ -68,7 +68,7 @@ class GossipV1_1Tests {
         val gossipRouter = router0.router as GossipRouter
         val mockRouters = routers.map { it.router as MockRouter }
 
-        fun connectAll(outbound: Boolean = true) = connect(routers.indices)
+        fun connectAll() = connect(routers.indices)
         fun connect(routerIndexes: IntRange, outbound: Boolean = true): List<SemiduplexConnection> {
             val list =
                 routers.slice(routerIndexes).map {
@@ -349,7 +349,7 @@ class GossipV1_1Tests {
         assertTrue(test.gossipRouter.peers.isEmpty())
         test.fuzz.timeController.addTime(1.seconds)
 
-        val connection = test.router1.connectSemiDuplex(test.router2)
+        test.router1.connectSemiDuplex(test.router2)
         test.fuzz.timeController.addTime(1.seconds)
 
         assertEquals(1, test.gossipRouter.score.peerScores.size)

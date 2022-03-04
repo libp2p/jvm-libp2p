@@ -12,7 +12,7 @@ object Base58 {
     init {
         Arrays.fill(INDEXES, -1)
         for (i in 0 until ALPHABET.length) {
-            INDEXES[ALPHABET[i].toInt()] = i
+            INDEXES[ALPHABET[i].code] = i
         }
     }
 
@@ -62,7 +62,7 @@ object Base58 {
         // Convert the base58-encoded ASCII chars to a base58 byte sequence (base58 digits).
         val input58 = ByteArray(input.length)
         for ((i, c) in input.withIndex()) {
-            val v = if (c.toInt() < 128) INDEXES[c.toInt()].toByte() else -1
+            val v = if (c.code < 128) INDEXES[c.code].toByte() else -1
             if (v < 0) throw RuntimeException("invalid base58 encoded form")
             input58[i] = v
         }

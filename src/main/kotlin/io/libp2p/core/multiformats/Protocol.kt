@@ -187,7 +187,7 @@ private val ONION_PARSER: (Protocol, String) -> ByteArray = { _, addr ->
     if (split[0].length != 16) throw IllegalArgumentException("failed to parse addr: $addr not a Tor onion address.")
 
     val base32 = Base32()
-    val base32Text = split[0].toUpperCase()
+    val base32Text = split[0].uppercase()
     if (!base32.isInAlphabet(base32Text)) throw IllegalArgumentException("Invalid Base32 string in the Onion address: $base32Text")
     val onionHostBytes = base32.decode(base32Text)
     val port = split[1].toInt()
@@ -203,5 +203,5 @@ private val ONION_STRINGIFIER: (Protocol, ByteArray) -> String = { _, bytes ->
     val byteBuf = bytes.toByteBuf()
     val host = byteBuf.readBytes(10).toByteArray()
     val port = byteBuf.readUnsignedShort()
-    String(Base32().encode(host)).toLowerCase() + ":" + port
+    String(Base32().encode(host)).lowercase() + ":" + port
 }
