@@ -276,7 +276,7 @@ data class GossipScoreParams(
 
     /**
      * [graylistThreshold] is the score threshold below which message processing is supressed altogether,
-     * implementing an effective graylist according to peer score; should be negative and <= [publishThreshold].
+     * implementing an effective graylist according to peer score; should be negative and < [publishThreshold].
      */
     val graylistThreshold: Double = 0.0,
 
@@ -295,7 +295,10 @@ data class GossipScoreParams(
     init {
         check(gossipThreshold <= 0, "gossipThreshold should be <= 0")
         check(publishThreshold <= gossipThreshold, "publishThreshold should be <= than gossipThreshold")
-        check(graylistThreshold <= publishThreshold, "graylistThreshold should be <= publishThreshold")
+        check(
+            (publishThreshold == 0.0 && graylistThreshold == 0.0) || graylistThreshold < publishThreshold,
+            "graylistThreshold should be < publishThreshold"
+        )
         check(acceptPXThreshold >= 0, "acceptPXThreshold should be >= 0")
         check(opportunisticGraftThreshold >= 0, "opportunisticGraftThreshold should be >= 0")
     }
