@@ -234,6 +234,10 @@ data class GossipParams(
     val connectCallback: (PeerId, ByteArray) -> Unit = { _: PeerId, _: ByteArray -> }
 ) {
     init {
+        check(D >= 0, "D should be >= 0")
+        check(DOut >= 0, "DOut should be >= 0")
+        check(DLow >= 0, "DLow should be >= 0")
+        check(DHigh >= 0, "DHigh should be >= 0")
         check(DOut < DLow || (DOut == 0 && DLow == 0), "DOut should be < DLow or both 0")
         check(DOut <= D / 2, "DOut should be <= D/2")
         check(DLow <= D, "DLow should be <= D")
@@ -296,8 +300,8 @@ data class GossipScoreParams(
         check(gossipThreshold <= 0, "gossipThreshold should be <= 0")
         check(publishThreshold <= gossipThreshold, "publishThreshold should be <= than gossipThreshold")
         check(
-            (publishThreshold == 0.0 && graylistThreshold == 0.0) || graylistThreshold < publishThreshold,
-            "graylistThreshold should be < publishThreshold"
+            graylistThreshold < publishThreshold || (publishThreshold == 0.0 && graylistThreshold == 0.0),
+            "graylistThreshold should be < publishThreshold or both 0"
         )
         check(acceptPXThreshold >= 0, "acceptPXThreshold should be >= 0")
         check(opportunisticGraftThreshold >= 0, "opportunisticGraftThreshold should be >= 0")

@@ -6,6 +6,128 @@ import org.junit.jupiter.api.assertThrows
 
 class GossipParamsTest {
 
+    /* GossipParams */
+
+    @Test
+    fun `test default gossip params`() {
+        GossipParams.builder()
+            .build()
+    }
+
+    @Test
+    fun `test valid gossip param all zero`() {
+        GossipParams.builder()
+            .D(0)
+            .DOut(0)
+            .DLow(0)
+            .DHigh(0)
+            .build()
+    }
+
+    @Test
+    fun `test valid dout less than dlow bigger nums`() {
+        GossipParams.builder()
+            .D(2000)
+            .DOut(1000)
+            .DLow(2000)
+            .DHigh(2000)
+            .build()
+    }
+
+    @Test
+    fun `test valid dout and dlow are zero`() {
+        GossipParams.builder()
+            .D(2)
+            .DOut(0)
+            .DLow(0)
+            .DHigh(2)
+            .build()
+    }
+
+    @Test
+    fun `test invalid d is negative`() {
+        val exception = assertThrows<IllegalArgumentException> {
+            GossipParams.builder()
+                .D(-1)
+                .build()
+        }
+        assertEquals("D should be >= 0", exception.message)
+    }
+
+    @Test
+    fun `test invalid dout is negative`() {
+        val exception = assertThrows<IllegalArgumentException> {
+            GossipParams.builder()
+                .DOut(-1)
+                .build()
+        }
+        assertEquals("DOut should be >= 0", exception.message)
+    }
+
+    @Test
+    fun `test invalid dlow is negative`() {
+        val exception = assertThrows<IllegalArgumentException> {
+            GossipParams.builder()
+                .DLow(-1)
+                .build()
+        }
+        assertEquals("DLow should be >= 0", exception.message)
+    }
+
+    @Test
+    fun `test invalid dhigh is negative`() {
+        val exception = assertThrows<IllegalArgumentException> {
+            GossipParams.builder()
+                .DHigh(-1)
+                .build()
+        }
+        assertEquals("DHigh should be >= 0", exception.message)
+    }
+
+    @Test
+    fun `test invalid dout same as dlow`() {
+        val exception = assertThrows<IllegalArgumentException> {
+            GossipParams.builder()
+                .DOut(1)
+                .DLow(1)
+                .build()
+        }
+        assertEquals("DOut should be < DLow or both 0", exception.message)
+    }
+
+    @Test
+    fun `test invalid dout more than dlow`() {
+        val exception = assertThrows<IllegalArgumentException> {
+            GossipParams.builder()
+                .DOut(2)
+                .DLow(1)
+                .build()
+        }
+        assertEquals("DOut should be < DLow or both 0", exception.message)
+    }
+
+    @Test
+    fun `test invalid gossip factor less than zero`() {
+        val exception = assertThrows<IllegalArgumentException> {
+            GossipParams.builder()
+                .gossipFactor(-0.01)
+                .build()
+        }
+        assertEquals("gossipFactor should be in range [0.0, 1.0]", exception.message)
+    }
+
+    @Test
+    fun `test invalid gossip factor more than one`() {
+        val exception = assertThrows<IllegalArgumentException> {
+            GossipParams.builder()
+                .gossipFactor(1.01)
+                .build()
+        }
+        assertEquals("gossipFactor should be in range [0.0, 1.0]", exception.message)
+    }
+
+    /* GossipScoreParams */
+
     @Test
     fun `test gossip scores disabled`() {
         GossipScoreParams.builder()
@@ -74,7 +196,7 @@ class GossipParamsTest {
                 .graylistThreshold(-0.01)
                 .build()
         }
-        assertEquals("graylistThreshold should be < publishThreshold", exception.message)
+        assertEquals("graylistThreshold should be < publishThreshold or both 0", exception.message)
     }
 
     @Test
@@ -84,7 +206,7 @@ class GossipParamsTest {
                 .graylistThreshold(0.01)
                 .build()
         }
-        assertEquals("graylistThreshold should be < publishThreshold", exception.message)
+        assertEquals("graylistThreshold should be < publishThreshold or both 0", exception.message)
     }
 
     @Test
@@ -95,7 +217,7 @@ class GossipParamsTest {
                 .publishThreshold(-0.02)
                 .build()
         }
-        assertEquals("graylistThreshold should be < publishThreshold", exception.message)
+        assertEquals("graylistThreshold should be < publishThreshold or both 0", exception.message)
     }
 
     @Test
@@ -131,4 +253,8 @@ class GossipParamsTest {
         }
         assertEquals("opportunisticGraftThreshold should be >= 0", exception.message)
     }
+
+    /* GossipPeerScoreParams */
+
+    /* GossipTopicScoreParams */
 }
