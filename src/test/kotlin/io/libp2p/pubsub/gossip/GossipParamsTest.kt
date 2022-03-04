@@ -295,5 +295,155 @@ class GossipParamsTest {
 
     /* GossipPeerScoreParams */
 
+    @Test
+    fun `test default gossip peer score params`() {
+        GossipPeerScoreParams.builder()
+            .build()
+    }
+
+    @Test
+    fun `test valid topicScoreCap`() {
+        GossipPeerScoreParams.builder()
+            .topicScoreCap(0.01)
+            .build()
+    }
+
+    @Test
+    fun `test invalid topicScoreCap is negative`() {
+        val exception = assertThrows<IllegalArgumentException> {
+            GossipPeerScoreParams.builder()
+                .topicScoreCap(-0.01)
+                .build()
+        }
+        assertEquals("topicScoreCap should be >= 0", exception.message)
+    }
+
+    @Test
+    fun `test valid appSpecificWeight`() {
+        GossipPeerScoreParams.builder()
+            .appSpecificWeight(0.01)
+            .build()
+    }
+
+    @Test
+    fun `test invalid appSpecificWeight is negative`() {
+        val exception = assertThrows<IllegalArgumentException> {
+            GossipPeerScoreParams.builder()
+                .appSpecificWeight(-0.01)
+                .build()
+        }
+        assertEquals("appSpecificWeight should be >= 0", exception.message)
+    }
+
+    @Test
+    fun `test valid ipColocationFactorWeight with ipColocationFactorThreshold`() {
+        GossipPeerScoreParams.builder()
+            .ipColocationFactorWeight(-0.01)
+            .ipColocationFactorThreshold(1)
+            .build()
+    }
+
+    @Test
+    fun `test invalid ipColocationFactorWeight is positive`() {
+        val exception = assertThrows<IllegalArgumentException> {
+            GossipPeerScoreParams.builder()
+                .ipColocationFactorWeight(0.01)
+                .ipColocationFactorThreshold(1)
+                .build()
+        }
+        assertEquals("ipColocationFactorWeight should be <= 0", exception.message)
+    }
+
+    @Test
+    fun `test invalid ipColocationFactorWeight no ipColocationFactorThreshold`() {
+        val exception = assertThrows<IllegalArgumentException> {
+            GossipPeerScoreParams.builder()
+                .ipColocationFactorWeight(-0.01)
+                .build()
+        }
+        assertEquals("ipColocationFactorThreshold should be >= 1", exception.message)
+    }
+
+    @Test
+    fun `test invalid ipColocationFactorWeight invalid ipColocationFactorThreshold`() {
+        val exception = assertThrows<IllegalArgumentException> {
+            GossipPeerScoreParams.builder()
+                .ipColocationFactorWeight(-0.01)
+                .ipColocationFactorThreshold(0)
+                .build()
+        }
+        assertEquals("ipColocationFactorThreshold should be >= 1", exception.message)
+    }
+
+    @Test
+    fun `test valid behaviourPenaltyWeight`() {
+        GossipPeerScoreParams.builder()
+            .behaviourPenaltyWeight(-0.01)
+            .build()
+    }
+
+    @Test
+    fun `test invalid behaviourPenaltyWeight`() {
+        val exception = assertThrows<IllegalArgumentException> {
+            GossipPeerScoreParams.builder()
+                .behaviourPenaltyWeight(0.01)
+                .build()
+        }
+        assertEquals("behaviourPenaltyWeight should be <= 0", exception.message)
+    }
+
+    @Test
+    fun `test valid behaviourPenaltyDecay`() {
+        GossipPeerScoreParams.builder()
+            .behaviourPenaltyDecay(0.01)
+            .build()
+    }
+
+    @Test
+    fun `test valid behaviourPenaltyDecay with behaviourPenaltyWeight`() {
+        GossipPeerScoreParams.builder()
+            .behaviourPenaltyWeight(-0.01)
+            .behaviourPenaltyDecay(0.01)
+            .build()
+    }
+
+    @Test
+    fun `test invalid behaviourPenaltyDecay`() {
+        val exception = assertThrows<IllegalArgumentException> {
+            GossipPeerScoreParams.builder()
+                .behaviourPenaltyDecay(1.01)
+                .build()
+        }
+        assertEquals("behaviourPenaltyDecay should be in range (0.0, 1.0]", exception.message)
+    }
+
+    @Test
+    fun `test invalid behaviourPenaltyDecay with behaviourPenaltyWeight`() {
+        val exception = assertThrows<IllegalArgumentException> {
+            GossipPeerScoreParams.builder()
+                .behaviourPenaltyWeight(-0.01)
+                .behaviourPenaltyDecay(1.01)
+                .build()
+        }
+        assertEquals("behaviourPenaltyDecay should be in range (0.0, 1.0]", exception.message)
+    }
+
+    @Test
+    fun `test valid behaviourPenaltyThreshold`() {
+        GossipPeerScoreParams.builder()
+            .behaviourPenaltyThreshold(0.01)
+            .build()
+    }
+
+    @Test
+    fun `test invalid behaviourPenaltyThreshold`() {
+        val exception = assertThrows<IllegalArgumentException> {
+            GossipPeerScoreParams.builder()
+                .behaviourPenaltyThreshold(-0.01)
+                .build()
+        }
+        assertEquals("behaviourPenaltyThreshold should be >= 0", exception.message)
+    }
+
     /* GossipTopicScoreParams */
 }
