@@ -355,7 +355,7 @@ class GossipParamsTest {
     }
 
     @Test
-    fun `test invalid ipColocationFactorWeight no ipColocationFactorThreshold`() {
+    fun `test invalid ipColocationFactorWeight is negative no ipColocationFactorThreshold`() {
         val exception = assertThrows<IllegalArgumentException> {
             GossipPeerScoreParams.builder()
                 .ipColocationFactorWeight(-0.01)
@@ -365,7 +365,7 @@ class GossipParamsTest {
     }
 
     @Test
-    fun `test invalid ipColocationFactorWeight invalid ipColocationFactorThreshold`() {
+    fun `test invalid ipColocationFactorWeight and invalid ipColocationFactorThreshold`() {
         val exception = assertThrows<IllegalArgumentException> {
             GossipPeerScoreParams.builder()
                 .ipColocationFactorWeight(-0.01)
@@ -383,7 +383,7 @@ class GossipParamsTest {
     }
 
     @Test
-    fun `test invalid behaviourPenaltyWeight`() {
+    fun `test invalid behaviourPenaltyWeight is positive`() {
         val exception = assertThrows<IllegalArgumentException> {
             GossipPeerScoreParams.builder()
                 .behaviourPenaltyWeight(0.01)
@@ -400,7 +400,7 @@ class GossipParamsTest {
     }
 
     @Test
-    fun `test valid behaviourPenaltyDecay with behaviourPenaltyWeight`() {
+    fun `test valid behaviourPenaltyDecay is negative with behaviourPenaltyWeight`() {
         GossipPeerScoreParams.builder()
             .behaviourPenaltyWeight(-0.01)
             .behaviourPenaltyDecay(0.01)
@@ -418,7 +418,7 @@ class GossipParamsTest {
     }
 
     @Test
-    fun `test invalid behaviourPenaltyDecay with behaviourPenaltyWeight`() {
+    fun `test invalid behaviourPenaltyDecay is negative with behaviourPenaltyWeight`() {
         val exception = assertThrows<IllegalArgumentException> {
             GossipPeerScoreParams.builder()
                 .behaviourPenaltyWeight(-0.01)
@@ -436,7 +436,7 @@ class GossipParamsTest {
     }
 
     @Test
-    fun `test invalid behaviourPenaltyThreshold`() {
+    fun `test invalid behaviourPenaltyThreshold is negative`() {
         val exception = assertThrows<IllegalArgumentException> {
             GossipPeerScoreParams.builder()
                 .behaviourPenaltyThreshold(-0.01)
@@ -446,4 +446,141 @@ class GossipParamsTest {
     }
 
     /* GossipTopicScoreParams */
+
+    @Test
+    fun `test default gossip topic score params`() {
+        GossipTopicScoreParams.builder()
+            .build()
+    }
+
+    @Test
+    fun `test valid timeInMeshWeight`() {
+        GossipTopicScoreParams.builder()
+            .timeInMeshWeight(0.01)
+            .build()
+    }
+
+    @Test
+    fun `test invalid timeInMeshWeight is negative`() {
+        val exception = assertThrows<IllegalArgumentException> {
+            GossipTopicScoreParams.builder()
+                .timeInMeshWeight(-0.01)
+                .build()
+        }
+        assertEquals("timeInMeshWeight should be >= 0", exception.message)
+    }
+
+    @Test
+    fun `test valid timeInMeshCap`() {
+        GossipTopicScoreParams.builder()
+            .timeInMeshCap(0.01)
+            .build()
+    }
+
+    @Test
+    fun `test invalid timeInMeshCap is negative`() {
+        val exception = assertThrows<IllegalArgumentException> {
+            GossipTopicScoreParams.builder()
+                .timeInMeshCap(-0.01)
+                .build()
+        }
+        assertEquals("timeInMeshCap should be >= 0", exception.message)
+    }
+
+    @Test
+    fun `test valid firstMessageDeliveriesWeight`() {
+        GossipTopicScoreParams.builder()
+            .firstMessageDeliveriesWeight(0.01)
+            .build()
+    }
+
+    @Test
+    fun `test invalid firstMessageDeliveriesWeight is negative`() {
+        val exception = assertThrows<IllegalArgumentException> {
+            GossipTopicScoreParams.builder()
+                .firstMessageDeliveriesWeight(-0.01)
+                .build()
+        }
+        assertEquals("firstMessageDeliveriesWeight should be >= 0", exception.message)
+    }
+
+    @Test
+    fun `test valid meshMessageDeliveriesWeight`() {
+        GossipTopicScoreParams.builder()
+            .meshMessageDeliveriesWeight(-0.01)
+            .build()
+    }
+
+    @Test
+    fun `test invalid meshMessageDeliveriesWeight is positive`() {
+        val exception = assertThrows<IllegalArgumentException> {
+            GossipTopicScoreParams.builder()
+                .meshMessageDeliveriesWeight(0.01)
+                .build()
+        }
+        assertEquals("meshMessageDeliveriesWeight should be <= 0", exception.message)
+    }
+
+    @Test
+    fun `test valid meshMessageDeliveriesThreshold and meshMessageDeliveriesCap`() {
+        GossipTopicScoreParams.builder()
+            .meshMessageDeliveriesThreshold(0.01)
+            .meshMessageDeliveriesCap(0.01)
+            .build()
+    }
+
+    @Test
+    fun `test invalid meshMessageDeliveriesThreshold is negative`() {
+        val exception = assertThrows<IllegalArgumentException> {
+            GossipTopicScoreParams.builder()
+                .meshMessageDeliveriesThreshold(-0.01)
+                .build()
+        }
+        assertEquals("meshMessageDeliveriesThreshold should be >= 0", exception.message)
+    }
+
+    @Test
+    fun `test invalid meshMessageDeliveriesCap is less than meshMessageDeliveriesThreshold`() {
+        val exception = assertThrows<IllegalArgumentException> {
+            GossipTopicScoreParams.builder()
+                .meshMessageDeliveriesThreshold(0.01)
+                .meshMessageDeliveriesCap(-0.01)
+                .build()
+        }
+        assertEquals("meshMessageDeliveriesCap should be >= meshMessageDeliveriesThreshold", exception.message)
+    }
+
+    @Test
+    fun `test valid meshFailurePenaltyWeight`() {
+        GossipTopicScoreParams.builder()
+            .meshFailurePenaltyWeight(-0.01)
+            .build()
+    }
+
+    @Test
+    fun `test invalid meshFailurePenaltyWeight is positive`() {
+        val exception = assertThrows<IllegalArgumentException> {
+            GossipTopicScoreParams.builder()
+                .meshFailurePenaltyWeight(0.01)
+                .build()
+        }
+        assertEquals("meshFailurePenaltyWeight should be <= 0", exception.message)
+    }
+
+    @Test
+    fun `test valid invalidMessageDeliveriesWeight`() {
+        GossipTopicScoreParams.builder()
+            .invalidMessageDeliveriesWeight(-0.01)
+            .build()
+    }
+
+    @Test
+    fun `test invalid invalidMessageDeliveriesWeight is positive`() {
+        val exception = assertThrows<IllegalArgumentException> {
+            GossipTopicScoreParams.builder()
+                .invalidMessageDeliveriesWeight(0.01)
+                .build()
+        }
+        assertEquals("invalidMessageDeliveriesWeight should be <= 0", exception.message)
+    }
 }

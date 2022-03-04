@@ -519,17 +519,17 @@ data class GossipTopicScoreParams(
     val invalidMessageDeliveriesDecay: Double = 0.0
 ) {
     init {
-        check(timeInMeshWeight >= 0, "timeInMeshWeight >= 0")
-        check(timeInMeshCap >= 0, "timeInMeshCap >= 0")
-        check(firstMessageDeliveriesWeight >= 0, "firstMessageDeliveriesWeight >= 0")
-        check(meshMessageDeliveriesWeight <= 0, "meshMessageDeliveriesWeight <= 0")
-        check(meshMessageDeliveriesThreshold >= 0, "meshMessageDeliveriesThreshold >= 0")
+        check(timeInMeshWeight >= 0, "timeInMeshWeight should be >= 0")
+        check(timeInMeshCap >= 0, "timeInMeshCap should be >= 0")
+        check(firstMessageDeliveriesWeight >= 0, "firstMessageDeliveriesWeight should be >= 0")
+        check(meshMessageDeliveriesWeight <= 0, "meshMessageDeliveriesWeight should be <= 0")
+        check(meshMessageDeliveriesThreshold >= 0, "meshMessageDeliveriesThreshold should be >= 0")
         check(
             meshMessageDeliveriesCap >= meshMessageDeliveriesThreshold,
-            "meshMessageDeliveriesCap >= meshMessageDeliveriesThreshold"
+            "meshMessageDeliveriesCap should be >= meshMessageDeliveriesThreshold"
         )
-        check(meshFailurePenaltyWeight <= 0, "meshFailurePenaltyWeight <= 0")
-        check(invalidMessageDeliveriesWeight <= 0, "invalidMessageDeliveriesWeight <= 0")
+        check(meshFailurePenaltyWeight <= 0, "meshFailurePenaltyWeight should be <= 0")
+        check(invalidMessageDeliveriesWeight <= 0, "invalidMessageDeliveriesWeight should be <= 0")
     }
     companion object {
         @JvmStatic
