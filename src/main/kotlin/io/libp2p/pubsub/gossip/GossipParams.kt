@@ -234,11 +234,15 @@ data class GossipParams(
     val connectCallback: (PeerId, ByteArray) -> Unit = { _: PeerId, _: ByteArray -> }
 ) {
     init {
+        check(D >= 0, "D should be >= 0")
+        check(DOut >= 0, "DOut should be >= 0")
+        check(DLow >= 0, "DLow should be >= 0")
+        check(DHigh >= 0, "DHigh should be >= 0")
         check(DOut < DLow || (DOut == 0 && DLow == 0), "DOut should be < DLow or both 0")
         check(DOut <= D / 2, "DOut should be <= D/2")
         check(DLow <= D, "DLow should be <= D")
         check(DHigh >= D, "DHigh should be >= D")
-        check(gossipFactor in 0.0..1.0, "gossipFactor should be in range [0.0, 1.1]")
+        check(gossipFactor in 0.0..1.0, "gossipFactor should be in range [0.0, 1.0]")
     }
 
     companion object {
@@ -276,7 +280,7 @@ data class GossipScoreParams(
 
     /**
      * [graylistThreshold] is the score threshold below which message processing is supressed altogether,
-     * implementing an effective graylist according to peer score; should be negative and <= [publishThreshold].
+     * implementing an effective graylist according to peer score; should be negative and < [publishThreshold].
      */
     val graylistThreshold: Double = 0.0,
 
@@ -293,11 +297,14 @@ data class GossipScoreParams(
     val opportunisticGraftThreshold: Double = 0.0
 ) {
     init {
-        check(gossipThreshold <= 0, "gossipThreshold should be < 0")
+        check(gossipThreshold <= 0, "gossipThreshold should be <= 0")
         check(publishThreshold <= gossipThreshold, "publishThreshold should be <= than gossipThreshold")
-        check(graylistThreshold <= publishThreshold, "gossipThreshold should be < publishThreshold")
-        check(acceptPXThreshold >= 0, "acceptPXThreshold should be > 0")
-        check(opportunisticGraftThreshold >= 0, "opportunisticGraftThreshold should be > 0")
+        check(
+            graylistThreshold < publishThreshold || (publishThreshold == 0.0 && graylistThreshold == 0.0),
+            "graylistThreshold should be < publishThreshold or both 0"
+        )
+        check(acceptPXThreshold >= 0, "acceptPXThreshold should be >= 0")
+        check(opportunisticGraftThreshold >= 0, "opportunisticGraftThreshold should be >= 0")
     }
 
     companion object {
@@ -396,7 +403,7 @@ data class GossipPeerScoreParams(
         )
         check(behaviourPenaltyWeight <= 0.0, "behaviourPenaltyWeight should be <= 0")
         check(
-            behaviourPenaltyWeight == 0.0 || (behaviourPenaltyDecay > 0.0 && behaviourPenaltyDecay <= 1.0),
+            behaviourPenaltyDecay > 0.0 && behaviourPenaltyDecay <= 1.0,
             "behaviourPenaltyDecay should be in range (0.0, 1.0]"
         )
         check(behaviourPenaltyThreshold >= 0.0, "behaviourPenaltyThreshold should be >= 0")
@@ -512,17 +519,17 @@ data class GossipTopicScoreParams(
     val invalidMessageDeliveriesDecay: Double = 0.0
 ) {
     init {
-        check(timeInMeshWeight >= 0, "timeInMeshWeight >= 0")
-        check(timeInMeshCap >= 0, "timeInMeshCap >= 0")
-        check(firstMessageDeliveriesWeight >= 0, "firstMessageDeliveriesWeight >= 0")
-        check(meshMessageDeliveriesWeight <= 0, "meshMessageDeliveriesWeight <= 0")
-        check(meshMessageDeliveriesThreshold >= 0, "meshMessageDeliveriesThreshold >= 0")
+        check(timeInMeshWeight >= 0, "timeInMeshWeight should be >= 0")
+        check(timeInMeshCap >= 0, "timeInMeshCap should be >= 0")
+        check(firstMessageDeliveriesWeight >= 0, "firstMessageDeliveriesWeight should be >= 0")
+        check(meshMessageDeliveriesWeight <= 0, "meshMessageDeliveriesWeight should be <= 0")
+        check(meshMessageDeliveriesThreshold >= 0, "meshMessageDeliveriesThreshold should be >= 0")
         check(
             meshMessageDeliveriesCap >= meshMessageDeliveriesThreshold,
-            "meshMessageDeliveriesCap >= meshMessageDeliveriesThreshold"
+            "meshMessageDeliveriesCap should be >= meshMessageDeliveriesThreshold"
         )
-        check(meshFailurePenaltyWeight <= 0, "meshFailurePenaltyWeight <= 0")
-        check(invalidMessageDeliveriesWeight <= 0, "invalidMessageDeliveriesWeight <= 0")
+        check(meshFailurePenaltyWeight <= 0, "meshFailurePenaltyWeight should be <= 0")
+        check(invalidMessageDeliveriesWeight <= 0, "invalidMessageDeliveriesWeight should be <= 0")
     }
     companion object {
         @JvmStatic
