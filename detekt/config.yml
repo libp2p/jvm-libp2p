@@ -8,26 +8,7 @@ empty-blocks:
   active: false
 
 style:
-  ForbiddenComment:
-    active: false
-  MagicNumber:
-    active: false
-  MaxLineLength:
-    active: false
-  MayBeConst:
-    active: false
-  ProtectedMemberInFinalClass:
-    active: false
-  ReturnCount:
-    active: false
-  ThrowsCount:
-    active: false
-  UnnecessaryAbstractClass:
-    active: false
-  UnusedPrivateMember:
-    active: false
-  UtilityClassWithPublicConstructor:
-    active: false
+  active: false
 
 potential-bugs:
   ExplicitGarbageCollectionCall:
