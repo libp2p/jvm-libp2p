@@ -4,7 +4,6 @@ interface TopicSubscriptionFilter {
 
     fun canSubscribe(topic: Topic): Boolean
 
-    @JvmDefault
     fun filterIncomingSubscriptions(
         subscriptions: Collection<PubsubSubscription>,
         currentlySubscribedTopics: Collection<Topic>

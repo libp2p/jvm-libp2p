@@ -16,7 +16,6 @@ fun interface P2PChannelHandler<TController> {
      */
     fun initChannel(ch: P2PChannel): CompletableFuture<TController>
 
-    @JvmDefault
     fun toStreamHandler(): StreamHandler<TController> = StreamHandler { stream -> initChannel(stream) }
 }
 
@@ -24,8 +23,8 @@ fun interface ChannelVisitor<TChannel : P2PChannel> {
 
     fun visit(channel: TChannel)
 
-    @JvmDefault
     fun toChannelHandler(): P2PChannelHandler<Unit> = P2PChannelHandler {
+        @Suppress("UNCHECKED_CAST")
         visit(it as TChannel)
         CompletableFuture.completedFuture(Unit)
     }

@@ -93,7 +93,7 @@ java {
 tasks.withType<KotlinCompile> {
     kotlinOptions.jvmTarget = "1.8"
     kotlinOptions {
-        freeCompilerArgs = listOf("-Xjvm-default=enable")
+        freeCompilerArgs = listOf("-Xjvm-default=all")
     }
 }
 tasks.withType<Copy> {
@@ -247,7 +247,8 @@ fun findProperty(s: String) = project.findProperty(s) as String?
 
 val compileKotlin: KotlinCompile by tasks
 compileKotlin.kotlinOptions {
-    languageVersion = "1.4"
+    languageVersion = "1.6"
+    allWarningsAsErrors = true
 }
 
 detekt {
