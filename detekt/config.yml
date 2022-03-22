@@ -1,0 +1,46 @@
+complexity:
+  active: false
+
+naming:
+  active: false
+
+empty-blocks:
+  active: false
+
+style:
+  ForbiddenComment:
+    active: false
+  MagicNumber:
+    active: false
+  MaxLineLength:
+    active: false
+  MayBeConst:
+    active: false
+  ProtectedMemberInFinalClass:
+    active: false
+  ReturnCount:
+    active: false
+  ThrowsCount:
+    active: false
+  UnnecessaryAbstractClass:
+    active: false
+  UnusedPrivateMember:
+    active: false
+  UtilityClassWithPublicConstructor:
+    active: false
+
+potential-bugs:
+  ExplicitGarbageCollectionCall:
+    active: false
+
+performance:
+  SpreadOperator:
+    active: false
+
+exceptions:
+  TooGenericExceptionCaught:
+    active: false
+  TooGenericExceptionThrown:
+    active: false
+  ThrowingExceptionsWithoutMessageOrCause:
+    active: false
