@@ -14,7 +14,5 @@
     <ID>EqualsWithHashCodeExist:Rsa.kt$RsaPublicKey : PubKey</ID>
     <ID>EqualsWithHashCodeExist:Secp256k1.kt$Secp256k1PrivateKey : PrivKey</ID>
     <ID>EqualsWithHashCodeExist:Secp256k1.kt$Secp256k1PublicKey : PubKey</ID>
-    <ID>SwallowedException:AsyncExt.kt$t: Exception</ID>
-    <ID>SwallowedException:MultiaddrDns.kt$MultiaddrDns.Companion$e: UnknownHostException</ID>
   </CurrentIssues>
 </SmellBaseline>
