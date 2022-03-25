@@ -113,7 +113,7 @@ abstract class TransportTests {
         val preHandlerCalled = AtomicBoolean(false)
         val connectionHandlerFuture = CompletableFuture<Unit>()
         transportUnderTest.listen(address, {
-            if(preHandlerCalled.get()) {
+            if (preHandlerCalled.get()) {
                 connectionHandlerFuture.complete(null)
             } else {
                 connectionHandlerFuture.completeExceptionally(AssertionError("preHandler was not called"))
