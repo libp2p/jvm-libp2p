@@ -1,0 +1,27 @@
+complexity:
+  active: false
+
+naming:
+  active: false
+
+empty-blocks:
+  active: false
+
+style:
+  active: false
+
+potential-bugs:
+  ExplicitGarbageCollectionCall:
+    active: false
+
+performance:
+  SpreadOperator:
+    active: false
+
+exceptions:
+  TooGenericExceptionCaught:
+    active: false
+  TooGenericExceptionThrown:
+    active: false
+  ThrowingExceptionsWithoutMessageOrCause:
+    active: false
