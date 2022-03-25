@@ -1,0 +1,20 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>EqualsWithHashCodeExist:Curve25519.kt$Curve25519PrivateKey : PrivKey</ID>
+    <ID>EqualsWithHashCodeExist:Curve25519.kt$Curve25519PublicKey : PubKey</ID>
+    <ID>EqualsWithHashCodeExist:Ecdsa.kt$EcdsaPrivateKey : PrivKey</ID>
+    <ID>EqualsWithHashCodeExist:Ecdsa.kt$EcdsaPublicKey : PubKey</ID>
+    <ID>EqualsWithHashCodeExist:Ed25519.kt$Ed25519PrivateKey : PrivKey</ID>
+    <ID>EqualsWithHashCodeExist:Ed25519.kt$Ed25519PublicKey : PubKey</ID>
+    <ID>EqualsWithHashCodeExist:Key.kt$PrivKey : Key</ID>
+    <ID>EqualsWithHashCodeExist:Key.kt$PubKey : Key</ID>
+    <ID>EqualsWithHashCodeExist:Rsa.kt$RsaPrivateKey : PrivKey</ID>
+    <ID>EqualsWithHashCodeExist:Rsa.kt$RsaPublicKey : PubKey</ID>
+    <ID>EqualsWithHashCodeExist:Secp256k1.kt$Secp256k1PrivateKey : PrivKey</ID>
+    <ID>EqualsWithHashCodeExist:Secp256k1.kt$Secp256k1PublicKey : PubKey</ID>
+    <ID>SwallowedException:AsyncExt.kt$t: Exception</ID>
+    <ID>SwallowedException:MultiaddrDns.kt$MultiaddrDns.Companion$e: UnknownHostException</ID>
+  </CurrentIssues>
+</SmellBaseline>
