@@ -68,6 +68,8 @@ class RsaPrivateKey(private val sk: JavaPrivateKey, private val pk: JavaPublicKe
 
     override fun publicKey(): PubKey = rsaPublicKey
 
+    override fun equals(other: Any?): Boolean = super.equals(other)
+
     override fun hashCode(): Int = pk.hashCode()
 }
 
@@ -84,6 +86,8 @@ class RsaPublicKey(private val k: JavaPublicKey) : PubKey(Crypto.KeyType.RSA) {
             update(data)
             verify(signature)
         }
+
+    override fun equals(other: Any?): Boolean = super.equals(other)
 
     override fun hashCode(): Int = k.hashCode()
 }
