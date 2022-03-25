@@ -37,13 +37,14 @@ interface Transport {
 
     /**
      * Makes this transport listen on this multiaddr. The future completes once the endpoint is effectively listening.
+     * @param connHandler is invoked on every complete (secured and multiplexed) [Connection]
      */
     fun listen(addr: Multiaddr, connHandler: ConnectionHandler) = listen(addr, connHandler, null)
 
     /**
      * Makes this transport listen on this multiaddr. The future completes once the endpoint is effectively listening.
-     * [preHandler] is invoked prior to any other handlers (including security negotiation)
-     * upon every connection
+     * @param connHandler is invoked on every complete (secured and multiplexed) [Connection]
+     * @param preHandler is invoked prior to any other handlers (including security negotiation) on every newly created raw Channel
      */
     fun listen(addr: Multiaddr, connHandler: ConnectionHandler, preHandler: ChannelVisitor<P2PChannel>?): CompletableFuture<Unit>
 
@@ -61,8 +62,8 @@ interface Transport {
 
     /**
      * Dials the specified multiaddr and returns a promise of a Connection.
-     * [preHandler] is invoked prior to any other handlers (including security negotiation)
-     * upon every connection
+     * @param connHandler is invoked on a complete (secured and multiplexed) [Connection]
+     * @param preHandler is invoked prior to any other handlers (including security negotiation) on a newly created raw Channel
      */
     fun dial(addr: Multiaddr, connHandler: ConnectionHandler, preHandler: ChannelVisitor<P2PChannel>?): CompletableFuture<Connection>
 }

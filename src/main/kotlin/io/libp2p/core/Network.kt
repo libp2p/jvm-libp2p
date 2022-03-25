@@ -75,9 +75,15 @@ interface Network {
         connect(id, null, *addrs)
 
     /**
-     * Dials the specified multiaddr via [Proxy] and returns a promise of a Connection.
-     * [preHandler] is invoked prior to any other handlers (including security negotiation)
-     * upon every connection
+     * Tries to connect to the remote peer with [id] PeerId by specified addresses
+     * If connection to this peer already exist, returns existing connection
+     * Else tries to connect the peer by all supplied addresses in parallel
+     * and completes the returned [Future] when any of connections succeeds
+     *
+     * If the connection is established it is handled by [connectionHandler]
+     *
+     * @param preHandler is invoked prior to any other handlers (including security negotiation) on a newly created raw Channel
+     * @throws TransportNotSupportedException if any of [addrs] represents the transport which is not supported
      */
     fun connect(id: PeerId, preHandler: ChannelVisitor<P2PChannel>?, vararg addrs: Multiaddr): CompletableFuture<Connection>
 
