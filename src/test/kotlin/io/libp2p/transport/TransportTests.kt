@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit.SECONDS
+import java.util.concurrent.atomic.AtomicBoolean
 
 @Tag("transport")
 abstract class TransportTests {
@@ -23,13 +24,11 @@ abstract class TransportTests {
     protected abstract fun badAddress(): Multiaddr
     protected lateinit var transportUnderTest: Transport
 
-    protected val nullConnHandler = object : ConnectionHandler {
-        override fun handleConnection(conn: Connection) { }
-    }
+    protected val nullConnHandler = ConnectionHandler { }
     protected val logger = LogManager.getLogger("test")
 
     protected fun startListeners(server: Transport, startPortNumber: Int, howMany: Int) {
-        val listening = (1..howMany).map {
+        val listening = (0 until howMany).map {
             val bindComplete = server.listen(
                 localAddress(startPortNumber + it),
                 nullConnHandler
@@ -97,6 +96,37 @@ abstract class TransportTests {
     }
 
     @Test
+    fun `dial should invoke preHandler before connection handlers`() {
+        startListeners(transportUnderTest, 21100, 1)
+        val address = localAddress(21100)
+        val preHandlerCalled = AtomicBoolean(false)
+        transportUnderTest.dial(address, {
+            assert(preHandlerCalled.get())
+        }, {
+            preHandlerCalled.set(true)
+        }).join()
+    }
+
+    @Test
+    fun `listen should invoke preHandler before connection handlers`() {
+        val address = localAddress(21100)
+        val preHandlerCalled = AtomicBoolean(false)
+        val connectionHandlerFuture = CompletableFuture<Unit>()
+        transportUnderTest.listen(address, {
+            if (preHandlerCalled.get()) {
+                connectionHandlerFuture.complete(null)
+            } else {
+                connectionHandlerFuture.completeExceptionally(AssertionError("preHandler was not called"))
+            }
+        }, {
+            preHandlerCalled.set(true)
+        }).join()
+        transportUnderTest.dial(address, { })
+
+        connectionHandlerFuture.join()
+    }
+
+    @Test
     fun `cannot listen on closed transport`() {
         transportUnderTest.close()
 
@@ -136,7 +166,7 @@ abstract class TransportTests {
         val listenerCount = 5
         startListeners(transportUnderTest, portNumber, listenerCount)
 
-        val unlistening = (1..listenerCount).map {
+        val unlistening = (0 until listenerCount).map {
             val unbindComplete = transportUnderTest.unlisten(
                 localAddress(portNumber + it)
             )
