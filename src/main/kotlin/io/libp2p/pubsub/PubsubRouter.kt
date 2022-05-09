@@ -35,8 +35,17 @@ interface PubsubMessage {
 }
 
 abstract class AbstractPubsubMessage : PubsubMessage {
+    @Volatile var hashCode: Int? = null
     override fun equals(other: Any?) = protobufMessage == (other as? PubsubMessage)?.protobufMessage
-    override fun hashCode() = sha256(protobufMessage.toByteArray()).toWBytes().hashCode()
+    override fun hashCode(): Int {
+        val cached = hashCode
+        if (cached != null) {
+            return cached;
+        }
+        val result = sha256(protobufMessage.toByteArray()).toWBytes().hashCode()
+        hashCode = result
+        return result
+    }
     override fun toString() = "PubsubMessage{$protobufMessage}"
 }
 
