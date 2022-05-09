@@ -40,7 +40,7 @@ abstract class AbstractPubsubMessage : PubsubMessage {
     override fun hashCode(): Int {
         val cached = hashCode
         if (cached != null) {
-            return cached;
+            return cached
         }
         val result = sha256(protobufMessage.toByteArray()).toWBytes().hashCode()
         hashCode = result
