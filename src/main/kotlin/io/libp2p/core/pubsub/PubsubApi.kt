@@ -62,7 +62,7 @@ interface PubsubSubscriberApi {
      * result either synchronously ([RESULT_VALID], [RESULT_INVALID] or [RESULT_IGNORE])
      * or asynchronously.
      *
-     * If the [receiver] doesn't validates it should just return [RESULT_VALID]
+     * If the [receiver] doesn't validate it should just return [RESULT_VALID]
      *
      * **Note** the message is not propagated to other peers until **all** receivers
      * subscribed to the topic return [true]. Too long validation procedure may significantly

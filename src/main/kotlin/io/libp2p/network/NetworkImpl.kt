@@ -1,8 +1,10 @@
 package io.libp2p.network
 
+import io.libp2p.core.ChannelVisitor
 import io.libp2p.core.Connection
 import io.libp2p.core.ConnectionHandler
 import io.libp2p.core.Network
+import io.libp2p.core.P2PChannel
 import io.libp2p.core.PeerId
 import io.libp2p.core.TransportNotSupportedException
 import io.libp2p.core.multiformats.Multiaddr
@@ -38,8 +40,8 @@ class NetworkImpl(
         }
     }
 
-    override fun listen(addr: Multiaddr): CompletableFuture<Unit> =
-        getTransport(addr).listen(addr, createHookedConnHandler(connectionHandler))
+    override fun listen(addr: Multiaddr, preHandler: ChannelVisitor<P2PChannel>?): CompletableFuture<Unit> =
+        getTransport(addr).listen(addr, createHookedConnHandler(connectionHandler), preHandler)
     override fun unlisten(addr: Multiaddr): CompletableFuture<Unit> = getTransport(addr).unlisten(addr)
     override fun disconnect(conn: Connection): CompletableFuture<Unit> =
         conn.close()
@@ -62,11 +64,7 @@ class NetworkImpl(
     /**
      * Connects to a peerid with a provided set of {@code Multiaddr}, returning the existing connection if already connected.
      */
-    override fun connect(
-        id: PeerId,
-        vararg addrs: Multiaddr
-    ): CompletableFuture<Connection> {
-
+    override fun connect(id: PeerId, preHandler: ChannelVisitor<P2PChannel>?, vararg addrs: Multiaddr): CompletableFuture<Connection> {
         // we already have a connection for this peer, short circuit.
         connections.find { it.secureSession().remoteId == id }
             ?.apply { return CompletableFuture.completedFuture(this) }
@@ -81,7 +79,7 @@ class NetworkImpl(
         val connectionFuts = addrsWithP2P.mapNotNull { addr ->
             transports.firstOrNull { tpt -> tpt.handles(addr) }?.let { addr to it }
         }.map { (addr, transport) ->
-            transport.dial(addr, createHookedConnHandler(connectionHandler))
+            transport.dial(addr, createHookedConnHandler(connectionHandler), preHandler)
         }
         return anyComplete(connectionFuts)
     }

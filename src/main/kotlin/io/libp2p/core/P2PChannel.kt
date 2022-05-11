@@ -5,7 +5,7 @@ import java.util.concurrent.CompletableFuture
 
 interface P2PChannel {
     /**
-     * Indicates whether this peer is ether _initiator_ or _responder_ of the underlying channel
+     * Indicates whether this peer is either _initiator_ or _responder_ of the underlying channel
      * Most of the protocols behave either as a _client_ or _server_ correspondingly depending
      * on this flag
      */

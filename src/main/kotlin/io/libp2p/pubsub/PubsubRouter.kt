@@ -5,7 +5,6 @@ import io.libp2p.core.Stream
 import io.libp2p.core.crypto.sha256
 import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.etc.types.WBytes
-import io.libp2p.etc.types.toWBytes
 import io.netty.channel.ChannelHandler
 import pubsub.pb.Rpc
 import java.util.Random
@@ -22,9 +21,10 @@ interface PubsubMessage {
     val protobufMessage: Rpc.Message
     val messageId: MessageId
 
-    @JvmDefault
     val topics: List<Topic>
         get() = protobufMessage.topicIDsList
+
+    fun messageSha256() = sha256(protobufMessage.toByteArray())
 
     override fun equals(other: Any?): Boolean
 
@@ -36,8 +36,20 @@ interface PubsubMessage {
 }
 
 abstract class AbstractPubsubMessage : PubsubMessage {
+    @Volatile private var sha256: ByteArray? = null
+
+    override fun messageSha256(): ByteArray {
+        val cached = sha256
+        if (cached != null) {
+            return cached
+        }
+        val result = sha256(protobufMessage.toByteArray())
+        sha256 = result
+        return result
+    }
+
     override fun equals(other: Any?) = protobufMessage == (other as? PubsubMessage)?.protobufMessage
-    override fun hashCode() = sha256(protobufMessage.toByteArray()).toWBytes().hashCode()
+    override fun hashCode() = messageSha256().contentHashCode()
     override fun toString() = "PubsubMessage{$protobufMessage}"
 }
 

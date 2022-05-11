@@ -39,6 +39,7 @@ public interface Scheduler {
     return executeWithDelay(delay, () -> {task.run(); return null;});
   }
 
+  @SuppressWarnings("unchecked")
   default <C> CompletableFuture<C> orTimeout(CompletableFuture<C> future, Duration futureTimeout,
                                              Supplier<Exception> exceptionSupplier) {
     return (CompletableFuture<C>) CompletableFuture.anyOf(

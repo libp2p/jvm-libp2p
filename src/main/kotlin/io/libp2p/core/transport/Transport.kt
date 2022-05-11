@@ -1,7 +1,9 @@
 package io.libp2p.core.transport
 
+import io.libp2p.core.ChannelVisitor
 import io.libp2p.core.Connection
 import io.libp2p.core.ConnectionHandler
+import io.libp2p.core.P2PChannel
 import io.libp2p.core.multiformats.Multiaddr
 import java.util.concurrent.CompletableFuture
 
@@ -35,8 +37,16 @@ interface Transport {
 
     /**
      * Makes this transport listen on this multiaddr. The future completes once the endpoint is effectively listening.
+     * @param connHandler is invoked on every complete (secured and multiplexed) [Connection]
      */
-    fun listen(addr: Multiaddr, connHandler: ConnectionHandler): CompletableFuture<Unit>
+    fun listen(addr: Multiaddr, connHandler: ConnectionHandler) = listen(addr, connHandler, null)
+
+    /**
+     * Makes this transport listen on this multiaddr. The future completes once the endpoint is effectively listening.
+     * @param connHandler is invoked on every complete (secured and multiplexed) [Connection]
+     * @param preHandler is invoked prior to any other handlers (including security negotiation) on every newly created raw Channel
+     */
+    fun listen(addr: Multiaddr, connHandler: ConnectionHandler, preHandler: ChannelVisitor<P2PChannel>?): CompletableFuture<Unit>
 
     /**
      * Makes this transport stop listening on this multiaddr. Any connections maintained from this source host and port
@@ -48,10 +58,12 @@ interface Transport {
     /**
      * Dials the specified multiaddr and returns a promise of a Connection.
      */
-    fun dial(addr: Multiaddr, connHandler: ConnectionHandler): CompletableFuture<Connection>
+    fun dial(addr: Multiaddr, connHandler: ConnectionHandler) = dial(addr, connHandler, null)
 
     /**
      * Dials the specified multiaddr and returns a promise of a Connection.
+     * @param connHandler is invoked on a complete (secured and multiplexed) [Connection]
+     * @param preHandler is invoked prior to any other handlers (including security negotiation) on a newly created raw Channel
      */
-    fun dial(addr: Multiaddr): CompletableFuture<Connection> = dial(addr, { })
+    fun dial(addr: Multiaddr, connHandler: ConnectionHandler, preHandler: ChannelVisitor<P2PChannel>?): CompletableFuture<Connection>
 }

@@ -12,19 +12,20 @@ import java.nio.file.Paths
 // ./gradlew publish -PcloudsmithUser=<user> -PcloudsmithApiKey=<api-key>
 
 group = "io.libp2p"
-version = "0.8.9-RELEASE"
+version = "0.9.0-RELEASE"
 description = "a minimal implementation of libp2p for the jvm"
 
 plugins {
-    java
-    idea
-    kotlin("jvm") version "1.6.10"
-    id("org.jmailen.kotlinter") version "3.8.0"
-    id("com.google.protobuf") version "0.8.18"
+    kotlin("jvm").version("1.6.10")
 
-    `maven-publish`
-    id("org.jetbrains.dokka") version "1.6.10"
-    id("com.github.ben-manes.versions") version "0.41.0"
+    id("com.github.ben-manes.versions").version("0.41.0")
+    id("com.google.protobuf").version("0.8.18")
+    id("idea")
+    id("io.gitlab.arturbosch.detekt").version("1.20.0-RC1")
+    id("java")
+    id("maven-publish")
+    id("org.jetbrains.dokka").version("1.6.10")
+    id("org.jmailen.kotlinter").version("3.8.0")
 }
 
 repositories {
@@ -92,7 +93,7 @@ java {
 tasks.withType<KotlinCompile> {
     kotlinOptions.jvmTarget = "1.8"
     kotlinOptions {
-        freeCompilerArgs = listOf("-Xjvm-default=enable")
+        freeCompilerArgs = listOf("-Xjvm-default=all")
     }
 }
 tasks.withType<Copy> {
@@ -246,5 +247,12 @@ fun findProperty(s: String) = project.findProperty(s) as String?
 
 val compileKotlin: KotlinCompile by tasks
 compileKotlin.kotlinOptions {
-    languageVersion = "1.4"
+    languageVersion = "1.6"
+    allWarningsAsErrors = true
+}
+
+detekt {
+    baseline = file("$projectDir/detekt/baseline.xml")
+    config = files("$projectDir/detekt/config.yml")
+    buildUponDefaultConfig = true
 }

@@ -191,7 +191,6 @@ class MultiaddrTest {
         fun invalidSerializations() = listOf(
             // Invalid var lengths
             Arguments.of(Protocol.DNS4.encoded + 1L.toVarInt()),
-            Arguments.of(Protocol.DNS4.encoded + (-1L).toVarInt()),
             Arguments.of(Protocol.DNS4.encoded + 10L.toVarInt() + ByteArray(9, { 0 })),
             Arguments.of(Protocol.DNS4.encoded + 65535L.toVarInt() + ByteArray(9, { 0 })),
             Arguments.of(Protocol.DNS4.encoded + Int.MAX_VALUE.toLong().toVarInt() + ByteArray(9, { 0 })),

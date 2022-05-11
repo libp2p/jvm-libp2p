@@ -54,7 +54,7 @@ data class GossipParams(
     val DScore: Int = defaultDScore(D),
 
     /**
-     * 	[DOut] sets the quota for the number of outbound connections to maintain in a topic mesh.
+     * [DOut] sets the quota for the number of outbound connections to maintain in a topic mesh.
      * When the mesh is pruned due to over subscription, we make sure that we have outbound connections
      * to at least [DOut] of the survivor peers. This prevents sybil attackers from overwhelming
      * our mesh with incoming connections.
@@ -79,7 +79,7 @@ data class GossipParams(
     val fanoutTTL: Duration = 60.seconds,
 
     /**
-     * [maxGossipMessageSize] determines the max acceptable gossip message size.  Messages larger than this will
+     * [maxGossipMessageSize] determines the max acceptable gossip message size. Messages larger than this will
      * be ignored.
      */
     val maxGossipMessageSize: Int = DEFAULT_MAX_PUBSUB_MESSAGE_SIZE,
@@ -170,7 +170,7 @@ data class GossipParams(
     val maxIHaveLength: Int = 5000,
 
     /**
-     *  [maxIHaveMessages] is the maximum number of IHAVE messages to accept from a peer within a heartbeat.
+     * [maxIHaveMessages] is the maximum number of IHAVE messages to accept from a peer within a heartbeat.
      */
     val maxIHaveMessages: Int = 10,
 
@@ -234,11 +234,15 @@ data class GossipParams(
     val connectCallback: (PeerId, ByteArray) -> Unit = { _: PeerId, _: ByteArray -> }
 ) {
     init {
+        check(D >= 0, "D should be >= 0")
+        check(DOut >= 0, "DOut should be >= 0")
+        check(DLow >= 0, "DLow should be >= 0")
+        check(DHigh >= 0, "DHigh should be >= 0")
         check(DOut < DLow || (DOut == 0 && DLow == 0), "DOut should be < DLow or both 0")
         check(DOut <= D / 2, "DOut should be <= D/2")
         check(DLow <= D, "DLow should be <= D")
         check(DHigh >= D, "DHigh should be >= D")
-        check(gossipFactor in 0.0..1.0, "gossipFactor should be in range [0.0, 1.1]")
+        check(gossipFactor in 0.0..1.0, "gossipFactor should be in range [0.0, 1.0]")
     }
 
     companion object {
@@ -276,7 +280,7 @@ data class GossipScoreParams(
 
     /**
      * [graylistThreshold] is the score threshold below which message processing is supressed altogether,
-     * implementing an effective graylist according to peer score; should be negative and <= [publishThreshold].
+     * implementing an effective graylist according to peer score; should be negative and < [publishThreshold].
      */
     val graylistThreshold: Double = 0.0,
 
@@ -293,11 +297,14 @@ data class GossipScoreParams(
     val opportunisticGraftThreshold: Double = 0.0
 ) {
     init {
-        check(gossipThreshold <= 0, "gossipThreshold should be < 0")
+        check(gossipThreshold <= 0, "gossipThreshold should be <= 0")
         check(publishThreshold <= gossipThreshold, "publishThreshold should be <= than gossipThreshold")
-        check(graylistThreshold <= publishThreshold, "gossipThreshold should be < publishThreshold")
-        check(acceptPXThreshold >= 0, "acceptPXThreshold should be > 0")
-        check(opportunisticGraftThreshold >= 0, "opportunisticGraftThreshold should be > 0")
+        check(
+            graylistThreshold < publishThreshold || (publishThreshold == 0.0 && graylistThreshold == 0.0),
+            "graylistThreshold should be < publishThreshold or both 0"
+        )
+        check(acceptPXThreshold >= 0, "acceptPXThreshold should be >= 0")
+        check(opportunisticGraftThreshold >= 0, "opportunisticGraftThreshold should be >= 0")
     }
 
     companion object {
@@ -366,7 +373,7 @@ data class GossipPeerScoreParams(
      * - not following up in IWANT requests for messages advertised with IHAVE.
      *
      * The value of the parameter is the square of the counter over the threshold,
-     * which decays with  [behaviourPenaltyDecay].
+     * which decays with [behaviourPenaltyDecay].
      * The weight of the parameter MUST be negative (or zero to disable).
      */
     val behaviourPenaltyWeight: Weight = 0.0,
@@ -387,16 +394,16 @@ data class GossipPeerScoreParams(
     val retainScore: Duration = 10.minutes
 ) {
     init {
-        check(topicScoreCap >= 0.0, "topicScoreCap should be > 0")
-        check(appSpecificWeight >= 0.0, "appSpecificWeight should be > 0")
-        check(ipColocationFactorWeight <= 0.0, "ipColocationFactorWeight should be < 0")
+        check(topicScoreCap >= 0.0, "topicScoreCap should be >= 0")
+        check(appSpecificWeight >= 0.0, "appSpecificWeight should be >= 0")
+        check(ipColocationFactorWeight <= 0.0, "ipColocationFactorWeight should be <= 0")
         check(
             ipColocationFactorWeight == 0.0 || ipColocationFactorThreshold >= 1,
             "ipColocationFactorThreshold should be >= 1"
         )
         check(behaviourPenaltyWeight <= 0.0, "behaviourPenaltyWeight should be <= 0")
         check(
-            behaviourPenaltyWeight == 0.0 || (behaviourPenaltyDecay > 0.0 && behaviourPenaltyDecay <= 1.0),
+            behaviourPenaltyDecay > 0.0 && behaviourPenaltyDecay <= 1.0,
             "behaviourPenaltyDecay should be in range (0.0, 1.0]"
         )
         check(behaviourPenaltyThreshold >= 0.0, "behaviourPenaltyThreshold should be >= 0")
@@ -439,7 +446,7 @@ data class GossipTopicScoreParams(
 
     /**
      * P1: time in the mesh
-     * This is the time the peer has ben grafted in the mesh.
+     * This is the time the peer has been grafted in the mesh.
      * The value of of the parameter is the `time/TimeInMeshQuantum`, capped by [timeInMeshCap]
      * The weight of the parameter MUST be positive (or zero to disable).
      */
@@ -512,17 +519,17 @@ data class GossipTopicScoreParams(
     val invalidMessageDeliveriesDecay: Double = 0.0
 ) {
     init {
-        check(timeInMeshWeight >= 0, "timeInMeshWeight >= 0")
-        check(timeInMeshCap >= 0, "timeInMeshCap >= 0")
-        check(firstMessageDeliveriesWeight >= 0, "firstMessageDeliveriesWeight >= 0")
-        check(meshMessageDeliveriesWeight <= 0, "meshMessageDeliveriesWeight <= 0")
-        check(meshMessageDeliveriesThreshold >= 0, "meshMessageDeliveriesThreshold >= 0")
+        check(timeInMeshWeight >= 0, "timeInMeshWeight should be >= 0")
+        check(timeInMeshCap >= 0, "timeInMeshCap should be >= 0")
+        check(firstMessageDeliveriesWeight >= 0, "firstMessageDeliveriesWeight should be >= 0")
+        check(meshMessageDeliveriesWeight <= 0, "meshMessageDeliveriesWeight should be <= 0")
+        check(meshMessageDeliveriesThreshold >= 0, "meshMessageDeliveriesThreshold should be >= 0")
         check(
             meshMessageDeliveriesCap >= meshMessageDeliveriesThreshold,
-            "meshMessageDeliveriesCap >= meshMessageDeliveriesThreshold"
+            "meshMessageDeliveriesCap should be >= meshMessageDeliveriesThreshold"
         )
-        check(meshFailurePenaltyWeight <= 0, "meshFailurePenaltyWeight <= 0")
-        check(invalidMessageDeliveriesWeight <= 0, "invalidMessageDeliveriesWeight <= 0")
+        check(meshFailurePenaltyWeight <= 0, "meshFailurePenaltyWeight should be <= 0")
+        check(invalidMessageDeliveriesWeight <= 0, "invalidMessageDeliveriesWeight should be <= 0")
     }
     companion object {
         @JvmStatic
