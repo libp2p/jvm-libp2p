@@ -252,7 +252,6 @@ compileKotlin.kotlinOptions {
 }
 
 detekt {
-    baseline = file("$projectDir/detekt/baseline.xml")
     config = files("$projectDir/detekt/config.yml")
     buildUponDefaultConfig = true
 }

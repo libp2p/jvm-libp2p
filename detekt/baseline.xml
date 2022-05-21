@@ -1,8 +1,0 @@
-<?xml version='1.0' encoding='UTF-8'?>
-<SmellBaseline>
-  <ManuallySuppressedIssues/>
-  <CurrentIssues>
-    <ID>SwallowedException:AsyncExt.kt$t: Exception</ID>
-    <ID>SwallowedException:MultiaddrDns.kt$MultiaddrDns.Companion$e: UnknownHostException</ID>
-  </CurrentIssues>
-</SmellBaseline>

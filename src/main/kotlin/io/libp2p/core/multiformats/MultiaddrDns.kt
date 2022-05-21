@@ -1,5 +1,6 @@
 package io.libp2p.core.multiformats
 
+import org.apache.logging.log4j.LogManager
 import java.net.Inet4Address
 import java.net.Inet6Address
 import java.net.InetAddress
@@ -12,6 +13,7 @@ class MultiaddrDns {
     }
 
     companion object {
+        private val log = LogManager.getLogger(MultiaddrDns::class.java)
         private val dnsProtocols = arrayOf(Protocol.DNS4, Protocol.DNS6, Protocol.DNSADDR)
 
         fun resolve(addr: Multiaddr, resolver: Resolver = DefaultResolver): List<Multiaddr> {
@@ -52,6 +54,7 @@ class MultiaddrDns {
                     }
                 }
             } catch (e: UnknownHostException) {
+                log.debug(e)
                 return emptyList()
                 // squash, as this might not be fatal,
                 // and if it is we'll handle this higher up the call chain
