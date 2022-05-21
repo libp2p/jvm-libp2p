@@ -85,6 +85,8 @@ class Secp256k1PrivateKey(private val privateKey: ECPrivateKeyParameters) : Priv
         return Secp256k1PublicKey(ECPublicKeyParameters(publicPoint, CURVE))
     }
 
+    override fun equals(other: Any?): Boolean = super.equals(other)
+
     override fun hashCode(): Int = priv.hashCode()
 }
 
@@ -119,6 +121,8 @@ class Secp256k1PublicKey(private val pub: ECPublicKeyParameters) : PubKey(Crypto
         val s = (asn1Encodables[1].toASN1Primitive() as ASN1Integer).value
         return signer.verifySignature(sha256(data), r.abs(), s.abs())
     }
+
+    override fun equals(other: Any?): Boolean = super.equals(other)
 
     override fun hashCode(): Int = pub.hashCode()
 }
