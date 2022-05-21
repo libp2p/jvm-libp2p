@@ -71,7 +71,7 @@ class EchoSampleTest {
         val tcpTransport = TcpTransport(upgrader)
 
         logger.info("Dialing...")
-        val connFuture: CompletableFuture<Connection> = tcpTransport.dial(Multiaddr("/ip4/127.0.0.1/tcp/10000"))
+        val connFuture: CompletableFuture<Connection> = tcpTransport.dial(Multiaddr("/ip4/127.0.0.1/tcp/10000"), { })
 
         val echoString = "Helooooooooooooooooooooooooo\n"
         connFuture.thenCompose {

@@ -1,7 +1,9 @@
 package io.libp2p.transport.implementation
 
+import io.libp2p.core.ChannelVisitor
 import io.libp2p.core.Connection
 import io.libp2p.core.ConnectionHandler
+import io.libp2p.core.P2PChannel
 import io.libp2p.core.PeerId
 import io.libp2p.core.transport.Transport
 import io.libp2p.etc.REMOTE_PEER_ID
@@ -16,13 +18,16 @@ class ConnectionBuilder(
     private val upgrader: ConnectionUpgrader,
     private val connHandler: ConnectionHandler,
     private val initiator: Boolean,
-    private val remotePeerId: PeerId? = null
+    private val remotePeerId: PeerId? = null,
+    private val preHandler: ChannelVisitor<P2PChannel>? = null
 ) : ChannelInitializer<Channel>() {
     val connectionEstablished = CompletableFuture<Connection>()
 
     override fun initChannel(ch: Channel) {
-        val connection = ConnectionOverNetty(ch, transport, initiator)
         remotePeerId?.also { ch.attr(REMOTE_PEER_ID).set(it) }
+        val connection = ConnectionOverNetty(ch, transport, initiator)
+
+        preHandler?.also { it.visit(connection) }
 
         upgrader.establishSecureChannel(connection)
             .thenCompose {

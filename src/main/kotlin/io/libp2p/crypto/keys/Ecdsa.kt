@@ -79,6 +79,8 @@ class EcdsaPrivateKey(val priv: JavaECPrivateKey) : PrivKey(Crypto.KeyType.ECDSA
         }
     }
 
+    override fun equals(other: Any?): Boolean = super.equals(other)
+
     override fun hashCode(): Int = priv.hashCode()
 }
 
@@ -98,6 +100,8 @@ class EcdsaPublicKey(val pub: JavaECPublicKey) : PubKey(Crypto.KeyType.ECDSA) {
             update(data)
             verify(signature)
         }
+
+    override fun equals(other: Any?): Boolean = super.equals(other)
 
     override fun hashCode(): Int = pub.hashCode()
 }
