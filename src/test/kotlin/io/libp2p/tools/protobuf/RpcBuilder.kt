@@ -30,7 +30,7 @@ class RpcBuilder {
 
     fun addIHaves(iHaveCount: Int, messageIdCount: Int) {
         for (i in 0 until iHaveCount) {
-            val iHaveBuilder = Rpc.ControlIHave.newBuilder().setTopicID(topic(i))
+            val iHaveBuilder = Rpc.ControlIHave.newBuilder()
             for (j in 0 until messageIdCount) {
                 iHaveBuilder.addMessageIDs(Random.nextBytes(6).toProtobuf())
             }
