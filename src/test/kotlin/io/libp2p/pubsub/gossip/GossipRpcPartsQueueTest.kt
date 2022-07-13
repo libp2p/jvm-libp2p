@@ -177,7 +177,7 @@ class GossipRpcPartsQueueTest {
                     partsCase.generateQueue(gossipParams),
                     partsCase.generateQueue(gossipParams).also { it.shuffleParts() },
                 ).map {
-                    Arguments.of(partsCase, gossipParams, it)
+                    Arguments.of(gossipParams, it)
                 }
             }
 
@@ -188,7 +188,6 @@ class GossipRpcPartsQueueTest {
     @ParameterizedTest(name = "[${ParameterizedTest.INDEX_PLACEHOLDER}] {0}")
     @MethodSource("mergeParams")
     fun `mergeMessageParts() test various combinations`(
-        params: PartCounts,
         gossipParams: GossipParams,
         queue: TestGossipQueue
     ) {
