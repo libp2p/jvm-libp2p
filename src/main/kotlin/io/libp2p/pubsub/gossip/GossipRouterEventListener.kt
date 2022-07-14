@@ -2,7 +2,6 @@ package io.libp2p.pubsub.gossip
 
 import io.libp2p.core.PeerId
 import io.libp2p.core.pubsub.ValidationResult
-import io.libp2p.etc.util.P2PService
 import io.libp2p.pubsub.PubsubMessage
 import io.libp2p.pubsub.Topic
 import java.util.*
