@@ -5,7 +5,6 @@ import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.pubsub.PubsubMessage
 import io.libp2p.pubsub.Topic
-import kotlinx.coroutines.supervisorScope
 import java.util.*
 import java.util.concurrent.CopyOnWriteArrayList
 
