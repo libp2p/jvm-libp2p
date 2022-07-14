@@ -730,8 +730,91 @@ class DefaultGossipScoreTest {
     }
 
     @Test
-    fun `test IP colocation`() {
-        TODO()
+    fun `test IP colocation penalty`() {
+
+        val peer1 = PeerId.random()
+        val peer2 = PeerId.random()
+        val peer3 = PeerId.random()
+        val peer4 = PeerId.random()
+        val peer5 = PeerId.random()
+
+        // Setup score params with topic config
+        val peerScoreParams = GossipPeerScoreParams.builder()
+            .ipColocationFactorThreshold(2)
+            .ipColocationFactorWeight(-1.0)
+            .build()
+
+        val scoreParams = GossipScoreParams(
+            peerScoreParams = peerScoreParams,
+        )
+
+        // Setup time provider - apply non-zero time so that we don't get 0-valued timestamps that may be interpreted
+        // as empty
+        val timeController = TimeControllerImpl()
+        timeController.addTime(1.hours)
+        val executor = ControlledExecutorServiceImpl(timeController)
+
+        // Check initial value
+        val score = DefaultGossipScore(scoreParams, executor, { timeController.time })
+        score.notifyConnected(peer1, "0.0.0.1")
+        score.notifyConnected(peer2, "0.0.0.1")
+        assertEquals(0.0, score.score(peer1))
+        assertEquals(0.0, score.score(peer2))
+
+        score.notifyConnected(peer3, "0.0.0.2")
+        assertEquals(0.0, score.score(peer1))
+        assertEquals(0.0, score.score(peer2))
+        assertEquals(0.0, score.score(peer3))
+
+        score.notifyConnected(peer4, "0.0.0.1")
+
+        assertEquals(-1.0, score.score(peer1))
+        assertEquals(-1.0, score.score(peer2))
+        assertEquals(0.0, score.score(peer3))
+        assertEquals(-1.0, score.score(peer4))
+
+        score.notifyConnected(peer5, "0.0.0.1")
+
+        assertEquals(-4.0, score.score(peer1))
+        assertEquals(-4.0, score.score(peer2))
+        assertEquals(0.0, score.score(peer3))
+        assertEquals(-4.0, score.score(peer4))
+        assertEquals(-4.0, score.score(peer5))
+
+        score.notifyDisconnected(peer1)
+
+        timeController.addTime(peerScoreParams.retainScore - 1.seconds)
+        score.refreshScores()
+
+        // while peer score retained its IP should participate in colocation penalty
+        assertEquals(-4.0, score.score(peer2))
+        assertEquals(0.0, score.score(peer3))
+        assertEquals(-4.0, score.score(peer4))
+        assertEquals(-4.0, score.score(peer5))
+
+        timeController.addTime(2.seconds)
+        score.refreshScores()
+
+        assertEquals(-1.0, score.score(peer2))
+        assertEquals(0.0, score.score(peer3))
+        assertEquals(-1.0, score.score(peer4))
+        assertEquals(-1.0, score.score(peer5))
+
+        score.notifyDisconnected(peer2)
+
+        timeController.addTime(peerScoreParams.retainScore + 1.seconds)
+        score.refreshScores()
+
+        assertEquals(0.0, score.score(peer3))
+        assertEquals(0.0, score.score(peer4))
+        assertEquals(0.0, score.score(peer5))
+
+        score.notifyConnected(peer1, "0.0.0.1")
+
+        assertEquals(-1.0, score.score(peer1))
+        assertEquals(0.0, score.score(peer3))
+        assertEquals(-1.0, score.score(peer4))
+        assertEquals(-1.0, score.score(peer5))
     }
 
     private fun createRpcMessage(topic: String, seqNo: Int = 1): Rpc.Message {
