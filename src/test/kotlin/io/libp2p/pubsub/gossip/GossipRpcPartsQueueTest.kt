@@ -10,7 +10,6 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
 import pubsub.pb.Rpc
-import java.util.Collections
 import java.util.stream.Stream
 
 class GossipRpcPartsQueueTest {
@@ -18,7 +17,7 @@ class GossipRpcPartsQueueTest {
     class TestGossipQueue(params: GossipParams) : DefaultGossipRpcPartsQueue(params) {
 
         fun shuffleParts() {
-            Collections.shuffle(parts)
+            parts.shuffle()
         }
 
         fun mergedSingle(): Rpc.RPC {
