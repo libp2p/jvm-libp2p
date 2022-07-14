@@ -2,6 +2,7 @@ package io.libp2p.pubsub.gossip
 
 import io.libp2p.core.InternalErrorException
 import io.libp2p.core.PeerId
+import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.etc.types.anyComplete
 import io.libp2p.etc.types.completedExceptionally
@@ -26,6 +27,7 @@ const val MaxIAskedEntries = 256
 const val MaxPeerIHaveEntries = 256
 const val MaxIWantRequestsEntries = 10 * 1024
 
+fun P2PService.PeerHandler.getRemoteAddress(): Multiaddr = streamHandler.stream.connection.remoteAddress()
 fun P2PService.PeerHandler.isOutbound() = streamHandler.stream.connection.isInitiator
 
 fun P2PService.PeerHandler.getPeerProtocol(): PubsubProtocol {
@@ -116,7 +118,7 @@ open class GossipRouter @JvmOverloads constructor(
 
     override fun onPeerActive(peer: PeerHandler) {
         super.onPeerActive(peer)
-        eventBroadcaster.notifyConnected(peer.peerId, peer.getIP())
+        eventBroadcaster.notifyConnected(peer.peerId, peer.getRemoteAddress())
         heartbeatTask.hashCode() // force lazy initialization
     }
 
