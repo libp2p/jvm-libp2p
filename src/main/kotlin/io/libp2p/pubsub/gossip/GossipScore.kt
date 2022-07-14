@@ -8,7 +8,6 @@ import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.etc.types.cappedDouble
 import io.libp2p.etc.types.createLRUMap
 import io.libp2p.etc.types.millis
-import io.libp2p.etc.util.P2PService
 import io.libp2p.pubsub.PubsubMessage
 import io.libp2p.pubsub.Topic
 import java.util.Optional
@@ -134,7 +133,6 @@ class DefaultGossipScore(
         @Volatile
         var cachedScore: Double = 0.0
 
-        val ips = mutableSetOf<PeerIP>()
         var connectedTimeMillis: Long = 0
         var disconnectedTimeMillis: Long = 0
 
@@ -152,9 +150,11 @@ class DefaultGossipScore(
     val topicParams = params.topicsScoreParams
 
     private val validationTime: MutableMap<PubsubMessage, Long> = createLRUMap(1024)
+
     @VisibleForTesting
     val peerScores = ConcurrentHashMap<PeerId, PeerScores>()
-    private val activePeerIP = mutableMapOf<PeerId, PeerIP>()
+    private val peerIdToIP = mutableMapOf<PeerId, PeerIP>()
+    private val peerIPToId = PeerColocations()
 
     private val refreshTask: ScheduledFuture<*>
 
@@ -166,7 +166,7 @@ class DefaultGossipScore(
     private fun getPeerScores(peerId: PeerId) =
         peerScores.computeIfAbsent(peerId) { PeerScores() }
 
-    private fun getPeerIp(peerId: PeerId): PeerIP? = activePeerIP[peerId]
+    private fun getPeerIp(peerId: PeerId): PeerIP? = peerIdToIP[peerId]
 
     private fun getTopicScores(peerId: PeerId, topic: Topic) =
         getPeerScores(peerId).topicScores.computeIfAbsent(topic) { TopicScores(it) }
@@ -189,10 +189,7 @@ class DefaultGossipScore(
         )
         val appScore = peerParams.appSpecificScore(peerId) * peerParams.appSpecificWeight
 
-        val peersInIp: Int = getPeerIp(peerId)?.let { thisIp ->
-            if (peerParams.ipWhitelisted(thisIp.ip4String)) 0 else
-                peerScores.values.count { thisIp in it.ips }
-        } ?: 0
+        val peersInIp: Int = getPeerIp(peerId)?.let { peerIPToId.getPeerCountForIp(it) } ?: 0
         val ipColocationPenalty = max(
             0,
             (peersInIp - peerParams.ipColocationFactorThreshold)
@@ -210,7 +207,18 @@ class DefaultGossipScore(
 
     @VisibleForTesting
     fun refreshScores() {
-        peerScores.values.removeIf { it.isDisconnected() && it.getDisconnectDuration() > peerParams.retainScore }
+        val peersToBury = peerScores
+            .filterValues {
+                it.isDisconnected() && it.getDisconnectDuration() > peerParams.retainScore
+            }
+            .keys
+        peersToBury.forEach { peerId ->
+            peerIdToIP.remove(peerId)?.also { peerIp ->
+                peerIPToId.remove(peerId, peerIp)
+            }
+        }
+        peerScores -= peersToBury
+
         peerScores.values.forEach {
             it.topicScores.values.forEach { it.decayScores() }
             it.behaviorPenalty *= peerParams.behaviourPenaltyDecay
@@ -227,17 +235,20 @@ class DefaultGossipScore(
         }
 
         getPeerScores(peerId).disconnectedTimeMillis = curTimeMillis()
-        activePeerIP -= peerId
     }
 
     override fun notifyConnected(peerId: PeerId, peerAddress: Multiaddr) {
         val ipAddress = PeerIP.fromMultiaddr(peerAddress)
         ipAddress?.also { peerIp ->
-            activePeerIP[peerId] = peerIp
+            val maybePeerIP = peerIdToIP[peerId]
+            maybePeerIP?.also {
+                peerIPToId.remove(peerId, peerIp)
+            }
+            peerIdToIP[peerId] = peerIp
         }
         getPeerScores(peerId).apply {
             connectedTimeMillis = curTimeMillis()
-            getPeerIp(peerId)?.also { ips += it }
+            getPeerIp(peerId)?.also { peerIPToId.add(peerId, it) }
         }
     }
 
@@ -291,5 +302,19 @@ class DefaultGossipScore(
 
     fun stop() {
         refreshTask.cancel(false)
+    }
+
+    internal class PeerColocations {
+        private val map = mutableMapOf<PeerIP, MutableSet<PeerId>>()
+
+        fun add(peerId: PeerId, peerIp: PeerIP) {
+            map.computeIfAbsent(peerIp) { mutableSetOf() } += peerId
+        }
+
+        fun remove(peerId: PeerId, peerIp: PeerIP) {
+            map[peerIp]?.also { it -= peerId }
+        }
+
+        fun getPeerCountForIp(ip: PeerIP) = map[ip]?.size ?: 0
     }
 }
