@@ -106,7 +106,7 @@ open class GossipRouter @JvmOverloads constructor(
     private fun isConnected(peerId: PeerId) = peers.any { it.peerId == peerId }
 
     override fun onPeerDisconnected(peer: PeerHandler) {
-        eventBroadcaster.notifyDisconnected(peer)
+        eventBroadcaster.notifyDisconnected(peer.peerId)
         mesh.values.forEach { it.remove(peer) }
         fanout.values.forEach { it.remove(peer) }
         acceptRequestsWhitelist -= peer
@@ -116,12 +116,12 @@ open class GossipRouter @JvmOverloads constructor(
 
     override fun onPeerActive(peer: PeerHandler) {
         super.onPeerActive(peer)
-        eventBroadcaster.notifyConnected(peer)
+        eventBroadcaster.notifyConnected(peer.peerId, peer.getIP())
         heartbeatTask.hashCode() // force lazy initialization
     }
 
     override fun notifyUnseenMessage(peer: PeerHandler, msg: PubsubMessage) {
-        eventBroadcaster.notifyUnseenMessage(peer, msg)
+        eventBroadcaster.notifyUnseenMessage(peer.peerId, msg)
         notifyAnyMessage(peer, msg)
     }
 
@@ -130,7 +130,7 @@ open class GossipRouter @JvmOverloads constructor(
         msg: PubsubMessage,
         validationResult: Optional<ValidationResult>
     ) {
-        eventBroadcaster.notifySeenMessage(peer, msg, validationResult)
+        eventBroadcaster.notifySeenMessage(peer.peerId, msg, validationResult)
         notifyAnyMessage(peer, msg)
         if (validationResult.isPresent && validationResult.get() != ValidationResult.Invalid) {
             notifyAnyValidMessage(peer, msg)
@@ -138,11 +138,11 @@ open class GossipRouter @JvmOverloads constructor(
     }
 
     override fun notifyUnseenInvalidMessage(peer: PeerHandler, msg: PubsubMessage) {
-        eventBroadcaster.notifyUnseenInvalidMessage(peer, msg)
+        eventBroadcaster.notifyUnseenInvalidMessage(peer.peerId, msg)
     }
 
     override fun notifyUnseenValidMessage(peer: PeerHandler, msg: PubsubMessage) {
-        eventBroadcaster.notifyUnseenValidMessage(peer, msg)
+        eventBroadcaster.notifyUnseenValidMessage(peer.peerId, msg)
         notifyAnyValidMessage(peer, msg)
     }
 
@@ -167,15 +167,15 @@ open class GossipRouter @JvmOverloads constructor(
     }
 
     protected open fun notifyMeshed(peer: PeerHandler, topic: Topic) {
-        eventBroadcaster.notifyMeshed(peer, topic)
+        eventBroadcaster.notifyMeshed(peer.peerId, topic)
     }
 
     fun notifyPruned(peer: PeerHandler, topic: Topic) {
-        eventBroadcaster.notifyPruned(peer, topic)
+        eventBroadcaster.notifyPruned(peer.peerId, topic)
     }
 
     fun notifyRouterMisbehavior(peer: PeerHandler, penalty: Int) {
-        eventBroadcaster.notifyRouterMisbehavior(peer, penalty)
+        eventBroadcaster.notifyRouterMisbehavior(peer.peerId, penalty)
     }
 
     override fun acceptRequestsFrom(peer: PeerHandler): Boolean {

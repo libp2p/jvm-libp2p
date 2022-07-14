@@ -2,6 +2,7 @@ package io.libp2p.etc.util
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder
 import io.libp2p.core.InternalErrorException
+import io.libp2p.core.PeerId
 import io.libp2p.core.Stream
 import io.libp2p.etc.types.lazyVarInit
 import io.libp2p.etc.types.submitAsync
@@ -119,17 +120,26 @@ abstract class P2PService {
         )
     }
 
+    private val peersMutable = mutableListOf<PeerHandler>()
     /**
      * List of connected peers.
      * Note that connected peer could not be ready for writing yet, so consider [activePeers]
      * if any data is to be send
      */
-    val peers = mutableListOf<PeerHandler>()
+    val peers: List<PeerHandler> = peersMutable
 
+    private val activePeersMutable = mutableListOf<PeerHandler>()
     /**
      * List of active peers to which data could be written
      */
-    val activePeers = mutableListOf<PeerHandler>()
+    val activePeers: List<PeerHandler> = activePeersMutable
+
+    private val peerIdToPeerHandlerMapMutable = mutableMapOf<PeerId, PeerHandler>()
+
+    /**
+     * Maps [PeerId] to [PeerHandler] instance for connected peers
+     */
+    val peerIdToPeerHandlerMap: Map<PeerId, PeerHandler> = peerIdToPeerHandlerMapMutable
 
     /**
      * Adds a new stream to service. This method should **synchronously** init the underlying
@@ -143,23 +153,26 @@ abstract class P2PService {
     protected open fun streamAdded(streamHandler: StreamHandler) {
         val peerHandler = createPeerHandler(streamHandler)
         streamHandler.initPeerHandler(peerHandler)
-        peers += peerHandler
+        peersMutable += peerHandler
+        peerIdToPeerHandlerMapMutable[peerHandler.peerId] = peerHandler
     }
 
     protected open fun createPeerHandler(streamHandler: StreamHandler) = PeerHandler(streamHandler)
 
     protected open fun streamActive(stream: StreamHandler) {
         if (stream.aborted) return
-        activePeers += stream.getPeerHandler()
+        activePeersMutable += stream.getPeerHandler()
         onPeerActive(stream.getPeerHandler())
     }
 
     protected open fun streamDisconnected(stream: StreamHandler) {
+        val peerHandler = stream.getPeerHandler()
         if (stream.aborted) return
-        activePeers -= stream.getPeerHandler()
-        if (peers.remove(stream.getPeerHandler())) {
-            onPeerDisconnected(stream.getPeerHandler())
+        activePeersMutable -= peerHandler
+        if (peersMutable.remove(peerHandler)) {
+            onPeerDisconnected(peerHandler)
         }
+        peerIdToPeerHandlerMapMutable -= peerHandler.peerId
     }
 
     protected open fun streamException(stream: StreamHandler, cause: Throwable) {

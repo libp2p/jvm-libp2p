@@ -44,15 +44,15 @@ class DefaultGossipScoreTest {
         assertEquals(0.0, score.score(peer.peerId))
 
         // not hit threshold yet
-        score.notifyRouterMisbehavior(peer, 5)
+        score.notifyRouterMisbehavior(peer.peerId, 5)
         assertEquals(0.0, score.score(peer.peerId))
 
         // behaviourPenaltyThreshold reached
-        score.notifyRouterMisbehavior(peer, 1)
+        score.notifyRouterMisbehavior(peer.peerId, 1)
         assertTrue(score.score(peer.peerId) < 0)
 
         // quadratic penalty
-        score.notifyRouterMisbehavior(peer, 10)
+        score.notifyRouterMisbehavior(peer.peerId, 10)
         assertTrue(score.score(peer.peerId) < -50)
 
         // negative behaviour should not be forgotten so fast
@@ -107,7 +107,7 @@ class DefaultGossipScoreTest {
         assertEquals(0.0, score.score(peer.peerId))
 
         // Add peer to mesh
-        score.notifyMeshed(peer, topic)
+        score.notifyMeshed(peer.peerId, topic)
         assertThat(score.score(peer.peerId)).isEqualTo(0.0)
 
         // After 1 quantum of time in the mesh, we should increment the score by timeInMeshWeight
@@ -116,22 +116,22 @@ class DefaultGossipScoreTest {
 
         // After delivering a message, we should increase our score by firstMessageDeliveriesWeight
         val msg = DefaultPubsubMessage(createRpcMessage(topic))
-        score.notifyUnseenValidMessage(peer, msg)
+        score.notifyUnseenValidMessage(peer.peerId, msg)
         assertThat(score.score(peer.peerId)).isEqualTo(3.0)
 
         // Message for an unknown topic should be scored using default (disabled) scoring, so score should not change
         val unknownTopicMsg = DefaultPubsubMessage(createRpcMessage(otherTopic))
-        score.notifyUnseenValidMessage(peer, unknownTopicMsg)
+        score.notifyUnseenValidMessage(peer.peerId, unknownTopicMsg)
         assertThat(score.score(peer.peerId)).isEqualTo(3.0)
 
         // Invalid msg should decrement score
         val invalidMsg = DefaultPubsubMessage(createRpcMessage(topic, 2))
-        score.notifyUnseenInvalidMessage(peer, invalidMsg)
+        score.notifyUnseenInvalidMessage(peer.peerId, invalidMsg)
         assertThat(score.score(peer.peerId)).isEqualTo(2.5)
 
         // Invalid msg for unknown topic should not decrement score
         val unknownInvalidMsg = DefaultPubsubMessage(createRpcMessage(otherTopic, 2))
-        score.notifyUnseenInvalidMessage(peer, unknownInvalidMsg)
+        score.notifyUnseenInvalidMessage(peer.peerId, unknownInvalidMsg)
         assertThat(score.score(peer.peerId)).isEqualTo(2.5)
 
         // Advance time to activate low delivery penalty
@@ -173,12 +173,12 @@ class DefaultGossipScoreTest {
         assertEquals(0.0, score.score(peer.peerId))
 
         // Add peer to mesh
-        score.notifyMeshed(peer, topic)
+        score.notifyMeshed(peer.peerId, topic)
         assertThat(score.score(peer.peerId)).isEqualTo(0.0)
 
         // After delivering a message, we should increase our score by firstMessageDeliveriesWeight
         val msg = DefaultPubsubMessage(createRpcMessage(topic))
-        score.notifyUnseenValidMessage(peer, msg)
+        score.notifyUnseenValidMessage(peer.peerId, msg)
         assertThat(score.score(peer.peerId)).isEqualTo(2.0)
 
         // Refresh to decay score
@@ -223,13 +223,13 @@ class DefaultGossipScoreTest {
         assertThat(score.getCachedScore(peer.peerId)).isEqualTo(0.0)
 
         // Add peer to mesh
-        score.notifyMeshed(peer, topic)
+        score.notifyMeshed(peer.peerId, topic)
         assertThat(score.score(peer.peerId)).isEqualTo(0.0)
         assertThat(score.getCachedScore(peer.peerId)).isEqualTo(0.0)
 
         // After delivering a message, we should increase our score by firstMessageDeliveriesWeight
         val msg = DefaultPubsubMessage(createRpcMessage(topic))
-        score.notifyUnseenValidMessage(peer, msg)
+        score.notifyUnseenValidMessage(peer.peerId, msg)
         assertThat(score.score(peer.peerId)).isEqualTo(2.0)
         assertThat(score.getCachedScore(peer.peerId)).isEqualTo(2.0)
 
@@ -278,16 +278,16 @@ class DefaultGossipScoreTest {
         assertEquals(0.0, score.score(peer.peerId))
 
         // Add peer to mesh
-        score.notifyMeshed(peer, topic)
+        score.notifyMeshed(peer.peerId, topic)
         assertThat(score.score(peer.peerId)).isEqualTo(0.0)
 
         // Deliver first message from other peer
         val msg = DefaultPubsubMessage(createRpcMessage(topic))
-        score.notifyUnseenValidMessage(otherPeer, msg)
+        score.notifyUnseenValidMessage(otherPeer.peerId, msg)
         assertThat(score.score(peer.peerId)).isEqualTo(0.0)
 
         // Deliver same message from target peer
-        score.notifySeenMessage(peer, msg, Optional.empty())
+        score.notifySeenMessage(peer.peerId, msg, Optional.empty())
         // Score should not change yet because we haven't passed the activation window
         assertThat(score.score(peer.peerId)).isEqualTo(0.0)
 
@@ -333,12 +333,12 @@ class DefaultGossipScoreTest {
         assertEquals(0.0, score.score(peer.peerId))
 
         // Add peer to mesh
-        score.notifyMeshed(peer, topic)
+        score.notifyMeshed(peer.peerId, topic)
         assertThat(score.score(peer.peerId)).isEqualTo(0.0)
 
         // After delivering an invalid message, we should get a penalty
         val msg = DefaultPubsubMessage(createRpcMessage(topic))
-        score.notifyUnseenInvalidMessage(peer, msg)
+        score.notifyUnseenInvalidMessage(peer.peerId, msg)
         assertThat(score.score(peer.peerId)).isEqualTo(-2.0)
 
         // Refresh to decay score
@@ -384,7 +384,7 @@ class DefaultGossipScoreTest {
         assertEquals(0.0, score.score(peer.peerId))
 
         // Add peer to mesh
-        score.notifyMeshed(peer, topic)
+        score.notifyMeshed(peer.peerId, topic)
         assertThat(score.score(peer.peerId)).isEqualTo(0.0)
 
         // Increase time in mesh beyond max
@@ -435,7 +435,7 @@ class DefaultGossipScoreTest {
         assertEquals(0.0, score.score(peer.peerId))
 
         // Add peer to mesh
-        score.notifyMeshed(peer, topic)
+        score.notifyMeshed(peer.peerId, topic)
         assertThat(score.score(peer.peerId)).isEqualTo(0.0)
 
         // Increase time in mesh beyond max
@@ -487,13 +487,13 @@ class DefaultGossipScoreTest {
         assertEquals(0.0, score.score(peer.peerId))
 
         // Add peer to mesh
-        score.notifyMeshed(peer, topic)
+        score.notifyMeshed(peer.peerId, topic)
         assertThat(score.score(peer.peerId)).isEqualTo(0.0)
 
         // Deliver several message
         for (i in 0..5) {
             val msg = DefaultPubsubMessage(createRpcMessage(topic, i))
-            score.notifyUnseenValidMessage(peer, msg)
+            score.notifyUnseenValidMessage(peer.peerId, msg)
         }
         assertThat(score.score(peer.peerId)).isEqualTo(8.0)
 
@@ -558,18 +558,18 @@ class DefaultGossipScoreTest {
         assertEquals(0.0, score.score(peer.peerId))
 
         // Add peer to mesh
-        score.notifyMeshed(peer, topic)
+        score.notifyMeshed(peer.peerId, topic)
         assertThat(score.score(peer.peerId)).isEqualTo(0.0)
 
         // Deliver a bunch of invalid messages
         for (i in 0..5) {
             // Deliver first message from other peer
             val msg = DefaultPubsubMessage(createRpcMessage(topic, i))
-            score.notifyUnseenValidMessage(otherPeer, msg)
+            score.notifyUnseenValidMessage(otherPeer.peerId, msg)
             assertThat(score.score(peer.peerId)).isEqualTo(0.0)
 
             // Deliver same message from target peer
-            score.notifySeenMessage(peer, msg, Optional.empty())
+            score.notifySeenMessage(peer.peerId, msg, Optional.empty())
             // Score should not change yet because we haven't passed the activation window
             assertThat(score.score(peer.peerId)).isEqualTo(0.0)
         }
@@ -628,12 +628,12 @@ class DefaultGossipScoreTest {
         assertEquals(0.0, score.score(peer.peerId))
 
         // Add peer to mesh
-        score.notifyMeshed(peer, topic)
+        score.notifyMeshed(peer.peerId, topic)
         assertThat(score.score(peer.peerId)).isEqualTo(0.0)
 
         // After delivering an invalid message, we should get a penalty
         val msg = DefaultPubsubMessage(createRpcMessage(topic))
-        score.notifyUnseenInvalidMessage(peer, msg)
+        score.notifyUnseenInvalidMessage(peer.peerId, msg)
         assertThat(score.score(peer.peerId)).isEqualTo(-2.0)
 
         // Update params and check score is updated
@@ -707,15 +707,15 @@ class DefaultGossipScoreTest {
         // Generate same activity for topic a and b
         for (curTopic in arrayOf(topicA, topicB)) {
             // Add peer to mesh
-            score.notifyMeshed(peer, curTopic)
+            score.notifyMeshed(peer.peerId, curTopic)
 
             // Deliver a valid first message
             val msg = DefaultPubsubMessage(createRpcMessage(curTopic))
-            score.notifyUnseenValidMessage(peer, msg)
+            score.notifyUnseenValidMessage(peer.peerId, msg)
 
             // Deliver an invalid message
             val invalidMsg = DefaultPubsubMessage(createRpcMessage(curTopic, 2))
-            score.notifyUnseenInvalidMessage(peer, invalidMsg)
+            score.notifyUnseenInvalidMessage(peer.peerId, invalidMsg)
         }
 
         // Increase time in mesh past activation period
@@ -727,6 +727,11 @@ class DefaultGossipScoreTest {
         // Update params and now second topic should contribute to the score (doubling it)
         score.updateTopicParams(mapOf(Pair(topicB, topicScoreParams)))
         assertThat(score.score(peer.peerId)).isEqualTo(-3.0)
+    }
+
+    @Test
+    fun `test IP colocation`() {
+        TODO()
     }
 
     private fun createRpcMessage(topic: String, seqNo: Int = 1): Rpc.Message {
