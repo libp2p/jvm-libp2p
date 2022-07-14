@@ -41,6 +41,18 @@ abstract class AbstractRouter(
     val subscriptionFilter: TopicSubscriptionFilter,
     val maxMsgSize: Int = DEFAULT_MAX_PUBSUB_MESSAGE_SIZE
 ) : P2PServiceSemiDuplex(), PubsubRouter, PubsubRouterDebug {
+
+    protected class PendingRpcPartsMap<out TPartsQueue : RpcPartsQueue>(
+        private val queueFactory: () -> TPartsQueue
+    ) {
+        private val map = linkedMapOf<PeerHandler, TPartsQueue>()
+
+        val pendingPeers: Collection<PeerHandler> get() = map.keys.copy()
+
+        fun getQueue(peer: PeerHandler) = map.computeIfAbsent(peer) { queueFactory() }
+        fun popQueue(peer: PeerHandler) = map.remove(peer) ?: queueFactory()
+    }
+
     private val logger = LogManager.getLogger(AbstractRouter::class.java)
 
     override var curTimeMillis: () -> Long by lazyVarInit { { System.currentTimeMillis() } }
@@ -59,7 +71,7 @@ abstract class AbstractRouter(
     override var messageValidator = NOP_ROUTER_VALIDATOR
 
     val subscribedTopics = linkedSetOf<Topic>()
-    val pendingRpcParts = linkedMapOf<PeerHandler, MutableList<Rpc.RPC>>()
+    protected open val pendingRpcParts = PendingRpcPartsMap<RpcPartsQueue> { DefaultRpcPartsQueue() }
     private var debugHandler: ChannelHandler? = null
     private val pendingMessagePromises = MultiSet<PeerHandler, CompletableFuture<Unit>>()
 
@@ -76,72 +88,14 @@ abstract class AbstractRouter(
     }
 
     protected open fun submitPublishMessage(toPeer: PeerHandler, msg: PubsubMessage): CompletableFuture<Unit> {
-        addPendingRpcPart(toPeer, Rpc.RPC.newBuilder().addPublish(msg.protobufMessage).build())
+        pendingRpcParts.getQueue(toPeer).addPublish(msg.protobufMessage)
         val sendPromise = CompletableFuture<Unit>()
         pendingMessagePromises[toPeer] += sendPromise
         return sendPromise
     }
 
-    /**
-     * Submits a partial message for a peer.
-     * Later message parts for each peer are merged and sent to the wire
-     */
-    protected fun addPendingRpcPart(toPeer: PeerHandler, msgPart: Rpc.RPC) {
-        pendingRpcParts.getOrPut(toPeer, { mutableListOf() }) += msgPart
-    }
-
-    private fun addPendingSubscription(toPeer: PeerHandler, topic: Topic, subscriptionStatus: SubscriptionStatus) {
-        addPendingRpcPart(
-            toPeer,
-            Rpc.RPC.newBuilder()
-                .addSubscriptions(
-                    Rpc.RPC.SubOpts.newBuilder()
-                        .setSubscribe(subscriptionStatus == SubscriptionStatus.Subscribed)
-                        .setTopicid(topic)
-                )
-                .build()
-        )
-    }
-
-    /**
-     * Drains all partial messages for [toPeer] and returns merged message
-     */
-    protected fun collectPeerMessages(toPeer: PeerHandler): List<Rpc.RPC> =
-        mergeMessageParts(pendingRpcParts.remove(toPeer) ?: emptyList())
-
-    protected fun mergeMessageParts(parts: List<Rpc.RPC>): List<Rpc.RPC> {
-        if (parts.isEmpty()) return emptyList()
-
-        val optimisticBuilder = parts.fold(Rpc.RPC.newBuilder()) { builder, part ->
-            builder.mergeFrom(part)
-        }
-        return if (validateMessageListLimits(optimisticBuilder)) {
-            // optimistic case
-            listOf(optimisticBuilder.build())
-        } else {
-            // need to split to multiple messages
-            splitToLimitedMessages(parts)
-        }
-    }
-
-    private fun splitToLimitedMessages(parts: List<Rpc.RPC>): List<Rpc.RPC> {
-        val ret = mutableListOf<Rpc.RPC>()
-        val partQueue = ArrayDeque(parts)
-        while (partQueue.isNotEmpty()) {
-            var builder = Rpc.RPC.newBuilder()
-            while (partQueue.isNotEmpty()) {
-                val validationBuilder = builder.clone()
-                val part = partQueue.first()
-                validationBuilder.mergeFrom(part)
-                if (!validateMessageListLimits(validationBuilder)) {
-                    break
-                }
-                partQueue.removeFirst()
-                builder = validationBuilder
-            }
-            ret += builder.build()
-        }
-        return ret
+    internal open fun validateMessageListLimits(msg: Rpc.RPCOrBuilder): Boolean {
+        return true
     }
 
     /**
@@ -149,11 +103,11 @@ abstract class AbstractRouter(
      * @see addPendingRpcPart
      */
     protected fun flushAllPending() {
-        pendingRpcParts.keys.copy().forEach(::flushPending)
+        pendingRpcParts.pendingPeers.forEach(::flushPending)
     }
 
     protected fun flushPending(peer: PeerHandler) {
-        val peerMessages = collectPeerMessages(peer)
+        val peerMessages = pendingRpcParts.popQueue(peer).takeMerged()
         val allSendPromise = peerMessages.map { send(peer, it) }.thenApplyAll { }
         pendingMessagePromises.removeAll(peer)?.forEach {
             allSendPromise.forward(it)
@@ -204,8 +158,9 @@ abstract class AbstractRouter(
     protected abstract fun processControl(ctrl: Rpc.ControlMessage, receivedFrom: PeerHandler)
 
     override fun onPeerActive(peer: PeerHandler) {
+        val partsQueue = pendingRpcParts.getQueue(peer)
         subscribedTopics.forEach {
-            addPendingSubscription(peer, it, SubscriptionStatus.Subscribed)
+            partsQueue.addSubscribe(it)
         }
         flushPending(peer)
     }
@@ -322,10 +277,6 @@ abstract class AbstractRouter(
         }
     }
 
-    internal open fun validateMessageListLimits(msg: Rpc.RPCOrBuilder): Boolean {
-        return true
-    }
-
     private fun newValidatedMessages(msgs: List<PubsubMessage>, receivedFrom: PeerHandler) {
         msgs.forEach { notifyUnseenValidMessage(receivedFrom, it) }
         broadcastInbound(msgs, receivedFrom)
@@ -372,7 +323,7 @@ abstract class AbstractRouter(
     }
 
     protected open fun subscribe(topic: Topic) {
-        activePeers.forEach { addPendingSubscription(it, topic, SubscriptionStatus.Subscribed) }
+        activePeers.forEach { pendingRpcParts.getQueue(it).addSubscribe(topic) }
         subscribedTopics += topic
     }
 
@@ -384,7 +335,7 @@ abstract class AbstractRouter(
     }
 
     protected open fun unsubscribe(topic: Topic) {
-        activePeers.forEach { addPendingSubscription(it, topic, SubscriptionStatus.Unsubscribed) }
+        activePeers.forEach { pendingRpcParts.getQueue(it).addUnsubscribe(topic) }
         subscribedTopics -= topic
     }
 
@@ -405,6 +356,4 @@ abstract class AbstractRouter(
     override fun initHandler(handler: (PubsubMessage) -> CompletableFuture<ValidationResult>) {
         msgHandler = handler
     }
-
-    protected enum class SubscriptionStatus { Subscribed, Unsubscribed }
 }
