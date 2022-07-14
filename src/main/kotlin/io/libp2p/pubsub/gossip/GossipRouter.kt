@@ -56,7 +56,7 @@ open class GossipRouter @JvmOverloads constructor(
     val acceptRequestsWhitelistMaxMessages = 128
     val acceptRequestsWhitelistDuration = 1.seconds
 
-    val score by lazy { GossipScore(scoreParams, executor, curTimeMillis) }
+    val score: GossipScoreIfc by lazy { GossipScore(scoreParams, executor, curTimeMillis) }
     val fanout: MutableMap<Topic, MutableSet<PeerHandler>> = linkedMapOf()
     val mesh: MutableMap<Topic, MutableSet<PeerHandler>> = linkedMapOf()
 
@@ -96,7 +96,7 @@ open class GossipRouter @JvmOverloads constructor(
     }
 
     private fun getDirectPeers() = peers.filter(::isDirect)
-    private fun isDirect(peer: PeerHandler) = score.peerParams.isDirect(peer.peerId)
+    private fun isDirect(peer: PeerHandler) = scoreParams.peerScoreParams.isDirect(peer.peerId)
     private fun isConnected(peerId: PeerId) = peers.any { it.peerId == peerId }
 
     override fun onPeerDisconnected(peer: PeerHandler) {
@@ -196,7 +196,7 @@ open class GossipRouter @JvmOverloads constructor(
             acceptRequestsWhitelist -= peer
         }
 
-        return peerScore >= score.params.graylistThreshold
+        return peerScore >= scoreParams.graylistThreshold
     }
 
     override fun validateMessageListLimits(msg: Rpc.RPCOrBuilder): Boolean {
@@ -269,7 +269,7 @@ open class GossipRouter @JvmOverloads constructor(
     private fun handleIHave(msg: Rpc.ControlIHave, peer: PeerHandler) {
         val peerScore = score.score(peer)
         // we ignore IHAVE gossip from any peer whose score is below the gossip threshold
-        if (peerScore < score.params.gossipThreshold) return
+        if (peerScore < scoreParams.gossipThreshold) return
         if (peerIHave.computeIfAbsent(peer) { AtomicInteger() }.incrementAndGet() > params.maxIHaveMessages) {
             // peer has advertised too many times within this heartbeat interval, ignoring
             return
@@ -290,7 +290,7 @@ open class GossipRouter @JvmOverloads constructor(
 
     private fun handleIWant(msg: Rpc.ControlIWant, peer: PeerHandler) {
         val peerScore = score.score(peer)
-        if (peerScore < score.params.gossipThreshold) return
+        if (peerScore < scoreParams.gossipThreshold) return
         msg.messageIDsList
             .mapNotNull { mCache.getMessageForPeer(peer.peerId, it.toWBytes()) }
             .filter { it.sentCount < params.gossipRetransmission }
@@ -332,7 +332,7 @@ open class GossipRouter @JvmOverloads constructor(
             if (params.floodPublish) {
                 msg.topics
                     .flatMap { getTopicPeers(it) }
-                    .filter { score.score(it) >= score.params.publishThreshold }
+                    .filter { score.score(it) >= scoreParams.publishThreshold }
                     .plus(getDirectPeers())
             } else {
                 msg.topics
@@ -490,7 +490,7 @@ open class GossipRouter @JvmOverloads constructor(
 
         val shuffledMessageIds = ids.shuffled(random).take(params.maxIHaveLength)
         val peers = (getTopicPeers(topic) - excludePeers)
-            .filter { score.score(it) >= score.params.gossipThreshold && !isDirect(it) }
+            .filter { score.score(it) >= scoreParams.gossipThreshold && !isDirect(it) }
 
         peers.shuffled(random)
             .take(max((params.gossipFactor * peers.size).toInt(), params.DLazy))

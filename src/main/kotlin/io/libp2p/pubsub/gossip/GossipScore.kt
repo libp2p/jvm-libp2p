@@ -21,11 +21,41 @@ import kotlin.math.pow
 fun P2PService.PeerHandler.getIP(): String? =
     streamHandler.stream.connection.remoteAddress().getFirstComponent(Protocol.IP4)?.stringValue
 
+interface GossipRouterEventsListener {
+
+    fun notifyDisconnected(peer: P2PService.PeerHandler)
+
+    fun notifyConnected(peer: P2PService.PeerHandler)
+
+    fun notifyUnseenMessage(peer: P2PService.PeerHandler, msg: PubsubMessage)
+
+    fun notifySeenMessage(peer: P2PService.PeerHandler, msg: PubsubMessage, validationResult: Optional<ValidationResult>)
+
+    fun notifyUnseenInvalidMessage(peer: P2PService.PeerHandler, msg: PubsubMessage)
+
+    fun notifyUnseenValidMessage(peer: P2PService.PeerHandler, msg: PubsubMessage)
+
+    fun notifyMeshed(peer: P2PService.PeerHandler, topic: Topic)
+
+    fun notifyPruned(peer: P2PService.PeerHandler, topic: Topic)
+
+    fun notifyRouterMisbehavior(peer: P2PService.PeerHandler, count: Int)
+}
+
+interface GossipScoreIfc : GossipRouterEventsListener {
+
+    fun updateTopicParams(topicScoreParams: Map<String, GossipTopicScoreParams>)
+
+    fun score(peer: P2PService.PeerHandler): Double
+
+    fun getCachedScore(peerId: PeerId): Double
+}
+
 class GossipScore(
     val params: GossipScoreParams = GossipScoreParams(),
     val executor: ScheduledExecutorService,
     val curTimeMillis: () -> Long
-) {
+) : GossipScoreIfc {
 
     inner class TopicScores(val topic: Topic) {
         private val params: GossipTopicScoreParams
@@ -157,7 +187,7 @@ class GossipScore(
 
     private fun isInMesh(peer: P2PService.PeerHandler, topic: Topic) = getTopicScores(peer, topic).inMesh()
 
-    fun updateTopicParams(topicScoreParams: Map<String, GossipTopicScoreParams>) {
+    override fun updateTopicParams(topicScoreParams: Map<String, GossipTopicScoreParams>) {
         executor.execute {
             for (topicScoreParam in topicScoreParams) {
                 params.topicsScoreParams.setTopicParams(topicScoreParam.key, topicScoreParam.value)
@@ -165,7 +195,7 @@ class GossipScore(
         }
     }
 
-    fun score(peer: P2PService.PeerHandler): Double {
+    override fun score(peer: P2PService.PeerHandler): Double {
         val peerScore = getPeerScores(peer)
         val topicsScore = min(
             if (peerParams.topicScoreCap > 0) peerParams.topicScoreCap else Double.MAX_VALUE,
@@ -192,7 +222,7 @@ class GossipScore(
         return computedScore
     }
 
-    fun refreshScores() {
+    private fun refreshScores() {
         peerScores.values.removeIf { it.isDisconnected() && it.getDisconnectDuration() > peerParams.retainScore }
         peerScores.values.forEach {
             it.topicScores.values.forEach { it.decayScores() }
@@ -200,11 +230,11 @@ class GossipScore(
         }
     }
 
-    fun getCachedScore(peerId: PeerId): Double {
+    override fun getCachedScore(peerId: PeerId): Double {
         return peerScores[peerId]?.cachedScore ?: 0.0
     }
 
-    fun notifyDisconnected(peer: P2PService.PeerHandler) {
+    override fun notifyDisconnected(peer: P2PService.PeerHandler) {
         getPeerScores(peer).topicScores.filter { it.value.inMesh() }.forEach { t, _ ->
             notifyPruned(peer, t)
         }
@@ -213,7 +243,7 @@ class GossipScore(
         peerIpCache -= peer.peerId
     }
 
-    fun notifyConnected(peer: P2PService.PeerHandler) {
+    override fun notifyConnected(peer: P2PService.PeerHandler) {
         peer.getIP()?.also { peerIp ->
             peerIpCache[peer.peerId] = peerIp
         }
@@ -225,10 +255,10 @@ class GossipScore(
     }
 
     @Suppress("UNUSED_PARAMETER")
-    fun notifyUnseenMessage(peer: P2PService.PeerHandler, msg: PubsubMessage) {
+    override fun notifyUnseenMessage(peer: P2PService.PeerHandler, msg: PubsubMessage) {
     }
 
-    fun notifySeenMessage(peer: P2PService.PeerHandler, msg: PubsubMessage, validationResult: Optional<ValidationResult>) {
+    override fun notifySeenMessage(peer: P2PService.PeerHandler, msg: PubsubMessage, validationResult: Optional<ValidationResult>) {
         msg.topics
             .filter { isInMesh(peer, it) }
             .forEach { topic ->
@@ -244,12 +274,12 @@ class GossipScore(
             }
     }
 
-    fun notifyUnseenInvalidMessage(peer: P2PService.PeerHandler, msg: PubsubMessage) {
+    override fun notifyUnseenInvalidMessage(peer: P2PService.PeerHandler, msg: PubsubMessage) {
         validationTime[msg] = curTimeMillis()
         msg.topics.forEach { getTopicScores(peer, it).invalidMessages++ }
     }
 
-    fun notifyUnseenValidMessage(peer: P2PService.PeerHandler, msg: PubsubMessage) {
+    override fun notifyUnseenValidMessage(peer: P2PService.PeerHandler, msg: PubsubMessage) {
         validationTime[msg] = curTimeMillis()
         msg.topics
             .onEach { getTopicScores(peer, it).firstMessageDeliveries++ }
@@ -257,18 +287,18 @@ class GossipScore(
             .onEach { getTopicScores(peer, it).meshMessageDeliveries++ }
     }
 
-    fun notifyMeshed(peer: P2PService.PeerHandler, topic: Topic) {
+    override fun notifyMeshed(peer: P2PService.PeerHandler, topic: Topic) {
         val topicScores = getTopicScores(peer, topic)
         topicScores.joinedMeshTimeMillis = curTimeMillis()
     }
 
-    fun notifyPruned(peer: P2PService.PeerHandler, topic: Topic) {
+    override fun notifyPruned(peer: P2PService.PeerHandler, topic: Topic) {
         val topicScores = getTopicScores(peer, topic)
         topicScores.meshFailurePenalty += topicScores.meshMessageDeliveriesDeficitSqr()
         topicScores.joinedMeshTimeMillis = 0
     }
 
-    fun notifyRouterMisbehavior(peer: P2PService.PeerHandler, count: Int) {
+    override fun notifyRouterMisbehavior(peer: P2PService.PeerHandler, count: Int) {
         getPeerScores(peer).behaviorPenalty += count
     }
 
