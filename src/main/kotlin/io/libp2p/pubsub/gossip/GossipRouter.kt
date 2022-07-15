@@ -56,6 +56,7 @@ open class GossipRouter @JvmOverloads constructor(
     val acceptRequestsWhitelistMaxMessages = 128
     val acceptRequestsWhitelistDuration = 1.seconds
 
+    val eventBroadcaster = GossipRouterEventBroadcaster()
     open val score: GossipScore by lazy {
         DefaultGossipScore(scoreParams, executor, curTimeMillis).also {
             eventBroadcaster.listeners += it
@@ -64,7 +65,6 @@ open class GossipRouter @JvmOverloads constructor(
 
     val fanout: MutableMap<Topic, MutableSet<PeerHandler>> = linkedMapOf()
     val mesh: MutableMap<Topic, MutableSet<PeerHandler>> = linkedMapOf()
-    val eventBroadcaster = GossipRouterEventBroadcaster()
 
     private val mCache = MCache(params.gossipSize, params.gossipHistoryLength)
     private val lastPublished = linkedMapOf<Topic, Long>()
