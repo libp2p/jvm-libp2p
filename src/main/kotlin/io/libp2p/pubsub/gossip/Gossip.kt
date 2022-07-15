@@ -22,11 +22,11 @@ class Gossip @JvmOverloads constructor(
     ProtocolBinding<Unit>, ConnectionHandler, PubsubApi by api {
 
     fun updateTopicScoreParams(scoreParams: Map<String, GossipTopicScoreParams>) {
-        router.currentTimeSupplier.updateTopicParams(scoreParams)
+        router.score.updateTopicParams(scoreParams)
     }
 
     fun getGossipScore(peerId: PeerId): Double {
-        return router.currentTimeSupplier.getCachedScore(peerId)
+        return router.score.getCachedScore(peerId)
     }
 
     override val protocolDescriptor =

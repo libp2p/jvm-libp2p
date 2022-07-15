@@ -12,45 +12,45 @@ import java.util.concurrent.ScheduledExecutorService
 
 typealias GossipRouterEventsSubscriber = (GossipRouterEventListener) -> Unit
 typealias GossipScoreFactory =
-    (GossipScoreParams, ScheduledExecutorService, CurrentTimeSupplier, GossipRouterEventsSubscriber) -> GossipScore
+        (GossipScoreParams, ScheduledExecutorService, CurrentTimeSupplier, GossipRouterEventsSubscriber) -> GossipScore
 
-open class GossipRouterBuilder {
+open class GossipRouterBuilder(
 
-    var name: String = "GossipRouter"
-    var protocol: PubsubProtocol = PubsubProtocol.Gossip_V_1_1
+        var name: String = "GossipRouter",
+        var protocol: PubsubProtocol = PubsubProtocol.Gossip_V_1_1,
 
-    var scheduledAsyncExecutor: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor(
-        ThreadFactoryBuilder().setDaemon(true).setNameFormat("GossipRouter-event-thread-%d").build()
-    )
+        var params: GossipParams = GossipParams(),
+        var scoreParams: GossipScoreParams = GossipScoreParams(),
 
-    var currentTimeSuppluer: CurrentTimeSupplier by lazyVarInit { { System.currentTimeMillis() } }
-    var random by lazyVarInit { Random() }
+        var scheduledAsyncExecutor: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor(
+                ThreadFactoryBuilder().setDaemon(true).setNameFormat("GossipRouter-event-thread-%d").build()
+        ),
+        var currentTimeSuppluer: CurrentTimeSupplier = { System.currentTimeMillis() },
+        var random: Random = Random(),
 
-    var params: GossipParams = GossipParams()
-    var scoreParams: GossipScoreParams = GossipScoreParams()
+        var maxMsgSize: Int = DEFAULT_MAX_PUBSUB_MESSAGE_SIZE,
+        var messageFactory: PubsubMessageFactory = { DefaultPubsubMessage(it) },
+        var messageValidator: PubsubRouterMessageValidator = NOP_ROUTER_VALIDATOR,
+        var maxSeenMessagesLimit: Int = 10000,
 
-    var maxMsgSize: Int = DEFAULT_MAX_PUBSUB_MESSAGE_SIZE
-    var messageFactory: PubsubMessageFactory = { DefaultPubsubMessage(it) }
-    var messageValidator: PubsubRouterMessageValidator = NOP_ROUTER_VALIDATOR
-    var maxSeenMessagesLimit = 10000
-    var seenCache: SeenCache<Optional<ValidationResult>> by lazyVar {
-        LRUSeenCache(SimpleSeenCache(), maxSeenMessagesLimit)
-    }
-    val mCache: MCache = MCache(params.gossipSize, params.gossipHistoryLength)
+        var subscriptionTopicSubscriptionFilter: TopicSubscriptionFilter = TopicSubscriptionFilter.AllowAllTopicSubscriptionFilter(),
 
-    var subscriptionTopicSubscriptionFilter: TopicSubscriptionFilter = TopicSubscriptionFilter.AllowAllTopicSubscriptionFilter()
+        var scoreFactory: GossipScoreFactory =
+                { scoreParams, scheduledAsyncRxecutor, currentTimeSuppluer, eventsSubscriber ->
+                    val gossipScore = DefaultGossipScore(scoreParams, scheduledAsyncRxecutor, currentTimeSuppluer)
+                    eventsSubscriber(gossipScore)
+                    gossipScore
+                },
+        val gossipRouterEventListeners: MutableList<GossipRouterEventListener> = mutableListOf()
+) {
 
-    var scoreFactory: GossipScoreFactory =
-        { scoreParams, scheduledAsyncRxecutor, currentTimeSuppluer, eventsSubscriber ->
-            val gossipScore = DefaultGossipScore(scoreParams, scheduledAsyncRxecutor, currentTimeSuppluer)
-            eventsSubscriber(gossipScore)
-            gossipScore
-        }
-    val gossipRouterEventListeners = mutableListOf<GossipRouterEventListener>()
+    var seenCache: SeenCache<Optional<ValidationResult>> by lazyVar { LRUSeenCache(SimpleSeenCache(), maxSeenMessagesLimit) }
+    var mCache: MCache by lazyVar { MCache(params.gossipSize, params.gossipHistoryLength) }
+
+    private var disposed = false
 
     protected fun createGossipRouter(): GossipRouter {
         val gossipScore = scoreFactory(scoreParams, scheduledAsyncExecutor, currentTimeSuppluer, { gossipRouterEventListeners += it })
-
 
         val router = GossipRouter(
                 params = params,
@@ -73,8 +73,11 @@ open class GossipRouterBuilder {
         return router
     }
 
-    open fun build(): GossipRouter = createGossipRouter()
-
+    open fun build(): GossipRouter {
+        if (disposed) throw RuntimeException("The builder was already used")
+        disposed = true
+        return createGossipRouter()
+    }
 
     // TODO: does it make any sense ?
     open fun build(messageHandlerInitializer: GossipRouter.() -> PubsubMessageHandler): GossipRouter {

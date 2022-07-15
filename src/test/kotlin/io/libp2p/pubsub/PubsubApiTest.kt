@@ -23,9 +23,9 @@ class PubsubApiTest {
     @Test
     fun testNoFromOrSeqNoMessageField() {
         val fuzz = DeterministicFuzz()
-        val router1 = fuzz.createTestRouter(FloodRouter())
+        val router1 = fuzz.createFloodRouter()
         val api1 = createPubsubApi(router1.router)
-        val router2 = fuzz.createTestRouter(FloodRouter())
+        val router2 = fuzz.createFloodRouter()
         val api2 = createPubsubApi(router2.router)
 
         router1.connectSemiDuplex(router2)
@@ -56,9 +56,9 @@ class PubsubApiTest {
     @Test
     fun testNoSenderPrivateKey() {
         val fuzz = DeterministicFuzz()
-        val router1 = fuzz.createTestRouter(FloodRouter())
+        val router1 = fuzz.createFloodRouter()
         val api1 = createPubsubApi(router1.router)
-        val router2 = fuzz.createTestRouter(FloodRouter())
+        val router2 = fuzz.createFloodRouter()
 
         router1.connectSemiDuplex(router2)
 
@@ -83,9 +83,9 @@ class PubsubApiTest {
     @Test
     fun testPublishExt() {
         val fuzz = DeterministicFuzz()
-        val router1 = fuzz.createTestRouter(FloodRouter())
+        val router1 = fuzz.createFloodRouter()
         val api1 = createPubsubApi(router1.router)
-        val router2 = fuzz.createTestRouter(FloodRouter())
+        val router2 = fuzz.createFloodRouter()
 
         router1.connectSemiDuplex(router2)
 

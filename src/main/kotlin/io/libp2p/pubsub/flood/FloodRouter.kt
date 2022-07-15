@@ -8,10 +8,11 @@ import io.libp2p.pubsub.TopicSubscriptionFilter
 import pubsub.pb.Rpc
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
 
-class FloodRouter : AbstractRouter(
+class FloodRouter(executor: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor()) : AbstractRouter(
     protocol = PubsubProtocol.Floodsub,
-    executor = Executors.newSingleThreadScheduledExecutor(),
+    executor = executor,
     subscriptionFilter = TopicSubscriptionFilter.AllowAllTopicSubscriptionFilter()
 ) {
 

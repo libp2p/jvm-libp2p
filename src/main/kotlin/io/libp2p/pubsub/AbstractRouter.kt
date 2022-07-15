@@ -44,7 +44,7 @@ const val DEFAULT_MAX_SEEN_MESSAGES_LIMIT: Int = 10000
 abstract class AbstractRouter(
     executor: ScheduledExecutorService,
     override val protocol: PubsubProtocol,
-    private val subscriptionFilter: TopicSubscriptionFilter,
+    private val subscriptionFilter: TopicSubscriptionFilter = TopicSubscriptionFilter.AllowAllTopicSubscriptionFilter(),
     private val maxMsgSize: Int = DEFAULT_MAX_PUBSUB_MESSAGE_SIZE,
     override val messageFactory: PubsubMessageFactory = { DefaultPubsubMessage(it) },
     protected val seenMessages: SeenCache<Optional<ValidationResult>> = LRUSeenCache(SimpleSeenCache(), DEFAULT_MAX_SEEN_MESSAGES_LIMIT),
@@ -69,10 +69,6 @@ abstract class AbstractRouter(
         fun getQueue(peer: PeerHandler) = map.computeIfAbsent(peer) { queueFactory() }
         fun popQueue(peer: PeerHandler) = map.remove(peer) ?: queueFactory()
     }
-
-//    override var curTimeMillis: () -> Long by lazyVarInit { { System.currentTimeMillis() } }
-//    override var random by lazyVarInit { Random() }
-//    override var name: String = "router"
 
     override fun publish(msg: PubsubMessage): CompletableFuture<Unit> {
         return submitAsyncOnEventThread {

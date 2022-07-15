@@ -35,11 +35,14 @@ class SemiduplexConnection(val conn1: TestConnection, val conn2: TestConnection)
     }
 }
 
-class TestRouter(val name: String = "" + cnt.getAndIncrement(), val protocol: String = "/test/undefined") {
+class TestRouter(
+        val name: String = "" + cnt.getAndIncrement(),
+        val router: PubsubRouterDebug
+) {
 
     val inboundMessages = LinkedBlockingQueue<PubsubMessage>()
     var handlerValidationResult = RESULT_VALID
-    var routerHandler: (PubsubMessage) -> CompletableFuture<ValidationResult> = {
+    val routerHandler: (PubsubMessage) -> CompletableFuture<ValidationResult> = {
         inboundMessages += it
         handlerValidationResult
     }
@@ -47,17 +50,15 @@ class TestRouter(val name: String = "" + cnt.getAndIncrement(), val protocol: St
     var testExecutor: ScheduledExecutorService by lazyVar { Executors.newSingleThreadScheduledExecutor() }
 
     var routerInstance: PubsubRouterDebug by lazyVar { FloodRouter() }
-    var router by lazyVar {
-        routerInstance.also {
-            it.initHandler(routerHandler)
-            it.executor = testExecutor
-            it.name = name
-        }
-    }
     var api by lazyVar { createPubsubApi(router) }
 
     var keyPair = generateKeyPair(KEY_TYPE.ECDSA)
     val peerId by lazy { PeerId.fromPubKey(keyPair.second) }
+    val protocol = router.protocol.announceStr
+
+    init {
+        router.initHandler(routerHandler)
+    }
 
     private fun newChannel(
         channelName: String,

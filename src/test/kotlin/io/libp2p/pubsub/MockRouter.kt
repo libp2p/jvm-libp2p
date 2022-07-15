@@ -3,13 +3,16 @@ package io.libp2p.pubsub
 import pubsub.pb.Rpc
 import java.util.concurrent.BlockingQueue
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.Executors
 import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 
-open class MockRouter(
-    override val protocol: PubsubProtocol = PubsubProtocol.Gossip_V_1_1
-) : AbstractRouter(TopicSubscriptionFilter.AllowAllTopicSubscriptionFilter()) {
+open class MockRouter(executor: ScheduledExecutorService) : AbstractRouter(
+        executor,
+        PubsubProtocol.Gossip_V_1_1,
+        TopicSubscriptionFilter.AllowAllTopicSubscriptionFilter()) {
 
     val inboundMessages: BlockingQueue<Rpc.RPC> = LinkedBlockingQueue()
 
@@ -22,7 +25,7 @@ open class MockRouter(
         var cnt = 0
         while (true) {
             val msg = inboundMessages.poll(5, TimeUnit.SECONDS)
-                ?: throw TimeoutException("No matching message received among $cnt")
+                    ?: throw TimeoutException("No matching message received among $cnt")
             if (predicate(msg)) return msg
             cnt++
         }
