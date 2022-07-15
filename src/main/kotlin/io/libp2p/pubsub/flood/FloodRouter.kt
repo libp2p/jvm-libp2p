@@ -7,10 +7,13 @@ import io.libp2p.pubsub.PubsubProtocol
 import io.libp2p.pubsub.TopicSubscriptionFilter
 import pubsub.pb.Rpc
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.Executors
 
-class FloodRouter : AbstractRouter(subscriptionFilter = TopicSubscriptionFilter.AllowAllTopicSubscriptionFilter()) {
-
-    override val protocol = PubsubProtocol.Floodsub
+class FloodRouter : AbstractRouter(
+    protocol = PubsubProtocol.Floodsub,
+    executor = Executors.newSingleThreadScheduledExecutor(),
+    subscriptionFilter = TopicSubscriptionFilter.AllowAllTopicSubscriptionFilter()
+) {
 
     // msg: validated unseen messages received from api
     override fun broadcastOutbound(msg: PubsubMessage): CompletableFuture<Unit> {

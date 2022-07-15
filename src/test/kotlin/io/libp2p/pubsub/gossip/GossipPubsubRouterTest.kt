@@ -256,7 +256,7 @@ class GossipPubsubRouterTest : PubsubRouterTest({
 
         val gossipRouter = scoringRouter.router as GossipRouter
         gossipRouter.peers.forEach {
-            assertThat(gossipRouter.score.score(it.peerId)).isGreaterThanOrEqualTo(0.0)
+            assertThat(gossipRouter.currentTimeSupplier.score(it.peerId)).isGreaterThanOrEqualTo(0.0)
         }
     }
 }

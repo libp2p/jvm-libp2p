@@ -9,7 +9,6 @@ import io.netty.channel.ChannelHandler
 import pubsub.pb.Rpc
 import java.util.Random
 import java.util.concurrent.CompletableFuture
-import java.util.concurrent.ScheduledExecutorService
 
 typealias Topic = String
 typealias MessageId = WBytes
@@ -62,8 +61,8 @@ abstract class AbstractPubsubMessage : PubsubMessage {
 interface PubsubMessageRouter {
 
     val protocol: PubsubProtocol
-    var messageFactory: PubsubMessageFactory
-    var messageValidator: PubsubRouterMessageValidator
+    val messageFactory: PubsubMessageFactory
+//    var messageValidator: PubsubRouterMessageValidator
 
     /**
      * Validates and broadcasts the message to suitable peers
@@ -139,13 +138,13 @@ interface PubsubRouterDebug : PubsubRouter {
      * Adds ability to substitute the scheduler which is used for all async and periodic
      * tasks within the router
      */
-    var executor: ScheduledExecutorService
+//    var executor: ScheduledExecutorService
 
     /**
      * System time supplier. Normally defaults to [System.currentTimeMillis]
      * If router needs system time it should refer to this supplier
      */
-    var curTimeMillis: () -> Long
+//    var curTimeMillis: () -> Long
 
     /**
      * Randomness supplier
@@ -153,9 +152,9 @@ interface PubsubRouterDebug : PubsubRouter {
      * Tests may substitute this instance with a fixed-seed [Random]
      * to perform deterministic testing
      */
-    var random: Random
-
-    var name: String
+//    var random: Random
+//
+//    var name: String
 
     /**
      * The same as [PubsubRouter.addPeer] but adds the [debugHandler] right before

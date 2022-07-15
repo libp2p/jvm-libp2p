@@ -1,21 +1,18 @@
 package io.libp2p.etc.util
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder
 import io.libp2p.core.InternalErrorException
 import io.libp2p.core.PeerId
 import io.libp2p.core.Stream
-import io.libp2p.etc.types.lazyVarInit
 import io.libp2p.etc.types.submitAsync
 import io.libp2p.etc.types.toVoidCompletableFuture
-import io.libp2p.pubsub.AbstractRouter
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
 import io.netty.util.ReferenceCountUtil
 import org.apache.logging.log4j.LogManager
 import java.util.concurrent.CompletableFuture
-import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
-import java.util.function.Supplier
+
+private val logger = LogManager.getLogger(P2PService::class.java)
 
 /**
  * Base class for a service which manages many streams from different peers
@@ -28,8 +25,34 @@ import java.util.function.Supplier
  * service API should be executed on this thread to be thread-safe.
  * Consider using the following helpers [runOnEventThread], [submitOnEventThread], [submitAsyncOnEventThread]
  * or use the [executor] directly
+ *
+ * @param executor Executor backed by a single event thread
+ * It is only safe to perform any service logic via this executor
  */
-abstract class P2PService {
+abstract class P2PService(
+    protected val executor: ScheduledExecutorService
+) {
+
+    private val peersMutable = mutableListOf<PeerHandler>()
+    /**
+     * List of connected peers.
+     * Note that connected peer could not be ready for writing yet, so consider [activePeers]
+     * if any data is to be send
+     */
+    val peers: List<PeerHandler> = peersMutable
+
+    private val activePeersMutable = mutableListOf<PeerHandler>()
+    /**
+     * List of active peers to which data could be written
+     */
+    val activePeers: List<PeerHandler> = activePeersMutable
+
+    private val peerIdToPeerHandlerMapMutable = mutableMapOf<PeerId, PeerHandler>()
+
+    /**
+     * Maps [PeerId] to [PeerHandler] instance for connected peers
+     */
+    val peerIdToPeerHandlerMap: Map<PeerId, PeerHandler> = peerIdToPeerHandlerMapMutable
 
     /**
      * Represents a single stream
@@ -106,40 +129,6 @@ abstract class P2PService {
             return "PeerHandler(peerId=$peerId, stream=${streamHandler.stream})"
         }
     }
-
-    /**
-     * Executor backed by a single event thread
-     * It is only safe to perform any service logic via this executor
-     *
-     * The executor can be altered right after the instance creation.
-     * Changing it later may have unpredictable results
-     */
-    var executor: ScheduledExecutorService by lazyVarInit {
-        Executors.newSingleThreadScheduledExecutor(
-            threadFactory
-        )
-    }
-
-    private val peersMutable = mutableListOf<PeerHandler>()
-    /**
-     * List of connected peers.
-     * Note that connected peer could not be ready for writing yet, so consider [activePeers]
-     * if any data is to be send
-     */
-    val peers: List<PeerHandler> = peersMutable
-
-    private val activePeersMutable = mutableListOf<PeerHandler>()
-    /**
-     * List of active peers to which data could be written
-     */
-    val activePeers: List<PeerHandler> = activePeersMutable
-
-    private val peerIdToPeerHandlerMapMutable = mutableMapOf<PeerId, PeerHandler>()
-
-    /**
-     * Maps [PeerId] to [PeerHandler] instance for connected peers
-     */
-    val peerIdToPeerHandlerMap: Map<PeerId, PeerHandler> = peerIdToPeerHandlerMapMutable
 
     /**
      * Adds a new stream to service. This method should **synchronously** init the underlying
@@ -251,15 +240,9 @@ abstract class P2PService {
     /**
      * Executes the code on the service event thread
      */
-    fun <C> submitOnEventThread(run: () -> C): CompletableFuture<C> = CompletableFuture.supplyAsync(Supplier { run() }, executor)
+    fun <C> submitOnEventThread(run: () -> C): CompletableFuture<C> = CompletableFuture.supplyAsync({ run() }, executor)
     /**
      * Executes the code on the service event thread
      */
     fun <C> submitAsyncOnEventThread(run: () -> CompletableFuture<C>): CompletableFuture<C> = executor.submitAsync(run)
-
-    companion object {
-        private val threadFactory = ThreadFactoryBuilder().setDaemon(true).setNameFormat("P2PService-event-thread-%d").build()
-        @JvmStatic
-        val logger = LogManager.getLogger(AbstractRouter::class.java)
-    }
 }
