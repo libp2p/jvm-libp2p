@@ -121,7 +121,7 @@ class GossipPubsubRouterTest : PubsubRouterTest(
         val fuzz = DeterministicFuzz()
 
         val router1 = fuzz.createMockRouter()
-        val router2 = fuzz.createTestRouter(router)
+        val router2 = fuzz.createTestRouter(routerFactory)
         val mockRouter = router1.router as MockRouter
 
         router2.router.subscribe("topic1")
@@ -148,8 +148,8 @@ class GossipPubsubRouterTest : PubsubRouterTest(
         val fuzz = DeterministicFuzz()
 
         val router1 = fuzz.createMockRouter()
-        val router2 = fuzz.createTestRouter(router)
-        val router3 = fuzz.createTestRouter(router)
+        val router2 = fuzz.createTestRouter(routerFactory)
+        val router3 = fuzz.createTestRouter(routerFactory)
         val mockRouter = router1.router as MockRouter
 
         router2.router.subscribe("topic1")

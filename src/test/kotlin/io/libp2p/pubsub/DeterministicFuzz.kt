@@ -42,22 +42,6 @@ class DeterministicFuzz {
         }
     }
 
-//    fun createTestRouter(
-//            routerInstance: PubsubRouterDebug,
-//            protocol: PubsubProtocol = routerInstance.protocol
-//    ): TestRouter {
-//        routerInstance.curTimeMillis = { timeController.time }
-//        routerInstance.random = this.random
-//        val testRouter = TestRouter("" + (cnt++), protocol.announceStr).also {
-//            val randomBytes = ByteArray(8)
-//            random.nextBytes(randomBytes)
-//            it.keyPair = generateKeyPair(KEY_TYPE.ECDSA, random = SecureRandom(randomBytes))
-//        }
-//        testRouter.routerInstance = routerInstance
-//        testRouter.testExecutor = createControlledExecutor()
-//        return testRouter
-//    }
-
     companion object {
         fun createGossipFuzzRouterFactory(routerBuilderFactory: () -> GossipRouterBuilder): DeterministicFuzzRouterFactory =
             { executor, curTime, random ->
