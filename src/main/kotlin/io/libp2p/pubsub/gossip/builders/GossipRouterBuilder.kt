@@ -33,8 +33,8 @@ open class GossipRouterBuilder(
     var subscriptionTopicSubscriptionFilter: TopicSubscriptionFilter = TopicSubscriptionFilter.AllowAllTopicSubscriptionFilter(),
 
     var scoreFactory: GossipScoreFactory =
-        { scoreParams, scheduledAsyncRxecutor, currentTimeSuppluer, eventsSubscriber ->
-            val gossipScore = DefaultGossipScore(scoreParams, scheduledAsyncRxecutor, currentTimeSuppluer)
+        { scoreParams1, scheduledAsyncRxecutor, currentTimeSuppluer1, eventsSubscriber ->
+            val gossipScore = DefaultGossipScore(scoreParams1, scheduledAsyncRxecutor, currentTimeSuppluer1)
             eventsSubscriber(gossipScore)
             gossipScore
         },

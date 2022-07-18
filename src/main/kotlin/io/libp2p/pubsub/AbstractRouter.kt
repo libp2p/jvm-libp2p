@@ -3,7 +3,6 @@ package io.libp2p.pubsub
 import io.libp2p.core.BadPeerException
 import io.libp2p.core.PeerId
 import io.libp2p.core.Stream
-import io.libp2p.core.pubsub.RESULT_VALID
 import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.etc.types.MultiSet
 import io.libp2p.etc.types.completedExceptionally
@@ -112,7 +111,7 @@ abstract class AbstractRouter(
         addNewStreamWithHandler(peer, debugHandler)
     }
 
-    override fun addNewStream(stream: Stream)  = addNewStreamWithHandler(stream, null)
+    override fun addNewStream(stream: Stream) = addNewStreamWithHandler(stream, null)
     protected fun addNewStreamWithHandler(stream: Stream, handler: ChannelHandler?) {
         initChannelWithHandler(StreamHandler(stream), handler)
     }
