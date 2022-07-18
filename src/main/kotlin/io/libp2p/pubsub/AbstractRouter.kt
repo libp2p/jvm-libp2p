@@ -107,14 +107,17 @@ abstract class AbstractRouter(
         }
     }
 
-    override fun addPeer(peer: Stream) {
-        addPeerWithDebugHandler(peer, null)
-    }
-
+    override fun addPeer(peer: Stream) = addPeerWithDebugHandler(peer, null)
     override fun addPeerWithDebugHandler(peer: Stream, debugHandler: ChannelHandler?) {
-        initChannelWithHandler(StreamHandler(peer), debugHandler)
+        addNewStreamWithHandler(peer, debugHandler)
     }
 
+    override fun addNewStream(stream: Stream)  = addNewStreamWithHandler(stream, null)
+    protected fun addNewStreamWithHandler(stream: Stream, handler: ChannelHandler?) {
+        initChannelWithHandler(StreamHandler(stream), handler)
+    }
+
+    override fun initChannel(streamHandler: StreamHandler) = initChannelWithHandler(streamHandler, null)
     protected open fun initChannelWithHandler(streamHandler: StreamHandler, handler: ChannelHandler?) {
         with(streamHandler.stream) {
             pushHandler(LimitedProtobufVarint32FrameDecoder(maxMsgSize))
@@ -125,8 +128,6 @@ abstract class AbstractRouter(
             pushHandler(streamHandler)
         }
     }
-
-    override fun initChannel(streamHandler: StreamHandler) = initChannelWithHandler(streamHandler, null)
 
     override fun removePeer(peer: Stream) {
         peer.close()

@@ -139,6 +139,17 @@ abstract class P2PService(
      */
     open fun addNewStream(stream: Stream) = initChannel(StreamHandler(stream))
 
+    /**
+     * Callback to initialize the [Stream] underlying [io.netty.channel.Channel]
+     *
+     * Is invoked **not** on the event thread
+     * [io.netty.channel.Channel] initialization must be performed **synchronously on the caller thread**.
+     * **Don't** initialize the channel on event thread!
+     * Any service logic related to adding a new stream could be performed
+     * within overridden [streamAdded] callback (which is invoked on event thread)
+     */
+    protected abstract fun initChannel(streamHandler: StreamHandler)
+
     protected open fun streamAdded(streamHandler: StreamHandler) {
         val peerHandler = createPeerHandler(streamHandler)
         streamHandler.initPeerHandler(peerHandler)
@@ -172,17 +183,6 @@ abstract class P2PService(
         if (stream.aborted) return
         onInbound(stream.getPeerHandler(), msg)
     }
-
-    /**
-     * Callback to initialize the [Stream] underlying [io.netty.channel.Channel]
-     *
-     * Is invoked **not** on the event thread
-     * [io.netty.channel.Channel] initialization must be performed **synchronously on the caller thread**.
-     * **Don't** initialize the channel on event thread!
-     * Any service logic related to adding a new stream could be performed
-     * within overridden [streamAdded] callback (which is invoked on event thread)
-     */
-    protected abstract fun initChannel(streamHandler: StreamHandler)
 
     /**
      * Callback notifies that the peer is active and ready for writing data
