@@ -116,7 +116,7 @@ abstract class AbstractRouter(
         initChannelWithHandler(StreamHandler(peer), debugHandler)
     }
 
-    private fun initChannelWithHandler(streamHandler: StreamHandler, handler: ChannelHandler?) {
+    protected open fun initChannelWithHandler(streamHandler: StreamHandler, handler: ChannelHandler?) {
         with(streamHandler.stream) {
             pushHandler(LimitedProtobufVarint32FrameDecoder(maxMsgSize))
             pushHandler(ProtobufVarint32LengthFieldPrepender())

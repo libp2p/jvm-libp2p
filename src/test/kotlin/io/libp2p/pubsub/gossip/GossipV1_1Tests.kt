@@ -23,6 +23,7 @@ import io.libp2p.pubsub.DeterministicFuzz.Companion.createMockFuzzRouterFactory
 import io.libp2p.pubsub.gossip.builders.GossipRouterBuilder
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
+import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelOutboundHandlerAdapter
 import io.netty.channel.ChannelPromise
@@ -83,10 +84,19 @@ class GossipV1_1Tests {
         fun getMockRouter(peerId: PeerId) = mockRouters[routers.indexOfFirst { it.peerId == peerId }]
     }
 
+    @Test
+    fun selfSanityTest() {
+        val test = TwoRoutersTest()
+
+        test.mockRouter.subscribe("topic1")
+        val msg = newMessage("topic1", 0L, "Hello".toByteArray())
+        test.gossipRouter.publish(msg)
+        test.mockRouter.waitForMessage { it.publishCount > 0 }
+    }
+
     class TwoRoutersTest(
         val coreParams: GossipParams = GossipParams(),
         val scoreParams: GossipScoreParams = GossipScoreParams(),
-//        gossipRouter: () -> GossipRouter = { GossipRouterBuilder(params = coreParams, scoreParams = scoreParams).build() },
         mockRouterFactory: DeterministicFuzzRouterFactory = createMockFuzzRouterFactory()
     ) {
         val fuzz = DeterministicFuzz()
@@ -97,16 +107,6 @@ class GossipV1_1Tests {
         val mockRouter = router2.router as MockRouter
 
         val connection = router1.connectSemiDuplex(router2, null, LogLevel.ERROR)
-    }
-
-    @Test
-    fun selfSanityTest() {
-        val test = TwoRoutersTest()
-
-        test.mockRouter.subscribe("topic1")
-        val msg = newMessage("topic1", 0L, "Hello".toByteArray())
-        test.gossipRouter.publish(msg)
-        test.mockRouter.waitForMessage { it.publishCount > 0 }
     }
 
     @Test
@@ -159,7 +159,8 @@ class GossipV1_1Tests {
     fun testPenaltyForMalformedMessage() {
         class MalformedMockRouter(executor: ScheduledExecutorService) : MockRouter(executor) {
             var malform = false
-            override fun initChannel(streamHandler: StreamHandler) {
+
+            override fun initChannelWithHandler(streamHandler: StreamHandler, handler: ChannelHandler?) {
                 streamHandler.stream.pushHandler(object : ChannelOutboundHandlerAdapter() {
                     override fun write(ctx: ChannelHandlerContext, msg: Any, promise: ChannelPromise) {
                         msg as ByteBuf
@@ -171,7 +172,7 @@ class GossipV1_1Tests {
                         }
                     }
                 })
-                super.initChannel(streamHandler)
+                super.initChannelWithHandler(streamHandler, handler)
             }
         }
         val test = TwoRoutersTest(mockRouterFactory = { exec, _, _ -> MalformedMockRouter(exec) })
