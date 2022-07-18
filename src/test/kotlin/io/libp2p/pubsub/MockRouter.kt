@@ -3,7 +3,6 @@ package io.libp2p.pubsub
 import pubsub.pb.Rpc
 import java.util.concurrent.BlockingQueue
 import java.util.concurrent.CompletableFuture
-import java.util.concurrent.Executors
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
@@ -15,7 +14,7 @@ open class MockRouter(executor: ScheduledExecutorService) : AbstractRouter(
     subscriptionFilter = TopicSubscriptionFilter.AllowAllTopicSubscriptionFilter(),
     maxMsgSize = Int.MAX_VALUE,
     messageFactory = { DefaultPubsubMessage(it) },
-    seenMessages = LRUSeenCache(SimpleSeenCache(), DEFAULT_MAX_SEEN_MESSAGES_LIMIT),
+    seenMessages = LRUSeenCache(SimpleSeenCache(), 1000),
     messageValidator = NOP_ROUTER_VALIDATOR
 ) {
 
@@ -30,7 +29,7 @@ open class MockRouter(executor: ScheduledExecutorService) : AbstractRouter(
         var cnt = 0
         while (true) {
             val msg = inboundMessages.poll(5, TimeUnit.SECONDS)
-                    ?: throw TimeoutException("No matching message received among $cnt")
+                ?: throw TimeoutException("No matching message received among $cnt")
             if (predicate(msg)) return msg
             cnt++
         }

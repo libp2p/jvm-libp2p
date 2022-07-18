@@ -7,7 +7,6 @@ import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.etc.types.WBytes
 import io.netty.channel.ChannelHandler
 import pubsub.pb.Rpc
-import java.util.Random
 import java.util.concurrent.CompletableFuture
 
 typealias Topic = String
@@ -62,7 +61,6 @@ interface PubsubMessageRouter {
 
     val protocol: PubsubProtocol
     val messageFactory: PubsubMessageFactory
-//    var messageValidator: PubsubRouterMessageValidator
 
     /**
      * Validates and broadcasts the message to suitable peers
@@ -133,28 +131,6 @@ interface PubsubRouter : PubsubMessageRouter, PubsubPeerRouter
  * helpful for testing and debugging
  */
 interface PubsubRouterDebug : PubsubRouter {
-
-    /**
-     * Adds ability to substitute the scheduler which is used for all async and periodic
-     * tasks within the router
-     */
-//    var executor: ScheduledExecutorService
-
-    /**
-     * System time supplier. Normally defaults to [System.currentTimeMillis]
-     * If router needs system time it should refer to this supplier
-     */
-//    var curTimeMillis: () -> Long
-
-    /**
-     * Randomness supplier
-     * Whenever router implementation needs random data it must refer to this var
-     * Tests may substitute this instance with a fixed-seed [Random]
-     * to perform deterministic testing
-     */
-//    var random: Random
-//
-//    var name: String
 
     /**
      * The same as [PubsubRouter.addPeer] but adds the [debugHandler] right before

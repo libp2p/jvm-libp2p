@@ -7,7 +7,6 @@ import io.libp2p.core.pubsub.createPubsubApi
 import io.libp2p.etc.types.toByteArray
 import io.libp2p.etc.types.toByteBuf
 import io.libp2p.etc.types.toLongBigEndian
-import io.libp2p.pubsub.flood.FloodRouter
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals

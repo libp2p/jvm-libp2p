@@ -36,8 +36,8 @@ class SemiduplexConnection(val conn1: TestConnection, val conn2: TestConnection)
 }
 
 class TestRouter(
-        val name: String = "" + cnt.getAndIncrement(),
-        val router: PubsubRouterDebug
+    val name: String = "" + cnt.getAndIncrement(),
+    val router: PubsubRouterDebug
 ) {
 
     val inboundMessages = LinkedBlockingQueue<PubsubMessage>()

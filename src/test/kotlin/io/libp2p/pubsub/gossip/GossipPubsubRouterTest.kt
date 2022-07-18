@@ -21,9 +21,9 @@ import java.time.Duration
 import java.util.concurrent.TimeUnit
 
 class GossipPubsubRouterTest : PubsubRouterTest(
-        createGossipFuzzRouterFactory {
-            GossipRouterBuilder(params = GossipParams(3, 3, 100, floodPublish = false))
-        }
+    createGossipFuzzRouterFactory {
+        GossipRouterBuilder(params = GossipParams(3, 3, 100, floodPublish = false))
+    }
 ) {
 
     @Test
@@ -31,11 +31,12 @@ class GossipPubsubRouterTest : PubsubRouterTest(
         for (d in 3..6) {
             for (seed in 0..10) {
                 print("D=$d, seed=$seed  ")
-                super.doTenNeighborsTopology(seed,
-                        createGossipFuzzRouterFactory {
-                            // small backoff timeout for faster meshes settling down
-                            GossipRouterBuilder(params = GossipParams(d, d, d, DLazy = 100, pruneBackoff = 1.seconds))
-                        }
+                super.doTenNeighborsTopology(
+                    seed,
+                    createGossipFuzzRouterFactory {
+                        // small backoff timeout for faster meshes settling down
+                        GossipRouterBuilder(params = GossipParams(d, d, d, DLazy = 100, pruneBackoff = 1.seconds))
+                    }
                 )
             }
         }
@@ -58,7 +59,7 @@ class GossipPubsubRouterTest : PubsubRouterTest(
         // this is to test ihave/iwant
         fuzz.timeController.addTime(Duration.ofMillis(1))
 
-        val r =  { GossipRouterBuilder(params = GossipParams(3, 3, 3, DOut = 0, DLazy = 1000, floodPublish = false)) }
+        val r = { GossipRouterBuilder(params = GossipParams(3, 3, 3, DOut = 0, DLazy = 1000, floodPublish = false)) }
         val routerCenter = fuzz.createTestGossipRouter(r)
         allRouters.add(0, routerCenter)
 
@@ -230,7 +231,7 @@ class GossipPubsubRouterTest : PubsubRouterTest(
 
         val allCount = 20
         val allRouters = (1..allCount).map {
-            val r =  { GossipRouterBuilder(params = Eth2DefaultGossipParams, scoreParams = gossipScoreParams) }
+            val r = { GossipRouterBuilder(params = Eth2DefaultGossipParams, scoreParams = gossipScoreParams) }
             fuzz.createTestRouter(createGossipFuzzRouterFactory(r))
         }
 

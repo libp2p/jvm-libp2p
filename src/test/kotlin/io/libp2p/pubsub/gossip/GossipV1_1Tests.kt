@@ -57,13 +57,13 @@ class GossipV1_1Tests {
     protected fun getMessageId(msg: Rpc.Message): MessageId = msg.from.toWBytes() + msg.seqno.toWBytes()
 
     class ManyRoutersTest(
-            val mockRouterCount: Int = 10,
-            val params: GossipParams = GossipParams(),
-            val scoreParams: GossipScoreParams = GossipScoreParams(),
+        val mockRouterCount: Int = 10,
+        val params: GossipParams = GossipParams(),
+        val scoreParams: GossipScoreParams = GossipScoreParams(),
 //            mockRouters: () -> List<MockRouter> = { (0 until mockRouterCount).map { MockRouter() } }
     ) {
         val fuzz = DeterministicFuzz()
-        val gossipRouterBuilderFactory = { GossipRouterBuilder(params = params, scoreParams =  scoreParams) }
+        val gossipRouterBuilderFactory = { GossipRouterBuilder(params = params, scoreParams = scoreParams) }
         val router0 = fuzz.createTestRouter(createGossipFuzzRouterFactory(gossipRouterBuilderFactory))
         val routers = (0 until mockRouterCount).map { fuzz.createTestRouter(createMockFuzzRouterFactory()) }
         val connections = mutableListOf<SemiduplexConnection>()
@@ -100,9 +100,9 @@ class GossipV1_1Tests {
         mockRouterFactory: DeterministicFuzzRouterFactory = createMockFuzzRouterFactory()
     ) {
         val fuzz = DeterministicFuzz()
-        val gossipRouterBuilderFactory = { GossipRouterBuilder(params = coreParams, scoreParams =  scoreParams) }
+        val gossipRouterBuilderFactory = { GossipRouterBuilder(params = coreParams, scoreParams = scoreParams) }
         val router1 = fuzz.createTestRouter(createGossipFuzzRouterFactory(gossipRouterBuilderFactory))
-        val router2 =  fuzz.createTestRouter(mockRouterFactory)
+        val router2 = fuzz.createTestRouter(mockRouterFactory)
         val gossipRouter = router1.router as GossipRouter
         val mockRouter = router2.router as MockRouter
 

@@ -22,14 +22,13 @@ class DeterministicFuzz {
     val random by lazyVar { Random(randomSeed) }
 
     fun createControlledExecutor(): ScheduledExecutorService =
-            ControlledExecutorServiceImpl().also { it.setTimeController(timeController) }
+        ControlledExecutorServiceImpl().also { it.setTimeController(timeController) }
 
     fun createTestGossipRouter(gossipRouterBuilder: () -> GossipRouterBuilder): TestRouter =
         createTestRouter(createGossipFuzzRouterFactory(gossipRouterBuilder))
 
     fun createMockRouter() = createTestRouter(createMockFuzzRouterFactory())
     fun createFloodRouter() = createTestRouter(createFloodFuzzRouterFactory())
-
 
     fun createTestRouter(routerCtor: DeterministicFuzzRouterFactory): TestRouter {
         val deterministicExecutor = createControlledExecutor()
@@ -61,18 +60,18 @@ class DeterministicFuzz {
 
     companion object {
         fun createGossipFuzzRouterFactory(routerBuilderFactory: () -> GossipRouterBuilder): DeterministicFuzzRouterFactory =
-                { executor, curTime, random ->
-                    routerBuilderFactory().also {
-                        it.scheduledAsyncExecutor = executor
-                        it.currentTimeSuppluer = curTime
-                        it.random = random
-                    }.build()
-                }
+            { executor, curTime, random ->
+                routerBuilderFactory().also {
+                    it.scheduledAsyncExecutor = executor
+                    it.currentTimeSuppluer = curTime
+                    it.random = random
+                }.build()
+            }
 
         fun createMockFuzzRouterFactory(): DeterministicFuzzRouterFactory =
-                { executor, _, _ ->
-                    MockRouter(executor)
-                }
+            { executor, _, _ ->
+                MockRouter(executor)
+            }
 
         fun createFloodFuzzRouterFactory(): DeterministicFuzzRouterFactory =
             { executor, _, _ ->

@@ -36,7 +36,6 @@ open class DefaultPubsubMessage(override val protobufMessage: Rpc.Message) : Abs
 }
 
 private val logger = LogManager.getLogger(AbstractRouter::class.java)
-const val DEFAULT_MAX_SEEN_MESSAGES_LIMIT: Int = 10000
 
 /**
  * Implements common logic for pubsub routers

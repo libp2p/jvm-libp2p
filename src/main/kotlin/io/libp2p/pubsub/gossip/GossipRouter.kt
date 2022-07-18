@@ -73,7 +73,7 @@ private val logger = LogManager.getLogger(GossipRouter::class.java)
 /**
  * Router implementing this protocol: https://github.com/libp2p/specs/tree/master/pubsub/gossipsub
  */
-open class GossipRouter (
+open class GossipRouter(
     val params: GossipParams,
     val scoreParams: GossipScoreParams,
     val currentTimeSupplier: CurrentTimeSupplier,
@@ -97,7 +97,6 @@ open class GossipRouter (
     seenMessages,
     messageValidator
 ) {
-
 
     // The idea behind choosing these specific default values for acceptRequestsWhitelist was
     // - from one side are pretty small and safe: peer unlikely be able to drop its score to `graylist`
@@ -251,13 +250,13 @@ open class GossipRouter (
         val iHaveMessageIdCount = msg.control?.ihaveList?.map { w -> w.messageIDsCount }?.sum() ?: 0
 
         return params.maxPublishedMessages?.let { msg.publishCount <= it } ?: true &&
-                params.maxTopicsPerPublishedMessage?.let { msg.publishList.none { m -> m.topicIDsCount > it } } ?: true &&
-                params.maxSubscriptions?.let { msg.subscriptionsCount <= it } ?: true &&
-                params.maxIHaveLength.let { iHaveMessageIdCount <= it } &&
-                params.maxIWantMessageIds?.let { iWantMessageIdCount <= it } ?: true &&
-                params.maxGraftMessages?.let { (msg.control?.graftCount ?: 0) <= it } ?: true &&
-                params.maxPruneMessages?.let { (msg.control?.pruneCount ?: 0) <= it } ?: true &&
-                params.maxPeersPerPruneMessage?.let { msg.control?.pruneList?.none { p -> p.peersCount > it } } ?: true
+            params.maxTopicsPerPublishedMessage?.let { msg.publishList.none { m -> m.topicIDsCount > it } } ?: true &&
+            params.maxSubscriptions?.let { msg.subscriptionsCount <= it } ?: true &&
+            params.maxIHaveLength.let { iHaveMessageIdCount <= it } &&
+            params.maxIWantMessageIds?.let { iWantMessageIdCount <= it } ?: true &&
+            params.maxGraftMessages?.let { (msg.control?.graftCount ?: 0) <= it } ?: true &&
+            params.maxPruneMessages?.let { (msg.control?.pruneCount ?: 0) <= it } ?: true &&
+            params.maxPeersPerPruneMessage?.let { msg.control?.pruneList?.none { p -> p.peersCount > it } } ?: true
     }
 
     private fun processControlMessage(controlMsg: Any, receivedFrom: PeerHandler) {

@@ -1,13 +1,13 @@
 package io.libp2p.pubsub.flood
 
-import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.etc.types.anyComplete
 import io.libp2p.pubsub.*
 import pubsub.pb.Rpc
-import java.util.*
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
+
+const val DEFAULT_MAX_SEEN_MESSAGES_LIMIT: Int = 10000
 
 class FloodRouter(executor: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor()) : AbstractRouter(
     protocol = PubsubProtocol.Floodsub,
