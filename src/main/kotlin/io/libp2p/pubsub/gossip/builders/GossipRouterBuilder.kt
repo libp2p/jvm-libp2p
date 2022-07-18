@@ -74,12 +74,4 @@ open class GossipRouterBuilder(
         disposed = true
         return createGossipRouter()
     }
-
-    // TODO: does it make any sense ?
-    open fun build(messageHandlerInitializer: GossipRouter.() -> PubsubMessageHandler): GossipRouter {
-        val gossipRouter = createGossipRouter()
-        val messageHandler = messageHandlerInitializer(gossipRouter)
-        gossipRouter.initHandler(messageHandler)
-        return gossipRouter
-    }
 }
