@@ -4,21 +4,50 @@ import io.libp2p.core.InternalErrorException
 import io.libp2p.core.PeerId
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.pubsub.ValidationResult
-import io.libp2p.etc.types.anyComplete
-import io.libp2p.etc.types.completedExceptionally
-import io.libp2p.etc.types.copy
-import io.libp2p.etc.types.createLRUMap
-import io.libp2p.etc.types.median
-import io.libp2p.etc.types.seconds
-import io.libp2p.etc.types.toWBytes
-import io.libp2p.etc.types.whenTrue
+import io.libp2p.etc.types.*
 import io.libp2p.etc.util.P2PService
 import io.libp2p.pubsub.*
+import org.apache.logging.log4j.LogManager
 import pubsub.pb.Rpc
-import java.util.Optional
+import java.util.*
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.collections.Collection
+import kotlin.collections.List
+import kotlin.collections.MutableMap
+import kotlin.collections.MutableSet
+import kotlin.collections.any
+import kotlin.collections.component1
+import kotlin.collections.component2
+import kotlin.collections.count
+import kotlin.collections.distinct
+import kotlin.collections.drop
+import kotlin.collections.filter
+import kotlin.collections.filterNot
+import kotlin.collections.flatMap
+import kotlin.collections.flatten
+import kotlin.collections.forEach
+import kotlin.collections.getOrPut
+import kotlin.collections.isNotEmpty
+import kotlin.collections.linkedMapOf
+import kotlin.collections.map
+import kotlin.collections.mapNotNull
+import kotlin.collections.minus
+import kotlin.collections.minusAssign
+import kotlin.collections.mutableMapOf
+import kotlin.collections.mutableSetOf
+import kotlin.collections.none
+import kotlin.collections.plus
+import kotlin.collections.plusAssign
+import kotlin.collections.reversed
+import kotlin.collections.set
+import kotlin.collections.shuffled
+import kotlin.collections.sortedBy
+import kotlin.collections.sum
+import kotlin.collections.take
+import kotlin.collections.toMutableSet
 import kotlin.math.max
 import kotlin.math.min
 
@@ -26,6 +55,8 @@ const val MaxBackoffEntries = 10 * 1024
 const val MaxIAskedEntries = 256
 const val MaxPeerIHaveEntries = 256
 const val MaxIWantRequestsEntries = 10 * 1024
+
+typealias CurrentTimeSupplier = () -> Long
 
 fun P2PService.PeerHandler.getRemoteAddress(): Multiaddr = streamHandler.stream.connection.remoteAddress()
 fun P2PService.PeerHandler.isOutbound() = streamHandler.stream.connection.isInitiator
@@ -39,15 +70,35 @@ fun P2PService.PeerHandler.getPeerProtocol(): PubsubProtocol {
     return PubsubProtocol.fromProtocol(proto)
 }
 
+private val logger = LogManager.getLogger(GossipRouter::class.java)
+
 /**
  * Router implementing this protocol: https://github.com/libp2p/specs/tree/master/pubsub/gossipsub
  */
-open class GossipRouter @JvmOverloads constructor(
-    val params: GossipParams = GossipParams(),
-    val scoreParams: GossipScoreParams = GossipScoreParams(),
-    override val protocol: PubsubProtocol = PubsubProtocol.Gossip_V_1_1,
-    subscriptionTopicSubscriptionFilter: TopicSubscriptionFilter = TopicSubscriptionFilter.AllowAllTopicSubscriptionFilter()
-) : AbstractRouter(subscriptionTopicSubscriptionFilter, params.maxGossipMessageSize) {
+open class GossipRouter(
+    val params: GossipParams,
+    val scoreParams: GossipScoreParams,
+    val currentTimeSupplier: CurrentTimeSupplier,
+    val random: Random,
+    val name: String,
+    val mCache: MCache,
+    val score: GossipScore,
+
+    subscriptionTopicSubscriptionFilter: TopicSubscriptionFilter,
+    protocol: PubsubProtocol,
+    executor: ScheduledExecutorService,
+    messageFactory: PubsubMessageFactory,
+    seenMessages: SeenCache<Optional<ValidationResult>>,
+    messageValidator: PubsubRouterMessageValidator,
+) : AbstractRouter(
+    executor,
+    protocol,
+    subscriptionTopicSubscriptionFilter,
+    params.maxGossipMessageSize,
+    messageFactory,
+    seenMessages,
+    messageValidator
+) {
 
     // The idea behind choosing these specific default values for acceptRequestsWhitelist was
     // - from one side are pretty small and safe: peer unlikely be able to drop its score to `graylist`
@@ -58,17 +109,10 @@ open class GossipRouter @JvmOverloads constructor(
     val acceptRequestsWhitelistMaxMessages = 128
     val acceptRequestsWhitelistDuration = 1.seconds
 
-    val eventBroadcaster = GossipRouterEventBroadcaster()
-    open val score: GossipScore by lazy {
-        DefaultGossipScore(scoreParams, executor, curTimeMillis).also {
-            eventBroadcaster.listeners += it
-        }
-    }
-
     val fanout: MutableMap<Topic, MutableSet<PeerHandler>> = linkedMapOf()
     val mesh: MutableMap<Topic, MutableSet<PeerHandler>> = linkedMapOf()
+    val eventBroadcaster = GossipRouterEventBroadcaster()
 
-    private val mCache = MCache(params.gossipSize, params.gossipHistoryLength)
     private val lastPublished = linkedMapOf<Topic, Long>()
     private var heartbeatsCount = 0
     private val backoffExpireTimes = createLRUMap<Pair<PeerId, Topic>, Long>(MaxBackoffEntries)
@@ -86,21 +130,17 @@ open class GossipRouter @JvmOverloads constructor(
     private val acceptRequestsWhitelist = mutableMapOf<PeerHandler, AcceptRequestsWhitelistEntry>()
     override val pendingRpcParts = PendingRpcPartsMap<GossipRpcPartsQueue> { DefaultGossipRpcPartsQueue(params) }
 
-    override val seenMessages: SeenCache<Optional<ValidationResult>> by lazy {
-        TTLSeenCache(SimpleSeenCache(), params.seenTTL, curTimeMillis)
-    }
-
     private fun setBackOff(peer: PeerHandler, topic: Topic) = setBackOff(peer, topic, params.pruneBackoff.toMillis())
     private fun setBackOff(peer: PeerHandler, topic: Topic, delay: Long) {
-        backoffExpireTimes[peer.peerId to topic] = curTimeMillis() + delay
+        backoffExpireTimes[peer.peerId to topic] = currentTimeSupplier() + delay
     }
 
     private fun isBackOff(peer: PeerHandler, topic: Topic) =
-        curTimeMillis() < (backoffExpireTimes[peer.peerId to topic] ?: 0)
+        currentTimeSupplier() < (backoffExpireTimes[peer.peerId to topic] ?: 0)
 
     private fun isBackOffFlood(peer: PeerHandler, topic: Topic): Boolean {
         val expire = backoffExpireTimes[peer.peerId to topic] ?: return false
-        return curTimeMillis() < expire - (params.pruneBackoff + params.graftFloodThreshold).toMillis()
+        return currentTimeSupplier() < expire - (params.pruneBackoff + params.graftFloodThreshold).toMillis()
     }
 
     private fun getDirectPeers() = peers.filter(::isDirect)
@@ -185,7 +225,7 @@ open class GossipRouter @JvmOverloads constructor(
             return true
         }
 
-        val curTime = curTimeMillis()
+        val curTime = currentTimeSupplier()
         val whitelistEntry = acceptRequestsWhitelist[peer]
         if (whitelistEntry != null &&
             curTime <= whitelistEntry.whitelistedTill &&
@@ -334,7 +374,7 @@ open class GossipRouter @JvmOverloads constructor(
     }
 
     override fun broadcastOutbound(msg: PubsubMessage): CompletableFuture<Unit> {
-        msg.topics.forEach { lastPublished[it] = curTimeMillis() }
+        msg.topics.forEach { lastPublished[it] = currentTimeSupplier() }
 
         val peers =
             if (params.floodPublish) {
@@ -407,7 +447,7 @@ open class GossipRouter @JvmOverloads constructor(
         iAsked.clear()
         peerIHave.clear()
 
-        val staleIWantTime = this.curTimeMillis() - params.iWantFollowupTime.toMillis()
+        val staleIWantTime = this.currentTimeSupplier() - params.iWantFollowupTime.toMillis()
         iWantRequests.entries.removeIf { (key, time) ->
             (time < staleIWantTime)
                 .whenTrue { notifyIWantTimeout(key.first, key.second) }
@@ -480,7 +520,7 @@ open class GossipRouter @JvmOverloads constructor(
                 emitGossip(topic, peers)
             }
             lastPublished.entries.removeIf { (topic, lastPub) ->
-                (curTimeMillis() - lastPub > params.fanoutTTL.toMillis())
+                (currentTimeSupplier() - lastPub > params.fanoutTTL.toMillis())
                     .whenTrue { fanout.remove(topic) }
             }
 
@@ -522,7 +562,7 @@ open class GossipRouter @JvmOverloads constructor(
     private fun iWant(peer: PeerHandler, messageIds: List<MessageId>) {
         if (messageIds.isEmpty()) return
         messageIds[random.nextInt(messageIds.size)]
-            .also { iWantRequests[peer to it] = curTimeMillis() }
+            .also { iWantRequests[peer to it] = currentTimeSupplier() }
         enqueueIwant(peer, messageIds)
     }
 

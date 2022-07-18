@@ -4,6 +4,7 @@ import io.libp2p.core.PeerId
 import io.libp2p.etc.types.toProtobuf
 import io.libp2p.etc.types.toWBytes
 import io.libp2p.pubsub.gossip.builders.GossipParamsBuilder
+import io.libp2p.pubsub.gossip.builders.GossipRouterBuilder
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
@@ -190,7 +191,7 @@ class GossipRpcPartsQueueTest {
         gossipParams: GossipParams,
         queue: TestGossipQueue
     ) {
-        val router = GossipRouter(gossipParams)
+        val router = GossipRouterBuilder(params = gossipParams).build()
 
         val monolithMsg = queue.mergedSingle()
         val merged = queue.takeMerged()
@@ -217,7 +218,7 @@ class GossipRpcPartsQueueTest {
 
     @Test
     fun `mergeMessageParts() test that split doesn't result in topic publish before subscribe`() {
-        val router = GossipRouter(gossipParamsWithLimits)
+        val router = GossipRouterBuilder(params = gossipParamsWithLimits).build()
         val partsQueue = TestGossipQueue(gossipParamsWithLimits)
         (0 until maxSubscriptions + 1).forEach {
             partsQueue.addSubscribe("topic-$it")
@@ -239,7 +240,7 @@ class GossipRpcPartsQueueTest {
 
     @Test
     fun `mergeMessageParts() test that even when all parts fit to 2 messages the result should be 3 messages`() {
-        val router = GossipRouter(gossipParamsWithLimits)
+        val router = GossipRouterBuilder(params = gossipParamsWithLimits).build()
         val partsQueue = TestGossipQueue(gossipParamsWithLimits)
         (0 until maxSubscriptions + 1).forEach {
             partsQueue.addSubscribe("topic-$it")

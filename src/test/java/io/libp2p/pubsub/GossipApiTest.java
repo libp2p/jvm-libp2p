@@ -7,6 +7,7 @@ import io.libp2p.etc.util.P2PService;
 import io.libp2p.pubsub.gossip.GossipParams;
 import io.libp2p.pubsub.gossip.GossipParamsKt;
 import io.libp2p.pubsub.gossip.GossipRouter;
+import io.libp2p.pubsub.gossip.builders.GossipRouterBuilder;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 import pubsub.pb.Rpc;
@@ -32,7 +33,9 @@ public class GossipApiTest {
                 .D(10)
                 .DHigh(20)
                 .build();
-        GossipRouter router = new GossipRouter(gossipParams);
+        GossipRouterBuilder routerBuilder = new GossipRouterBuilder();
+        routerBuilder.setParams(gossipParams);
+        GossipRouter router = routerBuilder.build();
         assertThat(router.getParams().getD()).isEqualTo(10);
         assertThat(router.getParams().getDHigh()).isEqualTo(20);
         assertThat(router.getParams().getDScore()).isEqualTo(GossipParamsKt.defaultDScore(10));
@@ -40,22 +43,16 @@ public class GossipApiTest {
 
     @Test
     public void testFastMessageId() throws Exception {
-        GossipRouter router = new GossipRouter() {
-            private final SeenCache<Optional<ValidationResult>> seenMessages =
-                    new FastIdSeenCache<>(msg -> msg.getProtobufMessage().getData());
-
-            @NotNull
-            @Override
-            protected SeenCache<Optional<ValidationResult>> getSeenMessages() {
-                return seenMessages;
-            }
-        };
         List<TestPubsubMessage> createdMessages = new ArrayList<>();
-        router.setMessageFactory(m -> {
+
+        GossipRouterBuilder routerBuilder = new GossipRouterBuilder();
+        routerBuilder.setSeenCache(new FastIdSeenCache<>(msg -> msg.getProtobufMessage().getData()));
+        routerBuilder.setMessageFactory(m -> {
             TestPubsubMessage message = new TestPubsubMessage(m);
             createdMessages.add(message);
             return message;
         });
+        GossipRouter router = routerBuilder.build();
         router.subscribe("topic");
 
         BlockingQueue<PubsubMessage> messages = new LinkedBlockingQueue<>();
