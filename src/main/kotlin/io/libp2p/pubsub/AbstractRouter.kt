@@ -44,20 +44,19 @@ const val DEFAULT_MAX_SEEN_MESSAGES_LIMIT: Int = 10000
 abstract class AbstractRouter(
     executor: ScheduledExecutorService,
     override val protocol: PubsubProtocol,
-    private val subscriptionFilter: TopicSubscriptionFilter = TopicSubscriptionFilter.AllowAllTopicSubscriptionFilter(),
-    private val maxMsgSize: Int = DEFAULT_MAX_PUBSUB_MESSAGE_SIZE,
-    override val messageFactory: PubsubMessageFactory = { DefaultPubsubMessage(it) },
-    protected val seenMessages: SeenCache<Optional<ValidationResult>> = LRUSeenCache(SimpleSeenCache(), DEFAULT_MAX_SEEN_MESSAGES_LIMIT),
-    private val messageValidator: PubsubRouterMessageValidator = NOP_ROUTER_VALIDATOR
+    protected val subscriptionFilter: TopicSubscriptionFilter,
+    protected val maxMsgSize: Int,
+    override val messageFactory: PubsubMessageFactory,
+    protected val seenMessages: SeenCache<Optional<ValidationResult>>,
+    protected val messageValidator: PubsubRouterMessageValidator
 ) : P2PServiceSemiDuplex(executor), PubsubRouter, PubsubRouterDebug {
 
-    private var msgHandler: PubsubMessageHandler = { RESULT_VALID }
-    private val peerTopics = MultiSet<PeerHandler, Topic>()
+    protected var msgHandler: PubsubMessageHandler = { RESULT_VALID }
 
-    private val subscribedTopics = linkedSetOf<Topic>()
+    protected open val peerTopics = MultiSet<PeerHandler, Topic>()
+    protected open val subscribedTopics = linkedSetOf<Topic>()
     protected open val pendingRpcParts = PendingRpcPartsMap<RpcPartsQueue> { DefaultRpcPartsQueue() }
-    private var debugHandler: ChannelHandler? = null
-    private val pendingMessagePromises = MultiSet<PeerHandler, CompletableFuture<Unit>>()
+    protected open val pendingMessagePromises = MultiSet<PeerHandler, CompletableFuture<Unit>>()
 
     protected class PendingRpcPartsMap<out TPartsQueue : RpcPartsQueue>(
         private val queueFactory: () -> TPartsQueue
@@ -110,28 +109,25 @@ abstract class AbstractRouter(
     }
 
     override fun addPeer(peer: Stream) {
-        addNewStream(peer)
+        addPeerWithDebugHandler(peer, null)
     }
 
     override fun addPeerWithDebugHandler(peer: Stream, debugHandler: ChannelHandler?) {
-        this.debugHandler = debugHandler
-        try {
-            addPeer(peer)
-        } finally {
-            this.debugHandler = null
-        }
+        initChannelWithHandler(StreamHandler(peer), debugHandler)
     }
 
-    override fun initChannel(streamHandler: StreamHandler) {
+    private fun initChannelWithHandler(streamHandler: StreamHandler, handler: ChannelHandler?) {
         with(streamHandler.stream) {
             pushHandler(LimitedProtobufVarint32FrameDecoder(maxMsgSize))
             pushHandler(ProtobufVarint32LengthFieldPrepender())
             pushHandler(ProtobufDecoder(Rpc.RPC.getDefaultInstance()))
             pushHandler(ProtobufEncoder())
-            debugHandler?.also { pushHandler(it) }
+            handler?.also { pushHandler(it) }
             pushHandler(streamHandler)
         }
     }
+
+    override fun initChannel(streamHandler: StreamHandler) = initChannelWithHandler(streamHandler, null)
 
     override fun removePeer(peer: Stream) {
         peer.close()

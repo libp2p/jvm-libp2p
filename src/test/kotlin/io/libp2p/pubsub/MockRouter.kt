@@ -10,9 +10,14 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 
 open class MockRouter(executor: ScheduledExecutorService) : AbstractRouter(
-        executor,
-        PubsubProtocol.Gossip_V_1_1,
-        TopicSubscriptionFilter.AllowAllTopicSubscriptionFilter()) {
+    protocol = PubsubProtocol.Floodsub,
+    executor = executor,
+    subscriptionFilter = TopicSubscriptionFilter.AllowAllTopicSubscriptionFilter(),
+    maxMsgSize = Int.MAX_VALUE,
+    messageFactory = { DefaultPubsubMessage(it) },
+    seenMessages = LRUSeenCache(SimpleSeenCache(), DEFAULT_MAX_SEEN_MESSAGES_LIMIT),
+    messageValidator = NOP_ROUTER_VALIDATOR
+) {
 
     val inboundMessages: BlockingQueue<Rpc.RPC> = LinkedBlockingQueue()
 

@@ -28,10 +28,8 @@ open class GossipRouterBuilder(
         var currentTimeSuppluer: CurrentTimeSupplier = { System.currentTimeMillis() },
         var random: Random = Random(),
 
-        var maxMsgSize: Int = DEFAULT_MAX_PUBSUB_MESSAGE_SIZE,
         var messageFactory: PubsubMessageFactory = { DefaultPubsubMessage(it) },
         var messageValidator: PubsubRouterMessageValidator = NOP_ROUTER_VALIDATOR,
-        var maxSeenMessagesLimit: Int = 10000,
 
         var subscriptionTopicSubscriptionFilter: TopicSubscriptionFilter = TopicSubscriptionFilter.AllowAllTopicSubscriptionFilter(),
 
@@ -44,7 +42,7 @@ open class GossipRouterBuilder(
         val gossipRouterEventListeners: MutableList<GossipRouterEventListener> = mutableListOf()
 ) {
 
-    var seenCache: SeenCache<Optional<ValidationResult>> by lazyVar { LRUSeenCache(SimpleSeenCache(), maxSeenMessagesLimit) }
+    var seenCache: SeenCache<Optional<ValidationResult>> by lazyVar { TTLSeenCache(SimpleSeenCache(), params.seenTTL, currentTimeSuppluer) }
     var mCache: MCache by lazyVar { MCache(params.gossipSize, params.gossipHistoryLength) }
 
     private var disposed = false
@@ -63,7 +61,6 @@ open class GossipRouterBuilder(
                 subscriptionTopicSubscriptionFilter = subscriptionTopicSubscriptionFilter,
                 protocol = protocol,
                 executor = scheduledAsyncExecutor,
-                maxMsgSize = maxMsgSize,
                 messageFactory = messageFactory,
                 seenMessages = seenCache,
                 messageValidator = messageValidator

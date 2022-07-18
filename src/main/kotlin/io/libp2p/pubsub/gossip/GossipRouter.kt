@@ -73,24 +73,31 @@ private val logger = LogManager.getLogger(GossipRouter::class.java)
 /**
  * Router implementing this protocol: https://github.com/libp2p/specs/tree/master/pubsub/gossipsub
  */
-open class GossipRouter @JvmOverloads constructor(
-        val params: GossipParams = GossipParams(),
-        val scoreParams: GossipScoreParams = GossipScoreParams(),
-        val currentTimeSupplier: CurrentTimeSupplier = { System.currentTimeMillis() },
-        val random: Random = Random(),
-        val name: String = "GossipRouter",
-        val mCache: MCache = MCache(params.gossipSize, params.gossipHistoryLength),
-        val score: GossipScore,
+open class GossipRouter (
+    val params: GossipParams,
+    val scoreParams: GossipScoreParams,
+    val currentTimeSupplier: CurrentTimeSupplier,
+    val random: Random,
+    val name: String,
+    val mCache: MCache,
+    val score: GossipScore,
 
-        subscriptionTopicSubscriptionFilter: TopicSubscriptionFilter = TopicSubscriptionFilter.AllowAllTopicSubscriptionFilter(),
-        protocol: PubsubProtocol = PubsubProtocol.Gossip_V_1_1,
-        executor: ScheduledExecutorService,
-        maxMsgSize: Int = DEFAULT_MAX_PUBSUB_MESSAGE_SIZE,
-        messageFactory: PubsubMessageFactory = { DefaultPubsubMessage(it) },
-        seenMessages: SeenCache<Optional<ValidationResult>> = LRUSeenCache(SimpleSeenCache(), DEFAULT_MAX_SEEN_MESSAGES_LIMIT),
-        messageValidator: PubsubRouterMessageValidator = NOP_ROUTER_VALIDATOR,
+    subscriptionTopicSubscriptionFilter: TopicSubscriptionFilter,
+    protocol: PubsubProtocol,
+    executor: ScheduledExecutorService,
+    messageFactory: PubsubMessageFactory,
+    seenMessages: SeenCache<Optional<ValidationResult>>,
+    messageValidator: PubsubRouterMessageValidator,
+) : AbstractRouter(
+    executor,
+    protocol,
+    subscriptionTopicSubscriptionFilter,
+    params.maxGossipMessageSize,
+    messageFactory,
+    seenMessages,
+    messageValidator
+) {
 
-        ) : AbstractRouter(executor, protocol, subscriptionTopicSubscriptionFilter, maxMsgSize, messageFactory, seenMessages, messageValidator) {
 
     // The idea behind choosing these specific default values for acceptRequestsWhitelist was
     // - from one side are pretty small and safe: peer unlikely be able to drop its score to `graylist`
@@ -101,12 +108,6 @@ open class GossipRouter @JvmOverloads constructor(
     val acceptRequestsWhitelistMaxMessages = 128
     val acceptRequestsWhitelistDuration = 1.seconds
 
-//    open val score: GossipScore by lazy {
-//        DefaultGossipScore(scoreParams, executor, curTimeMillis).also {
-//            eventBroadcaster.listeners += it
-//        }
-//    }
-//
     val fanout: MutableMap<Topic, MutableSet<PeerHandler>> = linkedMapOf()
     val mesh: MutableMap<Topic, MutableSet<PeerHandler>> = linkedMapOf()
     val eventBroadcaster = GossipRouterEventBroadcaster()
@@ -250,13 +251,13 @@ open class GossipRouter @JvmOverloads constructor(
         val iHaveMessageIdCount = msg.control?.ihaveList?.map { w -> w.messageIDsCount }?.sum() ?: 0
 
         return params.maxPublishedMessages?.let { msg.publishCount <= it } ?: true &&
-            params.maxTopicsPerPublishedMessage?.let { msg.publishList.none { m -> m.topicIDsCount > it } } ?: true &&
-            params.maxSubscriptions?.let { msg.subscriptionsCount <= it } ?: true &&
-            params.maxIHaveLength.let { iHaveMessageIdCount <= it } &&
-            params.maxIWantMessageIds?.let { iWantMessageIdCount <= it } ?: true &&
-            params.maxGraftMessages?.let { (msg.control?.graftCount ?: 0) <= it } ?: true &&
-            params.maxPruneMessages?.let { (msg.control?.pruneCount ?: 0) <= it } ?: true &&
-            params.maxPeersPerPruneMessage?.let { msg.control?.pruneList?.none { p -> p.peersCount > it } } ?: true
+                params.maxTopicsPerPublishedMessage?.let { msg.publishList.none { m -> m.topicIDsCount > it } } ?: true &&
+                params.maxSubscriptions?.let { msg.subscriptionsCount <= it } ?: true &&
+                params.maxIHaveLength.let { iHaveMessageIdCount <= it } &&
+                params.maxIWantMessageIds?.let { iWantMessageIdCount <= it } ?: true &&
+                params.maxGraftMessages?.let { (msg.control?.graftCount ?: 0) <= it } ?: true &&
+                params.maxPruneMessages?.let { (msg.control?.pruneCount ?: 0) <= it } ?: true &&
+                params.maxPeersPerPruneMessage?.let { msg.control?.pruneList?.none { p -> p.peersCount > it } } ?: true
     }
 
     private fun processControlMessage(controlMsg: Any, receivedFrom: PeerHandler) {
