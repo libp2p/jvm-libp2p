@@ -305,16 +305,16 @@ class DefaultGossipScore(
     }
 
     internal class PeerColocations {
-        private val map = mutableMapOf<PeerIP, MutableSet<PeerId>>()
+        private val colocatedPeers = mutableMapOf<PeerIP, MutableSet<PeerId>>()
 
         fun add(peerId: PeerId, peerIp: PeerIP) {
-            map.computeIfAbsent(peerIp) { mutableSetOf() } += peerId
+            colocatedPeers.computeIfAbsent(peerIp) { mutableSetOf() } += peerId
         }
 
         fun remove(peerId: PeerId, peerIp: PeerIP) {
-            map[peerIp]?.also { it -= peerId }
+            colocatedPeers[peerIp]?.also { it -= peerId }
         }
 
-        fun getPeerCountForIp(ip: PeerIP) = map[ip]?.size ?: 0
+        fun getPeerCountForIp(ip: PeerIP) = colocatedPeers[ip]?.size ?: 0
     }
 }
