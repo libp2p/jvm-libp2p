@@ -3,13 +3,11 @@ package io.libp2p.pubsub
 import io.libp2p.core.BadPeerException
 import io.libp2p.core.PeerId
 import io.libp2p.core.Stream
-import io.libp2p.core.pubsub.RESULT_VALID
 import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.etc.types.MultiSet
 import io.libp2p.etc.types.completedExceptionally
 import io.libp2p.etc.types.copy
 import io.libp2p.etc.types.forward
-import io.libp2p.etc.types.lazyVarInit
 import io.libp2p.etc.types.thenApplyAll
 import io.libp2p.etc.types.toWBytes
 import io.libp2p.etc.util.P2PServiceSemiDuplex
@@ -22,25 +20,41 @@ import org.apache.logging.log4j.LogManager
 import pubsub.pb.Rpc
 import java.util.Collections.singletonList
 import java.util.Optional
-import java.util.Random
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ScheduledExecutorService
 import java.util.function.BiConsumer
 import java.util.function.Consumer
 
 // 1 MB default max message size
 const val DEFAULT_MAX_PUBSUB_MESSAGE_SIZE = 1 shl 20
 
+typealias PubsubMessageHandler = (PubsubMessage) -> CompletableFuture<ValidationResult>
+
 open class DefaultPubsubMessage(override val protobufMessage: Rpc.Message) : AbstractPubsubMessage() {
     override val messageId: MessageId = protobufMessage.from.toWBytes() + protobufMessage.seqno.toWBytes()
 }
+
+private val logger = LogManager.getLogger(AbstractRouter::class.java)
 
 /**
  * Implements common logic for pubsub routers
  */
 abstract class AbstractRouter(
-    val subscriptionFilter: TopicSubscriptionFilter,
-    val maxMsgSize: Int = DEFAULT_MAX_PUBSUB_MESSAGE_SIZE
-) : P2PServiceSemiDuplex(), PubsubRouter, PubsubRouterDebug {
+    executor: ScheduledExecutorService,
+    override val protocol: PubsubProtocol,
+    protected val subscriptionFilter: TopicSubscriptionFilter,
+    protected val maxMsgSize: Int,
+    override val messageFactory: PubsubMessageFactory,
+    protected val seenMessages: SeenCache<Optional<ValidationResult>>,
+    protected val messageValidator: PubsubRouterMessageValidator
+) : P2PServiceSemiDuplex(executor), PubsubRouter, PubsubRouterDebug {
+
+    protected var msgHandler: PubsubMessageHandler = { throw IllegalStateException("Message handler is not initialized for PubsubRouter") }
+
+    protected open val peerTopics = MultiSet<PeerHandler, Topic>()
+    protected open val subscribedTopics = linkedSetOf<Topic>()
+    protected open val pendingRpcParts = PendingRpcPartsMap<RpcPartsQueue> { DefaultRpcPartsQueue() }
+    protected open val pendingMessagePromises = MultiSet<PeerHandler, CompletableFuture<Unit>>()
 
     protected class PendingRpcPartsMap<out TPartsQueue : RpcPartsQueue>(
         private val queueFactory: () -> TPartsQueue
@@ -52,28 +66,6 @@ abstract class AbstractRouter(
         fun getQueue(peer: PeerHandler) = map.computeIfAbsent(peer) { queueFactory() }
         fun popQueue(peer: PeerHandler) = map.remove(peer) ?: queueFactory()
     }
-
-    private val logger = LogManager.getLogger(AbstractRouter::class.java)
-
-    override var curTimeMillis: () -> Long by lazyVarInit { { System.currentTimeMillis() } }
-    override var random by lazyVarInit { Random() }
-    override var name: String = "router"
-
-    override var messageFactory: PubsubMessageFactory = { DefaultPubsubMessage(it) }
-    var maxSeenMessagesLimit = 10000
-
-    protected open val seenMessages: SeenCache<Optional<ValidationResult>> by lazy {
-        LRUSeenCache(SimpleSeenCache(), maxSeenMessagesLimit)
-    }
-
-    private val peerTopics = MultiSet<PeerHandler, Topic>()
-    private var msgHandler: (PubsubMessage) -> CompletableFuture<ValidationResult> = { RESULT_VALID }
-    override var messageValidator = NOP_ROUTER_VALIDATOR
-
-    val subscribedTopics = linkedSetOf<Topic>()
-    protected open val pendingRpcParts = PendingRpcPartsMap<RpcPartsQueue> { DefaultRpcPartsQueue() }
-    private var debugHandler: ChannelHandler? = null
-    private val pendingMessagePromises = MultiSet<PeerHandler, CompletableFuture<Unit>>()
 
     override fun publish(msg: PubsubMessage): CompletableFuture<Unit> {
         return submitAsyncOnEventThread {
@@ -114,26 +106,24 @@ abstract class AbstractRouter(
         }
     }
 
-    override fun addPeer(peer: Stream) {
-        addNewStream(peer)
-    }
-
+    override fun addPeer(peer: Stream) = addPeerWithDebugHandler(peer, null)
     override fun addPeerWithDebugHandler(peer: Stream, debugHandler: ChannelHandler?) {
-        this.debugHandler = debugHandler
-        try {
-            addPeer(peer)
-        } finally {
-            this.debugHandler = null
-        }
+        addNewStreamWithHandler(peer, debugHandler)
     }
 
-    override fun initChannel(streamHandler: StreamHandler) {
+    override fun addNewStream(stream: Stream) = addNewStreamWithHandler(stream, null)
+    protected fun addNewStreamWithHandler(stream: Stream, handler: ChannelHandler?) {
+        initChannelWithHandler(StreamHandler(stream), handler)
+    }
+
+    override fun initChannel(streamHandler: StreamHandler) = initChannelWithHandler(streamHandler, null)
+    protected open fun initChannelWithHandler(streamHandler: StreamHandler, handler: ChannelHandler?) {
         with(streamHandler.stream) {
             pushHandler(LimitedProtobufVarint32FrameDecoder(maxMsgSize))
             pushHandler(ProtobufVarint32LengthFieldPrepender())
             pushHandler(ProtobufDecoder(Rpc.RPC.getDefaultInstance()))
             pushHandler(ProtobufEncoder())
-            debugHandler?.also { pushHandler(it) }
+            handler?.also { pushHandler(it) }
             pushHandler(streamHandler)
         }
     }

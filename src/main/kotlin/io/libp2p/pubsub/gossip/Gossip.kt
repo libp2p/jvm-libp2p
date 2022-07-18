@@ -10,11 +10,12 @@ import io.libp2p.core.multistream.ProtocolDescriptor
 import io.libp2p.core.pubsub.PubsubApi
 import io.libp2p.pubsub.PubsubApiImpl
 import io.libp2p.pubsub.PubsubProtocol
+import io.libp2p.pubsub.gossip.builders.GossipRouterBuilder
 import io.netty.channel.ChannelHandler
 import java.util.concurrent.CompletableFuture
 
 class Gossip @JvmOverloads constructor(
-    private val router: GossipRouter = GossipRouter(),
+    private val router: GossipRouter = GossipRouterBuilder().build(),
     private val api: PubsubApi = PubsubApiImpl(router),
     private val debugGossipHandler: ChannelHandler? = null
 ) :

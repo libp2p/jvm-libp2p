@@ -4,12 +4,19 @@ import pubsub.pb.Rpc
 import java.util.concurrent.BlockingQueue
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 
-open class MockRouter(
-    override val protocol: PubsubProtocol = PubsubProtocol.Gossip_V_1_1
-) : AbstractRouter(TopicSubscriptionFilter.AllowAllTopicSubscriptionFilter()) {
+open class MockRouter(executor: ScheduledExecutorService) : AbstractRouter(
+    protocol = PubsubProtocol.Floodsub,
+    executor = executor,
+    subscriptionFilter = TopicSubscriptionFilter.AllowAllTopicSubscriptionFilter(),
+    maxMsgSize = Int.MAX_VALUE,
+    messageFactory = { DefaultPubsubMessage(it) },
+    seenMessages = LRUSeenCache(SimpleSeenCache(), 1000),
+    messageValidator = NOP_ROUTER_VALIDATOR
+) {
 
     val inboundMessages: BlockingQueue<Rpc.RPC> = LinkedBlockingQueue()
 

@@ -17,14 +17,13 @@ import io.libp2p.etc.types.times
 import io.libp2p.etc.types.toBytesBigEndian
 import io.libp2p.etc.types.toProtobuf
 import io.libp2p.etc.types.toWBytes
-import io.libp2p.pubsub.DefaultPubsubMessage
-import io.libp2p.pubsub.DeterministicFuzz
-import io.libp2p.pubsub.MessageId
-import io.libp2p.pubsub.MockRouter
-import io.libp2p.pubsub.SemiduplexConnection
-import io.libp2p.pubsub.Topic
+import io.libp2p.pubsub.*
+import io.libp2p.pubsub.DeterministicFuzz.Companion.createGossipFuzzRouterFactory
+import io.libp2p.pubsub.DeterministicFuzz.Companion.createMockFuzzRouterFactory
+import io.libp2p.pubsub.gossip.builders.GossipRouterBuilder
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
+import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelOutboundHandlerAdapter
 import io.netty.channel.ChannelPromise
@@ -38,6 +37,7 @@ import pubsub.pb.Rpc
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 
@@ -60,12 +60,12 @@ class GossipV1_1Tests {
         val mockRouterCount: Int = 10,
         val params: GossipParams = GossipParams(),
         val scoreParams: GossipScoreParams = GossipScoreParams(),
-        gossipRouter: () -> GossipRouter = { GossipRouter(params, scoreParams) },
-        mockRouters: () -> List<MockRouter> = { (0 until mockRouterCount).map { MockRouter() } }
+//            mockRouters: () -> List<MockRouter> = { (0 until mockRouterCount).map { MockRouter() } }
     ) {
         val fuzz = DeterministicFuzz()
-        val router0 = fuzz.createTestRouter(gossipRouter())
-        val routers = mockRouters().map { fuzz.createTestRouter(it) }
+        val gossipRouterBuilderFactory = { GossipRouterBuilder(params = params, scoreParams = scoreParams) }
+        val router0 = fuzz.createTestRouter(createGossipFuzzRouterFactory(gossipRouterBuilderFactory))
+        val routers = (0 until mockRouterCount).map { fuzz.createTestRouter(createMockFuzzRouterFactory()) }
         val connections = mutableListOf<SemiduplexConnection>()
         val gossipRouter = router0.router as GossipRouter
         val mockRouters = routers.map { it.router as MockRouter }
@@ -84,21 +84,6 @@ class GossipV1_1Tests {
         fun getMockRouter(peerId: PeerId) = mockRouters[routers.indexOfFirst { it.peerId == peerId }]
     }
 
-    class TwoRoutersTest(
-        val coreParams: GossipParams = GossipParams(),
-        val scoreParams: GossipScoreParams = GossipScoreParams(),
-        gossipRouter: () -> GossipRouter = { GossipRouter(coreParams, scoreParams) },
-        mockRouter: () -> MockRouter = { MockRouter() }
-    ) {
-        val fuzz = DeterministicFuzz()
-        val router1 = fuzz.createTestRouter(gossipRouter())
-        val router2 = fuzz.createTestRouter(mockRouter())
-        val gossipRouter = router1.router as GossipRouter
-        val mockRouter = router2.router as MockRouter
-
-        val connection = router1.connectSemiDuplex(router2, null, LogLevel.ERROR)
-    }
-
     @Test
     fun selfSanityTest() {
         val test = TwoRoutersTest()
@@ -107,6 +92,21 @@ class GossipV1_1Tests {
         val msg = newMessage("topic1", 0L, "Hello".toByteArray())
         test.gossipRouter.publish(msg)
         test.mockRouter.waitForMessage { it.publishCount > 0 }
+    }
+
+    class TwoRoutersTest(
+        val coreParams: GossipParams = GossipParams(),
+        val scoreParams: GossipScoreParams = GossipScoreParams(),
+        mockRouterFactory: DeterministicFuzzRouterFactory = createMockFuzzRouterFactory()
+    ) {
+        val fuzz = DeterministicFuzz()
+        val gossipRouterBuilderFactory = { GossipRouterBuilder(params = coreParams, scoreParams = scoreParams) }
+        val router1 = fuzz.createTestRouter(createGossipFuzzRouterFactory(gossipRouterBuilderFactory))
+        val router2 = fuzz.createTestRouter(mockRouterFactory)
+        val gossipRouter = router1.router as GossipRouter
+        val mockRouter = router2.router as MockRouter
+
+        val connection = router1.connectSemiDuplex(router2, null, LogLevel.ERROR)
     }
 
     @Test
@@ -157,9 +157,10 @@ class GossipV1_1Tests {
 
     @Test
     fun testPenaltyForMalformedMessage() {
-        class MalformedMockRouter : MockRouter() {
+        class MalformedMockRouter(executor: ScheduledExecutorService) : MockRouter(executor) {
             var malform = false
-            override fun initChannel(streamHandler: StreamHandler) {
+
+            override fun initChannelWithHandler(streamHandler: StreamHandler, handler: ChannelHandler?) {
                 streamHandler.stream.pushHandler(object : ChannelOutboundHandlerAdapter() {
                     override fun write(ctx: ChannelHandlerContext, msg: Any, promise: ChannelPromise) {
                         msg as ByteBuf
@@ -171,11 +172,11 @@ class GossipV1_1Tests {
                         }
                     }
                 })
-                super.initChannel(streamHandler)
+                super.initChannelWithHandler(streamHandler, handler)
             }
         }
-        val mockRouter = MalformedMockRouter()
-        val test = TwoRoutersTest(mockRouter = { mockRouter })
+        val test = TwoRoutersTest(mockRouterFactory = { exec, _, _ -> MalformedMockRouter(exec) })
+        val mockRouter = test.router2.router as MalformedMockRouter
 
         val api = createPubsubApi(test.gossipRouter)
         val apiMessages = mutableListOf<MessageApi>()
