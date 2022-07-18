@@ -50,7 +50,7 @@ abstract class AbstractRouter(
     protected val messageValidator: PubsubRouterMessageValidator
 ) : P2PServiceSemiDuplex(executor), PubsubRouter, PubsubRouterDebug {
 
-    protected var msgHandler: PubsubMessageHandler = { RESULT_VALID }
+    protected var msgHandler: PubsubMessageHandler = { throw IllegalStateException("Message handler is not initialized for PubsubRouter") }
 
     protected open val peerTopics = MultiSet<PeerHandler, Topic>()
     protected open val subscribedTopics = linkedSetOf<Topic>()
