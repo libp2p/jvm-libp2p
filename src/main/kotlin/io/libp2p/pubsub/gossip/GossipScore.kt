@@ -2,12 +2,12 @@ package io.libp2p.pubsub.gossip
 
 import com.google.common.annotations.VisibleForTesting
 import io.libp2p.core.PeerId
+import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multiformats.Protocol
 import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.etc.types.cappedDouble
 import io.libp2p.etc.types.createLRUMap
 import io.libp2p.etc.types.millis
-import io.libp2p.etc.util.P2PService
 import io.libp2p.pubsub.PubsubMessage
 import io.libp2p.pubsub.Topic
 import java.util.Optional
@@ -18,9 +18,6 @@ import java.util.concurrent.TimeUnit
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
-
-fun P2PService.PeerHandler.getIP(): String? =
-    streamHandler.stream.connection.remoteAddress().getFirstComponent(Protocol.IP4)?.stringValue
 
 interface GossipScore {
 
@@ -36,6 +33,13 @@ class DefaultGossipScore(
     val executor: ScheduledExecutorService,
     val curTimeMillis: () -> Long
 ) : GossipScore, GossipRouterEventListener {
+
+    data class PeerIP(val ip4String: String) {
+        companion object {
+            fun fromMultiaddr(multiaddr: Multiaddr): PeerIP? =
+                multiaddr.getFirstComponent(Protocol.IP4)?.stringValue?.let { PeerIP(it) }
+        }
+    }
 
     inner class TopicScores(val topic: Topic) {
         private val params: GossipTopicScoreParams
@@ -129,7 +133,6 @@ class DefaultGossipScore(
         @Volatile
         var cachedScore: Double = 0.0
 
-        val ips = mutableSetOf<String>()
         var connectedTimeMillis: Long = 0
         var disconnectedTimeMillis: Long = 0
 
@@ -147,9 +150,11 @@ class DefaultGossipScore(
     val topicParams = params.topicsScoreParams
 
     private val validationTime: MutableMap<PubsubMessage, Long> = createLRUMap(1024)
+
     @VisibleForTesting
     val peerScores = ConcurrentHashMap<PeerId, PeerScores>()
-    private val activePeerIP = mutableMapOf<PeerId, String>()
+    private val peerIdToIP = mutableMapOf<PeerId, PeerIP>()
+    private val peerIPToId = PeerColocations()
 
     private val refreshTask: ScheduledFuture<*>
 
@@ -161,7 +166,7 @@ class DefaultGossipScore(
     private fun getPeerScores(peerId: PeerId) =
         peerScores.computeIfAbsent(peerId) { PeerScores() }
 
-    private fun getPeerIp(peerId: PeerId): String? = activePeerIP[peerId]
+    private fun getPeerIp(peerId: PeerId): PeerIP? = peerIdToIP[peerId]
 
     private fun getTopicScores(peerId: PeerId, topic: Topic) =
         getPeerScores(peerId).topicScores.computeIfAbsent(topic) { TopicScores(it) }
@@ -184,10 +189,7 @@ class DefaultGossipScore(
         )
         val appScore = peerParams.appSpecificScore(peerId) * peerParams.appSpecificWeight
 
-        val peersInIp: Int = getPeerIp(peerId)?.let { thisIp ->
-            if (peerParams.ipWhitelisted(thisIp)) 0 else
-                peerScores.values.count { thisIp in it.ips }
-        } ?: 0
+        val peersInIp: Int = getPeerIp(peerId)?.let { peerIPToId.getPeerCountForIp(it) } ?: 0
         val ipColocationPenalty = max(
             0,
             (peersInIp - peerParams.ipColocationFactorThreshold)
@@ -205,7 +207,18 @@ class DefaultGossipScore(
 
     @VisibleForTesting
     fun refreshScores() {
-        peerScores.values.removeIf { it.isDisconnected() && it.getDisconnectDuration() > peerParams.retainScore }
+        val peersToBury = peerScores
+            .filterValues {
+                it.isDisconnected() && it.getDisconnectDuration() > peerParams.retainScore
+            }
+            .keys
+        peersToBury.forEach { peerId ->
+            peerIdToIP.remove(peerId)?.also { peerIp ->
+                peerIPToId.remove(peerId, peerIp)
+            }
+        }
+        peerScores -= peersToBury
+
         peerScores.values.forEach {
             it.topicScores.values.forEach { it.decayScores() }
             it.behaviorPenalty *= peerParams.behaviourPenaltyDecay
@@ -222,16 +235,20 @@ class DefaultGossipScore(
         }
 
         getPeerScores(peerId).disconnectedTimeMillis = curTimeMillis()
-        activePeerIP -= peerId
     }
 
-    override fun notifyConnected(peerId: PeerId, ipAddress: String?) {
+    override fun notifyConnected(peerId: PeerId, peerAddress: Multiaddr) {
+        val ipAddress = PeerIP.fromMultiaddr(peerAddress)
         ipAddress?.also { peerIp ->
-            activePeerIP[peerId] = peerIp
+            val maybePeerIP = peerIdToIP[peerId]
+            maybePeerIP?.also {
+                peerIPToId.remove(peerId, peerIp)
+            }
+            peerIdToIP[peerId] = peerIp
         }
         getPeerScores(peerId).apply {
             connectedTimeMillis = curTimeMillis()
-            getPeerIp(peerId)?.also { ips += it }
+            getPeerIp(peerId)?.also { peerIPToId.add(peerId, it) }
         }
     }
 
@@ -285,5 +302,19 @@ class DefaultGossipScore(
 
     fun stop() {
         refreshTask.cancel(false)
+    }
+
+    internal class PeerColocations {
+        private val colocatedPeers = mutableMapOf<PeerIP, MutableSet<PeerId>>()
+
+        fun add(peerId: PeerId, peerIp: PeerIP) {
+            colocatedPeers.computeIfAbsent(peerIp) { mutableSetOf() } += peerId
+        }
+
+        fun remove(peerId: PeerId, peerIp: PeerIP) {
+            colocatedPeers[peerIp]?.also { it -= peerId }
+        }
+
+        fun getPeerCountForIp(ip: PeerIP) = colocatedPeers[ip]?.size ?: 0
     }
 }

@@ -1,6 +1,7 @@
 package io.libp2p.pubsub.gossip
 
 import io.libp2p.core.PeerId
+import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.pubsub.PubsubMessage
 import io.libp2p.pubsub.Topic
@@ -11,7 +12,7 @@ interface GossipRouterEventListener {
 
     fun notifyDisconnected(peerId: PeerId)
 
-    fun notifyConnected(peerId: PeerId, ipAddress: String?)
+    fun notifyConnected(peerId: PeerId, peerAddress: Multiaddr)
 
     fun notifyUnseenMessage(peerId: PeerId, msg: PubsubMessage)
 
@@ -35,8 +36,8 @@ class GossipRouterEventBroadcaster : GossipRouterEventListener {
         listeners.forEach { it.notifyDisconnected(peerId) }
     }
 
-    override fun notifyConnected(peerId: PeerId, ipAddress: String?) {
-        listeners.forEach { it.notifyConnected(peerId, ipAddress) }
+    override fun notifyConnected(peerId: PeerId, peerAddress: Multiaddr) {
+        listeners.forEach { it.notifyConnected(peerId, peerAddress) }
     }
 
     override fun notifyUnseenMessage(peerId: PeerId, msg: PubsubMessage) {

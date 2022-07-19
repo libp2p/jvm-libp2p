@@ -2,6 +2,7 @@ package io.libp2p.pubsub.gossip
 
 import com.google.protobuf.ByteString
 import io.libp2p.core.PeerId
+import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.etc.types.hours
 import io.libp2p.etc.types.millis
 import io.libp2p.etc.types.minutes
@@ -732,6 +733,8 @@ class DefaultGossipScoreTest {
     @Test
     fun `test IP colocation penalty`() {
 
+        val addr1 = Multiaddr.fromString("/ip4/0.0.0.1")
+        val addr2 = Multiaddr.fromString("/ip4/0.0.0.2")
         val peer1 = PeerId.random()
         val peer2 = PeerId.random()
         val peer3 = PeerId.random()
@@ -756,24 +759,24 @@ class DefaultGossipScoreTest {
 
         // Check initial value
         val score = DefaultGossipScore(scoreParams, executor, { timeController.time })
-        score.notifyConnected(peer1, "0.0.0.1")
-        score.notifyConnected(peer2, "0.0.0.1")
+        score.notifyConnected(peer1, addr1)
+        score.notifyConnected(peer2, addr1)
         assertEquals(0.0, score.score(peer1))
         assertEquals(0.0, score.score(peer2))
 
-        score.notifyConnected(peer3, "0.0.0.2")
+        score.notifyConnected(peer3, addr2)
         assertEquals(0.0, score.score(peer1))
         assertEquals(0.0, score.score(peer2))
         assertEquals(0.0, score.score(peer3))
 
-        score.notifyConnected(peer4, "0.0.0.1")
+        score.notifyConnected(peer4, addr1)
 
         assertEquals(-1.0, score.score(peer1))
         assertEquals(-1.0, score.score(peer2))
         assertEquals(0.0, score.score(peer3))
         assertEquals(-1.0, score.score(peer4))
 
-        score.notifyConnected(peer5, "0.0.0.1")
+        score.notifyConnected(peer5, addr1)
 
         assertEquals(-4.0, score.score(peer1))
         assertEquals(-4.0, score.score(peer2))
@@ -809,7 +812,7 @@ class DefaultGossipScoreTest {
         assertEquals(0.0, score.score(peer4))
         assertEquals(0.0, score.score(peer5))
 
-        score.notifyConnected(peer1, "0.0.0.1")
+        score.notifyConnected(peer1, addr1)
 
         assertEquals(-1.0, score.score(peer1))
         assertEquals(0.0, score.score(peer3))
@@ -829,7 +832,7 @@ class DefaultGossipScoreTest {
         val peerId = PeerId.random()
         val peer = mockk<P2PService.PeerHandler>()
         every { peer.peerId } returns peerId
-        every { peer.getIP() } returns "127.0.0.1"
+        every { peer.getRemoteAddress() } returns Multiaddr.fromString("/ip4/127.0.0.1")
         return peer
     }
 }
