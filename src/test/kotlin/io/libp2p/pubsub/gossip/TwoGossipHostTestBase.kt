@@ -4,6 +4,7 @@ import io.libp2p.core.dsl.host
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.mux.StreamMuxerProtocol
 import io.libp2p.etc.util.netty.LoggingHandlerShort
+import io.libp2p.pubsub.gossip.builders.GossipRouterBuilder
 import io.libp2p.security.noise.NoiseXXSecureChannel
 import io.libp2p.transport.tcp.TcpTransport
 import io.netty.handler.logging.LogLevel
@@ -16,8 +17,8 @@ abstract class TwoGossipHostTestBase {
 
     open val params = GossipParams()
 
-    open val router1 by lazy { GossipRouter(params) }
-    open val router2 by lazy { GossipRouter(params) }
+    open val router1 by lazy { GossipRouterBuilder(params = params).build() }
+    open val router2 by lazy { GossipRouterBuilder(params = params).build() }
 
     open val gossip1 by lazy {
         Gossip(router1, debugGossipHandler = LoggingHandlerShort("host-1", LogLevel.INFO))

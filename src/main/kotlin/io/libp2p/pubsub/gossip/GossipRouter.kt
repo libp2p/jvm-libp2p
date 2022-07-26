@@ -2,32 +2,52 @@ package io.libp2p.pubsub.gossip
 
 import io.libp2p.core.InternalErrorException
 import io.libp2p.core.PeerId
+import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.pubsub.ValidationResult
-import io.libp2p.etc.types.anyComplete
-import io.libp2p.etc.types.completedExceptionally
-import io.libp2p.etc.types.copy
-import io.libp2p.etc.types.createLRUMap
-import io.libp2p.etc.types.median
-import io.libp2p.etc.types.seconds
-import io.libp2p.etc.types.toProtobuf
-import io.libp2p.etc.types.toWBytes
-import io.libp2p.etc.types.whenTrue
+import io.libp2p.etc.types.*
 import io.libp2p.etc.util.P2PService
-import io.libp2p.pubsub.AbstractRouter
-import io.libp2p.pubsub.MessageId
-import io.libp2p.pubsub.NoPeersForOutboundMessageException
-import io.libp2p.pubsub.PubsubMessage
-import io.libp2p.pubsub.PubsubProtocol
-import io.libp2p.pubsub.SeenCache
-import io.libp2p.pubsub.SimpleSeenCache
-import io.libp2p.pubsub.TTLSeenCache
-import io.libp2p.pubsub.Topic
-import io.libp2p.pubsub.TopicSubscriptionFilter
+import io.libp2p.pubsub.*
+import org.apache.logging.log4j.LogManager
 import pubsub.pb.Rpc
-import java.util.Optional
+import java.util.*
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.collections.Collection
+import kotlin.collections.List
+import kotlin.collections.MutableMap
+import kotlin.collections.MutableSet
+import kotlin.collections.any
+import kotlin.collections.component1
+import kotlin.collections.component2
+import kotlin.collections.count
+import kotlin.collections.distinct
+import kotlin.collections.drop
+import kotlin.collections.filter
+import kotlin.collections.filterNot
+import kotlin.collections.flatMap
+import kotlin.collections.flatten
+import kotlin.collections.forEach
+import kotlin.collections.getOrPut
+import kotlin.collections.isNotEmpty
+import kotlin.collections.linkedMapOf
+import kotlin.collections.map
+import kotlin.collections.mapNotNull
+import kotlin.collections.minus
+import kotlin.collections.minusAssign
+import kotlin.collections.mutableMapOf
+import kotlin.collections.mutableSetOf
+import kotlin.collections.none
+import kotlin.collections.plus
+import kotlin.collections.plusAssign
+import kotlin.collections.reversed
+import kotlin.collections.set
+import kotlin.collections.shuffled
+import kotlin.collections.sortedBy
+import kotlin.collections.sum
+import kotlin.collections.take
+import kotlin.collections.toMutableSet
 import kotlin.math.max
 import kotlin.math.min
 
@@ -36,6 +56,9 @@ const val MaxIAskedEntries = 256
 const val MaxPeerIHaveEntries = 256
 const val MaxIWantRequestsEntries = 10 * 1024
 
+typealias CurrentTimeSupplier = () -> Long
+
+fun P2PService.PeerHandler.getRemoteAddress(): Multiaddr = streamHandler.stream.connection.remoteAddress()
 fun P2PService.PeerHandler.isOutbound() = streamHandler.stream.connection.isInitiator
 
 fun P2PService.PeerHandler.getPeerProtocol(): PubsubProtocol {
@@ -47,15 +70,35 @@ fun P2PService.PeerHandler.getPeerProtocol(): PubsubProtocol {
     return PubsubProtocol.fromProtocol(proto)
 }
 
+private val logger = LogManager.getLogger(GossipRouter::class.java)
+
 /**
  * Router implementing this protocol: https://github.com/libp2p/specs/tree/master/pubsub/gossipsub
  */
-open class GossipRouter @JvmOverloads constructor(
-    val params: GossipParams = GossipParams(),
-    val scoreParams: GossipScoreParams = GossipScoreParams(),
-    override val protocol: PubsubProtocol = PubsubProtocol.Gossip_V_1_1,
-    subscriptionTopicSubscriptionFilter: TopicSubscriptionFilter = TopicSubscriptionFilter.AllowAllTopicSubscriptionFilter()
-) : AbstractRouter(subscriptionTopicSubscriptionFilter, params.maxGossipMessageSize) {
+open class GossipRouter(
+    val params: GossipParams,
+    val scoreParams: GossipScoreParams,
+    val currentTimeSupplier: CurrentTimeSupplier,
+    val random: Random,
+    val name: String,
+    val mCache: MCache,
+    val score: GossipScore,
+
+    subscriptionTopicSubscriptionFilter: TopicSubscriptionFilter,
+    protocol: PubsubProtocol,
+    executor: ScheduledExecutorService,
+    messageFactory: PubsubMessageFactory,
+    seenMessages: SeenCache<Optional<ValidationResult>>,
+    messageValidator: PubsubRouterMessageValidator,
+) : AbstractRouter(
+    executor,
+    protocol,
+    subscriptionTopicSubscriptionFilter,
+    params.maxGossipMessageSize,
+    messageFactory,
+    seenMessages,
+    messageValidator
+) {
 
     // The idea behind choosing these specific default values for acceptRequestsWhitelist was
     // - from one side are pretty small and safe: peer unlikely be able to drop its score to `graylist`
@@ -66,11 +109,10 @@ open class GossipRouter @JvmOverloads constructor(
     val acceptRequestsWhitelistMaxMessages = 128
     val acceptRequestsWhitelistDuration = 1.seconds
 
-    val score by lazy { GossipScore(scoreParams, executor, curTimeMillis) }
     val fanout: MutableMap<Topic, MutableSet<PeerHandler>> = linkedMapOf()
     val mesh: MutableMap<Topic, MutableSet<PeerHandler>> = linkedMapOf()
+    val eventBroadcaster = GossipRouterEventBroadcaster()
 
-    private val mCache = MCache(params.gossipSize, params.gossipHistoryLength)
     private val lastPublished = linkedMapOf<Topic, Long>()
     private var heartbeatsCount = 0
     private val backoffExpireTimes = createLRUMap<Pair<PeerId, Topic>, Long>(MaxBackoffEntries)
@@ -86,45 +128,42 @@ open class GossipRouter @JvmOverloads constructor(
         )
     }
     private val acceptRequestsWhitelist = mutableMapOf<PeerHandler, AcceptRequestsWhitelistEntry>()
-
-    override val seenMessages: SeenCache<Optional<ValidationResult>> by lazy {
-        TTLSeenCache(SimpleSeenCache(), params.seenTTL, curTimeMillis)
-    }
+    override val pendingRpcParts = PendingRpcPartsMap<GossipRpcPartsQueue> { DefaultGossipRpcPartsQueue(params) }
 
     private fun setBackOff(peer: PeerHandler, topic: Topic) = setBackOff(peer, topic, params.pruneBackoff.toMillis())
     private fun setBackOff(peer: PeerHandler, topic: Topic, delay: Long) {
-        backoffExpireTimes[peer.peerId to topic] = curTimeMillis() + delay
+        backoffExpireTimes[peer.peerId to topic] = currentTimeSupplier() + delay
     }
 
     private fun isBackOff(peer: PeerHandler, topic: Topic) =
-        curTimeMillis() < (backoffExpireTimes[peer.peerId to topic] ?: 0)
+        currentTimeSupplier() < (backoffExpireTimes[peer.peerId to topic] ?: 0)
 
     private fun isBackOffFlood(peer: PeerHandler, topic: Topic): Boolean {
         val expire = backoffExpireTimes[peer.peerId to topic] ?: return false
-        return curTimeMillis() < expire - (params.pruneBackoff + params.graftFloodThreshold).toMillis()
+        return currentTimeSupplier() < expire - (params.pruneBackoff + params.graftFloodThreshold).toMillis()
     }
 
     private fun getDirectPeers() = peers.filter(::isDirect)
-    private fun isDirect(peer: PeerHandler) = score.peerParams.isDirect(peer.peerId)
+    private fun isDirect(peer: PeerHandler) = scoreParams.peerScoreParams.isDirect(peer.peerId)
     private fun isConnected(peerId: PeerId) = peers.any { it.peerId == peerId }
 
     override fun onPeerDisconnected(peer: PeerHandler) {
-        score.notifyDisconnected(peer)
+        eventBroadcaster.notifyDisconnected(peer.peerId)
         mesh.values.forEach { it.remove(peer) }
         fanout.values.forEach { it.remove(peer) }
         acceptRequestsWhitelist -= peer
-        collectPeerMessages(peer) // discard them
+        pendingRpcParts.popQueue(peer) // discard them
         super.onPeerDisconnected(peer)
     }
 
     override fun onPeerActive(peer: PeerHandler) {
         super.onPeerActive(peer)
-        score.notifyConnected(peer)
+        eventBroadcaster.notifyConnected(peer.peerId, peer.getRemoteAddress())
         heartbeatTask.hashCode() // force lazy initialization
     }
 
     override fun notifyUnseenMessage(peer: PeerHandler, msg: PubsubMessage) {
-        score.notifyUnseenMessage(peer, msg)
+        eventBroadcaster.notifyUnseenMessage(peer.peerId, msg)
         notifyAnyMessage(peer, msg)
     }
 
@@ -133,7 +172,7 @@ open class GossipRouter @JvmOverloads constructor(
         msg: PubsubMessage,
         validationResult: Optional<ValidationResult>
     ) {
-        score.notifySeenMessage(peer, msg, validationResult)
+        eventBroadcaster.notifySeenMessage(peer.peerId, msg, validationResult)
         notifyAnyMessage(peer, msg)
         if (validationResult.isPresent && validationResult.get() != ValidationResult.Invalid) {
             notifyAnyValidMessage(peer, msg)
@@ -141,11 +180,11 @@ open class GossipRouter @JvmOverloads constructor(
     }
 
     override fun notifyUnseenInvalidMessage(peer: PeerHandler, msg: PubsubMessage) {
-        score.notifyUnseenInvalidMessage(peer, msg)
+        eventBroadcaster.notifyUnseenInvalidMessage(peer.peerId, msg)
     }
 
     override fun notifyUnseenValidMessage(peer: PeerHandler, msg: PubsubMessage) {
-        score.notifyUnseenValidMessage(peer, msg)
+        eventBroadcaster.notifyUnseenValidMessage(peer.peerId, msg)
         notifyAnyValidMessage(peer, msg)
     }
 
@@ -170,15 +209,15 @@ open class GossipRouter @JvmOverloads constructor(
     }
 
     protected open fun notifyMeshed(peer: PeerHandler, topic: Topic) {
-        score.notifyMeshed(peer, topic)
+        eventBroadcaster.notifyMeshed(peer.peerId, topic)
     }
 
     fun notifyPruned(peer: PeerHandler, topic: Topic) {
-        score.notifyPruned(peer, topic)
+        eventBroadcaster.notifyPruned(peer.peerId, topic)
     }
 
     fun notifyRouterMisbehavior(peer: PeerHandler, penalty: Int) {
-        score.notifyRouterMisbehavior(peer, penalty)
+        eventBroadcaster.notifyRouterMisbehavior(peer.peerId, penalty)
     }
 
     override fun acceptRequestsFrom(peer: PeerHandler): Boolean {
@@ -186,7 +225,7 @@ open class GossipRouter @JvmOverloads constructor(
             return true
         }
 
-        val curTime = curTimeMillis()
+        val curTime = currentTimeSupplier()
         val whitelistEntry = acceptRequestsWhitelist[peer]
         if (whitelistEntry != null &&
             curTime <= whitelistEntry.whitelistedTill &&
@@ -197,7 +236,7 @@ open class GossipRouter @JvmOverloads constructor(
             return true
         }
 
-        val peerScore = score.score(peer)
+        val peerScore = score.score(peer.peerId)
         if (peerScore >= acceptRequestsWhitelistThresholdScore) {
             acceptRequestsWhitelist[peer] =
                 AcceptRequestsWhitelistEntry(curTime + acceptRequestsWhitelistDuration.toMillis())
@@ -205,26 +244,21 @@ open class GossipRouter @JvmOverloads constructor(
             acceptRequestsWhitelist -= peer
         }
 
-        return peerScore >= score.params.graylistThreshold
+        return peerScore >= scoreParams.graylistThreshold
     }
 
     override fun validateMessageListLimits(msg: Rpc.RPCOrBuilder): Boolean {
+        val iWantMessageIdCount = msg.control?.iwantList?.map { w -> w.messageIDsCount }?.sum() ?: 0
+        val iHaveMessageIdCount = msg.control?.ihaveList?.map { w -> w.messageIDsCount }?.sum() ?: 0
+
         return params.maxPublishedMessages?.let { msg.publishCount <= it } ?: true &&
             params.maxTopicsPerPublishedMessage?.let { msg.publishList.none { m -> m.topicIDsCount > it } } ?: true &&
             params.maxSubscriptions?.let { msg.subscriptionsCount <= it } ?: true &&
-            params.maxIHaveLength.let { countIHaveMessageIds(msg) <= it } &&
-            params.maxIWantMessageIds?.let { countIWantMessageIds(msg) <= it } ?: true &&
-            params.maxGraftMessages?.let { msg.control?.graftCount ?: 0 <= it } ?: true &&
-            params.maxPruneMessages?.let { msg.control?.pruneCount ?: 0 <= it } ?: true &&
+            params.maxIHaveLength.let { iHaveMessageIdCount <= it } &&
+            params.maxIWantMessageIds?.let { iWantMessageIdCount <= it } ?: true &&
+            params.maxGraftMessages?.let { (msg.control?.graftCount ?: 0) <= it } ?: true &&
+            params.maxPruneMessages?.let { (msg.control?.pruneCount ?: 0) <= it } ?: true &&
             params.maxPeersPerPruneMessage?.let { msg.control?.pruneList?.none { p -> p.peersCount > it } } ?: true
-    }
-
-    private fun countIWantMessageIds(msg: Rpc.RPCOrBuilder): Int {
-        return msg.control?.iwantList?.map { w -> w.messageIDsCount }?.sum() ?: 0
-    }
-
-    private fun countIHaveMessageIds(msg: Rpc.RPCOrBuilder): Int {
-        return msg.control?.ihaveList?.map { w -> w.messageIDsCount }?.sum() ?: 0
     }
 
     private fun processControlMessage(controlMsg: Any, receivedFrom: PeerHandler) {
@@ -250,7 +284,7 @@ open class GossipRouter @JvmOverloads constructor(
                 }
                 prune(peer, topic)
             }
-            score.score(peer) < 0 ->
+            score.score(peer.peerId) < 0 ->
                 prune(peer, topic)
             meshPeers.size >= params.DHigh && !peer.isOutbound() ->
                 prune(peer, topic)
@@ -270,7 +304,7 @@ open class GossipRouter @JvmOverloads constructor(
             } else {
                 setBackOff(peer, topic)
             }
-            if (score.score(peer) >= scoreParams.acceptPXThreshold) {
+            if (score.score(peer.peerId) >= scoreParams.acceptPXThreshold) {
                 processPrunePeers(msg.peersList)
             }
         } else {
@@ -281,9 +315,9 @@ open class GossipRouter @JvmOverloads constructor(
     }
 
     private fun handleIHave(msg: Rpc.ControlIHave, peer: PeerHandler) {
-        val peerScore = score.score(peer)
+        val peerScore = score.score(peer.peerId)
         // we ignore IHAVE gossip from any peer whose score is below the gossip threshold
-        if (peerScore < score.params.gossipThreshold) return
+        if (peerScore < scoreParams.gossipThreshold) return
         if (peerIHave.computeIfAbsent(peer) { AtomicInteger() }.incrementAndGet() > params.maxIHaveMessages) {
             // peer has advertised too many times within this heartbeat interval, ignoring
             return
@@ -303,8 +337,8 @@ open class GossipRouter @JvmOverloads constructor(
     }
 
     private fun handleIWant(msg: Rpc.ControlIWant, peer: PeerHandler) {
-        val peerScore = score.score(peer)
-        if (peerScore < score.params.gossipThreshold) return
+        val peerScore = score.score(peer.peerId)
+        if (peerScore < scoreParams.gossipThreshold) return
         msg.messageIDsList
             .mapNotNull { mCache.getMessageForPeer(peer.peerId, it.toWBytes()) }
             .filter { it.sentCount < params.gossipRetransmission }
@@ -340,13 +374,13 @@ open class GossipRouter @JvmOverloads constructor(
     }
 
     override fun broadcastOutbound(msg: PubsubMessage): CompletableFuture<Unit> {
-        msg.topics.forEach { lastPublished[it] = curTimeMillis() }
+        msg.topics.forEach { lastPublished[it] = currentTimeSupplier() }
 
         val peers =
             if (params.floodPublish) {
                 msg.topics
                     .flatMap { getTopicPeers(it) }
-                    .filter { score.score(it) >= score.params.publishThreshold }
+                    .filter { score.score(it.peerId) >= scoreParams.publishThreshold }
                     .plus(getDirectPeers())
             } else {
                 msg.topics
@@ -375,10 +409,10 @@ open class GossipRouter @JvmOverloads constructor(
     override fun subscribe(topic: Topic) {
         super.subscribe(topic)
         val fanoutPeers = (fanout[topic] ?: mutableSetOf())
-            .filter { score.score(it) >= 0 && !isDirect(it) }
+            .filter { score.score(it.peerId) >= 0 && !isDirect(it) }
         val meshPeers = mesh.getOrPut(topic) { mutableSetOf() }
         val otherPeers = (getTopicPeers(topic) - meshPeers - fanoutPeers)
-            .filter { score.score(it) >= 0 && !isDirect(it) }
+            .filter { score.score(it.peerId) >= 0 && !isDirect(it) }
 
         if (meshPeers.size < params.D) {
             val addFromFanout = fanoutPeers.shuffled(random)
@@ -413,7 +447,7 @@ open class GossipRouter @JvmOverloads constructor(
         iAsked.clear()
         peerIHave.clear()
 
-        val staleIWantTime = this.curTimeMillis() - params.iWantFollowupTime.toMillis()
+        val staleIWantTime = this.currentTimeSupplier() - params.iWantFollowupTime.toMillis()
         iWantRequests.entries.removeIf { (key, time) ->
             (time < staleIWantTime)
                 .whenTrue { notifyIWantTimeout(key.first, key.second) }
@@ -423,13 +457,13 @@ open class GossipRouter @JvmOverloads constructor(
             mesh.entries.forEach { (topic, peers) ->
 
                 // drop underscored peers from mesh
-                peers.filter { score.score(it) < 0 }
+                peers.filter { score.score(it.peerId) < 0 }
                     .forEach { prune(it, topic) }
 
                 if (peers.size < params.DLow) {
                     // need more mesh peers
                     (getTopicPeers(topic) - peers)
-                        .filter { score.score(it) >= 0 && !isDirect(it) && !isBackOff(it, topic) }
+                        .filter { score.score(it.peerId) >= 0 && !isDirect(it) && !isBackOff(it, topic) }
                         .shuffled(random)
                         .take(params.D - peers.size)
                         .forEach { graft(it, topic) }
@@ -437,7 +471,7 @@ open class GossipRouter @JvmOverloads constructor(
                     // too many mesh peers
                     val sortedPeers = peers
                         .shuffled(random)
-                        .sortedBy { score.score(it) }
+                        .sortedBy { score.score(it.peerId) }
                         .reversed()
 
                     val bestDPeers = sortedPeers.take(params.DScore)
@@ -454,17 +488,17 @@ open class GossipRouter @JvmOverloads constructor(
                 // keep outbound peers > DOut
                 val outboundCount = peers.count { it.isOutbound() }
                 (getTopicPeers(topic) - peers)
-                    .filter { it.isOutbound() && score.score(it) >= 0 && !isDirect(it) && !isBackOff(it, topic) }
+                    .filter { it.isOutbound() && score.score(it.peerId) >= 0 && !isDirect(it) && !isBackOff(it, topic) }
                     .shuffled(random)
                     .take(max(0, params.DOut - outboundCount))
                     .forEach { graft(it, topic) }
 
                 // opportunistic grafting
                 if (heartbeatsCount % params.opportunisticGraftTicks == 0 && peers.size > 1) {
-                    val scoreMedian = peers.map { score.score(it) }.median()
+                    val scoreMedian = peers.map { score.score(it.peerId) }.median()
                     if (scoreMedian < scoreParams.opportunisticGraftThreshold) {
                         (getTopicPeers(topic) - peers)
-                            .filter { score.score(it) > scoreMedian && !isDirect(it) && !isBackOff(it, topic) }
+                            .filter { score.score(it.peerId) > scoreMedian && !isDirect(it) && !isBackOff(it, topic) }
                             .take(params.opportunisticGraftPeers)
                             .forEach { graft(it, topic) }
                     }
@@ -474,19 +508,19 @@ open class GossipRouter @JvmOverloads constructor(
             }
             fanout.entries.forEach { (topic, peers) ->
                 peers.removeIf {
-                    it !in getTopicPeers(topic) || score.score(it) < scoreParams.publishThreshold
+                    it !in getTopicPeers(topic) || score.score(it.peerId) < scoreParams.publishThreshold
                 }
                 val needMore = params.D - peers.size
                 if (needMore > 0) {
                     peers += (getTopicPeers(topic) - peers)
-                        .filter { score.score(it) >= scoreParams.publishThreshold && !isDirect(it) }
+                        .filter { score.score(it.peerId) >= scoreParams.publishThreshold && !isDirect(it) }
                         .shuffled(random)
                         .take(needMore)
                 }
                 emitGossip(topic, peers)
             }
             lastPublished.entries.removeIf { (topic, lastPub) ->
-                (curTimeMillis() - lastPub > params.fanoutTTL.toMillis())
+                (currentTimeSupplier() - lastPub > params.fanoutTTL.toMillis())
                     .whenTrue { fanout.remove(topic) }
             }
 
@@ -504,7 +538,7 @@ open class GossipRouter @JvmOverloads constructor(
 
         val shuffledMessageIds = ids.shuffled(random).take(params.maxIHaveLength)
         val peers = (getTopicPeers(topic) - excludePeers)
-            .filter { score.score(it) >= score.params.gossipThreshold && !isDirect(it) }
+            .filter { score.score(it.peerId) >= scoreParams.gossipThreshold && !isDirect(it) }
 
         peers.shuffled(random)
             .take(max((params.gossipFactor * peers.size).toInt(), params.DLazy))
@@ -528,67 +562,30 @@ open class GossipRouter @JvmOverloads constructor(
     private fun iWant(peer: PeerHandler, messageIds: List<MessageId>) {
         if (messageIds.isEmpty()) return
         messageIds[random.nextInt(messageIds.size)]
-            .also { iWantRequests[peer to it] = curTimeMillis() }
+            .also { iWantRequests[peer to it] = currentTimeSupplier() }
         enqueueIwant(peer, messageIds)
     }
 
     private fun enqueuePrune(peer: PeerHandler, topic: Topic) {
-        val pruneBuilder = Rpc.ControlPrune.newBuilder().setTopicID(topic)
+        val peerQueue = pendingRpcParts.getQueue(peer)
         if (peer.getPeerProtocol() == PubsubProtocol.Gossip_V_1_1 && this.protocol == PubsubProtocol.Gossip_V_1_1) {
-            // add v1.1 specific fields
-            pruneBuilder.backoff = params.pruneBackoff.seconds
-            (getTopicPeers(topic) - peer)
-                .filter { score.score(it) >= 0 }
-                .forEach {
-                    pruneBuilder.addPeers(
-                        Rpc.PeerInfo.newBuilder()
-                            .setPeerID(it.peerId.bytes.toProtobuf())
-                        // TODO skipping address record for now
-                    )
-                }
-        }
-        addPendingRpcPart(
-            peer,
-            Rpc.RPC.newBuilder().setControl(
-                Rpc.ControlMessage.newBuilder().addPrune(
-                    pruneBuilder
-                )
-            ).build()
-        )
-    }
-
-    private fun enqueueGraft(peer: PeerHandler, topic: Topic) = addPendingRpcPart(
-        peer,
-        Rpc.RPC.newBuilder().setControl(
-            Rpc.ControlMessage.newBuilder().addGraft(
-                Rpc.ControlGraft.newBuilder().setTopicID(topic)
-            )
-        ).build()
-    )
-
-    private fun enqueueIwant(peer: PeerHandler, messageIds: List<MessageId>) {
-        if (messageIds.isNotEmpty()) {
-            addPendingRpcPart(
-                peer,
-                Rpc.RPC.newBuilder().setControl(
-                    Rpc.ControlMessage.newBuilder().addIwant(
-                        Rpc.ControlIWant.newBuilder().addAllMessageIDs(messageIds.map { it.toProtobuf() })
-                    )
-                ).build()
-            )
+            val backoffPeers = (getTopicPeers(topic) - peer)
+                .filter { score.score(it.peerId) >= 0 }
+                .map { it.peerId }
+            peerQueue.addPrune(topic, params.pruneBackoff.seconds, backoffPeers)
+        } else {
+            peerQueue.addPrune(topic)
         }
     }
 
-    private fun enqueueIhave(peer: PeerHandler, messageIds: List<MessageId>) {
-        addPendingRpcPart(
-            peer,
-            Rpc.RPC.newBuilder().setControl(
-                Rpc.ControlMessage.newBuilder().addIhave(
-                    Rpc.ControlIHave.newBuilder().addAllMessageIDs(messageIds.map { it.toProtobuf() })
-                )
-            ).build()
-        )
-    }
+    private fun enqueueGraft(peer: PeerHandler, topic: Topic) =
+        pendingRpcParts.getQueue(peer).addGraft(topic)
+
+    private fun enqueueIwant(peer: PeerHandler, messageIds: List<MessageId>) =
+        pendingRpcParts.getQueue(peer).addIWants(messageIds)
+
+    private fun enqueueIhave(peer: PeerHandler, messageIds: List<MessageId>) =
+        pendingRpcParts.getQueue(peer).addIHaves(messageIds)
 
     data class AcceptRequestsWhitelistEntry(val whitelistedTill: Long, val messagesAccepted: Int = 0) {
         fun incrementMessageCount() = AcceptRequestsWhitelistEntry(whitelistedTill, messagesAccepted + 1)

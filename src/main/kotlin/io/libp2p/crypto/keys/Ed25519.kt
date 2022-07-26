@@ -37,6 +37,8 @@ class Ed25519PrivateKey(private val priv: Ed25519PrivateKeyParameters) : PrivKey
 
     override fun publicKey(): PubKey = Ed25519PublicKey(priv.generatePublicKey())
 
+    override fun equals(other: Any?): Boolean = super.equals(other)
+
     override fun hashCode(): Int = priv.hashCode()
 }
 
@@ -52,6 +54,8 @@ class Ed25519PublicKey(private val pub: Ed25519PublicKeyParameters) : PubKey(Cry
         update(data, 0, data.size)
         verifySignature(signature)
     }
+
+    override fun equals(other: Any?): Boolean = super.equals(other)
 
     override fun hashCode(): Int = pub.hashCode()
 }

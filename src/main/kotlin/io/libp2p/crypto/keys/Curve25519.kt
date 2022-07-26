@@ -38,8 +38,6 @@ class Curve25519PrivateKey(private val state: DHState) : PrivKey(Crypto.KeyType.
         state.getPublicKey(ba, 0)
         return Curve25519PublicKey(state)
     }
-
-    override fun hashCode(): Int = raw().contentHashCode()
 }
 
 /**
@@ -56,8 +54,6 @@ class Curve25519PublicKey(private val state: DHState) : PubKey(Crypto.KeyType.Cu
     override fun verify(data: ByteArray, signature: ByteArray): Boolean {
         throw NotImplementedError("Verifying with Curve25519 public key currently unsupported.")
     }
-
-    override fun hashCode(): Int = raw().contentHashCode()
 }
 
 /**

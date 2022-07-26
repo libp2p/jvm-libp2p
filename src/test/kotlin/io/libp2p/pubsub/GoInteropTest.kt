@@ -28,7 +28,7 @@ import io.libp2p.mux.mplex.MplexStreamMuxer
 import io.libp2p.protocol.Identify
 import io.libp2p.protocol.Ping
 import io.libp2p.pubsub.gossip.Gossip
-import io.libp2p.pubsub.gossip.GossipRouter
+import io.libp2p.pubsub.gossip.builders.GossipRouterBuilder
 import io.libp2p.security.secio.SecIoSecureChannel
 import io.libp2p.tools.P2pdRunner
 import io.libp2p.tools.TestChannel
@@ -117,15 +117,12 @@ class GoInteropTest {
 
             println("Local peerID: " + PeerId.fromPubKey(pubKey1).toBase58())
 
-            val gossipRouter = GossipRouter().also {
-                it.messageValidator = SIGNATURE_ROUTER_VALIDATOR
-            }
-            val pubsubApi = createPubsubApi(gossipRouter)
+            val gossipRouter1 = GossipRouterBuilder().build()
+            val pubsubApi = createPubsubApi(gossipRouter1)
             val publisher = pubsubApi.createPublisher(privKey1, 8888)
 
-            val gossip = GossipProtocol(gossipRouter).also {
+            val gossip = GossipProtocol(gossipRouter1).also {
                 it.debugGossipHandler = LoggingHandler("#4", LogLevel.INFO)
-                it.router.messageValidator = NOP_ROUTER_VALIDATOR
             }
 
             val applicationProtocols = listOf(ProtocolBinding.createSimple("/meshsub/1.0.0", gossip), Identify())

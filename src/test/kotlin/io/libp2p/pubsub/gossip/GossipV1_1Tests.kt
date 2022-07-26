@@ -17,14 +17,13 @@ import io.libp2p.etc.types.times
 import io.libp2p.etc.types.toBytesBigEndian
 import io.libp2p.etc.types.toProtobuf
 import io.libp2p.etc.types.toWBytes
-import io.libp2p.pubsub.DefaultPubsubMessage
-import io.libp2p.pubsub.DeterministicFuzz
-import io.libp2p.pubsub.MessageId
-import io.libp2p.pubsub.MockRouter
-import io.libp2p.pubsub.SemiduplexConnection
-import io.libp2p.pubsub.Topic
+import io.libp2p.pubsub.*
+import io.libp2p.pubsub.DeterministicFuzz.Companion.createGossipFuzzRouterFactory
+import io.libp2p.pubsub.DeterministicFuzz.Companion.createMockFuzzRouterFactory
+import io.libp2p.pubsub.gossip.builders.GossipRouterBuilder
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
+import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelOutboundHandlerAdapter
 import io.netty.channel.ChannelPromise
@@ -38,10 +37,13 @@ import pubsub.pb.Rpc
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 
 class GossipV1_1Tests {
+
+    private val GossipScore.testPeerScores get() = (this as DefaultGossipScore).peerScores
 
     private fun newProtoMessage(topic: Topic, seqNo: Long, data: ByteArray) =
         Rpc.Message.newBuilder()
@@ -58,12 +60,12 @@ class GossipV1_1Tests {
         val mockRouterCount: Int = 10,
         val params: GossipParams = GossipParams(),
         val scoreParams: GossipScoreParams = GossipScoreParams(),
-        gossipRouter: () -> GossipRouter = { GossipRouter(params, scoreParams) },
-        mockRouters: () -> List<MockRouter> = { (0 until mockRouterCount).map { MockRouter() } }
+//            mockRouters: () -> List<MockRouter> = { (0 until mockRouterCount).map { MockRouter() } }
     ) {
         val fuzz = DeterministicFuzz()
-        val router0 = fuzz.createTestRouter(gossipRouter())
-        val routers = mockRouters().map { fuzz.createTestRouter(it) }
+        val gossipRouterBuilderFactory = { GossipRouterBuilder(params = params, scoreParams = scoreParams) }
+        val router0 = fuzz.createTestRouter(createGossipFuzzRouterFactory(gossipRouterBuilderFactory))
+        val routers = (0 until mockRouterCount).map { fuzz.createTestRouter(createMockFuzzRouterFactory()) }
         val connections = mutableListOf<SemiduplexConnection>()
         val gossipRouter = router0.router as GossipRouter
         val mockRouters = routers.map { it.router as MockRouter }
@@ -82,21 +84,6 @@ class GossipV1_1Tests {
         fun getMockRouter(peerId: PeerId) = mockRouters[routers.indexOfFirst { it.peerId == peerId }]
     }
 
-    class TwoRoutersTest(
-        val coreParams: GossipParams = GossipParams(),
-        val scoreParams: GossipScoreParams = GossipScoreParams(),
-        gossipRouter: () -> GossipRouter = { GossipRouter(coreParams, scoreParams) },
-        mockRouter: () -> MockRouter = { MockRouter() }
-    ) {
-        val fuzz = DeterministicFuzz()
-        val router1 = fuzz.createTestRouter(gossipRouter())
-        val router2 = fuzz.createTestRouter(mockRouter())
-        val gossipRouter = router1.router as GossipRouter
-        val mockRouter = router2.router as MockRouter
-
-        val connection = router1.connectSemiDuplex(router2, null, LogLevel.ERROR)
-    }
-
     @Test
     fun selfSanityTest() {
         val test = TwoRoutersTest()
@@ -105,6 +92,21 @@ class GossipV1_1Tests {
         val msg = newMessage("topic1", 0L, "Hello".toByteArray())
         test.gossipRouter.publish(msg)
         test.mockRouter.waitForMessage { it.publishCount > 0 }
+    }
+
+    class TwoRoutersTest(
+        val coreParams: GossipParams = GossipParams(),
+        val scoreParams: GossipScoreParams = GossipScoreParams(),
+        mockRouterFactory: DeterministicFuzzRouterFactory = createMockFuzzRouterFactory()
+    ) {
+        val fuzz = DeterministicFuzz()
+        val gossipRouterBuilderFactory = { GossipRouterBuilder(params = coreParams, scoreParams = scoreParams) }
+        val router1 = fuzz.createTestRouter(createGossipFuzzRouterFactory(gossipRouterBuilderFactory))
+        val router2 = fuzz.createTestRouter(mockRouterFactory)
+        val gossipRouter = router1.router as GossipRouter
+        val mockRouter = router2.router as MockRouter
+
+        val connection = router1.connectSemiDuplex(router2, null, LogLevel.ERROR)
     }
 
     @Test
@@ -155,9 +157,10 @@ class GossipV1_1Tests {
 
     @Test
     fun testPenaltyForMalformedMessage() {
-        class MalformedMockRouter : MockRouter() {
+        class MalformedMockRouter(executor: ScheduledExecutorService) : MockRouter(executor) {
             var malform = false
-            override fun initChannel(streamHandler: StreamHandler) {
+
+            override fun initChannelWithHandler(streamHandler: StreamHandler, handler: ChannelHandler?) {
                 streamHandler.stream.pushHandler(object : ChannelOutboundHandlerAdapter() {
                     override fun write(ctx: ChannelHandlerContext, msg: Any, promise: ChannelPromise) {
                         msg as ByteBuf
@@ -169,11 +172,11 @@ class GossipV1_1Tests {
                         }
                     }
                 })
-                super.initChannel(streamHandler)
+                super.initChannelWithHandler(streamHandler, handler)
             }
         }
-        val mockRouter = MalformedMockRouter()
-        val test = TwoRoutersTest(mockRouter = { mockRouter })
+        val test = TwoRoutersTest(mockRouterFactory = { exec, _, _ -> MalformedMockRouter(exec) })
+        val mockRouter = test.router2.router as MalformedMockRouter
 
         val api = createPubsubApi(test.gossipRouter)
         val apiMessages = mutableListOf<MessageApi>()
@@ -184,7 +187,7 @@ class GossipV1_1Tests {
             .build()
         mockRouter.malform = true
 
-        val peerScores = test.gossipRouter.score.peerScores.values.first()
+        val peerScores = test.gossipRouter.score.testPeerScores.values.first()
         // no behavior penalty before flooding
         assertEquals(0.0, peerScores.behaviorPenalty)
 
@@ -331,8 +334,8 @@ class GossipV1_1Tests {
             )
         ).build()
 
-        assertEquals(1, test.gossipRouter.score.peerScores.size)
-        val peerScores = test.gossipRouter.score.peerScores.values.first()
+        assertEquals(1, test.gossipRouter.score.testPeerScores.size)
+        val peerScores = test.gossipRouter.score.testPeerScores.values.first()
         // no behavior penalty before flooding
         assertEquals(0.0, peerScores.behaviorPenalty)
 
@@ -352,13 +355,13 @@ class GossipV1_1Tests {
         test.router1.connectSemiDuplex(test.router2)
         test.fuzz.timeController.addTime(1.seconds)
 
-        assertEquals(1, test.gossipRouter.score.peerScores.size)
-        val peerScores1 = test.gossipRouter.score.peerScores.values.first()
+        assertEquals(1, test.gossipRouter.score.testPeerScores.size)
+        val peerScores1 = test.gossipRouter.score.testPeerScores.values.first()
         assertTrue(peerScores1.behaviorPenalty > 0.0)
 
         // check the penalty is decayed with time
         val origPenalty = peerScores1.behaviorPenalty
-        test.fuzz.timeController.addTime(test.gossipRouter.score.peerParams.decayInterval * 2)
+        test.fuzz.timeController.addTime(test.scoreParams.peerScoreParams.decayInterval * 2)
         assertTrue(peerScores1.behaviorPenalty < origPenalty)
     }
 
@@ -419,7 +422,7 @@ class GossipV1_1Tests {
         test.gossipRouter.subscribe("topic1")
 
         test.fuzz.timeController.addTime(2.seconds)
-        val peerScores1 = test.gossipRouter.score.peerScores.values.first()
+        val peerScores1 = test.gossipRouter.score.testPeerScores.values.first()
 
         val msg1 = Rpc.RPC.newBuilder().addPublish(newProtoMessage("topic1", 0L, "Hello-1".toByteArray())).build()
         test.mockRouter.sendToSingle(msg1)
@@ -456,7 +459,7 @@ class GossipV1_1Tests {
         assertTrue(invalidMessages4 > invalidMessages3)
 
         // check invalid message counter is decayed
-        test.fuzz.timeController.addTime(test.gossipRouter.score.peerParams.decayInterval * 2)
+        test.fuzz.timeController.addTime(test.scoreParams.peerScoreParams.decayInterval * 2)
         val invalidMessages5 = peerScores1.topicScores["topic1"]?.invalidMessages ?: 0.0
         assertTrue(invalidMessages5 < invalidMessages4)
     }
@@ -644,7 +647,7 @@ class GossipV1_1Tests {
         val publishedCount = test.mockRouters.flatMap { it.inboundMessages }.count { it.publishCount > 0 }
         assertTrue(publishedCount <= topicMesh.size)
 
-        val scores1 = test.gossipRouter.peers.map { it.peerId to test.gossipRouter.score.score(it) }.toMap()
+        val scores1 = test.gossipRouter.peers.map { it.peerId to test.gossipRouter.score.score(it.peerId) }.toMap()
 
         // peers 0 and 1 should not receive flood publish
         appScore[test.routers[0].peerId] =
@@ -660,7 +663,7 @@ class GossipV1_1Tests {
         println(appScore.keys)
 
         // check if scores are correctly calculated
-        val scores2 = test.gossipRouter.peers.map { it.peerId to test.gossipRouter.score.score(it) }.toMap()
+        val scores2 = test.gossipRouter.peers.map { it.peerId to test.gossipRouter.score.score(it.peerId) }.toMap()
         assertTrue(scores2[test.routers[0].peerId]!! < scoreParams.publishThreshold)
         assertTrue(scores2[test.routers[1].peerId]!! < scoreParams.publishThreshold)
         assertTrue(scores2[test.routers[2].peerId]!! > scoreParams.publishThreshold)
@@ -865,7 +868,7 @@ class GossipV1_1Tests {
         assertEquals(0, test.mockRouters[1].inboundMessages.count { it.publishCount > 0 })
         assertEquals(
             0.0,
-            test.gossipRouter.score.peerScores[test.routers[0].peerId]!!.topicScores["topic1"]!!.invalidMessages
+            test.gossipRouter.score.testPeerScores[test.routers[0].peerId]!!.topicScores["topic1"]!!.invalidMessages
         )
     }
 
@@ -878,13 +881,13 @@ class GossipV1_1Tests {
 
         val idToPeerHandlers = test.gossipRouter.peers.map { it.peerId to it }.toMap()
         var curScores = idToPeerHandlers
-            .mapValues { (_, handler) -> test.gossipRouter.score.score(handler) }
+            .mapValues { (_, handler) -> test.gossipRouter.score.score(handler.peerId) }
         assertEquals(0, curScores.values.count { it < 0 })
         for (i in 0..360) {
             assertEquals(20, curScores.size)
             test.fuzz.timeController.addTime(1.seconds)
             val newScores = idToPeerHandlers
-                .mapValues { (_, handler) -> test.gossipRouter.score.score(handler) }
+                .mapValues { (_, handler) -> test.gossipRouter.score.score(handler.peerId) }
             for (id in curScores.keys) {
                 assertTrue(newScores[id]!! >= curScores[id]!!)
             }
@@ -924,7 +927,7 @@ class GossipV1_1Tests {
         test.fuzz.timeController.addTime(10.seconds)
 
         // responded to IWANT in time - no penalties should be applied
-        assertEquals(0.0, test.gossipRouter.score.peerScores[test.router2.peerId]!!.behaviorPenalty)
+        assertEquals(0.0, test.gossipRouter.score.testPeerScores[test.router2.peerId]!!.behaviorPenalty)
 
         test.mockRouter.sendToSingle(
             Rpc.RPC.newBuilder().setControl(
@@ -943,7 +946,7 @@ class GossipV1_1Tests {
         test.fuzz.timeController.addTime(10.seconds)
 
         // messages were sent too late - penalty points should be applied
-        val penalty1 = test.gossipRouter.score.peerScores[test.router2.peerId]!!.behaviorPenalty
+        val penalty1 = test.gossipRouter.score.testPeerScores[test.router2.peerId]!!.behaviorPenalty
         assertTrue(penalty1 > 0)
 
         test.mockRouter.sendToSingle(
@@ -955,7 +958,7 @@ class GossipV1_1Tests {
         )
         test.fuzz.timeController.addTime(10.seconds)
         // all IWANT were ignored
-        assertTrue(test.gossipRouter.score.peerScores[test.router2.peerId]!!.behaviorPenalty > penalty1)
+        assertTrue(test.gossipRouter.score.testPeerScores[test.router2.peerId]!!.behaviorPenalty > penalty1)
     }
 
     @Test
@@ -1006,7 +1009,7 @@ class GossipV1_1Tests {
         // ... but should remove IWANT request timeout entry for 'gossiper' peer
         test.fuzz.timeController.addTime(10.seconds)
         // and the peer shouldn't be penalized
-        assertTrue(test.gossipRouter.score.peerScores[gossiperRouter.peerId]!!.behaviorPenalty == 0.0)
+        assertTrue(test.gossipRouter.score.testPeerScores[gossiperRouter.peerId]!!.behaviorPenalty == 0.0)
     }
 
     @Test

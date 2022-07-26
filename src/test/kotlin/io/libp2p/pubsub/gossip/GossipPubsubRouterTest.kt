@@ -4,10 +4,12 @@ import io.libp2p.core.pubsub.RESULT_IGNORE
 import io.libp2p.etc.types.seconds
 import io.libp2p.etc.types.toProtobuf
 import io.libp2p.pubsub.DeterministicFuzz
+import io.libp2p.pubsub.DeterministicFuzz.Companion.createGossipFuzzRouterFactory
 import io.libp2p.pubsub.MockRouter
 import io.libp2p.pubsub.PubsubRouterTest
 import io.libp2p.pubsub.TestRouter
 import io.libp2p.pubsub.gossip.builders.GossipPeerScoreParamsBuilder
+import io.libp2p.pubsub.gossip.builders.GossipRouterBuilder
 import io.libp2p.pubsub.gossip.builders.GossipScoreParamsBuilder
 import io.libp2p.tools.TestLogAppender
 import io.netty.handler.logging.LogLevel
@@ -18,23 +20,24 @@ import pubsub.pb.Rpc
 import java.time.Duration
 import java.util.concurrent.TimeUnit
 
-class GossipPubsubRouterTest : PubsubRouterTest({
-    GossipRouter(
-        GossipParams(3, 3, 100, floodPublish = false)
-    )
-}) {
+class GossipPubsubRouterTest : PubsubRouterTest(
+    createGossipFuzzRouterFactory {
+        GossipRouterBuilder(params = GossipParams(3, 3, 100, floodPublish = false))
+    }
+) {
 
     @Test
     override fun TenNeighborsTopology() {
         for (d in 3..6) {
             for (seed in 0..10) {
                 print("D=$d, seed=$seed  ")
-                super.doTenNeighborsTopology(seed) {
-                    GossipRouter(
+                super.doTenNeighborsTopology(
+                    seed,
+                    createGossipFuzzRouterFactory {
                         // small backoff timeout for faster meshes settling down
-                        GossipParams(d, d, d, DLazy = 100, pruneBackoff = 1.seconds)
-                    )
-                }
+                        GossipRouterBuilder(params = GossipParams(d, d, d, DLazy = 100, pruneBackoff = 1.seconds))
+                    }
+                )
             }
         }
     }
@@ -47,8 +50,8 @@ class GossipPubsubRouterTest : PubsubRouterTest({
 
         val otherCount = 5
         for (i in 1..otherCount) {
-            val r = GossipRouter(GossipParams(1, 0))
-            val routerEnd = fuzz.createTestRouter(r)
+            val r = { GossipRouterBuilder(params = GossipParams(1, 0)) }
+            val routerEnd = fuzz.createTestGossipRouter(r)
             allRouters += routerEnd
         }
 
@@ -56,8 +59,8 @@ class GossipPubsubRouterTest : PubsubRouterTest({
         // this is to test ihave/iwant
         fuzz.timeController.addTime(Duration.ofMillis(1))
 
-        val r = GossipRouter(GossipParams(3, 3, 3, DOut = 0, DLazy = 1000, floodPublish = false))
-        val routerCenter = fuzz.createTestRouter(r)
+        val r = { GossipRouterBuilder(params = GossipParams(3, 3, 3, DOut = 0, DLazy = 1000, floodPublish = false)) }
+        val routerCenter = fuzz.createTestGossipRouter(r)
         allRouters.add(0, routerCenter)
 
         for (i in 1..otherCount) {
@@ -117,8 +120,8 @@ class GossipPubsubRouterTest : PubsubRouterTest({
         // shouldn't be treated as internal error and no WARN logs should be printed
         val fuzz = DeterministicFuzz()
 
-        val router1 = fuzz.createTestRouter(MockRouter())
-        val router2 = fuzz.createTestRouter(router())
+        val router1 = fuzz.createMockRouter()
+        val router2 = fuzz.createTestRouter(routerFactory)
         val mockRouter = router1.router as MockRouter
 
         router2.router.subscribe("topic1")
@@ -144,9 +147,9 @@ class GossipPubsubRouterTest : PubsubRouterTest({
         // of gossip peers is yet 'partially' connected
         val fuzz = DeterministicFuzz()
 
-        val router1 = fuzz.createTestRouter(MockRouter())
-        val router2 = fuzz.createTestRouter(router())
-        val router3 = fuzz.createTestRouter(router())
+        val router1 = fuzz.createMockRouter()
+        val router2 = fuzz.createTestRouter(routerFactory)
+        val router3 = fuzz.createTestRouter(routerFactory)
         val mockRouter = router1.router as MockRouter
 
         router2.router.subscribe("topic1")
@@ -188,13 +191,13 @@ class GossipPubsubRouterTest : PubsubRouterTest({
         // shouldn't be treated as internal error and no WARN logs should be printed
         val fuzz = DeterministicFuzz()
 
-        val router1 = fuzz.createTestRouter(MockRouter())
+        val router1 = fuzz.createMockRouter()
 
         // when isDirect the gossip router should reply with PRUNE to GRAFT
         // this would reproduce the case
         val gossipScoreParams = GossipScoreParams(GossipPeerScoreParams(isDirect = { true }))
 
-        val router2 = fuzz.createTestRouter(GossipRouter(scoreParams = gossipScoreParams))
+        val router2 = fuzz.createTestGossipRouter { GossipRouterBuilder(scoreParams = gossipScoreParams) }
         val mockRouter = router1.router as MockRouter
 
         router2.router.subscribe("topic1")
@@ -228,8 +231,8 @@ class GossipPubsubRouterTest : PubsubRouterTest({
 
         val allCount = 20
         val allRouters = (1..allCount).map {
-            val r = GossipRouter(Eth2DefaultGossipParams, gossipScoreParams)
-            fuzz.createTestRouter(r)
+            val r = { GossipRouterBuilder(params = Eth2DefaultGossipParams, scoreParams = gossipScoreParams) }
+            fuzz.createTestRouter(createGossipFuzzRouterFactory(r))
         }
 
         val senderRouter = allRouters[0]
@@ -256,7 +259,7 @@ class GossipPubsubRouterTest : PubsubRouterTest({
 
         val gossipRouter = scoringRouter.router as GossipRouter
         gossipRouter.peers.forEach {
-            assertThat(gossipRouter.score.score(it)).isGreaterThanOrEqualTo(0.0)
+            assertThat(gossipRouter.score.score(it.peerId)).isGreaterThanOrEqualTo(0.0)
         }
     }
 }

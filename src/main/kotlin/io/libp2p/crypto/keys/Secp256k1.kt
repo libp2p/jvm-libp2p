@@ -18,11 +18,7 @@ import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.crypto.PubKey
 import io.libp2p.core.crypto.sha256
 import io.libp2p.crypto.SECP_256K1_ALGORITHM
-import org.bouncycastle.asn1.ASN1InputStream
-import org.bouncycastle.asn1.ASN1Integer
-import org.bouncycastle.asn1.ASN1Primitive
-import org.bouncycastle.asn1.ASN1Sequence
-import org.bouncycastle.asn1.DERSequenceGenerator
+import org.bouncycastle.asn1.*
 import org.bouncycastle.asn1.sec.SECNamedCurves
 import org.bouncycastle.crypto.ec.CustomNamedCurves
 import org.bouncycastle.crypto.generators.ECKeyPairGenerator
@@ -30,7 +26,6 @@ import org.bouncycastle.crypto.params.ECDomainParameters
 import org.bouncycastle.crypto.params.ECKeyGenerationParameters
 import org.bouncycastle.crypto.params.ECPrivateKeyParameters
 import org.bouncycastle.crypto.params.ECPublicKeyParameters
-import org.bouncycastle.crypto.params.ParametersWithRandom
 import org.bouncycastle.crypto.signers.ECDSASigner
 import org.bouncycastle.math.ec.FixedPointCombMultiplier
 import org.bouncycastle.math.ec.FixedPointUtil
@@ -61,7 +56,7 @@ class Secp256k1PrivateKey(private val privateKey: ECPrivateKeyParameters) : Priv
 
     override fun sign(data: ByteArray): ByteArray {
         val (r, s) = with(ECDSASigner()) {
-            init(true, ParametersWithRandom(privateKey, SecureRandom()))
+            init(true, privateKey)
             generateSignature(sha256(data)).let {
                 Pair(it[0], it[1])
             }
@@ -84,6 +79,8 @@ class Secp256k1PrivateKey(private val privateKey: ECPrivateKeyParameters) : Priv
         val publicPoint = FixedPointCombMultiplier().multiply(CURVE.g, privKey)
         return Secp256k1PublicKey(ECPublicKeyParameters(publicPoint, CURVE))
     }
+
+    override fun equals(other: Any?): Boolean = super.equals(other)
 
     override fun hashCode(): Int = priv.hashCode()
 }
@@ -119,6 +116,8 @@ class Secp256k1PublicKey(private val pub: ECPublicKeyParameters) : PubKey(Crypto
         val s = (asn1Encodables[1].toASN1Primitive() as ASN1Integer).value
         return signer.verifySignature(sha256(data), r.abs(), s.abs())
     }
+
+    override fun equals(other: Any?): Boolean = super.equals(other)
 
     override fun hashCode(): Int = pub.hashCode()
 }

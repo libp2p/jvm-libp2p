@@ -89,6 +89,10 @@ abstract class PrivKey(override val keyType: Crypto.KeyType) : Key {
         if (javaClass != other?.javaClass) return false
         return bytes().contentEquals((other as PrivKey).bytes())
     }
+
+    override fun hashCode(): Int {
+        return raw().contentHashCode()
+    }
 }
 
 /**
@@ -107,6 +111,10 @@ abstract class PubKey(override val keyType: Crypto.KeyType) : Key {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
         return bytes().contentEquals((other as PubKey).bytes())
+    }
+
+    override fun hashCode(): Int {
+        return raw().contentHashCode()
     }
 }
 

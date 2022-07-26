@@ -1,12 +1,13 @@
 package io.libp2p.pubsub.gossip
 
+import com.google.common.annotations.VisibleForTesting
 import io.libp2p.core.PeerId
+import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multiformats.Protocol
 import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.etc.types.cappedDouble
 import io.libp2p.etc.types.createLRUMap
 import io.libp2p.etc.types.millis
-import io.libp2p.etc.util.P2PService
 import io.libp2p.pubsub.PubsubMessage
 import io.libp2p.pubsub.Topic
 import java.util.Optional
@@ -18,14 +19,27 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
 
-fun P2PService.PeerHandler.getIP(): String? =
-    streamHandler.stream.connection.remoteAddress().getFirstComponent(Protocol.IP4)?.stringValue
+interface GossipScore {
 
-class GossipScore(
+    fun updateTopicParams(topicScoreParams: Map<String, GossipTopicScoreParams>)
+
+    fun score(peerId: PeerId): Double
+
+    fun getCachedScore(peerId: PeerId): Double
+}
+
+class DefaultGossipScore(
     val params: GossipScoreParams = GossipScoreParams(),
     val executor: ScheduledExecutorService,
     val curTimeMillis: () -> Long
-) {
+) : GossipScore, GossipRouterEventListener {
+
+    data class PeerIP(val ip4String: String) {
+        companion object {
+            fun fromMultiaddr(multiaddr: Multiaddr): PeerIP? =
+                multiaddr.getFirstComponent(Protocol.IP4)?.stringValue?.let { PeerIP(it) }
+        }
+    }
 
     inner class TopicScores(val topic: Topic) {
         private val params: GossipTopicScoreParams
@@ -44,25 +58,25 @@ class GossipScore(
 
         var firstMessageDeliveries: Double by cappedDouble(
             0.0,
-            this@GossipScore.peerParams.decayToZero,
+            this@DefaultGossipScore.peerParams.decayToZero,
             { params.firstMessageDeliveriesCap },
             { cacheValid = false }
         )
         var meshMessageDeliveries: Double by cappedDouble(
             0.0,
-            this@GossipScore.peerParams.decayToZero,
+            this@DefaultGossipScore.peerParams.decayToZero,
             { params.meshMessageDeliveriesCap },
             { cacheValid = false }
         )
         var meshFailurePenalty: Double by cappedDouble(
             0.0,
-            this@GossipScore.peerParams.decayToZero,
+            this@DefaultGossipScore.peerParams.decayToZero,
             { _ -> cacheValid = false }
         )
 
         var invalidMessages: Double by cappedDouble(
             0.0,
-            this@GossipScore.peerParams.decayToZero,
+            this@DefaultGossipScore.peerParams.decayToZero,
             { _ -> cacheValid = false }
         )
 
@@ -119,7 +133,6 @@ class GossipScore(
         @Volatile
         var cachedScore: Double = 0.0
 
-        val ips = mutableSetOf<String>()
         var connectedTimeMillis: Long = 0
         var disconnectedTimeMillis: Long = 0
 
@@ -137,27 +150,30 @@ class GossipScore(
     val topicParams = params.topicsScoreParams
 
     private val validationTime: MutableMap<PubsubMessage, Long> = createLRUMap(1024)
-    val peerScores = ConcurrentHashMap<PeerId, PeerScores>()
-    private val peerIpCache = mutableMapOf<PeerId, String>()
 
-    val refreshTask: ScheduledFuture<*>
+    @VisibleForTesting
+    val peerScores = ConcurrentHashMap<PeerId, PeerScores>()
+    private val peerIdToIP = mutableMapOf<PeerId, PeerIP>()
+    private val peerIPToId = PeerColocations()
+
+    private val refreshTask: ScheduledFuture<*>
 
     init {
         val refreshPeriod = peerParams.decayInterval.toMillis()
         refreshTask = executor.scheduleAtFixedRate({ refreshScores() }, refreshPeriod, refreshPeriod, TimeUnit.MILLISECONDS)
     }
 
-    private fun getPeerScores(peer: P2PService.PeerHandler) =
-        peerScores.computeIfAbsent(peer.peerId) { PeerScores() }
+    private fun getPeerScores(peerId: PeerId) =
+        peerScores.computeIfAbsent(peerId) { PeerScores() }
 
-    private fun getPeerIp(peer: P2PService.PeerHandler): String? = peerIpCache[peer.peerId]
+    private fun getPeerIp(peerId: PeerId): PeerIP? = peerIdToIP[peerId]
 
-    private fun getTopicScores(peer: P2PService.PeerHandler, topic: Topic) =
-        getPeerScores(peer).topicScores.computeIfAbsent(topic) { TopicScores(it) }
+    private fun getTopicScores(peerId: PeerId, topic: Topic) =
+        getPeerScores(peerId).topicScores.computeIfAbsent(topic) { TopicScores(it) }
 
-    private fun isInMesh(peer: P2PService.PeerHandler, topic: Topic) = getTopicScores(peer, topic).inMesh()
+    private fun isInMesh(peerId: PeerId, topic: Topic) = getTopicScores(peerId, topic).inMesh()
 
-    fun updateTopicParams(topicScoreParams: Map<String, GossipTopicScoreParams>) {
+    override fun updateTopicParams(topicScoreParams: Map<String, GossipTopicScoreParams>) {
         executor.execute {
             for (topicScoreParam in topicScoreParams) {
                 params.topicsScoreParams.setTopicParams(topicScoreParam.key, topicScoreParam.value)
@@ -165,18 +181,15 @@ class GossipScore(
         }
     }
 
-    fun score(peer: P2PService.PeerHandler): Double {
-        val peerScore = getPeerScores(peer)
+    override fun score(peerId: PeerId): Double {
+        val peerScore = getPeerScores(peerId)
         val topicsScore = min(
             if (peerParams.topicScoreCap > 0) peerParams.topicScoreCap else Double.MAX_VALUE,
             peerScore.topicScores.values.map { it.calcTopicScore() }.sum()
         )
-        val appScore = peerParams.appSpecificScore(peer.peerId) * peerParams.appSpecificWeight
+        val appScore = peerParams.appSpecificScore(peerId) * peerParams.appSpecificWeight
 
-        val peersInIp: Int = getPeerIp(peer)?.let { thisIp ->
-            if (peerParams.ipWhitelisted(thisIp)) 0 else
-                peerScores.values.count { thisIp in it.ips }
-        } ?: 0
+        val peersInIp: Int = getPeerIp(peerId)?.let { peerIPToId.getPeerCountForIp(it) } ?: 0
         val ipColocationPenalty = max(
             0,
             (peersInIp - peerParams.ipColocationFactorThreshold)
@@ -192,47 +205,62 @@ class GossipScore(
         return computedScore
     }
 
+    @VisibleForTesting
     fun refreshScores() {
-        peerScores.values.removeIf { it.isDisconnected() && it.getDisconnectDuration() > peerParams.retainScore }
+        val peersToBury = peerScores
+            .filterValues {
+                it.isDisconnected() && it.getDisconnectDuration() > peerParams.retainScore
+            }
+            .keys
+        peersToBury.forEach { peerId ->
+            peerIdToIP.remove(peerId)?.also { peerIp ->
+                peerIPToId.remove(peerId, peerIp)
+            }
+        }
+        peerScores -= peersToBury
+
         peerScores.values.forEach {
             it.topicScores.values.forEach { it.decayScores() }
             it.behaviorPenalty *= peerParams.behaviourPenaltyDecay
         }
     }
 
-    fun getCachedScore(peerId: PeerId): Double {
+    override fun getCachedScore(peerId: PeerId): Double {
         return peerScores[peerId]?.cachedScore ?: 0.0
     }
 
-    fun notifyDisconnected(peer: P2PService.PeerHandler) {
-        getPeerScores(peer).topicScores.filter { it.value.inMesh() }.forEach { t, _ ->
-            notifyPruned(peer, t)
+    override fun notifyDisconnected(peerId: PeerId) {
+        getPeerScores(peerId).topicScores.filter { it.value.inMesh() }.forEach { t, _ ->
+            notifyPruned(peerId, t)
         }
 
-        getPeerScores(peer).disconnectedTimeMillis = curTimeMillis()
-        peerIpCache -= peer.peerId
+        getPeerScores(peerId).disconnectedTimeMillis = curTimeMillis()
     }
 
-    fun notifyConnected(peer: P2PService.PeerHandler) {
-        peer.getIP()?.also { peerIp ->
-            peerIpCache[peer.peerId] = peerIp
+    override fun notifyConnected(peerId: PeerId, peerAddress: Multiaddr) {
+        val ipAddress = PeerIP.fromMultiaddr(peerAddress)
+        ipAddress?.also { peerIp ->
+            val maybePeerIP = peerIdToIP[peerId]
+            maybePeerIP?.also {
+                peerIPToId.remove(peerId, peerIp)
+            }
+            peerIdToIP[peerId] = peerIp
         }
-
-        getPeerScores(peer).apply {
+        getPeerScores(peerId).apply {
             connectedTimeMillis = curTimeMillis()
-            getPeerIp(peer)?.also { ips += it }
+            getPeerIp(peerId)?.also { peerIPToId.add(peerId, it) }
         }
     }
 
     @Suppress("UNUSED_PARAMETER")
-    fun notifyUnseenMessage(peer: P2PService.PeerHandler, msg: PubsubMessage) {
+    override fun notifyUnseenMessage(peerId: PeerId, msg: PubsubMessage) {
     }
 
-    fun notifySeenMessage(peer: P2PService.PeerHandler, msg: PubsubMessage, validationResult: Optional<ValidationResult>) {
+    override fun notifySeenMessage(peerId: PeerId, msg: PubsubMessage, validationResult: Optional<ValidationResult>) {
         msg.topics
-            .filter { isInMesh(peer, it) }
+            .filter { isInMesh(peerId, it) }
             .forEach { topic ->
-                val topicScores = getTopicScores(peer, topic)
+                val topicScores = getTopicScores(peerId, topic)
                 val durationAfterValidation = (curTimeMillis() - (validationTime[msg] ?: 0)).millis
                 when {
                     validationResult.isPresent && validationResult.get() == ValidationResult.Invalid ->
@@ -244,35 +272,49 @@ class GossipScore(
             }
     }
 
-    fun notifyUnseenInvalidMessage(peer: P2PService.PeerHandler, msg: PubsubMessage) {
+    override fun notifyUnseenInvalidMessage(peerId: PeerId, msg: PubsubMessage) {
         validationTime[msg] = curTimeMillis()
-        msg.topics.forEach { getTopicScores(peer, it).invalidMessages++ }
+        msg.topics.forEach { getTopicScores(peerId, it).invalidMessages++ }
     }
 
-    fun notifyUnseenValidMessage(peer: P2PService.PeerHandler, msg: PubsubMessage) {
+    override fun notifyUnseenValidMessage(peerId: PeerId, msg: PubsubMessage) {
         validationTime[msg] = curTimeMillis()
         msg.topics
-            .onEach { getTopicScores(peer, it).firstMessageDeliveries++ }
-            .filter { isInMesh(peer, it) }
-            .onEach { getTopicScores(peer, it).meshMessageDeliveries++ }
+            .onEach { getTopicScores(peerId, it).firstMessageDeliveries++ }
+            .filter { isInMesh(peerId, it) }
+            .onEach { getTopicScores(peerId, it).meshMessageDeliveries++ }
     }
 
-    fun notifyMeshed(peer: P2PService.PeerHandler, topic: Topic) {
-        val topicScores = getTopicScores(peer, topic)
+    override fun notifyMeshed(peerId: PeerId, topic: Topic) {
+        val topicScores = getTopicScores(peerId, topic)
         topicScores.joinedMeshTimeMillis = curTimeMillis()
     }
 
-    fun notifyPruned(peer: P2PService.PeerHandler, topic: Topic) {
-        val topicScores = getTopicScores(peer, topic)
+    override fun notifyPruned(peerId: PeerId, topic: Topic) {
+        val topicScores = getTopicScores(peerId, topic)
         topicScores.meshFailurePenalty += topicScores.meshMessageDeliveriesDeficitSqr()
         topicScores.joinedMeshTimeMillis = 0
     }
 
-    fun notifyRouterMisbehavior(peer: P2PService.PeerHandler, count: Int) {
-        getPeerScores(peer).behaviorPenalty += count
+    override fun notifyRouterMisbehavior(peerId: PeerId, count: Int) {
+        getPeerScores(peerId).behaviorPenalty += count
     }
 
     fun stop() {
         refreshTask.cancel(false)
+    }
+
+    internal class PeerColocations {
+        private val colocatedPeers = mutableMapOf<PeerIP, MutableSet<PeerId>>()
+
+        fun add(peerId: PeerId, peerIp: PeerIP) {
+            colocatedPeers.computeIfAbsent(peerIp) { mutableSetOf() } += peerId
+        }
+
+        fun remove(peerId: PeerId, peerIp: PeerIP) {
+            colocatedPeers[peerIp]?.also { it -= peerId }
+        }
+
+        fun getPeerCountForIp(ip: PeerIP) = colocatedPeers[ip]?.size ?: 0
     }
 }

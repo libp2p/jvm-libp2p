@@ -1,16 +1,23 @@
 package io.libp2p.pubsub.flood
 
 import io.libp2p.etc.types.anyComplete
-import io.libp2p.pubsub.AbstractRouter
-import io.libp2p.pubsub.PubsubMessage
-import io.libp2p.pubsub.PubsubProtocol
-import io.libp2p.pubsub.TopicSubscriptionFilter
+import io.libp2p.pubsub.*
 import pubsub.pb.Rpc
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
 
-class FloodRouter : AbstractRouter(subscriptionFilter = TopicSubscriptionFilter.AllowAllTopicSubscriptionFilter()) {
+const val DEFAULT_MAX_SEEN_MESSAGES_LIMIT: Int = 10000
 
-    override val protocol = PubsubProtocol.Floodsub
+class FloodRouter(executor: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor()) : AbstractRouter(
+    protocol = PubsubProtocol.Floodsub,
+    executor = executor,
+    subscriptionFilter = TopicSubscriptionFilter.AllowAllTopicSubscriptionFilter(),
+    maxMsgSize = Int.MAX_VALUE,
+    messageFactory = { DefaultPubsubMessage(it) },
+    seenMessages = LRUSeenCache(SimpleSeenCache(), DEFAULT_MAX_SEEN_MESSAGES_LIMIT),
+    messageValidator = NOP_ROUTER_VALIDATOR
+) {
 
     // msg: validated unseen messages received from api
     override fun broadcastOutbound(msg: PubsubMessage): CompletableFuture<Unit> {
