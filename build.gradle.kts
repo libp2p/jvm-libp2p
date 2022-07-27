@@ -26,6 +26,7 @@ plugins {
     id("maven-publish")
     id("org.jetbrains.dokka").version("1.6.10")
     id("org.jmailen.kotlinter").version("3.8.0")
+    id("me.champeau.jmh").version("0.6.6")
 }
 
 repositories {
@@ -35,6 +36,10 @@ repositories {
 
 
 val log4j2Version = "2.17.1"
+
+jmh {
+    includeTests.set(true)
+}
 
 dependencies {
     api("io.netty:netty-all:4.1.69.Final")
