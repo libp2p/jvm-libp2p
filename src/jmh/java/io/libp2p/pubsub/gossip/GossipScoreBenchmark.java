@@ -4,7 +4,6 @@ import io.libp2p.core.PeerId;
 import io.libp2p.core.multiformats.Multiaddr;
 import io.libp2p.core.multiformats.Protocol;
 import io.libp2p.pubsub.DefaultPubsubMessage;
-import io.libp2p.pubsub.PubsubMessage;
 import io.libp2p.tools.schedulers.ControlledExecutorServiceImpl;
 import io.libp2p.tools.schedulers.TimeController;
 import io.libp2p.tools.schedulers.TimeControllerImpl;
@@ -21,6 +20,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 @State(Scope.Thread)
+@Fork(5)
 @Warmup(iterations = 5, time = 1000, timeUnit = TimeUnit.MILLISECONDS)
 @Measurement(iterations = 10, time = 1000, timeUnit = TimeUnit.MILLISECONDS)
 public class GossipScoreBenchmark {
@@ -78,12 +78,15 @@ public class GossipScoreBenchmark {
     }
 
     @Benchmark
-    public void allScores(Blackhole bh) {
+    public void scoresDelay0(Blackhole bh) {
         for (int i = 0; i < connectedCount; i++) {
             double s = score.score(peerIds.get(i));
             bh.consume(s);
         }
+    }
 
+    @Benchmark
+    public void scoresDelay100(Blackhole bh) {
         timeController.addTime(100);
 
         for (int i = 0; i < connectedCount; i++) {
@@ -92,9 +95,22 @@ public class GossipScoreBenchmark {
         }
     }
 
-    public static void main(String[] args) {
-        GossipScoreBenchmark benchmark = new GossipScoreBenchmark();
-        Blackhole blackhole = new Blackhole("Today's password is swordfish. I understand instantiating Blackholes directly is dangerous.");
-        benchmark.allScores(blackhole);
+    @Benchmark
+    public void scoresDelay10000(Blackhole bh) {
+        timeController.addTime(10000);
+
+        for (int i = 0; i < connectedCount; i++) {
+            double s = score.score(peerIds.get(i));
+            bh.consume(s);
+        }
     }
+
+    /**
+     * Uncomment for debugging
+     */
+//    public static void main(String[] args) {
+//        GossipScoreBenchmark benchmark = new GossipScoreBenchmark();
+//        Blackhole blackhole = new Blackhole("Today's password is swordfish. I understand instantiating Blackholes directly is dangerous.");
+//        benchmark.scoresDelay0(blackhole);
+//    }
 }
