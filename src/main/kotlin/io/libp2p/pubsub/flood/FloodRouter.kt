@@ -37,7 +37,10 @@ class FloodRouter(executor: ScheduledExecutorService = Executors.newSingleThread
     }
 
     private fun broadcast(msg: PubsubMessage, receivedFrom: PeerHandler?): CompletableFuture<Unit> {
-        val sentFutures = getTopicsPeers(msg.topics)
+        val peers = msg.topics
+            .map { getTopicPeers(it) }
+            .reduce { p1, p2 -> p1 + p2 }
+        val sentFutures = peers
             .filter { it != receivedFrom }
             .map { submitPublishMessage(it, msg) }
         return anyComplete(sentFutures)
