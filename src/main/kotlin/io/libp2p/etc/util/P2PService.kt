@@ -166,8 +166,8 @@ abstract class P2PService(
     }
 
     protected open fun streamDisconnected(stream: StreamHandler) {
-        val peerHandler = stream.getPeerHandler()
         if (stream.aborted) return
+        val peerHandler = stream.getPeerHandler()
         activePeersMutable -= peerHandler
         if (peersMutable.remove(peerHandler)) {
             onPeerDisconnected(peerHandler)
