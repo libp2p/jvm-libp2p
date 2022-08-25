@@ -12,7 +12,7 @@ import java.nio.file.Paths
 // ./gradlew publish -PcloudsmithUser=<user> -PcloudsmithApiKey=<api-key>
 
 group = "io.libp2p"
-version = "0.9.1-RELEASE"
+version = "0.9.2-RELEASE"
 description = "a minimal implementation of libp2p for the jvm"
 
 plugins {
@@ -26,6 +26,7 @@ plugins {
     id("maven-publish")
     id("org.jetbrains.dokka").version("1.6.10")
     id("org.jmailen.kotlinter").version("3.8.0")
+    id("java-test-fixtures")
 }
 
 repositories {
@@ -35,6 +36,13 @@ repositories {
 
 
 val log4j2Version = "2.17.1"
+
+sourceSets.create("jmh") {
+    compileClasspath += sourceSets["main"].runtimeClasspath
+    compileClasspath += sourceSets["testFixtures"].runtimeClasspath
+    runtimeClasspath += sourceSets["main"].runtimeClasspath
+    runtimeClasspath += sourceSets["testFixtures"].runtimeClasspath
+}
 
 dependencies {
     api("io.netty:netty-all:4.1.69.Final")
@@ -53,6 +61,9 @@ dependencies {
     implementation("org.apache.logging.log4j:log4j-core:${log4j2Version}")
     implementation("javax.xml.bind:jaxb-api:2.3.1")
 
+    testFixturesImplementation("org.apache.logging.log4j:log4j-api:${log4j2Version}")
+    testFixturesImplementation("com.google.guava:guava:31.0.1-jre")
+
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.8.2")
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.8.2")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.8.2")
@@ -61,14 +72,13 @@ dependencies {
     testImplementation("org.mockito:mockito-junit-jupiter:4.2.0")
     testImplementation("org.assertj:assertj-core:3.22.0")
 
+    "jmhImplementation"("org.openjdk.jmh:jmh-core:1.35")
+    "jmhAnnotationProcessor"("org.openjdk.jmh:jmh-generator-annprocess:1.35")
 }
 
-sourceSets {
-    main {
-        proto {
-            srcDir("src/main/proto")
-        }
-    }
+task<JavaExec>("jmh") {
+    mainClass.set("org.openjdk.jmh.Main")
+    classpath = sourceSets["jmh"].compileClasspath + sourceSets["jmh"].runtimeClasspath
 }
 
 protobuf {

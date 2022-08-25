@@ -4,12 +4,7 @@ import io.libp2p.core.BadPeerException
 import io.libp2p.core.PeerId
 import io.libp2p.core.Stream
 import io.libp2p.core.pubsub.ValidationResult
-import io.libp2p.etc.types.MultiSet
-import io.libp2p.etc.types.completedExceptionally
-import io.libp2p.etc.types.copy
-import io.libp2p.etc.types.forward
-import io.libp2p.etc.types.thenApplyAll
-import io.libp2p.etc.types.toWBytes
+import io.libp2p.etc.types.*
 import io.libp2p.etc.util.P2PServiceSemiDuplex
 import io.libp2p.etc.util.netty.protobuf.LimitedProtobufVarint32FrameDecoder
 import io.netty.channel.ChannelHandler
@@ -51,7 +46,7 @@ abstract class AbstractRouter(
 
     protected var msgHandler: PubsubMessageHandler = { throw IllegalStateException("Message handler is not initialized for PubsubRouter") }
 
-    protected open val peerTopics = MultiSet<PeerHandler, Topic>()
+    protected open val peersTopics = mutableMultiBiMap<PeerHandler, Topic>()
     protected open val subscribedTopics = linkedSetOf<Topic>()
     protected open val pendingRpcParts = PendingRpcPartsMap<RpcPartsQueue> { DefaultRpcPartsQueue() }
     protected open val pendingMessagePromises = MultiSet<PeerHandler, CompletableFuture<Unit>>()
@@ -176,7 +171,8 @@ abstract class AbstractRouter(
 
         try {
             val subscriptions = msg.subscriptionsList.map { PubsubSubscription(it.topicid, it.subscribe) }
-            subscriptionFilter.filterIncomingSubscriptions(subscriptions, peerTopics[peer])
+            subscriptionFilter
+                .filterIncomingSubscriptions(subscriptions, peersTopics.getByFirst(peer))
                 .forEach { handleMessageSubscriptions(peer, it) }
         } catch (e: Exception) {
             logger.debug("Subscription filter error, ignoring message from peer $peer", e)
@@ -274,7 +270,7 @@ abstract class AbstractRouter(
 
     override fun onPeerDisconnected(peer: PeerHandler) {
         super.onPeerDisconnected(peer)
-        peerTopics.removeAll(peer)
+        peersTopics.removeAllByFirst(peer)
     }
 
     override fun onPeerWireException(peer: PeerHandler?, cause: Throwable) {
@@ -293,19 +289,15 @@ abstract class AbstractRouter(
 
     private fun handleMessageSubscriptions(peer: PeerHandler, msg: PubsubSubscription) {
         if (msg.subscribe) {
-            peerTopics[peer] += msg.topic
+            peersTopics.add(peer, msg.topic)
         } else {
-            peerTopics[peer] -= msg.topic
+            peersTopics.remove(peer, msg.topic)
         }
     }
 
-    protected fun getTopicsPeers(topics: Collection<String>) =
-        activePeers.filter { topics.intersect(peerTopics[it]).isNotEmpty() }
+    protected fun getTopicPeers(topic: Topic) = peersTopics.getBySecond(topic)
 
-    protected fun getTopicPeers(topic: String) =
-        activePeers.filter { topic in peerTopics[it] }
-
-    override fun subscribe(vararg topics: String) {
+    override fun subscribe(vararg topics: Topic) {
         runOnEventThread {
             topics.forEach(::subscribe)
             flushAllPending()
@@ -331,11 +323,7 @@ abstract class AbstractRouter(
 
     override fun getPeerTopics(): CompletableFuture<Map<PeerId, Set<Topic>>> {
         return submitOnEventThread {
-            val topicsByPeerId = hashMapOf<PeerId, Set<Topic>>()
-            peerTopics.forEach { entry ->
-                topicsByPeerId[entry.key.peerId] = HashSet(entry.value)
-            }
-            topicsByPeerId
+            peersTopics.asFirstToSecondMap().mapKeys { it.key.peerId }
         }
     }
 
