@@ -1,4 +1,4 @@
-name: Run Gradle on PRs
+name: build
 on: [push, pull_request]
 jobs:
   gradle:
