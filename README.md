@@ -114,7 +114,7 @@ And then add jvm-libp2p as a dependency:
 ## Building the project 
 
 To build the library you will need just 
-- JDK (Java Development Kit) of version 8 or higher
+- JDK (Java Development Kit) of version 11 or higher
  
 For building a stable release version clone the `master` branch:  
 ```bash
