@@ -1,6 +1,3 @@
-import com.google.protobuf.gradle.proto
-import com.google.protobuf.gradle.protobuf
-import com.google.protobuf.gradle.protoc
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.jetbrains.dokka.gradle.DokkaTask
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
@@ -12,14 +9,14 @@ import java.nio.file.Paths
 // ./gradlew publish -PcloudsmithUser=<user> -PcloudsmithApiKey=<api-key>
 
 group = "io.libp2p"
-version = "0.9.2-RELEASE"
+version = "0.10.0-RELEASE"
 description = "a minimal implementation of libp2p for the jvm"
 
 plugins {
     kotlin("jvm").version("1.6.10")
 
-    id("com.github.ben-manes.versions").version("0.41.0")
-    id("com.google.protobuf").version("0.8.18")
+    id("com.github.ben-manes.versions").version("0.44.0")
+    id("com.google.protobuf").version("0.9.1")
     id("idea")
     id("io.gitlab.arturbosch.detekt").version("1.20.0-RC1")
     id("java")
@@ -35,7 +32,7 @@ repositories {
 }
 
 
-val log4j2Version = "2.17.1"
+val log4j2Version = "2.19.0"
 
 sourceSets.create("jmh") {
     compileClasspath += sourceSets["main"].runtimeClasspath
@@ -46,13 +43,13 @@ sourceSets.create("jmh") {
 
 dependencies {
     api("io.netty:netty-all:4.1.69.Final")
-    api("com.google.protobuf:protobuf-java:3.19.2")
+    api("com.google.protobuf:protobuf-java:3.21.9")
 
     implementation(kotlin("stdlib-jdk8"))
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.0")
     implementation("tech.pegasys:noise-java:22.1.0")
 
-    implementation("com.google.guava:guava:31.0.1-jre")
+    implementation("com.google.guava:guava:31.1-jre")
     implementation("org.bouncycastle:bcprov-jdk15on:1.70")
     implementation("org.bouncycastle:bcpkix-jdk15on:1.70")
     implementation("commons-codec:commons-codec:1.15")
@@ -64,13 +61,13 @@ dependencies {
     testFixturesImplementation("org.apache.logging.log4j:log4j-api:${log4j2Version}")
     testFixturesImplementation("com.google.guava:guava:31.0.1-jre")
 
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.8.2")
-    testImplementation("org.junit.jupiter:junit-jupiter-params:5.8.2")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.8.2")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.1")
+    testImplementation("org.junit.jupiter:junit-jupiter-params:5.9.1")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.9.1")
     testImplementation("io.mockk:mockk:1.12.2")
-    testRuntimeOnly("org.mockito:mockito-core:4.2.0")
-    testImplementation("org.mockito:mockito-junit-jupiter:4.2.0")
-    testImplementation("org.assertj:assertj-core:3.22.0")
+    testRuntimeOnly("org.mockito:mockito-core:4.8.1")
+    testImplementation("org.mockito:mockito-junit-jupiter:4.8.1")
+    testImplementation("org.assertj:assertj-core:3.23.1")
 
     "jmhImplementation"("org.openjdk.jmh:jmh-core:1.35")
     "jmhAnnotationProcessor"("org.openjdk.jmh:jmh-generator-annprocess:1.35")
@@ -83,7 +80,7 @@ task<JavaExec>("jmh") {
 
 protobuf {
     protoc {
-        artifact = "com.google.protobuf:protoc:3.19.2"
+        artifact = "com.google.protobuf:protoc:3.21.9"
     }
 
     tasks.get("clean").doFirst({ delete(generatedFilesBaseDir) })

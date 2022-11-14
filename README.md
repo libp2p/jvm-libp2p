@@ -3,7 +3,7 @@
 [![](https://img.shields.io/badge/project-libp2p-yellow.svg?style=flat-square)](https://libp2p.io/)
 [![Gitter](https://img.shields.io/gitter/room/libp2p/jvm-libp2p.svg)](https://gitter.im/jvm-libp2p/community)
 [![](https://img.shields.io/badge/freenode-%23libp2p-yellow.svg?style=flat-square)](http://webchat.freenode.net/?channels=%23libp2p)
-[![Build Status](https://travis-ci.com/libp2p/jvm-libp2p.svg?branch=master)](https://travis-ci.com/libp2p/jvm-libp2p)
+![Build Status](https://github.com/libp2p/jvm-libp2p/actions/workflows/build.yml/badge.svg?branch=master)
 [![Discourse posts](https://img.shields.io/discourse/https/discuss.libp2p.io/posts.svg)](https://discuss.libp2p.io)
 
 > a libp2p implementation for the JVM, written in Kotlin 🔥
@@ -114,7 +114,7 @@ And then add jvm-libp2p as a dependency:
 ## Building the project 
 
 To build the library you will need just 
-- JDK (Java Development Kit) of version 8 or higher
+- JDK (Java Development Kit) of version 11 or higher
  
 For building a stable release version clone the `master` branch:  
 ```bash
