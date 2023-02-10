@@ -1,11 +1,11 @@
 package io.libp2p.tools
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder
 import io.libp2p.core.PeerId
 import io.libp2p.etc.CONNECTION
 import io.libp2p.etc.REMOTE_PEER_ID
 import io.libp2p.etc.types.lazyVar
 import io.libp2p.etc.util.netty.nettyInitializer
+import io.libp2p.guava.common.util.concurrent.ThreadFactoryBuilder
 import io.libp2p.transport.implementation.ConnectionOverNetty
 import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelId

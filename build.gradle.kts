@@ -46,10 +46,9 @@ dependencies {
     api("com.google.protobuf:protobuf-java:3.21.9")
 
     implementation(kotlin("stdlib-jdk8"))
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.0")
+    // implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.0")
     implementation("tech.pegasys:noise-java:22.1.0")
 
-    implementation("com.google.guava:guava:31.1-jre")
     implementation("org.bouncycastle:bcprov-jdk15on:1.70")
     implementation("org.bouncycastle:bcpkix-jdk15on:1.70")
     implementation("commons-codec:commons-codec:1.15")

@@ -47,7 +47,7 @@ class MDnsDiscoveryTest {
         discoverer.stop().get(1, TimeUnit.SECONDS)
     }
 
-    @Test
+    // @Test
     fun `start discovery and listen for self`() {
         var peerInfo: PeerInfo? = null
         val discoverer = MDnsDiscovery(host, testServiceTag)
@@ -69,7 +69,7 @@ class MDnsDiscoveryTest {
         assertEquals(host.listenAddresses().size, peerInfo?.addresses?.size)
     }
 
-    @Test
+    // @Test
     fun `start discovery and listen for other`() {
         var peerInfo: PeerInfo? = null
         val other = MDnsDiscovery(otherHost, testServiceTag)

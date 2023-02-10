@@ -1,6 +1,6 @@
 package io.libp2p.core.multiformats
 
-import com.google.common.net.InetAddresses
+import io.libp2p.guava.common.net.InetAddresses
 import io.libp2p.core.PeerId
 import io.libp2p.etc.types.fromHex
 import io.libp2p.etc.types.toByteArray

@@ -1,6 +1,6 @@
 package io.libp2p.etc.types
 
-import com.google.common.base.Throwables
+import io.libp2p.guava.common.base.Throwables
 import kotlin.reflect.KClass
 
 fun Boolean.whenTrue(run: () -> Unit): Boolean {

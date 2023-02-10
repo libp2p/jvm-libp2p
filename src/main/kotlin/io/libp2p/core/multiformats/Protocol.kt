@@ -1,13 +1,13 @@
 package io.libp2p.core.multiformats
 
-import com.google.common.base.Utf8
-import com.google.common.net.InetAddresses
 import io.libp2p.core.PeerId
 import io.libp2p.etc.encode.Base58
 import io.libp2p.etc.types.readUvarint
 import io.libp2p.etc.types.toByteArray
 import io.libp2p.etc.types.toByteBuf
 import io.libp2p.etc.types.writeUvarint
+import io.libp2p.guava.common.base.Utf8
+import io.libp2p.guava.common.net.InetAddresses;
 import io.netty.buffer.ByteBuf
 import org.apache.commons.codec.binary.Base32
 import java.net.Inet4Address
@@ -15,6 +15,7 @@ import java.net.Inet6Address
 import java.net.InetAddress
 import java.nio.charset.StandardCharsets
 import io.netty.buffer.Unpooled.buffer as byteBuf
+
 
 /**
  * Enumeration of protocols supported by [Multiaddr]
