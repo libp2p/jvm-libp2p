@@ -8,11 +8,12 @@ import io.libp2p.etc.types.toVoidCompletableFuture
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
 import io.netty.util.ReferenceCountUtil
-import org.apache.logging.log4j.LogManager
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ScheduledExecutorService
+import java.util.logging.Level
+import java.util.logging.Logger
 
-private val logger = LogManager.getLogger(P2PService::class.java)
+private val logger = Logger.getLogger(P2PService::class.java.name)
 
 /**
  * Base class for a service which manages many streams from different peers
@@ -207,7 +208,7 @@ abstract class P2PService(
      * Invoked on event thread
      */
     protected open fun onPeerWireException(peer: PeerHandler?, cause: Throwable) {
-        logger.warn("Error by peer $peer ", cause)
+        logger.log(Level.WARNING, "Error by peer $peer ", cause)
     }
 
     /**
@@ -216,7 +217,7 @@ abstract class P2PService(
      * @param msg optionally indicates what inbound message caused error
      */
     protected open fun onServiceException(peer: PeerHandler?, msg: Any?, cause: Throwable) {
-        logger.warn("P2PService internal error on message $msg from peer $peer", cause)
+        logger.log(Level.WARNING,"P2PService internal error on message $msg from peer $peer", cause)
     }
 
     /**

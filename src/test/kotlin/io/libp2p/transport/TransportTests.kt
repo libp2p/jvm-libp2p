@@ -5,7 +5,6 @@ import io.libp2p.core.ConnectionHandler
 import io.libp2p.core.Libp2pException
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.transport.Transport
-import org.apache.logging.log4j.LogManager
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
@@ -16,6 +15,8 @@ import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit.SECONDS
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.logging.Level
+import java.util.logging.Logger
 
 @Tag("transport")
 abstract class TransportTests {
@@ -25,7 +26,7 @@ abstract class TransportTests {
     protected lateinit var transportUnderTest: Transport
 
     protected val nullConnHandler = ConnectionHandler { }
-    protected val logger = LogManager.getLogger("test")
+    protected val logger = Logger.getLogger("test")
 
     protected fun startListeners(server: Transport, startPortNumber: Int, howMany: Int) {
         val listening = (0 until howMany).map {
@@ -33,7 +34,7 @@ abstract class TransportTests {
                 localAddress(startPortNumber + it),
                 nullConnHandler
             )
-            bindComplete.handle { _, u -> logger.info("Bound #$it", u) }
+            bindComplete.handle { _, u -> logger.log(Level.INFO, "Bound #$it", u) }
             logger.info("Binding #$it")
             bindComplete
         }
@@ -170,7 +171,7 @@ abstract class TransportTests {
             val unbindComplete = transportUnderTest.unlisten(
                 localAddress(portNumber + it)
             )
-            unbindComplete.handle { _, u -> logger.info("Unbound #$it", u) }
+            unbindComplete.handle { _, u -> logger.log(Level.INFO, "Unbound #$it", u) }
             logger.info("Unbinding #$it")
             unbindComplete
         }

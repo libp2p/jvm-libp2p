@@ -10,13 +10,13 @@ import io.libp2p.transport.implementation.ConnectionOverNetty
 import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelId
 import io.netty.channel.embedded.EmbeddedChannel
-import org.apache.logging.log4j.LogManager
 import java.net.InetSocketAddress
 import java.net.SocketAddress
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicLong
+import java.util.logging.Logger
 
 private val threadFactory = ThreadFactoryBuilder().setDaemon(true).setNameFormat("TestChannel-interconnect-executor-%d").build()
 
@@ -101,7 +101,7 @@ class TestChannel(
             return TestConnection(ch1, ch2)
         }
 
-        private val logger = LogManager.getLogger(TestChannel::class.java)
+        private val logger = Logger.getLogger(TestChannel::class.java.name)
     }
 
     class TestConnection(val ch1: TestChannel, val ch2: TestChannel) {

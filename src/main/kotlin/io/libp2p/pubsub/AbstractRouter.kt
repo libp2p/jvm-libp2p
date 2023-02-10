@@ -11,7 +11,6 @@ import io.netty.channel.ChannelHandler
 import io.netty.handler.codec.protobuf.ProtobufDecoder
 import io.netty.handler.codec.protobuf.ProtobufEncoder
 import io.netty.handler.codec.protobuf.ProtobufVarint32LengthFieldPrepender
-import org.apache.logging.log4j.LogManager
 import pubsub.pb.Rpc
 import java.util.Collections.singletonList
 import java.util.Optional
@@ -19,6 +18,8 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ScheduledExecutorService
 import java.util.function.BiConsumer
 import java.util.function.Consumer
+import java.util.logging.Level
+import java.util.logging.Logger
 
 // 1 MB default max message size
 const val DEFAULT_MAX_PUBSUB_MESSAGE_SIZE = 1 shl 20
@@ -29,7 +30,7 @@ open class DefaultPubsubMessage(override val protobufMessage: Rpc.Message) : Abs
     override val messageId: MessageId = protobufMessage.from.toWBytes() + protobufMessage.seqno.toWBytes()
 }
 
-private val logger = LogManager.getLogger(AbstractRouter::class.java)
+private val logger = Logger.getLogger(AbstractRouter::class.java.name)
 
 /**
  * Implements common logic for pubsub routers
@@ -165,7 +166,7 @@ abstract class AbstractRouter(
 
         // Validate message
         if (!validateMessageListLimits(msg)) {
-            logger.debug("Dropping msg with lists exceeding limits from peer $peer")
+            logger.log(Level.FINE, "Dropping msg with lists exceeding limits from peer $peer")
             return
         }
 
@@ -175,7 +176,7 @@ abstract class AbstractRouter(
                 .filterIncomingSubscriptions(subscriptions, peersTopics.getByFirst(peer))
                 .forEach { handleMessageSubscriptions(peer, it) }
         } catch (e: Exception) {
-            logger.debug("Subscription filter error, ignoring message from peer $peer", e)
+            logger.log(Level.FINE,"Subscription filter error, ignoring message from peer $peer", e)
             return
         }
 
@@ -209,7 +210,7 @@ abstract class AbstractRouter(
                 messageValidator.validate(it)
                 true
             } catch (e: Exception) {
-                logger.debug("Invalid pubsub message from peer $peer: $it", e)
+                logger.log(Level.FINE, "Invalid pubsub message from peer $peer: $it", e)
                 seenMessages[it] = Optional.of(ValidationResult.Invalid)
                 notifyUnseenInvalidMessage(peer, it)
                 false
@@ -236,7 +237,7 @@ abstract class AbstractRouter(
             try {
                 it.second.get() == ValidationResult.Valid
             } catch (e: Exception) {
-                logger.warn("Exception while handling message from peer $peer: ${it.first}", e)
+                logger.log(Level.WARNING, "Exception while handling message from peer $peer: ${it.first}", e)
                 false
             }
         }
@@ -249,9 +250,9 @@ abstract class AbstractRouter(
             it.second.whenCompleteAsync(
                 BiConsumer { res, err ->
                     when {
-                        err != null -> logger.warn("Exception while handling message from peer $peer: ${it.first}", err)
-                        res == ValidationResult.Invalid -> logger.debug("Invalid pubsub message from peer $peer: ${it.first}")
-                        res == ValidationResult.Ignore -> logger.trace("Ignoring pubsub message from peer $peer: ${it.first}")
+                        err != null -> logger.log(Level.WARNING, "Exception while handling message from peer $peer: ${it.first}", err)
+                        res == ValidationResult.Invalid -> logger.log(Level.FINE, "Invalid pubsub message from peer $peer: ${it.first}")
+                        res == ValidationResult.Ignore -> logger.log(Level.FINEST, "Ignoring pubsub message from peer $peer: ${it.first}")
                         else -> {
                             newValidatedMessages(singletonList(it.first), peer)
                             flushAllPending()
@@ -275,15 +276,15 @@ abstract class AbstractRouter(
 
     override fun onPeerWireException(peer: PeerHandler?, cause: Throwable) {
         // exception occurred in protobuf decoders
-        logger.debug("Malformed message from $peer : $cause")
+        logger.log(Level.FINE, "Malformed message from $peer : $cause")
         peer?.also { notifyMalformedMessage(it) }
     }
 
     override fun onServiceException(peer: PeerHandler?, msg: Any?, cause: Throwable) {
         if (cause is BadPeerException) {
-            logger.debug("Remote peer ($peer) misbehaviour on message $msg: $cause")
+            logger.log(Level.FINE, "Remote peer ($peer) misbehaviour on message $msg: $cause")
         } else {
-            logger.warn("AbstractRouter internal error on message $msg from peer $peer", cause)
+            logger.log(Level.WARNING, "AbstractRouter internal error on message $msg from peer $peer", cause)
         }
     }
 

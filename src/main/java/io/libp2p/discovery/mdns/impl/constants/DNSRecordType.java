@@ -3,8 +3,9 @@
  */
 package io.libp2p.discovery.mdns.impl.constants;
 
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
+
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * DNS Record Type
@@ -249,7 +250,7 @@ public enum DNSRecordType {
      */
     TYPE_ANY("any", 255);
 
-    private static Logger logger = LogManager.getLogger(DNSRecordType.class.getName());
+    private static Logger logger = Logger.getLogger(DNSRecordType.class.getName());
 
     private final String  _externalName;
 
@@ -289,7 +290,7 @@ public enum DNSRecordType {
                 if (aType._externalName.equals(aName)) return aType;
             }
         }
-        logger.warn("Could not find record type for name: {}", name);
+        logger.log(Level.WARNING, "Could not find record type for name: {}", name);
         return TYPE_IGNORE;
     }
 
@@ -301,7 +302,7 @@ public enum DNSRecordType {
         for (DNSRecordType aType : DNSRecordType.values()) {
             if (aType._index == index) return aType;
         }
-        logger.warn("Could not find record type for index: {}", index);
+        logger.log(Level.WARNING, "Could not find record type for index: {}", index);
         return TYPE_IGNORE;
     }
 
