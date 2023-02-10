@@ -36,12 +36,20 @@ allprojects {
     apply(plugin = "io.spring.dependency-management")
     apply(from = "$rootDir/versions.gradle")
 
+
     repositories {
         mavenCentral()
         maven("https://artifacts.consensys.net/public/maven/maven/")
     }
 
     dependencies {
+        implementation(kotlin("stdlib-jdk8"))
+        // implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.0")
+        implementation("tech.pegasys:noise-java:22.1.0")
+
+        implementation("org.bouncycastle:bcprov-jdk15on:1.70")
+        implementation("org.bouncycastle:bcpkix-jdk15on:1.70")
+        implementation("commons-codec:commons-codec:1.15")
 
         implementation(kotlin("stdlib-jdk8"))
         implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core")

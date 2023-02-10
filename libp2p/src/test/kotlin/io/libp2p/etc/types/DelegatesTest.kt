@@ -1,6 +1,6 @@
 package io.libp2p.etc.types
 
-import com.google.common.util.concurrent.AtomicDouble
+import io.libp2p.guava.common.util.concurrent.AtomicDouble
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test

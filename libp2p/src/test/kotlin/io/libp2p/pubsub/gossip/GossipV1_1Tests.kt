@@ -1,6 +1,5 @@
 package io.libp2p.pubsub.gossip
 
-import com.google.common.util.concurrent.AtomicDouble
 import io.libp2p.core.PeerId
 import io.libp2p.core.pubsub.MessageApi
 import io.libp2p.core.pubsub.RESULT_IGNORE
@@ -17,6 +16,7 @@ import io.libp2p.etc.types.times
 import io.libp2p.etc.types.toBytesBigEndian
 import io.libp2p.etc.types.toProtobuf
 import io.libp2p.etc.types.toWBytes
+import io.libp2p.guava.common.util.concurrent.AtomicDouble
 import io.libp2p.pubsub.*
 import io.libp2p.pubsub.DeterministicFuzz.Companion.createGossipFuzzRouterFactory
 import io.libp2p.pubsub.DeterministicFuzz.Companion.createMockFuzzRouterFactory
