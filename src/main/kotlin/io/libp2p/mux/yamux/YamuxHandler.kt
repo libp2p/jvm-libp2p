@@ -69,7 +69,6 @@ open class YamuxHandler(
         if (newWindow < INITIAL_WINDOW_SIZE / 2) {
             val delta = INITIAL_WINDOW_SIZE / 2
             receiveWindow.addAndGet(delta)
-            println("Sending window update " + delta)
             ctx.write(YamuxFrame(msg.id, YamuxType.WINDOW_UPDATE, 0, delta))
             ctx.flush()
         }
@@ -79,7 +78,6 @@ open class YamuxHandler(
     fun handleWindowUpdate(msg: YamuxFrame) {
         val size = msg.lenData
         sendWindow.addAndGet(size)
-        println("window update: " + size)
         lock.release()
     }
 
@@ -87,7 +85,6 @@ open class YamuxHandler(
         val ctx = getChannelHandlerContext()
         while (sendWindow.get() <= 0) {
             // wait until the window is increased
-            println("full send window")
             lock.acquire()
         }
         data.sliceMaxSize(minOf(maxFrameDataLength, sendWindow.get()))
