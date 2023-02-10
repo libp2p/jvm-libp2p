@@ -1,9 +1,6 @@
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
-import org.jetbrains.dokka.gradle.DokkaTask
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.net.URL
-import java.nio.file.Files
-import java.nio.file.Paths
 
 // To publish the release artifact to CloudSmith repo run the following :
 // ./gradlew publish -PcloudsmithUser=<user> -PcloudsmithApiKey=<api-key>
@@ -45,8 +42,6 @@ dependencies {
     api("io.netty:netty-all:4.1.69.Final")
     api("com.google.protobuf:protobuf-java:3.21.9")
 
-    implementation(kotlin("stdlib-jdk8"))
-    // implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.0")
     implementation("tech.pegasys:noise-java:22.1.0")
 
     implementation("org.bouncycastle:bcprov-jdk15on:1.70")
@@ -55,9 +50,8 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.1")
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.9.1")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.9.1")
+
     testImplementation("io.mockk:mockk:1.12.2")
-    testRuntimeOnly("org.mockito:mockito-core:4.8.1")
-    testImplementation("org.mockito:mockito-junit-jupiter:4.8.1")
     testImplementation("org.assertj:assertj-core:3.23.1")
 
     "jmhImplementation"("org.openjdk.jmh:jmh-core:1.35")
