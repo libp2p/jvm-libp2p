@@ -18,9 +18,8 @@ import io.libp2p.transport.implementation.StreamOverNetty
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.Semaphore
 import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.locks.ReentrantLock
-import kotlin.concurrent.withLock
 
 const val INITIAL_WINDOW_SIZE = 256 * 1024
 
@@ -34,8 +33,7 @@ open class YamuxHandler(
     private val idGenerator = AtomicInteger(if (initiator) 1 else 2) // 0 is reserved
     private val receiveWindow = AtomicInteger(INITIAL_WINDOW_SIZE)
     private val sendWindow = AtomicInteger(INITIAL_WINDOW_SIZE)
-    private val lock = ReentrantLock()
-    private val condition = lock.newCondition()
+    private val lock = Semaphore(1)
 
     override val inboundInitializer: MuxChannelInitializer<ByteBuf> = {
         inboundStreamHandler.handleStream(createStream(it))
@@ -80,18 +78,16 @@ open class YamuxHandler(
     fun handleWindowUpdate(msg: YamuxFrame) {
         val size = msg.lenData
         sendWindow.addAndGet(size)
-        lock.withLock {
-            condition.signalAll()
-        }
+        println("window update: " + size)
+        lock.release()
     }
 
     override fun onChildWrite(child: MuxChannel<ByteBuf>, data: ByteBuf) {
         val ctx = getChannelHandlerContext()
         while (sendWindow.get() <= 0) {
             // wait until the window is increased
-            lock.withLock {
-                condition.await()
-            }
+            println("full send window")
+            lock.acquire()
         }
         data.sliceMaxSize(minOf(maxFrameDataLength, sendWindow.get()))
             .map { frameSliceBuf ->
