@@ -51,9 +51,6 @@ dependencies {
 
     implementation("org.bouncycastle:bcprov-jdk15on:1.70")
     implementation("org.bouncycastle:bcpkix-jdk15on:1.70")
-    implementation("commons-codec:commons-codec:1.15")
-
-    implementation("javax.xml.bind:jaxb-api:2.3.1")
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.1")
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.9.1")
