@@ -3,8 +3,8 @@
  */
 package io.libp2p.discovery.mdns.impl.constants;
 
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * DNS Record Class
@@ -41,7 +41,7 @@ public enum DNSRecordClass {
      */
     CLASS_ANY("any", 255);
 
-    private static Logger       logger       = LogManager.getLogger(DNSRecordClass.class.getName());
+    private static Logger       logger       = Logger.getLogger(DNSRecordClass.class.getName());
 
     /**
      * Multicast DNS uses the bottom 15 bits to identify the record class...<br/>
@@ -113,7 +113,7 @@ public enum DNSRecordClass {
                 if (aClass._externalName.equals(aName)) return aClass;
             }
         }
-        logger.warn("Could not find record class for name: {}", name);
+        logger.log(Level.WARNING, "Could not find record class for name: {}", name);
         return CLASS_UNKNOWN;
     }
 
@@ -126,7 +126,7 @@ public enum DNSRecordClass {
         for (DNSRecordClass aClass : DNSRecordClass.values()) {
             if (aClass._index == maskedIndex) return aClass;
         }
-        logger.warn("Could not find record class for index: {}", index);
+        logger.log(Level.WARNING, "Could not find record class for index: {}", index);
         return CLASS_UNKNOWN;
     }
 

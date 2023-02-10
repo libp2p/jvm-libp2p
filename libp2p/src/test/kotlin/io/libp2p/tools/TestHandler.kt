@@ -5,26 +5,27 @@ import io.libp2p.etc.types.toHex
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
-import org.apache.logging.log4j.LogManager
+import java.util.logging.Level
+import java.util.logging.Logger
 
 open class TestHandler(val name: String = "") : ChannelInboundHandlerAdapter() {
     override fun channelActive(ctx: ChannelHandlerContext) {
-        logger.debug("==$name== Active")
+        logger.log(Level.FINE, "==$name== Active")
         super.channelActive(ctx)
     }
 
     override fun channelRegistered(ctx: ChannelHandlerContext?) {
-        logger.debug("==$name== channelRegistered")
+        logger.log(Level.FINE, "==$name== channelRegistered")
         super.channelRegistered(ctx)
     }
 
     override fun exceptionCaught(ctx: ChannelHandlerContext?, cause: Throwable?) {
-        logger.debug("==$name== exceptionCaught: $cause")
+        logger.log(Level.FINE, "==$name== exceptionCaught: $cause")
         super.exceptionCaught(ctx, cause)
     }
 
     override fun handlerAdded(ctx: ChannelHandlerContext?) {
-        logger.debug("==$name== handlerAdded")
+        logger.log(Level.FINE, "==$name== handlerAdded")
         super.handlerAdded(ctx)
     }
 
@@ -34,21 +35,21 @@ open class TestHandler(val name: String = "") : ChannelInboundHandlerAdapter() {
             is ByteBuf -> msg.toByteArray().toHex() + "(" + msg.readableBytes() + ")"
             else -> msg.toString()
         }
-        logger.debug("==$name== read: $content")
+        logger.log(Level.FINE, "==$name== read: $content")
         super.channelRead(ctx, msg)
     }
 
     override fun channelInactive(ctx: ChannelHandlerContext?) {
-        logger.debug("==$name== channelInactive")
+        logger.log(Level.FINE, "==$name== channelInactive")
         super.channelInactive(ctx)
     }
 
     override fun channelUnregistered(ctx: ChannelHandlerContext?) {
-        logger.debug("==$name== channelUnregistered")
+        logger.log(Level.FINE, "==$name== channelUnregistered")
         super.channelUnregistered(ctx)
     }
 
     companion object {
-        private val logger = LogManager.getLogger(TestHandler::class.java)
+        private val logger = Logger.getLogger(TestHandler::class.java.name)
     }
 }

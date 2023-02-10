@@ -4,12 +4,13 @@
 
 package io.libp2p.discovery.mdns.impl;
 
+import java.util.List;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import io.libp2p.discovery.mdns.impl.constants.DNSRecordClass;
 import io.libp2p.discovery.mdns.impl.constants.DNSRecordType;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
 
 import io.libp2p.discovery.mdns.ServiceInfo;
 import io.libp2p.discovery.mdns.impl.constants.DNSConstants;
@@ -20,7 +21,7 @@ import io.libp2p.discovery.mdns.impl.constants.DNSConstants;
  * @author Arthur van Hoff, Pierre Frisch
  */
 public class DNSQuestion extends DNSEntry {
-    private static Logger logger = LogManager.getLogger(DNSQuestion.class.getName());
+    private static Logger logger = Logger.getLogger(DNSQuestion.class.getName());
 
     /**
      * Pointer question.
@@ -79,7 +80,7 @@ public class DNSQuestion extends DNSEntry {
             if (this.getName().equalsIgnoreCase(info.getQualifiedName()) || this.getName().equalsIgnoreCase(info.getType()) || this.getName().equalsIgnoreCase(info.getTypeWithSubtype())) {
                 answers.addAll(info.answers(this.getRecordClass(), DNSRecordClass.UNIQUE, DNSConstants.DNS_TTL, jmDNSImpl.getLocalHost()));
             }
-            logger.debug("{} DNSQuestion({}).addAnswersForServiceInfo(): info: {}\n{}", jmDNSImpl.getName(), this.getName(), info, answers);
+            logger.log(Level.FINE, "{} DNSQuestion({}).addAnswersForServiceInfo(): info: {}\n{}", List.of(jmDNSImpl.getName(), this.getName(), info, answers));
         }
     }
 

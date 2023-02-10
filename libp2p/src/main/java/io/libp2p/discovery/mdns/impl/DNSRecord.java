@@ -8,8 +8,6 @@ import io.libp2p.discovery.mdns.impl.DNSOutgoing.MessageOutputStream;
 import io.libp2p.discovery.mdns.impl.constants.DNSRecordClass;
 import io.libp2p.discovery.mdns.impl.constants.DNSRecordType;
 import io.libp2p.discovery.mdns.impl.util.ByteWrangler;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -18,6 +16,8 @@ import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Objects;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 
 /**
@@ -26,7 +26,7 @@ import java.util.Objects;
  * @author Arthur van Hoff, Rick Blair, Werner Randelshofer, Pierre Frisch
  */
 public abstract class DNSRecord extends DNSEntry {
-    private static Logger logger = LogManager.getLogger(DNSRecord.class.getName());
+    private static Logger logger = Logger.getLogger(DNSRecord.class.getName());
 
     private int           _ttl;
     private long          _created;
@@ -149,7 +149,7 @@ public abstract class DNSRecord extends DNSEntry {
             try {
                 this._addr = InetAddress.getByAddress(rawAddress);
             } catch (UnknownHostException exception) {
-                logger.warn("Address() exception ", exception);
+                logger.log(Level.WARNING, "Address() exception ", exception);
             }
         }
 
@@ -165,7 +165,7 @@ public abstract class DNSRecord extends DNSEntry {
                 }
                 return this.getAddress().equals(address.getAddress());
             } catch (Exception e) {
-                logger.info("Failed to compare addresses of DNSRecords", e);
+                logger.log(Level.INFO, "Failed to compare addresses of DNSRecords", e);
                 return false;
             }
         }

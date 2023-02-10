@@ -54,6 +54,16 @@ allprojects {
         implementation(kotlin("stdlib-jdk8"))
         implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core")
 
+    implementation("javax.xml.bind:jaxb-api:2.3.1")
+
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.1")
+    testImplementation("org.junit.jupiter:junit-jupiter-params:5.9.1")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.9.1")
+    testImplementation("io.mockk:mockk:1.12.2")
+    testRuntimeOnly("org.mockito:mockito-core:4.8.1")
+    testImplementation("org.mockito:mockito-junit-jupiter:4.8.1")
+    testImplementation("org.assertj:assertj-core:3.23.1")
+
         implementation("com.google.guava:guava")
         implementation("org.apache.logging.log4j:log4j-api")
 

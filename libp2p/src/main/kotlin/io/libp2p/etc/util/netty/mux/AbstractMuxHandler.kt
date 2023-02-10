@@ -7,13 +7,14 @@ import io.libp2p.etc.types.completedExceptionally
 import io.libp2p.etc.types.hasCauseOfType
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
-import org.apache.logging.log4j.LogManager
 import java.util.concurrent.CompletableFuture
 import java.util.function.Function
+import java.util.logging.Level
+import java.util.logging.Logger
 
 typealias MuxChannelInitializer<TData> = (MuxChannel<TData>) -> Unit
 
-private val log = LogManager.getLogger(AbstractMuxHandler::class.java)
+private val log = Logger.getLogger(AbstractMuxHandler::class.java.name)
 
 abstract class AbstractMuxHandler<TData>() :
     ChannelInboundHandlerAdapter() {
@@ -43,9 +44,9 @@ abstract class AbstractMuxHandler<TData>() :
 
     override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
         when {
-            cause.hasCauseOfType(InternalErrorException::class) -> log.warn("Muxer internal error", cause)
-            cause.hasCauseOfType(Libp2pException::class) -> log.debug("Muxer exception", cause)
-            else -> log.warn("Unexpected exception", cause)
+            cause.hasCauseOfType(InternalErrorException::class) -> log.log(Level.WARNING, "Muxer internal error", cause)
+            cause.hasCauseOfType(Libp2pException::class) -> log.log(Level.FINE, "Muxer exception", cause)
+            else -> log.log(Level.WARNING, "Unexpected exception", cause)
         }
     }
 

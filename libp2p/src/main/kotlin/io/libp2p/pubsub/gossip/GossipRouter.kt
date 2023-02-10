@@ -7,7 +7,6 @@ import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.etc.types.*
 import io.libp2p.etc.util.P2PService
 import io.libp2p.pubsub.*
-import org.apache.logging.log4j.LogManager
 import pubsub.pb.Rpc
 import java.time.Duration
 import java.util.*
@@ -15,6 +14,8 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.logging.Level
+import java.util.logging.Logger
 import kotlin.collections.Collection
 import kotlin.collections.List
 import kotlin.collections.MutableMap
@@ -71,7 +72,7 @@ fun P2PService.PeerHandler.getPeerProtocol(): PubsubProtocol {
     return PubsubProtocol.fromProtocol(proto)
 }
 
-private val logger = LogManager.getLogger(GossipRouter::class.java)
+private val logger = Logger.getLogger(GossipRouter::class.java.name)
 
 /**
  * Router implementing this protocol: https://github.com/libp2p/specs/tree/master/pubsub/gossipsub
@@ -531,7 +532,7 @@ open class GossipRouter(
 
             flushAllPending()
         } catch (t: Exception) {
-            logger.warn("Exception in gossipsub heartbeat", t)
+            logger.log(Level.FINE, "Exception in gossipsub heartbeat", t)
         }
     }
 

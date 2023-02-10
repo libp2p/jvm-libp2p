@@ -1,14 +1,10 @@
 package io.libp2p.tools
 
-import org.apache.logging.log4j.Level
-import org.apache.logging.log4j.LogManager
-import org.apache.logging.log4j.core.LogEvent
-import org.apache.logging.log4j.core.Logger
-import org.apache.logging.log4j.core.appender.AbstractAppender
+
 import java.util.ArrayList
 
-class TestLogAppender : AbstractAppender("test", null, null, false, null), AutoCloseable {
-    val logs: MutableList<LogEvent> = ArrayList()
+class TestLogAppender { //}: AbstractAppender("test", null, null, false, null), AutoCloseable {
+    /*val logs: MutableList<LogEvent> = ArrayList()
 
     fun install(): TestLogAppender {
         (LogManager.getRootLogger() as Logger).addAppender(this)
@@ -30,5 +26,5 @@ class TestLogAppender : AbstractAppender("test", null, null, false, null), AutoC
 
     override fun append(event: LogEvent) {
         logs += event.toImmutable()
-    }
+    }*/
 }

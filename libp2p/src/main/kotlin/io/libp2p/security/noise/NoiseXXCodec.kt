@@ -9,11 +9,12 @@ import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.codec.MessageToMessageCodec
-import org.apache.logging.log4j.LogManager
 import java.io.IOException
 import java.security.GeneralSecurityException
+import java.util.logging.Level
+import java.util.logging.Logger
 
-private val logger = LogManager.getLogger(NoiseXXSecureChannel::class.java.name)
+private val logger = Logger.getLogger(NoiseXXSecureChannel::class.java.name)
 
 class NoiseXXCodec(val aliceCipher: CipherState, val bobCipher: CipherState) :
     MessageToMessageCodec<ByteBuf, ByteBuf>() {
@@ -45,12 +46,12 @@ class NoiseXXCodec(val aliceCipher: CipherState, val bobCipher: CipherState) :
     override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
         if (cause.hasCauseOfType(IOException::class)) {
             // Trace level because having clients unexpectedly disconnect is extremely common
-            logger.trace("IOException in Noise channel", cause)
+            logger.log(Level.FINEST, "IOException in Noise channel", cause)
         } else if (cause.hasCauseOfType(SecureChannelError::class)) {
-            logger.debug("Invalid Noise content", cause)
+            logger.log(Level.FINE,"Invalid Noise content", cause)
             closeAbruptly(ctx)
         } else {
-            logger.error("Unexpected error in Noise channel", cause)
+            logger.log(Level.SEVERE, "Unexpected error in Noise channel", cause)
         }
     }
 

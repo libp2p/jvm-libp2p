@@ -7,9 +7,8 @@ package io.libp2p.discovery.mdns.impl;
 import java.io.IOException;
 import java.net.*;
 import java.util.*;
-
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * HostInfo information on the local host to be able to cope with change of addresses.
@@ -17,7 +16,7 @@ import org.apache.logging.log4j.LogManager;
  * @author Pierre Frisch, Werner Randelshofer
  */
 public class HostInfo {
-    private static Logger       logger = LogManager.getLogger(HostInfo.class.getName());
+    private static Logger       logger = Logger.getLogger(HostInfo.class.getName());
 
     protected String            _name;
 
@@ -54,7 +53,7 @@ public class HostInfo {
                     }
                 }
                 if (addr.isLoopbackAddress()) {
-                    logger.warn("Could not find any address beside the loopback.");
+                    logger.log(Level.WARNING, "Could not find any address beside the loopback.");
                 }
             }
             if (aName.length() == 0) {
@@ -64,7 +63,7 @@ public class HostInfo {
                 aName = ((jmdnsName != null) && (jmdnsName.length() > 0) ? jmdnsName : addr.getHostAddress());
             }
         } catch (final IOException e) {
-            logger.warn("Could not initialize the host network interface on " + address + "because of an error: " + e.getMessage(), e);
+            logger.log(Level.WARNING, "Could not initialize the host network interface on " + address + "because of an error: " + e.getMessage(), e);
             // This is only used for running unit test on Debian / Ubuntu
             addr = loopbackAddress();
             aName = ((jmdnsName != null) && (jmdnsName.length() > 0) ? jmdnsName : "computer");
@@ -90,13 +89,13 @@ public class HostInfo {
                 if (useInterface(nif)) {
                     for (Enumeration<InetAddress> iaenum = nif.getInetAddresses(); iaenum.hasMoreElements();) {
                         InetAddress interfaceAddress = iaenum.nextElement();
-                        logger.trace("Found NetworkInterface/InetAddress: {} -- {}",  nif , interfaceAddress);
+                        logger.log(Level.FINEST, "Found NetworkInterface/InetAddress: {} -- {}",  new Object[] {nif , interfaceAddress});
                         result.add(interfaceAddress);
                     }
                 }
             }
         } catch (SocketException se) {
-            logger.warn("Error while fetching network interfaces addresses: " + se);
+            logger.log(Level.WARNING, "Error while fetching network interfaces addresses: " + se);
         }
         return result.toArray(new InetAddress[result.size()]);
     }
@@ -137,7 +136,7 @@ public class HostInfo {
             try {
                 _interface = NetworkInterface.getByInetAddress(address);
             } catch (Exception exception) {
-                logger.warn("LocalHostInfo() exception ", exception);
+                logger.log(Level.WARNING, "LocalHostInfo() exception ", exception);
             }
         }
     }
