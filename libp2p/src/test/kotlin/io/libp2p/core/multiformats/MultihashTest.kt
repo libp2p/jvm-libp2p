@@ -1,6 +1,6 @@
 package io.libp2p.core.multiformats
 
-import io.ipfs.Base16
+import io.ipfs.multibase.Base16
 import io.libp2p.etc.types.toByteBuf
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.params.ParameterizedTest

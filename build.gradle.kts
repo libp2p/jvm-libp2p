@@ -44,7 +44,7 @@ allprojects {
 
     dependencies {
         implementation(kotlin("stdlib-jdk8"))
-        // implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.0")
+        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.0")
         implementation("tech.pegasys:noise-java:22.1.0")
 
         implementation("org.bouncycastle:bcprov-jdk15on:1.70")
@@ -52,9 +52,10 @@ allprojects {
         implementation("commons-codec:commons-codec:1.15")
 
         implementation(kotlin("stdlib-jdk8"))
-        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core")
 
     implementation("javax.xml.bind:jaxb-api:2.3.1")
+    implementation("org.bouncycastle:bcprov-jdk15on:1.70")
+    implementation("org.bouncycastle:bcpkix-jdk15on:1.70")
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.1")
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.9.1")
@@ -70,10 +71,6 @@ allprojects {
         testFixturesImplementation("org.apache.logging.log4j:log4j-api")
         testFixturesImplementation("com.google.guava:guava")
 
-        testImplementation("org.junit.jupiter:junit-jupiter")
-        testImplementation("org.junit.jupiter:junit-jupiter-params")
-        testImplementation("io.mockk:mockk")
-        testImplementation("org.assertj:assertj-core")
         testImplementation("org.apache.logging.log4j:log4j-core")
     }
 
