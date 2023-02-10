@@ -65,10 +65,11 @@ open class YamuxHandler(
     fun handleDataRead(msg: YamuxFrame) {
         val ctx = getChannelHandlerContext()
         val size = msg.lenData
-        val newWindow = receiveWindow.addAndGet(size)
+        val newWindow = receiveWindow.addAndGet(-size)
         if (newWindow < INITIAL_WINDOW_SIZE / 2) {
             val delta = INITIAL_WINDOW_SIZE / 2
             receiveWindow.addAndGet(delta)
+            println("Sending window update " + delta)
             ctx.write(YamuxFrame(msg.id, YamuxType.WINDOW_UPDATE, 0, delta))
             ctx.flush()
         }
