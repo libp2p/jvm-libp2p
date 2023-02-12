@@ -62,9 +62,23 @@ open class YamuxHandler(
         }
     }
 
+    fun handleFlags(msg: YamuxFrame) {
+        val ctx = getChannelHandlerContext()
+        if (msg.flags == YamuxFlags.SYN) {
+            // ACK the new stream
+            onRemoteOpen(msg.id)
+            ctx.write(YamuxFrame(msg.id, YamuxType.WINDOW_UPDATE, YamuxFlags.ACK, 0))
+        }
+        if (msg.flags == YamuxFlags.FIN)
+            onRemoteDisconnect(msg.id)
+    }
+
     fun handleDataRead(msg: YamuxFrame) {
         val ctx = getChannelHandlerContext()
         val size = msg.lenData
+        handleFlags(msg)
+        if (size == 0)
+            return
         val newWindow = receiveWindow.addAndGet(-size)
         if (newWindow < INITIAL_WINDOW_SIZE / 2) {
             val delta = INITIAL_WINDOW_SIZE / 2
@@ -76,6 +90,7 @@ open class YamuxHandler(
     }
 
     fun handleWindowUpdate(msg: YamuxFrame) {
+        handleFlags(msg)
         val size = msg.lenData
         sendWindow.addAndGet(size)
         lock.release()

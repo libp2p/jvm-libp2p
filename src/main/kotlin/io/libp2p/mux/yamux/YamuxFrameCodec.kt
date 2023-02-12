@@ -33,7 +33,7 @@ class YamuxFrameCodec(
     }
 
     /**
-     * Decodes the bytes in the given byte buffer and constructs a [MplexFrame] that is written into
+     * Decodes the bytes in the given byte buffer and constructs a [YamuxFrame] that is written into
      * the output list.
      * @param ctx the context.
      * @param msg the byte buffer.
