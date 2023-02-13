@@ -36,7 +36,10 @@ sourceSets.create("jmh") {
 }
 
 dependencies {
-    api("io.netty:netty-all:4.1.69.Final")
+    api("io.netty:netty-buffer:4.1.88.Final")
+    api("io.netty:netty-codec-http2:4.1.88.Final")
+    api("io.netty:netty-transport:4.1.88.Final")
+    api("io.netty:netty-transport-classes-epoll:4.1.88.Final")
     api("com.google.protobuf:protobuf-java:3.21.9")
 
     implementation("com.github.peergos:noise-java:22.1.0")
