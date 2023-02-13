@@ -25,7 +25,6 @@ plugins {
 
 repositories {
     mavenCentral()
-    maven("https://artifacts.consensys.net/public/maven/maven/")
     maven( "https://jitpack.io")
 }
 
@@ -40,7 +39,7 @@ dependencies {
     api("io.netty:netty-all:4.1.69.Final")
     api("com.google.protobuf:protobuf-java:3.21.9")
 
-    implementation("tech.pegasys:noise-java:22.1.0")
+    implementation("com.github.peergos:noise-java:22.1.0")
 
     implementation("org.bouncycastle:bcprov-jdk15on:1.70")
     implementation("org.bouncycastle:bcpkix-jdk15on:1.70")
