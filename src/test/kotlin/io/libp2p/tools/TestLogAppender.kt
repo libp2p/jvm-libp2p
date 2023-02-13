@@ -1,18 +1,17 @@
 package io.libp2p.tools
 
-
 import java.util.logging.*
 
 class TestLogAppender : MemoryHandler(ConsoleHandler(), 1, Level.ALL), AutoCloseable {
     val logs: MutableList<LogRecord> = ArrayList()
-    val logger: Logger = Logger.getLogger("") //root logger
+    val logger: Logger = Logger.getLogger("") // root logger
     fun install(): TestLogAppender {
-        logger.addHandler(this);
+        logger.addHandler(this)
         return this
     }
 
     fun uninstall() {
-        logger.removeHandler(this);
+        logger.removeHandler(this)
     }
 
     override fun close() {
@@ -25,6 +24,6 @@ class TestLogAppender : MemoryHandler(ConsoleHandler(), 1, Level.ALL), AutoClose
     @Synchronized
     override fun publish(record: LogRecord) {
         super.publish(record)
-        logs += record;
+        logs += record
     }
 }

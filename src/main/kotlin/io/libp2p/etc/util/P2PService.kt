@@ -217,7 +217,7 @@ abstract class P2PService(
      * @param msg optionally indicates what inbound message caused error
      */
     protected open fun onServiceException(peer: PeerHandler?, msg: Any?, cause: Throwable) {
-        logger.log(Level.WARNING,"P2PService internal error on message $msg from peer $peer", cause)
+        logger.log(Level.WARNING, "P2PService internal error on message $msg from peer $peer", cause)
     }
 
     /**

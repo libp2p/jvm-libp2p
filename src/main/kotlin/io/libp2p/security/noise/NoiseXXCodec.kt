@@ -48,7 +48,7 @@ class NoiseXXCodec(val aliceCipher: CipherState, val bobCipher: CipherState) :
             // Trace level because having clients unexpectedly disconnect is extremely common
             logger.log(Level.FINEST, "IOException in Noise channel", cause)
         } else if (cause.hasCauseOfType(SecureChannelError::class)) {
-            logger.log(Level.FINE,"Invalid Noise content", cause)
+            logger.log(Level.FINE, "Invalid Noise content", cause)
             closeAbruptly(ctx)
         } else {
             logger.log(Level.SEVERE, "Unexpected error in Noise channel", cause)
