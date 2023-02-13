@@ -54,7 +54,7 @@ abstract class CipherSecureChannelTest(secureChannelCtor: SecureChannelCtor, ann
         protocolSelect2.selectedFuture.get(10, SECONDS)
         logger.log(Level.FINE, "Secured!")
 
-        TestLogAppender(logger).install().use { testLogAppender ->
+        TestLogAppender().install().use { testLogAppender ->
             Assertions.assertThatCode {
                 // writing invalid cipher data
                 eCh1.writeInbound(Unpooled.wrappedBuffer(ByteArray(128)))

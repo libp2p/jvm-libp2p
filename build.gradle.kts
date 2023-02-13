@@ -42,6 +42,19 @@ allprojects {
         maven("https://artifacts.consensys.net/public/maven/maven/")
     }
 
+repositories {
+    mavenCentral()
+    maven("https://artifacts.consensys.net/public/maven/maven/")
+    maven( "https://jitpack.io")
+}
+
+sourceSets.create("jmh") {
+    compileClasspath += sourceSets["main"].runtimeClasspath
+    compileClasspath += sourceSets["testFixtures"].runtimeClasspath
+    runtimeClasspath += sourceSets["main"].runtimeClasspath
+    runtimeClasspath += sourceSets["testFixtures"].runtimeClasspath
+}
+
     dependencies {
         implementation(kotlin("stdlib-jdk8"))
         implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.0")
@@ -54,6 +67,8 @@ allprojects {
     implementation("javax.xml.bind:jaxb-api:2.3.1")
     implementation("org.bouncycastle:bcprov-jdk15on:1.70")
     implementation("org.bouncycastle:bcpkix-jdk15on:1.70")
+
+    implementation("com.github.multiformats:java-multibase:v1.1.1")
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.1")
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.9.1")
