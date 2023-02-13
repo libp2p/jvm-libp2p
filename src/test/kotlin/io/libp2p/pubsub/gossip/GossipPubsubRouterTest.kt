@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test
 import pubsub.pb.Rpc
 import java.time.Duration
 import java.util.concurrent.TimeUnit
+import java.util.logging.Level
 
 class GossipPubsubRouterTest : PubsubRouterTest(
     createGossipFuzzRouterFactory {
@@ -128,7 +129,7 @@ class GossipPubsubRouterTest : PubsubRouterTest(
         router2.router.subscribe("topic1")
         router1.connect(router2, LogLevel.INFO, LogLevel.INFO)
 
-        TestLogAppender(logger).install().use { testLogAppender ->
+        TestLogAppender().install().use { testLogAppender ->
             val msg1 = Rpc.RPC.newBuilder()
                 .setControl(
                     Rpc.ControlMessage.newBuilder().addIhave(
@@ -137,7 +138,6 @@ class GossipPubsubRouterTest : PubsubRouterTest(
                 ).build()
 
             mockRouter.sendToSingle(msg1)
-
             Assertions.assertFalse(testLogAppender.hasAnyWarns())
         }
 
@@ -159,7 +159,7 @@ class GossipPubsubRouterTest : PubsubRouterTest(
         router1.connect(router2, LogLevel.INFO, LogLevel.INFO)
         router2.connectSemiDuplex(router3, LogLevel.INFO, LogLevel.INFO)
 
-        TestLogAppender(logger).install().use { testLogAppender ->
+        TestLogAppender().install().use { testLogAppender ->
 
             val msg1 = Rpc.RPC.newBuilder()
                 .addSubscriptions(
@@ -181,7 +181,6 @@ class GossipPubsubRouterTest : PubsubRouterTest(
             val future = router2.router.publish(msg2)
             Assertions.assertDoesNotThrow { future.get(1, TimeUnit.SECONDS) }
             Assertions.assertEquals(1, router3.inboundMessages.size)
-
             Assertions.assertFalse(testLogAppender.hasAnyWarns())
         }
 
@@ -206,7 +205,7 @@ class GossipPubsubRouterTest : PubsubRouterTest(
         router2.router.subscribe("topic1")
         router1.connect(router2, LogLevel.INFO, LogLevel.INFO)
 
-        TestLogAppender(logger).install().use { testLogAppender ->
+        TestLogAppender().install().use { testLogAppender ->
             val msg1 = Rpc.RPC.newBuilder()
                 .setControl(
                     Rpc.ControlMessage.newBuilder().addGraft(
@@ -215,7 +214,6 @@ class GossipPubsubRouterTest : PubsubRouterTest(
                 ).build()
 
             mockRouter.sendToSingle(msg1)
-
             Assertions.assertFalse(testLogAppender.hasAnyWarns())
         }
     }

@@ -26,10 +26,8 @@ plugins {
 repositories {
     mavenCentral()
     maven("https://artifacts.consensys.net/public/maven/maven/")
+    maven( "https://jitpack.io")
 }
-
-
-val log4j2Version = "2.19.0"
 
 sourceSets.create("jmh") {
     compileClasspath += sourceSets["main"].runtimeClasspath
@@ -46,6 +44,8 @@ dependencies {
 
     implementation("org.bouncycastle:bcprov-jdk15on:1.70")
     implementation("org.bouncycastle:bcpkix-jdk15on:1.70")
+
+    implementation("com.github.multiformats:java-multibase:v1.1.1")
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.1")
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.9.1")

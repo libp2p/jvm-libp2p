@@ -3,10 +3,9 @@ package io.libp2p.tools
 
 import java.util.logging.*
 
-
-class TestLogAppender(private val logger:Logger) : MemoryHandler(ConsoleHandler(), 1, Level.ALL), AutoCloseable {
+class TestLogAppender : MemoryHandler(ConsoleHandler(), 1, Level.ALL), AutoCloseable {
     val logs: MutableList<LogRecord> = ArrayList()
-
+    val logger: Logger = Logger.getLogger("") //root logger
     fun install(): TestLogAppender {
         logger.addHandler(this);
         return this
