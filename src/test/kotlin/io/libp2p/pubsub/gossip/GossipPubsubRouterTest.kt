@@ -11,11 +11,15 @@ import io.libp2p.pubsub.TestRouter
 import io.libp2p.pubsub.gossip.builders.GossipPeerScoreParamsBuilder
 import io.libp2p.pubsub.gossip.builders.GossipRouterBuilder
 import io.libp2p.pubsub.gossip.builders.GossipScoreParamsBuilder
+import io.libp2p.security.logger
+import io.libp2p.tools.TestLogAppender
 import io.netty.handler.logging.LogLevel
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
+import pubsub.pb.Rpc
 import java.time.Duration
+import java.util.concurrent.TimeUnit
 
 class GossipPubsubRouterTest : PubsubRouterTest(
     createGossipFuzzRouterFactory {
@@ -123,8 +127,8 @@ class GossipPubsubRouterTest : PubsubRouterTest(
 
         router2.router.subscribe("topic1")
         router1.connect(router2, LogLevel.INFO, LogLevel.INFO)
-/*
-        TestLogAppender().install().use { testLogAppender ->
+
+        TestLogAppender(logger).install().use { testLogAppender ->
             val msg1 = Rpc.RPC.newBuilder()
                 .setControl(
                     Rpc.ControlMessage.newBuilder().addIhave(
@@ -137,7 +141,6 @@ class GossipPubsubRouterTest : PubsubRouterTest(
             Assertions.assertFalse(testLogAppender.hasAnyWarns())
         }
 
- */
     }
 
     @Test
@@ -155,8 +158,8 @@ class GossipPubsubRouterTest : PubsubRouterTest(
         router3.router.subscribe("topic1")
         router1.connect(router2, LogLevel.INFO, LogLevel.INFO)
         router2.connectSemiDuplex(router3, LogLevel.INFO, LogLevel.INFO)
-/*
-        TestLogAppender().install().use { testLogAppender ->
+
+        TestLogAppender(logger).install().use { testLogAppender ->
 
             val msg1 = Rpc.RPC.newBuilder()
                 .addSubscriptions(
@@ -182,7 +185,6 @@ class GossipPubsubRouterTest : PubsubRouterTest(
             Assertions.assertFalse(testLogAppender.hasAnyWarns())
         }
 
- */
     }
 
     @Test
@@ -203,8 +205,8 @@ class GossipPubsubRouterTest : PubsubRouterTest(
 
         router2.router.subscribe("topic1")
         router1.connect(router2, LogLevel.INFO, LogLevel.INFO)
-        /*
-        TestLogAppender().install().use { testLogAppender ->
+
+        TestLogAppender(logger).install().use { testLogAppender ->
             val msg1 = Rpc.RPC.newBuilder()
                 .setControl(
                     Rpc.ControlMessage.newBuilder().addGraft(
@@ -215,7 +217,7 @@ class GossipPubsubRouterTest : PubsubRouterTest(
             mockRouter.sendToSingle(msg1)
 
             Assertions.assertFalse(testLogAppender.hasAnyWarns())
-        }*/
+        }
     }
 
     @Test

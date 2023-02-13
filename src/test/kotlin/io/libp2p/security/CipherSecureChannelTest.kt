@@ -4,6 +4,10 @@ import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.tools.TestChannel
+import io.libp2p.tools.TestLogAppender
+import io.netty.buffer.Unpooled
+import org.assertj.core.api.Assertions
+import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import java.util.concurrent.TimeUnit.SECONDS
@@ -50,8 +54,7 @@ abstract class CipherSecureChannelTest(secureChannelCtor: SecureChannelCtor, ann
         protocolSelect2.selectedFuture.get(10, SECONDS)
         logger.log(Level.FINE, "Secured!")
 
-        /*
-        TestLogAppender().install().use { testLogAppender ->
+        TestLogAppender(logger).install().use { testLogAppender ->
             Assertions.assertThatCode {
                 // writing invalid cipher data
                 eCh1.writeInbound(Unpooled.wrappedBuffer(ByteArray(128)))
@@ -60,7 +63,5 @@ abstract class CipherSecureChannelTest(secureChannelCtor: SecureChannelCtor, ann
             assertThat(eCh1.isOpen).isFalse()
             assertThat(testLogAppender.hasAnyWarns()).isFalse()
         }
-
-         */
     }
 }

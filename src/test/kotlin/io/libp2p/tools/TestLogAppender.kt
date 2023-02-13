@@ -1,20 +1,19 @@
 package io.libp2p.tools
 
 
-import java.util.ArrayList
+import java.util.logging.*
 
-class TestLogAppender { //}: AbstractAppender("test", null, null, false, null), AutoCloseable {
-    /*val logs: MutableList<LogEvent> = ArrayList()
+
+class TestLogAppender(private val logger:Logger) : MemoryHandler(ConsoleHandler(), 1, Level.ALL), AutoCloseable {
+    val logs: MutableList<LogRecord> = ArrayList()
 
     fun install(): TestLogAppender {
-        (LogManager.getRootLogger() as Logger).addAppender(this)
-        start()
+        logger.addHandler(this);
         return this
     }
 
     fun uninstall() {
-        stop()
-        (LogManager.getRootLogger() as Logger).removeAppender(this)
+        logger.removeHandler(this);
     }
 
     override fun close() {
@@ -22,9 +21,11 @@ class TestLogAppender { //}: AbstractAppender("test", null, null, false, null), 
     }
 
     fun hasAny(level: Level) = logs.any { it.level == level }
-    fun hasAnyWarns() = hasAny(Level.ERROR) || hasAny(Level.WARN)
+    fun hasAnyWarns() = hasAny(Level.SEVERE) || hasAny(Level.WARNING)
 
-    override fun append(event: LogEvent) {
-        logs += event.toImmutable()
-    }*/
+    @Synchronized
+    override fun publish(record: LogRecord) {
+        super.publish(record)
+        logs += record;
+    }
 }
