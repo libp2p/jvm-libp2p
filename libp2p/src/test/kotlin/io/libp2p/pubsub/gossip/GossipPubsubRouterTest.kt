@@ -11,7 +11,6 @@ import io.libp2p.pubsub.TestRouter
 import io.libp2p.pubsub.gossip.builders.GossipPeerScoreParamsBuilder
 import io.libp2p.pubsub.gossip.builders.GossipRouterBuilder
 import io.libp2p.pubsub.gossip.builders.GossipScoreParamsBuilder
-import io.libp2p.security.logger
 import io.libp2p.tools.TestLogAppender
 import io.netty.handler.logging.LogLevel
 import org.assertj.core.api.Assertions.assertThat
@@ -20,7 +19,6 @@ import org.junit.jupiter.api.Test
 import pubsub.pb.Rpc
 import java.time.Duration
 import java.util.concurrent.TimeUnit
-import java.util.logging.Level
 
 class GossipPubsubRouterTest : PubsubRouterTest(
     createGossipFuzzRouterFactory {
@@ -140,7 +138,6 @@ class GossipPubsubRouterTest : PubsubRouterTest(
             mockRouter.sendToSingle(msg1)
             Assertions.assertFalse(testLogAppender.hasAnyWarns())
         }
-
     }
 
     @Test
@@ -183,7 +180,6 @@ class GossipPubsubRouterTest : PubsubRouterTest(
             Assertions.assertEquals(1, router3.inboundMessages.size)
             Assertions.assertFalse(testLogAppender.hasAnyWarns())
         }
-
     }
 
     @Test

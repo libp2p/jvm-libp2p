@@ -1,8 +1,8 @@
 package io.libp2p.pubsub.gossip.builders
 
-import io.libp2p.guava.common.util.concurrent.ThreadFactoryBuilder
 import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.etc.types.lazyVar
+import io.libp2p.guava.common.util.concurrent.ThreadFactoryBuilder
 import io.libp2p.pubsub.*
 import io.libp2p.pubsub.gossip.*
 import java.util.*

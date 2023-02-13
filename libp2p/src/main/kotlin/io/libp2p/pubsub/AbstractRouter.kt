@@ -176,7 +176,7 @@ abstract class AbstractRouter(
                 .filterIncomingSubscriptions(subscriptions, peersTopics.getByFirst(peer))
                 .forEach { handleMessageSubscriptions(peer, it) }
         } catch (e: Exception) {
-            logger.log(Level.FINE,"Subscription filter error, ignoring message from peer $peer", e)
+            logger.log(Level.FINE, "Subscription filter error, ignoring message from peer $peer", e)
             return
         }
 
