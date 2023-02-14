@@ -8,7 +8,7 @@
 
 > a libp2p implementation for the JVM, written in Kotlin 🔥
 
-**⚠️ This is heavy work in progress! ⚠**
+**⚠️ This is heavy work in progress! ⚠️**
 
 ## Roadmap
 
@@ -60,9 +60,8 @@ etc. and other subsystems or concepts that are internal to implementations and
 do not impact the ability to hold communications with other libp2p processes.
 
 ## Adding as a dependency to your project:
-![Maven version](https://img.shields.io/maven-metadata/v?label=jvm-libp2p-minimal&metadataUrl=https%3A%2F%2Fdl.cloudsmith.io%2Fpublic%2Flibp2p%2Fjvm-libp2p%2Fmaven%2Fio%2Flibp2p%2Fjvm-libp2p-minimal%2Fmaven-metadata.xml)
+[![Latest version of 'jvm-libp2p-minimal' @ Cloudsmith](https://api-prd.cloudsmith.io/v1/badges/version/libp2p/jvm-libp2p/maven/jvm-libp2p-minimal/latest/a=noarch;xg=io.libp2p/?render=true&show_latest=true)](https://cloudsmith.io/~libp2p/repos/jvm-libp2p/packages/detail/maven/jvm-libp2p-minimal/latest/a=noarch;xg=io.libp2p/)
 
-[![Hosted By: Cloudsmith](https://img.shields.io/badge/OSS%20hosting%20by-cloudsmith-blue?logo=cloudsmith&style=flat-square)](https://cloudsmith.com) 
 Hosting of artefacts is graciously provided by [Cloudsmith](https://cloudsmith.com).
 
 ### Using Gradle
