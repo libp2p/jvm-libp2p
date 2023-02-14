@@ -10,6 +10,7 @@ import io.libp2p.transport.tcp.TcpTransport
 import io.netty.handler.logging.LogLevel
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
+import java.util.Random
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 
@@ -27,6 +28,8 @@ abstract class TwoGossipHostTestBase {
         Gossip(router2, debugGossipHandler = LoggingHandlerShort("host-2", LogLevel.INFO))
     }
 
+    val host2Port = (10000 + Random().nextInt(50_000))
+
     val host1 by lazy {
         host {
             identity {
@@ -36,7 +39,7 @@ abstract class TwoGossipHostTestBase {
                 add(::TcpTransport)
             }
             network {
-                listen("/ip4/127.0.0.1/tcp/40002")
+                listen("/ip4/127.0.0.1/tcp/" + (10000 + Random().nextInt(50_000)))
             }
             secureChannels {
                 add(::NoiseXXSecureChannel)
@@ -62,7 +65,7 @@ abstract class TwoGossipHostTestBase {
                 add(::TcpTransport)
             }
             network {
-                listen("/ip4/127.0.0.1/tcp/40001")
+                listen("/ip4/127.0.0.1/tcp/" + host2Port)
             }
             secureChannels {
                 add(::NoiseXXSecureChannel)
@@ -104,7 +107,7 @@ abstract class TwoGossipHostTestBase {
 
     protected fun connect() {
         val connect = host1.network
-            .connect(host2.peerId, Multiaddr.fromString("/ip4/127.0.0.1/tcp/40001/p2p/" + host2.peerId))
+            .connect(host2.peerId, Multiaddr.fromString("/ip4/127.0.0.1/tcp/" + host2Port + "/p2p/" + host2.peerId))
         connect.get(10, TimeUnit.SECONDS)
 
         waitFor { gossipConnected(router1) }
