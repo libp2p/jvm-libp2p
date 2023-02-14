@@ -14,7 +14,6 @@ import io.libp2p.etc.util.netty.mux.MuxId
 import io.libp2p.etc.util.netty.nettyInitializer
 import io.libp2p.mux.yamux.YamuxFlags
 import io.libp2p.mux.yamux.YamuxFrame
-import io.libp2p.mux.yamux.YamuxFrameCodec
 import io.libp2p.mux.yamux.YamuxHandler
 import io.libp2p.mux.yamux.YamuxType
 import io.libp2p.tools.TestChannel
@@ -35,6 +34,7 @@ import org.junit.jupiter.api.Test
 import java.util.concurrent.CompletableFuture
 
 class YamuxHandlerTest {
+    val DEFAULT_MAX_YAMUX_FRAME_DATA_LENGTH = 1 shl 20
     val dummyParentChannelId = DefaultChannelId.newInstance()
     val childHandlers = mutableListOf<TestHandler>()
     lateinit var multistreamHandler: YamuxHandler
@@ -52,7 +52,7 @@ class YamuxHandlerTest {
             }
         )
         multistreamHandler = object : YamuxHandler(
-            MultistreamProtocolV1, YamuxFrameCodec.DEFAULT_MAX_YAMUX_FRAME_DATA_LENGTH, null, streamHandler, true
+            MultistreamProtocolV1, DEFAULT_MAX_YAMUX_FRAME_DATA_LENGTH, null, streamHandler, true
         ) {
             // MuxHandler consumes the exception. Override this behaviour for testing
             override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
