@@ -1,6 +1,6 @@
 package io.libp2p.core.multiformats
 
-import com.google.common.io.BaseEncoding
+import io.ipfs.multibase.Base16
 import io.libp2p.etc.types.toByteBuf
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.params.ParameterizedTest
@@ -111,9 +111,8 @@ class MultihashTest {
     @ParameterizedTest
     @MethodSource("params")
     fun `Multihash digest and of`(desc: Multihash.Descriptor, length: Int, content: String, expected: String) {
-        val hex = BaseEncoding.base16()
         val mh = Multihash.digest(desc, content.toByteArray().toByteBuf(), if (length == -1) null else length).bytes
-        val decodedMh = hex.decode(expected.uppercase()).toByteBuf()
+        val decodedMh = Base16.decode(expected.uppercase()).toByteBuf()
         assertEquals(decodedMh, mh)
         with(Multihash.of(mh)) {
             assertEquals(desc, this.desc)

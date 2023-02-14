@@ -1,6 +1,5 @@
 package io.libp2p.pubsub.gossip
 
-import com.google.common.annotations.VisibleForTesting
 import io.libp2p.core.PeerId
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multiformats.Protocol
@@ -151,7 +150,6 @@ class DefaultGossipScore(
 
     private val validationTime: MutableMap<PubsubMessage, Long> = createLRUMap(1024)
 
-    @VisibleForTesting
     val peerScores = ConcurrentHashMap<PeerId, PeerScores>()
     private val peerIdToIP = mutableMapOf<PeerId, PeerIP>()
     private val peerIPToId = PeerColocations()
@@ -205,7 +203,6 @@ class DefaultGossipScore(
         return computedScore
     }
 
-    @VisibleForTesting
     fun refreshScores() {
         val peersToBury = peerScores
             .filterValues {

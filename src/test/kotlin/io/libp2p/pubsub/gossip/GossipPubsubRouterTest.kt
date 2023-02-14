@@ -136,7 +136,6 @@ class GossipPubsubRouterTest : PubsubRouterTest(
                 ).build()
 
             mockRouter.sendToSingle(msg1)
-
             Assertions.assertFalse(testLogAppender.hasAnyWarns())
         }
     }
@@ -179,7 +178,6 @@ class GossipPubsubRouterTest : PubsubRouterTest(
             val future = router2.router.publish(msg2)
             Assertions.assertDoesNotThrow { future.get(1, TimeUnit.SECONDS) }
             Assertions.assertEquals(1, router3.inboundMessages.size)
-
             Assertions.assertFalse(testLogAppender.hasAnyWarns())
         }
     }
@@ -212,7 +210,6 @@ class GossipPubsubRouterTest : PubsubRouterTest(
                 ).build()
 
             mockRouter.sendToSingle(msg1)
-
             Assertions.assertFalse(testLogAppender.hasAnyWarns())
         }
     }

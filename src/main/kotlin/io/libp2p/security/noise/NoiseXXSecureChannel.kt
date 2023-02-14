@@ -27,13 +27,14 @@ import io.netty.channel.SimpleChannelInboundHandler
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder
 import io.netty.handler.codec.LengthFieldPrepender
 import io.netty.handler.timeout.ReadTimeoutHandler
-import org.apache.logging.log4j.LogManager
 import spipe.pb.Spipe
 import java.util.concurrent.CompletableFuture
+import java.util.logging.Level
+import java.util.logging.Logger
 
 enum class Role(val intVal: Int) { INIT(HandshakeState.INITIATOR), RESP(HandshakeState.RESPONDER) }
 
-private val log = LogManager.getLogger(NoiseXXSecureChannel::class.java)
+private val log = Logger.getLogger(NoiseXXSecureChannel::class.java.name)
 const val HandshakeNettyHandlerName = "HandshakeNettyHandler"
 const val HandshakeReadTimeoutNettyHandlerName = "HandshakeReadTimeoutNettyHandler"
 const val NoiseCodeNettyHandlerName = "NoiseXXCodec"
@@ -101,7 +102,7 @@ class NoiseIoHandshake(
     private var expectedRemotePeerId: PeerId? = null
 
     init {
-        log.debug("Starting handshake")
+        log.log(Level.FINE, "Starting handshake")
 
         // configure the localDHState with the private
         // which will automatically generate the corresponding public key
@@ -166,7 +167,7 @@ class NoiseIoHandshake(
     } // channelUnregistered
 
     private fun readNoiseMessage(msg: ByteArray) {
-        log.debug("Noise handshake READ_MESSAGE")
+        log.log(Level.FINE, "Noise handshake READ_MESSAGE")
 
         var payload = ByteArray(msg.size)
         var payloadLength = handshakeState.readMessage(msg, 0, msg.size, payload, 0)
@@ -180,8 +181,8 @@ class NoiseIoHandshake(
             }
         }
 
-        log.trace("msg.size:" + msg.size)
-        log.trace("Read message size:$payloadLength")
+        log.log(Level.FINEST, "msg.size:" + msg.size)
+        log.log(Level.FINEST, "Read message size:$payloadLength")
 
         if (instancePayload == null && payloadLength > 0) {
             // currently, only allow storing a single payload for verification (this should maybe be changed to a queue)
@@ -221,7 +222,7 @@ class NoiseIoHandshake(
 
         // create the message with the signed payload -
         // verification happens once the noise static key is shared
-        log.debug("Sending signed Noise static public key as payload")
+        log.log(Level.FINE, "Sending signed Noise static public key as payload")
         sendNoiseMessage(ctx, noiseHandshakePayload)
     } // sendNoiseStaticKeyAsPayload
 
@@ -239,8 +240,8 @@ class NoiseIoHandshake(
         val outputBuffer = ByteArray(msgLength + (2 * (handshakeState.localKeyPair.publicKeyLength + 16))) // 16 is MAC length
         val outputLength = handshakeState.writeMessage(outputBuffer, 0, lenMsg, 0, msgLength)
 
-        log.debug("Noise handshake WRITE_MESSAGE")
-        log.trace("Sent message length:$outputLength")
+        log.log(Level.FINE, "Noise handshake WRITE_MESSAGE")
+        log.log(Level.FINEST, "Sent message length:$outputLength")
 
         ctx.writeAndFlush(outputBuffer.copyOfRange(0, outputLength).toByteBuf())
     } // sendNoiseMessage
@@ -250,7 +251,7 @@ class NoiseIoHandshake(
         payload: ByteArray,
         remotePublicKeyState: DHState
     ): PeerId {
-        log.debug("Verifying noise static key payload")
+        log.log(Level.FINE, "Verifying noise static key payload")
 
         val (pubKeyFromMessage, signatureFromMessage) = unpackKeyAndSignature(payload)
 
@@ -259,7 +260,7 @@ class NoiseIoHandshake(
             signatureFromMessage
         )
 
-        log.debug("Remote verification is $verified")
+        log.log(Level.FINE, "Remote verification is $verified")
 
         if (!verified) {
             handshakeFailed(ctx, InvalidRemotePubKey())
@@ -282,7 +283,7 @@ class NoiseIoHandshake(
 
         val aliceSplit = cipherStatePair.sender
         val bobSplit = cipherStatePair.receiver
-        log.debug("Split complete")
+        log.log(Level.FINE, "Split complete")
 
         // put alice and bob security sessions into the context and trigger the next action
         val secureSession = NoiseSecureChannelSession(
@@ -323,7 +324,7 @@ class NoiseIoHandshake(
         handshakeFailed(ctx, Exception(cause))
     }
     private fun handshakeFailed(ctx: ChannelHandlerContext, cause: Throwable) {
-        log.debug("Noise handshake failed", cause)
+        log.log(Level.FINE, "Noise handshake failed", cause)
 
         handshakeComplete.completeExceptionally(cause)
         ctx.pipeline().remove(HandshakeReadTimeoutNettyHandlerName)

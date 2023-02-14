@@ -11,6 +11,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import java.util.concurrent.TimeUnit.SECONDS
+import java.util.logging.Level
 
 abstract class CipherSecureChannelTest(secureChannelCtor: SecureChannelCtor, announce: String) :
     SecureChannelTestBase(secureChannelCtor, announce) {
@@ -27,7 +28,7 @@ abstract class CipherSecureChannelTest(secureChannelCtor: SecureChannelCtor, ann
         val eCh1 = makeDialChannel("#1", protocolSelect1, PeerId.fromPubKey(wrongPubKey))
         val eCh2 = makeListenChannel("#2", protocolSelect2)
 
-        logger.debug("Connecting channels...")
+        logger.log(Level.FINE, "Connecting channels...")
         TestChannel.interConnect(eCh1, eCh2)
 
         assertThatThrownBy { protocolSelect1.selectedFuture.get(10, SECONDS) }
@@ -45,13 +46,13 @@ abstract class CipherSecureChannelTest(secureChannelCtor: SecureChannelCtor, ann
         val eCh1 = makeDialChannel("#1", protocolSelect1, PeerId.fromPubKey(pubKey2))
         val eCh2 = makeListenChannel("#2", protocolSelect2)
 
-        logger.debug("Connecting channels...")
+        logger.log(Level.FINE, "Connecting channels...")
         TestChannel.interConnect(eCh1, eCh2)
 
-        logger.debug("Waiting for negotiation to complete...")
+        logger.log(Level.FINE, "Waiting for negotiation to complete...")
         protocolSelect1.selectedFuture.get(10, SECONDS)
         protocolSelect2.selectedFuture.get(10, SECONDS)
-        logger.debug("Secured!")
+        logger.log(Level.FINE, "Secured!")
 
         TestLogAppender().install().use { testLogAppender ->
             Assertions.assertThatCode {

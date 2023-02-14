@@ -1,9 +1,6 @@
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
-import org.jetbrains.dokka.gradle.DokkaTask
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.net.URL
-import java.nio.file.Files
-import java.nio.file.Paths
 
 // To publish the release artifact to CloudSmith repo run the following :
 // ./gradlew publish -PcloudsmithUser=<user> -PcloudsmithApiKey=<api-key>
@@ -28,11 +25,8 @@ plugins {
 
 repositories {
     mavenCentral()
-    maven("https://artifacts.consensys.net/public/maven/maven/")
+    maven( "https://jitpack.io")
 }
-
-
-val log4j2Version = "2.19.0"
 
 sourceSets.create("jmh") {
     compileClasspath += sourceSets["main"].runtimeClasspath
@@ -42,31 +36,24 @@ sourceSets.create("jmh") {
 }
 
 dependencies {
-    api("io.netty:netty-all:4.1.69.Final")
+    api("io.netty:netty-buffer:4.1.88.Final")
+    api("io.netty:netty-codec-http2:4.1.88.Final")
+    api("io.netty:netty-transport:4.1.88.Final")
+    api("io.netty:netty-transport-classes-epoll:4.1.88.Final")
     api("com.google.protobuf:protobuf-java:3.21.9")
 
-    implementation(kotlin("stdlib-jdk8"))
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.0")
-    implementation("tech.pegasys:noise-java:22.1.0")
+    implementation("com.github.peergos:noise-java:22.1.0")
 
-    implementation("com.google.guava:guava:31.1-jre")
     implementation("org.bouncycastle:bcprov-jdk15on:1.70")
     implementation("org.bouncycastle:bcpkix-jdk15on:1.70")
-    implementation("commons-codec:commons-codec:1.15")
 
-    implementation("org.apache.logging.log4j:log4j-api:${log4j2Version}")
-    implementation("org.apache.logging.log4j:log4j-core:${log4j2Version}")
-    implementation("javax.xml.bind:jaxb-api:2.3.1")
-
-    testFixturesImplementation("org.apache.logging.log4j:log4j-api:${log4j2Version}")
-    testFixturesImplementation("com.google.guava:guava:31.0.1-jre")
+    implementation("com.github.multiformats:java-multibase:v1.1.1")
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.1")
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.9.1")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.9.1")
+
     testImplementation("io.mockk:mockk:1.12.2")
-    testRuntimeOnly("org.mockito:mockito-core:4.8.1")
-    testImplementation("org.mockito:mockito-junit-jupiter:4.8.1")
     testImplementation("org.assertj:assertj-core:3.23.1")
 
     "jmhImplementation"("org.openjdk.jmh:jmh-core:1.35")

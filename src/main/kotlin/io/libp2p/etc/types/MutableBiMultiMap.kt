@@ -1,7 +1,5 @@
 package io.libp2p.etc.types
 
-import com.google.common.annotations.VisibleForTesting
-
 /**
  * Creates new empty [MutableBiMultiMap]
  */
@@ -53,9 +51,9 @@ operator fun <K, V> MutableBiMultiMap<K, V>.contains(key: K) = this[key] != null
 operator fun <K, V> MutableBiMultiMap<K, V>.minusAssign(key: K) = removeKey(key)
 
 internal class MutableBiMultiMapImpl<Key, Value> : MutableBiMultiMap<Key, Value> {
-    @VisibleForTesting
+
     internal val keyToValue: MutableMap<Key, Value> = mutableMapOf()
-    @VisibleForTesting
+
     internal val valueToKeys: MutableMap<Value, Set<Key>> = mutableMapOf()
 
     override fun put(key: Key, value: Value) {

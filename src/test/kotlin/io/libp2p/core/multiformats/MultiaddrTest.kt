@@ -1,11 +1,11 @@
 package io.libp2p.core.multiformats
 
-import com.google.common.net.InetAddresses
 import io.libp2p.core.PeerId
 import io.libp2p.etc.types.fromHex
 import io.libp2p.etc.types.toByteArray
 import io.libp2p.etc.types.toHex
 import io.libp2p.etc.types.writeUvarint
+import io.libp2p.guava.common.net.InetAddresses
 import io.netty.buffer.Unpooled
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals

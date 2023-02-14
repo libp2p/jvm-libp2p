@@ -10,9 +10,8 @@ import java.net.InetSocketAddress;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import io.libp2p.discovery.mdns.impl.DNSIncoming;
 import io.libp2p.discovery.mdns.impl.DNSOutgoing;
@@ -25,7 +24,7 @@ import io.libp2p.discovery.mdns.impl.constants.DNSConstants;
  * The Responder sends a single answer for the specified service infos and for the host name.
  */
 public class Responder extends DNSTask {
-    static Logger logger = LogManager.getLogger(Responder.class.getName());
+    static Logger logger = Logger.getLogger(Responder.class.getName());
 
     private final DNSIncoming _in;
 
@@ -64,7 +63,7 @@ public class Responder extends DNSTask {
         if (delay < 0) {
             delay = 0;
         }
-        logger.trace("{}.start() Responder chosen delay={}", this.getName(), delay);
+        logger.log(Level.FINEST, "{}.start() Responder chosen delay={}", new Object[] {this.getName(), delay});
 
         _scheduler.schedule(this, delay, TimeUnit.MILLISECONDS);
     }
@@ -78,7 +77,7 @@ public class Responder extends DNSTask {
         try {
             // Answer questions
             for (DNSQuestion question : _in.getQuestions()) {
-                logger.debug("{}.run() JmDNS responding to: {}", this.getName(), question);
+                logger.log(Level.FINE, "{}.run() JmDNS responding to: {}", new Object[] {this.getName(), question});
 
                 // for unicast responses the question must be included
                 if (_unicast) {
@@ -90,7 +89,7 @@ public class Responder extends DNSTask {
 
             // respond if we have answers
             if (!answers.isEmpty()) {
-                logger.debug("{}.run() JmDNS responding", this.getName());
+                logger.log(Level.FINE, "{}.run() JmDNS responding", this.getName());
 
                 DNSOutgoing out = new DNSOutgoing(DNSConstants.FLAGS_QR_RESPONSE | DNSConstants.FLAGS_AA, !_unicast, _in.getSenderUDPPayload());
                 if (_unicast) {
@@ -107,7 +106,7 @@ public class Responder extends DNSTask {
                     this.dns().send(out);
             }
         } catch (Throwable e) {
-            logger.warn(this.getName() + "run() exception ", e);
+            logger.log(Level.WARNING, this.getName() + "run() exception ", e);
         }
         _scheduler.shutdown();
     }
