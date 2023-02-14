@@ -12,7 +12,11 @@ import io.libp2p.etc.types.toByteBuf
 import io.libp2p.etc.types.toHex
 import io.libp2p.etc.util.netty.mux.MuxId
 import io.libp2p.etc.util.netty.nettyInitializer
-import io.libp2p.mux.yamux.*
+import io.libp2p.mux.yamux.YamuxFlags
+import io.libp2p.mux.yamux.YamuxFrame
+import io.libp2p.mux.yamux.YamuxFrameCodec
+import io.libp2p.mux.yamux.YamuxHandler
+import io.libp2p.mux.yamux.YamuxType
 import io.libp2p.tools.TestChannel
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandler
@@ -48,7 +52,7 @@ class YamuxHandlerTest {
             }
         )
         multistreamHandler = object : YamuxHandler(
-            MultistreamProtocolV1, DEFAULT_MAX_YAMUX_FRAME_DATA_LENGTH, null, streamHandler, true
+            MultistreamProtocolV1, YamuxFrameCodec.DEFAULT_MAX_YAMUX_FRAME_DATA_LENGTH, null, streamHandler, true
         ) {
             // MuxHandler consumes the exception. Override this behaviour for testing
             override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
