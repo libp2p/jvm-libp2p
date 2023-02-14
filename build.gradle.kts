@@ -57,8 +57,6 @@ sourceSets.create("jmh") {
     dependencies {
         implementation(kotlin("stdlib-jdk8"))
         implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.0")
-        implementation("org.bouncycastle:bcprov-jdk15on:1.70")
-        implementation("org.bouncycastle:bcpkix-jdk15on:1.70")
         implementation("commons-codec:commons-codec:1.15")
 
     api("io.netty:netty-buffer:4.1.88.Final")
@@ -69,7 +67,7 @@ sourceSets.create("jmh") {
 
     implementation("com.github.peergos:noise-java:22.1.0")
 
-    implementation("javax.xml.bind:jaxb-api:2.3.1")
+    implementation("org.bouncycastle:bcprov-jdk15on:1.70")
 
     implementation("com.github.multiformats:java-multibase:v1.1.1")
 
