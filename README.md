@@ -59,7 +59,7 @@ We are explicitly leaving out the peerstore, DHT, pubsub, connection manager,
 etc. and other subsystems or concepts that are internal to implementations and
 do not impact the ability to hold communications with other libp2p processes.
 
-## Adding as a dependency to your project:
+## Adding as a dependency to your project
 
 Hosting of artefacts is graciously provided by [Cloudsmith](https://cloudsmith.com).
 
