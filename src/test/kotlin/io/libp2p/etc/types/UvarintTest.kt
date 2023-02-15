@@ -36,7 +36,7 @@ class UvarintTest {
     fun testDecodeTooManyBytes() {
         // Helper function for creating uvarint buffer.
         fun byteArrayOfInts(vararg ints: Int) = ByteArray(ints.size) {
-            pos ->
+                pos ->
             ints[pos].toByte()
         }
 

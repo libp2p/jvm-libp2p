@@ -1,9 +1,6 @@
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
-import org.jetbrains.dokka.gradle.DokkaTask
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.net.URL
-import java.nio.file.Files
-import java.nio.file.Paths
 
 // To publish the release artifact to CloudSmith repo run the following :
 // ./gradlew publish -PcloudsmithUser=<user> -PcloudsmithApiKey=<api-key>
@@ -13,17 +10,18 @@ version = "develop"
 description = "a minimal implementation of libp2p for the jvm"
 
 plugins {
-    kotlin("jvm").version("1.6.10")
+    kotlin("jvm").version("1.6.21")
 
     id("com.github.ben-manes.versions").version("0.44.0")
-    id("com.google.protobuf").version("0.9.1")
+    id("com.google.protobuf").version("0.9.2")
     id("idea")
-    id("io.gitlab.arturbosch.detekt").version("1.20.0-RC1")
+    id("io.gitlab.arturbosch.detekt").version("1.22.0")
     id("java")
     id("maven-publish")
-    id("org.jetbrains.dokka").version("1.6.10")
-    id("org.jmailen.kotlinter").version("3.8.0")
+    id("org.jetbrains.dokka").version("1.7.20")
+    id("org.jmailen.kotlinter").version("3.10.0")
     id("java-test-fixtures")
+    id("me.champeau.jmh").version("0.6.8")
 }
 
 repositories {
@@ -31,74 +29,65 @@ repositories {
     maven("https://artifacts.consensys.net/public/maven/maven/")
 }
 
-
+val guavaVersion = "31.1-jre"
+val bouncyCastleVersion = "1.70"
 val log4j2Version = "2.19.0"
-
-sourceSets.create("jmh") {
-    compileClasspath += sourceSets["main"].runtimeClasspath
-    compileClasspath += sourceSets["testFixtures"].runtimeClasspath
-    runtimeClasspath += sourceSets["main"].runtimeClasspath
-    runtimeClasspath += sourceSets["testFixtures"].runtimeClasspath
-}
+val junitVersion = "5.9.2"
+val mockitoVersion = "5.1.1"
+val jmhVersion = "1.36"
 
 dependencies {
-    api("io.netty:netty-all:4.1.69.Final")
-    api("com.google.protobuf:protobuf-java:3.21.9")
+    api("io.netty:netty-all:4.1.87.Final")
+    api("com.google.protobuf:protobuf-java:3.21.12")
 
     implementation(kotlin("stdlib-jdk8"))
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
     implementation("tech.pegasys:noise-java:22.1.0")
 
-    implementation("com.google.guava:guava:31.1-jre")
-    implementation("org.bouncycastle:bcprov-jdk15on:1.70")
-    implementation("org.bouncycastle:bcpkix-jdk15on:1.70")
+    implementation("com.google.guava:guava:$guavaVersion")
+    implementation("org.bouncycastle:bcprov-jdk15on:$bouncyCastleVersion")
+    implementation("org.bouncycastle:bcpkix-jdk15on:$bouncyCastleVersion")
     implementation("commons-codec:commons-codec:1.15")
 
-    implementation("org.apache.logging.log4j:log4j-api:${log4j2Version}")
-    implementation("org.apache.logging.log4j:log4j-core:${log4j2Version}")
+    implementation("org.apache.logging.log4j:log4j-api:$log4j2Version")
+    implementation("org.apache.logging.log4j:log4j-core:$log4j2Version")
     implementation("javax.xml.bind:jaxb-api:2.3.1")
 
-    testFixturesImplementation("org.apache.logging.log4j:log4j-api:${log4j2Version}")
-    testFixturesImplementation("com.google.guava:guava:31.0.1-jre")
+    testFixturesImplementation("org.apache.logging.log4j:log4j-api:$log4j2Version")
+    testFixturesImplementation("com.google.guava:guava:$guavaVersion")
 
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.1")
-    testImplementation("org.junit.jupiter:junit-jupiter-params:5.9.1")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.9.1")
-    testImplementation("io.mockk:mockk:1.12.2")
-    testRuntimeOnly("org.mockito:mockito-core:4.8.1")
-    testImplementation("org.mockito:mockito-junit-jupiter:4.8.1")
-    testImplementation("org.assertj:assertj-core:3.23.1")
+    testImplementation("org.junit.jupiter:junit-jupiter:$junitVersion")
+    testImplementation("org.junit.jupiter:junit-jupiter-params:$junitVersion")
+    testImplementation("io.mockk:mockk:1.13.3")
+    testRuntimeOnly("org.mockito:mockito-core:$mockitoVersion")
+    testImplementation("org.mockito:mockito-junit-jupiter:$mockitoVersion")
+    testImplementation("org.assertj:assertj-core:3.24.2")
 
-    "jmhImplementation"("org.openjdk.jmh:jmh-core:1.35")
-    "jmhAnnotationProcessor"("org.openjdk.jmh:jmh-generator-annprocess:1.35")
-}
-
-task<JavaExec>("jmh") {
-    mainClass.set("org.openjdk.jmh.Main")
-    classpath = sourceSets["jmh"].compileClasspath + sourceSets["jmh"].runtimeClasspath
+    jmhImplementation("org.openjdk.jmh:jmh-core:$jmhVersion")
+    jmhAnnotationProcessor("org.openjdk.jmh:jmh-generator-annprocess:$jmhVersion")
 }
 
 protobuf {
     protoc {
-        artifact = "com.google.protobuf:protoc:3.21.9"
+        artifact = "com.google.protobuf:protoc:3.21.12"
     }
 
-    tasks.get("clean").doFirst({ delete(generatedFilesBaseDir) })
+    tasks["clean"].doFirst { delete(generatedFilesBaseDir) }
 
     idea {
         module {
-            sourceDirs.add(file("${generatedFilesBaseDir}/main/java"))
+            sourceDirs.add(file("$generatedFilesBaseDir/main/java"))
         }
     }
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_1_8
-    targetCompatibility = JavaVersion.VERSION_1_8
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
 }
 
 tasks.withType<KotlinCompile> {
-    kotlinOptions.jvmTarget = "1.8"
+    kotlinOptions.jvmTarget = "11"
     kotlinOptions {
         freeCompilerArgs = listOf("-Xjvm-default=all")
     }
@@ -111,7 +100,7 @@ tasks.withType<Copy> {
 tasks.test {
     description = "Runs the unit tests."
 
-    useJUnitPlatform{
+    useJUnitPlatform {
         excludeTags("interop")
     }
 
@@ -130,11 +119,11 @@ tasks.test {
 }
 
 kotlinter {
-    disabledRules = arrayOf("no-wildcard-imports")
+    disabledRules = arrayOf("no-wildcard-imports", "enum-entry-name-case")
 }
 
 val sourcesJar by tasks.registering(Jar::class) {
-    classifier = "sources"
+    archiveClassifier.set("sources")
     from(sourceSets.main.get().allSource)
 }
 
@@ -142,7 +131,7 @@ tasks.dokkaHtml.configure {
     outputDirectory.set(buildDir.resolve("dokka"))
     dokkaSourceSets {
         configureEach {
-            jdkVersion.set(8)
+            jdkVersion.set(11)
             reportUndocumented.set(false)
             externalDocumentationLink {
                 url.set(URL("https://netty.io/4.1/api/"))
