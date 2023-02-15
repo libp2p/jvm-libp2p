@@ -60,9 +60,14 @@ etc. and other subsystems or concepts that are internal to implementations and
 do not impact the ability to hold communications with other libp2p processes.
 
 ## Adding as a dependency to your project:
-[![Latest version of 'jvm-libp2p-minimal' @ Cloudsmith](https://api-prd.cloudsmith.io/v1/badges/version/libp2p/jvm-libp2p/maven/jvm-libp2p-minimal/latest/a=noarch;xg=io.libp2p/?render=true&show_latest=true)](https://cloudsmith.io/~libp2p/repos/jvm-libp2p/packages/detail/maven/jvm-libp2p-minimal/latest/a=noarch;xg=io.libp2p/)
 
 Hosting of artefacts is graciously provided by [Cloudsmith](https://cloudsmith.com).
+
+[![Latest version of 'jvm-libp2p-minimal' @ Cloudsmith](https://api-prd.cloudsmith.io/v1/badges/version/libp2p/jvm-libp2p/maven/jvm-libp2p-minimal/latest/a=noarch;xg=io.libp2p/?render=true&show_latest=true)](https://cloudsmith.io/~libp2p/repos/jvm-libp2p/packages/detail/maven/jvm-libp2p-minimal/latest/a=noarch;xg=io.libp2p/)
+
+As an alternative, artefacts are also available on [JitPack](https://jitpack.io/).
+
+[![](https://jitpack.io/v/libp2p/jvm-libp2p.svg)](https://jitpack.io/#libp2p/jvm-libp2p)
 
 ### Using Gradle
 Add the Cloudsmith repository to the `repositories` section of your Gradle file.
@@ -107,8 +112,6 @@ And then add jvm-libp2p as a dependency:
   <type>pom</type>
 </dependency>
 ```
-
-
 
 ## Building the project 
 
