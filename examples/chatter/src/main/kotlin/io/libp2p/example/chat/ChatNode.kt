@@ -5,9 +5,7 @@ import io.libp2p.core.PeerId
 import io.libp2p.core.PeerInfo
 import io.libp2p.core.Stream
 import io.libp2p.core.dsl.host
-import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.discovery.MDnsDiscovery
-import java.lang.Exception
 import java.net.Inet4Address
 import java.net.InetAddress
 import java.net.NetworkInterface
@@ -16,8 +14,8 @@ typealias OnMessage = (String) -> Unit
 
 class ChatNode(private val printMsg: OnMessage) {
     private data class Friend(
-            var name: String,
-            val controller: ChatController
+        var name: String,
+        val controller: ChatController
     )
 
     private var currentAlias: String
@@ -30,20 +28,22 @@ class ChatNode(private val printMsg: OnMessage) {
             +Chat(::messageReceived)
         }
         network {
-            listen("/ip4/${address}/tcp/0")
+            listen("/ip4/$address/tcp/0")
         }
     }
 
     val peerId = chatHost.peerId
     val address: String
-        get() { return privateAddress.hostAddress }
+        get() {
+            return privateAddress.hostAddress
+        }
 
     init {
         chatHost.start().get()
         currentAlias = chatHost.peerId.toBase58()
 
         peerFinder = MDnsDiscovery(chatHost, address = privateAddress)
-        peerFinder.onPeerFound { peerFound(it) }
+        peerFinder.newPeerFoundListeners += { peerFound(it) }
         peerFinder.start()
     } // init
 
@@ -81,8 +81,8 @@ class ChatNode(private val printMsg: OnMessage) {
 
     private fun peerFound(info: PeerInfo) {
         if (
-                info.peerId == chatHost.peerId ||
-                knownNodes.contains(info.peerId)
+            info.peerId == chatHost.peerId ||
+            knownNodes.contains(info.peerId)
         )
             return
 
@@ -97,21 +97,22 @@ class ChatNode(private val printMsg: OnMessage) {
         printMsg("Connected to new peer ${info.peerId}")
         chatConnection.second.send("/who")
         peers[info.peerId] = Friend(
-                info.peerId.toBase58(),
-                chatConnection.second
+            info.peerId.toBase58(),
+            chatConnection.second
         )
     } // peerFound
 
+    @Suppress("SwallowedException")
     private fun connectChat(info: PeerInfo): Pair<Stream, ChatController>? {
         try {
             val chat = Chat(::messageReceived).dial(
-                    chatHost,
-                    info.peerId,
-                    info.addresses[0]
+                chatHost,
+                info.peerId,
+                info.addresses[0]
             )
             return Pair(
-                    chat.stream.get(),
-                    chat.controller.get()
+                chat.stream.get(),
+                chat.controller.get()
             )
         } catch (e: Exception) {
             return null
