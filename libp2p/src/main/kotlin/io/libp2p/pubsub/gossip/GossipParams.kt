@@ -421,7 +421,7 @@ data class GossipPeerScoreParams(
  * @see GossipTopicScoreParams
  */
 class GossipTopicsScoreParams(
-    private val defaultParams: GossipTopicScoreParams = GossipTopicScoreParams(),
+    val defaultParams: GossipTopicScoreParams = GossipTopicScoreParams(),
     topicParamsMap: Map<Topic, GossipTopicScoreParams> = mapOf()
 ) {
     val topicParams: MutableMap<Topic, GossipTopicScoreParams> = topicParamsMap.toMutableMap()
