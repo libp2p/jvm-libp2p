@@ -14,6 +14,9 @@ dependencies {
     implementation("org.bouncycastle:bcprov-jdk15on")
     implementation("org.bouncycastle:bcpkix-jdk15on")
 
+    testImplementation(project(":tools:schedulers"))
+
+    jmhImplementation(project(":tools:schedulers"))
     jmhImplementation("org.openjdk.jmh:jmh-core")
     jmhAnnotationProcessor("org.openjdk.jmh:jmh-generator-annprocess")
 }
