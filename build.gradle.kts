@@ -11,7 +11,6 @@ plugins {
     kotlin("jvm").version("1.6.21")
 
     id("com.github.ben-manes.versions").version("0.44.0")
-    id("com.google.protobuf").version("0.9.2")
     id("idea")
     id("io.gitlab.arturbosch.detekt").version("1.22.0")
     id("java")
@@ -27,7 +26,6 @@ allprojects {
     version = "develop"
 
     apply(plugin = "kotlin")
-    apply(plugin = "com.google.protobuf")
     apply(plugin = "idea")
     apply(plugin = "io.gitlab.arturbosch.detekt")
     apply(plugin = "java")
@@ -42,19 +40,9 @@ allprojects {
         maven("https://artifacts.consensys.net/public/maven/maven/")
     }
 
-//    sourceSets.create("jmh") {
-//        java.srcDir("src/jmh/java")
-//        compileClasspath += sourceSets["main"].runtimeClasspath
-//        compileClasspath += sourceSets["testFixtures"].runtimeClasspath
-//        runtimeClasspath += sourceSets["main"].runtimeClasspath
-//        runtimeClasspath += sourceSets["testFixtures"].runtimeClasspath
-//    }
-
     val guavaVersion = "31.1-jre"
-    val bouncyCastleVersion = "1.70"
     val log4j2Version = "2.19.0"
     val junitVersion = "5.9.2"
-    val mockitoVersion = "5.1.1"
     val jmhVersion = "1.36"
 
 
@@ -62,16 +50,9 @@ allprojects {
 
         implementation(kotlin("stdlib-jdk8"))
         implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
-        implementation("tech.pegasys:noise-java:22.1.0")
 
         implementation("com.google.guava:guava:$guavaVersion")
-        implementation("org.bouncycastle:bcprov-jdk15on:$bouncyCastleVersion")
-        implementation("org.bouncycastle:bcpkix-jdk15on:$bouncyCastleVersion")
-        implementation("commons-codec:commons-codec:1.15")
-
         implementation("org.apache.logging.log4j:log4j-api:$log4j2Version")
-        implementation("org.apache.logging.log4j:log4j-core:$log4j2Version")
-        implementation("javax.xml.bind:jaxb-api:2.3.1")
 
         testFixturesImplementation("org.apache.logging.log4j:log4j-api:$log4j2Version")
         testFixturesImplementation("com.google.guava:guava:$guavaVersion")
@@ -79,23 +60,17 @@ allprojects {
         testImplementation("org.junit.jupiter:junit-jupiter:$junitVersion")
         testImplementation("org.junit.jupiter:junit-jupiter-params:$junitVersion")
         testImplementation("io.mockk:mockk:1.13.3")
-        testRuntimeOnly("org.mockito:mockito-core:$mockitoVersion")
-        testImplementation("org.mockito:mockito-junit-jupiter:$mockitoVersion")
         testImplementation("org.assertj:assertj-core:3.24.2")
+        testImplementation("org.apache.logging.log4j:log4j-core:$log4j2Version")
 
-        "jmhImplementation"("org.openjdk.jmh:jmh-core:$jmhVersion")
-        "jmhAnnotationProcessor"("org.openjdk.jmh:jmh-generator-annprocess:$jmhVersion")
+        jmhImplementation("org.openjdk.jmh:jmh-core:$jmhVersion")
+        jmhAnnotationProcessor("org.openjdk.jmh:jmh-generator-annprocess:$jmhVersion")
     }
 
     java {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
-
-//    task<JavaExec>("jmh") {
-//        mainClass.set("org.openjdk.jmh.Main")
-//        classpath = sourceSets["jmh"].compileClasspath + sourceSets["jmh"].runtimeClasspath
-//    }
 
     tasks.withType<KotlinCompile> {
         kotlinOptions.jvmTarget = "11"
