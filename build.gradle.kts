@@ -147,13 +147,15 @@ allprojects {
                 }
             }
         }
-        publications {
-            register("mavenJava", MavenPublication::class) {
-                from(components["java"])
-                artifact(sourcesJar.get())
-                artifact(dokkaJar.get())
-                groupId = "io.libp2p"
-                artifactId = project.name
+        if (hasProperty("mavenArtifactId")) {
+            publications {
+                register("mavenJava", MavenPublication::class) {
+                    from(components["java"])
+                    artifact(sourcesJar.get())
+                    artifact(dokkaJar.get())
+                    groupId = "io.libp2p"
+                    artifactId = project.property("mavenArtifactId") as String
+                }
             }
         }
     }
