@@ -20,7 +20,7 @@ import java.net.InetSocketAddress
  * Given that TCP by itself is not authenticated, encrypted, nor multiplexed, this transport uses the upgrader to
  * shim those capabilities via dynamic negotiation.
  */
-class TcpTransport(
+open class TcpTransport(
     upgrader: ConnectionUpgrader
 ) : NettyTransport(upgrader) {
 

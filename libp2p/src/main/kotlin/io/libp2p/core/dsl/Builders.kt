@@ -84,7 +84,7 @@ open class Builder {
     /**
      * Manipulates the transports for this host.
      */
-    fun transports(fn: TransportsBuilder.() -> Unit): Builder = apply { fn(transports) }
+    open fun transports(fn: TransportsBuilder.() -> Unit): Builder = apply { fn(transports) }
 
     /**
      * [AddressBook] implementation

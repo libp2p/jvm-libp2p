@@ -18,7 +18,7 @@ import java.net.InetSocketAddress
  *
  * It exposes libp2p components and semantics via methods and properties.
  */
-class ConnectionOverNetty(
+open class ConnectionOverNetty(
     ch: Channel,
     private val transport: Transport,
     initiator: Boolean
