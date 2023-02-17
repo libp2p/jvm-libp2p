@@ -1,6 +1,7 @@
 
 plugins {
     id("com.google.protobuf").version("0.9.2")
+    id("me.champeau.jmh").version("0.6.8")
 }
 
 dependencies {
@@ -12,6 +13,9 @@ dependencies {
 
     implementation("org.bouncycastle:bcprov-jdk15on")
     implementation("org.bouncycastle:bcpkix-jdk15on")
+
+    jmhImplementation("org.openjdk.jmh:jmh-core")
+    jmhAnnotationProcessor("org.openjdk.jmh:jmh-generator-annprocess")
 }
 
 protobuf {

@@ -18,7 +18,6 @@ plugins {
     id("org.jetbrains.dokka").version("1.7.20")
     id("org.jmailen.kotlinter").version("3.10.0")
     id("java-test-fixtures")
-    id("me.champeau.jmh").version("0.6.8")
     id("io.spring.dependency-management").version("1.1.0")
 }
 
@@ -34,7 +33,6 @@ allprojects {
     apply(plugin = "org.jetbrains.dokka")
     apply(plugin = "org.jmailen.kotlinter")
     apply(plugin = "java-test-fixtures")
-    apply(plugin = "me.champeau.jmh")
     apply(plugin = "io.spring.dependency-management")
     apply(from = "$rootDir/versions.gradle")
 
@@ -59,9 +57,6 @@ allprojects {
         testImplementation("io.mockk:mockk")
         testImplementation("org.assertj:assertj-core")
         testImplementation("org.apache.logging.log4j:log4j-core")
-
-        jmhImplementation("org.openjdk.jmh:jmh-core")
-        jmhAnnotationProcessor("org.openjdk.jmh:jmh-generator-annprocess")
     }
 
     java {
