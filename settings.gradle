@@ -1,1 +1,3 @@
 rootProject.name = 'jvm-libp2p-minimal'
+
+include ':libp2p'
