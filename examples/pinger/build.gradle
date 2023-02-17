@@ -1,14 +1,11 @@
 plugins {
   id 'application'
-  id 'java'
 }
 
-version '1.0-SNAPSHOT'
-
-sourceCompatibility = 1.8
-
 dependencies {
-  compile 'io.libp2p:jvm-libp2p-minimal:0.4.0-SNAPSHOT'
+  implementation project(':libp2p')
+
+  runtimeOnly("org.apache.logging.log4j:log4j-core:2.19.0")
 }
 
 application {
