@@ -19,6 +19,7 @@ plugins {
     id("org.jmailen.kotlinter").version("3.10.0")
     id("java-test-fixtures")
     id("me.champeau.jmh").version("0.6.8")
+    id("io.spring.dependency-management").version("1.1.0")
 }
 
 allprojects {
@@ -34,37 +35,33 @@ allprojects {
     apply(plugin = "org.jmailen.kotlinter")
     apply(plugin = "java-test-fixtures")
     apply(plugin = "me.champeau.jmh")
+    apply(plugin = "io.spring.dependency-management")
+    apply(from = "$rootDir/versions.gradle")
 
     repositories {
         mavenCentral()
         maven("https://artifacts.consensys.net/public/maven/maven/")
     }
 
-    val guavaVersion = "31.1-jre"
-    val log4j2Version = "2.19.0"
-    val junitVersion = "5.9.2"
-    val jmhVersion = "1.36"
-
-
     dependencies {
 
         implementation(kotlin("stdlib-jdk8"))
-        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
+        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core")
 
-        implementation("com.google.guava:guava:$guavaVersion")
-        implementation("org.apache.logging.log4j:log4j-api:$log4j2Version")
+        implementation("com.google.guava:guava")
+        implementation("org.apache.logging.log4j:log4j-api")
 
-        testFixturesImplementation("org.apache.logging.log4j:log4j-api:$log4j2Version")
-        testFixturesImplementation("com.google.guava:guava:$guavaVersion")
+        testFixturesImplementation("org.apache.logging.log4j:log4j-api")
+        testFixturesImplementation("com.google.guava:guava")
 
-        testImplementation("org.junit.jupiter:junit-jupiter:$junitVersion")
-        testImplementation("org.junit.jupiter:junit-jupiter-params:$junitVersion")
-        testImplementation("io.mockk:mockk:1.13.3")
-        testImplementation("org.assertj:assertj-core:3.24.2")
-        testImplementation("org.apache.logging.log4j:log4j-core:$log4j2Version")
+        testImplementation("org.junit.jupiter:junit-jupiter")
+        testImplementation("org.junit.jupiter:junit-jupiter-params")
+        testImplementation("io.mockk:mockk")
+        testImplementation("org.assertj:assertj-core")
+        testImplementation("org.apache.logging.log4j:log4j-core")
 
-        jmhImplementation("org.openjdk.jmh:jmh-core:$jmhVersion")
-        jmhAnnotationProcessor("org.openjdk.jmh:jmh-generator-annprocess:$jmhVersion")
+        jmhImplementation("org.openjdk.jmh:jmh-core")
+        jmhAnnotationProcessor("org.openjdk.jmh:jmh-generator-annprocess")
     }
 
     java {

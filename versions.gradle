@@ -1,0 +1,36 @@
+dependencyManagement {
+    dependencies {
+
+        dependency "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4"
+        dependency "com.google.guava:guava:31.1-jre"
+        dependencySet(group: 'org.apache.logging.log4j', version: '2.19.0') {
+            entry 'log4j-api'
+            entry 'log4j-core'
+        }
+
+        dependencySet(group: 'org.junit.jupiter', version: '5.9.2') {
+            entry 'junit-jupiter-api'
+            entry 'junit-jupiter-engine'
+            entry 'junit-jupiter-params'
+        }
+        dependency "io.mockk:mockk:1.13.3"
+        dependency "org.assertj:assertj-core:3.24.2"
+
+        dependencySet(group: "org.openjdk.jmh", version: "1.36") {
+            entry 'jmh-core'
+            entry 'jmh-generator-annprocess'
+        }
+
+        dependencySet(group: "com.google.protobuf", version: "3.21.12") {
+            entry 'protobuf-java'
+            entry 'protoc'
+        }
+        dependency "io.netty:netty-all:4.1.87.Final"
+        dependency "commons-codec:commons-codec:1.15"
+        dependency "tech.pegasys:noise-java:22.1.0"
+        dependencySet(group: "org.bouncycastle", version: "1.70") {
+            entry 'bcprov-jdk15on'
+            entry 'bcpkix-jdk15on'
+        }
+    }
+}
