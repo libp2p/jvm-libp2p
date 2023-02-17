@@ -1,4 +1,4 @@
-package io.libp2p.example;
+package io.libp2p.example.ping;
 
 import io.libp2p.core.Host;
 import io.libp2p.core.dsl.HostBuilder;

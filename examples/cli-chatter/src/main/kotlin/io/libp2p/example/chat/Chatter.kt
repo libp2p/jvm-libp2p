@@ -25,4 +25,3 @@ fun main() {
 
     node.stop()
 }
-

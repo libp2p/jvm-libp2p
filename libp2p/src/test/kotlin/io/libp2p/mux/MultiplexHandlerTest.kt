@@ -58,6 +58,7 @@ class MultiplexHandlerTest {
             MultistreamProtocolV1, DEFAULT_MAX_MPLEX_FRAME_DATA_LENGTH, null, streamHandler
         ) {
             // MuxHandler consumes the exception. Override this behaviour for testing
+            @Deprecated("Deprecated in Java")
             override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
                 ctx.fireExceptionCaught(cause)
             }

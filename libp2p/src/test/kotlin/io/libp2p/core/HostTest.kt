@@ -309,6 +309,7 @@ class HostTest {
                     }
                 }
 
+                @Deprecated("Deprecated in Java")
                 override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
                     cause.printStackTrace()
                     ctx.fireExceptionCaught(cause)

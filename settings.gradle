@@ -1,1 +1,6 @@
 rootProject.name = 'jvm-libp2p-minimal'
+
+include ':libp2p'
+include ':examples:chatter'
+include ':examples:cli-chatter'
+include ':examples:pinger'
