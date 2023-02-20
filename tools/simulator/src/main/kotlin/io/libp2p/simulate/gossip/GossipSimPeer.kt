@@ -22,7 +22,6 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 
 class GossipSimPeer(
-    val topics: List<Topic>,
     override val name: String,
     override val random: Random,
     protocol: PubsubProtocol = PubsubProtocol.Gossip_V_1_1
@@ -44,7 +43,7 @@ class GossipSimPeer(
 
     var validationDelay = 0.millis
     var validationResult = RESULT_VALID
-    val subscriptions = mutableListOf<PubsubSubscription>()
+    val subscriptions = mutableMapOf<Topic, PubsubSubscription>()
 
     val inboundMessages = mutableListOf<Pair<MessageApi, Long>>()
 
@@ -57,24 +56,33 @@ class GossipSimPeer(
         inboundMessages += msg to router.currentTimeSupplier()
     }
 
-    override fun start(): CompletableFuture<Unit> {
-        val subs = topics.map { topic ->
-            api.subscribe(
-                Validator {
-                    onNewMsg(it)
-                    if (validationDelay.toMillis() == 0L) {
-                        validationResult
-                    } else {
-                        val ret = CompletableFuture<ValidationResult>()
-                        simExecutor.schedule({ ret.complete(validationResult.get()) }, validationDelay.toMillis(), TimeUnit.MILLISECONDS)
-                        ret
-                    }
-                },
-                topic
-            )
-        }
-        subscriptions += subs
-        return super.start()
+    fun subscribe(topic: Topic): PubsubSubscription {
+        val subscription = api.subscribe(
+            Validator {
+                onNewMsg(it)
+                if (validationDelay.toMillis() == 0L) {
+                    validationResult
+                } else {
+                    val ret = CompletableFuture<ValidationResult>()
+                    simExecutor.schedule(
+                        { ret.complete(validationResult.get()) },
+                        validationDelay.toMillis(),
+                        TimeUnit.MILLISECONDS
+                    )
+                    ret
+                }
+            },
+            topic
+        )
+        subscriptions[topic] = subscription
+        return subscription
+    }
+
+    fun unsubscribe(topic: Topic): PubsubSubscription {
+        val subscription =
+            subscriptions[topic] ?: throw IllegalArgumentException("Peers is not subscribed to topic $topic")
+        subscription.unsubscribe()
+        return subscription
     }
 
     override fun toString(): String {

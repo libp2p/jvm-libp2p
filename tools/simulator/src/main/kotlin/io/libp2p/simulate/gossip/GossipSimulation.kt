@@ -39,7 +39,16 @@ class GossipSimulation(
     val gossipMessageCollector = GossipMessageCollector(network.network, currentTimeSupplier, cfg.messageGenerator)
 
     init {
+        subscribeAll()
         forwardTime(cfg.warmUpDelay)
+    }
+
+    private fun subscribeAll() {
+        network.peers.values.forEach { peer ->
+            cfg.topics.forEach { topic ->
+                peer.subscribe(topic)
+            }
+        }
     }
 
     fun forwardTime(duration: Duration): Long {
