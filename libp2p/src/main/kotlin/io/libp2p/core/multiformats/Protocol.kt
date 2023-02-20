@@ -48,7 +48,9 @@ enum class Protocol(
     HTTPS(443, 0, "https"),
     ONION(444, 96, "onion", ONION_PARSER, ONION_STRINGIFIER),
     QUIC(460, 0, "quic"),
+    QUICV1(461, 0, "quic-v1"),
     WS(477, 0, "ws"),
+    WSS(478, 0, "wss"),
     P2PCIRCUIT(290, 0, "p2p-circuit"),
     HTTP(480, 0, "http");
 
