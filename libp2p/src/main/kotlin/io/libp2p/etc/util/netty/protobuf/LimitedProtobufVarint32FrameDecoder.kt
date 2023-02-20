@@ -28,7 +28,7 @@ import kotlin.Throws
  * @see [LengthFieldBasedFrameDecoder] (https://github.com/netty/netty/blob/8ea0d8f41ac5b0b09229a53690cad7febb4332ef/codec/src/main/java/io/netty/handler/codec/LengthFieldBasedFrameDecoder.java)
  * @see CodedInputStream
  */
-internal class LimitedProtobufVarint32FrameDecoder(private val maxDataLength: Int) : ByteToMessageDecoder() {
+class LimitedProtobufVarint32FrameDecoder(private val maxDataLength: Int) : ByteToMessageDecoder() {
     private var discardingTooLongFrame = false
     private var tooLongFrameLength: Int = 0
     private var bytesToDiscard: Int = 0
