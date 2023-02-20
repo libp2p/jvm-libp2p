@@ -145,41 +145,6 @@ class BlobDecouplingSimulation(
         return StatsFactory.DEFAULT.createStats(allMessageDelays)
     }
 
-    fun gatherAvrgTrafficByBandwidth(startTime: Long, endTime: Long): Map<Bandwidth, Pair<Stats, Stats>> {
-        val messages = simulation.gossipMessageCollector
-            .gatherResult()
-            .slice(startTime, endTime)
-        val traffics = peerIndexesByBandwidth.mapValues { (_, peerIndexes) ->
-            peerIndexes.map { peerIndex ->
-                val peer = simNetwork.peers[peerIndex]!!
-                val inboundSize = messages.messages
-                    .filter {
-                        it.receivingPeer === peer
-                    }.sumOf {
-                        simConfig.messageGenerator.sizeEstimator(it.message)
-                    }
-                val outboundSize = messages.messages
-                    .filter {
-                        it.sendingPeer === peer
-                    }.sumOf {
-                        simConfig.messageGenerator.sizeEstimator(it.message)
-                    }
-                inboundSize to outboundSize
-            }
-        }
-
-        val stats = traffics.mapValues { (_, sizes) ->
-            val inStats = StatsFactory.DEFAULT.createStats("inbound")
-            val outStats = StatsFactory.DEFAULT.createStats("outbound")
-            sizes.forEach { (inb, outb) ->
-                inStats += inb
-                outStats += outb
-            }
-            inStats to outStats
-        }
-        return stats
-    }
-
     fun testCoupled() {
         for (i in 0 until messageCount) {
             val sendingPeer = sendingPeerIndexes[i]
@@ -318,10 +283,6 @@ class BlobDecouplingSimulation(
 }
 
 fun main() {
-//    val bandwidths = bandwidthDistributions
-
-    val delayRanges = (0L until 20_000L).chunked(20)
-
     val bandwidths = bandwidthDistributions.entries.toList()
         .let {
             listOf(/*it[0],*/ it[2])
@@ -339,6 +300,7 @@ fun main() {
         }
 
         fun getRangedDelays(sim: BlobDecouplingSimulation): String {
+            val delayRanges = (0L until 20_000L).chunked(20)
 
             val slowDelays = sim.simulation.gatherPubDeliveryStats()
                 .aggregateSlowestByPublishTime()
