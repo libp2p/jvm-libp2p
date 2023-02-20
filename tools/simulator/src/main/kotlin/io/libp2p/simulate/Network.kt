@@ -5,7 +5,6 @@ interface Network {
     val peers: List<SimPeer>
 
     val activeConnections: List<SimConnection>
-        get() = peers.flatMap { it.connections }.distinct()
 
     val topologyGraph: TopologyGraph
 }

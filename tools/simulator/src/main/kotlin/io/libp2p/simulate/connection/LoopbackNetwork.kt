@@ -5,6 +5,7 @@ import io.libp2p.core.dsl.Builder
 import io.libp2p.core.dsl.TransportsBuilder
 import io.libp2p.etc.types.lazyVar
 import io.libp2p.simulate.Network
+import io.libp2p.simulate.SimConnection
 import io.libp2p.simulate.TopologyGraph
 import io.libp2p.transport.ConnectionUpgrader
 import java.util.Random
@@ -60,4 +61,6 @@ class LoopbackNetwork : Network {
     }
 
     override val peers: MutableList<HostSimPeer> = mutableListOf()
+    override val activeConnections: List<SimConnection>
+        get() = peers.flatMap { it.connections }.distinct()
 }
