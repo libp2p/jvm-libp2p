@@ -46,7 +46,7 @@ open class GossipRouterBuilder(
 
     private var disposed = false
 
-    protected fun createGossipRouter(): GossipRouter {
+    protected open fun createGossipRouter(): GossipRouter {
         val gossipScore = scoreFactory(scoreParams, scheduledAsyncExecutor, currentTimeSuppluer, { gossipRouterEventListeners += it })
 
         val router = GossipRouter(
