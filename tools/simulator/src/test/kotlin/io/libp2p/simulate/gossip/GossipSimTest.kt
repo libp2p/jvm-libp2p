@@ -1,79 +1,74 @@
-package io.libp2p.simulate
+package io.libp2p.simulate.gossip
 
 import io.libp2p.core.pubsub.Topic
-import io.libp2p.etc.types.toByteBuf
-import io.libp2p.pubsub.gossip.builders.GossipRouterBuilder
+import io.libp2p.simulate.Bandwidth
+import io.libp2p.simulate.TopologyGraph
 import io.libp2p.simulate.delay.AccurateBandwidthTracker
 import io.libp2p.simulate.delay.LoggingDelayer.Companion.logging
-import io.libp2p.simulate.gossip.*
 import io.libp2p.simulate.gossip.router.SimGossipRouterBuilder
 import io.libp2p.simulate.stats.StatsFactory
+import io.libp2p.simulate.topology.AllToAllTopology
 import io.libp2p.simulate.topology.asFixedTopology
 import io.libp2p.simulate.util.millis
 import io.libp2p.simulate.util.minutes
 import io.libp2p.simulate.util.seconds
-import io.libp2p.simulate.util.transpose
 import io.libp2p.tools.log
-import io.libp2p.tools.schedulers.ControlledExecutorServiceImpl
-import io.libp2p.tools.schedulers.TimeControllerImpl
-import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
-import java.util.*
-import java.util.function.Consumer
 
 class GossipSimTest {
 
     @Test
-    fun simplest1() {
-        val timeController = TimeControllerImpl()
-
-        val createPeer = {
-            val peer = GossipSimPeer(listOf(Topic("aaa")), "1", Random())
-            peer.routerBuilder = SimGossipRouterBuilder().also {
-                it.serializeMessagesToBytes = true
-            }
-
-            peer.pubsubLogs = { true }
-            peer.simExecutor = ControlledExecutorServiceImpl(timeController)
-            peer.currentTime = { timeController.time }
-            peer
-        }
-
-        val p1 = createPeer()
-        val p2 = createPeer()
-
-        p1.connect(p2).get()
-        var gotIt = false
-        p2.api.subscribe(Consumer { gotIt = true }, Topic("a"))
-        val p1Pub = p1.api.createPublisher(p1.keyPair.first, 0)
-        p1Pub.publish("Hello".toByteArray().toByteBuf(), Topic("a"))
-
-        Assertions.assertTrue(gotIt)
-    }
-
-    @Test
-    fun regroupTest() {
-        val t1 = listOf(
-            mapOf(
-                "a" to 11,
-                "b" to 12,
-                "c" to 13
-            ),
-            mapOf(
-                "a" to 21,
-                "b" to 22,
-                "c" to 23
-            )
+    fun test1() {
+        val simConfig = GossipSimConfig(
+            totalPeers = 3,
+            topics = listOf(Topic(BlocksTopic)),
+            topology = AllToAllTopology(),
+            gossipValidationDelay = 0.millis
         )
 
-        val t2 = t1.transpose()
+        val gossipParams = Eth2DefaultGossipParams
+        val gossipScoreParams = Eth2DefaultScoreParams
+        val gossipRouterCtor = { _: Int ->
+            SimGossipRouterBuilder().also {
+                it.params = gossipParams
+                it.scoreParams = gossipScoreParams
+//                it.serialize = true
+            }
+        }
 
-        Assertions.assertEquals(2, t2["a"]!!.size)
-        Assertions.assertEquals(11, t2["a"]!![0])
-        Assertions.assertEquals(21, t2["a"]!![1])
+        val simPeerModifier = { _: Int, _: GossipSimPeer ->
+//            peer.pubsubLogs = { true }
+        }
 
-        val t3 = t2.transpose()
-        Assertions.assertEquals(t1, t3)
+        val simNetwork = GossipSimNetwork(simConfig, gossipRouterCtor, simPeerModifier)
+        println("Creating peers...")
+        simNetwork.createAllPeers()
+        println("Connecting peers...")
+        simNetwork.connectAllPeers()
+
+        println("Creating simulation...")
+        val simulation = GossipSimulation(simConfig, simNetwork)
+        val publishTime = simulation.forwardTime(1.seconds)
+
+        simulation.publishMessage(0)
+        simulation.forwardTime(1.seconds)
+
+        val res = simulation.gatherMessageResults()
+
+        org.assertj.core.api.Assertions.assertThat(res).hasSize(1)
+
+        val res0 = res.values.first()
+        org.assertj.core.api.Assertions.assertThat(res0).hasSize(2)
+
+        val res0_0 = res0.first()
+        org.assertj.core.api.Assertions.assertThat(res0_0.receivedPeer).isEqualTo(1)
+        org.assertj.core.api.Assertions.assertThat(res0_0.receivedTime).isEqualTo(publishTime)
+
+        val res0_1 = res0.last()
+        org.assertj.core.api.Assertions.assertThat(res0_1.receivedPeer).isEqualTo(2)
+        org.assertj.core.api.Assertions.assertThat(res0_1.receivedTime).isEqualTo(publishTime)
+
+        println("Done")
     }
 
     @Test

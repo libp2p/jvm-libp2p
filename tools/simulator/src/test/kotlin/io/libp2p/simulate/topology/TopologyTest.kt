@@ -1,9 +1,7 @@
-package io.libp2p.simulate
+package io.libp2p.simulate.topology
 
-import io.libp2p.simulate.topology.AllToAllTopology
-import io.libp2p.simulate.topology.RandomNPeers
+import io.libp2p.simulate.TopologyGraph
 import org.assertj.core.api.Assertions.assertThat
-import org.assertj.core.data.Offset
 import org.junit.jupiter.api.Test
 import java.util.*
 
@@ -40,7 +38,7 @@ class TopologyTest {
             graph.vertices.forEach { vertex ->
                 val vertexEdges = graph.getVertexEdges(vertex)
                 assertThat(vertexEdges.map { it.getOther(vertex) }.distinct()).hasSize(vertexEdges.size)
-                assertThat(vertexEdges.size).isCloseTo(30, Offset.offset(8))
+                assertThat(vertexEdges.size).isBetween(20, 30)
             }
         }
     }

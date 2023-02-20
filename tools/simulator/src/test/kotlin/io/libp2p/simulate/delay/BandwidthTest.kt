@@ -1,10 +1,8 @@
-package io.libp2p.simulate
+package io.libp2p.simulate.delay
 
 import io.libp2p.core.pubsub.Topic
-import io.libp2p.pubsub.gossip.builders.GossipRouterBuilder
-import io.libp2p.simulate.delay.SequentialBandwidthTracker
-import io.libp2p.simulate.delay.SimpleBandwidthTracker
-import io.libp2p.simulate.delay.TimeDelayer
+import io.libp2p.simulate.Bandwidth
+import io.libp2p.simulate.BandwidthDelayer
 import io.libp2p.simulate.gossip.*
 import io.libp2p.simulate.gossip.router.SimGossipRouterBuilder
 import io.libp2p.simulate.topology.AllToAllTopology
@@ -22,7 +20,7 @@ class BandwidthTest {
         totalPeers = 2,
         topics = listOf(topic),
         topology = AllToAllTopology(),
-        gossipValidationDelay = 0.millis
+        gossipValidationDelay = 0.millis,
     )
 
     val gossipParams = Eth2DefaultGossipParams
@@ -31,7 +29,6 @@ class BandwidthTest {
         SimGossipRouterBuilder().also {
             it.params = gossipParams
             it.scoreParams = gossipScoreParams
-//                it.serialize = true
         }
     }
 

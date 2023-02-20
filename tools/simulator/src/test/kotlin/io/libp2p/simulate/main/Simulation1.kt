@@ -377,7 +377,7 @@ class Simulation1 {
                     listOf(Executor { it.run() })
 
             val peers = (0 until cfg.totalPeers).map {
-                GossipSimPeer(listOf(Topic), it.toString(), commonRnd).apply {
+                GossipSimPeer(it.toString(), commonRnd).apply {
 //                    val gossipParams = GossipParams(
 //                        D = cfg.gossipD,
 //                        DLow = cfg.gossipDLow,
@@ -401,6 +401,7 @@ class Simulation1 {
                         averagePubSubMsgSizeEstimator(cfg.avrgMessageSize, opt.measureTCPFramesOverhead).sizeEstimator
 //                    val latencyRandomValue = cfg.latency.newValue(commonRnd)
                     validationDelay = cfg.gossipValidationDelay
+                    subscribe(Topic)
 
                     start()
                 }

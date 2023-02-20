@@ -1,8 +1,7 @@
-package io.libp2p.simulate
+package io.libp2p.simulate.delay
 
 import io.libp2p.core.pubsub.Topic
-import io.libp2p.pubsub.gossip.builders.GossipRouterBuilder
-import io.libp2p.simulate.delay.AccurateBandwidthTracker
+import io.libp2p.simulate.Bandwidth
 import io.libp2p.simulate.delay.AccurateBandwidthTracker.Message
 import io.libp2p.simulate.gossip.*
 import io.libp2p.simulate.gossip.router.SimGossipRouterBuilder
@@ -13,7 +12,7 @@ import org.assertj.core.api.Assertions
 import org.assertj.core.data.Offset
 import org.junit.jupiter.api.Test
 
-class AnotherBetterBandwidthTest {
+class AccurateBandwidthTest {
 
     @Test
     fun testCalcDeliverTimes1() {

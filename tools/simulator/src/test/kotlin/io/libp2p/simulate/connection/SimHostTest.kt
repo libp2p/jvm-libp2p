@@ -1,4 +1,4 @@
-package io.libp2p.simulate
+package io.libp2p.simulate.connection
 
 import io.libp2p.core.ConnectionClosedException
 import io.libp2p.core.crypto.unmarshalPrivateKey
@@ -10,7 +10,6 @@ import io.libp2p.protocol.Identify
 import io.libp2p.protocol.Ping
 import io.libp2p.protocol.PingController
 import io.libp2p.security.secio.SecIoSecureChannel
-import io.libp2p.simulate.connection.LoopbackNetwork
 import io.libp2p.tools.schedulers.ControlledExecutorServiceImpl
 import io.libp2p.tools.schedulers.TimeControllerImpl
 import io.netty.handler.logging.LogLevel
