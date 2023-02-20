@@ -54,6 +54,7 @@ enum class Protocol(
     WEBTRANSPORT(465, 0, "webtransport"),
     CERTHASH(466, LENGTH_PREFIXED_VAR_SIZE, "certhash", BASE64_PARSER, BASE64_STRINGIFIER),
     WS(477, 0, "ws"),
+    WSS(478, 0, "wss"),
     P2PCIRCUIT(290, 0, "p2p-circuit"),
     HTTP(480, 0, "http");
 
