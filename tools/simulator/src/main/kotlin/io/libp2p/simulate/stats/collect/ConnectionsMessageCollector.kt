@@ -14,10 +14,16 @@ open class ConnectionsMessageCollector<MessageT>(
             ConnectionMessageCollector(conn, timeSupplier)
         }
 
-    val connectionMessages: Map<SimConnection, List<CollectedMessage<MessageT>>> =
+    val deliveredMessages: Map<SimConnection, List<CollectedMessage<MessageT>>> =
         connectionCollectors.mapValues { it.value.deliveredMessages }
 
     val pendingMessages get() = connectionCollectors
         .flatMap { it.value.pendingMessages }
         .sortedBy { it.sendTime }
+
+    fun clear() {
+        connectionCollectors.values.forEach {
+            it.clear()
+        }
+    }
 }

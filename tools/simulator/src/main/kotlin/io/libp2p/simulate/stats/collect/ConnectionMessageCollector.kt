@@ -57,6 +57,10 @@ open class ConnectionMessageCollector<MessageT>(
             }
         }
     }
+
+    fun clear() {
+        deliveredMessagesWrite.clear()
+    }
 }
 
 data class CollectedMessage<T>(
