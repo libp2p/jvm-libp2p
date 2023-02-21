@@ -2,7 +2,7 @@
 
 ## Description
 
-This is Gossip simulator which may simulate networks as large as 10000 of peers
+This is Gossip simulator which may simulate networks as large as 10000 peers
 
 The simulator is _deterministic_. That is: 
 - yields 100% identical results across different runs with the same configuration and the same random seed
