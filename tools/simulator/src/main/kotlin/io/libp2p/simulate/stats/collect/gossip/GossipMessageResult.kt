@@ -151,4 +151,8 @@ class GossipMessageResult(
         messages
             .filter { peer in setOf(it.sendingPeer, it.receivingPeer) }
             .sortedBy { if (it.sendingPeer == peer) it.sendTime else it.receiveTime }
+
+    fun getTotalTraffic() = messages
+        .sumOf { msgGenerator.sizeEstimator(it.message) }
+    fun getTotalMessageCount() = messages.size
 }

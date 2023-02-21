@@ -125,5 +125,6 @@ class GossipSimulation(
 
     fun clearAllMessages() {
         network.peers.values.forEach { it.inboundMessages.clear() }
+        gossipMessageCollector.clear()
     }
 }

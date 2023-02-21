@@ -2,15 +2,20 @@ package io.libp2p.simulate.main
 
 import io.libp2p.core.pubsub.RESULT_INVALID
 import io.libp2p.core.pubsub.Topic
+import io.libp2p.etc.types.millis
 import io.libp2p.etc.types.toByteBuf
+import io.libp2p.pubsub.gossip.CurrentTimeSupplier
+import io.libp2p.pubsub.gossip.GossipParams
 import io.libp2p.simulate.RandomDistribution
 import io.libp2p.simulate.Topology
+import io.libp2p.simulate.delay.TimeDelayer
 import io.libp2p.simulate.generateAndConnect
 import io.libp2p.simulate.gossip.GossipSimPeer
 import io.libp2p.simulate.gossip.averagePubSubMsgSizeEstimator
 import io.libp2p.simulate.stats.StatsFactory
 import io.libp2p.simulate.stats.WritableStats
-import io.libp2p.simulate.stats.collect.GlobalNetworkStatsCollector
+import io.libp2p.simulate.stats.collect.gossip.GossipMessageCollector
+import io.libp2p.simulate.stats.collect.gossip.GossipMessageResult
 import io.libp2p.simulate.topology.RandomNPeers
 import io.libp2p.simulate.util.*
 import io.libp2p.tools.schedulers.ControlledExecutorServiceImpl
@@ -24,6 +29,7 @@ import java.util.concurrent.Callable
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 import kotlin.collections.plus
+import kotlin.time.Duration.Companion.milliseconds
 
 class Simulation1 {
 
@@ -102,7 +108,7 @@ class Simulation1 {
     @Test
     fun testResultStabilityAgainstNetworkSize() {
         val cfgs = sequence {
-            for (totalPeers in arrayOf(1000/*, 5000, 10000, 20000, 30000*/))
+            for (totalPeers in arrayOf(1000, 2000/*, 5000, 10000, 20000, 30000*/))
                 yield(
                     SimConfig(
                         totalPeers = totalPeers,
@@ -280,45 +286,6 @@ class Simulation1 {
         sim(cfgs, opt)
     }
 
-/*
-    @Disabled
-    @Test
-    fun testImmediateGossip() {
-        val cfgs = sequence {
-            for (gossipDLazy in arrayOf(10, 15, 20, 25))
-            for (badPeers in arrayOf(0.0, 0.90, 0.95, 0.97))
-            for (immediateGossip in arrayOf(false, true))
-                yield(
-                    SimConfig(
-                        totalPeers = 5000,
-                        badPeers = (5000 * badPeers).toInt(),
-                        topology = RandomNPeers(30),
-
-                        gossipD = 6,
-                        gossipDLow = 5,
-                        gossipDHigh = 7,
-                        gossipDLazy = gossipDLazy,
-                        gossipAdvertise = 1,
-                        gossipHeartbeatAddDelay = RandomDistribution.uniform(0.0, 1000.0),
-                        gossipHistory = 100, // increase history to serve low latency IWANT requests
-
-                        latency = RandomDistribution.uniform(1.0, 50.0)
-                    )
-                )
-        }
-        val opt = SimOptions(
-            warmUpDelay = 10.seconds,
-            zeroHeartbeatsDelay = 0.millis,
-            manyHeartbeatsDelay = 30.seconds,
-            generatedNetworksCount = 10,
-            sentMessageCount = 3,
-            parallelIterationsCount = 4
-        )
-
-        sim(cfgs, opt)
-    }
-*/
-
     fun sim(cfg: Sequence<SimConfig>, opt: SimOptions): List<SimDetailedResult> {
         val executorService = Executors.newFixedThreadPool(opt.parallelIterationsCount)
         val cfgList = cfg.toList()
@@ -376,31 +343,34 @@ class Simulation1 {
                 else
                     listOf(Executor { it.run() })
 
+            val gossipPubMessageGenerator =
+                averagePubSubMsgSizeEstimator(cfg.avrgMessageSize, opt.measureTCPFramesOverhead)
             val peers = (0 until cfg.totalPeers).map {
+                val timeShift = peerTimeShift.next().toLong()
+                val timeSupplier: CurrentTimeSupplier = { timeController.time + timeShift }
                 GossipSimPeer(it.toString(), commonRnd).apply {
-//                    val gossipParams = GossipParams(
-//                        D = cfg.gossipD,
-//                        DLow = cfg.gossipDLow,
-//                        DHigh = cfg.gossipDHigh,
-//                        DLazy = cfg.gossipDLazy,
-//                        gossipSize = cfg.gossipAdvertise,
-//                        gossipHistoryLength = cfg.gossipHistory,
-//                        heartbeatInterval = cfg.gossipHeartbeat
-//                    )
+                    val gossipParams = GossipParams(
+                        D = cfg.gossipD,
+                        DLow = cfg.gossipDLow,
+                        DHigh = cfg.gossipDHigh,
+                        DLazy = cfg.gossipDLazy,
+                        gossipSize = cfg.gossipAdvertise,
+                        gossipHistoryLength = cfg.gossipHistory,
+                        heartbeatInterval = cfg.gossipHeartbeat
+                    )
                     routerBuilder.apply {
+                        params = gossipParams
                         additionalHeartbeatDelay = gossipHeartbeatAddDelay.next().toInt().millis
                         serializeMessagesToBytes = false
-                        val timeShift = peerTimeShift.next().toLong()
-                        currentTimeSuppluer = { timeController.time + timeShift }
+                        currentTimeSuppluer = timeSupplier
                         random = commonRnd
                     }
 
                     val delegateExecutor = peerExecutors[it % peerExecutors.size]
                     simExecutor = ControlledExecutorServiceImpl(delegateExecutor, timeController)
-                    msgSizeEstimator =
-                        averagePubSubMsgSizeEstimator(cfg.avrgMessageSize, opt.measureTCPFramesOverhead).sizeEstimator
-//                    val latencyRandomValue = cfg.latency.newValue(commonRnd)
+                    msgSizeEstimator = gossipPubMessageGenerator.sizeEstimator
                     validationDelay = cfg.gossipValidationDelay
+                    currentTime = timeSupplier
                     subscribe(Topic)
 
                     start()
@@ -414,7 +384,14 @@ class Simulation1 {
 
             println("Connecting peers")
             val net = cfg.topology.generateAndConnect(peers)
-            val networkStatsCollector = GlobalNetworkStatsCollector(net, GeneralSizeEstimator)
+
+            val latencyRandomValue = cfg.latency.newValue(commonRnd)
+            peers.flatMap { it.connections }.forEach { connection ->
+                val executor = (connection.dialer as GossipSimPeer).simExecutor
+                connection.connectionLatency = TimeDelayer(executor, { latencyRandomValue.next().toLong().milliseconds })
+            }
+
+            val messageCollector = GossipMessageCollector(net, { timeController.time }, gossipPubMessageGenerator)
 
             data class NetworkStats(
                 val msgCount: Long,
@@ -425,14 +402,17 @@ class Simulation1 {
                 operator fun plus(other: NetworkStats) =
                     NetworkStats(msgCount + other.msgCount, traffic + other.traffic)
             }
-            fun getNetStats() = NetworkStats(networkStatsCollector.msgCount, networkStatsCollector.msgsSize)
+            fun getNetStats(): NetworkStats {
+                val result = messageCollector.gatherResult()
+                return NetworkStats(result.getTotalMessageCount().toLong(), result.getTotalTraffic())
+            }
 
             println("Some warm up")
             timeController.addTime(opt.warmUpDelay)
 
             var lastNS = getNetStats()
             println("Initial stat: $lastNS")
-            networkStatsCollector.msgSizeStats.reset()
+            messageCollector.clear()
 
             for (i in 0 until opt.sentMessageCount) {
                 println("Sending message #$i...")
@@ -477,7 +457,7 @@ class Simulation1 {
                 val nsDiff = getNetStats() - ns0
                 println("Empty time: $nsDiff")
 
-                networkStatsCollector.msgSizeStats.reset()
+                messageCollector.clear()
                 clearGossipStats(peers)
             }
         }

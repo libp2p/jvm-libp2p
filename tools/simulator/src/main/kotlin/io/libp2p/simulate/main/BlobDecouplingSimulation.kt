@@ -1,14 +1,12 @@
 package io.libp2p.simulate.main
 
 import io.libp2p.core.pubsub.Topic
-import io.libp2p.pubsub.gossip.builders.GossipRouterBuilder
 import io.libp2p.simulate.*
 import io.libp2p.simulate.delay.AccurateBandwidthTracker
 import io.libp2p.simulate.gossip.*
 import io.libp2p.simulate.gossip.router.SimGossipRouterBuilder
 import io.libp2p.simulate.stats.Stats
 import io.libp2p.simulate.stats.StatsFactory
-import io.libp2p.simulate.stats.collect.GlobalNetworkStatsCollector
 import io.libp2p.simulate.stats.collect.gossip.GossipMessageResult
 import io.libp2p.simulate.stream.randomLatencyDelayer
 import io.libp2p.simulate.topology.RandomNPeers
@@ -35,7 +33,7 @@ class BlobDecouplingSimulation(
 
     val nodeCount: Int = 1000,
     val nodePeerCount: Int = 30,
-    val messageCount: Int = 50,
+    val messageCount: Int = 5,
 
     val blockSize: Int = 128 * 1024,
     val blobCount: Int = 4,
@@ -110,9 +108,6 @@ class BlobDecouplingSimulation(
         .mapValues { it.value.map { it.key } }
     val sendingPeerIndexes = peerIndexesByBandwidth[sendingPeerBand]!!
 
-    val globalNetworkStatsCollector =
-        GlobalNetworkStatsCollector(simNetwork.network, simConfig.messageGenerator.sizeEstimator)
-
     val simulation = run {
         logger("Creating simulation...")
         GossipSimulation(simConfig, simNetwork).also { simulation ->
@@ -120,7 +115,6 @@ class BlobDecouplingSimulation(
             simulation.forwardTime(gossipParams.heartbeatInterval)
             logger("Cleaning warmup messages and network stats...")
             simulation.clearAllMessages()
-            globalNetworkStatsCollector.msgSizeStats.reset()
         }
     }
 
@@ -128,12 +122,13 @@ class BlobDecouplingSimulation(
         logger("Gathering results...")
 
         val messageDelayStats = gatherMessageDelayStats()
-
         logger("Results:")
         logger("Delivery stats: $messageDelayStats")
+
+        val messagesResult = simulation.gossipMessageCollector.gatherResult()
         logger(
-            "Network stats: msgCount: " + globalNetworkStatsCollector.msgSizeStats.getCount() + ", msgsSize: " +
-                globalNetworkStatsCollector.msgSizeStats.getSum().toLong()
+            "Network stats: msgCount: ${messagesResult.getTotalMessageCount()}, " +
+                    "msgsSize: ${messagesResult.getTotalTraffic()}"
         )
     }
 
@@ -247,26 +242,6 @@ class BlobDecouplingSimulation(
             .map { it to simConfig.messageGenerator.sizeEstimator(it.message) }
         println("Peer 0 all outbounds: \n" + peer0AllOutbounds.joinToString("\n").prependIndent("  "))
 
-        gossipMessages.publishMessages
-            .filter { it.origMsg.sendingPeer == simNetwork.peers[337] }
-            .also {
-                println("Peer 337 outbound pub messages: \n" + it.joinToString("\n").prependIndent("  "))
-            }
-        gossipMessages.publishMessages
-            .filter { it.origMsg.receivingPeer == simNetwork.peers[730] }
-            .also {
-                println("Peer 730 inbound pub messages: \n" + it.joinToString("\n").prependIndent("  "))
-            }
-        gossipMessages.getPeerGossipMessages(simNetwork.peers[730]!!)
-            .also {
-                println("Peer 730 gossip messages: \n" + it.joinToString("\n").prependIndent("  "))
-            }
-
-        gossipMessages.getPeerGossipMessages(simNetwork.peers[0]!!)
-            .also {
-                println("Peer 0 gossip messages: \n" + it.joinToString("\n").prependIndent("  "))
-            }
-
         simNetwork.peers.values.flatMap {
             it.router.mesh.map { (topic, peers) -> topic to peers.size }
         }
@@ -292,11 +267,12 @@ fun main() {
     bandwidths.forEach { (name, band) ->
         fun getResults(sim: BlobDecouplingSimulation): String {
             val messageDelayStats = sim.gatherMessageDelayStats().getStatisticalSummary()
+            val messagesResult = sim.simulation.gossipMessageCollector.gatherResult()
             return "${messageDelayStats.min.toLong()}\t" +
                 "${messageDelayStats.mean.toLong()}\t" +
                 "${messageDelayStats.max.toLong()}\t" +
-                "${sim.globalNetworkStatsCollector.msgCount}\t" +
-                "${sim.globalNetworkStatsCollector.msgsSize}"
+                "${messagesResult.messages.size}\t" +
+                "${messagesResult.getTotalTraffic()}"
         }
 
         fun getRangedDelays(sim: BlobDecouplingSimulation): String {
