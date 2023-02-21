@@ -13,6 +13,7 @@ import io.libp2p.simulate.util.millis
 import io.libp2p.simulate.util.minutes
 import io.libp2p.simulate.util.seconds
 import io.libp2p.tools.log
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
 class GossipSimTest {
@@ -55,18 +56,18 @@ class GossipSimTest {
 
         val res = simulation.gatherMessageResults()
 
-        org.assertj.core.api.Assertions.assertThat(res).hasSize(1)
+        assertThat(res).hasSize(1)
 
         val res0 = res.values.first()
-        org.assertj.core.api.Assertions.assertThat(res0).hasSize(2)
+        assertThat(res0).hasSize(2)
 
         val res0_0 = res0.first()
-        org.assertj.core.api.Assertions.assertThat(res0_0.receivedPeer).isEqualTo(1)
-        org.assertj.core.api.Assertions.assertThat(res0_0.receivedTime).isEqualTo(publishTime)
+        assertThat(res0_0.receivedPeer).isEqualTo(1)
+        assertThat(res0_0.receivedTime).isEqualTo(publishTime)
 
         val res0_1 = res0.last()
-        org.assertj.core.api.Assertions.assertThat(res0_1.receivedPeer).isEqualTo(2)
-        org.assertj.core.api.Assertions.assertThat(res0_1.receivedTime).isEqualTo(publishTime)
+        assertThat(res0_1.receivedPeer).isEqualTo(2)
+        assertThat(res0_1.receivedTime).isEqualTo(publishTime)
 
         println("Done")
     }
