@@ -107,10 +107,7 @@ class GossipMessageResult(
     val receivedPublishMessagesByPeer by lazy {
         publishMessages.groupBy { it.origMsg.receivingPeer }
     }
-    val sentPublishMessagesByPeer by lazy {
-        publishMessages.groupBy { it.origMsg.sendingPeer }
-    }
-    val firstReceivedPublishMessagesByPeer by lazy {
+    val receivedPublishMessagesByPeerFastest by lazy {
         receivedPublishMessagesByPeer.mapValues { (_, msgs) ->
             msgs
                 .groupBy { it.msgId }
@@ -120,6 +117,9 @@ class GossipMessageResult(
                 }
                 .filterNotNull()
         }
+    }
+    val sentPublishMessagesByPeer by lazy {
+        publishMessages.groupBy { it.origMsg.sendingPeer }
     }
 
     fun slice(startTime: Long, endTime: Long): GossipMessageResult =

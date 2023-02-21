@@ -223,7 +223,7 @@ class BlobDecouplingSimulation(
 
         println("IWANT messages count: " + gossipMessages.iWantMessages.size)
 
-        val slowestMessage = gossipMessages.firstReceivedPublishMessagesByPeer
+        val slowestMessage = gossipMessages.receivedPublishMessagesByPeerFastest
             .values
             .flatten()
             .maxByOrNull { it.origMsg.receiveTime }!!
@@ -233,7 +233,7 @@ class BlobDecouplingSimulation(
             gossipMessages.findPubMessagePath(slowestMessage.origMsg.receivingPeer, slowestMessage.msgId)
         println("Longest path (${longestPath.size} hops): \n  " + longestPath.joinToString("\n  "))
 
-        val fastestMessage = gossipMessages.firstReceivedPublishMessagesByPeer
+        val fastestMessage = gossipMessages.receivedPublishMessagesByPeerFastest
             .values
             .flatten()
             .minByOrNull { it.origMsg.receiveTime }!!
