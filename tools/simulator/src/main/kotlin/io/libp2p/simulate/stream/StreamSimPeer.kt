@@ -39,7 +39,7 @@ abstract class StreamSimPeer<TProtocolController>(
     abstract val random: Random
 
     lateinit var simExecutor: ScheduledExecutorService
-    var currentTime: () -> Long = System::currentTimeMillis
+    lateinit var currentTime: () -> Long
     var keyPair by lazyVar {
         generateKeyPair(
             KEY_TYPE.ECDSA,
