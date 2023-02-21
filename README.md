@@ -59,6 +59,12 @@ We are explicitly leaving out the peerstore, DHT, pubsub, connection manager,
 etc. and other subsystems or concepts that are internal to implementations and
 do not impact the ability to hold communications with other libp2p processes.
 
+## Gossip simulator
+
+Deterministic Gossip simulator which may simulate networks as large as 10000 of peers
+
+Please check the Simulator [README](tools/simulator/README.md) for more details
+
 ## Adding as a dependency to your project
 
 Hosting of artefacts is graciously provided by [Cloudsmith](https://cloudsmith.com).
