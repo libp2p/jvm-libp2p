@@ -118,28 +118,6 @@ class BlobDecouplingSimulation(
         }
     }
 
-    fun printResults() {
-        logger("Gathering results...")
-
-        val messageDelayStats = gatherMessageDelayStats()
-        logger("Results:")
-        logger("Delivery stats: $messageDelayStats")
-
-        val messagesResult = simulation.gossipMessageCollector.gatherResult()
-        logger(
-            "Network stats: msgCount: ${messagesResult.getTotalMessageCount()}, " +
-                    "msgsSize: ${messagesResult.getTotalTraffic()}"
-        )
-    }
-
-    fun gatherMessageDelayStats(): Stats {
-        val allMessageDelays = simulation
-            .gatherPubDeliveryStats()
-            .aggregateSlowestByPublishTime()
-            .deliveryDelays
-        return StatsFactory.DEFAULT.createStats(allMessageDelays)
-    }
-
     fun testCoupled() {
         for (i in 0 until messageCount) {
             val sendingPeer = sendingPeerIndexes[i]
@@ -200,6 +178,29 @@ class BlobDecouplingSimulation(
 
         printResults()
     }
+
+    fun printResults() {
+        logger("Gathering results...")
+
+        val messageDelayStats = gatherMessageDelayStats()
+        logger("Results:")
+        logger("Delivery stats: $messageDelayStats")
+
+        val messagesResult = simulation.gossipMessageCollector.gatherResult()
+        logger(
+            "Network stats: msgCount: ${messagesResult.getTotalMessageCount()}, " +
+                    "msgsSize: ${messagesResult.getTotalTraffic()}"
+        )
+    }
+
+    fun gatherMessageDelayStats(): Stats {
+        val allMessageDelays = simulation
+            .gatherPubDeliveryStats()
+            .aggregateSlowestByPublishTime()
+            .deliveryDelays
+        return StatsFactory.DEFAULT.createStats(allMessageDelays)
+    }
+
 
     fun getGossipStats(results: GossipMessageResult): String {
         val graftMsgCount = results.graftMessages.size

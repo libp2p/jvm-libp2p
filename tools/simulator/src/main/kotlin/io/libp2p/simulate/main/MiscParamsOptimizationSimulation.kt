@@ -15,13 +15,10 @@ import io.libp2p.simulate.gossip.averagePubSubMsgSizeEstimator
 import io.libp2p.simulate.stats.StatsFactory
 import io.libp2p.simulate.stats.WritableStats
 import io.libp2p.simulate.stats.collect.gossip.GossipMessageCollector
-import io.libp2p.simulate.stats.collect.gossip.GossipMessageResult
 import io.libp2p.simulate.topology.RandomNPeers
 import io.libp2p.simulate.util.*
 import io.libp2p.tools.schedulers.ControlledExecutorServiceImpl
 import io.libp2p.tools.schedulers.TimeControllerImpl
-import org.junit.jupiter.api.Disabled
-import org.junit.jupiter.api.Test
 import java.lang.Integer.max
 import java.time.Duration
 import java.util.*
@@ -31,7 +28,11 @@ import java.util.concurrent.Executors
 import kotlin.collections.plus
 import kotlin.time.Duration.Companion.milliseconds
 
-class Simulation1 {
+fun main()  {
+    MiscParamsOptimizationSimulation().runAll()
+}
+
+class MiscParamsOptimizationSimulation {
 
     val Topic = Topic("Topic-1")
     val MaxMissingPeers = 32
@@ -41,7 +42,7 @@ class Simulation1 {
         val someMissingPeers: List<GossipSimPeer> = emptyList()
     )
 
-    data class SimConfig(
+    data class FlatSimConfig(
         val totalPeers: Int = 10000,
         val badPeers: Int = 0,
 
@@ -104,13 +105,27 @@ class Simulation1 {
             }
     }
 
-    @Disabled
-    @Test
+    fun runAll() {
+        println("Running testResultStabilityAgainstNetworkSize()...")
+        testResultStabilityAgainstNetworkSize()
+        println("Running testBFT()...")
+        testBFT()
+        println("Running testBFTOfPeerConnections()...")
+        testBFTOfPeerConnections()
+        println("Running testDOptimization()...")
+        testDOptimization()
+        println("Running testSizeDLazyOptimization()...")
+        testSizeDLazyOptimization()
+        println("Running testHeartbeatPeriod()...")
+        testHeartbeatPeriod()
+        println("All complete!")
+    }
+
     fun testResultStabilityAgainstNetworkSize() {
         val cfgs = sequence {
-            for (totalPeers in arrayOf(1000, 2000/*, 5000, 10000, 20000, 30000*/))
+            for (totalPeers in arrayOf(1000, 5000, 10000, 20000, 30000))
                 yield(
-                    SimConfig(
+                    FlatSimConfig(
                         totalPeers = totalPeers,
                         badPeers = (0.1 * totalPeers).toInt(),
                         topology = RandomNPeers(20),
@@ -131,14 +146,12 @@ class Simulation1 {
         sim(cfgs, opt)
     }
 
-    @Disabled
-    @Test
     fun testBFT() {
-        val totalPeers = 10000
+        val totalPeers = 1000
         val cfgs = sequence {
             for (badPeers in arrayOf(0.0, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.93, 0.95, 0.97)) {
                 yield(
-                    SimConfig(
+                    FlatSimConfig(
                         totalPeers = totalPeers,
                         badPeers = (badPeers * totalPeers).toInt(),
                         topology = RandomNPeers(20),
@@ -160,13 +173,11 @@ class Simulation1 {
         sim(cfgs, opt)
     }
 
-    @Disabled
-    @Test
     fun testBFTOfPeerConnections() {
         val cfgs = sequence {
             for (peerConnections in arrayOf(6, 8, 10, 12, 15, 17, 20, 25, 30, 40, 50, 60, 80, 100)) {
                 yield(
-                    SimConfig(
+                    FlatSimConfig(
                         totalPeers = 10000,
                         badPeers = 9000,
                         topology = RandomNPeers(peerConnections),
@@ -188,13 +199,11 @@ class Simulation1 {
         sim(cfgs, opt)
     }
 
-    @Disabled
-    @Test
-    fun testSizeOptimization1() {
+    fun testDOptimization() {
         val cfgs = sequence {
             for (gossipD in arrayOf(1, 2, 3, 4, 5, 6, 7))
                 yield(
-                    SimConfig(
+                    FlatSimConfig(
                         totalPeers = 5000,
                         badPeers = 0,
                         topology = RandomNPeers(20),
@@ -217,14 +226,12 @@ class Simulation1 {
         sim(cfgs, opt)
     }
 
-    @Disabled
-    @Test
-    fun testSizeOptimizationDLazy() {
+    fun testSizeDLazyOptimization() {
         val cfgs = sequence {
             for (avrgMessageSize in arrayOf(32 * 1024, 512))
                 for (gossipDLazy in arrayOf(0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20))
                     yield(
-                        SimConfig(
+                        FlatSimConfig(
                             totalPeers = 5000,
                             badPeers = 0,
                             topology = RandomNPeers(20),
@@ -251,13 +258,11 @@ class Simulation1 {
         sim(cfgs, opt)
     }
 
-    @Disabled
-    @Test
     fun testHeartbeatPeriod() {
         val cfgs = sequence {
             for (gossipHeartbeat in arrayOf(1000, 500, 300, 100, 50, 30, 10))
                 yield(
-                    SimConfig(
+                    FlatSimConfig(
                         totalPeers = 5000,
                         badPeers = 4500,
                         topology = RandomNPeers(20),
@@ -286,7 +291,7 @@ class Simulation1 {
         sim(cfgs, opt)
     }
 
-    fun sim(cfg: Sequence<SimConfig>, opt: SimOptions): List<SimDetailedResult> {
+    fun sim(cfg: Sequence<FlatSimConfig>, opt: SimOptions): List<SimDetailedResult> {
         val executorService = Executors.newFixedThreadPool(opt.parallelIterationsCount)
         val cfgList = cfg.toList()
         val resFut = cfgList
@@ -326,7 +331,16 @@ class Simulation1 {
         return res
     }
 
-    fun sim(cfg: SimConfig, opt: SimOptions): SimDetailedResult {
+    fun sim(cfg: FlatSimConfig, opt: SimOptions): SimDetailedResult {
+        val gossipParams = GossipParams(
+            D = cfg.gossipD,
+            DLow = cfg.gossipDLow,
+            DHigh = cfg.gossipDHigh,
+            DLazy = cfg.gossipDLazy,
+            gossipSize = cfg.gossipAdvertise,
+            gossipHistoryLength = cfg.gossipHistory,
+            heartbeatInterval = cfg.gossipHeartbeat
+        )
 
         val ret = SimDetailedResult()
         for (n in 0 until opt.generatedNetworksCount) {
@@ -348,16 +362,8 @@ class Simulation1 {
             val peers = (0 until cfg.totalPeers).map {
                 val timeShift = peerTimeShift.next().toLong()
                 val timeSupplier: CurrentTimeSupplier = { timeController.time + timeShift }
+
                 GossipSimPeer(it.toString(), commonRnd).apply {
-                    val gossipParams = GossipParams(
-                        D = cfg.gossipD,
-                        DLow = cfg.gossipDLow,
-                        DHigh = cfg.gossipDHigh,
-                        DLazy = cfg.gossipDLazy,
-                        gossipSize = cfg.gossipAdvertise,
-                        gossipHistoryLength = cfg.gossipHistory,
-                        heartbeatInterval = cfg.gossipHeartbeat
-                    )
                     routerBuilder.apply {
                         params = gossipParams
                         additionalHeartbeatDelay = gossipHeartbeatAddDelay.next().toInt().millis
@@ -410,8 +416,7 @@ class Simulation1 {
             println("Some warm up")
             timeController.addTime(opt.warmUpDelay)
 
-            var lastNS = getNetStats()
-            println("Initial stat: $lastNS")
+            println("Initial stat: ${getNetStats()}")
             messageCollector.clear()
 
             for (i in 0 until opt.sentMessageCount) {
