@@ -11,7 +11,6 @@ import io.libp2p.core.pubsub.Validator
 import io.libp2p.core.pubsub.createPubsubApi
 import io.libp2p.etc.types.lazyVar
 import io.libp2p.pubsub.PubsubProtocol
-import io.libp2p.pubsub.gossip.builders.GossipRouterBuilder
 import io.libp2p.simulate.gossip.router.SimGossipRouterBuilder
 import io.libp2p.simulate.stream.StreamSimPeer
 import io.libp2p.simulate.util.millis

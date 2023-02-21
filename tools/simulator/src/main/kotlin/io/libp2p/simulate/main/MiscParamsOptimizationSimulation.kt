@@ -28,7 +28,7 @@ import java.util.concurrent.Executors
 import kotlin.collections.plus
 import kotlin.time.Duration.Companion.milliseconds
 
-fun main()  {
+fun main() {
     MiscParamsOptimizationSimulation().runAll()
 }
 

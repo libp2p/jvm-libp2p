@@ -39,5 +39,4 @@ class GossipSimPeerTest {
 
         Assertions.assertTrue(gotIt)
     }
-
 }

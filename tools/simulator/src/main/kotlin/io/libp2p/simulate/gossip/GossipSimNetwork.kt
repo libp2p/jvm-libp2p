@@ -1,6 +1,5 @@
 package io.libp2p.simulate.gossip
 
-import io.libp2p.pubsub.gossip.builders.GossipRouterBuilder
 import io.libp2p.simulate.Network
 import io.libp2p.simulate.generateAndConnect
 import io.libp2p.simulate.gossip.router.SimGossipRouterBuilder

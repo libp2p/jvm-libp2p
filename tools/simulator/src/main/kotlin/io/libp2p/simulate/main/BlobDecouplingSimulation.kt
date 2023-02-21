@@ -189,7 +189,7 @@ class BlobDecouplingSimulation(
         val messagesResult = simulation.gossipMessageCollector.gatherResult()
         logger(
             "Network stats: msgCount: ${messagesResult.getTotalMessageCount()}, " +
-                    "msgsSize: ${messagesResult.getTotalTraffic()}"
+                "msgsSize: ${messagesResult.getTotalTraffic()}"
         )
     }
 
@@ -200,7 +200,6 @@ class BlobDecouplingSimulation(
             .deliveryDelays
         return StatsFactory.DEFAULT.createStats(allMessageDelays)
     }
-
 
     fun getGossipStats(results: GossipMessageResult): String {
         val graftMsgCount = results.graftMessages.size
