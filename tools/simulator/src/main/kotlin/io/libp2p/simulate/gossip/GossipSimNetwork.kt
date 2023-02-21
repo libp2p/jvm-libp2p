@@ -10,10 +10,13 @@ import java.util.*
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 
+typealias GossipRouterBuilderFactory = (Int) -> SimGossipRouterBuilder
+typealias GossipSimPeerModifier = (Int, GossipSimPeer) -> Unit
+
 class GossipSimNetwork(
     val cfg: GossipSimConfig,
-    val routerFactory: (Int) -> SimGossipRouterBuilder,
-    val simPeerModifier: (Int, GossipSimPeer) -> Unit = { _, _ -> }
+    val routerFactory: GossipRouterBuilderFactory,
+    val simPeerModifier: GossipSimPeerModifier = { _, _ -> }
 ) {
     val peers = sortedMapOf<Int, GossipSimPeer>()
     lateinit var network: Network

@@ -1,6 +1,6 @@
 package io.libp2p.simulate.util
 
-import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 class CollectionExtTest {
@@ -21,11 +21,11 @@ class CollectionExtTest {
 
         val t2 = t1.transpose()
 
-        Assertions.assertEquals(2, t2["a"]!!.size)
-        Assertions.assertEquals(11, t2["a"]!![0])
-        Assertions.assertEquals(21, t2["a"]!![1])
+        assertEquals(2, t2["a"]!!.size)
+        assertEquals(11, t2["a"]!![0])
+        assertEquals(21, t2["a"]!![1])
 
         val t3 = t2.transpose()
-        Assertions.assertEquals(t1, t3)
+        assertEquals(t1, t3)
     }
 }

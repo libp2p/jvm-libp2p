@@ -14,6 +14,7 @@ import io.libp2p.simulate.util.minutes
 import io.libp2p.simulate.util.seconds
 import io.libp2p.tools.log
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.data.Percentage
 import org.junit.jupiter.api.Test
 
 class GossipSimTest {
@@ -75,12 +76,10 @@ class GossipSimTest {
     @Test
     fun testMinimal() {
         testMinimalImpl(false)
-//        testMinimalImpl(true)
+        testMinimalImpl(true)
     }
 
     fun testMinimalImpl(decoupled: Boolean) {
-//        val decoupled = false
-
         val blockSize = 128 * 1024
         val blobCount = 4
         val blobSize = 128 * 1024
@@ -90,18 +89,10 @@ class GossipSimTest {
         val simConfig = GossipSimConfig(
             totalPeers = 4,
             topics = listOf(blockTopic, blobTopic),
-//            topology = RandomNPeers(10),
             topology = TopologyGraph.customTopology(
                 0 to 1,
                 0 to 2,
                 0 to 3,
-//                    0 to 4,
-//                    0 to 5,
-//                    0 to 6,
-//                    0 to 7,
-//                    0 to 8,
-//                    0 to 9,
-//                    0 to 10,
             ).asFixedTopology(),
             gossipValidationDelay = 10.millis,
             bandwidthGenerator = { peer ->
@@ -168,5 +159,13 @@ class GossipSimTest {
             }
         }
         println("Delivery stats: $msgDelayStats")
+
+        if (decoupled) {
+            assertThat(msgDelayStats.getCount()).isEqualTo(6)
+        } else {
+            assertThat(msgDelayStats.getCount()).isEqualTo(3)
+        }
+        assertThat(msgDelayStats.getDescriptiveStatistics().max).isCloseTo(2000.0, Percentage.withPercentage(10.0))
+        assertThat(msgDelayStats.getDescriptiveStatistics().min).isGreaterThan(200.0)
     }
 }

@@ -8,7 +8,7 @@ import io.libp2p.simulate.gossip.router.SimGossipRouterBuilder
 import io.libp2p.simulate.topology.AllToAllTopology
 import io.libp2p.simulate.util.millis
 import io.libp2p.simulate.util.seconds
-import org.assertj.core.api.Assertions
+import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.data.Offset
 import org.junit.jupiter.api.Test
 
@@ -23,8 +23,8 @@ class AccurateBandwidthTest {
         )
         val t = AccurateBandwidthTracker.calcDeliverTimes(bandwidth, msgs)
 
-        Assertions.assertThat(t[0]).isCloseTo(202_000, Offset.offset(2))
-        Assertions.assertThat(t[1]).isCloseTo(202_000, Offset.offset(2))
+        assertThat(t[0]).isCloseTo(202_000, Offset.offset(2))
+        assertThat(t[1]).isCloseTo(202_000, Offset.offset(2))
     }
 
     @Test
@@ -36,8 +36,8 @@ class AccurateBandwidthTest {
         )
         val t = AccurateBandwidthTracker.calcDeliverTimes(bandwidth, msgs)
 
-        Assertions.assertThat(t[0]).isCloseTo(201_500, Offset.offset(2))
-        Assertions.assertThat(t[1]).isCloseTo(202_000, Offset.offset(2))
+        assertThat(t[0]).isCloseTo(201_500, Offset.offset(2))
+        assertThat(t[1]).isCloseTo(202_000, Offset.offset(2))
     }
 
     @Test
@@ -49,8 +49,8 @@ class AccurateBandwidthTest {
         )
         val t = AccurateBandwidthTracker.calcDeliverTimes(bandwidth, msgs)
 
-        Assertions.assertThat(t[0]).isCloseTo(201_050, Offset.offset(2))
-        Assertions.assertThat(t[1]).isCloseTo(200_600, Offset.offset(2))
+        assertThat(t[0]).isCloseTo(201_050, Offset.offset(2))
+        assertThat(t[1]).isCloseTo(200_600, Offset.offset(2))
     }
 
     @Test
@@ -62,8 +62,8 @@ class AccurateBandwidthTest {
         )
         val t = AccurateBandwidthTracker.calcDeliverTimes(bandwidth, msgs)
 
-        Assertions.assertThat(t[0]).isCloseTo(201_002, Offset.offset(2))
-        Assertions.assertThat(t[1]).isCloseTo(200_502, Offset.offset(2))
+        assertThat(t[0]).isCloseTo(201_002, Offset.offset(2))
+        assertThat(t[1]).isCloseTo(200_502, Offset.offset(2))
     }
 
     @Test
@@ -75,8 +75,8 @@ class AccurateBandwidthTest {
         )
         val t = AccurateBandwidthTracker.calcDeliverTimes(bandwidth, msgs)
 
-        Assertions.assertThat(t[0]).isCloseTo(200_000, Offset.offset(2))
-        Assertions.assertThat(t[1]).isCloseTo(200_000, Offset.offset(2))
+        assertThat(t[0]).isCloseTo(200_000, Offset.offset(2))
+        assertThat(t[1]).isCloseTo(200_000, Offset.offset(2))
     }
 
     @Test
@@ -91,11 +91,11 @@ class AccurateBandwidthTest {
         )
         val t = AccurateBandwidthTracker.calcDeliverTimes(bandwidth, msgs)
 
-        Assertions.assertThat(t[0]).isCloseTo(200_000, Offset.offset(2))
-        Assertions.assertThat(t[1]).isCloseTo(200_000, Offset.offset(2))
-        Assertions.assertThat(t[2]).isCloseTo(200_000, Offset.offset(2))
-        Assertions.assertThat(t[3]).isCloseTo(200_000, Offset.offset(2))
-        Assertions.assertThat(t[4]).isCloseTo(200_000, Offset.offset(2))
+        assertThat(t[0]).isCloseTo(200_000, Offset.offset(2))
+        assertThat(t[1]).isCloseTo(200_000, Offset.offset(2))
+        assertThat(t[2]).isCloseTo(200_000, Offset.offset(2))
+        assertThat(t[3]).isCloseTo(200_000, Offset.offset(2))
+        assertThat(t[4]).isCloseTo(200_000, Offset.offset(2))
     }
 
     @Test
@@ -109,10 +109,10 @@ class AccurateBandwidthTest {
         )
         val t = AccurateBandwidthTracker.calcDeliverTimes(bandwidth, msgs)
 
-        Assertions.assertThat(t[0]).isCloseTo(202_050, Offset.offset(2))
-        Assertions.assertThat(t[1]).isCloseTo(202_050, Offset.offset(2))
-        Assertions.assertThat(t[2]).isCloseTo(203_010, Offset.offset(2))
-        Assertions.assertThat(t[3]).isCloseTo(202_920, Offset.offset(2))
+        assertThat(t[0]).isCloseTo(202_050, Offset.offset(2))
+        assertThat(t[1]).isCloseTo(202_050, Offset.offset(2))
+        assertThat(t[2]).isCloseTo(203_010, Offset.offset(2))
+        assertThat(t[3]).isCloseTo(202_920, Offset.offset(2))
     }
 
     @Test
@@ -126,10 +126,10 @@ class AccurateBandwidthTest {
         )
         val t = AccurateBandwidthTracker.calcDeliverTimes(bandwidth, msgs)
 
-        Assertions.assertThat(t[0]).isCloseTo(72_775, Offset.offset(2))
-        Assertions.assertThat(t[1]).isCloseTo(72_775, Offset.offset(2))
-        Assertions.assertThat(t[2]).isCloseTo(72_775, Offset.offset(2))
-        Assertions.assertThat(t[3]).isCloseTo(73_905, Offset.offset(2))
+        assertThat(t[0]).isCloseTo(72_775, Offset.offset(2))
+        assertThat(t[1]).isCloseTo(72_775, Offset.offset(2))
+        assertThat(t[2]).isCloseTo(72_775, Offset.offset(2))
+        assertThat(t[3]).isCloseTo(73_905, Offset.offset(2))
     }
 
     @Test
@@ -142,9 +142,9 @@ class AccurateBandwidthTest {
         )
         val t = AccurateBandwidthTracker.calcDeliverTimes(bandwidth, msgs)
 
-        Assertions.assertThat(t[0]).isCloseTo(11_800, Offset.offset(2))
-        Assertions.assertThat(t[1]).isCloseTo(11_800, Offset.offset(2))
-        Assertions.assertThat(t[2]).isCloseTo(12_900, Offset.offset(2))
+        assertThat(t[0]).isCloseTo(11_800, Offset.offset(2))
+        assertThat(t[1]).isCloseTo(11_800, Offset.offset(2))
+        assertThat(t[2]).isCloseTo(12_900, Offset.offset(2))
     }
 
     val topic = Topic("aaa")
@@ -199,14 +199,14 @@ class AccurateBandwidthTest {
         run {
             val messageResults = simulation.gatherMessageResults()
             val resList = messageResults.entries.toList()
-            Assertions.assertThat(resList).hasSize(3)
+            assertThat(resList).hasSize(3)
             run {
                 val (origMsg, res) = resList[0]
-                Assertions.assertThat(res[0].receivedTime - origMsg.sentTime).isCloseTo(2000, Offset.offset(100))
+                assertThat(res[0].receivedTime - origMsg.sentTime).isCloseTo(2000, Offset.offset(100))
             }
             run {
                 val (origMsg, res) = resList[1]
-                Assertions.assertThat(res[0].receivedTime - origMsg.sentTime).isCloseTo(3000, Offset.offset(100))
+                assertThat(res[0].receivedTime - origMsg.sentTime).isCloseTo(3000, Offset.offset(100))
             }
         }
     }

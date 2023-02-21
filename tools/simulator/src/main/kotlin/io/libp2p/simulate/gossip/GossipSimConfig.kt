@@ -2,11 +2,14 @@ package io.libp2p.simulate.gossip
 
 import io.libp2p.core.pubsub.Topic
 import io.libp2p.simulate.*
+import io.libp2p.simulate.delay.AccurateBandwidthTracker
 import io.libp2p.simulate.stream.StreamSimConnection
+import io.libp2p.simulate.stream.simpleLatencyDelayer
 import io.libp2p.simulate.topology.RandomNPeers
 import io.libp2p.simulate.util.millis
 import io.libp2p.simulate.util.seconds
 import java.time.Duration
+import kotlin.time.toKotlinDuration
 
 data class PeerBandwidth(
     val inbound: BandwidthDelayer,
@@ -17,6 +20,9 @@ data class PeerBandwidth(
     }
 }
 
+typealias BandwidthGenerator = (GossipSimPeer) -> PeerBandwidth
+typealias LatencyGenerator = (StreamSimConnection) -> MessageDelayer
+
 data class GossipSimConfig(
     val totalPeers: Int = 10000,
     val badPeers: Int = 0,
@@ -25,8 +31,8 @@ data class GossipSimConfig(
 
     val messageGenerator: GossipPubMessageGenerator = trickyPubSubMsgSizeEstimator(true),
 
-    val bandwidthGenerator: (GossipSimPeer) -> PeerBandwidth = { PeerBandwidth.UNLIMITED },
-    val latencyGenerator: (StreamSimConnection) -> MessageDelayer = { MessageDelayer.NO_DELAYER },
+    val bandwidthGenerator: BandwidthGenerator = { PeerBandwidth.UNLIMITED },
+    val latencyGenerator: LatencyGenerator = { MessageDelayer.NO_DELAYER },
     val gossipValidationDelay: Duration = 0.millis,
 
     val topology: Topology = RandomNPeers(10),
@@ -39,3 +45,21 @@ data class GossipSimConfig(
     val iterationThreadsCount: Int = 1,
     val parallelIterationsCount: Int = 1,
 )
+
+fun constantLatencyGenerator(latency: Duration): LatencyGenerator =
+    { it.simpleLatencyDelayer(latency.toKotlinDuration()) }
+
+fun constantBandwidthGenerator(bandwidth: Bandwidth): BandwidthGenerator = { gossipSimPeer ->
+    PeerBandwidth(
+        AccurateBandwidthTracker(
+            bandwidth,
+            gossipSimPeer.simExecutor,
+            gossipSimPeer.currentTime
+        ),
+        AccurateBandwidthTracker(
+            bandwidth,
+            gossipSimPeer.simExecutor,
+            gossipSimPeer.currentTime
+        )
+    )
+}
