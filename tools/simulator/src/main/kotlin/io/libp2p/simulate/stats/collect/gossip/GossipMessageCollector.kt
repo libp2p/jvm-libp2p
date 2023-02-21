@@ -13,5 +13,5 @@ class GossipMessageCollector(
 ) : ConnectionsMessageCollector<RPC>(network, timeSupplier) {
 
     fun gatherResult() =
-        GossipMessageResult(connectionMessages.values.flatten(), msgGenerator)
+        GossipMessageResult(deliveredMessages.values.flatten(), msgGenerator)
 }
