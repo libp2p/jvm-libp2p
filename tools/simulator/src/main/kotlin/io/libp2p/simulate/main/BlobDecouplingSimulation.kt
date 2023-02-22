@@ -5,6 +5,7 @@ import io.libp2p.simulate.*
 import io.libp2p.simulate.delay.AccurateBandwidthTracker
 import io.libp2p.simulate.gossip.*
 import io.libp2p.simulate.gossip.router.SimGossipRouterBuilder
+import io.libp2p.simulate.stats.GroupByRangeAggregator
 import io.libp2p.simulate.stats.Stats
 import io.libp2p.simulate.stats.StatsFactory
 import io.libp2p.simulate.stats.collect.gossip.GossipMessageResult
@@ -275,31 +276,15 @@ fun main() {
                 "${messagesResult.getTotalTraffic()}"
         }
 
-        fun getRangedDelays(sim: BlobDecouplingSimulation): String {
-            val delayRanges = (0L until 20_000L).chunked(20)
-
-            val slowDelays = sim.simulation.gatherPubDeliveryStats()
+        fun getRangedDelays(sim: BlobDecouplingSimulation): GroupByRangeAggregator {
+            val groupedDelays = sim.simulation.gatherPubDeliveryStats()
                 .aggregateSlowestByPublishTime()
-                .filter {
-                    sim.simulation.network.peers[it.deliveredMsg.receivedPeer]!!.inboundBandwidth.totalBandwidth == slowBandwidth
+                .groupBy {
+                    if (sim.simulation.network.peers[it.deliveredMsg.receivedPeer]!!.inboundBandwidth.totalBandwidth == slowBandwidth)
+                        "Slow" else "Fast"
                 }
-                .deliveryDelays
-            val slowCountByRanges = slowDelays.countByRanges(delayRanges)
-            val fastDelays = sim.simulation.gatherPubDeliveryStats()
-                .aggregateSlowestByPublishTime()
-                .filter {
-                    sim.simulation.network.peers[it.deliveredMsg.receivedPeer]!!.inboundBandwidth.totalBandwidth != slowBandwidth
-                }
-                .deliveryDelays
-            val fastCountByRanges = fastDelays.countByRanges(delayRanges)
-
-            return delayRanges
-                .zip(slowCountByRanges)
-                .zip(fastCountByRanges)
-                .map { (rangeAndSlow, fast) ->
-                    "${rangeAndSlow.first.first}\t${rangeAndSlow.second}\t$fast"
-                }
-                .joinToString("\n")
+                .mapValues { it.value.deliveryDelays }
+            return GroupByRangeAggregator(groupedDelays)
         }
 
         fun createSimulation() =
@@ -311,15 +296,22 @@ fun main() {
 //                randomSeed = 2
             )
 
-        createSimulation().also {
+        val coupledDelays = createSimulation().let {
             it.testCoupled()
-            println("$name\tCoupled\t${getResults(it)}\n" + getRangedDelays(it))
+            println("$name\tCoupled\t${getResults(it)}\n")
+            getRangedDelays(it)
         }
 
-        createSimulation().also {
+        val decoupledDelays = createSimulation().let {
             it.testAllDecoupled()
-            println("$name\tDecoupled\t${getResults(it)}\n" + getRangedDelays(it))
+            println("$name\tDecoupled\t${getResults(it)}\n")
+            getRangedDelays(it)
         }
+
+        (coupledDelays.withMappedNames { "Coupled $it" } + decoupledDelays.withMappedNames { "Decoupled $it" })
+            .aggregate(20)
+            .formatToString()
+            .also { println(it) }
     }
 }
 

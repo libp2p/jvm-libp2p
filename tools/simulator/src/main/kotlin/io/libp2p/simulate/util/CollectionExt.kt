@@ -33,3 +33,8 @@ fun <T : Comparable<T>> Collection<T>.isOrdered() =
     this
         .windowed(2) { l -> l[1] >= l[0] }
         .all { it }
+
+fun <T : Comparable<T>> Collection<T>.min() = this
+    .reduce { acc, t -> if (acc < t) acc else t }
+fun <T : Comparable<T>> Collection<T>.max() = this
+    .reduce { acc, t -> if (acc > t) acc else t }

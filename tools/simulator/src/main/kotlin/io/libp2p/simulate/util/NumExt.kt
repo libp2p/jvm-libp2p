@@ -43,10 +43,10 @@ fun <T> Collection<T>.countByRanges(ranges: List<ClosedRange<T>>): List<Int>
 
 fun IntRange.chunked(maxSize: Int): List<IntRange> =
     LongRange(start.toLong(), endInclusive.toLong())
-        .chunked(maxSize)
+        .chunked(maxSize.toLong())
         .map { IntRange(it.first.toInt(), it.last.toInt()) }
 
-fun LongRange.chunked(maxSize: Int): List<LongRange> {
+fun LongRange.chunked(maxSize: Long): List<LongRange> {
     val ret = mutableListOf<LongRange>()
     var start = this.first
     while (start <= this.last) {

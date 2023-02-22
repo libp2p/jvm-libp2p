@@ -32,6 +32,11 @@ class GossipPubDeliveryStats(
     fun filter(predicate: (PubMessageDelivery) -> Boolean): GossipPubDeliveryStats =
         GossipPubDeliveryStats(deliveries.filter { predicate(it) })
 
+    fun <K> groupBy(keySelectror: (PubMessageDelivery) -> K): Map<K, GossipPubDeliveryStats> =
+        deliveries
+            .groupBy { keySelectror(it) }
+            .mapValues { GossipPubDeliveryStats(it.value) }
+
     fun selectSlowestPeerDeliveries(): GossipPubDeliveryStats =
         deliveries
             .groupingBy { it.deliveredMsg.receivedPeer }
