@@ -45,6 +45,7 @@ dependencies {
     implementation("com.github.peergos:noise-java:22.1.0")
 
     implementation("org.bouncycastle:bcprov-jdk15on:1.70")
+    implementation("org.bouncycastle:bcpkix-jdk15on:1.70")
 
     implementation("com.github.multiformats:java-multibase:v1.1.1")
 
