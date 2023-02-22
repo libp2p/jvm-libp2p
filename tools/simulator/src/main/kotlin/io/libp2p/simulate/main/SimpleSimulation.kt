@@ -13,7 +13,7 @@ import io.libp2p.simulate.util.millis
 import io.libp2p.tools.log
 
 fun main() {
-    SimpleSimulation().run()
+    SimpleSimulation().publishMessage()
 }
 
 class SimpleSimulation(
@@ -55,9 +55,9 @@ class SimpleSimulation(
         GossipSimulation(simConfig, simNetwork)
     }
 
-    fun run() {
+    fun publishMessage(publisherPeer: Int = 0) {
         logger("Sending message at time ${simulation.network.timeController.time}...")
-        simulation.publishMessage(0, messageSize, testTopic)
+        simulation.publishMessage(publisherPeer, messageSize, testTopic)
 
         simulation.forwardTimeUntilAllPubDelivered()
         logger("All messages delivered at time ${simulation.network.timeController.time}")

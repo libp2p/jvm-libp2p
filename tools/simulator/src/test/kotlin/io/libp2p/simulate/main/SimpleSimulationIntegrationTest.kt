@@ -16,7 +16,7 @@ class SimpleSimulationIntegrationTest {
     @Test
     fun `test result stats against golden values`() {
         val simpleSim = SimpleSimulation(nodeCount = 100, nodePeerCount = 3)
-        simpleSim.run()
+        simpleSim.publishMessage()
 
         val messagesResult = simpleSim.simulation.gossipMessageCollector.gatherResult()
 
@@ -27,6 +27,29 @@ class SimpleSimulationIntegrationTest {
         val deliveryAggrStats = StatsFactory.DEFAULT.createStats(deliveryStats.deliveryDelays)
 
         assertThat(deliveryAggrStats.getCount()).isEqualTo(99)
+        val stats = deliveryAggrStats.getDescriptiveStatistics()
+        assertThat(stats.min).isEqualTo(59.0)
+        assertThat(stats.getPercentile(50.0).smartRound()).isEqualTo(323.0)
+        assertThat(stats.max).isEqualTo(524.0)
+    }
+
+    @Test
+    fun `test result stats against golden values several publish`() {
+        val simpleSim = SimpleSimulation(nodeCount = 100, nodePeerCount = 3)
+
+        repeat(5) {
+            simpleSim.publishMessage(it)
+        }
+
+        val messagesResult = simpleSim.simulation.gossipMessageCollector.gatherResult()
+
+        assertThat(messagesResult.getTotalMessageCount()).isEqualTo(1563)
+        assertThat(messagesResult.getTotalTraffic()).isEqualTo(33108921)
+
+        val deliveryStats = simpleSim.simulation.gatherPubDeliveryStats()
+        val deliveryAggrStats = StatsFactory.DEFAULT.createStats(deliveryStats.deliveryDelays)
+
+        assertThat(deliveryAggrStats.getCount()).isEqualTo(495)
         val stats = deliveryAggrStats.getDescriptiveStatistics()
         assertThat(stats.min).isEqualTo(59.0)
         assertThat(stats.getPercentile(50.0).smartRound()).isEqualTo(323.0)
