@@ -6,7 +6,8 @@ import io.libp2p.etc.types.seconds
 import io.libp2p.etc.types.toByteArray
 import io.libp2p.pubsub.gossip.CurrentTimeSupplier
 import io.libp2p.simulate.stats.collect.gossip.GossipMessageCollector
-import io.libp2p.simulate.stats.collect.gossip.GossipPubDeliveryStats
+import io.libp2p.simulate.stats.collect.gossip.GossipPubDeliveryResult
+import io.libp2p.simulate.stats.collect.gossip.getMessageIdGenerator
 import io.libp2p.simulate.util.countValuesBy
 import io.netty.buffer.Unpooled
 import java.time.Duration
@@ -36,7 +37,13 @@ class GossipSimulation(
 
     val currentTimeSupplier: CurrentTimeSupplier = { network.timeController.time }
 
-    val gossipMessageCollector = GossipMessageCollector(network.network, currentTimeSupplier, cfg.messageGenerator)
+    val anyGossipPeer get() = network.peers.values.first()
+    val gossipMessageCollector = GossipMessageCollector(
+        network.network,
+        currentTimeSupplier,
+        cfg.messageGenerator,
+        anyGossipPeer.getMessageIdGenerator()
+    )
 
     init {
         subscribeAll()
@@ -101,27 +108,7 @@ class GossipSimulation(
         return ret
     }
 
-    fun gatherPubDeliveryStats() = GossipPubDeliveryStats(
-        gatherMessageResults().entries.flatMap { (origMsg, deliveries) ->
-            deliveries.map {
-                GossipPubDeliveryStats.PubMessageDelivery(origMsg, it)
-            }
-        }
-    )
-
-    fun gatherMessageResults(): Map<SimMessage, List<SimMessageDelivery>> {
-        val deliveries = network.peers.flatMap { (peerId, peer) ->
-            peer.inboundMessages.map {
-                val msgId = cfg.messageGenerator.messageIdRetriever(it.first.data.toByteArray())
-                SimMessageDelivery(msgId, peerId, it.second)
-            }
-        }.groupBy { it.msgId }
-
-        val list =
-            publishedMessages.associateWith { deliveries[it.msgId] ?: emptyList() }
-
-        return list
-    }
+    fun gatherPubDeliveryStats(): GossipPubDeliveryResult = gossipMessageCollector.gatherResult().getGossipPubDeliveryResult()
 
     fun clearAllMessages() {
         network.peers.values.forEach { it.inboundMessages.clear() }

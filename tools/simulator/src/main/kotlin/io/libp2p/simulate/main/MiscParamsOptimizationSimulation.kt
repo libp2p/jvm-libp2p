@@ -15,6 +15,7 @@ import io.libp2p.simulate.gossip.averagePubSubMsgSizeEstimator
 import io.libp2p.simulate.stats.StatsFactory
 import io.libp2p.simulate.stats.WritableStats
 import io.libp2p.simulate.stats.collect.gossip.GossipMessageCollector
+import io.libp2p.simulate.stats.collect.gossip.getMessageIdGenerator
 import io.libp2p.simulate.topology.RandomNPeers
 import io.libp2p.simulate.util.*
 import io.libp2p.tools.schedulers.ControlledExecutorServiceImpl
@@ -363,7 +364,7 @@ class MiscParamsOptimizationSimulation {
                 val timeShift = peerTimeShift.next().toLong()
                 val timeSupplier: CurrentTimeSupplier = { timeController.time + timeShift }
 
-                GossipSimPeer(it.toString(), commonRnd).apply {
+                GossipSimPeer(it, commonRnd).apply {
                     routerBuilder.apply {
                         params = gossipParams
                         additionalHeartbeatDelay = gossipHeartbeatAddDelay.next().toInt().millis
@@ -397,7 +398,13 @@ class MiscParamsOptimizationSimulation {
                 connection.connectionLatency = TimeDelayer(executor, { latencyRandomValue.next().toLong().milliseconds })
             }
 
-            val messageCollector = GossipMessageCollector(net, { timeController.time }, gossipPubMessageGenerator)
+            val anyPeer = peers.first()
+            val messageCollector = GossipMessageCollector(
+                net,
+                { timeController.time },
+                gossipPubMessageGenerator,
+                anyPeer.getMessageIdGenerator()
+            )
 
             data class NetworkStats(
                 val msgCount: Long,

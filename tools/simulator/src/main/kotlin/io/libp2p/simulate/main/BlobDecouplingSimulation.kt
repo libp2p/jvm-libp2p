@@ -11,8 +11,6 @@ import io.libp2p.simulate.stats.StatsFactory
 import io.libp2p.simulate.stats.collect.gossip.GossipMessageResult
 import io.libp2p.simulate.stream.randomLatencyDelayer
 import io.libp2p.simulate.topology.RandomNPeers
-import io.libp2p.simulate.util.chunked
-import io.libp2p.simulate.util.countByRanges
 import io.libp2p.simulate.util.countValues
 import io.libp2p.simulate.util.millis
 import io.libp2p.simulate.util.minutes
@@ -196,7 +194,9 @@ class BlobDecouplingSimulation(
 
     fun gatherMessageDelayStats(): Stats {
         val allMessageDelays = simulation
-            .gatherPubDeliveryStats()
+            .gossipMessageCollector
+            .gatherResult()
+            .getGossipPubDeliveryResult()
             .aggregateSlowestByPublishTime()
             .deliveryDelays
         return StatsFactory.DEFAULT.createStats(allMessageDelays)
@@ -226,7 +226,7 @@ class BlobDecouplingSimulation(
         println("The longest message: $slowestMessage")
 
         val longestPath =
-            gossipMessages.findPubMessagePath(slowestMessage.origMsg.receivingPeer, slowestMessage.msgId)
+            gossipMessages.findPubMessagePath(slowestMessage.origMsg.receivingPeer, slowestMessage.simMsgId)
         println("Longest path (${longestPath.size} hops): \n  " + longestPath.joinToString("\n  "))
 
         val fastestMessage = gossipMessages.receivedPublishMessagesByPeerFastest
@@ -280,7 +280,7 @@ fun main() {
             val groupedDelays = sim.simulation.gatherPubDeliveryStats()
                 .aggregateSlowestByPublishTime()
                 .groupBy {
-                    if (sim.simulation.network.peers[it.deliveredMsg.receivedPeer]!!.inboundBandwidth.totalBandwidth == slowBandwidth)
+                    if (it.toPeer.inboundBandwidth.totalBandwidth == slowBandwidth)
                         "Slow" else "Fast"
                 }
                 .mapValues { it.value.deliveryDelays }

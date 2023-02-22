@@ -62,15 +62,16 @@ class GossipScoreTestSimulation {
         simulation.forwardTime(10.seconds)
 
         println("Gathering results...")
-        val results = simulation.gatherMessageResults()
+        val results = simulation.gatherPubDeliveryStats()
 
-        val msgDelayStats = StatsFactory.DEFAULT.createStats("msgDelay").also {
-            it += results.entries.flatMap { e ->
-                e.value.map { it.receivedTime - e.key.sentTime }
-            }
-        }
-        val msgDeliveryStats = StatsFactory.DEFAULT.createStats("msgDelay").also {
-            it += results.entries.map { it.value.size.toDouble() / (simConfig.totalPeers - 1) }
+        val msgDelayStats = StatsFactory.DEFAULT.createStats(results.deliveryDelays)
+
+        val msgDeliveryStats = StatsFactory.DEFAULT.createStats("msgDelay").also { stats ->
+            results.deliveries
+                .groupingBy { it.origMsg.msgId }
+                .eachCount()
+                .values
+                .forEach { stats += it.toDouble() / (simConfig.totalPeers - 1) }
         }
 
         println("Message delivery delay stats: $msgDelayStats")

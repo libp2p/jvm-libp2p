@@ -57,12 +57,9 @@ class BandwidthTest {
         simulation.publishMessage(0, 200000, topic)
         simulation.forwardTime(10.seconds)
 
-        val messageResults = simulation.gatherMessageResults()
-        val (origMsg, res) = messageResults.entries.first()
-        run {
-            assertThat(res[0].receivedTime - origMsg.sentTime).isCloseTo(2100, Offset.offset(100))
-            println(res)
-        }
+        val deliveryResult = simulation.gatherPubDeliveryStats()
+            assertThat(deliveryResult.deliveries[0].deliveryDelay).isCloseTo(2100, Offset.offset(100))
+            println(deliveryResult)
     }
 
     @Test
@@ -83,12 +80,8 @@ class BandwidthTest {
         simulation.publishMessage(0, 200000, topic)
         simulation.forwardTime(10.seconds)
 
-        val messageResults = simulation.gatherMessageResults()
-        val (origMsg, res) = messageResults.entries.first()
-        run {
-            println(res)
-            assertThat(res[0].receivedTime - origMsg.sentTime).isCloseTo(3100, Offset.offset(100))
-        }
+        val deliveryResult = simulation.gatherPubDeliveryStats()
+            assertThat(deliveryResult.deliveries[0].deliveryDelay).isCloseTo(3100, Offset.offset(100))
     }
 
     @Test
@@ -105,12 +98,8 @@ class BandwidthTest {
         simulation.publishMessage(0, 200000, topic)
         simulation.forwardTime(10.seconds)
 
-        val messageResults = simulation.gatherMessageResults()
-        val (origMsg, res) = messageResults.entries.first()
-        run {
-            assertThat(res[0].receivedTime - origMsg.sentTime).isCloseTo(4100, Offset.offset(100))
-            println(res)
-        }
+        val deliveryResult = simulation.gatherPubDeliveryStats()
+            assertThat(deliveryResult.deliveries[0].deliveryDelay).isCloseTo(4100, Offset.offset(100))
     }
 
     @Test
@@ -131,12 +120,8 @@ class BandwidthTest {
         simulation.publishMessage(0, 200000, topic)
         simulation.forwardTime(10.seconds)
 
-        val messageResults = simulation.gatherMessageResults()
-        val (origMsg, res) = messageResults.entries.first()
-        run {
-            assertThat(res[0].receivedTime - origMsg.sentTime).isCloseTo(5100, Offset.offset(100))
-            println(res)
-        }
+        val deliveryResult = simulation.gatherPubDeliveryStats()
+            assertThat(deliveryResult.deliveries[0].deliveryDelay).isCloseTo(5100, Offset.offset(100))
     }
 
     @Test
@@ -157,22 +142,13 @@ class BandwidthTest {
         simulation.forwardTime(10.seconds)
 
         run {
-            val messageResults = simulation.gatherMessageResults()
-            val resList = messageResults.entries.toList()
-            assertThat(resList).hasSize(3)
-            run {
-                val (origMsg, res) = resList[0]
-                assertThat(res[0].receivedTime - origMsg.sentTime).isCloseTo(2100, Offset.offset(100))
-            }
-            run {
-                val (origMsg, res) = resList[1]
-                assertThat(res[0].receivedTime - origMsg.sentTime).isCloseTo(3100, Offset.offset(100))
-            }
-            run {
-                val (origMsg, res) = resList[2]
-                assertThat(res[0].receivedTime - origMsg.sentTime).isCloseTo(5100, Offset.offset(100))
-            }
+            val deliveryResult = simulation.gatherPubDeliveryStats()
+            assertThat(deliveryResult.deliveries).hasSize(3)
+                assertThat(deliveryResult.deliveries[0].deliveryDelay).isCloseTo(2100, Offset.offset(100))
+                assertThat(deliveryResult.deliveries[1].deliveryDelay).isCloseTo(3100, Offset.offset(100))
+                assertThat(deliveryResult.deliveries[2].deliveryDelay).isCloseTo(5100, Offset.offset(100))
         }
+        simulation.clearAllMessages()
 
         simulation.publishMessage(0, 200000, topic)
         simulation.forwardTime(500.millis)
@@ -182,23 +158,11 @@ class BandwidthTest {
         simulation.forwardTime(10.seconds)
 
         run {
-            val messageResults = simulation.gatherMessageResults()
-            val resList = messageResults.entries
-                .drop(3)
-                .toList()
-            assertThat(resList).hasSize(3)
-            run {
-                val (origMsg, res) = resList[0]
-                assertThat(res[0].receivedTime - origMsg.sentTime).isCloseTo(2100, Offset.offset(100))
-            }
-            run {
-                val (origMsg, res) = resList[1]
-                assertThat(res[0].receivedTime - origMsg.sentTime).isCloseTo(2600, Offset.offset(100))
-            }
-            run {
-                val (origMsg, res) = resList[2]
-                assertThat(res[0].receivedTime - origMsg.sentTime).isCloseTo(4100, Offset.offset(100))
-            }
+            val deliveryResult = simulation.gatherPubDeliveryStats()
+            assertThat(deliveryResult.deliveries).hasSize(3)
+            assertThat(deliveryResult.deliveries[0].deliveryDelay).isCloseTo(2100, Offset.offset(100))
+            assertThat(deliveryResult.deliveries[1].deliveryDelay).isCloseTo(2600, Offset.offset(100))
+            assertThat(deliveryResult.deliveries[2].deliveryDelay).isCloseTo(4100, Offset.offset(100))
         }
     }
 }

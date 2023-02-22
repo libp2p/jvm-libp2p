@@ -197,17 +197,10 @@ class AccurateBandwidthTest {
         simulation.forwardTime(10.seconds)
 
         run {
-            val messageResults = simulation.gatherMessageResults()
-            val resList = messageResults.entries.toList()
-            assertThat(resList).hasSize(3)
-            run {
-                val (origMsg, res) = resList[0]
-                assertThat(res[0].receivedTime - origMsg.sentTime).isCloseTo(2000, Offset.offset(100))
-            }
-            run {
-                val (origMsg, res) = resList[1]
-                assertThat(res[0].receivedTime - origMsg.sentTime).isCloseTo(3000, Offset.offset(100))
-            }
+            val deliveryResults = simulation.gatherPubDeliveryStats()
+            assertThat(deliveryResults.deliveries).hasSize(3)
+            assertThat(deliveryResults.deliveries[0].deliveryDelay).isCloseTo(2000, Offset.offset(100))
+            assertThat(deliveryResults.deliveries[1].deliveryDelay).isCloseTo(3000, Offset.offset(100))
         }
     }
 }

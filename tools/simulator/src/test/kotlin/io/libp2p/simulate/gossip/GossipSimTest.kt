@@ -55,20 +55,15 @@ class GossipSimTest {
         simulation.publishMessage(0)
         simulation.forwardTime(1.seconds)
 
-        val res = simulation.gatherMessageResults()
+        val res = simulation.gatherPubDeliveryStats()
 
-        assertThat(res).hasSize(1)
+        assertThat(res.deliveries).hasSize(2)
 
-        val res0 = res.values.first()
-        assertThat(res0).hasSize(2)
+        assertThat(res.deliveries[0].toPeer.simPeerId).isEqualTo(1)
+        assertThat(res.deliveries[0].receivedTime).isEqualTo(publishTime)
 
-        val res0_0 = res0.first()
-        assertThat(res0_0.receivedPeer).isEqualTo(1)
-        assertThat(res0_0.receivedTime).isEqualTo(publishTime)
-
-        val res0_1 = res0.last()
-        assertThat(res0_1.receivedPeer).isEqualTo(2)
-        assertThat(res0_1.receivedTime).isEqualTo(publishTime)
+        assertThat(res.deliveries[1].toPeer.simPeerId).isEqualTo(2)
+        assertThat(res.deliveries[1].receivedTime).isEqualTo(publishTime)
 
         println("Done")
     }
@@ -151,13 +146,9 @@ class GossipSimTest {
         simulation.forwardTime(1.minutes)
 
         println("Gathering results...")
-        val results = simulation.gatherMessageResults()
+        val results = simulation.gatherPubDeliveryStats()
 
-        val msgDelayStats = StatsFactory.DEFAULT.createStats("msgDelay").also {
-            it += results.entries.flatMap { e ->
-                e.value.map { it.receivedTime - e.key.sentTime }
-            }
-        }
+        val msgDelayStats = StatsFactory.DEFAULT.createStats(results.deliveryDelays)
         println("Delivery stats: $msgDelayStats")
 
         if (decoupled) {
