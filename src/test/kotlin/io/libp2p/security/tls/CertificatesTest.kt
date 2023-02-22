@@ -8,6 +8,7 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.bouncycastle.util.encoders.Hex
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 
 class CertificatesTest {
 
@@ -50,10 +51,7 @@ class CertificatesTest {
         val certBytes = Hex.decode(hex)
         val certHolder = X509CertificateHolder(certBytes)
         val cert = JcaX509CertificateConverter().setProvider(BouncyCastleProvider()).getCertificate(certHolder)
-        try {
-            verifyAndExtractPeerId(arrayOf(cert))
-            throw java.lang.RuntimeException("Failed")
-        } catch (e: IllegalStateException) {}
+        assertThrows<IllegalStateException>({ verifyAndExtractPeerId(arrayOf(cert))})
     }
 
     @Test
