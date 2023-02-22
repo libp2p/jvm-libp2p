@@ -20,7 +20,7 @@ interface SecureChannel : ProtocolBinding<SecureChannel.Session> {
         val remoteId: PeerId,
 
         /**
-         * The public key of the
+         * The public key of the remote peer.
          */
         val remotePubKey: PubKey
     )
