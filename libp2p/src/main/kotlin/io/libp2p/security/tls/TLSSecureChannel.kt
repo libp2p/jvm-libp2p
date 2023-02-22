@@ -118,8 +118,8 @@ fun getJavaPublicKey(pub: PubKey): PublicKey {
         val lastbyteInt = pk[pk.lastIndex].toInt()
         var xisodd = lastbyteInt.and(255).shr(7) == 1
         // make sure most significant bit will be 0 - after reversing.
-        pk[31] = pk[31].and(127);
-        val y = BigInteger(1, pk.reversedArray());
+        pk[31] = pk[31].and(127)
+        val y = BigInteger(1, pk.reversedArray())
 
         val paramSpec = NamedParameterSpec("Ed25519")
         val ep = EdECPoint(xisodd, y)
@@ -177,7 +177,7 @@ fun getPublicKeyFromCert(chain: Array<Certificate>): PubKey {
 /** Build a self signed cert, with an extension containing the host key + sig(cert public key)
  *
  */
-fun buildCert(hostKey: PrivKey, subjectKey: PrivKey) : X509Certificate {
+fun buildCert(hostKey: PrivKey, subjectKey: PrivKey): X509Certificate {
     val publicKeyAsn1 = getJavaPublicKey(subjectKey.publicKey()).encoded
     val subPubKeyInfo = SubjectPublicKeyInfo.getInstance(publicKeyAsn1)
 
