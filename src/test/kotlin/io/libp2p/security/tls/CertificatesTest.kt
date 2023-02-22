@@ -51,7 +51,7 @@ class CertificatesTest {
         val certBytes = Hex.decode(hex)
         val certHolder = X509CertificateHolder(certBytes)
         val cert = JcaX509CertificateConverter().setProvider(BouncyCastleProvider()).getCertificate(certHolder)
-        assertThrows<IllegalStateException>({ verifyAndExtractPeerId(arrayOf(cert))})
+        assertThrows<IllegalStateException>({ verifyAndExtractPeerId(arrayOf(cert)) })
     }
 
     @Test
@@ -63,6 +63,4 @@ class CertificatesTest {
         val expectedPeerId = PeerId.fromPubKey(host.second)
         assertEquals(peerIdFromCert, expectedPeerId)
     }
-
-
 }
