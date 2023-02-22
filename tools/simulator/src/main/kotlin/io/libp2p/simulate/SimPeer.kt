@@ -3,9 +3,12 @@ package io.libp2p.simulate
 import io.libp2p.core.PeerId
 import java.util.concurrent.CompletableFuture
 
+typealias SimPeerId = Int
+
 interface SimPeer {
 
-    val name: String
+    val simPeerId: SimPeerId
+    val name: String get() = simPeerId.toString()
     val peerId: PeerId
     val connections: List<SimConnection>
 

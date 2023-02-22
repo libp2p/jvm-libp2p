@@ -21,7 +21,7 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 
 class GossipSimPeer(
-    override val name: String,
+    override val simPeerId: Int,
     override val random: Random,
     protocol: PubsubProtocol = PubsubProtocol.Gossip_V_1_1
 ) : StreamSimPeer<Unit>(true, protocol.announceStr) {
