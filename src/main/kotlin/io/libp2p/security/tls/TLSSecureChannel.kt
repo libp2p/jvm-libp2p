@@ -5,7 +5,6 @@ import io.libp2p.core.P2PChannel
 import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.crypto.PubKey
-import io.libp2p.core.crypto.marshalPublicKey
 import io.libp2p.core.crypto.unmarshalPublicKey
 import io.libp2p.core.multistream.ProtocolDescriptor
 import io.libp2p.core.security.SecureChannel
@@ -26,9 +25,7 @@ import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo
 import org.bouncycastle.cert.X509CertificateHolder
 import org.bouncycastle.cert.X509v3CertificateBuilder
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter
-import org.bouncycastle.cert.jcajce.JcaX509ExtensionUtils
 import org.bouncycastle.crypto.params.Ed25519PublicKeyParameters
-import org.bouncycastle.jcajce.interfaces.EdDSAPublicKey
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder
 import java.math.BigInteger
@@ -43,7 +40,6 @@ import java.util.*
 import java.util.concurrent.CompletableFuture
 import java.util.logging.Logger
 import kotlin.experimental.and
-
 
 private val log = Logger.getLogger(TlsSecureChannel::class.java.name)
 const val MaxCipheredPacketLength = 65535
@@ -86,18 +82,22 @@ class TlsSecureChannel(private val localKey: PrivKey) :
         ch.pushHandler(handler)
         val handshake = handler.handshakeFuture()
         val engine = handler.engine()
-        handshake.addListener { _ -> handshakeComplete.complete(SecureChannel.Session(
-            PeerId.fromPubKey(localKey.publicKey()),
-            verifyAndExtractPeerId(engine.getSession().getPeerCertificates()),
-            getPublicKeyFromCert(engine.getSession().getPeerCertificates())
-        )) }
+        handshake.addListener { _ ->
+            handshakeComplete.complete(
+                SecureChannel.Session(
+                    PeerId.fromPubKey(localKey.publicKey()),
+                    verifyAndExtractPeerId(engine.getSession().getPeerCertificates()),
+                    getPublicKeyFromCert(engine.getSession().getPeerCertificates())
+                )
+            )
+        }
         return handshakeComplete
     }
 }
 
 fun getJavaKey(priv: PrivKey): PrivateKey {
     if (priv.keyType == Crypto.KeyType.Ed25519) {
-        val kf = KeyFactory.getInstance("Ed25519");
+        val kf = KeyFactory.getInstance("Ed25519")
         val privKeyInfo =
             PrivateKeyInfo(AlgorithmIdentifier(EdECObjectIdentifiers.id_Ed25519), DEROctetString(priv.raw()))
         val pkcs8KeySpec = PKCS8EncodedKeySpec(privKeyInfo.encoded)
@@ -111,20 +111,20 @@ fun getJavaKey(priv: PrivKey): PrivateKey {
 
 fun getJavaPublicKey(pub: PubKey): PublicKey {
     if (pub.keyType == Crypto.KeyType.Ed25519) {
-        val kf = KeyFactory.getInstance("Ed25519");
+        val kf = KeyFactory.getInstance("Ed25519")
 
         // determine if x was odd.
         var pk = pub.raw()
-        val lastbyteInt = pk[pk.lastIndex].toInt();
-        var xisodd = lastbyteInt.and(255).shr(7) == 1;
+        val lastbyteInt = pk[pk.lastIndex].toInt()
+        var xisodd = lastbyteInt.and(255).shr(7) == 1
         // make sure most significant bit will be 0 - after reversing.
         pk[31] = pk[31].and(127);
         val y = BigInteger(1, pk.reversedArray());
 
-        val paramSpec = NamedParameterSpec("Ed25519");
-        val ep = EdECPoint(xisodd, y);
-        val pubSpec = EdECPublicKeySpec(paramSpec, ep);
-        return kf.generatePublic(pubSpec);
+        val paramSpec = NamedParameterSpec("Ed25519")
+        val ep = EdECPoint(xisodd, y)
+        val pubSpec = EdECPublicKeySpec(paramSpec, ep)
+        return kf.generatePublic(pubSpec)
     }
     throw IllegalArgumentException("Unsupported TLS key type:" + pub.keyType)
 }
@@ -143,7 +143,7 @@ fun verifyAndExtractPeerId(chain: Array<Certificate>): PeerId {
     val cert = chain.get(0)
     // peerid is in the certificate extension
     val bcCert = org.bouncycastle.asn1.x509.Certificate
-                .getInstance(ASN1Primitive.fromByteArray(cert.getEncoded()))
+        .getInstance(ASN1Primitive.fromByteArray(cert.getEncoded()))
     val bcX509Cert = X509CertificateHolder(bcCert)
     val libp2pOid = ASN1ObjectIdentifier("1.3.6.1.4.1.53594.1.1")
     val extension = bcX509Cert.extensions.getExtension(libp2pOid)
@@ -172,17 +172,6 @@ fun getPublicKeyFromCert(chain: Array<Certificate>): PubKey {
         throw java.lang.IllegalStateException("Cert chain must have exactly 1 element!")
     val cert = chain.get(0)
     return getPubKey(cert.publicKey)
-}
-
-fun toAsn1(pub: PubKey): ByteArray {
-    // Shouldn't be using RSA here
-    if (pub.keyType == Crypto.KeyType.Ed25519) {
-        return Ed25519PublicKeyParameters(pub.raw()).encoded
-    }
-    if (pub.keyType == Crypto.KeyType.ECDSA) {
-
-    }
-    throw IllegalStateException("Unsupported key type for TLS: " + pub.keyType)
 }
 
 /** Build a self signed cert, with an extension containing the host key + sig(cert public key)
