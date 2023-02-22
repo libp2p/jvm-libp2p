@@ -71,12 +71,8 @@ class GossipMessageResult(
     val originatingPublishMessages: Map<SimMessageId, PubMessageWrapper> by lazy {
         publishMessages
             .groupBy { it.simMsgId }
-            .mapValues { (messageId, pubMessages) ->
-                val sendingPers = pubMessages.groupBy { it.origMsg.sendingPeer }
-                val receivingPers = pubMessages.groupBy { it.origMsg.receivingPeer }
-                val onlySendingPeers = sendingPers - receivingPers.keys
-                require(onlySendingPeers.size == 1)
-                onlySendingPeers.values.first().first()
+            .mapValues { (_, pubMessages) ->
+                pubMessages.first()
             }
     }
 

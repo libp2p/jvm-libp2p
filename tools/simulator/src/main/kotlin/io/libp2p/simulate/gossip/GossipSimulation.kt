@@ -3,7 +3,6 @@ package io.libp2p.simulate.gossip
 import io.libp2p.core.pubsub.Topic
 import io.libp2p.etc.types.minutes
 import io.libp2p.etc.types.seconds
-import io.libp2p.etc.types.toByteArray
 import io.libp2p.pubsub.gossip.CurrentTimeSupplier
 import io.libp2p.simulate.stats.collect.gossip.GossipMessageCollector
 import io.libp2p.simulate.stats.collect.gossip.GossipPubDeliveryResult
