@@ -19,9 +19,7 @@ fun ScheduledExecutorService.delayedFuture(delay: Duration): CompletableFuture<U
     val fut = CompletableFuture<Unit>()
     this.schedule({ fut.complete(null) }, delay.inWholeMilliseconds, TimeUnit.MILLISECONDS)
     return fut
-
 }
 
 fun <R> ScheduledExecutorService.schedule(delay: Duration, callable: () -> R): ScheduledFuture<R> =
     this.schedule(Callable { callable() }, delay.inWholeMilliseconds, TimeUnit.MILLISECONDS)
-

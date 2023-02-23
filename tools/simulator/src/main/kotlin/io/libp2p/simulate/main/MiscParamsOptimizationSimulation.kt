@@ -2,7 +2,6 @@ package io.libp2p.simulate.main
 
 import io.libp2p.core.pubsub.Topic
 import io.libp2p.core.pubsub.ValidationResult
-import io.libp2p.etc.types.millis
 import io.libp2p.pubsub.gossip.GossipParams
 import io.libp2p.simulate.Bandwidth
 import io.libp2p.simulate.RandomDistribution

@@ -24,4 +24,3 @@ class GossipMessageCollector(
     fun gatherResult() =
         GossipMessageResult(deliveredMessages, msgGenerator, gossipMessageIdGenerator)
 }
-

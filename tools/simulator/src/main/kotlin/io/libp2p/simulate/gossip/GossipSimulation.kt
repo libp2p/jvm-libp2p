@@ -6,11 +6,9 @@ import io.libp2p.simulate.stats.collect.gossip.GossipMessageCollector
 import io.libp2p.simulate.stats.collect.gossip.GossipPubDeliveryResult
 import io.libp2p.simulate.stats.collect.gossip.SimMessageId
 import io.libp2p.simulate.stats.collect.gossip.getMessageIdGenerator
-import io.libp2p.simulate.util.countValuesBy
 import io.libp2p.tools.schedule
 import io.netty.buffer.Unpooled
 import java.util.concurrent.CompletableFuture
-import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.time.Duration
@@ -84,8 +82,8 @@ class GossipSimulation(
                     val ret = CompletableFuture<ValidationResult>()
                     pendingValidationCount.incrementAndGet()
                     peer.simExecutor.schedule(validationDelay) {
-                            ret.complete(validationResult)
-                            pendingValidationCount.decrementAndGet()
+                        ret.complete(validationResult)
+                        pendingValidationCount.decrementAndGet()
                     }
                     ret
                 }

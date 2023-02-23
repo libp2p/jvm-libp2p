@@ -5,7 +5,6 @@ import io.libp2p.simulate.util.countByRanges
 import io.libp2p.simulate.util.max
 import io.libp2p.simulate.util.min
 
-
 class GroupByRangeAggregator() {
 
     constructor(values: Map<String, Collection<Long>>) : this() {
@@ -20,7 +19,7 @@ class GroupByRangeAggregator() {
     val minValue get() = allValues.min()
     val maxValue get() = allValues.max()
 
-    fun addAll(values: Map<String, Collection<Long>>)  = apply {
+    fun addAll(values: Map<String, Collection<Long>>) = apply {
         values.forEach { (name, values) ->
             addValues(values, name)
         }
@@ -54,7 +53,7 @@ class GroupByRangeAggregator() {
     }
 
     inner class GroupByRangeAggregate(
-        val ranges: List<LongRange> ,
+        val ranges: List<LongRange>,
         val rangedValues: Map<String, List<Int>>
     ) {
         init {
@@ -87,4 +86,3 @@ class GroupByRangeAggregator() {
         }
     }
 }
-

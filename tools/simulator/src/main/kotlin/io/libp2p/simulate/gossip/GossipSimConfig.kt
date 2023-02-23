@@ -11,7 +11,6 @@ import io.libp2p.simulate.topology.RandomNPeers
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
-import kotlin.time.toKotlinDuration
 
 data class PeerBandwidth(
     val inbound: BandwidthDelayer,
@@ -58,7 +57,6 @@ fun constantValidationGenerator(
     validationResult: ValidationResult = ValidationResult.Valid
 ): MessageValidationGenerator =
     { _, _ -> MessageValidation(validationDelay, validationResult) }
-
 
 fun constantLatencyGenerator(latency: Duration): LatencyGenerator =
     { it.simpleLatencyDelayer(latency) }

@@ -43,7 +43,6 @@ class GossipSimPeerTest {
 
     companion object {
         fun GossipSimPeer.subscribe(topic: Topic) =
-            this.api.subscribe( Subscriber {}, topic)
-
+            this.api.subscribe(Subscriber {}, topic)
     }
 }

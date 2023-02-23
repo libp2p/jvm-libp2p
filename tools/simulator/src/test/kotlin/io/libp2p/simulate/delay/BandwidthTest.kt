@@ -56,8 +56,8 @@ class BandwidthTest {
         simulation.forwardTime(10.seconds)
 
         val deliveryResult = simulation.gatherPubDeliveryStats()
-            assertThat(deliveryResult.deliveries[0].deliveryDelay).isCloseTo(2100, Offset.offset(100))
-            println(deliveryResult)
+        assertThat(deliveryResult.deliveries[0].deliveryDelay).isCloseTo(2100, Offset.offset(100))
+        println(deliveryResult)
     }
 
     @Test
@@ -79,7 +79,7 @@ class BandwidthTest {
         simulation.forwardTime(10.seconds)
 
         val deliveryResult = simulation.gatherPubDeliveryStats()
-            assertThat(deliveryResult.deliveries[0].deliveryDelay).isCloseTo(3100, Offset.offset(100))
+        assertThat(deliveryResult.deliveries[0].deliveryDelay).isCloseTo(3100, Offset.offset(100))
     }
 
     @Test
@@ -97,7 +97,7 @@ class BandwidthTest {
         simulation.forwardTime(10.seconds)
 
         val deliveryResult = simulation.gatherPubDeliveryStats()
-            assertThat(deliveryResult.deliveries[0].deliveryDelay).isCloseTo(4100, Offset.offset(100))
+        assertThat(deliveryResult.deliveries[0].deliveryDelay).isCloseTo(4100, Offset.offset(100))
     }
 
     @Test
@@ -119,7 +119,7 @@ class BandwidthTest {
         simulation.forwardTime(10.seconds)
 
         val deliveryResult = simulation.gatherPubDeliveryStats()
-            assertThat(deliveryResult.deliveries[0].deliveryDelay).isCloseTo(5100, Offset.offset(100))
+        assertThat(deliveryResult.deliveries[0].deliveryDelay).isCloseTo(5100, Offset.offset(100))
     }
 
     @Test
@@ -142,9 +142,9 @@ class BandwidthTest {
         run {
             val deliveryResult = simulation.gatherPubDeliveryStats()
             assertThat(deliveryResult.deliveries).hasSize(3)
-                assertThat(deliveryResult.deliveries[0].deliveryDelay).isCloseTo(2100, Offset.offset(100))
-                assertThat(deliveryResult.deliveries[1].deliveryDelay).isCloseTo(3100, Offset.offset(100))
-                assertThat(deliveryResult.deliveries[2].deliveryDelay).isCloseTo(5100, Offset.offset(100))
+            assertThat(deliveryResult.deliveries[0].deliveryDelay).isCloseTo(2100, Offset.offset(100))
+            assertThat(deliveryResult.deliveries[1].deliveryDelay).isCloseTo(3100, Offset.offset(100))
+            assertThat(deliveryResult.deliveries[2].deliveryDelay).isCloseTo(5100, Offset.offset(100))
         }
         simulation.clearAllMessages()
 

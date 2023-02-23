@@ -4,7 +4,6 @@ import io.libp2p.simulate.MessageDelayer
 import io.libp2p.tools.schedule
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ScheduledExecutorService
-import java.util.concurrent.TimeUnit
 import kotlin.time.Duration
 
 class TimeDelayer(

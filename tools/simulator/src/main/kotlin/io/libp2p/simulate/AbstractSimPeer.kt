@@ -7,7 +7,7 @@ import kotlin.collections.ArrayList
 
 abstract class AbstractSimPeer : SimPeer {
 
-    override val simPeerId= counter.getAndIncrement()
+    override val simPeerId = counter.getAndIncrement()
 
     override val connections: MutableList<SimConnection> = Collections.synchronizedList(ArrayList())
 
