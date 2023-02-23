@@ -6,7 +6,8 @@ import io.libp2p.simulate.gossip.*
 import io.libp2p.simulate.gossip.router.SimGossipRouterBuilder
 import io.libp2p.simulate.stats.StatsFactory
 import io.libp2p.simulate.topology.RandomNPeers
-import io.libp2p.simulate.util.millis
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 fun main() {
     GossipScoreTestSimulation().run()
@@ -20,7 +21,7 @@ class GossipScoreTestSimulation {
             totalPeers = 1000,
             topics = listOf(Topic(BlocksTopic)),
             topology = RandomNPeers(30),
-            messageValidationGenerator = constantValidationGenerator(50.millis)
+            messageValidationGenerator = constantValidationGenerator(50.milliseconds)
         )
 
         val gossipParams = Eth2DefaultGossipParams

@@ -9,13 +9,14 @@ import io.libp2p.simulate.gossip.router.SimGossipRouterBuilder
 import io.libp2p.simulate.stats.StatsFactory
 import io.libp2p.simulate.topology.AllToAllTopology
 import io.libp2p.simulate.topology.asFixedTopology
-import io.libp2p.simulate.util.millis
-import io.libp2p.simulate.util.minutes
-import io.libp2p.simulate.util.seconds
 import io.libp2p.tools.log
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.data.Percentage
 import org.junit.jupiter.api.Test
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.toJavaDuration
 
 class GossipSimTest {
 
@@ -88,7 +89,7 @@ class GossipSimTest {
                 0 to 2,
                 0 to 3,
             ).asFixedTopology(),
-            messageValidationGenerator = constantValidationGenerator(10.millis),
+            messageValidationGenerator = constantValidationGenerator(10.milliseconds),
             bandwidthGenerator = { peer ->
                 PeerBandwidth(
                     AccurateBandwidthTracker(Bandwidth(1_000_000), peer.simExecutor, peer.currentTime),
@@ -111,7 +112,7 @@ class GossipSimTest {
                 DLow = 1,
                 DHigh = 3,
                 DOut = 0,
-                heartbeatInterval = 1.minutes
+                heartbeatInterval = 1.minutes.toJavaDuration()
             )
         val gossipScoreParams = Eth2DefaultScoreParams
         val gossipRouterCtor = { _: Int ->

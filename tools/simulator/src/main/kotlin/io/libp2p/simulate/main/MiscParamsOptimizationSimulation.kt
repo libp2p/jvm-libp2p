@@ -18,11 +18,15 @@ import io.libp2p.simulate.stream.randomLatencyDelayer
 import io.libp2p.simulate.topology.RandomNPeers
 import io.libp2p.simulate.util.*
 import java.lang.Integer.max
-import java.time.Duration
 import java.util.*
 import java.util.concurrent.Callable
 import java.util.concurrent.Executors
 import kotlin.collections.plus
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.ZERO
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.toJavaDuration
 
 fun main() {
     MiscParamsOptimizationSimulation().runAll()
@@ -50,7 +54,7 @@ class MiscParamsOptimizationSimulation {
         val gossipHistory: Int = 5,
         val gossipHeartbeat: Duration = 1.seconds,
         val gossipHeartbeatAddDelay: RandomDistribution = RandomDistribution.const(0.0),
-        val gossipValidationDelay: Duration = 0.millis,
+        val gossipValidationDelay: Duration = ZERO,
 
         val avrgMessageSize: Int = 32 * 1024,
         val topology: Topology = RandomNPeers(10),
@@ -60,7 +64,7 @@ class MiscParamsOptimizationSimulation {
 
     data class SimOptions(
         val warmUpDelay: Duration = 5.seconds,
-        val zeroHeartbeatsDelay: Duration = 500.millis, // 0 to skip this step
+        val zeroHeartbeatsDelay: Duration = 500.milliseconds, // 0 to skip this step
         val manyHeartbeatsDelay: Duration = 30.seconds,
         val generatedNetworksCount: Int = 1,
         val sentMessageCount: Int = 10,
@@ -69,7 +73,7 @@ class MiscParamsOptimizationSimulation {
         val parallelIterationsCount: Int = 1,
         val measureTCPFramesOverhead: Boolean = true
     ) {
-        fun isZeroHeartbeatsEnabled(): Boolean = zeroHeartbeatsDelay.toMillis() > 0
+        fun isZeroHeartbeatsEnabled(): Boolean = zeroHeartbeatsDelay > ZERO
     }
 
     data class SimResult(
@@ -244,7 +248,7 @@ class MiscParamsOptimizationSimulation {
                     )
         }
         val opt = SimOptions(
-            zeroHeartbeatsDelay = 0.millis,
+            zeroHeartbeatsDelay = ZERO,
             generatedNetworksCount = 10,
             sentMessageCount = 3,
             startRandomSeed = 3,
@@ -267,7 +271,7 @@ class MiscParamsOptimizationSimulation {
                         gossipDLow = 3,
                         gossipDHigh = 12,
                         gossipDLazy = 10,
-                        gossipHeartbeat = gossipHeartbeat.millis,
+                        gossipHeartbeat = gossipHeartbeat.milliseconds,
                         gossipHeartbeatAddDelay = RandomDistribution.uniform(0.0, 1000.0),
                         gossipHistory = 100, // increase history to serve low latency IWANT requests
 
@@ -277,7 +281,7 @@ class MiscParamsOptimizationSimulation {
         }
         val opt = SimOptions(
             warmUpDelay = 10.seconds,
-            zeroHeartbeatsDelay = 0.millis,
+            zeroHeartbeatsDelay = 0.milliseconds,
             manyHeartbeatsDelay = 30.seconds,
             generatedNetworksCount = 10,
             sentMessageCount = 3,
@@ -335,7 +339,7 @@ class MiscParamsOptimizationSimulation {
             DLazy = cfg.gossipDLazy,
             gossipSize = cfg.gossipAdvertise,
             gossipHistoryLength = cfg.gossipHistory,
-            heartbeatInterval = cfg.gossipHeartbeat,
+            heartbeatInterval = cfg.gossipHeartbeat.toJavaDuration(),
         )
 
         val ret = SimDetailedResult()
@@ -366,7 +370,7 @@ class MiscParamsOptimizationSimulation {
             val gossipRouterBuilderFactory: GossipRouterBuilderFactory = {
                 SimGossipRouterBuilder().also {
                     it.params = gossipParams
-                    it.additionalHeartbeatDelay = gossipHeartbeatAddDelay.next().toLong().millis
+                    it.additionalHeartbeatDelay = gossipHeartbeatAddDelay.next().toLong().milliseconds
                 }
             }
 

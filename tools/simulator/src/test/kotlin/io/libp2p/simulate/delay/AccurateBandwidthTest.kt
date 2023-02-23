@@ -6,11 +6,10 @@ import io.libp2p.simulate.delay.AccurateBandwidthTracker.Message
 import io.libp2p.simulate.gossip.*
 import io.libp2p.simulate.gossip.router.SimGossipRouterBuilder
 import io.libp2p.simulate.topology.AllToAllTopology
-import io.libp2p.simulate.util.millis
-import io.libp2p.simulate.util.seconds
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.data.Offset
 import org.junit.jupiter.api.Test
+import kotlin.time.Duration.Companion.seconds
 
 class AccurateBandwidthTest {
 

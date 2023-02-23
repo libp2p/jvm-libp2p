@@ -9,8 +9,8 @@ import io.libp2p.simulate.gossip.*
 import io.libp2p.simulate.gossip.router.SimGossipRouterBuilder
 import io.libp2p.simulate.stats.StatsFactory
 import io.libp2p.simulate.topology.RandomNPeers
-import io.libp2p.simulate.util.millis
 import io.libp2p.tools.log
+import kotlin.time.Duration.Companion.milliseconds
 
 fun main() {
     SimpleSimulation().publishMessage()
@@ -27,9 +27,9 @@ class SimpleSimulation(
         totalPeers = nodeCount,
         topics = listOf(testTopic),
         topology = RandomNPeers(nodePeerCount),
-        messageValidationGenerator = constantValidationGenerator(10.millis),
+        messageValidationGenerator = constantValidationGenerator(10.milliseconds),
         bandwidthGenerator = constantBandwidthGenerator(Bandwidth.mbitsPerSec(100)),
-        latencyGenerator = constantLatencyGenerator(50.millis),
+        latencyGenerator = constantLatencyGenerator(50.milliseconds),
     ),
 
     gossipParams: GossipParams = GossipParamsBuilder().build(),

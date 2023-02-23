@@ -12,12 +12,13 @@ import io.libp2p.simulate.stats.collect.gossip.GossipMessageResult
 import io.libp2p.simulate.stream.randomLatencyDelayer
 import io.libp2p.simulate.topology.RandomNPeers
 import io.libp2p.simulate.util.countValues
-import io.libp2p.simulate.util.millis
-import io.libp2p.simulate.util.minutes
 import io.libp2p.simulate.util.toMap
 import io.libp2p.tools.log
-import java.time.Duration
 import java.util.*
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.toKotlinDuration
 
 data class PeerBandwidthValue(
     val inbound: Bandwidth,
@@ -27,7 +28,7 @@ data class PeerBandwidthValue(
 class BlobDecouplingSimulation(
     val logger: (String) -> Unit = { log(it) },
 
-    val messageValidationDelay: Duration = 10.millis,
+    val messageValidationDelay: Duration = 10.milliseconds,
     val latency: RandomDistribution = RandomDistribution.uniform(0.0, 50.0),
 
     val nodeCount: Int = 1000,
@@ -111,7 +112,7 @@ class BlobDecouplingSimulation(
         logger("Creating simulation...")
         GossipSimulation(simConfig, simNetwork).also { simulation ->
             logger("Forwarding heartbeat time...")
-            simulation.forwardTime(gossipParams.heartbeatInterval)
+            simulation.forwardTime(gossipParams.heartbeatInterval.toKotlinDuration())
             logger("Cleaning warmup messages and network stats...")
             simulation.clearAllMessages()
         }

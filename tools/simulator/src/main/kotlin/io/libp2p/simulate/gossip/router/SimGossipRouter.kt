@@ -4,9 +4,10 @@ import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.pubsub.*
 import io.libp2p.pubsub.gossip.*
 import io.netty.channel.ChannelHandler
-import java.time.Duration
 import java.util.*
 import java.util.concurrent.ScheduledExecutorService
+import kotlin.time.Duration
+import kotlin.time.toJavaDuration
 
 class SimGossipRouter(
     params: GossipParams,
@@ -40,7 +41,8 @@ class SimGossipRouter(
     messageValidator
 ) {
 
-    override val heartbeatInitialDelay: Duration = params.heartbeatInterval + additionalHeartbeatDelay
+    override val heartbeatInitialDelay: java.time.Duration =
+        params.heartbeatInterval + additionalHeartbeatDelay.toJavaDuration()
 
     override fun initChannelWithHandler(streamHandler: StreamHandler, handler: ChannelHandler?) {
         if (serializeToBytes) {

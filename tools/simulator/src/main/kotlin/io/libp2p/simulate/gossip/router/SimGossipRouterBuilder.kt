@@ -2,12 +2,11 @@ package io.libp2p.simulate.gossip.router
 
 import io.libp2p.pubsub.gossip.GossipRouter
 import io.libp2p.pubsub.gossip.builders.GossipRouterBuilder
-import io.libp2p.simulate.util.seconds
-import java.time.Duration
+import kotlin.time.Duration
 
 class SimGossipRouterBuilder : GossipRouterBuilder() {
     var serializeMessagesToBytes: Boolean = false
-    var additionalHeartbeatDelay: Duration = 0.seconds
+    var additionalHeartbeatDelay: Duration = Duration.ZERO
 
     override fun createGossipRouter(): GossipRouter {
         val gossipScore =

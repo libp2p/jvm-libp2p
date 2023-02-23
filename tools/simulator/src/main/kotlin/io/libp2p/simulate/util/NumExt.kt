@@ -1,7 +1,6 @@
 package io.libp2p.simulate.util
 
 import java.lang.Long.min
-import java.time.Duration
 import kotlin.math.roundToLong
 
 fun <TKey, TValue, TSrc> Collection<TSrc>.groupByRangesBy(
@@ -56,13 +55,6 @@ fun LongRange.chunked(maxSize: Long): List<LongRange> {
     }
     return ret
 }
-
-val Int.millis: Duration
-    get() = Duration.ofMillis(this.toLong())
-val Int.seconds: Duration
-    get() = Duration.ofSeconds(this.toLong())
-val Int.minutes: Duration
-    get() = Duration.ofMinutes(this.toLong())
 
 fun Int.pow(n: Int): Long {
     var t = 1L

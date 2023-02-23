@@ -8,9 +8,9 @@ import io.libp2p.simulate.delay.AccurateBandwidthTracker
 import io.libp2p.simulate.stream.StreamSimConnection
 import io.libp2p.simulate.stream.simpleLatencyDelayer
 import io.libp2p.simulate.topology.RandomNPeers
-import io.libp2p.simulate.util.millis
-import io.libp2p.simulate.util.seconds
-import java.time.Duration
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toKotlinDuration
 
 data class PeerBandwidth(
@@ -41,7 +41,7 @@ data class GossipSimConfig(
     val bandwidthGenerator: BandwidthGenerator = { PeerBandwidth.UNLIMITED },
     val latencyGenerator: LatencyGenerator = { MessageDelayer.NO_DELAYER },
     val messageValidationGenerator: MessageValidationGenerator =
-        constantValidationGenerator(0.millis, ValidationResult.Valid),
+        constantValidationGenerator(0.milliseconds, ValidationResult.Valid),
 
     val topology: Topology = RandomNPeers(10),
     val peersTimeShift: RandomDistribution = RandomDistribution.const(0.0),
@@ -61,7 +61,7 @@ fun constantValidationGenerator(
 
 
 fun constantLatencyGenerator(latency: Duration): LatencyGenerator =
-    { it.simpleLatencyDelayer(latency.toKotlinDuration()) }
+    { it.simpleLatencyDelayer(latency) }
 
 fun constantBandwidthGenerator(bandwidth: Bandwidth): BandwidthGenerator = { gossipSimPeer ->
     PeerBandwidth(

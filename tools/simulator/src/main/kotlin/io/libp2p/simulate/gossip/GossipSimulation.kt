@@ -1,8 +1,6 @@
 package io.libp2p.simulate.gossip
 
 import io.libp2p.core.pubsub.*
-import io.libp2p.etc.types.minutes
-import io.libp2p.etc.types.seconds
 import io.libp2p.pubsub.gossip.CurrentTimeSupplier
 import io.libp2p.simulate.stats.collect.gossip.GossipMessageCollector
 import io.libp2p.simulate.stats.collect.gossip.GossipPubDeliveryResult
@@ -10,11 +8,14 @@ import io.libp2p.simulate.stats.collect.gossip.SimMessageId
 import io.libp2p.simulate.stats.collect.gossip.getMessageIdGenerator
 import io.libp2p.simulate.util.countValuesBy
 import io.netty.buffer.Unpooled
-import java.time.Duration
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.toJavaDuration
 
 data class SimMessage(
     val msgId: Long,
@@ -76,7 +77,7 @@ class GossipSimulation(
             Validator { message ->
                 onNewApiMessage(peer, message)
                 val (validationDelay, validationResult) = cfg.messageValidationGenerator(peer, message)
-                if (validationDelay.toMillis() == 0L) {
+                if (validationDelay == Duration.ZERO) {
                     CompletableFuture.completedFuture(validationResult)
                 } else {
                     val ret = CompletableFuture<ValidationResult>()
@@ -86,7 +87,7 @@ class GossipSimulation(
                             ret.complete(validationResult)
                             pendingValidationCount.decrementAndGet()
                         },
-                        validationDelay.toMillis(),
+                        validationDelay.inWholeMilliseconds,
                         TimeUnit.MILLISECONDS
                     )
                     ret
@@ -106,14 +107,14 @@ class GossipSimulation(
     }
 
     fun forwardTime(duration: Duration): Long {
-        network.timeController.addTime(duration)
+        network.timeController.addTime(duration.toJavaDuration())
         return network.timeController.time
     }
 
     fun forwardTimeUntilAllPubDelivered(step: Duration = 1.seconds, maxDuration: Duration = 1.minutes) {
         var totalDuration = 0.seconds
         while (totalDuration <= maxDuration && !isAllMessagesDelivered()) {
-            network.timeController.addTime(step)
+            network.timeController.addTime(step.toJavaDuration())
             totalDuration += step
         }
     }
@@ -125,7 +126,7 @@ class GossipSimulation(
     ) {
         var totalDuration = 0.seconds
         while (totalDuration <= maxDuration && gossipMessageCollector.pendingMessages.size > maxPendingMessagesAllowed) {
-            network.timeController.addTime(step)
+            network.timeController.addTime(step.toJavaDuration())
             totalDuration += step
         }
     }
