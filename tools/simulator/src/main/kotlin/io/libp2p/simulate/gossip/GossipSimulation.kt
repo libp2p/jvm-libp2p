@@ -65,7 +65,7 @@ class GossipSimulation(
         }
     }
 
-    private fun onNewApiMessage(peer: GossipSimPeer, msg: MessageApi) {
+    private fun onNewApiMessage(msg: MessageApi) {
         val simMessageId = cfg.messageGenerator.messageIdRetriever(msg.data.array())
         deliveredMessagesCount.computeIfAbsent(simMessageId) { AtomicInteger() }.incrementAndGet()
     }
@@ -74,7 +74,7 @@ class GossipSimulation(
         check(!(subscriptions[peer]?.contains(topic) ?: false))
         val subscription = peer.api.subscribe(
             Validator { message ->
-                onNewApiMessage(peer, message)
+                onNewApiMessage(message)
                 val (validationDelay, validationResult) = cfg.messageValidationGenerator(peer, message)
                 if (validationDelay == Duration.ZERO) {
                     CompletableFuture.completedFuture(validationResult)

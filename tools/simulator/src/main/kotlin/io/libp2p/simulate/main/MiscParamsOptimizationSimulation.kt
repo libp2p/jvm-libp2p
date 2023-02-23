@@ -34,7 +34,6 @@ fun main() {
 class MiscParamsOptimizationSimulation {
 
     val topic = Topic("Topic-1")
-    val maxMissingPeers = 32
 
     data class GossipStats(
         val msgDelay: Stats,
@@ -419,7 +418,6 @@ class MiscParamsOptimizationSimulation {
                     }
                 }
 
-                val t1 = simulation.currentTimeSupplier()
                 simulation.forwardTime(opt.manyHeartbeatsDelay)
 
                 run {
