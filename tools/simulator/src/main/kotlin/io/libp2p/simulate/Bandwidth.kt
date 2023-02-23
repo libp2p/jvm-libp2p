@@ -14,6 +14,7 @@ data class Bandwidth(val bytesPerSecond: Long) {
     operator fun div(d: Int) = Bandwidth(bytesPerSecond / d)
 
     companion object {
+        val UNLIM = Bandwidth(Long.MAX_VALUE)
         fun mbitsPerSec(mbsec: Int) = Bandwidth(mbsec.toLong() * (1 shl 20) / 10)
     }
 }
@@ -24,7 +25,7 @@ interface BandwidthDelayer : MessageDelayer {
 
     companion object {
         val UNLIM_BANDWIDTH = object : BandwidthDelayer {
-            override val totalBandwidth = Bandwidth(Long.MAX_VALUE)
+            override val totalBandwidth = Bandwidth.UNLIM
             override fun delay(size: Long) = CompletableFuture.completedFuture(Unit)
         }
     }

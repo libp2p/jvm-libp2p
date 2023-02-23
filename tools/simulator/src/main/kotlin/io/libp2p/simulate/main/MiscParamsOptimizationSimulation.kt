@@ -1,40 +1,28 @@
 package io.libp2p.simulate.main
 
-import io.libp2p.core.pubsub.RESULT_INVALID
 import io.libp2p.core.pubsub.Topic
 import io.libp2p.core.pubsub.ValidationResult
-import io.libp2p.core.pubsub.Validator
 import io.libp2p.etc.types.millis
-import io.libp2p.etc.types.toByteBuf
-import io.libp2p.pubsub.gossip.CurrentTimeSupplier
 import io.libp2p.pubsub.gossip.GossipParams
 import io.libp2p.simulate.Bandwidth
 import io.libp2p.simulate.RandomDistribution
 import io.libp2p.simulate.Topology
-import io.libp2p.simulate.delay.TimeDelayer
-import io.libp2p.simulate.generateAndConnect
 import io.libp2p.simulate.gossip.*
 import io.libp2p.simulate.gossip.router.SimGossipRouterBuilder
 import io.libp2p.simulate.stats.Stats
 import io.libp2p.simulate.stats.StatsFactory
 import io.libp2p.simulate.stats.WritableStats
-import io.libp2p.simulate.stats.collect.gossip.GossipMessageCollector
 import io.libp2p.simulate.stats.collect.gossip.GossipMessageResult
 import io.libp2p.simulate.stats.collect.gossip.GossipPubDeliveryResult
-import io.libp2p.simulate.stats.collect.gossip.getMessageIdGenerator
 import io.libp2p.simulate.stream.randomLatencyDelayer
 import io.libp2p.simulate.topology.RandomNPeers
 import io.libp2p.simulate.util.*
-import io.libp2p.tools.schedulers.ControlledExecutorServiceImpl
-import io.libp2p.tools.schedulers.TimeControllerImpl
 import java.lang.Integer.max
 import java.time.Duration
 import java.util.*
 import java.util.concurrent.Callable
-import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 import kotlin.collections.plus
-import kotlin.time.Duration.Companion.milliseconds
 
 fun main() {
     MiscParamsOptimizationSimulation().runAll()
@@ -116,22 +104,22 @@ class MiscParamsOptimizationSimulation {
     fun runAll() {
         println("Running testResultStabilityAgainstNetworkSize()...")
         testResultStabilityAgainstNetworkSize()
-//        println("Running testBFT()...")
-//        testBFT()
-//        println("Running testBFTOfPeerConnections()...")
-//        testBFTOfPeerConnections()
-//        println("Running testDOptimization()...")
-//        testDOptimization()
-//        println("Running testSizeDLazyOptimization()...")
-//        testSizeDLazyOptimization()
-//        println("Running testHeartbeatPeriod()...")
-//        testHeartbeatPeriod()
+        println("Running testBFT()...")
+        testBFT()
+        println("Running testBFTOfPeerConnections()...")
+        testBFTOfPeerConnections()
+        println("Running testDOptimization()...")
+        testDOptimization()
+        println("Running testSizeDLazyOptimization()...")
+        testSizeDLazyOptimization()
+        println("Running testHeartbeatPeriod()...")
+        testHeartbeatPeriod()
         println("All complete!")
     }
 
     fun testResultStabilityAgainstNetworkSize() {
         val cfgs = sequence {
-            for (totalPeers in arrayOf(500, 1000/*, 5000, 10000, 20000, 30000*/))
+            for (totalPeers in arrayOf(1000, 5000, 10000, 20000, 30000))
                 yield(
                     FlatSimConfig(
                         totalPeers = totalPeers,
@@ -457,11 +445,15 @@ class MiscParamsOptimizationSimulation {
         return ret
     }
 
-    private fun calcGossipStats(allPeers: kotlin.collections.Collection<GossipSimPeer>, gossipPubDeliveryResult: GossipPubDeliveryResult): GossipStats {
+    private fun calcGossipStats(allPeers: Collection<GossipSimPeer>, gossipPubDeliveryResult: GossipPubDeliveryResult): GossipStats {
         val delayStats = StatsFactory.DEFAULT.createStats(
             gossipPubDeliveryResult.deliveryDelays
         )
-        val receivedPeers = gossipPubDeliveryResult.deliveries.map { it.toPeer }.toSet()
+        val receivedPeers = gossipPubDeliveryResult.deliveries
+            .flatMap {
+                listOf(it.toPeer, it.origMsg.fromPeer)
+            }
+            .toSet()
         return GossipStats(delayStats, allPeers - receivedPeers)
     }
 }
