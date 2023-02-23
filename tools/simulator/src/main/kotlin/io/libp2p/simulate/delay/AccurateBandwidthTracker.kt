@@ -4,10 +4,12 @@ import io.libp2p.pubsub.gossip.CurrentTimeSupplier
 import io.libp2p.simulate.Bandwidth
 import io.libp2p.simulate.BandwidthDelayer
 import io.libp2p.simulate.util.isOrdered
+import io.libp2p.tools.schedule
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 class AccurateBandwidthTracker(
@@ -37,7 +39,7 @@ class AccurateBandwidthTracker(
 
     private fun scheduleMessageWakeup(msg: MessageData, completion: CompletableFuture<Unit>) {
         val delay = msg.deliverTime - timeSupplier()
-        executor.schedule({
+        executor.schedule(delay.milliseconds) {
             if (timeSupplier() >= msg.deliverTime) {
                 completion.complete(null)
                 msg.delivered = true
@@ -45,7 +47,7 @@ class AccurateBandwidthTracker(
             } else {
                 scheduleMessageWakeup(msg, completion)
             }
-        }, delay, TimeUnit.MILLISECONDS)
+        }
     }
 
     private fun prune() {
