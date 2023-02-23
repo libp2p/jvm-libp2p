@@ -11,6 +11,7 @@ import io.libp2p.simulate.stats.StatsFactory
 import io.libp2p.simulate.stats.collect.gossip.GossipMessageResult
 import io.libp2p.simulate.stream.randomLatencyDelayer
 import io.libp2p.simulate.topology.RandomNPeers
+import io.libp2p.simulate.util.byIndexes
 import io.libp2p.simulate.util.countValues
 import io.libp2p.simulate.util.toMap
 import io.libp2p.tools.log
@@ -127,7 +128,7 @@ class BlobDecouplingSimulation(
             val t1 = simulation.network.timeController.time
             simulation.forwardTimeUntilAllPubDelivered()
             val t2 = simulation.network.timeController.time - t1
-            println("All messages delivered in $t2")
+            logger("All messages delivered in $t2")
             simulation.forwardTimeUntilNoPendingMessages()
         }
 
@@ -145,7 +146,7 @@ class BlobDecouplingSimulation(
             val t1 = simulation.network.timeController.time
             simulation.forwardTimeUntilAllPubDelivered()
             val t2 = simulation.network.timeController.time - t1
-            println("All messages delivered in $t2")
+            logger("All messages delivered in $t2")
             simulation.forwardTimeUntilNoPendingMessages()
         }
 
@@ -165,7 +166,7 @@ class BlobDecouplingSimulation(
             val t1 = simulation.currentTimeSupplier()
             simulation.forwardTimeUntilAllPubDelivered(maxDuration = 3.minutes)
             val t2 = simulation.currentTimeSupplier()
-            println(
+            logger(
                 "All messages delivered in ${t2 - t1}, " +
                     "Pending message count: ${simulation.gossipMessageCollector.pendingMessages.size}, " +
                     getGossipStats(
@@ -260,10 +261,7 @@ class BlobDecouplingSimulation(
 }
 
 fun main() {
-    val bandwidths = bandwidthDistributions.entries.toList()
-        .let {
-            listOf(/*it[0],*/ it[2])
-        }.toMap()
+    val bandwidths = bandwidthDistributions.byIndexes(2)
     val slowBandwidth = Bandwidth.mbitsPerSec(10)
 
     bandwidths.forEach { (name, band) ->

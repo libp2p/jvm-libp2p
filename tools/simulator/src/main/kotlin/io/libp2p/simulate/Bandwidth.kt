@@ -1,10 +1,11 @@
 package io.libp2p.simulate
 
+import io.libp2p.simulate.util.ReadableSize
 import java.util.concurrent.CompletableFuture
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
-data class Bandwidth(val bytesPerSecond: Long) {
+data class Bandwidth(val bytesPerSecond: Long) : Comparable<Bandwidth> {
     fun getTransmitTimeMillis(size: Long): Long = (size * 1000 / bytesPerSecond)
     fun getTransmitTime(size: Long): Duration = getTransmitTimeMillis(size).milliseconds
 
@@ -12,6 +13,10 @@ data class Bandwidth(val bytesPerSecond: Long) {
         bytesPerSecond * timeMillis / 1000
 
     operator fun div(d: Int) = Bandwidth(bytesPerSecond / d)
+
+    override fun compareTo(other: Bandwidth) = bytesPerSecond.compareTo(other.bytesPerSecond)
+
+    override fun toString() = "" + ReadableSize.create(bytesPerSecond * 10) + "its/s"
 
     companion object {
         val UNLIM = Bandwidth(Long.MAX_VALUE)

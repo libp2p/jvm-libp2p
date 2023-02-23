@@ -149,12 +149,26 @@ class GossipMessageResult(
         publishMessages.groupBy { it.origMsg.sendingPeer }
     }
 
+    val allPeers by lazy {
+        messages.flatMap { listOf(it.sendingPeer, it.receivingPeer) }.toSet()
+    }
+
     fun slice(startTime: Long, endTime: Long = Long.MAX_VALUE): GossipMessageResult =
         GossipMessageResult(
             messages.filter { it.sendTime in (startTime until endTime) },
             msgGenerator,
             gossipMessageIdGenerator
         )
+
+    fun <K> groupBy(keySelectror: (CollectedMessage<Rpc.RPC>) -> K): Map<K, GossipMessageResult> =
+        messages
+            .groupBy { keySelectror(it) }
+            .mapValues { GossipMessageResult(it.value, msgGenerator, gossipMessageIdGenerator) }
+
+    fun filter(predicate: (CollectedMessage<Rpc.RPC>) -> Boolean): GossipMessageResult =
+        messages
+            .filter(predicate)
+            .let { GossipMessageResult(it, msgGenerator, gossipMessageIdGenerator) }
 
     fun findPubMessagePath(peer: SimPeer, msgId: Long): List<PubMessageWrapper> {
         val ret = mutableListOf<PubMessageWrapper>()

@@ -38,3 +38,6 @@ fun <T : Comparable<T>> Collection<T>.min() = this
     .reduce { acc, t -> if (acc < t) acc else t }
 fun <T : Comparable<T>> Collection<T>.max() = this
     .reduce { acc, t -> if (acc > t) acc else t }
+
+fun <T> List<T>.byIndexes(vararg indexes: Int): List<T> = indexes.map { this[it] }
+fun <K, V> Map<K, V>.byIndexes(vararg indexes: Int): Map<K, V> = this.entries.toList().byIndexes(*indexes).toMap()
