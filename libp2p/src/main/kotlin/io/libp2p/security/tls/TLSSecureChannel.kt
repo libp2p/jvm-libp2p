@@ -88,17 +88,21 @@ class TlsSecureChannel(private val localKey: PrivKey) :
     }
 }
 
-fun buildTlsHandler(localKey: PrivKey,
-                    expectedRemotePeer: Optional<PeerId>,
-                    isInitiator: Boolean,
-                    handshakeComplete: CompletableFuture<SecureChannel.Session>,
-                    ctx: ChannelHandlerContext): SslHandler {
+fun buildTlsHandler(
+    localKey: PrivKey,
+    expectedRemotePeer: Optional<PeerId>,
+    isInitiator: Boolean,
+    handshakeComplete: CompletableFuture<SecureChannel.Session>,
+    ctx: ChannelHandlerContext
+): SslHandler {
     val connectionKeys = generateEd25519KeyPair()
     val javaPrivateKey = getJavaKey(connectionKeys.first)
-    val sslContext = (if (isInitiator)
-        SslContextBuilder.forClient().keyManager(javaPrivateKey, listOf(buildCert(localKey, connectionKeys.first)))
-    else
-        SslContextBuilder.forServer(javaPrivateKey, listOf(buildCert(localKey, connectionKeys.first))))
+    val sslContext = (
+            if (isInitiator)
+                SslContextBuilder.forClient().keyManager(javaPrivateKey, listOf(buildCert(localKey, connectionKeys.first)))
+            else
+                SslContextBuilder.forServer(javaPrivateKey, listOf(buildCert(localKey, connectionKeys.first)))
+            )
         .protocols(listOf("TLSv1.3"))
         .ciphers(listOf("TLS_AES_128_GCM_SHA256", "TLS_AES_256_GCM_SHA384", "TLS_CHACHA20_POLY1305_SHA256"))
         .clientAuth(ClientAuth.REQUIRE)
