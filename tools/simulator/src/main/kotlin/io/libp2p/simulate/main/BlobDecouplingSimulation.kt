@@ -72,7 +72,7 @@ class BlobDecouplingSimulation(
         totalPeers = nodeCount,
         topics = listOf(blockTopic) + blobTopics,
         topology = RandomNPeers(nodePeerCount),
-        gossipValidationDelay = messageValidationDelay,
+        messageValidationGenerator = constantValidationGenerator(messageValidationDelay),
         bandwidthGenerator = {
             val band = peerBandwidths(it)
             bandwidthFactory(band, it)

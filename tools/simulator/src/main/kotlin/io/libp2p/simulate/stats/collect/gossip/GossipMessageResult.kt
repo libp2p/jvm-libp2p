@@ -149,7 +149,7 @@ class GossipMessageResult(
         publishMessages.groupBy { it.origMsg.sendingPeer }
     }
 
-    fun slice(startTime: Long, endTime: Long): GossipMessageResult =
+    fun slice(startTime: Long, endTime: Long = Long.MAX_VALUE): GossipMessageResult =
         GossipMessageResult(
             messages.filter { it.sendTime in (startTime until endTime) },
             msgGenerator,

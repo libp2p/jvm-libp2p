@@ -39,7 +39,6 @@ class GossipSimNetwork(
             simExecutor = ControlledExecutorServiceImpl(delegateExecutor, timeController)
             currentTime = { timeController.time }
             msgSizeEstimator = cfg.messageGenerator.sizeEstimator
-            validationDelay = cfg.gossipValidationDelay
         }
     }
 

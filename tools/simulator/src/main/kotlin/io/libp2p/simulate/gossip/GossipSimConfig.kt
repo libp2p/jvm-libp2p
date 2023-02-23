@@ -1,6 +1,8 @@
 package io.libp2p.simulate.gossip
 
+import io.libp2p.core.pubsub.MessageApi
 import io.libp2p.core.pubsub.Topic
+import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.simulate.*
 import io.libp2p.simulate.delay.AccurateBandwidthTracker
 import io.libp2p.simulate.stream.StreamSimConnection
@@ -20,12 +22,17 @@ data class PeerBandwidth(
     }
 }
 
+data class MessageValidation(
+    val validationDelay: Duration,
+    val validationResult: ValidationResult
+)
+
 typealias BandwidthGenerator = (GossipSimPeer) -> PeerBandwidth
 typealias LatencyGenerator = (StreamSimConnection) -> MessageDelayer
+typealias MessageValidationGenerator = (GossipSimPeer, MessageApi) -> MessageValidation
 
 data class GossipSimConfig(
     val totalPeers: Int = 10000,
-    val badPeers: Int = 0,
 
     val topics: List<Topic>,
 
@@ -33,18 +40,25 @@ data class GossipSimConfig(
 
     val bandwidthGenerator: BandwidthGenerator = { PeerBandwidth.UNLIMITED },
     val latencyGenerator: LatencyGenerator = { MessageDelayer.NO_DELAYER },
-    val gossipValidationDelay: Duration = 0.millis,
+    val messageValidationGenerator: MessageValidationGenerator =
+        constantValidationGenerator(0.millis, ValidationResult.Valid),
 
     val topology: Topology = RandomNPeers(10),
     val peersTimeShift: RandomDistribution = RandomDistribution.const(0.0),
 
     val warmUpDelay: Duration = 5.seconds,
-    val generatedNetworksCount: Int = 1,
     val sentMessageCount: Int = 10,
     val startRandomSeed: Long = 0,
     val iterationThreadsCount: Int = 1,
     val parallelIterationsCount: Int = 1,
 )
+
+fun constantValidationGenerator(
+    validationDelay: Duration,
+    validationResult: ValidationResult = ValidationResult.Valid
+): MessageValidationGenerator =
+    { _, _ -> MessageValidation(validationDelay, validationResult) }
+
 
 fun constantLatencyGenerator(latency: Duration): LatencyGenerator =
     { it.simpleLatencyDelayer(latency.toKotlinDuration()) }

@@ -1,5 +1,6 @@
 package io.libp2p.simulate.gossip
 
+import io.libp2p.core.pubsub.Subscriber
 import io.libp2p.core.pubsub.Topic
 import io.libp2p.etc.types.toByteBuf
 import io.libp2p.simulate.gossip.router.SimGossipRouterBuilder
@@ -38,5 +39,11 @@ class GossipSimPeerTest {
         p1Pub.publish("Hello".toByteArray().toByteBuf(), Topic("a"))
 
         Assertions.assertTrue(gotIt)
+    }
+
+    companion object {
+        fun GossipSimPeer.subscribe(topic: Topic) =
+            this.api.subscribe( Subscriber {}, topic)
+
     }
 }

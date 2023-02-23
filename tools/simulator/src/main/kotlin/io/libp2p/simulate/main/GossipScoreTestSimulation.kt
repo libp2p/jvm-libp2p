@@ -20,7 +20,7 @@ class GossipScoreTestSimulation {
             totalPeers = 1000,
             topics = listOf(Topic(BlocksTopic)),
             topology = RandomNPeers(30),
-            gossipValidationDelay = 50.millis
+            messageValidationGenerator = constantValidationGenerator(50.millis)
         )
 
         val gossipParams = Eth2DefaultGossipParams

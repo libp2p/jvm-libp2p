@@ -27,7 +27,7 @@ class SimpleSimulation(
         totalPeers = nodeCount,
         topics = listOf(testTopic),
         topology = RandomNPeers(nodePeerCount),
-        gossipValidationDelay = 10.millis,
+        messageValidationGenerator = constantValidationGenerator(10.millis),
         bandwidthGenerator = constantBandwidthGenerator(Bandwidth.mbitsPerSec(100)),
         latencyGenerator = constantLatencyGenerator(50.millis),
     ),

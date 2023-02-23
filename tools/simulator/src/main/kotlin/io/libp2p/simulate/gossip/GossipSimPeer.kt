@@ -2,23 +2,15 @@ package io.libp2p.simulate.gossip
 
 import io.libp2p.core.PeerId
 import io.libp2p.core.Stream
-import io.libp2p.core.pubsub.MessageApi
-import io.libp2p.core.pubsub.PubsubSubscription
-import io.libp2p.core.pubsub.RESULT_VALID
-import io.libp2p.core.pubsub.Topic
-import io.libp2p.core.pubsub.ValidationResult
-import io.libp2p.core.pubsub.Validator
 import io.libp2p.core.pubsub.createPubsubApi
 import io.libp2p.etc.types.lazyVar
 import io.libp2p.pubsub.PubsubProtocol
 import io.libp2p.simulate.gossip.router.SimGossipRouterBuilder
 import io.libp2p.simulate.stream.StreamSimPeer
-import io.libp2p.simulate.util.millis
 import io.netty.handler.logging.LogLevel
 import io.netty.handler.logging.LoggingHandler
-import java.util.Random
+import java.util.*
 import java.util.concurrent.CompletableFuture
-import java.util.concurrent.TimeUnit
 
 class GossipSimPeer(
     override val simPeerId: Int,
@@ -39,50 +31,6 @@ class GossipSimPeer(
     val api by lazy { createPubsubApi(router) }
     val apiPublisher by lazy { api.createPublisher(keyPair.first, 0L) }
     var pubsubLogs: (PeerId) -> Boolean = { false }
-
-    var validationDelay = 0.millis
-    var validationResult = RESULT_VALID
-    val subscriptions = mutableMapOf<Topic, PubsubSubscription>()
-
-    val inboundMessages = mutableListOf<Pair<MessageApi, Long>>()
-
-    val lastMsg: MessageApi?
-        get() = inboundMessages.lastOrNull()?.first
-    val lastMsgTime
-        get() = inboundMessages.last().second
-
-    fun onNewMsg(msg: MessageApi) {
-        inboundMessages += msg to router.currentTimeSupplier()
-    }
-
-    fun subscribe(topic: Topic): PubsubSubscription {
-        val subscription = api.subscribe(
-            Validator {
-                onNewMsg(it)
-                if (validationDelay.toMillis() == 0L) {
-                    validationResult
-                } else {
-                    val ret = CompletableFuture<ValidationResult>()
-                    simExecutor.schedule(
-                        { ret.complete(validationResult.get()) },
-                        validationDelay.toMillis(),
-                        TimeUnit.MILLISECONDS
-                    )
-                    ret
-                }
-            },
-            topic
-        )
-        subscriptions[topic] = subscription
-        return subscription
-    }
-
-    fun unsubscribe(topic: Topic): PubsubSubscription {
-        val subscription =
-            subscriptions[topic] ?: throw IllegalArgumentException("Peers is not subscribed to topic $topic")
-        subscription.unsubscribe()
-        return subscription
-    }
 
     override fun toString(): String {
         return name

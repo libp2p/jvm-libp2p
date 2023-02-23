@@ -1,16 +1,19 @@
 package io.libp2p.simulate.gossip
 
-import io.libp2p.core.pubsub.Topic
+import io.libp2p.core.pubsub.*
 import io.libp2p.etc.types.minutes
 import io.libp2p.etc.types.seconds
 import io.libp2p.pubsub.gossip.CurrentTimeSupplier
 import io.libp2p.simulate.stats.collect.gossip.GossipMessageCollector
 import io.libp2p.simulate.stats.collect.gossip.GossipPubDeliveryResult
+import io.libp2p.simulate.stats.collect.gossip.SimMessageId
 import io.libp2p.simulate.stats.collect.gossip.getMessageIdGenerator
 import io.libp2p.simulate.util.countValuesBy
 import io.netty.buffer.Unpooled
 import java.time.Duration
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 
 data class SimMessage(
@@ -32,11 +35,16 @@ class GossipSimulation(
 ) {
 
     private val idCounter = AtomicLong(1)
-    val publishedMessages = mutableListOf<SimMessage>()
+
+    private val subscriptions = mutableMapOf<GossipSimPeer, MutableMap<Topic, PubsubSubscription>>()
+
+    private val publishedMessages = mutableListOf<SimMessage>()
+    private val pendingValidationCount = AtomicInteger()
+    private val deliveredMessagesCount = mutableMapOf<SimMessageId, AtomicInteger>()
 
     val currentTimeSupplier: CurrentTimeSupplier = { network.timeController.time }
 
-    val anyGossipPeer get() = network.peers.values.first()
+    private val anyGossipPeer get() = network.peers.values.first()
     val gossipMessageCollector = GossipMessageCollector(
         network.network,
         currentTimeSupplier,
@@ -52,9 +60,49 @@ class GossipSimulation(
     private fun subscribeAll() {
         network.peers.values.forEach { peer ->
             cfg.topics.forEach { topic ->
-                peer.subscribe(topic)
+                subscribe(peer, topic)
             }
         }
+    }
+
+    private fun onNewApiMessage(peer: GossipSimPeer, msg: MessageApi) {
+        val simMessageId = cfg.messageGenerator.messageIdRetriever(msg.data.array())
+        deliveredMessagesCount.computeIfAbsent(simMessageId) { AtomicInteger() }.incrementAndGet()
+    }
+
+    fun subscribe(peer: GossipSimPeer, topic: Topic) {
+        check(!(subscriptions[peer]?.contains(topic) ?: false))
+        val subscription = peer.api.subscribe(
+            Validator { message ->
+                onNewApiMessage(peer, message)
+                val (validationDelay, validationResult) = cfg.messageValidationGenerator(peer, message)
+                if (validationDelay.toMillis() == 0L) {
+                    CompletableFuture.completedFuture(validationResult)
+                } else {
+                    val ret = CompletableFuture<ValidationResult>()
+                    pendingValidationCount.incrementAndGet()
+                    peer.simExecutor.schedule(
+                        {
+                            ret.complete(validationResult)
+                            pendingValidationCount.decrementAndGet()
+                        },
+                        validationDelay.toMillis(),
+                        TimeUnit.MILLISECONDS
+                    )
+                    ret
+                }
+            },
+            topic
+        )
+        subscriptions.computeIfAbsent(peer) { mutableMapOf() }[topic] = subscription
+    }
+
+    fun unsubscribe(peer: GossipSimPeer, topic: Topic) {
+        val peerSubscriptions = subscriptions[peer]
+            ?: throw IllegalArgumentException("No subscriptions found for peer $peer")
+        val subscription = peerSubscriptions.remove(topic)
+            ?: throw IllegalArgumentException("Peer $peer is not subscribed to topic '$topic'")
+        subscription.unsubscribe()
     }
 
     fun forwardTime(duration: Duration): Long {
@@ -82,14 +130,8 @@ class GossipSimulation(
         }
     }
 
-    fun isAllMessagesDelivered(): Boolean {
-        val deliveredMessageCounts = network.peers
-            .mapValues { it.value.inboundMessages.size }
-        val sentMessageCounts = publishedMessages.countValuesBy { it.sendingPeer }
-        val allMessages = deliveredMessageCounts
-            .mapValues { it.value + (sentMessageCounts[it.key] ?: 0) }
-        return allMessages.values.all { it == publishedMessages.size }
-    }
+    fun isAllMessagesDelivered(): Boolean =
+        deliveredMessagesCount.values.sumOf { it.get() } == publishedMessages.size * (network.peers.size - 1)
 
     fun publishMessage(srcPeer: Int): SimMessage {
         require(cfg.topics.size == 1)
@@ -110,7 +152,6 @@ class GossipSimulation(
     fun gatherPubDeliveryStats(): GossipPubDeliveryResult = gossipMessageCollector.gatherResult().getGossipPubDeliveryResult()
 
     fun clearAllMessages() {
-        network.peers.values.forEach { it.inboundMessages.clear() }
         gossipMessageCollector.clear()
     }
 }

@@ -2,20 +2,27 @@ package io.libp2p.simulate.main
 
 import io.libp2p.core.pubsub.RESULT_INVALID
 import io.libp2p.core.pubsub.Topic
+import io.libp2p.core.pubsub.ValidationResult
+import io.libp2p.core.pubsub.Validator
 import io.libp2p.etc.types.millis
 import io.libp2p.etc.types.toByteBuf
 import io.libp2p.pubsub.gossip.CurrentTimeSupplier
 import io.libp2p.pubsub.gossip.GossipParams
+import io.libp2p.simulate.Bandwidth
 import io.libp2p.simulate.RandomDistribution
 import io.libp2p.simulate.Topology
 import io.libp2p.simulate.delay.TimeDelayer
 import io.libp2p.simulate.generateAndConnect
-import io.libp2p.simulate.gossip.GossipSimPeer
-import io.libp2p.simulate.gossip.averagePubSubMsgSizeEstimator
+import io.libp2p.simulate.gossip.*
+import io.libp2p.simulate.gossip.router.SimGossipRouterBuilder
+import io.libp2p.simulate.stats.Stats
 import io.libp2p.simulate.stats.StatsFactory
 import io.libp2p.simulate.stats.WritableStats
 import io.libp2p.simulate.stats.collect.gossip.GossipMessageCollector
+import io.libp2p.simulate.stats.collect.gossip.GossipMessageResult
+import io.libp2p.simulate.stats.collect.gossip.GossipPubDeliveryResult
 import io.libp2p.simulate.stats.collect.gossip.getMessageIdGenerator
+import io.libp2p.simulate.stream.randomLatencyDelayer
 import io.libp2p.simulate.topology.RandomNPeers
 import io.libp2p.simulate.util.*
 import io.libp2p.tools.schedulers.ControlledExecutorServiceImpl
@@ -35,11 +42,11 @@ fun main() {
 
 class MiscParamsOptimizationSimulation {
 
-    val Topic = Topic("Topic-1")
-    val MaxMissingPeers = 32
+    val topic = Topic("Topic-1")
+    val maxMissingPeers = 32
 
     data class GossipStats(
-        val msgDelay: WritableStats,
+        val msgDelay: Stats,
         val someMissingPeers: List<GossipSimPeer> = emptyList()
     )
 
@@ -109,22 +116,22 @@ class MiscParamsOptimizationSimulation {
     fun runAll() {
         println("Running testResultStabilityAgainstNetworkSize()...")
         testResultStabilityAgainstNetworkSize()
-        println("Running testBFT()...")
-        testBFT()
-        println("Running testBFTOfPeerConnections()...")
-        testBFTOfPeerConnections()
-        println("Running testDOptimization()...")
-        testDOptimization()
-        println("Running testSizeDLazyOptimization()...")
-        testSizeDLazyOptimization()
-        println("Running testHeartbeatPeriod()...")
-        testHeartbeatPeriod()
+//        println("Running testBFT()...")
+//        testBFT()
+//        println("Running testBFTOfPeerConnections()...")
+//        testBFTOfPeerConnections()
+//        println("Running testDOptimization()...")
+//        testDOptimization()
+//        println("Running testSizeDLazyOptimization()...")
+//        testSizeDLazyOptimization()
+//        println("Running testHeartbeatPeriod()...")
+//        testHeartbeatPeriod()
         println("All complete!")
     }
 
     fun testResultStabilityAgainstNetworkSize() {
         val cfgs = sequence {
-            for (totalPeers in arrayOf(1000, 5000, 10000, 20000, 30000))
+            for (totalPeers in arrayOf(500, 1000/*, 5000, 10000, 20000, 30000*/))
                 yield(
                     FlatSimConfig(
                         totalPeers = totalPeers,
@@ -139,7 +146,7 @@ class MiscParamsOptimizationSimulation {
                 )
         }
         val opt = SimOptions(
-            generatedNetworksCount = 1,
+            generatedNetworksCount = 2,
             sentMessageCount = 3,
             startRandomSeed = 2
         )
@@ -340,71 +347,50 @@ class MiscParamsOptimizationSimulation {
             DLazy = cfg.gossipDLazy,
             gossipSize = cfg.gossipAdvertise,
             gossipHistoryLength = cfg.gossipHistory,
-            heartbeatInterval = cfg.gossipHeartbeat
+            heartbeatInterval = cfg.gossipHeartbeat,
         )
 
         val ret = SimDetailedResult()
         for (n in 0 until opt.generatedNetworksCount) {
             val commonRnd = Random(opt.startRandomSeed + n)
-            val peerTimeShift = cfg.peersTimeShift.newValue(commonRnd)
+            val gossipSimConfig = GossipSimConfig(
+                totalPeers = cfg.totalPeers,
+                topics = listOf(topic),
+                messageGenerator = averagePubSubMsgSizeEstimator(cfg.avrgMessageSize, opt.measureTCPFramesOverhead),
+                bandwidthGenerator = constantBandwidthGenerator(Bandwidth.mbitsPerSec(1024)),
+                latencyGenerator = { it.randomLatencyDelayer(cfg.latency.newValue(commonRnd)) },
+                messageValidationGenerator = { peer, _ ->
+                    val validationResult =
+                        if (peer.simPeerId > cfg.totalPeers - cfg.badPeers) {
+                            ValidationResult.Ignore
+                        } else {
+                            ValidationResult.Valid
+                        }
+                    MessageValidation(cfg.gossipValidationDelay, validationResult)
+                },
+                topology = cfg.topology,
+                peersTimeShift = cfg.peersTimeShift,
+                warmUpDelay = opt.warmUpDelay,
+                startRandomSeed = opt.startRandomSeed + n,
+            )
+
             val gossipHeartbeatAddDelay = cfg.gossipHeartbeatAddDelay.newValue(commonRnd)
-
-            val timeController = TimeControllerImpl()
-            println("Creating peers")
-
-            val peerExecutors =
-                if (opt.iterationThreadsCount > 1)
-                    (0 until opt.iterationThreadsCount).map { Executors.newSingleThreadScheduledExecutor() }
-                else
-                    listOf(Executor { it.run() })
-
-            val gossipPubMessageGenerator =
-                averagePubSubMsgSizeEstimator(cfg.avrgMessageSize, opt.measureTCPFramesOverhead)
-            val peers = (0 until cfg.totalPeers).map {
-                val timeShift = peerTimeShift.next().toLong()
-                val timeSupplier: CurrentTimeSupplier = { timeController.time + timeShift }
-
-                GossipSimPeer(it, commonRnd).apply {
-                    routerBuilder.apply {
-                        params = gossipParams
-                        additionalHeartbeatDelay = gossipHeartbeatAddDelay.next().toInt().millis
-                        serializeMessagesToBytes = false
-                        currentTimeSuppluer = timeSupplier
-                        random = commonRnd
-                    }
-
-                    val delegateExecutor = peerExecutors[it % peerExecutors.size]
-                    simExecutor = ControlledExecutorServiceImpl(delegateExecutor, timeController)
-                    msgSizeEstimator = gossipPubMessageGenerator.sizeEstimator
-                    validationDelay = cfg.gossipValidationDelay
-                    currentTime = timeSupplier
-                    subscribe(Topic)
-
-                    start()
+            val gossipRouterBuilderFactory: GossipRouterBuilderFactory = {
+                SimGossipRouterBuilder().also {
+                    it.params = gossipParams
+                    it.additionalHeartbeatDelay = gossipHeartbeatAddDelay.next().toLong().millis
                 }
             }
-            println("Creating test peers")
-            peers[(cfg.totalPeers - cfg.badPeers) until cfg.totalPeers]
-                .forEach { it.validationResult = RESULT_INVALID }
 
-            cfg.topology.random = commonRnd
+            val simNetwork = GossipSimNetwork(gossipSimConfig, gossipRouterBuilderFactory)
+            println("Creating peers...")
+            simNetwork.createAllPeers()
+            println("Connecting peers...")
+            simNetwork.connectAllPeers()
+            println("Peers connected. Graph diameter is " + simNetwork.network.topologyGraph.calcDiameter())
 
-            println("Connecting peers")
-            val net = cfg.topology.generateAndConnect(peers)
-
-            val latencyRandomValue = cfg.latency.newValue(commonRnd)
-            peers.flatMap { it.connections }.forEach { connection ->
-                val executor = (connection.dialer as GossipSimPeer).simExecutor
-                connection.connectionLatency = TimeDelayer(executor, { latencyRandomValue.next().toLong().milliseconds })
-            }
-
-            val anyPeer = peers.first()
-            val messageCollector = GossipMessageCollector(
-                net,
-                { timeController.time },
-                gossipPubMessageGenerator,
-                anyPeer.getMessageIdGenerator()
-            )
+            println("Creating simulation...")
+            val simulation = GossipSimulation(gossipSimConfig, simNetwork)
 
             data class NetworkStats(
                 val msgCount: Long,
@@ -415,81 +401,67 @@ class MiscParamsOptimizationSimulation {
                 operator fun plus(other: NetworkStats) =
                     NetworkStats(msgCount + other.msgCount, traffic + other.traffic)
             }
-            fun getNetStats(): NetworkStats {
-                val result = messageCollector.gatherResult()
+            fun getNetStats(result: GossipMessageResult): NetworkStats {
                 return NetworkStats(result.getTotalMessageCount().toLong(), result.getTotalTraffic())
             }
 
-            println("Some warm up")
-            timeController.addTime(opt.warmUpDelay)
-
-            println("Initial stat: ${getNetStats()}")
-            messageCollector.clear()
+            println("Initial stat: " + getNetStats(simulation.gossipMessageCollector.gatherResult()))
+            simulation.clearAllMessages()
 
             for (i in 0 until opt.sentMessageCount) {
                 println("Sending message #$i...")
 
-                val sentTime = timeController.time
-                peers[i].apiPublisher.publish("Message-$i".toByteArray().toByteBuf(), Topic)
-
-                val receivePeers = peers - peers[i]
+                simulation.publishMessage(i)
 
                 if (opt.isZeroHeartbeatsEnabled()) {
-                    timeController.addTime(opt.zeroHeartbeatsDelay)
+                    simulation.forwardTime(opt.zeroHeartbeatsDelay)
                     run {
-                        val ns = getNetStats()
-                        val gs = calcGossipStats(receivePeers, sentTime)
-                        ret.zeroHeartbeats.packetCountPerMessage.addValue(ns.msgCount.toDouble() / peers.size)
-                        ret.zeroHeartbeats.trafficPerMessage.addValue(ns.traffic.toDouble() / peers.size)
-                        receivePeers.filter { it.lastMsg != null }
-                            .map { it.lastMsgTime - sentTime }
-                            .forEach { ret.zeroHeartbeats.deliverDelay.addValue(it) }
-                        ret.zeroHeartbeats.deliveredPart.addValue(gs.msgDelay.getCount().toDouble() / receivePeers.size)
+                        val messageResult = simulation.gossipMessageCollector.gatherResult()
+                        val gossipPubDeliveryResult: GossipPubDeliveryResult = messageResult.getGossipPubDeliveryResult()
+                        val ns = getNetStats(messageResult)
+                        val gs = calcGossipStats(simNetwork.peers.values, gossipPubDeliveryResult)
+                        ret.zeroHeartbeats.packetCountPerMessage.addValue(ns.msgCount.toDouble() / (cfg.totalPeers - 1))
+                        ret.zeroHeartbeats.trafficPerMessage.addValue(ns.traffic.toDouble() / (cfg.totalPeers - 1))
+                        ret.zeroHeartbeats.deliverDelay.addAllValues(gossipPubDeliveryResult.deliveryDelays)
+                        ret.zeroHeartbeats.deliveredPart.addValue(gs.msgDelay.getCount().toDouble() / (cfg.totalPeers - 1))
                         println("Zero heartbeats: $ns\t\t$gs")
                     }
                 }
 
-                timeController.addTime(opt.manyHeartbeatsDelay)
+                val t1 = simulation.currentTimeSupplier()
+                simulation.forwardTime(opt.manyHeartbeatsDelay)
 
-                val ns0: NetworkStats
                 run {
-                    val ns = getNetStats()
-                    ns0 = ns
-                    val gs = calcGossipStats(receivePeers, sentTime)
-                    ret.manyHeartbeats.packetCountPerMessage.addValue(ns.msgCount.toDouble() / peers.size)
-                    ret.manyHeartbeats.trafficPerMessage.addValue(ns.traffic.toDouble() / peers.size)
-                    receivePeers.filter { it.lastMsg != null }
-                        .map { it.lastMsgTime - sentTime }
-                        .forEach { ret.manyHeartbeats.deliverDelay.addValue(it) }
-                    ret.manyHeartbeats.deliveredPart.addValue(gs.msgDelay.getCount().toDouble() / receivePeers.size)
+                    val messageResult = simulation.gossipMessageCollector.gatherResult()
+                    val gossipPubDeliveryResult: GossipPubDeliveryResult = messageResult.getGossipPubDeliveryResult()
+                    val ns = getNetStats(messageResult)
+                    val gs = calcGossipStats(simNetwork.peers.values, gossipPubDeliveryResult)
+                    ret.manyHeartbeats.packetCountPerMessage.addValue(ns.msgCount.toDouble() / (cfg.totalPeers - 1))
+                    ret.manyHeartbeats.trafficPerMessage.addValue(ns.traffic.toDouble() / (cfg.totalPeers - 1))
+                    ret.manyHeartbeats.deliverDelay.addAllValues(gossipPubDeliveryResult.deliveryDelays)
+                    ret.manyHeartbeats.deliveredPart.addValue(gs.msgDelay.getCount().toDouble() / (cfg.totalPeers - 1))
                     println("Many heartbeats: $ns\t\t$gs")
                 }
 
-                timeController.addTime(Duration.ofSeconds(10))
-                val nsDiff = getNetStats() - ns0
+                val t2 = simulation.currentTimeSupplier()
+                simulation.forwardTime(opt.manyHeartbeatsDelay)
+                val messageResult = simulation.gossipMessageCollector
+                    .gatherResult()
+                    .slice(t2)
+                val nsDiff = getNetStats(messageResult)
                 println("Empty time: $nsDiff")
 
-                messageCollector.clear()
-                clearGossipStats(peers)
+                simulation.clearAllMessages()
             }
         }
         return ret
     }
 
-    private fun clearGossipStats(peers: List<GossipSimPeer>) {
-        peers.forEach { it.inboundMessages.clear() }
-    }
-
-    private fun calcGossipStats(peers: List<GossipSimPeer>, msgSentTime: Long): GossipStats {
-        val stats = StatsFactory.DEFAULT.createStats()
-        val missingPeers = mutableListOf<GossipSimPeer>()
-        peers.forEach {
-            if (it.lastMsg != null) {
-                stats.addValue(it.lastMsgTime - msgSentTime)
-            } else {
-                if (missingPeers.size < MaxMissingPeers) missingPeers += it
-            }
-        }
-        return GossipStats(stats, missingPeers)
+    private fun calcGossipStats(allPeers: kotlin.collections.Collection<GossipSimPeer>, gossipPubDeliveryResult: GossipPubDeliveryResult): GossipStats {
+        val delayStats = StatsFactory.DEFAULT.createStats(
+            gossipPubDeliveryResult.deliveryDelays
+        )
+        val receivedPeers = gossipPubDeliveryResult.deliveries.map { it.toPeer }.toSet()
+        return GossipStats(delayStats, allPeers - receivedPeers)
     }
 }

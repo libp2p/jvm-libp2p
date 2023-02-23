@@ -3,14 +3,15 @@ package io.libp2p.simulate.gossip
 import com.google.protobuf.ByteString
 import io.libp2p.etc.types.toBytesBigEndian
 import io.libp2p.etc.types.toLongBigEndian
+import io.libp2p.simulate.stats.collect.gossip.SimMessageId
 import io.libp2p.simulate.util.MsgSizeEstimator
 import pubsub.pb.Rpc
 import java.nio.ByteOrder
 
 class GossipPubMessageGenerator(
     val sizeEstimator: MsgSizeEstimator,
-    val messageIdRetriever: (ByteArray) -> Long,
-    val msgGenerator: (messageId: Long, size: Int) -> ByteArray
+    val messageIdRetriever: (ByteArray) -> SimMessageId,
+    val msgGenerator: (messageId: SimMessageId, size: Int) -> ByteArray
 )
 
 fun genericPubSubMsgSizeEstimator(

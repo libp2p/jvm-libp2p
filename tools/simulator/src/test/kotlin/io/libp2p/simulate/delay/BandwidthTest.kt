@@ -20,7 +20,6 @@ class BandwidthTest {
         totalPeers = 2,
         topics = listOf(topic),
         topology = AllToAllTopology(),
-        gossipValidationDelay = 0.millis,
     )
 
     val gossipParams = Eth2DefaultGossipParams

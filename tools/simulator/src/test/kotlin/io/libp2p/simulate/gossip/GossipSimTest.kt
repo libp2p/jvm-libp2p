@@ -25,7 +25,6 @@ class GossipSimTest {
             totalPeers = 3,
             topics = listOf(Topic(BlocksTopic)),
             topology = AllToAllTopology(),
-            gossipValidationDelay = 0.millis
         )
 
         val gossipParams = Eth2DefaultGossipParams
@@ -89,7 +88,7 @@ class GossipSimTest {
                 0 to 2,
                 0 to 3,
             ).asFixedTopology(),
-            gossipValidationDelay = 10.millis,
+            messageValidationGenerator = constantValidationGenerator(10.millis),
             bandwidthGenerator = { peer ->
                 PeerBandwidth(
                     AccurateBandwidthTracker(Bandwidth(1_000_000), peer.simExecutor, peer.currentTime),
