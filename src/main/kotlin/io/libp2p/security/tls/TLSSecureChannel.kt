@@ -1,8 +1,7 @@
 package io.libp2p.security.tls
 
 import crypto.pb.Crypto
-import io.libp2p.core.P2PChannel
-import io.libp2p.core.PeerId
+import io.libp2p.core.*
 import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.crypto.PubKey
 import io.libp2p.core.crypto.unmarshalPublicKey
@@ -10,12 +9,19 @@ import io.libp2p.core.multistream.ProtocolDescriptor
 import io.libp2p.core.security.SecureChannel
 import io.libp2p.crypto.keys.Ed25519PublicKey
 import io.libp2p.crypto.keys.generateEd25519KeyPair
+import io.libp2p.etc.REMOTE_PEER_ID
+import io.libp2p.security.InvalidRemotePubKey
+import io.netty.buffer.ByteBuf
 import io.netty.buffer.PooledByteBufAllocator
+import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.CombinedChannelDuplexHandler
+import io.netty.channel.SimpleChannelInboundHandler
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder
 import io.netty.handler.codec.LengthFieldPrepender
 import io.netty.handler.ssl.ClientAuth
 import io.netty.handler.ssl.SslContextBuilder
+import io.netty.handler.ssl.SslHandler
+import io.netty.util.ReferenceCountUtil
 import org.bouncycastle.asn1.*
 import org.bouncycastle.asn1.edec.EdECObjectIdentifiers
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo
@@ -33,15 +39,21 @@ import java.security.KeyFactory
 import java.security.PrivateKey
 import java.security.PublicKey
 import java.security.cert.Certificate
+import java.security.cert.CertificateException
 import java.security.cert.X509Certificate
+import java.security.interfaces.EdECPublicKey
 import java.security.spec.*
 import java.time.Instant
 import java.util.*
 import java.util.concurrent.CompletableFuture
+import java.util.logging.Level
 import java.util.logging.Logger
+import javax.net.ssl.X509TrustManager
 import kotlin.experimental.and
+import kotlin.experimental.or
 
 private val log = Logger.getLogger(TlsSecureChannel::class.java.name)
+private val SetupHandlerName = "TlsSetup"
 const val MaxCipheredPacketLength = 65535
 val certificatePrefix = "libp2p-tls-handshake:".encodeToByteArray()
 
@@ -71,18 +83,35 @@ class TlsSecureChannel(private val localKey: PrivKey) :
 
         ch.pushHandler(UShortLengthCodec()) // Packet length codec should stay forever.
 
-        ch.isInitiator
-        val connectionKeys = generateEd25519KeyPair()
-        val javaPrivateKey = getJavaKey(connectionKeys.first)
-        val sslContext = SslContextBuilder.forServer(javaPrivateKey, listOf(buildCert(localKey, connectionKeys.first)))
-            .protocols(listOf("TLSv1.3"))
-            .clientAuth(ClientAuth.REQUIRE)
-            .build()
-        val handler = sslContext.newHandler(PooledByteBufAllocator.DEFAULT)
-        ch.pushHandler(handler)
-        val handshake = handler.handshakeFuture()
-        val engine = handler.engine()
-        handshake.addListener { _ ->
+        ch.pushHandler(SetupHandlerName, ChannelSetup(localKey, ch.isInitiator, handshakeComplete))
+        return handshakeComplete
+    }
+}
+
+fun buildTlsHandler(localKey: PrivKey,
+                    expectedRemotePeer: Optional<PeerId>,
+                    isInitiator: Boolean,
+                    handshakeComplete: CompletableFuture<SecureChannel.Session>,
+                    ctx: ChannelHandlerContext): SslHandler {
+    val connectionKeys = generateEd25519KeyPair()
+    val javaPrivateKey = getJavaKey(connectionKeys.first)
+    val sslContext = (if (isInitiator)
+        SslContextBuilder.forClient().keyManager(javaPrivateKey, listOf(buildCert(localKey, connectionKeys.first)))
+    else
+        SslContextBuilder.forServer(javaPrivateKey, listOf(buildCert(localKey, connectionKeys.first))))
+        .protocols(listOf("TLSv1.3"))
+        .ciphers(listOf("TLS_AES_128_GCM_SHA256", "TLS_AES_256_GCM_SHA384", "TLS_CHACHA20_POLY1305_SHA256"))
+        .clientAuth(ClientAuth.REQUIRE)
+        .trustManager(Libp2pTrustManager(expectedRemotePeer))
+        .build()
+    val handler = sslContext.newHandler(PooledByteBufAllocator.DEFAULT)
+    handler.sslCloseFuture().addListener { _ -> ctx.close() }
+    val handshake = handler.handshakeFuture()
+    val engine = handler.engine()
+    handshake.addListener { fut ->
+        if (! fut.isSuccess)
+            handshakeComplete.completeExceptionally(fut.cause().cause)
+        else
             handshakeComplete.complete(
                 SecureChannel.Session(
                     PeerId.fromPubKey(localKey.publicKey()),
@@ -90,8 +119,65 @@ class TlsSecureChannel(private val localKey: PrivKey) :
                     getPublicKeyFromCert(engine.getSession().getPeerCertificates())
                 )
             )
+    }
+    println("libp2p-tls using suites: " + sslContext.cipherSuites())
+    return handler
+}
+
+private class ChannelSetup(
+    private val localKey: PrivKey,
+    private val isInitiator: Boolean,
+    private val handshakeComplete: CompletableFuture<SecureChannel.Session>
+) : SimpleChannelInboundHandler<ByteBuf>() {
+    private var activated = false
+
+    override fun channelActive(ctx: ChannelHandlerContext) {
+        if (! activated) {
+            activated = true
+            val expectedRemotePeerId = ctx.channel().attr(REMOTE_PEER_ID).get()
+            ctx.channel().pipeline().remove(SetupHandlerName)
+            ctx.channel().pipeline().addLast(buildTlsHandler(localKey, Optional.ofNullable(expectedRemotePeerId), isInitiator, handshakeComplete, ctx))
         }
-        return handshakeComplete
+    }
+
+    override fun channelRead0(ctx: ChannelHandlerContext, msg: ByteBuf) {
+        // it seems there is no guarantee from Netty that channelActive() must be called before channelRead()
+        channelActive(ctx)
+        ctx.fireChannelActive()
+        ReferenceCountUtil.retain(msg)
+    }
+
+    private fun writeAndFlush(ctx: ChannelHandlerContext, bb: ByteBuf) {
+        ctx.writeAndFlush(bb)
+    }
+
+    override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
+        handshakeComplete.completeExceptionally(cause)
+        log.log(Level.FINE, "TLS setup failed", cause)
+        ctx.channel().close()
+    }
+
+    override fun channelUnregistered(ctx: ChannelHandlerContext) {
+        handshakeComplete.completeExceptionally(ConnectionClosedException("Connection was closed ${ctx.channel()}"))
+        super.channelUnregistered(ctx)
+    }
+}
+
+class Libp2pTrustManager(private val expectedRemotePeer: Optional<PeerId>): X509TrustManager {
+    override fun checkClientTrusted(certs: Array<out X509Certificate>?, authType: String?) {
+        if (certs?.size != 1)
+            throw CertificateException()
+        val claimedPeerId = verifyAndExtractPeerId(arrayOf(certs.get(0)))
+        if (expectedRemotePeer.map { ex -> ! ex.equals(claimedPeerId) }.orElse(false))
+            throw InvalidRemotePubKey()
+    }
+
+    override fun checkServerTrusted(certs: Array<out X509Certificate>?, authType: String?) {
+        return checkClientTrusted(certs, authType)
+    }
+
+    override fun getAcceptedIssuers(): Array<X509Certificate> {
+        return arrayOf()
     }
 }
 
@@ -130,8 +216,16 @@ fun getJavaPublicKey(pub: PubKey): PublicKey {
 }
 
 fun getPubKey(pub: PublicKey): PubKey {
-    if (pub.algorithm.equals("Ed25519"))
-        return Ed25519PublicKey(Ed25519PublicKeyParameters(pub.encoded))
+    if (pub.algorithm.equals("EdDSA") || pub.algorithm.equals("Ed25519")) {
+        // It seems batshit that we have to do this, but haven't found an equivalent library call
+        val point = (pub as EdECPublicKey).point
+        var pk = point.y.toByteArray().reversedArray()
+        if (pk.size == 31)
+            pk = pk.plus(0)
+        if (point.isXOdd)
+            pk[31] = pk[31].or(0x80.toByte())
+        return Ed25519PublicKey(Ed25519PublicKeyParameters(pk))
+    }
     if (pub.algorithm.equals("RSA"))
         throw IllegalStateException("Unimplemented RSA public key support for TLS")
     throw IllegalStateException("Unsupported key type: " + pub.algorithm)
