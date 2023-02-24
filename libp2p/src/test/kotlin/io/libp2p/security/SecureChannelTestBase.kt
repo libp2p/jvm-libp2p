@@ -27,12 +27,13 @@ import java.util.concurrent.TimeUnit
 import java.util.logging.Level
 import java.util.logging.Logger
 
-typealias SecureChannelCtor = (PrivKey) -> SecureChannel
+typealias SecureChannelCtor = (PrivKey, List<String>) -> SecureChannel
 
 val logger = Logger.getLogger(SecureChannelTestBase::class.java.name)
 
 abstract class SecureChannelTestBase(
     val secureChannelCtor: SecureChannelCtor,
+    val muxerIds: List<String>,
     val announce: String
 ) {
     init {
@@ -57,8 +58,8 @@ abstract class SecureChannelTestBase(
         val (privKey1, _) = generateKeyPair(KEY_TYPE.ECDSA)
         val (privKey2, pubKey2) = generateKeyPair(KEY_TYPE.ECDSA)
 
-        val protocolSelect1 = makeSelector(privKey1)
-        val protocolSelect2 = makeSelector(privKey2)
+        val protocolSelect1 = makeSelector(privKey1, muxerIds)
+        val protocolSelect2 = makeSelector(privKey2, muxerIds)
 
         val eCh1 = makeDialChannel("#1", protocolSelect1, PeerId.fromPubKey(pubKey2))
         val eCh2 = makeListenChannel("#2", protocolSelect2)
@@ -118,7 +119,7 @@ abstract class SecureChannelTestBase(
         }
     } // secureInterconnect
 
-    protected fun makeSelector(key: PrivKey) = ProtocolSelect(listOf(secureChannelCtor(key)))
+    protected fun makeSelector(key: PrivKey, muxers: List<String>) = ProtocolSelect(listOf(secureChannelCtor(key, muxers)))
 
     protected fun makeDialChannel(
         name: String,
