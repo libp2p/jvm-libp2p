@@ -40,7 +40,7 @@ open class ConnectionUpgrader(
             return establishMuxer(connection)
         }
         val muxer = muxers.find { m -> m.protocolDescriptor.announceProtocols.contains(muxerId) }
-            ?: throw NoSuchLocalProtocolException("Early Muxer negotiation selected unsupported muxer: ${muxerId}")
+            ?: throw NoSuchLocalProtocolException("Early Muxer negotiation selected unsupported muxer: $muxerId")
         val res = CompletableFuture<StreamMuxer.Session>()
         muxer.initChannel(connection, muxerId).forward(res)
         return res

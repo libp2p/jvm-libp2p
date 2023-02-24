@@ -111,9 +111,12 @@ fun buildTlsHandler(
         .clientAuth(ClientAuth.REQUIRE)
         .trustManager(Libp2pTrustManager(expectedRemotePeer))
         .applicationProtocolConfig(
-            ApplicationProtocolConfig(ApplicationProtocolConfig.Protocol.ALPN,
-            ApplicationProtocolConfig.SelectorFailureBehavior.FATAL_ALERT,
-            ApplicationProtocolConfig.SelectedListenerFailureBehavior.FATAL_ALERT, muxerIds.plus("libp2p")))
+            ApplicationProtocolConfig(
+                ApplicationProtocolConfig.Protocol.ALPN,
+                ApplicationProtocolConfig.SelectorFailureBehavior.FATAL_ALERT,
+                ApplicationProtocolConfig.SelectedListenerFailureBehavior.FATAL_ALERT, muxerIds.plus("libp2p")
+            )
+        )
         .build()
     val handler = sslContext.newHandler(PooledByteBufAllocator.DEFAULT)
     handler.sslCloseFuture().addListener { _ -> ctx.close() }
