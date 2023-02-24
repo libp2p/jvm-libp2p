@@ -17,10 +17,7 @@ import io.libp2p.security.InvalidRemotePubKey
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.PooledByteBufAllocator
 import io.netty.channel.ChannelHandlerContext
-import io.netty.channel.CombinedChannelDuplexHandler
 import io.netty.channel.SimpleChannelInboundHandler
-import io.netty.handler.codec.LengthFieldBasedFrameDecoder
-import io.netty.handler.codec.LengthFieldPrepender
 import io.netty.handler.ssl.ApplicationProtocolConfig
 import io.netty.handler.ssl.ClientAuth
 import io.netty.handler.ssl.SslContextBuilder
@@ -36,7 +33,6 @@ import org.bouncycastle.cert.X509CertificateHolder
 import org.bouncycastle.cert.X509v3CertificateBuilder
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter
 import org.bouncycastle.crypto.params.Ed25519PublicKeyParameters
-import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder
 import java.math.BigInteger
 import java.security.KeyFactory
@@ -59,13 +55,7 @@ import kotlin.experimental.or
 
 private val log = Logger.getLogger(TlsSecureChannel::class.java.name)
 private val SetupHandlerName = "TlsSetup"
-const val MaxCipheredPacketLength = 65535
 val certificatePrefix = "libp2p-tls-handshake:".encodeToByteArray()
-
-class UShortLengthCodec : CombinedChannelDuplexHandler<LengthFieldBasedFrameDecoder, LengthFieldPrepender>(
-    LengthFieldBasedFrameDecoder(MaxCipheredPacketLength + 2, 0, 2, 0, 2),
-    LengthFieldPrepender(2)
-)
 
 class TlsSecureChannel(private val localKey: PrivKey, private val muxerIds: List<String>, private val certAlgorithm: String) :
     SecureChannel {
@@ -87,9 +77,6 @@ class TlsSecureChannel(private val localKey: PrivKey, private val muxerIds: List
         selectedProtocol: String
     ): CompletableFuture<SecureChannel.Session> {
         val handshakeComplete = CompletableFuture<SecureChannel.Session>()
-
-        ch.pushHandler(UShortLengthCodec()) // Packet length codec should stay forever.
-
         ch.pushHandler(SetupHandlerName, ChannelSetup(localKey, muxerIds, certAlgorithm, ch, handshakeComplete))
         return handshakeComplete
     }
@@ -105,6 +92,7 @@ fun buildTlsHandler(
     ctx: ChannelHandlerContext
 ): SslHandler {
     val connectionKeys = if (certAlgorithm.equals("ECDSA")) generateEcdsaKeyPair() else generateEd25519KeyPair()
+    println(certAlgorithm)
     val javaPrivateKey = getJavaKey(connectionKeys.first)
     println("TLS supporting muxers: " + muxerIds)
     val sslContext = (
@@ -322,7 +310,7 @@ fun buildCert(hostKey: PrivKey, subjectKey: PrivKey): X509Certificate {
     val validFrom = Date.from(now.minusSeconds(3600))
     val oneYear = 60L * 60 * 24 * 365
     val validTo = Date.from(now.plusSeconds(oneYear))
-    val issuer = X500Name("CN=Nabu,O=Peergos,L=Oxford,C=UK")
+    val issuer = X500Name("O=Peergos,L=Oxford,C=UK")
     val subject = issuer
 
     val signature = hostKey.sign(certificatePrefix.plus(publicKeyAsn1))
@@ -336,14 +324,14 @@ fun buildCert(hostKey: PrivKey, subjectKey: PrivKey): X509Certificate {
         validTo,
         subject,
         subPubKeyInfo
-    ).addExtension(ASN1ObjectIdentifier("1.3.6.1.4.1.53594.1.1"), false, extension)
+    ).addExtension(ASN1ObjectIdentifier("1.3.6.1.4.1.53594.1.1"), true, extension)
     val sigAlg = when (subjectKey.keyType) {
         Crypto.KeyType.Ed25519 -> "Ed25519"
         Crypto.KeyType.ECDSA -> "SHA256withECDSA"
         else -> throw IllegalStateException("Unsupported certificate key type: " + subjectKey.keyType)
     }
     val signer = JcaContentSignerBuilder(sigAlg)
-        .setProvider(BouncyCastleProvider())
+        .setProvider(Libp2pCrypto.provider)
         .build(getJavaKey(subjectKey))
     return JcaX509CertificateConverter().getCertificate(certBuilder.build(signer))
 }
