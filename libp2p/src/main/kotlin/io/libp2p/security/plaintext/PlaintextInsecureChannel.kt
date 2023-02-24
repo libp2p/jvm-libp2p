@@ -22,7 +22,7 @@ import io.netty.handler.codec.LengthFieldPrepender
 import plaintext.pb.Plaintext
 import java.util.concurrent.CompletableFuture
 
-class PlaintextInsecureChannel(private val localKey: PrivKey) : SecureChannel {
+class PlaintextInsecureChannel(private val localKey: PrivKey, private val muxerIds: List<String>) : SecureChannel {
     override val protocolDescriptor = ProtocolDescriptor("/plaintext/2.0.0")
 
     override fun initChannel(ch: P2PChannel, selectedProtocol: String): CompletableFuture<out SecureChannel.Session> {
@@ -107,7 +107,8 @@ class PlaintextHandshakeHandler(
         val session = SecureChannel.Session(
             localPeerId,
             remotePeerId,
-            remotePubKey
+            remotePubKey,
+            ""
         )
 
         handshakeCompleted.complete(session)

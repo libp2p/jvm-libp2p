@@ -45,7 +45,7 @@ class UShortLengthCodec : CombinedChannelDuplexHandler<LengthFieldBasedFrameDeco
     LengthFieldPrepender(2)
 )
 
-class NoiseXXSecureChannel(private val localKey: PrivKey) :
+class NoiseXXSecureChannel(private val localKey: PrivKey, private val muxers: List<String>) :
     SecureChannel {
 
     companion object {

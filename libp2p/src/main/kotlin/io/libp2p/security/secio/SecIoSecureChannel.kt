@@ -18,7 +18,7 @@ import java.util.concurrent.CompletableFuture
 private val log = LoggerFactory.getLogger(SecIoSecureChannel::class.java)
 private val HandshakeHandlerName = "SecIoHandshake"
 
-class SecIoSecureChannel(private val localKey: PrivKey) : SecureChannel {
+class SecIoSecureChannel(private val localKey: PrivKey, private val muxerIds: List<String>) : SecureChannel {
     override val protocolDescriptor = ProtocolDescriptor("/secio/1.0.0")
 
     override fun initChannel(ch: P2PChannel, selectedProtocol: String): CompletableFuture<SecureChannel.Session> {
@@ -68,7 +68,8 @@ private class SecIoHandshake(
             val session = SecureChannel.Session(
                 PeerId.fromPubKey(secIoCodec.local.permanentPubKey),
                 PeerId.fromPubKey(secIoCodec.remote.permanentPubKey),
-                secIoCodec.remote.permanentPubKey
+                secIoCodec.remote.permanentPubKey,
+                ""
             )
             handshakeComplete.complete(session)
             ctx.channel().pipeline().remove(HandshakeHandlerName)

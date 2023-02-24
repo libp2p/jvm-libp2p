@@ -22,6 +22,11 @@ interface SecureChannel : ProtocolBinding<SecureChannel.Session> {
         /**
          * The public key of the remote peer.
          */
-        val remotePubKey: PubKey
+        val remotePubKey: PubKey,
+
+        /** The id of the next protocol, used to select the muxer
+         *
+         */
+        val nextProto: String
     )
 }

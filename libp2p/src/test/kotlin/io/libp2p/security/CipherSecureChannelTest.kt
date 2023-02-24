@@ -12,8 +12,8 @@ import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import java.util.concurrent.TimeUnit.SECONDS
 
-abstract class CipherSecureChannelTest(secureChannelCtor: SecureChannelCtor, announce: String) :
-    SecureChannelTestBase(secureChannelCtor, announce) {
+abstract class CipherSecureChannelTest(secureChannelCtor: SecureChannelCtor, muxerIds: List<String>, announce: String) :
+    SecureChannelTestBase(secureChannelCtor, muxerIds, announce) {
 
     @Test
     fun `incorrect initiator remote PeerId should throw`() {
@@ -21,8 +21,8 @@ abstract class CipherSecureChannelTest(secureChannelCtor: SecureChannelCtor, ann
         val (privKey2, _) = generateKeyPair(KEY_TYPE.ECDSA)
         val (_, wrongPubKey) = generateKeyPair(KEY_TYPE.ECDSA)
 
-        val protocolSelect1 = makeSelector(privKey1)
-        val protocolSelect2 = makeSelector(privKey2)
+        val protocolSelect1 = makeSelector(privKey1, muxerIds)
+        val protocolSelect2 = makeSelector(privKey2, muxerIds)
 
         val eCh1 = makeDialChannel("#1", protocolSelect1, PeerId.fromPubKey(wrongPubKey))
         val eCh2 = makeListenChannel("#2", protocolSelect2)
@@ -39,8 +39,8 @@ abstract class CipherSecureChannelTest(secureChannelCtor: SecureChannelCtor, ann
         val (privKey1, _) = generateKeyPair(KEY_TYPE.ECDSA)
         val (privKey2, pubKey2) = generateKeyPair(KEY_TYPE.ECDSA)
 
-        val protocolSelect1 = makeSelector(privKey1)
-        val protocolSelect2 = makeSelector(privKey2)
+        val protocolSelect1 = makeSelector(privKey1, muxerIds)
+        val protocolSelect2 = makeSelector(privKey2, muxerIds)
 
         val eCh1 = makeDialChannel("#1", protocolSelect1, PeerId.fromPubKey(pubKey2))
         val eCh2 = makeListenChannel("#2", protocolSelect2)
