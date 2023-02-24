@@ -1,0 +1,30 @@
+apply plugin: "application"
+
+dependencies {
+
+  api project(':libp2p')
+  api project(':tools:schedulers')
+
+  implementation("org.jgrapht:jgrapht-core:1.3.1")
+  api("org.apache.commons:commons-math3:3.6.1")
+  implementation("org.jetbrains.kotlin:kotlin-reflect:1.3.0")
+
+  runtimeOnly("org.apache.logging.log4j:log4j-core")
+  runtimeOnly("org.apache.logging.log4j:log4j-slf4j-impl")
+}
+
+
+if (project.hasProperty("mainClass")) {
+  ext.javaMainClass = project.getProperty("mainClass")
+} else {
+  ext.javaMainClass = "io.libp2p.simulate.util.gradle.DefaultGradleApplicationKt"
+}
+
+application {
+  mainClassName = javaMainClass
+  applicationDefaultJvmArgs = ['-Xmx12G', '-XX:+HeapDumpOnOutOfMemoryError']
+
+  if ( project.hasProperty('jvmArgs') ) {
+    applicationDefaultJvmArgs = applicationDefaultJvmArgs + project.jvmArgs.split('\\s+').toList()
+  }
+}
