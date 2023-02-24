@@ -18,6 +18,7 @@ import io.netty.channel.CombinedChannelDuplexHandler
 import io.netty.channel.SimpleChannelInboundHandler
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder
 import io.netty.handler.codec.LengthFieldPrepender
+import io.netty.handler.ssl.ApplicationProtocolConfig
 import io.netty.handler.ssl.ClientAuth
 import io.netty.handler.ssl.SslContextBuilder
 import io.netty.handler.ssl.SslHandler
@@ -62,7 +63,7 @@ class UShortLengthCodec : CombinedChannelDuplexHandler<LengthFieldBasedFrameDeco
     LengthFieldPrepender(2)
 )
 
-class TlsSecureChannel(private val localKey: PrivKey) :
+class TlsSecureChannel(private val localKey: PrivKey, private val muxerIds: List<String>) :
     SecureChannel {
 
     companion object {
@@ -83,7 +84,7 @@ class TlsSecureChannel(private val localKey: PrivKey) :
 
         ch.pushHandler(UShortLengthCodec()) // Packet length codec should stay forever.
 
-        ch.pushHandler(SetupHandlerName, ChannelSetup(localKey, ch.isInitiator, handshakeComplete))
+        ch.pushHandler(SetupHandlerName, ChannelSetup(localKey, muxerIds, ch, handshakeComplete))
         return handshakeComplete
     }
 }
@@ -91,14 +92,16 @@ class TlsSecureChannel(private val localKey: PrivKey) :
 fun buildTlsHandler(
     localKey: PrivKey,
     expectedRemotePeer: Optional<PeerId>,
-    isInitiator: Boolean,
+    muxerIds: List<String>,
+    ch: P2PChannel,
     handshakeComplete: CompletableFuture<SecureChannel.Session>,
     ctx: ChannelHandlerContext
 ): SslHandler {
     val connectionKeys = generateEd25519KeyPair()
     val javaPrivateKey = getJavaKey(connectionKeys.first)
+    println("TLS supporting muxers: " + muxerIds)
     val sslContext = (
-        if (isInitiator)
+        if (ch.isInitiator)
             SslContextBuilder.forClient().keyManager(javaPrivateKey, listOf(buildCert(localKey, connectionKeys.first)))
         else
             SslContextBuilder.forServer(javaPrivateKey, listOf(buildCert(localKey, connectionKeys.first)))
@@ -107,22 +110,34 @@ fun buildTlsHandler(
         .ciphers(listOf("TLS_AES_128_GCM_SHA256", "TLS_AES_256_GCM_SHA384", "TLS_CHACHA20_POLY1305_SHA256"))
         .clientAuth(ClientAuth.REQUIRE)
         .trustManager(Libp2pTrustManager(expectedRemotePeer))
+        .applicationProtocolConfig(
+            ApplicationProtocolConfig(ApplicationProtocolConfig.Protocol.ALPN,
+            ApplicationProtocolConfig.SelectorFailureBehavior.FATAL_ALERT,
+            ApplicationProtocolConfig.SelectedListenerFailureBehavior.FATAL_ALERT, muxerIds.plus("libp2p")))
         .build()
     val handler = sslContext.newHandler(PooledByteBufAllocator.DEFAULT)
     handler.sslCloseFuture().addListener { _ -> ctx.close() }
     val handshake = handler.handshakeFuture()
     val engine = handler.engine()
     handshake.addListener { fut ->
-        if (! fut.isSuccess)
-            handshakeComplete.completeExceptionally(fut.cause().cause)
-        else
+        if (! fut.isSuccess) {
+            var cause = fut.cause()
+            if (cause != null && cause.cause != null)
+                cause = cause.cause
+            handshakeComplete.completeExceptionally(cause)
+        } else {
+            val negotiatedProtocols = sslContext.applicationProtocolNegotiator().protocols()
+            println(negotiatedProtocols)
+            val selectedProtocol = negotiatedProtocols.filter { name -> muxerIds.contains(name) }.get(0)
             handshakeComplete.complete(
                 SecureChannel.Session(
                     PeerId.fromPubKey(localKey.publicKey()),
-                    verifyAndExtractPeerId(engine.getSession().getPeerCertificates()),
-                    getPublicKeyFromCert(engine.getSession().getPeerCertificates())
+                    verifyAndExtractPeerId(engine.session.peerCertificates),
+                    getPublicKeyFromCert(engine.session.peerCertificates),
+                    selectedProtocol
                 )
             )
+        }
     }
     println("libp2p-tls using suites: " + sslContext.cipherSuites())
     return handler
@@ -130,7 +145,8 @@ fun buildTlsHandler(
 
 private class ChannelSetup(
     private val localKey: PrivKey,
-    private val isInitiator: Boolean,
+    private val muxerIds: List<String>,
+    private val ch: P2PChannel,
     private val handshakeComplete: CompletableFuture<SecureChannel.Session>
 ) : SimpleChannelInboundHandler<ByteBuf>() {
     private var activated = false
@@ -140,7 +156,7 @@ private class ChannelSetup(
             activated = true
             val expectedRemotePeerId = ctx.channel().attr(REMOTE_PEER_ID).get()
             ctx.channel().pipeline().remove(SetupHandlerName)
-            ctx.channel().pipeline().addLast(buildTlsHandler(localKey, Optional.ofNullable(expectedRemotePeerId), isInitiator, handshakeComplete, ctx))
+            ctx.channel().pipeline().addLast(buildTlsHandler(localKey, Optional.ofNullable(expectedRemotePeerId), muxerIds, ch, handshakeComplete, ctx))
         }
     }
 

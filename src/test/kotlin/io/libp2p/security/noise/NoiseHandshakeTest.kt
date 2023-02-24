@@ -146,7 +146,7 @@ class NoiseHandshakeTest {
     fun testAnnounceAndMatch() {
         val (privKey1, _) = generateKeyPair(KEY_TYPE.ECDSA)
 
-        val ch1 = NoiseXXSecureChannel(privKey1)
+        val ch1 = NoiseXXSecureChannel(privKey1, listOf())
 
         Assertions.assertTrue(
             ch1.protocolDescriptor.matchesAny(ch1.protocolDescriptor.announceProtocols)
@@ -156,11 +156,11 @@ class NoiseHandshakeTest {
     @Test
     fun testStaticNoiseKeyPerProcess() {
         val (privKey1, _) = generateKeyPair(KEY_TYPE.ECDSA)
-        NoiseXXSecureChannel(privKey1)
+        NoiseXXSecureChannel(privKey1, listOf())
         val b1 = NoiseXXSecureChannel.localStaticPrivateKey25519.copyOf()
 
         val (privKey2, _) = generateKeyPair(KEY_TYPE.ECDSA)
-        NoiseXXSecureChannel(privKey2)
+        NoiseXXSecureChannel(privKey2, listOf())
         val b2 = NoiseXXSecureChannel.localStaticPrivateKey25519.copyOf()
 
         Assertions.assertTrue(b1.contentEquals(b2), "NoiseXX static keys are not maintained between sessions.")
