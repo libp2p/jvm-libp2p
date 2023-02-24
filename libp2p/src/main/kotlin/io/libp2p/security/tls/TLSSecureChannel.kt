@@ -7,7 +7,10 @@ import io.libp2p.core.crypto.PubKey
 import io.libp2p.core.crypto.unmarshalPublicKey
 import io.libp2p.core.multistream.ProtocolDescriptor
 import io.libp2p.core.security.SecureChannel
+import io.libp2p.crypto.Libp2pCrypto
+import io.libp2p.crypto.keys.EcdsaPublicKey
 import io.libp2p.crypto.keys.Ed25519PublicKey
+import io.libp2p.crypto.keys.generateEcdsaKeyPair
 import io.libp2p.crypto.keys.generateEd25519KeyPair
 import io.libp2p.etc.REMOTE_PEER_ID
 import io.libp2p.security.InvalidRemotePubKey
@@ -42,6 +45,7 @@ import java.security.PublicKey
 import java.security.cert.Certificate
 import java.security.cert.CertificateException
 import java.security.cert.X509Certificate
+import java.security.interfaces.ECPublicKey
 import java.security.interfaces.EdECPublicKey
 import java.security.spec.*
 import java.time.Instant
@@ -63,8 +67,10 @@ class UShortLengthCodec : CombinedChannelDuplexHandler<LengthFieldBasedFrameDeco
     LengthFieldPrepender(2)
 )
 
-class TlsSecureChannel(private val localKey: PrivKey, private val muxerIds: List<String>) :
+class TlsSecureChannel(private val localKey: PrivKey, private val muxerIds: List<String>, private val certAlgorithm: String) :
     SecureChannel {
+
+    constructor(localKey: PrivKey, muxerIds: List<String>) : this(localKey, muxerIds, "Ed25519") {}
 
     companion object {
         const val announce = "/tls/1.0.0"
@@ -84,7 +90,7 @@ class TlsSecureChannel(private val localKey: PrivKey, private val muxerIds: List
 
         ch.pushHandler(UShortLengthCodec()) // Packet length codec should stay forever.
 
-        ch.pushHandler(SetupHandlerName, ChannelSetup(localKey, muxerIds, ch, handshakeComplete))
+        ch.pushHandler(SetupHandlerName, ChannelSetup(localKey, muxerIds, certAlgorithm, ch, handshakeComplete))
         return handshakeComplete
     }
 }
@@ -93,11 +99,12 @@ fun buildTlsHandler(
     localKey: PrivKey,
     expectedRemotePeer: Optional<PeerId>,
     muxerIds: List<String>,
+    certAlgorithm: String,
     ch: P2PChannel,
     handshakeComplete: CompletableFuture<SecureChannel.Session>,
     ctx: ChannelHandlerContext
 ): SslHandler {
-    val connectionKeys = generateEd25519KeyPair()
+    val connectionKeys = if (certAlgorithm.equals("ECDSA")) generateEcdsaKeyPair() else generateEd25519KeyPair()
     val javaPrivateKey = getJavaKey(connectionKeys.first)
     println("TLS supporting muxers: " + muxerIds)
     val sslContext = (
@@ -149,6 +156,7 @@ fun buildTlsHandler(
 private class ChannelSetup(
     private val localKey: PrivKey,
     private val muxerIds: List<String>,
+    private val certAlgorithm: String,
     private val ch: P2PChannel,
     private val handshakeComplete: CompletableFuture<SecureChannel.Session>
 ) : SimpleChannelInboundHandler<ByteBuf>() {
@@ -159,7 +167,7 @@ private class ChannelSetup(
             activated = true
             val expectedRemotePeerId = ctx.channel().attr(REMOTE_PEER_ID).get()
             ctx.channel().pipeline().remove(SetupHandlerName)
-            ctx.channel().pipeline().addLast(buildTlsHandler(localKey, Optional.ofNullable(expectedRemotePeerId), muxerIds, ch, handshakeComplete, ctx))
+            ctx.channel().pipeline().addLast(buildTlsHandler(localKey, Optional.ofNullable(expectedRemotePeerId), muxerIds, certAlgorithm, ch, handshakeComplete, ctx))
         }
     }
 
@@ -212,6 +220,12 @@ fun getJavaKey(priv: PrivKey): PrivateKey {
         val pkcs8KeySpec = PKCS8EncodedKeySpec(privKeyInfo.encoded)
         return kf.generatePrivate(pkcs8KeySpec)
     }
+    if (priv.keyType == Crypto.KeyType.ECDSA) {
+        val kf = KeyFactory.getInstance("ECDSA", Libp2pCrypto.provider)
+        val pkcs8KeySpec = PKCS8EncodedKeySpec(priv.raw())
+        return kf.generatePrivate(pkcs8KeySpec)
+    }
+
     if (priv.keyType == Crypto.KeyType.RSA) {
         throw IllegalStateException("Unimplemented RSA key support for TLS")
     }
@@ -235,6 +249,9 @@ fun getJavaPublicKey(pub: PubKey): PublicKey {
         val pubSpec = EdECPublicKeySpec(paramSpec, ep)
         return kf.generatePublic(pubSpec)
     }
+    if (pub.keyType == Crypto.KeyType.ECDSA) {
+        return (pub as EcdsaPublicKey).javaKey()
+    }
     throw IllegalArgumentException("Unsupported TLS key type:" + pub.keyType)
 }
 
@@ -248,6 +265,9 @@ fun getPubKey(pub: PublicKey): PubKey {
         if (point.isXOdd)
             pk[31] = pk[31].or(0x80.toByte())
         return Ed25519PublicKey(Ed25519PublicKeyParameters(pk))
+    }
+    if (pub.algorithm.equals("EC")) {
+        return EcdsaPublicKey(pub as ECPublicKey)
     }
     if (pub.algorithm.equals("RSA"))
         throw IllegalStateException("Unimplemented RSA public key support for TLS")
@@ -317,7 +337,12 @@ fun buildCert(hostKey: PrivKey, subjectKey: PrivKey): X509Certificate {
         subject,
         subPubKeyInfo
     ).addExtension(ASN1ObjectIdentifier("1.3.6.1.4.1.53594.1.1"), false, extension)
-    val signer = JcaContentSignerBuilder("Ed25519")
+    val sigAlg = when (subjectKey.keyType) {
+        Crypto.KeyType.Ed25519 -> "Ed25519"
+        Crypto.KeyType.ECDSA -> "SHA256withECDSA"
+        else -> throw IllegalStateException("Unsupported certificate key type: " + subjectKey.keyType)
+    }
+    val signer = JcaContentSignerBuilder(sigAlg)
         .setProvider(BouncyCastleProvider())
         .build(getJavaKey(subjectKey))
     return JcaX509CertificateConverter().getCertificate(certBuilder.build(signer))
