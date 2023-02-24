@@ -1,6 +1,8 @@
 package io.libp2p.simulate.main
 
 import io.libp2p.core.pubsub.Topic
+import io.libp2p.pubsub.gossip.GossipParams
+import io.libp2p.pubsub.gossip.GossipScoreParams
 import io.libp2p.simulate.*
 import io.libp2p.simulate.delay.AccurateBandwidthTracker
 import io.libp2p.simulate.gossip.*
@@ -9,6 +11,7 @@ import io.libp2p.simulate.stats.GroupByRangeAggregator
 import io.libp2p.simulate.stats.Stats
 import io.libp2p.simulate.stats.StatsFactory
 import io.libp2p.simulate.stats.collect.gossip.GossipMessageResult
+import io.libp2p.simulate.stats.collect.gossip.getGossipPubDeliveryResult
 import io.libp2p.simulate.stream.randomLatencyDelayer
 import io.libp2p.simulate.topology.RandomNPeers
 import io.libp2p.simulate.util.byIndexes
@@ -42,7 +45,8 @@ class BlobDecouplingSimulation(
     val randomSeed: Long = 3L,
     val rnd: Random = Random(randomSeed),
 
-    val floodPublish: Boolean = true,
+    val gossipParams: GossipParams = Eth2DefaultGossipParams,
+    val gossipScoreParams: GossipScoreParams = Eth2DefaultScoreParams,
 
     val sendingPeerBand: Bandwidth = Bandwidth.mbitsPerSec(100),
 
@@ -51,20 +55,7 @@ class BlobDecouplingSimulation(
             yield(Bandwidth.mbitsPerSec(100))
         }
     }
-
 ) {
-
-    val peerBandwidths: (GossipSimPeer) -> PeerBandwidthValue = { _ ->
-        val inOutBand = peerBands.next()
-        PeerBandwidthValue(inOutBand, inOutBand)
-    }
-    val bandwidthFactory: (PeerBandwidthValue, GossipSimPeer) -> PeerBandwidth = { band, peer ->
-        PeerBandwidth(
-            AccurateBandwidthTracker(band.inbound, peer.simExecutor, peer.currentTime, name = "[$peer]-in"),
-            AccurateBandwidthTracker(band.outbound, peer.simExecutor, peer.currentTime, name = "[$peer]-out")
-        )
-    }
-
     val blockTopic = Topic(BlocksTopic)
     val blobTopics = (0 until blobCount)
         .map {
@@ -73,30 +64,16 @@ class BlobDecouplingSimulation(
     val simConfig = GossipSimConfig(
         totalPeers = nodeCount,
         topics = listOf(blockTopic) + blobTopics,
+        gossipParams = gossipParams,
+        gossipScoreParams = gossipScoreParams,
         topology = RandomNPeers(nodePeerCount),
         messageValidationGenerator = constantValidationGenerator(messageValidationDelay),
-        bandwidthGenerator = {
-            val band = peerBandwidths(it)
-            bandwidthFactory(band, it)
-        },
+        bandwidthGenerator = peerBandwidthGenerator { peerBands.next() },
         latencyGenerator = { it.randomLatencyDelayer(latency.newValue(rnd)) },
         startRandomSeed = randomSeed
     )
 
-    val gossipParams = Eth2DefaultGossipParams
-        .copy(
-//            heartbeatInterval = 1.minutes
-            floodPublish = floodPublish
-        )
-    val gossipScoreParams = Eth2DefaultScoreParams
-    val gossipRouterCtor = { _: Int ->
-        SimGossipRouterBuilder().also {
-            it.params = gossipParams
-            it.scoreParams = gossipScoreParams
-        }
-    }
-
-    val simNetwork = GossipSimNetwork(simConfig, gossipRouterCtor).also { simNetwork ->
+    val simNetwork = GossipSimNetwork(simConfig).also { simNetwork ->
         logger("Creating peers...")
         simNetwork.createAllPeers()
         logger("Connecting peers...")
@@ -166,13 +143,14 @@ class BlobDecouplingSimulation(
             val t1 = simulation.currentTimeSupplier()
             simulation.forwardTimeUntilAllPubDelivered(maxDuration = 3.minutes)
             val t2 = simulation.currentTimeSupplier()
-            logger(
-                "All messages delivered in ${t2 - t1}, " +
-                    "Pending message count: ${simulation.gossipMessageCollector.pendingMessages.size}, " +
-                    getGossipStats(
-                        simulation.gossipMessageCollector.gatherResult().slice(t1, t2)
-                    )
-            )
+            logger("All messages delivered in $t2")
+//            logger(
+//                "All messages delivered in ${t2 - t1}, " +
+//                    "Pending message count: ${simulation.gossipMessageCollector.pendingMessages.size}, " +
+//                    getGossipStats(
+//                        simulation.gossipMessageCollector.gatherResult().slice(t1, t2)
+//                    )
+//            )
             simulation.forwardTimeUntilNoPendingMessages()
 //            println("Traffic by bandwidth: " + gatherAvrgTrafficByBandwidth(t1, simulation.currentTimeSupplier()))
         }
@@ -291,7 +269,9 @@ fun main() {
 //                logger = {},
                 nodeCount = 1000,
                 peerBands = band,
-                floodPublish = false,
+                gossipParams = Eth2DefaultGossipParams.copy(
+                    floodPublish = false
+                )
 //                randomSeed = 2
             )
 

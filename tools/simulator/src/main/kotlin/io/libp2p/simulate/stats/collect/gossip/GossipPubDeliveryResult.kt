@@ -7,7 +7,7 @@ class GossipPubDeliveryResult(
 ) {
 
     data class MessagePublish(
-        val msgId: Long,
+        val simMsgId: SimMessageId,
         val fromPeer: GossipSimPeer,
         val sentTime: Long,
     )
@@ -57,6 +57,15 @@ class GossipPubDeliveryResult(
 
     fun sliceByPublishTime(publishTime: Long) = filter { it.origMsg.sentTime == publishTime }
 
+    fun aggregateSlowestBySimMessageId(messageGroups: Collection<Set<SimMessageId>>) =
+        messageGroups
+            .map { msgGroup ->
+                this
+                    .filter { it.origMsg.simMsgId in msgGroup }
+                    .selectSlowestPeerDeliveries()
+            }
+            .merge()
+
     fun aggregateSlowestByPublishTime() =
         publishTimes
             .map { sliceByPublishTime(it).selectSlowestPeerDeliveries() }
@@ -68,7 +77,35 @@ class GossipPubDeliveryResult(
                 .flatMap { it.deliveries }
                 .sortedBy { it.receivedTime }
                 .let { GossipPubDeliveryResult(it) }
+
+        fun fromGossipMessageResult(gossipMessageResult: GossipMessageResult): GossipPubDeliveryResult {
+            val fastestReceives =
+                gossipMessageResult.receivedPublishMessagesByPeerFastest.values.flatten()
+            val orinatingMessages =
+                gossipMessageResult.originatingPublishMessages.mapValues { (_, msg) ->
+                    MessagePublish(
+                        msg.simMsgId,
+                        msg.origMsg.sendingPeer as GossipSimPeer,
+                        msg.origMsg.sendTime
+                    )
+                }
+
+            return fastestReceives
+                .map { receivedMsg ->
+                    val simMsgId = receivedMsg.simMsgId
+                    val origMessage = orinatingMessages[simMsgId]
+                        ?: throw IllegalStateException("No originating message with id $simMsgId found")
+                    MessageDelivery(
+                        origMessage,
+                        receivedMsg.origMsg.receivingPeer as GossipSimPeer,
+                        receivedMsg.origMsg.receiveTime
+                    )
+                }
+                .filter { it.toPeer != it.origMsg.fromPeer }
+                .let { GossipPubDeliveryResult(it) }
+        }
     }
 }
 
+fun GossipMessageResult.getGossipPubDeliveryResult() = GossipPubDeliveryResult.fromGossipMessageResult(this)
 fun Collection<GossipPubDeliveryResult>.merge() = GossipPubDeliveryResult.merge(this)

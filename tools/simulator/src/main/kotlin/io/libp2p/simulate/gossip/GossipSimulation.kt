@@ -2,10 +2,7 @@ package io.libp2p.simulate.gossip
 
 import io.libp2p.core.pubsub.*
 import io.libp2p.pubsub.gossip.CurrentTimeSupplier
-import io.libp2p.simulate.stats.collect.gossip.GossipMessageCollector
-import io.libp2p.simulate.stats.collect.gossip.GossipPubDeliveryResult
-import io.libp2p.simulate.stats.collect.gossip.SimMessageId
-import io.libp2p.simulate.stats.collect.gossip.getMessageIdGenerator
+import io.libp2p.simulate.stats.collect.gossip.*
 import io.libp2p.tools.schedule
 import io.netty.buffer.Unpooled
 import java.util.concurrent.CompletableFuture
@@ -17,16 +14,10 @@ import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 
 data class SimMessage(
-    val msgId: Long,
+    val simMessageId: SimMessageId,
     val sendingPeer: Int,
     val sentTime: Long,
     val pubResult: CompletableFuture<Unit>
-)
-
-data class SimMessageDelivery(
-    val msgId: Long,
-    val receivedPeer: Int,
-    val receivedTime: Long
 )
 
 class GossipSimulation(
@@ -34,11 +25,12 @@ class GossipSimulation(
     val network: GossipSimNetwork
 ) {
 
-    private val idCounter = AtomicLong(1)
+    private val idCounter = AtomicLong(0)
 
     private val subscriptions = mutableMapOf<GossipSimPeer, MutableMap<Topic, PubsubSubscription>>()
 
-    private val publishedMessages = mutableListOf<SimMessage>()
+    private val publishedMessagesMut = mutableListOf<SimMessage>()
+    val publishedMessages: List<SimMessage> = publishedMessagesMut
     private val pendingValidationCount = AtomicInteger()
     private val deliveredMessagesCount = mutableMapOf<SimMessageId, AtomicInteger>()
 
@@ -127,7 +119,7 @@ class GossipSimulation(
     }
 
     fun isAllMessagesDelivered(): Boolean =
-        deliveredMessagesCount.values.sumOf { it.get() } == publishedMessages.size * (network.peers.size - 1)
+        deliveredMessagesCount.values.sumOf { it.get() } == publishedMessagesMut.size * (network.peers.size - 1)
 
     fun publishMessage(srcPeer: Int): SimMessage {
         require(cfg.topics.size == 1)
@@ -141,11 +133,12 @@ class GossipSimulation(
         val msg = Unpooled.wrappedBuffer(cfg.messageGenerator.msgGenerator(msgId, size))
         val future = peer.apiPublisher.publish(msg, topic)
         val ret = SimMessage(msgId, srcPeer, network.timeController.time, future)
-        publishedMessages += ret
+        publishedMessagesMut += ret
         return ret
     }
 
-    fun gatherPubDeliveryStats(): GossipPubDeliveryResult = gossipMessageCollector.gatherResult().getGossipPubDeliveryResult()
+    fun gatherPubDeliveryStats(): GossipPubDeliveryResult =
+        gossipMessageCollector.gatherResult().getGossipPubDeliveryResult()
 
     fun clearAllMessages() {
         gossipMessageCollector.clear()

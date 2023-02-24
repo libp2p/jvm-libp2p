@@ -2,11 +2,8 @@ package io.libp2p.simulate.main
 
 import io.libp2p.core.pubsub.Topic
 import io.libp2p.pubsub.gossip.GossipParams
-import io.libp2p.pubsub.gossip.GossipScoreParams
-import io.libp2p.pubsub.gossip.builders.GossipParamsBuilder
 import io.libp2p.simulate.Bandwidth
 import io.libp2p.simulate.gossip.*
-import io.libp2p.simulate.gossip.router.SimGossipRouterBuilder
 import io.libp2p.simulate.stats.StatsFactory
 import io.libp2p.simulate.topology.RandomNPeers
 import io.libp2p.tools.log
@@ -26,25 +23,16 @@ class SimpleSimulation(
     val simConfig: GossipSimConfig = GossipSimConfig(
         totalPeers = nodeCount,
         topics = listOf(testTopic),
+        gossipParams = GossipParams(),
         topology = RandomNPeers(nodePeerCount),
         messageValidationGenerator = constantValidationGenerator(10.milliseconds),
         bandwidthGenerator = constantBandwidthGenerator(Bandwidth.mbitsPerSec(100)),
         latencyGenerator = constantLatencyGenerator(50.milliseconds),
-    ),
-
-    gossipParams: GossipParams = GossipParamsBuilder().build(),
-    gossipScoreParams: GossipScoreParams = GossipScoreParams(),
-
-    val gossipRouterBuilderFactory: GossipRouterBuilderFactory = {
-        SimGossipRouterBuilder().also {
-            it.params = gossipParams
-            it.scoreParams = gossipScoreParams
-        }
-    }
+    )
 ) {
 
     val simulation = run {
-        val simNetwork = GossipSimNetwork(simConfig, gossipRouterBuilderFactory)
+        val simNetwork = GossipSimNetwork(simConfig)
         logger("Creating peers...")
         simNetwork.createAllPeers()
         logger("Connecting peers...")

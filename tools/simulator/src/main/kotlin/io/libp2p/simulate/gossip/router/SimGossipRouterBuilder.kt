@@ -17,7 +17,7 @@ class SimGossipRouterBuilder : GossipRouterBuilder() {
         messageFactory = { SimPubsubMessage(it) }
     }
 
-    override fun createGossipRouter(): GossipRouter {
+    override fun createGossipRouter(): SimGossipRouter {
         val gossipScore =
             scoreFactory(scoreParams, scheduledAsyncExecutor, currentTimeSuppluer) { gossipRouterEventListeners += it }
 
@@ -48,4 +48,7 @@ class SimGossipRouterBuilder : GossipRouterBuilder() {
             sha256(protobufMessage.data.toByteArray()).sliceArray(0..7).toWBytes()
     }
 
+    override fun build(): SimGossipRouter {
+        return super.build() as SimGossipRouter
+    }
 }

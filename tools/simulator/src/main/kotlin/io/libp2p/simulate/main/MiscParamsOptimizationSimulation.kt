@@ -13,6 +13,7 @@ import io.libp2p.simulate.stats.StatsFactory
 import io.libp2p.simulate.stats.WritableStats
 import io.libp2p.simulate.stats.collect.gossip.GossipMessageResult
 import io.libp2p.simulate.stats.collect.gossip.GossipPubDeliveryResult
+import io.libp2p.simulate.stats.collect.gossip.getGossipPubDeliveryResult
 import io.libp2p.simulate.stream.randomLatencyDelayer
 import io.libp2p.simulate.topology.RandomNPeers
 import io.libp2p.simulate.util.*
@@ -346,6 +347,8 @@ class MiscParamsOptimizationSimulation {
             val gossipSimConfig = GossipSimConfig(
                 totalPeers = cfg.totalPeers,
                 topics = listOf(topic),
+                gossipParams = gossipParams,
+                additionalHeartbeatDelay = cfg.gossipHeartbeatAddDelay,
                 messageGenerator = averagePubSubMsgSizeEstimator(cfg.avrgMessageSize, opt.measureTCPFramesOverhead),
                 bandwidthGenerator = constantBandwidthGenerator(Bandwidth.mbitsPerSec(1024)),
                 latencyGenerator = { it.randomLatencyDelayer(cfg.latency.newValue(commonRnd)) },
@@ -364,15 +367,7 @@ class MiscParamsOptimizationSimulation {
                 startRandomSeed = opt.startRandomSeed + n,
             )
 
-            val gossipHeartbeatAddDelay = cfg.gossipHeartbeatAddDelay.newValue(commonRnd)
-            val gossipRouterBuilderFactory: GossipRouterBuilderFactory = {
-                SimGossipRouterBuilder().also {
-                    it.params = gossipParams
-                    it.additionalHeartbeatDelay = gossipHeartbeatAddDelay.next().toLong().milliseconds
-                }
-            }
-
-            val simNetwork = GossipSimNetwork(gossipSimConfig, gossipRouterBuilderFactory)
+            val simNetwork = GossipSimNetwork(gossipSimConfig)
             println("Creating peers...")
             simNetwork.createAllPeers()
             println("Connecting peers...")

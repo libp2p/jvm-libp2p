@@ -1,9 +1,7 @@
 package io.libp2p.simulate.main
 
 import io.libp2p.core.pubsub.Topic
-import io.libp2p.etc.types.seconds
 import io.libp2p.simulate.gossip.*
-import io.libp2p.simulate.gossip.router.SimGossipRouterBuilder
 import io.libp2p.simulate.stats.StatsFactory
 import io.libp2p.simulate.topology.RandomNPeers
 import kotlin.time.Duration.Companion.milliseconds
@@ -21,21 +19,12 @@ class GossipScoreTestSimulation {
             totalPeers = 1000,
             topics = listOf(Topic(BlocksTopic)),
             topology = RandomNPeers(30),
-            messageValidationGenerator = constantValidationGenerator(50.milliseconds)
+            messageValidationGenerator = constantValidationGenerator(50.milliseconds),
+            gossipParams = Eth2DefaultGossipParams,
+            gossipScoreParams = Eth2DefaultScoreParams
         )
 
-        val gossipParams = Eth2DefaultGossipParams
-        val gossipScoreParams = Eth2DefaultScoreParams
-        val gossipRouterCtor = { _: Int ->
-            SimGossipRouterBuilder().also {
-                it.params = gossipParams
-                it.scoreParams = gossipScoreParams
-            }
-        }
-
-        val simPeerModifier = { _: Int, _: GossipSimPeer -> }
-
-        val simNetwork = GossipSimNetwork(simConfig, gossipRouterCtor, simPeerModifier)
+        val simNetwork = GossipSimNetwork(simConfig)
         println("Creating peers...")
         simNetwork.createAllPeers()
         println("Connecting peers...")
@@ -69,7 +58,7 @@ class GossipScoreTestSimulation {
 
         val msgDeliveryStats = StatsFactory.DEFAULT.createStats("msgDelay").also { stats ->
             results.deliveries
-                .groupingBy { it.origMsg.msgId }
+                .groupingBy { it.origMsg.simMsgId }
                 .eachCount()
                 .values
                 .forEach { stats += it.toDouble() / (simConfig.totalPeers - 1) }

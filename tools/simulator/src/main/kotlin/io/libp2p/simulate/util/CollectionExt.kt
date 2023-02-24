@@ -28,7 +28,8 @@ fun <K, V> Map<K, List<V>>.transpose(): List<Map<K, V>> {
     return ret
 }
 
-fun Any.propertiesAsMap() = javaClass.kotlin.memberProperties.map { it.name to it.get(this) }.toMap()
+fun Any.propertiesAsMap() = javaClass.kotlin.memberProperties.map { it.name to it.get(this)!! }.toMap()
+
 fun <T : Comparable<T>> Collection<T>.isOrdered() =
     this
         .windowed(2) { l -> l[1] >= l[0] }
@@ -41,3 +42,18 @@ fun <T : Comparable<T>> Collection<T>.max() = this
 
 fun <T> List<T>.byIndexes(vararg indexes: Int): List<T> = indexes.map { this[it] }
 fun <K, V> Map<K, V>.byIndexes(vararg indexes: Int): Map<K, V> = this.entries.toList().byIndexes(*indexes).toMap()
+
+fun <T1, T2, R> cartesianProduct(c1: Collection<T1>, c2: Collection<T2>, aggregator: (Pair<T1, T2>) -> R): List<R> =
+    c1.flatMap { t1 ->
+        c2.map { t2 ->
+            aggregator(t1 to t2)
+        }
+    }
+fun <T1, T2, T3, R> cartesianProduct(c1: Collection<T1>, c2: Collection<T2>, c3: Collection<T3>, aggregator: (Triple<T1, T2, T3>) -> R): List<R> =
+    c1.flatMap { t1 ->
+        c2.flatMap { t2 ->
+            c3.map { t3 ->
+                aggregator(Triple(t1, t2, t3))
+            }
+        }
+    }

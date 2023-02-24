@@ -23,3 +23,5 @@ fun ScheduledExecutorService.delayedFuture(delay: Duration): CompletableFuture<U
 
 fun <R> ScheduledExecutorService.schedule(delay: Duration, callable: () -> R): ScheduledFuture<R> =
     this.schedule(Callable { callable() }, delay.inWholeMilliseconds, TimeUnit.MILLISECONDS)
+
+fun <T> Iterable<IndexedValue<T>>.withoutIndex() = this.map { it.value }

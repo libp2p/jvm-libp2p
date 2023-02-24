@@ -36,14 +36,14 @@ class GossipMessageResult(
 
     data class IHaveMessageWrapper(
         override val origMsg: CollectedMessage<Rpc.ControlIHave>,
-        val simMsgId: List<SimMessageId>
+        val simMsgId: List<SimMessageId?>
     ) : MessageWrapper<Rpc.ControlIHave> {
         override fun toString() = "IHave[$origMsg, messageIds: $simMsgId]"
     }
 
     data class IWantMessageWrapper(
         override val origMsg: CollectedMessage<Rpc.ControlIWant>,
-        val simMsgId: List<SimMessageId>
+        val simMsgId: List<SimMessageId?>
     ) : MessageWrapper<Rpc.ControlIWant> {
         override fun toString() = "IWant[$origMsg, messageIds: $simMsgId]"
     }
@@ -107,8 +107,7 @@ class GossipMessageResult(
             IHaveMessageWrapper(
                 it,
                 it.message.messageIDsList.map {
-                    val id = it.toWBytes()
-                    gossipMessageIdToSimMessageIdMap[id] ?: throw IllegalStateException("Message with id $id no found")
+                    gossipMessageIdToSimMessageIdMap[it.toWBytes()]
                 }
             )
         })
@@ -119,8 +118,7 @@ class GossipMessageResult(
             IWantMessageWrapper(
                 it,
                 it.message.messageIDsList.map {
-                    val id = it.toWBytes()
-                    gossipMessageIdToSimMessageIdMap[id] ?: throw IllegalStateException("Message with id $id no found")
+                    gossipMessageIdToSimMessageIdMap[it.toWBytes()]
                 }
             )
         })
@@ -201,26 +199,4 @@ class GossipMessageResult(
         .sumOf { msgGenerator.sizeEstimator(it.message) }
 
     fun getTotalMessageCount() = messages.size
-
-    fun getGossipPubDeliveryResult(): GossipPubDeliveryResult {
-        val fastestReceives = receivedPublishMessagesByPeerFastest.values.flatten()
-        val orinatingMessages = originatingPublishMessages.mapValues { (_, msg) ->
-            GossipPubDeliveryResult.MessagePublish(
-                msg.simMsgId,
-                msg.origMsg.sendingPeer as GossipSimPeer,
-                msg.origMsg.sendTime
-            )
-        }
-
-        return fastestReceives.map { receivedMsg ->
-            val simMsgId = receivedMsg.simMsgId
-            val origMessage = orinatingMessages[simMsgId]
-                ?: throw IllegalStateException("No originating message with id $simMsgId found")
-            GossipPubDeliveryResult.MessageDelivery(
-                origMessage,
-                receivedMsg.origMsg.receivingPeer as GossipSimPeer,
-                receivedMsg.origMsg.receiveTime
-            )
-        }.let { GossipPubDeliveryResult(it) }
-    }
 }

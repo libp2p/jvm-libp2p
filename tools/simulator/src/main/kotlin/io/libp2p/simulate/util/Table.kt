@@ -111,6 +111,17 @@ class Table<TValue>(val data: Map<*, Map<*, TValue>>) {
         return Table(newData)
     }
 
+    fun appendColumn(columnName: String, values: Collection<TValue>): Table<TValue> {
+        require(values.size == rowCount)
+        return insertColumn(columnCount, columnName, values)
+    }
+    fun appendColumns(columns: Map<*, Collection<TValue>>) =
+        columns.entries.fold(this) { acc, newCol ->
+            acc.appendColumn(newCol.key.toString(), newCol.value)
+        }
+    fun appendColumns(other: Table<TValue>) =
+        appendColumns(other.transposed().data.mapValues { it.value.values })
+
     fun appendRows(other: Table<TValue>): Table<TValue> {
         require(columnNames == other.columnNames)
         return fromRows(data.values + other.data.values)
@@ -145,12 +156,15 @@ class Table<TValue>(val data: Map<*, Map<*, TValue>>) {
         return Table(data.filter { filter(it.value) })
     }
 
-    fun print(delimiter: String = "\t"): String {
+    fun print(delimiter: String = "\t", printRowHeader: Boolean = true): String {
         val s = StringBuilder()
-        s.append(" " + delimiter + data.values.first().keys.joinToString(separator = delimiter) + "\n")
+        fun maybeRowHeader(s: String): String =
+            if (printRowHeader) s else ""
+        s.append(maybeRowHeader(" $delimiter") +
+                data.values.first().keys.joinToString(separator = delimiter) + "\n")
         s.append(data
             .map { (rowHead, row) ->
-                "" + rowHead + delimiter + row.values.joinToString(separator = delimiter)
+                maybeRowHeader("" + rowHead + delimiter) + row.values.joinToString(separator = delimiter)
             }
             .joinToString(separator = "\n"))
         return s.toString()

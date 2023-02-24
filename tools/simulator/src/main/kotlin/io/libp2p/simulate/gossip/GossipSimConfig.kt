@@ -3,6 +3,8 @@ package io.libp2p.simulate.gossip
 import io.libp2p.core.pubsub.MessageApi
 import io.libp2p.core.pubsub.Topic
 import io.libp2p.core.pubsub.ValidationResult
+import io.libp2p.pubsub.gossip.GossipParams
+import io.libp2p.pubsub.gossip.GossipScoreParams
 import io.libp2p.simulate.*
 import io.libp2p.simulate.delay.AccurateBandwidthTracker
 import io.libp2p.simulate.stream.StreamSimConnection
@@ -35,6 +37,9 @@ data class GossipSimConfig(
 
     val topics: List<Topic>,
 
+    val gossipParams: GossipParams = GossipParams(),
+    val gossipScoreParams: GossipScoreParams = GossipScoreParams(),
+    val additionalHeartbeatDelay: RandomDistribution = RandomDistribution.const(0.0),
     val messageGenerator: GossipPubMessageGenerator = trickyPubSubMsgSizeEstimator(true),
 
     val bandwidthGenerator: BandwidthGenerator = { PeerBandwidth.UNLIMITED },
@@ -61,17 +66,21 @@ fun constantValidationGenerator(
 fun constantLatencyGenerator(latency: Duration): LatencyGenerator =
     { it.simpleLatencyDelayer(latency) }
 
-fun constantBandwidthGenerator(bandwidth: Bandwidth): BandwidthGenerator = { gossipSimPeer ->
+fun constantBandwidthGenerator(bandwidth: Bandwidth): BandwidthGenerator = peerBandwidthGenerator { bandwidth }
+fun peerBandwidthGenerator(bandwidthSupplier: (GossipSimPeer) -> Bandwidth): BandwidthGenerator = { gossipSimPeer ->
+    val bandwidth = bandwidthSupplier(gossipSimPeer)
     PeerBandwidth(
         AccurateBandwidthTracker(
             bandwidth,
             gossipSimPeer.simExecutor,
-            gossipSimPeer.currentTime
+            gossipSimPeer.currentTime,
+            name = "[$gossipSimPeer]-in"
         ),
         AccurateBandwidthTracker(
             bandwidth,
             gossipSimPeer.simExecutor,
-            gossipSimPeer.currentTime
+            gossipSimPeer.currentTime,
+            name = "[$gossipSimPeer]-out"
         )
     )
 }

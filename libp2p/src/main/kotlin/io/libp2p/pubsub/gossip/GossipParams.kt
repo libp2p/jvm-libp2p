@@ -231,7 +231,9 @@ data class GossipParams(
      * callback to notify outer system to which peers Gossip wants to be connected
      * The second parameter is a signed peer record: https://github.com/libp2p/specs/pull/217
      */
-    val connectCallback: (PeerId, ByteArray) -> Unit = { _: PeerId, _: ByteArray -> }
+    val connectCallback: (PeerId, ByteArray) -> Unit = { _: PeerId, _: ByteArray -> },
+
+    val maxConcurrentPublishCount: Int = Int.MAX_VALUE
 ) {
     init {
         check(D >= 0, "D should be >= 0")

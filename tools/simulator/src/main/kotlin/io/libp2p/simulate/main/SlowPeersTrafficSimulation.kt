@@ -1,12 +1,12 @@
 package io.libp2p.simulate.main
 
 import io.libp2p.simulate.Bandwidth
+import io.libp2p.simulate.gossip.Eth2DefaultGossipParams
 import io.libp2p.simulate.stats.collect.gossip.GossipMessageResult
 import io.libp2p.simulate.util.Named
 import io.libp2p.simulate.util.Table
 import io.libp2p.simulate.util.asNamed
 import io.libp2p.simulate.util.byIndexes
-import java.util.Comparator
 
 fun main() {
     SlowPeersTrafficSimulation().runAndPrint()
@@ -50,7 +50,9 @@ class SlowPeersTrafficSimulation(
             messageCount = 10,
             nodeCount = 500,
             peerBands = simParams.bandwidths.value,
-            floodPublish = false,
+            gossipParams = Eth2DefaultGossipParams.copy(
+                floodPublish = false
+            )
 //                randomSeed = 2
         )
     }

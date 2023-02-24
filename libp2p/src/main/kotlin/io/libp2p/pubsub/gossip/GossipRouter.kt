@@ -15,6 +15,7 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.collections.ArrayDeque
 import kotlin.collections.Collection
 import kotlin.collections.List
 import kotlin.collections.MutableMap
@@ -589,6 +590,46 @@ open class GossipRouter(
 
     private fun enqueueIhave(peer: PeerHandler, messageIds: List<MessageId>) =
         pendingRpcParts.getQueue(peer).addIHaves(messageIds)
+
+
+    override fun submitPublishMessage(toPeer: PeerHandler, msg: PubsubMessage): CompletableFuture<Unit> {
+        return enqueuePublishMessage(toPeer, msg)
+    }
+
+    data class QueuedPublishMessage(
+        val toPeer: PeerHandler,
+        val msg: PubsubMessage,
+        val promise: CompletableFuture<Unit> = CompletableFuture()
+    )
+
+    private val publishQueue = ArrayDeque<QueuedPublishMessage>()
+    private var sendingPublishMessages = 0
+
+    protected open fun enqueuePublishMessage(toPeer: PeerHandler, msg: PubsubMessage): CompletableFuture<Unit> {
+        val queuedPublishMessage = QueuedPublishMessage(toPeer, msg)
+        publishQueue += queuedPublishMessage
+        processPublishQueue()
+        return queuedPublishMessage.promise
+    }
+
+    private fun processPublishQueue() {
+        while (sendingPublishMessages < params.maxConcurrentPublishCount && publishQueue.isNotEmpty()) {
+            val queuedPublishMessage = publishQueue.removeFirst()
+            sendingPublishMessages++
+
+            val sendPromise =
+                super.submitPublishMessage(queuedPublishMessage.toPeer, queuedPublishMessage.msg)
+            sendPromise.forward(queuedPublishMessage.promise)
+            sendPromise.handleAsync({ _, _ ->
+                publishMessageComplete(queuedPublishMessage)
+            }, executor)
+        }
+    }
+
+    private fun publishMessageComplete(queuedMessage: QueuedPublishMessage) {
+        sendingPublishMessages--
+        processPublishQueue()
+    }
 
     data class AcceptRequestsWhitelistEntry(val whitelistedTill: Long, val messagesAccepted: Int = 0) {
         fun incrementMessageCount() = AcceptRequestsWhitelistEntry(whitelistedTill, messagesAccepted + 1)
