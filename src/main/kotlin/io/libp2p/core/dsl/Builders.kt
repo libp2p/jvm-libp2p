@@ -28,7 +28,6 @@ import io.libp2p.host.MemoryAddressBook
 import io.libp2p.network.NetworkImpl
 import io.libp2p.protocol.IdentifyBinding
 import io.libp2p.security.noise.NoiseXXSecureChannel
-import io.libp2p.security.secio.SecIoSecureChannel
 import io.libp2p.transport.ConnectionUpgrader
 import io.libp2p.transport.tcp.TcpTransport
 import io.netty.channel.ChannelHandler
