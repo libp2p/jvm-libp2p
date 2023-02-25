@@ -154,8 +154,8 @@ private class ChannelSetup(
         if (! activated) {
             activated = true
             val expectedRemotePeerId = ctx.channel().attr(REMOTE_PEER_ID).get()
-            ctx.channel().pipeline().remove(SetupHandlerName)
             ctx.channel().pipeline().addLast(buildTlsHandler(localKey, Optional.ofNullable(expectedRemotePeerId), muxerIds, certAlgorithm, ch, handshakeComplete, ctx))
+            ctx.channel().pipeline().remove(SetupHandlerName)
         }
     }
 
