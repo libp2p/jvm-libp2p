@@ -15,7 +15,6 @@ import io.libp2p.crypto.keys.generateEd25519KeyPair
 import io.libp2p.etc.REMOTE_PEER_ID
 import io.libp2p.security.InvalidRemotePubKey
 import io.netty.buffer.ByteBuf
-import io.netty.buffer.PooledByteBufAllocator
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.SimpleChannelInboundHandler
 import io.netty.handler.ssl.ApplicationProtocolConfig
@@ -92,7 +91,7 @@ fun buildTlsHandler(
     ctx: ChannelHandlerContext
 ): SslHandler {
     val connectionKeys = if (certAlgorithm.equals("ECDSA")) generateEcdsaKeyPair() else generateEd25519KeyPair()
-    println(certAlgorithm)
+    println("TLS using key type: " + certAlgorithm)
     val javaPrivateKey = getJavaKey(connectionKeys.first)
     println("TLS supporting muxers: " + muxerIds)
     val sslContext = (
@@ -113,7 +112,7 @@ fun buildTlsHandler(
             )
         )
         .build()
-    val handler = sslContext.newHandler(PooledByteBufAllocator.DEFAULT)
+    val handler = sslContext.newHandler(ctx.alloc())
     handler.sslCloseFuture().addListener { _ -> ctx.close() }
     val handshake = handler.handshakeFuture()
     val engine = handler.engine()
@@ -126,7 +125,7 @@ fun buildTlsHandler(
         } else {
             val negotiatedProtocols = sslContext.applicationProtocolNegotiator().protocols()
             println(negotiatedProtocols)
-            val selectedProtocol = negotiatedProtocols.filter { name -> muxerIds.contains(name) }.get(0)
+            val selectedProtocol = negotiatedProtocols.filter { name -> muxerIds.contains(name) }.getOrElse(0, defaultValue = { _ -> "" })
             handshakeComplete.complete(
                 SecureChannel.Session(
                     PeerId.fromPubKey(localKey.publicKey()),
