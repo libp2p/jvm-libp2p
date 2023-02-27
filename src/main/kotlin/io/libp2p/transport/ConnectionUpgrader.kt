@@ -6,7 +6,9 @@ import io.libp2p.core.multistream.MultistreamProtocol
 import io.libp2p.core.multistream.ProtocolBinding
 import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.core.security.SecureChannel
+import io.libp2p.etc.getP2PChannel
 import io.libp2p.etc.types.forward
+import io.libp2p.etc.util.netty.nettyInitializer
 import java.util.concurrent.CompletableFuture
 
 /**
@@ -42,7 +44,11 @@ open class ConnectionUpgrader(
         val muxer = muxers.find { m -> m.protocolDescriptor.announceProtocols.contains(muxerId) }
             ?: throw NoSuchLocalProtocolException("Early Muxer negotiation selected unsupported muxer: $muxerId")
         val res = CompletableFuture<StreamMuxer.Session>()
-        muxer.initChannel(connection, muxerId).forward(res)
+        connection.pushHandler(
+            nettyInitializer {
+                muxer.initChannel(it.channel.getP2PChannel(), "").forward(res)
+            }
+        )
         return res
     }
 
