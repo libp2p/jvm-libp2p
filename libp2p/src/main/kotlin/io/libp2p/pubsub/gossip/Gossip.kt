@@ -30,13 +30,22 @@ class Gossip @JvmOverloads constructor(
     }
 
     override val protocolDescriptor =
-        if (router.protocol == PubsubProtocol.Gossip_V_1_1)
-            ProtocolDescriptor(
-                PubsubProtocol.Gossip_V_1_1.announceStr,
-                PubsubProtocol.Gossip_V_1_0.announceStr
-            )
-        else
-            ProtocolDescriptor(PubsubProtocol.Gossip_V_1_0.announceStr)
+        when(router.protocol) {
+            PubsubProtocol.Gossip_V_1_2 ->
+                ProtocolDescriptor(
+                    PubsubProtocol.Gossip_V_1_2.announceStr,
+                    PubsubProtocol.Gossip_V_1_1.announceStr,
+                    PubsubProtocol.Gossip_V_1_0.announceStr
+                )
+            PubsubProtocol.Gossip_V_1_1 ->
+                ProtocolDescriptor(
+                    PubsubProtocol.Gossip_V_1_1.announceStr,
+                    PubsubProtocol.Gossip_V_1_0.announceStr
+                )
+            PubsubProtocol.Gossip_V_1_0 ->
+                ProtocolDescriptor(PubsubProtocol.Gossip_V_1_0.announceStr)
+            else -> throw IllegalArgumentException("Invalid gossip protocol: ${router.protocol}")
+        }
 
     override fun handleConnection(conn: Connection) {
         conn.muxerSession().createStream(listOf(this))

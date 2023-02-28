@@ -7,6 +7,7 @@ import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.etc.types.*
 import io.libp2p.etc.util.P2PService
 import io.libp2p.pubsub.*
+import io.libp2p.pubsub.PubsubProtocol.Gossip_V_1_1
 import org.apache.logging.log4j.LogManager
 import pubsub.pb.Rpc
 import java.time.Duration
@@ -302,7 +303,7 @@ open class GossipRouter(
         mesh[topic]?.remove(peer)?.also {
             notifyPruned(peer, topic)
         }
-        if (this.protocol == PubsubProtocol.Gossip_V_1_1) {
+        if (this.protocol.version >= Gossip_V_1_1.version) {
             if (msg.hasBackoff()) {
                 setBackOff(peer, topic, msg.backoff.seconds.toMillis())
             } else {
@@ -572,7 +573,7 @@ open class GossipRouter(
 
     private fun enqueuePrune(peer: PeerHandler, topic: Topic) {
         val peerQueue = pendingRpcParts.getQueue(peer)
-        if (peer.getPeerProtocol() == PubsubProtocol.Gossip_V_1_1 && this.protocol == PubsubProtocol.Gossip_V_1_1) {
+        if (peer.getPeerProtocol().version >= Gossip_V_1_1.version && this.protocol.version >= Gossip_V_1_1.version) {
             val backoffPeers = (getTopicPeers(topic) - peer)
                 .filter { score.score(it.peerId) >= 0 }
                 .map { it.peerId }
