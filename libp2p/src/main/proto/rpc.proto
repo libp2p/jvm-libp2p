@@ -28,6 +28,8 @@ message ControlMessage {
 	repeated ControlIWant iwant = 2;
 	repeated ControlGraft graft = 3;
 	repeated ControlPrune prune = 4;
+	repeated ControlChoke choke = 5;
+	repeated ControlUnChoke unchoke = 6;
 }
 
 message ControlIHave {
@@ -47,6 +49,14 @@ message ControlPrune {
 	optional string topicID = 1;
 	repeated PeerInfo peers = 2;
 	optional uint64 backoff = 3;
+}
+
+message ControlChoke {
+	optional string topicID = 1;
+}
+
+message ControlUnChoke {
+	optional string topicID = 1;
 }
 
 message PeerInfo {

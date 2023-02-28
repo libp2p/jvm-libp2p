@@ -233,7 +233,41 @@ data class GossipParams(
      */
     val connectCallback: (PeerId, ByteArray) -> Unit = { _: PeerId, _: ByteArray -> },
 
-    val maxConcurrentPublishCount: Int = Int.MAX_VALUE
+    val maxConcurrentPublishCount: Int = Int.MAX_VALUE,
+
+    /**
+     * The minimum number of peers in a mesh that must remain unchoked.
+     * @since 1.2
+     */
+    val DNonChoke: Int = DLow,
+
+    /**
+     * The number of heartbeats before assessing and applying CHOKE/UNCHOKE control messages
+     * and adding peers to the mesh.
+     * @since 1.2
+     */
+    val chokeHeartbeatInterval: Int = 20,
+
+
+    /**
+     * The maximum number of peers that can be CHOKE'd or UNCHOKE'd in any [chokeHeartbeatInterval].
+     * @since 1.2
+     */
+    val chokeChurn: Int = 2,
+
+    /**
+     * Determines how aggressively we unchoke peers.
+     * The number of peers per [chokeHeartbeatInterval] that can be unchoked on an individual mesh.
+     * @since 1.2
+     */
+    val unchokeChurn: Int = 2,
+
+    /**
+     * How aggressively we add peers from into the mesh.
+     * The number of peers per [chokeHeartbeatInterval] that can be added to an individual mesh.
+     * @since 1.2
+     */
+    val meshAdditionChurn: Int = 1
 ) {
     init {
         check(D >= 0, "D should be >= 0")
