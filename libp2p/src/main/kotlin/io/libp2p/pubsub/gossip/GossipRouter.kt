@@ -638,9 +638,13 @@ open class GossipRouter(
             .forEach { (topic, peers) ->
                 val topicMesh = mesh[topic]?.associateBy { it.peerId } ?: emptyMap()
                 val topicPeerMap = getTopicPeers(topic).associateBy { it.peerId }
+                val meshAddCount = min(
+                    params.meshAdditionChurn,
+                    max(0, topicMesh.size - params.DHigh)
+                )
                 val meshAddPeers = peers
                     .filter { it !in topicMesh }
-                    .take(params.meshAdditionChurn)
+                    .take(meshAddCount)
                     .mapNotNull { topicPeerMap[it] }
                 meshAddPeers.forEach {
                     graft(it, topic)
