@@ -342,12 +342,15 @@ open class GossipRouter(
             return
         }
 
-        val iWant = msg.messageIDsList
+        val iHaveMessageIds: List<MessageId> = msg.messageIDsList
             .map { it.toWBytes() }
+        val iWant = iHaveMessageIds
             .filterNot { seenMessages.isSeen(it) }
         val maxToAsk = min(iWant.size, params.maxIHaveLength - asked.get())
         asked.addAndGet(maxToAsk)
         iWant(peer, iWant.shuffled(random).subList(0, maxToAsk))
+
+        eventBroadcaster.notifyIHaveReceived(peer.peerId, iHaveMessageIds)
     }
 
     private fun handleIWant(msg: Rpc.ControlIWant, peer: PeerHandler) {

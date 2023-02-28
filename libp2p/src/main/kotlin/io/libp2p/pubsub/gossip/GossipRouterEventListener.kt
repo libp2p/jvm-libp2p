@@ -3,6 +3,7 @@ package io.libp2p.pubsub.gossip
 import io.libp2p.core.PeerId
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.pubsub.ValidationResult
+import io.libp2p.pubsub.MessageId
 import io.libp2p.pubsub.PubsubMessage
 import io.libp2p.pubsub.Topic
 import java.util.*
@@ -25,6 +26,8 @@ interface GossipRouterEventListener {
     fun notifyMeshed(peerId: PeerId, topic: Topic)
 
     fun notifyPruned(peerId: PeerId, topic: Topic)
+
+    fun notifyIHaveReceived(peerId: PeerId, messageIds: List<MessageId>)
 
     fun notifyRouterMisbehavior(peerId: PeerId, count: Int)
 }
@@ -68,7 +71,24 @@ class GossipRouterEventBroadcaster : GossipRouterEventListener {
         listeners.forEach { it.notifyPruned(peerId, topic) }
     }
 
+    override fun notifyIHaveReceived(peerId: PeerId, messageIds: List<MessageId>) {
+        listeners.forEach { it.notifyIHaveReceived(peerId, messageIds) }
+    }
+
     override fun notifyRouterMisbehavior(peerId: PeerId, count: Int) {
         listeners.forEach { it.notifyRouterMisbehavior(peerId, count) }
     }
+}
+
+open class GossipRouterEventListenerAdapter : GossipRouterEventListener {
+    override fun notifyDisconnected(peerId: PeerId) {}
+    override fun notifyConnected(peerId: PeerId, peerAddress: Multiaddr) {}
+    override fun notifyUnseenMessage(peerId: PeerId, msg: PubsubMessage) {}
+    override fun notifySeenMessage(peerId: PeerId, msg: PubsubMessage, validationResult: Optional<ValidationResult>) {}
+    override fun notifyUnseenInvalidMessage(peerId: PeerId, msg: PubsubMessage) {}
+    override fun notifyUnseenValidMessage(peerId: PeerId, msg: PubsubMessage) {}
+    override fun notifyMeshed(peerId: PeerId, topic: Topic) {}
+    override fun notifyPruned(peerId: PeerId, topic: Topic) {}
+    override fun notifyIHaveReceived(peerId: PeerId, messageIds: List<MessageId>) {}
+    override fun notifyRouterMisbehavior(peerId: PeerId, count: Int) {}
 }
