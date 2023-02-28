@@ -114,6 +114,9 @@ open class GossipRouter(
 
     val fanout: MutableMap<Topic, MutableSet<PeerHandler>> = linkedMapOf()
     val mesh: MutableMap<Topic, MutableSet<PeerHandler>> = linkedMapOf()
+    val chokedByPeers = mutableMultiBiMap<PeerHandler, Topic>()
+    val chokedPeers = mutableMultiBiMap<PeerHandler, Topic>()
+
     val eventBroadcaster = GossipRouterEventBroadcaster()
 
     open val heartbeatInitialDelay: Duration = params.heartbeatInterval
@@ -156,6 +159,8 @@ open class GossipRouter(
         eventBroadcaster.notifyDisconnected(peer.peerId)
         mesh.values.forEach { it.remove(peer) }
         fanout.values.forEach { it.remove(peer) }
+        chokedByPeers.removeAllByFirst(peer)
+        chokedPeers.removeAllByFirst(peer)
         acceptRequestsWhitelist -= peer
         pendingRpcParts.popQueue(peer) // discard them
         super.onPeerDisconnected(peer)
@@ -272,6 +277,8 @@ open class GossipRouter(
             is Rpc.ControlPrune -> handlePrune(controlMsg, receivedFrom)
             is Rpc.ControlIHave -> handleIHave(controlMsg, receivedFrom)
             is Rpc.ControlIWant -> handleIWant(controlMsg, receivedFrom)
+            is Rpc.ControlChoke -> handleChoke(controlMsg, receivedFrom)
+            is Rpc.ControlUnChoke -> handleUnChoke(controlMsg, receivedFrom)
         }
     }
 
@@ -303,6 +310,8 @@ open class GossipRouter(
         mesh[topic]?.remove(peer)?.also {
             notifyPruned(peer, topic)
         }
+        chokedByPeers.remove(peer, topic)
+
         if (this.protocol.version >= Gossip_V_1_1.version) {
             if (msg.hasBackoff()) {
                 setBackOff(peer, topic, msg.backoff.seconds.toMillis())
@@ -351,6 +360,14 @@ open class GossipRouter(
             .forEach { submitPublishMessage(peer, it) }
     }
 
+    private fun handleChoke(msg: Rpc.ControlChoke, peer: PeerHandler) {
+        chokedByPeers.add(peer, msg.topicID)
+    }
+
+    private fun handleUnChoke(msg: Rpc.ControlUnChoke, peer: P2PService.PeerHandler) {
+        chokedByPeers.remove(peer, msg.topicID)
+    }
+
     private fun processPrunePeers(peersList: List<Rpc.PeerInfo>) {
         peersList.shuffled(random).take(params.maxPrunePeers)
             .map { PeerId(it.peerID.toByteArray()) to it.signedPeerRecord.toByteArray() }
@@ -360,17 +377,22 @@ open class GossipRouter(
 
     override fun processControl(ctrl: Rpc.ControlMessage, receivedFrom: PeerHandler) {
         ctrl.run {
-            (graftList + pruneList + ihaveList + iwantList)
+            (graftList + pruneList + ihaveList + iwantList + chokeList + unchokeList)
         }.forEach { processControlMessage(it, receivedFrom) }
     }
 
     override fun broadcastInbound(msgs: List<PubsubMessage>, receivedFrom: PeerHandler) {
         msgs.forEach { pubMsg ->
+            val choked =
+                pubMsg.topics
+                    .flatMap { chokedByPeers.getBySecond(it) }
+                    .toSet()
             pubMsg.topics
                 .mapNotNull { mesh[it] }
                 .flatten()
                 .distinct()
                 .plus(getDirectPeers())
+                .minus(choked)
                 .filter { it != receivedFrom }
                 .forEach { submitPublishMessage(it, pubMsg) }
             mCache += pubMsg
@@ -529,6 +551,10 @@ open class GossipRouter(
                     .whenTrue { fanout.remove(topic) }
             }
 
+            if (heartbeatsCount % params.chokeHeartbeatInterval == 0) {
+                chokeHeartbeat()
+            }
+
             mCache.shift()
 
             flushAllPending()
@@ -548,6 +574,9 @@ open class GossipRouter(
         peers.shuffled(random)
             .take(max((params.gossipFactor * peers.size).toInt(), params.DLazy))
             .forEach { enqueueIhave(it, shuffledMessageIds) }
+    }
+
+    private fun chokeHeartbeat() {
     }
 
     private fun graft(peer: PeerHandler, topic: Topic) {
