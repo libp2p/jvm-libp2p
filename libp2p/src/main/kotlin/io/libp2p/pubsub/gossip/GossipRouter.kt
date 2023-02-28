@@ -8,6 +8,8 @@ import io.libp2p.etc.types.*
 import io.libp2p.etc.util.P2PService
 import io.libp2p.pubsub.*
 import io.libp2p.pubsub.PubsubProtocol.Gossip_V_1_1
+import io.libp2p.pubsub.PubsubProtocol.Gossip_V_1_2
+import io.libp2p.pubsub.gossip.choke.ChokeStrategy
 import org.apache.logging.log4j.LogManager
 import pubsub.pb.Rpc
 import java.time.Duration
@@ -584,6 +586,66 @@ open class GossipRouter(
     }
 
     private fun chokeHeartbeat() {
+        if (protocol.version < Gossip_V_1_2.version) {
+            return
+        }
+
+        chokeStrategy.getPeersToChoke()
+            .forEach { (topic, peers) ->
+                val topicMesh = mesh[topic]?.associateBy { it.peerId } ?: emptyMap()
+                val topicChoked = chokedPeers.getBySecond(topic).map { it.peerId }.toSet()
+                val chokeCandidates = topicMesh - topicChoked
+                val chokeCount = min(
+                    params.chokeChurn,
+                    max(
+                        0,
+                        chokeCandidates.size - params.DNonChoke
+                    )
+                )
+                val peersToChoke = peers
+                    .filter { it in chokeCandidates }
+                    .take(chokeCount)
+                    .mapNotNull { topicMesh[it] }
+                    .filter { it.getPeerProtocol().version >= Gossip_V_1_2.version }
+
+                peersToChoke.forEach { peer ->
+                    pendingRpcParts.getQueue(peer).addChoke(topic)
+                    chokedPeers.add(peer, topic)
+                }
+            }
+
+        chokeStrategy.getPeersToUnChoke()
+            .forEach { (topic, peers) ->
+                val topicChokedPeers = chokedPeers
+                    .getBySecond(topic)
+                    .associateBy { it.peerId }
+                val topicChokedPeerIds = topicChokedPeers.values
+                    .map { it.peerId }
+                    .toSet()
+
+                val peersToUnchoke = peers
+                    .filter { it in topicChokedPeerIds }
+                    .take(params.chokeChurn)
+                    .mapNotNull { topicChokedPeers[it] }
+
+                peersToUnchoke.forEach { peer ->
+                    pendingRpcParts.getQueue(peer).addUnChoke(topic)
+                    chokedPeers.remove(peer, topic)
+                }
+            }
+
+        chokeStrategy.getMeshCandidates()
+            .forEach { (topic, peers) ->
+                val topicMesh = mesh[topic]?.associateBy { it.peerId } ?: emptyMap()
+                val topicPeerMap = getTopicPeers(topic).associateBy { it.peerId }
+                val meshAddPeers = peers
+                    .filter { it !in topicMesh }
+                    .take(params.meshAdditionChurn)
+                    .mapNotNull { topicPeerMap[it] }
+                meshAddPeers.forEach {
+                    graft(it, topic)
+                }
+            }
     }
 
     private fun graft(peer: PeerHandler, topic: Topic) {
