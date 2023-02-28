@@ -248,7 +248,6 @@ data class GossipParams(
      */
     val chokeHeartbeatInterval: Int = 20,
 
-
     /**
      * The maximum number of peers that can be CHOKE'd or UNCHOKE'd in any [chokeHeartbeatInterval].
      * @since 1.2

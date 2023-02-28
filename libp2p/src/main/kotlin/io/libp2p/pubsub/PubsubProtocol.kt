@@ -14,7 +14,7 @@ enum class PubsubProtocolType(val announceString: String) {
 enum class PubsubProtocol(
     val type: PubsubProtocolType,
     val version: ProtocolVersion
-): Comparable<PubsubProtocol> {
+) : Comparable<PubsubProtocol> {
 
     Gossip_V_1_0(GOSSIP, parse("1.0.0")),
     Gossip_V_1_1(GOSSIP, parse("1.1.0")),

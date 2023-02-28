@@ -690,7 +690,6 @@ open class GossipRouter(
     private fun enqueueIhave(peer: PeerHandler, messageIds: List<MessageId>) =
         pendingRpcParts.getQueue(peer).addIHaves(messageIds)
 
-
     override fun submitPublishMessage(toPeer: PeerHandler, msg: PubsubMessage): CompletableFuture<Unit> {
         return enqueuePublishMessage(toPeer, msg)
     }
