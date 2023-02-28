@@ -720,12 +720,12 @@ open class GossipRouter(
                 super.submitPublishMessage(queuedPublishMessage.toPeer, queuedPublishMessage.msg)
             sendPromise.forward(queuedPublishMessage.promise)
             sendPromise.handleAsync({ _, _ ->
-                publishMessageComplete(queuedPublishMessage)
+                publishMessageComplete()
             }, executor)
         }
     }
 
-    private fun publishMessageComplete(queuedMessage: QueuedPublishMessage) {
+    private fun publishMessageComplete() {
         sendingPublishMessages--
         processPublishQueue()
     }

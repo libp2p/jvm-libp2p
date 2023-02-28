@@ -8,6 +8,7 @@ import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.etc.types.cappedDouble
 import io.libp2p.etc.types.createLRUMap
 import io.libp2p.etc.types.millis
+import io.libp2p.pubsub.MessageId
 import io.libp2p.pubsub.PubsubMessage
 import io.libp2p.pubsub.Topic
 import java.util.Optional
@@ -295,6 +296,8 @@ class DefaultGossipScore(
         topicScores.meshFailurePenalty += topicScores.meshMessageDeliveriesDeficitSqr()
         topicScores.joinedMeshTimeMillis = 0
     }
+
+    override fun notifyIHaveReceived(peerId: PeerId, messageIds: List<MessageId>) {}
 
     override fun notifyRouterMisbehavior(peerId: PeerId, count: Int) {
         getPeerScores(peerId).behaviorPenalty += count
