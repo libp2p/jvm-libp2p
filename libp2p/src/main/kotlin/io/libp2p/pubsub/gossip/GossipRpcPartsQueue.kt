@@ -25,6 +25,9 @@ interface GossipRpcPartsQueue : RpcPartsQueue {
      * Gossip 1.1 variant
      */
     fun addPrune(topic: Topic, backoffSeconds: Long, backoffPeers: List<PeerId>)
+
+    fun addChoke(topic: Topic)
+    fun addUnChoke(topic: Topic)
 }
 
 /**
@@ -81,6 +84,17 @@ open class DefaultGossipRpcPartsQueue(
         }
     }
 
+    protected data class ChokePart(val topic: Topic) : AbstractPart {
+        override fun appendToBuilder(builder: Rpc.RPC.Builder) {
+            builder.controlBuilder.addChokeBuilder().setTopicID(topic)
+        }
+    }
+    protected data class UnChokePart(val topic: Topic) : AbstractPart {
+        override fun appendToBuilder(builder: Rpc.RPC.Builder) {
+            builder.controlBuilder.addUnchokeBuilder().setTopicID(topic)
+        }
+    }
+
     override fun addIHave(messageId: MessageId) {
         addPart(IHavePart(messageId))
     }
@@ -99,6 +113,14 @@ open class DefaultGossipRpcPartsQueue(
 
     override fun addPrune(topic: Topic, backoffSeconds: Long, backoffPeers: List<PeerId>) {
         addPart(PrunePart(topic, backoffSeconds, backoffPeers))
+    }
+
+    override fun addChoke(topic: Topic) {
+        addPart(ChokePart(topic))
+    }
+
+    override fun addUnChoke(topic: Topic) {
+        addPart(UnChokePart(topic))
     }
 
     override fun takeMerged(): List<Rpc.RPC> {
