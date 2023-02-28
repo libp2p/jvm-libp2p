@@ -122,7 +122,7 @@ open class GossipRouter(
 
     val eventBroadcaster = GossipRouterEventBroadcaster()
         .also {
-            it.listeners += chokeStrategy
+            it.listeners += chokeStrategy.eventListener
         }
 
     open val heartbeatInitialDelay: Duration = params.heartbeatInterval

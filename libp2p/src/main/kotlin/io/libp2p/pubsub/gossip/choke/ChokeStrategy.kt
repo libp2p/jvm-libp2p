@@ -4,7 +4,8 @@ import io.libp2p.core.PeerId
 import io.libp2p.pubsub.Topic
 import io.libp2p.pubsub.gossip.GossipRouterEventListener
 
-interface ChokeStrategy : GossipRouterEventListener {
+interface ChokeStrategy {
+    val eventListener: GossipRouterEventListener
 
     fun getPeersToChoke(): Map<Topic, List<PeerId>>
     fun getPeersToUnChoke(): Map<Topic, List<PeerId>>
