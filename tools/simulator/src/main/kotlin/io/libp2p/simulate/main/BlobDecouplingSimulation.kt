@@ -140,19 +140,11 @@ class BlobDecouplingSimulation(
                 simulation.publishMessage(sendingPeer, blobSize, blobTopics[it])
             }
 
-            val t1 = simulation.currentTimeSupplier()
+            val t1 = simulation.network.timeController.time
             simulation.forwardTimeUntilAllPubDelivered(maxDuration = 3.minutes)
-            val t2 = simulation.currentTimeSupplier()
+            val t2 = simulation.currentTimeSupplier() - t1
             logger("All messages delivered in $t2")
-//            logger(
-//                "All messages delivered in ${t2 - t1}, " +
-//                    "Pending message count: ${simulation.gossipMessageCollector.pendingMessages.size}, " +
-//                    getGossipStats(
-//                        simulation.gossipMessageCollector.gatherResult().slice(t1, t2)
-//                    )
-//            )
             simulation.forwardTimeUntilNoPendingMessages()
-//            println("Traffic by bandwidth: " + gatherAvrgTrafficByBandwidth(t1, simulation.currentTimeSupplier()))
         }
 
         printResults()

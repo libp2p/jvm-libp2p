@@ -251,6 +251,7 @@ class Table<TValue>(val data: Map<*, Map<*, TValue>>) {
             return fromRows(rows)
         }
 
+        @Suppress("UNCHECKED_CAST")
         internal fun <T> optimisticAnyComparator(): Comparator<T> =
             Comparator { o1, o2 ->
                 when {
