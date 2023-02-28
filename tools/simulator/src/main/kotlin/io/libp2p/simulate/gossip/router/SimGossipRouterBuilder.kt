@@ -29,6 +29,7 @@ class SimGossipRouterBuilder : GossipRouterBuilder() {
             name = name,
             mCache = mCache,
             score = gossipScore,
+            chokeStrategy = chokeStrategy,
             subscriptionTopicSubscriptionFilter = subscriptionTopicSubscriptionFilter,
             protocol = protocol,
             executor = scheduledAsyncExecutor,

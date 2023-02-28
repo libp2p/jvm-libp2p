@@ -3,6 +3,7 @@ package io.libp2p.simulate.gossip.router
 import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.pubsub.*
 import io.libp2p.pubsub.gossip.*
+import io.libp2p.pubsub.gossip.choke.ChokeStrategy
 import io.netty.channel.ChannelHandler
 import java.util.*
 import java.util.concurrent.ScheduledExecutorService
@@ -17,6 +18,7 @@ class SimGossipRouter(
     name: String,
     mCache: MCache,
     score: GossipScore,
+    chokeStrategy: ChokeStrategy,
     subscriptionTopicSubscriptionFilter: TopicSubscriptionFilter,
     protocol: PubsubProtocol,
     executor: ScheduledExecutorService,
@@ -33,6 +35,7 @@ class SimGossipRouter(
     name,
     mCache,
     score,
+    chokeStrategy,
     subscriptionTopicSubscriptionFilter,
     protocol,
     executor,

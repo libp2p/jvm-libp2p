@@ -5,6 +5,8 @@ import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.etc.types.lazyVar
 import io.libp2p.pubsub.*
 import io.libp2p.pubsub.gossip.*
+import io.libp2p.pubsub.gossip.choke.ChokeStrategy
+import io.libp2p.pubsub.gossip.choke.NoopChokeStrategy
 import java.util.*
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
@@ -38,6 +40,7 @@ open class GossipRouterBuilder(
             eventsSubscriber(gossipScore)
             gossipScore
         },
+    var chokeStrategy: ChokeStrategy = NoopChokeStrategy(),
     val gossipRouterEventListeners: MutableList<GossipRouterEventListener> = mutableListOf()
 ) {
 
@@ -57,6 +60,7 @@ open class GossipRouterBuilder(
             name = name,
             mCache = mCache,
             score = gossipScore,
+            chokeStrategy = chokeStrategy,
             subscriptionTopicSubscriptionFilter = subscriptionTopicSubscriptionFilter,
             protocol = protocol,
             executor = scheduledAsyncExecutor,

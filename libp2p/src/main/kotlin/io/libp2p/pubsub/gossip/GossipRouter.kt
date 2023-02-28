@@ -86,6 +86,7 @@ open class GossipRouter(
     val name: String,
     val mCache: MCache,
     val score: GossipScore,
+    val chokeStrategy: ChokeStrategy,
 
     subscriptionTopicSubscriptionFilter: TopicSubscriptionFilter,
     protocol: PubsubProtocol,
@@ -118,6 +119,9 @@ open class GossipRouter(
     val chokedPeers = mutableMultiBiMap<PeerHandler, Topic>()
 
     val eventBroadcaster = GossipRouterEventBroadcaster()
+        .also {
+            it.listeners += chokeStrategy
+        }
 
     open val heartbeatInitialDelay: Duration = params.heartbeatInterval
 
