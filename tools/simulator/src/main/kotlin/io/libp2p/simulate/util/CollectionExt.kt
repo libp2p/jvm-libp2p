@@ -57,3 +57,14 @@ fun <T1, T2, T3, R> cartesianProduct(c1: Collection<T1>, c2: Collection<T2>, c3:
             }
         }
     }
+
+fun <T> Collection<T>.infiniteLoopIterator(): Iterator<T> =
+    iterator {
+        while (true) {
+            this@infiniteLoopIterator.forEach {
+                yield(it)
+            }
+        }
+    }
+
+fun <T> T.infiniteIterator() = listOf(this).infiniteLoopIterator()

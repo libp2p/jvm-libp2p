@@ -1,6 +1,7 @@
 package io.libp2p.simulate.main
 
 import io.libp2p.simulate.Bandwidth
+import io.libp2p.simulate.RandomDistribution
 import io.libp2p.simulate.gossip.Eth2DefaultGossipParams
 import io.libp2p.simulate.stats.collect.gossip.GossipMessageResult
 import io.libp2p.simulate.util.Named
@@ -13,9 +14,9 @@ fun main() {
 }
 
 class SlowPeersTrafficSimulation(
-    val bandwidthsParams: List<Named<Iterator<Bandwidth>>> = bandwidthDistributions
-        .byIndexes(1, 2, 3)
-        .map { it.asNamed() },
+    val bandwidthsParams: List<RandomDistribution<Bandwidth>> =
+        BlobDecouplingSimulation.bandwidthDistributions
+            .byIndexes(1, 2, 3),
     val decouplingParams: List<Decoupling> = listOf(
         Decoupling.Coupled,
         Decoupling.FullyDecoupled
@@ -33,10 +34,10 @@ class SlowPeersTrafficSimulation(
     enum class Decoupling{ Coupled, FullyDecoupled }
 
     data class SimParams(
-        val bandwidths: Named<Iterator<Bandwidth>>,
+        val bandwidths: RandomDistribution<Bandwidth>,
         val decoupling: Decoupling
     ) {
-        override fun toString() = "${bandwidths.name}, $decoupling"
+        override fun toString() = "$bandwidths, $decoupling"
     }
 
     data class RunResult(
@@ -49,7 +50,7 @@ class SlowPeersTrafficSimulation(
 //                logger = {},
             messageCount = 10,
             nodeCount = 500,
-            peerBands = simParams.bandwidths.value,
+            peerBands = simParams.bandwidths,
             gossipParams = Eth2DefaultGossipParams.copy(
                 floodPublish = false
             )

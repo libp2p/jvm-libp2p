@@ -83,3 +83,18 @@ fun Double.smartRound(meaningCount: Int = 3): Double {
         return n.roundToLong().toDouble() * 10.pow(cnt)
     }
 }
+
+fun gcd(a: Int, b: Int): Int {
+    return if (a == 0) b else gcd(b % a, a)
+}
+
+fun gcd(arr: List<Int>): Int {
+    var result = arr[0]
+    for (element in arr) {
+        result = gcd(result, element)
+        if (result == 1) {
+            return 1
+        }
+    }
+    return result
+}

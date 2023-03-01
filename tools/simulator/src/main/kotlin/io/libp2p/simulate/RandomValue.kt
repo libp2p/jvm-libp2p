@@ -1,5 +1,7 @@
 package io.libp2p.simulate
 
+import io.libp2p.simulate.util.gcd
+import io.libp2p.simulate.util.infiniteLoopIterator
 import java.util.Random
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -8,12 +10,11 @@ fun interface RandomValue<T> {
     fun next(): T
 
     companion object {
-        fun <T> const(constVal: T) = object : RandomValue<T> {
-            override fun next() = constVal
-        }
-        fun uniform(from: Double, to: Double, rnd: Random) = object : RandomValue<Double> {
-            override fun next() = from + rnd.nextDouble() * (to - from)
-        }
+        fun <T> const(constVal: T) =
+            RandomValue { constVal }
+
+        fun uniform(from: Double, to: Double, rnd: Random) =
+            RandomValue { from + rnd.nextDouble() * (to - from) }
     }
 }
 
@@ -21,18 +22,40 @@ fun interface RandomDistribution<T> {
     fun newValue(rnd: Random): RandomValue<T>
 
     companion object {
-        fun <T> const(constVal: T) = ConstRandomDistr(constVal)
-        fun uniform(from: Double, to: Double) = UniformRandomDistr(from, to)
+        fun <T> const(constVal: T) = RandomDistribution {
+            RandomValue.const(constVal)
+        }
+
+        fun uniform(from: Double, to: Double) = RandomDistribution {
+            RandomValue.uniform(from, to, it)
+        }
+
         fun uniform(from: Long, toExclusive: Long) =
             uniform(from.toDouble(), toExclusive.toDouble())
                 .map { it.toLong() }
-    }
 
-    data class ConstRandomDistr<T>(val constVal: T) : RandomDistribution<T> {
-        override fun newValue(rnd: Random) = RandomValue.const(constVal)
-    }
-    data class UniformRandomDistr(val from: Double, val to: Double) : RandomDistribution<Double> {
-        override fun newValue(rnd: Random) = RandomValue.uniform(from, to, rnd)
+        /**
+         * Not really a random discrete distribution
+         * Tries to distribute values according to their probabilities (in %%) as even as possible
+         */
+        fun <T> discreteEven(valuesToPercentages: Collection<Pair<T, Int>>): RandomDistribution<T> {
+            val percentages = valuesToPercentages.map { it.second }
+            val percentageGcd = gcd(percentages)
+            val occurrences = valuesToPercentages
+                .flatMap { (value, percentage) ->
+                    val occurrenceCount = percentage / percentageGcd
+                    List(occurrenceCount) { value }
+                }
+            val name = valuesToPercentages.joinToString("/") { it.first.toString() } +
+                    " at " + percentages.joinToString("/") + " %"
+
+            return RandomDistribution { random ->
+                occurrences
+                    .shuffled(random)
+                    .infiniteLoopIterator()
+                    .asRandomValue()
+            }.named(name)
+        }
     }
 }
 
@@ -46,4 +69,14 @@ fun <T, R> RandomValue<T>.map(mapper: (T) -> R): RandomValue<R> =
         mapper(this.next())
     }
 
+fun <T> RandomDistribution<T>.named(name: String): RandomDistribution<T> =
+    object : RandomDistribution<T> {
+        override fun newValue(rnd: Random): RandomValue<T> =
+            this@named.newValue(rnd)
+
+        override fun toString(): String = name
+    }
+
 fun RandomDistribution<Long>.milliseconds() = this.map { it.milliseconds }
+
+fun <T> Iterator<T>.asRandomValue() = RandomValue { this.next() }

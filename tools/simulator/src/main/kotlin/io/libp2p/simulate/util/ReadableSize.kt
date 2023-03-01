@@ -3,15 +3,16 @@ package io.libp2p.simulate.util
 import java.util.*
 
 enum class SizeUnit(
+    val shortPrefix: String,
     val shortName: String,
     val longName: String,
     val multiplier: Long
 ) {
-    BYTES("b", "bytes", 1),
-    KILO_BYTES("Kb", "KBytes", 1L shl 10),
-    MEGA_BYTES("Mb", "MBytes", 1L shl 20),
-    GIGA_BYTES("GB", "GBytes", 1L shl 30),
-    TERA_BYTES("TB", "TBytes", 1L shl 40)
+    BYTES("", "b", "bytes", 1),
+    KILO_BYTES("K", "Kb", "KBytes", 1L shl 10),
+    MEGA_BYTES("M", "Mb", "MBytes", 1L shl 20),
+    GIGA_BYTES("G", "GB", "GBytes", 1L shl 30),
+    TERA_BYTES("T","TB", "TBytes", 1L shl 40)
 }
 
 data class ReadableSize(
