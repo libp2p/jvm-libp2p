@@ -3,11 +3,9 @@ package io.libp2p.simulate.main
 import io.libp2p.simulate.Bandwidth
 import io.libp2p.simulate.RandomDistribution
 import io.libp2p.simulate.gossip.Eth2DefaultGossipParams
+import io.libp2p.simulate.main.scenario.BlobDecouplingScenario
 import io.libp2p.simulate.stats.collect.gossip.GossipMessageResult
-import io.libp2p.simulate.util.Named
-import io.libp2p.simulate.util.Table
-import io.libp2p.simulate.util.asNamed
-import io.libp2p.simulate.util.byIndexes
+import io.libp2p.simulate.util.*
 
 fun main() {
     SlowPeersTrafficSimulation().runAndPrint()
@@ -22,13 +20,7 @@ class SlowPeersTrafficSimulation(
         Decoupling.FullyDecoupled
     ),
     val paramsSet: List<SimParams> =
-        bandwidthsParams
-            .flatMap {  band ->
-                decouplingParams
-                    .map { decoupling ->
-                        SimParams(band, decoupling)
-                    }
-            }
+        cartesianProduct(bandwidthsParams, decouplingParams) { SimParams(it.first, it.second) }
 ) {
 
     enum class Decoupling{ Coupled, FullyDecoupled }
@@ -45,8 +37,8 @@ class SlowPeersTrafficSimulation(
         val inboundTrafficByBandwidth: Map<Bandwidth, Long>
     )
 
-    fun createBlobSimulation(simParams: SimParams): BlobDecouplingSimulation {
-        return BlobDecouplingSimulation(
+    fun createBlobScenario(simParams: SimParams): BlobDecouplingScenario {
+        return BlobDecouplingScenario(
 //                logger = {},
             messageCount = 10,
             nodeCount = 500,
@@ -70,12 +62,12 @@ class SlowPeersTrafficSimulation(
 
 
     fun run(params: SimParams): RunResult {
-        val simulation = createBlobSimulation(params)
+        val scenario = createBlobScenario(params)
         when (params.decoupling) {
-            Decoupling.Coupled -> simulation.testCoupled()
-            Decoupling.FullyDecoupled -> simulation.testAllDecoupled()
+            Decoupling.Coupled -> scenario.testCoupled()
+            Decoupling.FullyDecoupled -> scenario.testAllDecoupled()
         }
-        val messageResult = simulation.simulation.gossipMessageCollector.gatherResult()
+        val messageResult = scenario.simulation.gossipMessageCollector.gatherResult()
         return calcResult(messageResult)
     }
 

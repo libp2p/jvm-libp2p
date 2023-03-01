@@ -1,170 +1,45 @@
 package io.libp2p.simulate.main
 
-import io.libp2p.core.pubsub.Topic
-import io.libp2p.pubsub.gossip.GossipParams
-import io.libp2p.pubsub.gossip.GossipScoreParams
-import io.libp2p.simulate.*
-import io.libp2p.simulate.delay.AccurateBandwidthTracker
-import io.libp2p.simulate.gossip.*
-import io.libp2p.simulate.gossip.router.SimGossipRouterBuilder
+import io.libp2p.simulate.Bandwidth
+import io.libp2p.simulate.RandomDistribution
+import io.libp2p.simulate.bandwidthDistribution
+import io.libp2p.simulate.gossip.Eth2DefaultGossipParams
+import io.libp2p.simulate.gossip.GossipSimulation
+import io.libp2p.simulate.main.scenario.BlobDecouplingScenario
+import io.libp2p.simulate.mbitsPerSecond
 import io.libp2p.simulate.stats.GroupByRangeAggregator
 import io.libp2p.simulate.stats.Stats
 import io.libp2p.simulate.stats.StatsFactory
 import io.libp2p.simulate.stats.collect.gossip.GossipMessageResult
 import io.libp2p.simulate.stats.collect.gossip.getGossipPubDeliveryResult
-import io.libp2p.simulate.stream.randomLatencyDelayer
-import io.libp2p.simulate.topology.RandomNPeers
 import io.libp2p.simulate.util.byIndexes
 import io.libp2p.simulate.util.countValues
-import io.libp2p.simulate.util.toMap
+import io.libp2p.simulate.util.infiniteIterator
+import io.libp2p.simulate.util.infiniteLoopIterator
 import io.libp2p.tools.log
-import java.util.*
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.minutes
-import kotlin.time.toKotlinDuration
 
-data class PeerBandwidthValue(
-    val inbound: Bandwidth,
-    val outbound: Bandwidth
-)
+fun main() {
+    BlobDecouplingSimulation().run()
+}
 
-class BlobDecouplingSimulation(
-    val logger: (String) -> Unit = { log(it) },
 
-    val messageValidationDelay: Duration = 10.milliseconds,
-    val latency: RandomDistribution = RandomDistribution.uniform(0.0, 50.0),
+class BlobDecouplingSimulation() {
 
-    val nodeCount: Int = 1000,
-    val nodePeerCount: Int = 30,
-    val messageCount: Int = 5,
+    fun printResults(simulation: GossipSimulation) {
+        log("Gathering results...")
 
-    val blockSize: Int = 128 * 1024,
-    val blobCount: Int = 4,
-    val blobSize: Int = 128 * 1024,
-    val randomSeed: Long = 3L,
-    val rnd: Random = Random(randomSeed),
-
-    val gossipParams: GossipParams = Eth2DefaultGossipParams,
-    val gossipScoreParams: GossipScoreParams = Eth2DefaultScoreParams,
-
-    val sendingPeerBand: Bandwidth = Bandwidth.mbitsPerSec(100),
-
-    val peerBands: Iterator<Bandwidth> = iterator {
-        while (true) {
-            yield(Bandwidth.mbitsPerSec(100))
-        }
-    }
-) {
-    val blockTopic = Topic(BlocksTopic)
-    val blobTopics = (0 until blobCount)
-        .map {
-            Topic("/eth2/00000000/beacon_blob_$it/ssz_snappy")
-        }
-    val simConfig = GossipSimConfig(
-        totalPeers = nodeCount,
-        topics = listOf(blockTopic) + blobTopics,
-        gossipParams = gossipParams,
-        gossipScoreParams = gossipScoreParams,
-        topology = RandomNPeers(nodePeerCount),
-        messageValidationGenerator = constantValidationGenerator(messageValidationDelay),
-        bandwidthGenerator = peerBandwidthGenerator { peerBands.next() },
-        latencyGenerator = { it.randomLatencyDelayer(latency.newValue(rnd)) },
-        startRandomSeed = randomSeed
-    )
-
-    val simNetwork = GossipSimNetwork(simConfig).also { simNetwork ->
-        logger("Creating peers...")
-        simNetwork.createAllPeers()
-        logger("Connecting peers...")
-        simNetwork.connectAllPeers()
-        logger("Peers connected. Graph diameter is " + simNetwork.network.topologyGraph.calcDiameter())
-    }
-
-    val peerIndexesByBandwidth = simNetwork.peers.entries
-        .groupBy { it.value.outboundBandwidth.totalBandwidth }
-        .mapValues { it.value.map { it.key } }
-    val sendingPeerIndexes = peerIndexesByBandwidth[sendingPeerBand]!!
-
-    val simulation = run {
-        logger("Creating simulation...")
-        GossipSimulation(simConfig, simNetwork).also { simulation ->
-            logger("Forwarding heartbeat time...")
-            simulation.forwardTime(gossipParams.heartbeatInterval.toKotlinDuration())
-            logger("Cleaning warmup messages and network stats...")
-            simulation.clearAllMessages()
-        }
-    }
-
-    fun testCoupled() {
-        for (i in 0 until messageCount) {
-            val sendingPeer = sendingPeerIndexes[i]
-            logger("Sending message $i from peer $sendingPeer")
-            simulation.publishMessage(sendingPeer, blockSize + blobSize * blobCount, blockTopic)
-
-            val t1 = simulation.network.timeController.time
-            simulation.forwardTimeUntilAllPubDelivered()
-            val t2 = simulation.network.timeController.time - t1
-            logger("All messages delivered in $t2")
-            simulation.forwardTimeUntilNoPendingMessages()
-        }
-
-        printResults()
-    }
-
-    fun testOnlyBlockDecoupled() {
-
-        for (i in 0 until messageCount) {
-            val sendingPeer = sendingPeerIndexes[i]
-            logger("Sending message $i from peer $sendingPeer")
-            simulation.publishMessage(sendingPeer, blockSize, blockTopic)
-            simulation.publishMessage(sendingPeer, blobSize * blobCount, blobTopics[0])
-
-            val t1 = simulation.network.timeController.time
-            simulation.forwardTimeUntilAllPubDelivered()
-            val t2 = simulation.network.timeController.time - t1
-            logger("All messages delivered in $t2")
-            simulation.forwardTimeUntilNoPendingMessages()
-        }
-
-        printResults()
-    }
-
-    fun testAllDecoupled() {
-
-        for (i in 0 until messageCount) {
-            val sendingPeer = sendingPeerIndexes[i]
-            logger("Sending message $i from peer $sendingPeer")
-            simulation.publishMessage(sendingPeer, blockSize, blockTopic)
-            (0 until blobCount).forEach {
-                simulation.publishMessage(sendingPeer, blobSize, blobTopics[it])
-            }
-
-            val t1 = simulation.network.timeController.time
-            simulation.forwardTimeUntilAllPubDelivered(maxDuration = 3.minutes)
-            val t2 = simulation.currentTimeSupplier() - t1
-            logger("All messages delivered in $t2")
-            simulation.forwardTimeUntilNoPendingMessages()
-        }
-
-        printResults()
-    }
-
-    fun printResults() {
-        logger("Gathering results...")
-
-        val messageDelayStats = gatherMessageDelayStats()
-        logger("Results:")
-        logger("Delivery stats: $messageDelayStats")
+        val messageDelayStats = gatherMessageDelayStats(simulation)
+        log("Results:")
+        log("Delivery stats: $messageDelayStats")
 
         val messagesResult = simulation.gossipMessageCollector.gatherResult()
-        logger(
+        log(
             "Network stats: msgCount: ${messagesResult.getTotalMessageCount()}, " +
                 "msgsSize: ${messagesResult.getTotalTraffic()}"
         )
     }
 
-    fun gatherMessageDelayStats(): Stats {
+    fun gatherMessageDelayStats(simulation: GossipSimulation): Stats {
         val allMessageDelays = simulation
             .gossipMessageCollector
             .gatherResult()
@@ -186,7 +61,8 @@ class BlobDecouplingSimulation(
             "PUBLISH: $pubMsgCount, GRAFT: $graftMsgCount, PRUNE: $pruneMsgCount, IHAVE: $iHaveMsgCount, IWANT: $iWantMsgCount"
     }
 
-    fun printGossipDetailedResults() {
+    fun printGossipDetailedResults(simulation: GossipSimulation) {
+        val simNetwork = simulation.network
         val gossipMessages = simulation.gossipMessageCollector.gatherResult()
 
         println("IWANT messages count: " + gossipMessages.iWantMessages.size)
@@ -212,7 +88,7 @@ class BlobDecouplingSimulation(
 
         val peer0AllOutbounds = gossipMessages.messages
             .filter { it.sendingPeer == simNetwork.peers[0] }
-            .map { it to simConfig.messageGenerator.sizeEstimator(it.message) }
+            .map { it to simulation.cfg.messageGenerator.sizeEstimator(it.message) }
         println("Peer 0 all outbounds: \n" + peer0AllOutbounds.joinToString("\n").prependIndent("  "))
 
         simNetwork.peers.values.flatMap {
@@ -228,101 +104,83 @@ class BlobDecouplingSimulation(
 
         println("Peer0 meshes: " + simNetwork.peers[0]!!.router.mesh.mapValues { it.value.size })
     }
-}
 
-fun main() {
-    val bandwidths = bandwidthDistributions.byIndexes(2)
-    val slowBandwidth = Bandwidth.mbitsPerSec(10)
+    fun run() {
+        val bandwidths = bandwidthDistributions.byIndexes(2)
+        val slowBandwidth = Bandwidth.mbitsPerSec(10)
 
-    bandwidths.forEach { (name, band) ->
-        fun getResults(sim: BlobDecouplingSimulation): String {
-            val messageDelayStats = sim.gatherMessageDelayStats().getStatisticalSummary()
-            val messagesResult = sim.simulation.gossipMessageCollector.gatherResult()
-            return "${messageDelayStats.min.toLong()}\t" +
-                "${messageDelayStats.mean.toLong()}\t" +
-                "${messageDelayStats.max.toLong()}\t" +
-                "${messagesResult.messages.size}\t" +
-                "${messagesResult.getTotalTraffic()}"
-        }
+        bandwidths.forEach { band ->
+            fun getResults(sim: BlobDecouplingScenario): String {
+                val messageDelayStats = gatherMessageDelayStats(sim.simulation).getStatisticalSummary()
+                val messagesResult = sim.simulation.gossipMessageCollector.gatherResult()
+                return "${messageDelayStats.min.toLong()}\t" +
+                        "${messageDelayStats.mean.toLong()}\t" +
+                        "${messageDelayStats.max.toLong()}\t" +
+                        "${messagesResult.messages.size}\t" +
+                        "${messagesResult.getTotalTraffic()}"
+            }
 
-        fun getRangedDelays(sim: BlobDecouplingSimulation): GroupByRangeAggregator {
-            val groupedDelays = sim.simulation.gatherPubDeliveryStats()
-                .aggregateSlowestByPublishTime()
-                .groupBy {
-                    if (it.toPeer.inboundBandwidth.totalBandwidth == slowBandwidth)
-                        "Slow" else "Fast"
-                }
-                .mapValues { it.value.deliveryDelays }
-            return GroupByRangeAggregator(groupedDelays)
-        }
+            fun getRangedDelays(sim: BlobDecouplingScenario): GroupByRangeAggregator {
+                val groupedDelays = sim.simulation.gatherPubDeliveryStats()
+                    .aggregateSlowestByPublishTime()
+                    .groupBy {
+                        if (it.toPeer.inboundBandwidth.totalBandwidth == slowBandwidth)
+                            "Slow" else "Fast"
+                    }
+                    .mapValues { it.value.deliveryDelays }
+                return GroupByRangeAggregator(groupedDelays)
+            }
 
-        fun createSimulation() =
-            BlobDecouplingSimulation(
+            fun createSimulation() =
+                BlobDecouplingScenario(
 //                logger = {},
-                nodeCount = 1000,
-                peerBands = band,
-                gossipParams = Eth2DefaultGossipParams.copy(
-                    floodPublish = false
-                )
+                    nodeCount = 1000,
+                    peerBands = band,
+                    gossipParams = Eth2DefaultGossipParams.copy(
+                        floodPublish = false
+                    )
 //                randomSeed = 2
-            )
+                )
 
-        val coupledDelays = createSimulation().let {
-            it.testCoupled()
-            println("$name\tCoupled\t${getResults(it)}\n")
-            getRangedDelays(it)
+            val coupledDelays = createSimulation().let {
+                it.testCoupled()
+                println("$band\tCoupled\t${getResults(it)}\n")
+                getRangedDelays(it)
+            }
+
+            val decoupledDelays = createSimulation().let {
+                it.testAllDecoupled()
+                println("$band\tDecoupled\t${getResults(it)}\n")
+                getRangedDelays(it)
+            }
+
+            (coupledDelays.withMappedNames { "Coupled $it" } + decoupledDelays.withMappedNames { "Decoupled $it" })
+                .aggregate(20)
+                .formatToString()
+                .also { println(it) }
         }
+    }
 
-        val decoupledDelays = createSimulation().let {
-            it.testAllDecoupled()
-            println("$name\tDecoupled\t${getResults(it)}\n")
-            getRangedDelays(it)
-        }
-
-        (coupledDelays.withMappedNames { "Coupled $it" } + decoupledDelays.withMappedNames { "Decoupled $it" })
-            .aggregate(20)
-            .formatToString()
-            .also { println(it) }
+    companion object {
+        val bandwidthDistributions = listOf(
+            bandwidthDistribution(
+                100.mbitsPerSecond to 100
+            ),
+            bandwidthDistribution(
+                10.mbitsPerSecond to 10,
+                100.mbitsPerSecond to 80,
+                190.mbitsPerSecond to 10,
+            ),
+            bandwidthDistribution(
+                10.mbitsPerSecond to 20,
+                100.mbitsPerSecond to 60,
+                190.mbitsPerSecond to 20,
+            ),
+            bandwidthDistribution(
+                10.mbitsPerSecond to 33,
+                100.mbitsPerSecond to 33,
+                190.mbitsPerSecond to 33,
+            ),
+        )
     }
 }
-
-val bandwidthDistributions = mapOf(
-    "100% 100Mbps" to iterator {
-        while (true) {
-            yield(Bandwidth.mbitsPerSec(100))
-        }
-    },
-    "10% 10Mbps, 80% 100Mbps, 10% 190Mbps" to iterator {
-        yield(Bandwidth.mbitsPerSec(100))
-        while (true) {
-            yield(Bandwidth.mbitsPerSec(100))
-            yield(Bandwidth.mbitsPerSec(100))
-            yield(Bandwidth.mbitsPerSec(10))
-            yield(Bandwidth.mbitsPerSec(100))
-            yield(Bandwidth.mbitsPerSec(100))
-            yield(Bandwidth.mbitsPerSec(100))
-            yield(Bandwidth.mbitsPerSec(100))
-            yield(Bandwidth.mbitsPerSec(190))
-            yield(Bandwidth.mbitsPerSec(100))
-            yield(Bandwidth.mbitsPerSec(100))
-        }
-    },
-    "20% 10Mbps, 60% 100Mbps, 20% 190Mbps" to iterator {
-        yield(Bandwidth.mbitsPerSec(100))
-        while (true) {
-            yield(Bandwidth.mbitsPerSec(100))
-            yield(Bandwidth.mbitsPerSec(10))
-            yield(Bandwidth.mbitsPerSec(100))
-            yield(Bandwidth.mbitsPerSec(190))
-            yield(Bandwidth.mbitsPerSec(100))
-        }
-    },
-    "33% 10Mbps, 33% 100Mbps, 33% 190Mbps" to iterator {
-        yield(Bandwidth.mbitsPerSec(100))
-        while (true) {
-            yield(Bandwidth.mbitsPerSec(100))
-            yield(Bandwidth.mbitsPerSec(10))
-            yield(Bandwidth.mbitsPerSec(190))
-        }
-    }
-)
