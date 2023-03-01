@@ -48,6 +48,18 @@ class GossipMessageResult(
         override fun toString() = "IWant[$origMsg, messageIds: $simMsgId]"
     }
 
+    data class ChokeMessageWrapper(
+        override val origMsg: CollectedMessage<Rpc.ControlChoke>,
+    ) : MessageWrapper<Rpc.ControlChoke> {
+        override fun toString() = "Choke[$origMsg, topicId: '${origMsg.message.topicID}']"
+    }
+
+    data class UnChokeMessageWrapper(
+        override val origMsg: CollectedMessage<Rpc.ControlUnChoke>,
+    ) : MessageWrapper<Rpc.ControlUnChoke> {
+        override fun toString() = "Unchoke[$origMsg, topicId: '${origMsg.message.topicID}']"
+    }
+
     data class PubMessageWrapper(
         override val origMsg: CollectedMessage<Rpc.Message>,
         val simMsgId: SimMessageId,
@@ -112,7 +124,6 @@ class GossipMessageResult(
             )
         })
     }
-
     val iWantMessages by lazy {
         flattenControl({ it.iwantList }, {
             IWantMessageWrapper(
@@ -123,9 +134,15 @@ class GossipMessageResult(
             )
         })
     }
+    val chokeMessages by lazy {
+        flattenControl({ it.chokeList }, { ChokeMessageWrapper(it) })
+    }
+    val unchokeMessages by lazy {
+        flattenControl({ it.unchokeList }, { UnChokeMessageWrapper(it) })
+    }
 
     val allGossipMessages by lazy {
-        (publishMessages + graftMessages + pruneMessages + iHaveMessages + iWantMessages)
+        (publishMessages + graftMessages + pruneMessages + iHaveMessages + iWantMessages + chokeMessages + unchokeMessages)
             .sortedBy { it.origMsg.sendTime }
     }
 
