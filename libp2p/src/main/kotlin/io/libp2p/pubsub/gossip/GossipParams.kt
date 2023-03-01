@@ -233,8 +233,6 @@ data class GossipParams(
      */
     val connectCallback: (PeerId, ByteArray) -> Unit = { _: PeerId, _: ByteArray -> },
 
-    val maxConcurrentPublishCount: Int = Int.MAX_VALUE,
-
     /**
      * The minimum number of peers in a mesh that must remain unchoked.
      * @since 1.2
