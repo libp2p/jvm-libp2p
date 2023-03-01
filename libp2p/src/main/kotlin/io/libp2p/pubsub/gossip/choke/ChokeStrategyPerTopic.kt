@@ -3,7 +3,7 @@ package io.libp2p.pubsub.gossip.choke
 import io.libp2p.core.PeerId
 import io.libp2p.pubsub.Topic
 import io.libp2p.pubsub.gossip.GossipRouterEventBroadcaster
-import io.libp2p.pubsub.gossip.GossipRouterEventListener
+import io.libp2p.pubsub.gossip.GossipRouterEventListenerAdapter
 
 typealias TopicStrategyConstructor = (Topic) -> TopicChokeStrategy
 
@@ -13,7 +13,7 @@ class ChokeStrategyPerTopic(
 
     private val topicStrategies = mutableMapOf<Topic, TopicChokeStrategy>()
 
-    private fun getTopicStrategy(topic: Topic) =
+    private fun onTopicMeshed(topic: Topic) =
         topicStrategies.computeIfAbsent(topic) {
             topicStrategyCtor(it)
                 .also {
@@ -23,6 +23,14 @@ class ChokeStrategyPerTopic(
 
 
     override val eventListener: GossipRouterEventBroadcaster = GossipRouterEventBroadcaster()
+
+    init {
+        eventListener.listeners += object : GossipRouterEventListenerAdapter() {
+            override fun notifyMeshed(peerId: PeerId, topic: Topic) {
+                onTopicMeshed(topic)
+            }
+        }
+    }
 
     override fun getPeersToChoke(): Map<Topic, List<PeerId>> = topicStrategies
         .mapValues { it.value.getPeersToChoke() }
