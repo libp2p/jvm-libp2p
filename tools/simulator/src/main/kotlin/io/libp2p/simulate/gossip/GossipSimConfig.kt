@@ -39,7 +39,7 @@ data class GossipSimConfig(
 
     val gossipParams: GossipParams = GossipParams(),
     val gossipScoreParams: GossipScoreParams = GossipScoreParams(),
-    val additionalHeartbeatDelay: RandomDistribution = RandomDistribution.const(0.0),
+    val additionalHeartbeatDelay: RandomDistribution<Duration> = RandomDistribution.const(Duration.ZERO),
     val messageGenerator: GossipPubMessageGenerator = trickyPubSubMsgSizeEstimator(true),
 
     val bandwidthGenerator: BandwidthGenerator = { PeerBandwidth.UNLIMITED },
@@ -48,7 +48,7 @@ data class GossipSimConfig(
         constantValidationGenerator(0.milliseconds, ValidationResult.Valid),
 
     val topology: Topology = RandomNPeers(10),
-    val peersTimeShift: RandomDistribution = RandomDistribution.const(0.0),
+    val peersTimeShift: RandomDistribution<Duration> = RandomDistribution.const(Duration.ZERO),
 
     val warmUpDelay: Duration = 5.seconds,
     val sentMessageCount: Int = 10,

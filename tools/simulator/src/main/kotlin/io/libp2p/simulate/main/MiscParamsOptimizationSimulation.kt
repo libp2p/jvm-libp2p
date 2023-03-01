@@ -8,6 +8,7 @@ import io.libp2p.simulate.RandomDistribution
 import io.libp2p.simulate.Topology
 import io.libp2p.simulate.gossip.*
 import io.libp2p.simulate.gossip.router.SimGossipRouterBuilder
+import io.libp2p.simulate.milliseconds
 import io.libp2p.simulate.stats.Stats
 import io.libp2p.simulate.stats.StatsFactory
 import io.libp2p.simulate.stats.WritableStats
@@ -52,13 +53,13 @@ class MiscParamsOptimizationSimulation {
         val gossipAdvertise: Int = 3,
         val gossipHistory: Int = 5,
         val gossipHeartbeat: Duration = 1.seconds,
-        val gossipHeartbeatAddDelay: RandomDistribution = RandomDistribution.const(0.0),
+        val gossipHeartbeatAddDelay: RandomDistribution<Duration> = RandomDistribution.const(Duration.ZERO),
         val gossipValidationDelay: Duration = ZERO,
 
         val avrgMessageSize: Int = 32 * 1024,
         val topology: Topology = RandomNPeers(10),
-        val latency: RandomDistribution = RandomDistribution.const(1.0),
-        val peersTimeShift: RandomDistribution = RandomDistribution.const(0.0)
+        val latency: RandomDistribution<Duration> = RandomDistribution.const(Duration.ZERO),
+        val peersTimeShift: RandomDistribution<Duration> = RandomDistribution.const(Duration.ZERO)
     )
 
     data class SimOptions(
@@ -211,7 +212,7 @@ class MiscParamsOptimizationSimulation {
                         gossipDLow = max(1, gossipD - 1),
                         gossipDHigh = gossipD + 1,
                         gossipDLazy = 10,
-                        gossipHeartbeatAddDelay = RandomDistribution.uniform(0.0, 1000.0)
+                        gossipHeartbeatAddDelay = RandomDistribution.uniform(0, 1000).milliseconds()
                     )
                 )
         }
@@ -239,10 +240,10 @@ class MiscParamsOptimizationSimulation {
                             gossipDLow = 5,
                             gossipDHigh = 7,
                             gossipDLazy = gossipDLazy,
-                            gossipHeartbeatAddDelay = RandomDistribution.uniform(0.0, 1000.0),
+                            gossipHeartbeatAddDelay = RandomDistribution.uniform(0, 1000).milliseconds(),
 
                             avrgMessageSize = avrgMessageSize,
-                            latency = RandomDistribution.uniform(1.0, 50.0)
+                            latency = RandomDistribution.uniform(1, 50).milliseconds()
                         )
                     )
         }
@@ -271,10 +272,10 @@ class MiscParamsOptimizationSimulation {
                         gossipDHigh = 12,
                         gossipDLazy = 10,
                         gossipHeartbeat = gossipHeartbeat.milliseconds,
-                        gossipHeartbeatAddDelay = RandomDistribution.uniform(0.0, 1000.0),
+                        gossipHeartbeatAddDelay = RandomDistribution.uniform(0, 1000).milliseconds(),
                         gossipHistory = 100, // increase history to serve low latency IWANT requests
 
-                        latency = RandomDistribution.uniform(1.0, 50.0)
+                        latency = RandomDistribution.uniform(1, 50).milliseconds()
                     )
                 )
         }

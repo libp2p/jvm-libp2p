@@ -30,7 +30,7 @@ class GossipSimNetwork(
         val routerBuilder = routerFactory(number).also {
             it.params = cfg.gossipParams
             it.scoreParams = cfg.gossipScoreParams
-            it.additionalHeartbeatDelay = additionalHeartbeatDelay.next().toLong().milliseconds
+            it.additionalHeartbeatDelay = additionalHeartbeatDelay.next()
         }
 
         val simPeer = GossipSimPeer(number, commonRnd)
