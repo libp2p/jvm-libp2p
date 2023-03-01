@@ -3,6 +3,7 @@ package io.libp2p.simulate.gossip
 import io.libp2p.core.pubsub.MessageApi
 import io.libp2p.core.pubsub.Topic
 import io.libp2p.core.pubsub.ValidationResult
+import io.libp2p.pubsub.PubsubProtocol
 import io.libp2p.pubsub.gossip.GossipParams
 import io.libp2p.pubsub.gossip.GossipScoreParams
 import io.libp2p.simulate.*
@@ -37,6 +38,7 @@ data class GossipSimConfig(
 
     val topics: List<Topic>,
 
+    val gossipProtocol: PubsubProtocol = PubsubProtocol.Gossip_V_1_1,
     val gossipParams: GossipParams = GossipParams(),
     val gossipScoreParams: GossipScoreParams = GossipScoreParams(),
     val additionalHeartbeatDelay: RandomDistribution<Duration> = RandomDistribution.const(Duration.ZERO),

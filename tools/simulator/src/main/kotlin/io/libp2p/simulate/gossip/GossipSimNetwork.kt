@@ -28,12 +28,13 @@ class GossipSimNetwork(
     protected fun createSimPeer(number: Int): GossipSimPeer {
         val additionalHeartbeatDelay = cfg.additionalHeartbeatDelay.newValue(commonRnd)
         val routerBuilder = routerFactory(number).also {
+            it.protocol = cfg.gossipProtocol
             it.params = cfg.gossipParams
             it.scoreParams = cfg.gossipScoreParams
             it.additionalHeartbeatDelay = additionalHeartbeatDelay.next()
         }
 
-        val simPeer = GossipSimPeer(number, commonRnd)
+        val simPeer = GossipSimPeer(number, commonRnd, cfg.gossipProtocol)
         simPeer.routerBuilder = routerBuilder
         simPeer.simExecutor = commonExecutor
         simPeer.currentTime = { timeController.time }

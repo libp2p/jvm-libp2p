@@ -32,6 +32,7 @@ class BlobDecouplingScenario(
     val randomSeed: Long = 3L,
     val rnd: Random = Random(randomSeed),
 
+    val gossipProtocol: PubsubProtocol = PubsubProtocol.Gossip_V_1_1,
     val gossipParams: GossipParams = Eth2DefaultGossipParams,
     val gossipScoreParams: GossipScoreParams = Eth2DefaultScoreParams,
 
@@ -49,6 +50,7 @@ class BlobDecouplingScenario(
     val simConfig = GossipSimConfig(
         totalPeers = nodeCount,
         topics = listOf(blockTopic) + blobTopics,
+        gossipProtocol = gossipProtocol,
         gossipParams = gossipParams,
         gossipScoreParams = gossipScoreParams,
         topology = RandomNPeers(nodePeerCount),

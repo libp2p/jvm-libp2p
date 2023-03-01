@@ -15,7 +15,7 @@ import java.util.concurrent.CompletableFuture
 class GossipSimPeer(
     override val simPeerId: Int,
     override val random: Random,
-    protocol: PubsubProtocol = PubsubProtocol.Gossip_V_1_1
+    protocol: PubsubProtocol
 ) : StreamSimPeer<Unit>(true, protocol.announceStr) {
 
     var routerBuilder = SimGossipRouterBuilder()
