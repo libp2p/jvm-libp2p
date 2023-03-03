@@ -52,6 +52,9 @@ class SimpleTopicChokeStrategy(
             .map { it.key }
     }
 
-    override fun getPeersToUnChoke(): List<PeerId> = emptyList()
+    override fun getPeersToUnChoke(): List<PeerId> =
+        getPeersToChoke()
+            .reversed()
+
     override fun getMeshCandidates(): List<PeerId> = emptyList()
 }

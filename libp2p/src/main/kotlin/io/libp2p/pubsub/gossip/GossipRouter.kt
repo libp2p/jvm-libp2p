@@ -615,16 +615,25 @@ open class GossipRouter(
 
         chokeStrategy.getPeersToUnChoke()
             .forEach { (topic, peers) ->
+                val topicMesh = mesh[topic]?.associateBy { it.peerId } ?: emptyMap()
                 val topicChokedPeers = chokedPeers
                     .getBySecond(topic)
                     .associateBy { it.peerId }
                 val topicChokedPeerIds = topicChokedPeers.values
                     .map { it.peerId }
                     .toSet()
+                val nonChokedMeshPeerIds = topicMesh.keys - topicChokedPeers.keys
+                val unchokeCount = min(
+                    params.chokeChurn,
+                    max(
+                        0,
+                        params.DNonChoke - nonChokedMeshPeerIds.size
+                    )
+                )
 
                 val peersToUnchoke = peers
                     .filter { it in topicChokedPeerIds }
-                    .take(params.chokeChurn)
+                    .take(unchokeCount)
                     .mapNotNull { topicChokedPeers[it] }
 
                 peersToUnchoke.forEach { peer ->
