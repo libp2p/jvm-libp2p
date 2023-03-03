@@ -9,7 +9,7 @@ import io.libp2p.core.multiformats.Multiaddr;
 import io.libp2p.core.mux.StreamMuxerProtocol;
 import io.libp2p.protocol.Ping;
 import io.libp2p.protocol.PingController;
-import io.libp2p.security.secio.SecIoSecureChannel;
+import io.libp2p.security.tls.*;
 import io.libp2p.transport.tcp.TcpTransport;
 import kotlin.Pair;
 import org.junit.jupiter.api.Assertions;
@@ -37,14 +37,14 @@ public class HostTestJava {
 
         Host clientHost = new HostBuilder()
                 .transport(TcpTransport::new)
-                .secureChannel(SecIoSecureChannel::new)
-                .muxer(StreamMuxerProtocol::getMplex)
+                .secureChannel(TlsSecureChannel::new)
+                .muxer(StreamMuxerProtocol::getYamux)
                 .build();
 
         Host serverHost = new HostBuilder()
                 .transport(TcpTransport::new)
-                .secureChannel(SecIoSecureChannel::new)
-                .muxer(StreamMuxerProtocol::getMplex)
+                .secureChannel(TlsSecureChannel::new)
+                .muxer(StreamMuxerProtocol::getYamux)
                 .protocol(new Ping())
                 .listen(localListenAddress)
                 .build();
