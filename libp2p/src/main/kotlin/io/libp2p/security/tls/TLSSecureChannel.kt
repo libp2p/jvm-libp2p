@@ -21,7 +21,6 @@ import io.netty.handler.ssl.ApplicationProtocolConfig
 import io.netty.handler.ssl.ClientAuth
 import io.netty.handler.ssl.SslContextBuilder
 import io.netty.handler.ssl.SslHandler
-import io.netty.util.ReferenceCountUtil
 import org.bouncycastle.asn1.*
 import org.bouncycastle.asn1.edec.EdECObjectIdentifiers
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo
@@ -91,9 +90,7 @@ fun buildTlsHandler(
     ctx: ChannelHandlerContext
 ): SslHandler {
     val connectionKeys = if (certAlgorithm.equals("ECDSA")) generateEcdsaKeyPair() else generateEd25519KeyPair()
-    println("TLS using key type: " + certAlgorithm)
     val javaPrivateKey = getJavaKey(connectionKeys.first)
-    println("TLS supporting muxers: " + muxerIds)
     val sslContext = (
         if (ch.isInitiator)
             SslContextBuilder.forClient().keyManager(javaPrivateKey, listOf(buildCert(localKey, connectionKeys.first)))
@@ -108,7 +105,9 @@ fun buildTlsHandler(
             ApplicationProtocolConfig(
                 ApplicationProtocolConfig.Protocol.ALPN,
                 ApplicationProtocolConfig.SelectorFailureBehavior.FATAL_ALERT,
-                ApplicationProtocolConfig.SelectedListenerFailureBehavior.FATAL_ALERT, muxerIds.plus("libp2p")
+                ApplicationProtocolConfig.SelectedListenerFailureBehavior.FATAL_ALERT,
+                listOf("libp2p")
+//                muxerIds.plus("libp2p")
             )
         )
         .build()
@@ -124,7 +123,6 @@ fun buildTlsHandler(
             handshakeComplete.completeExceptionally(cause)
         } else {
             val negotiatedProtocols = sslContext.applicationProtocolNegotiator().protocols()
-            println(negotiatedProtocols)
             val selectedProtocol = negotiatedProtocols.filter { name -> muxerIds.contains(name) }.getOrElse(0, defaultValue = { _ -> "" })
             handshakeComplete.complete(
                 SecureChannel.Session(
@@ -134,9 +132,9 @@ fun buildTlsHandler(
                     selectedProtocol
                 )
             )
+            ctx.fireChannelActive()
         }
     }
-    println("libp2p-tls using suites: " + sslContext.cipherSuites())
     return handler
 }
 
@@ -161,12 +159,8 @@ private class ChannelSetup(
     override fun channelRead0(ctx: ChannelHandlerContext, msg: ByteBuf) {
         // it seems there is no guarantee from Netty that channelActive() must be called before channelRead()
         channelActive(ctx)
+        ctx.fireChannelRead(msg)
         ctx.fireChannelActive()
-        ReferenceCountUtil.retain(msg)
-    }
-
-    private fun writeAndFlush(ctx: ChannelHandlerContext, bb: ByteBuf) {
-        ctx.writeAndFlush(bb)
     }
 
     override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
