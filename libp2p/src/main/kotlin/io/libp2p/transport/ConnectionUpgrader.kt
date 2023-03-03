@@ -46,7 +46,7 @@ open class ConnectionUpgrader(
         val res = CompletableFuture<StreamMuxer.Session>()
         connection.pushHandler(
             nettyInitializer {
-                muxer.initChannel(it.channel.getP2PChannel(), "").forward(res)
+                muxer.initChannel(it.channel.getP2PChannel(), muxerId).forward(res)
             }
         )
         return res

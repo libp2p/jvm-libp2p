@@ -106,8 +106,7 @@ fun buildTlsHandler(
                 ApplicationProtocolConfig.Protocol.ALPN,
                 ApplicationProtocolConfig.SelectorFailureBehavior.FATAL_ALERT,
                 ApplicationProtocolConfig.SelectedListenerFailureBehavior.FATAL_ALERT,
-                listOf("libp2p")
-//                muxerIds.plus("libp2p")
+                muxerIds.plus("libp2p")
             )
         )
         .build()
