@@ -1,6 +1,7 @@
 package io.libp2p.simulate.main.scenario
 
 import io.libp2p.core.pubsub.Topic
+import io.libp2p.pubsub.PubsubProtocol
 import io.libp2p.pubsub.gossip.GossipParams
 import io.libp2p.pubsub.gossip.GossipScoreParams
 import io.libp2p.simulate.*
@@ -83,8 +84,8 @@ class BlobDecouplingScenario(
         }
     }
 
-    fun testCoupled() {
-        for (i in 0 until messageCount) {
+    fun testCoupled(methodMessageCount: Int = messageCount) {
+        for (i in 0 until methodMessageCount) {
             val sendingPeer = sendingPeerIndexes[i]
             logger("Sending message $i from peer $sendingPeer")
             simulation.publishMessage(sendingPeer, blockSize + blobSize * blobCount, blockTopic)
@@ -97,9 +98,8 @@ class BlobDecouplingScenario(
         }
     }
 
-    fun testOnlyBlockDecoupled() {
-
-        for (i in 0 until messageCount) {
+    fun testOnlyBlockDecoupled(methodMessageCount: Int = messageCount) {
+        for (i in 0 until methodMessageCount) {
             val sendingPeer = sendingPeerIndexes[i]
             logger("Sending message $i from peer $sendingPeer")
             simulation.publishMessage(sendingPeer, blockSize, blockTopic)
@@ -113,9 +113,8 @@ class BlobDecouplingScenario(
         }
     }
 
-    fun testAllDecoupled() {
-
-        for (i in 0 until messageCount) {
+    fun testAllDecoupled(methodMessageCount: Int = messageCount) {
+        for (i in 0 until methodMessageCount) {
             val sendingPeer = sendingPeerIndexes[i]
             logger("Sending message $i from peer $sendingPeer")
             simulation.publishMessage(sendingPeer, blockSize, blockTopic)
