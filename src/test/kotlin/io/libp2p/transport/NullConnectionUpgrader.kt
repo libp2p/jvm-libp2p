@@ -25,7 +25,8 @@ class NullConnectionUpgrader :
         val nonsenseSession = SecureChannel.Session(
             PeerId.random(),
             PeerId.random(),
-            generateKeyPair(KEY_TYPE.RSA).second
+            generateKeyPair(KEY_TYPE.RSA).second,
+            ""
         )
         return CompletableFuture.completedFuture(nonsenseSession)
     } // establishSecureChannel

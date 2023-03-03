@@ -11,4 +11,4 @@ class NoiseSecureChannelSession(
     remotePubKey: PubKey,
     val aliceCipher: CipherState,
     val bobCipher: CipherState
-) : SecureChannel.Session(localId, remoteId, remotePubKey)
+) : SecureChannel.Session(localId, remoteId, remotePubKey, "")

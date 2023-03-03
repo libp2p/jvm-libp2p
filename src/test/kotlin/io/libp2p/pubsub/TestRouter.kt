@@ -68,7 +68,7 @@ class TestRouter(
             ConnectionOverNetty(parentChannel, NullTransport(), initiator)
         connection.setSecureSession(
             SecureChannel.Session(
-                peerId, remoteRouter.peerId, remoteRouter.keyPair.second
+                peerId, remoteRouter.peerId, remoteRouter.keyPair.second, ""
             )
         )
 

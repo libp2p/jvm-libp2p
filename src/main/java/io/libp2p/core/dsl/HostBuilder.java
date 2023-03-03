@@ -3,7 +3,7 @@ package io.libp2p.core.dsl;
 import io.libp2p.core.Host;
 import io.libp2p.core.crypto.PrivKey;
 import io.libp2p.core.multistream.ProtocolBinding;
-import io.libp2p.core.mux.StreamMuxerProtocol;
+import io.libp2p.core.mux.*;
 import io.libp2p.core.security.SecureChannel;
 import io.libp2p.core.transport.Transport;
 import io.libp2p.transport.ConnectionUpgrader;
@@ -11,8 +11,7 @@ import io.libp2p.transport.ConnectionUpgrader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.function.Function;
-import java.util.function.Supplier;
+import java.util.function.*;
 
 public class HostBuilder {
     public HostBuilder() { this(DefaultMode.Standard); }
@@ -41,7 +40,7 @@ public class HostBuilder {
 
     @SafeVarargs
     public final HostBuilder secureChannel(
-            Function<PrivKey, SecureChannel>... secureChannels) {
+            BiFunction<PrivKey, List<String>, SecureChannel>... secureChannels) {
         secureChannels_.addAll(Arrays.asList(secureChannels));
         return this;
     }
@@ -76,7 +75,7 @@ public class HostBuilder {
                     b.getTransports().add(t::apply)
                 );
                 secureChannels_.forEach(sc ->
-                    b.getSecureChannels().add(sc::apply)
+                    b.getSecureChannels().add((k, m) -> sc.apply(k, (List<String>)m))
                 );
                 muxers_.forEach(m ->
                     b.getMuxers().add(m.get())
@@ -91,7 +90,7 @@ public class HostBuilder {
 
     private DefaultMode defaultMode_;
     private List<Function<ConnectionUpgrader, Transport>> transports_ = new ArrayList<>();
-    private List<Function<PrivKey, SecureChannel>> secureChannels_ = new ArrayList<>();
+    private List<BiFunction<PrivKey, List<String>, SecureChannel>> secureChannels_ = new ArrayList<>();
     private List<Supplier<StreamMuxerProtocol>> muxers_ = new ArrayList<>();
     private List<ProtocolBinding<?>> protocols_ = new ArrayList<>();
     private List<String> listenAddresses_ = new ArrayList<>();
