@@ -3,8 +3,8 @@ package io.libp2p.simulate.gossip
 import io.libp2p.core.pubsub.Topic
 import io.libp2p.simulate.Bandwidth
 import io.libp2p.simulate.TopologyGraph
-import io.libp2p.simulate.delay.AccurateBandwidthTracker
-import io.libp2p.simulate.delay.LoggingDelayer.Companion.logging
+import io.libp2p.simulate.delay.bandwidth.AccurateBandwidthTracker
+import io.libp2p.simulate.delay.bandwidth.LoggingBandwidthDelayer.Companion.logging
 import io.libp2p.simulate.gossip.router.SimGossipRouterBuilder
 import io.libp2p.simulate.stats.StatsFactory
 import io.libp2p.simulate.topology.AllToAllTopology

@@ -7,7 +7,7 @@ import io.libp2p.pubsub.PubsubProtocol
 import io.libp2p.pubsub.gossip.GossipParams
 import io.libp2p.pubsub.gossip.GossipScoreParams
 import io.libp2p.simulate.*
-import io.libp2p.simulate.delay.AccurateBandwidthTracker
+import io.libp2p.simulate.delay.bandwidth.AccurateBandwidthTracker
 import io.libp2p.simulate.delay.TimeDelayer
 import io.libp2p.simulate.delay.latency.LatencyDistribution
 import io.libp2p.simulate.stream.StreamSimConnection

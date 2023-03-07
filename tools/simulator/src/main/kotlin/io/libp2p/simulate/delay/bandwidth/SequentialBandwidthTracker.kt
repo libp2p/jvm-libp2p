@@ -1,4 +1,4 @@
-package io.libp2p.simulate.delay
+package io.libp2p.simulate.delay.bandwidth
 
 import io.libp2p.simulate.Bandwidth
 import io.libp2p.simulate.BandwidthDelayer

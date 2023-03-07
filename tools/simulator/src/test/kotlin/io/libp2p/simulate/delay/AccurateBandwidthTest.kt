@@ -2,7 +2,8 @@ package io.libp2p.simulate.delay
 
 import io.libp2p.core.pubsub.Topic
 import io.libp2p.simulate.Bandwidth
-import io.libp2p.simulate.delay.AccurateBandwidthTracker.Message
+import io.libp2p.simulate.delay.bandwidth.AccurateBandwidthTracker
+import io.libp2p.simulate.delay.bandwidth.AccurateBandwidthTracker.Message
 import io.libp2p.simulate.gossip.*
 import io.libp2p.simulate.gossip.router.SimGossipRouterBuilder
 import io.libp2p.simulate.topology.AllToAllTopology

@@ -1,10 +1,10 @@
-package io.libp2p.simulate.delay
+package io.libp2p.simulate.delay.bandwidth
 
 import io.libp2p.simulate.BandwidthDelayer
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicInteger
 
-class LoggingDelayer(
+class LoggingBandwidthDelayer(
     val delegate: BandwidthDelayer,
     val logger: (String) -> Unit
 ) : BandwidthDelayer {
@@ -23,6 +23,6 @@ class LoggingDelayer(
     }
 
     companion object {
-        fun BandwidthDelayer.logging(logger: (String) -> Unit) = LoggingDelayer(this, logger)
+        fun BandwidthDelayer.logging(logger: (String) -> Unit) = LoggingBandwidthDelayer(this, logger)
     }
 }
