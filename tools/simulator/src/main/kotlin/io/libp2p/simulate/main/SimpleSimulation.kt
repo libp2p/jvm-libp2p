@@ -27,7 +27,7 @@ class SimpleSimulation(
         topology = RandomNPeers(nodePeerCount),
         messageValidationGenerator = constantValidationGenerator(10.milliseconds),
         bandwidthGenerator = constantBandwidthGenerator(Bandwidth.mbitsPerSec(100)),
-        latencyGenerator = constantLatencyGenerator(50.milliseconds),
+        latencyDelayGenerator = constantLatencyGenerator(50.milliseconds),
     )
 ) {
 

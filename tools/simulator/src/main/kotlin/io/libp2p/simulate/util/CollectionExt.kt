@@ -37,6 +37,7 @@ fun <T : Comparable<T>> Collection<T>.isOrdered() =
 
 fun <T : Comparable<T>> Collection<T>.min() = this
     .reduce { acc, t -> if (acc < t) acc else t }
+
 fun <T : Comparable<T>> Collection<T>.max() = this
     .reduce { acc, t -> if (acc > t) acc else t }
 
@@ -49,11 +50,41 @@ fun <T1, T2, R> cartesianProduct(c1: Collection<T1>, c2: Collection<T2>, aggrega
             aggregator(t1 to t2)
         }
     }
-fun <T1, T2, T3, R> cartesianProduct(c1: Collection<T1>, c2: Collection<T2>, c3: Collection<T3>, aggregator: (Triple<T1, T2, T3>) -> R): List<R> =
+
+fun <T1, T2, T3, R> cartesianProduct(
+    c1: Collection<T1>,
+    c2: Collection<T2>,
+    c3: Collection<T3>,
+    aggregator: (Triple<T1, T2, T3>) -> R
+): List<R> =
     c1.flatMap { t1 ->
         c2.flatMap { t2 ->
             c3.map { t3 ->
                 aggregator(Triple(t1, t2, t3))
+            }
+        }
+    }
+
+data class Quadriple<out T1, out T2, out T3, out T4> (
+    val first: T1,
+    val second: T2,
+    val third: T3,
+    val fourth: T4
+)
+
+fun <T1, T2, T3, T4, R> cartesianProduct(
+    c1: Collection<T1>,
+    c2: Collection<T2>,
+    c3: Collection<T3>,
+    c4: Collection<T4>,
+    aggregator: (Quadriple<T1, T2, T3, T4>) -> R
+): List<R> =
+    c1.flatMap { t1 ->
+        c2.flatMap { t2 ->
+            c3.flatMap { t3 ->
+                c4.map { t4 ->
+                    aggregator(Quadriple(t1, t2, t3, t4))
+                }
             }
         }
     }

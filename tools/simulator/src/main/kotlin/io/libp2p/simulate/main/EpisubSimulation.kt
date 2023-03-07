@@ -19,6 +19,9 @@ import io.libp2p.simulate.stats.collect.gossip.getGossipPubDeliveryResult
 import io.libp2p.simulate.util.Table
 import io.libp2p.simulate.util.byIndexes
 import io.libp2p.simulate.util.cartesianProduct
+import java.util.Random
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 
 fun main() {
     EpisubSimulation().runAndPrint()
@@ -26,18 +29,22 @@ fun main() {
 
 class EpisubSimulation(
     val bandwidthsParams: List<RandomDistribution<Bandwidth>> = bandwidthDistributions
-        .byIndexes(2),
+        .byIndexes(0),
     val decouplingParams: List<Decoupling> = listOf(
         Decoupling.Coupled,
 //        Decoupling.FullyDecoupled
     ),
     val meshParams: List<MeshSimParams> = listOf(
-//        MeshSimParams(PubsubProtocol.Gossip_V_1_1, 6),
+        MeshSimParams(PubsubProtocol.Gossip_V_1_1, 6),
         MeshSimParams(PubsubProtocol.Gossip_V_1_2, Eth2DefaultGossipParams.D),
     ),
+
+    val validationDelayParams: List<RandomDistribution<Duration>> =
+        validatioDelayDistributions.byIndexes(0),
+
     val paramsSet: List<SimParams> =
-        cartesianProduct(bandwidthsParams, decouplingParams, meshParams) {
-            SimParams(it.first, it.second, it.third.gossipVersion, it.third.D)
+        cartesianProduct(bandwidthsParams, validationDelayParams, decouplingParams, meshParams) {
+            SimParams(it.first, it.second, it.third, it.fourth.gossipVersion, it.fourth.D)
         },
     val chokeWarmupMessageCount: Int = 10,
     val testMessageCount: Int = 5
@@ -52,6 +59,7 @@ class EpisubSimulation(
 
     data class SimParams(
         val bandwidths: RandomDistribution<Bandwidth>,
+        val validationDelays: RandomDistribution<Duration>,
         val decoupling: Decoupling,
         val gossipVersion: PubsubProtocol,
         val D: Int
@@ -89,10 +97,11 @@ class EpisubSimulation(
     )
 
     fun createBlobScenario(simParams: SimParams): BlobDecouplingScenario {
+        val nodeCount = 1000
         return BlobDecouplingScenario(
 //                logger = {},
             messageCount = 1,
-            nodeCount = 1000,
+            nodeCount = nodeCount,
             peerBands = simParams.bandwidths,
             gossipParams = Eth2DefaultGossipParams.copy(
                 floodPublish = false,
@@ -100,7 +109,10 @@ class EpisubSimulation(
                 DLow = simParams.D - 2,
                 DHigh = simParams.D + 2
             ),
-
+            peerMessageValidationDelays = run {
+                val delays = simParams.validationDelays.newValue(Random(1))
+                List(nodeCount) { delays.next() }
+            },
             gossipProtocol = simParams.gossipVersion,
             routerFactory = {
                 SimGossipRouterBuilder().also {
@@ -110,16 +122,13 @@ class EpisubSimulation(
         )
     }
 
-
     fun runAndPrint() {
         val results = run(paramsSet)
-
         printResults(paramsSet.zip(results).toMap())
     }
 
     fun run(paramsSet: List<SimParams>): List<RunResult> =
         paramsSet.map { run(it) }
-
 
     fun run(params: SimParams): RunResult {
         val scenario = createBlobScenario(params)
@@ -131,6 +140,13 @@ class EpisubSimulation(
         run(chokeWarmupMessageCount)
 
         val chokeResults = calcChokeResults(scenario.simulation)
+        val tmp1 =
+            if (params.gossipVersion.version == PubsubProtocol.Gossip_V_1_2.version) {
+                scenario.peerMessageValidationDelays
+                    .zip(chokeResults.topicResults.values.first().peerResults)
+            } else {
+                emptyList()
+            }
 
         scenario.simulation.clearAllMessages()
 
@@ -208,6 +224,14 @@ class EpisubSimulation(
     }
 
     companion object {
+        val validatioDelayDistributions = listOf(
+            RandomDistribution.discreteEven(
+                600.milliseconds to 33,
+                50.milliseconds to 33,
+                5.milliseconds to 33
+            )
+        )
+
         val bandwidthDistributions = listOf(
             bandwidthDistribution(
                 100.mbitsPerSecond to 100

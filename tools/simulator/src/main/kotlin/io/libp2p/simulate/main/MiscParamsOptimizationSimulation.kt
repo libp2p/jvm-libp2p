@@ -6,8 +6,8 @@ import io.libp2p.pubsub.gossip.GossipParams
 import io.libp2p.simulate.Bandwidth
 import io.libp2p.simulate.RandomDistribution
 import io.libp2p.simulate.Topology
+import io.libp2p.simulate.delay.latency.LatencyDistribution
 import io.libp2p.simulate.gossip.*
-import io.libp2p.simulate.gossip.router.SimGossipRouterBuilder
 import io.libp2p.simulate.milliseconds
 import io.libp2p.simulate.stats.Stats
 import io.libp2p.simulate.stats.StatsFactory
@@ -15,11 +15,9 @@ import io.libp2p.simulate.stats.WritableStats
 import io.libp2p.simulate.stats.collect.gossip.GossipMessageResult
 import io.libp2p.simulate.stats.collect.gossip.GossipPubDeliveryResult
 import io.libp2p.simulate.stats.collect.gossip.getGossipPubDeliveryResult
-import io.libp2p.simulate.stream.randomLatencyDelayer
 import io.libp2p.simulate.topology.RandomNPeers
 import io.libp2p.simulate.util.*
 import java.lang.Integer.max
-import java.util.*
 import java.util.concurrent.Callable
 import java.util.concurrent.Executors
 import kotlin.collections.plus
@@ -344,7 +342,6 @@ class MiscParamsOptimizationSimulation {
 
         val ret = SimDetailedResult()
         for (n in 0 until opt.generatedNetworksCount) {
-            val commonRnd = Random(opt.startRandomSeed + n)
             val gossipSimConfig = GossipSimConfig(
                 totalPeers = cfg.totalPeers,
                 topics = listOf(topic),
@@ -352,7 +349,7 @@ class MiscParamsOptimizationSimulation {
                 additionalHeartbeatDelay = cfg.gossipHeartbeatAddDelay,
                 messageGenerator = averagePubSubMsgSizeEstimator(cfg.avrgMessageSize, opt.measureTCPFramesOverhead),
                 bandwidthGenerator = constantBandwidthGenerator(Bandwidth.mbitsPerSec(1024)),
-                latencyGenerator = { it.randomLatencyDelayer(cfg.latency.newValue(commonRnd)) },
+                latencyDelayGenerator = LatencyDistribution.createUniform(cfg.latency).toLatencyGenerator(),
                 messageValidationGenerator = { peer, _ ->
                     val validationResult =
                         if (peer.simPeerId > cfg.totalPeers - cfg.badPeers) {

@@ -1,17 +1,20 @@
 package io.libp2p.simulate.main.scenario
 
 import io.libp2p.core.pubsub.Topic
+import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.pubsub.PubsubProtocol
 import io.libp2p.pubsub.gossip.GossipParams
 import io.libp2p.pubsub.gossip.GossipScoreParams
-import io.libp2p.simulate.*
+import io.libp2p.simulate.Bandwidth
+import io.libp2p.simulate.RandomDistribution
+import io.libp2p.simulate.delay.latency.LatencyDistribution
 import io.libp2p.simulate.gossip.*
 import io.libp2p.simulate.gossip.router.SimGossipRouterBuilder
-import io.libp2p.simulate.stream.randomLatencyDelayer
+import io.libp2p.simulate.mbitsPerSecond
+import io.libp2p.simulate.milliseconds
 import io.libp2p.simulate.topology.RandomNPeers
-import io.libp2p.simulate.util.infiniteIterator
 import io.libp2p.tools.log
-import java.util.*
+import java.util.Random
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
@@ -40,6 +43,8 @@ class BlobDecouplingScenario(
     val sendingPeerBand: Bandwidth = 100.mbitsPerSecond,
 
     val peerBands: RandomDistribution<Bandwidth> = RandomDistribution.const(100.mbitsPerSecond),
+    val peerMessageValidationDelays: List<Duration> = List(nodeCount) { messageValidationDelay },
+
     val routerFactory: GossipRouterBuilderFactory = { SimGossipRouterBuilder() }
 ) {
     val blockTopic = Topic(BlocksTopic)
@@ -55,9 +60,11 @@ class BlobDecouplingScenario(
         gossipParams = gossipParams,
         gossipScoreParams = gossipScoreParams,
         topology = RandomNPeers(nodePeerCount),
-        messageValidationGenerator = constantValidationGenerator(messageValidationDelay),
+        messageValidationGenerator = { peer, _ ->
+            MessageValidation(peerMessageValidationDelays[peer.simPeerId], ValidationResult.Valid)
+         },
         bandwidthGenerator = peerBandwidthGenerator { bandwidthRandomValue.next() },
-        latencyGenerator = { it.randomLatencyDelayer(latency.newValue(rnd)) },
+        latencyDelayGenerator = LatencyDistribution.createUniform(latency).toLatencyGenerator(),
         startRandomSeed = randomSeed
     )
 

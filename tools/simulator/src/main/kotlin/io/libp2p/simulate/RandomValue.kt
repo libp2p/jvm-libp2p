@@ -56,6 +56,9 @@ fun interface RandomDistribution<T> {
                     .asRandomValue()
             }.named(name)
         }
+
+        fun <T> discreteEven(vararg valuesToPercentages: Pair<T, Int>) =
+            discreteEven(valuesToPercentages.toList())
     }
 }
 

@@ -8,12 +8,13 @@ import io.libp2p.pubsub.gossip.GossipParams
 import io.libp2p.pubsub.gossip.GossipScoreParams
 import io.libp2p.simulate.*
 import io.libp2p.simulate.delay.AccurateBandwidthTracker
+import io.libp2p.simulate.delay.TimeDelayer
+import io.libp2p.simulate.delay.latency.LatencyDistribution
 import io.libp2p.simulate.stream.StreamSimConnection
-import io.libp2p.simulate.stream.simpleLatencyDelayer
 import io.libp2p.simulate.topology.RandomNPeers
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.seconds
+import kotlin.time.toKotlinDuration
 
 data class PeerBandwidth(
     val inbound: BandwidthDelayer,
@@ -30,7 +31,7 @@ data class MessageValidation(
 )
 
 typealias BandwidthGenerator = (GossipSimPeer) -> PeerBandwidth
-typealias LatencyGenerator = (StreamSimConnection) -> MessageDelayer
+typealias LatencyDelayGenerator = (StreamSimConnection) -> MessageDelayer
 typealias MessageValidationGenerator = (GossipSimPeer, MessageApi) -> MessageValidation
 
 data class GossipSimConfig(
@@ -41,18 +42,19 @@ data class GossipSimConfig(
     val gossipProtocol: PubsubProtocol = PubsubProtocol.Gossip_V_1_1,
     val gossipParams: GossipParams = GossipParams(),
     val gossipScoreParams: GossipScoreParams = GossipScoreParams(),
-    val additionalHeartbeatDelay: RandomDistribution<Duration> = RandomDistribution.const(Duration.ZERO),
+    val additionalHeartbeatDelay: RandomDistribution<Duration> =
+        RandomDistribution.uniform(0, gossipParams.heartbeatInterval.toMillis()).milliseconds(),
     val messageGenerator: GossipPubMessageGenerator = trickyPubSubMsgSizeEstimator(true),
 
     val bandwidthGenerator: BandwidthGenerator = { PeerBandwidth.UNLIMITED },
-    val latencyGenerator: LatencyGenerator = { MessageDelayer.NO_DELAYER },
+    val latencyDelayGenerator: LatencyDelayGenerator = { MessageDelayer.NO_DELAYER },
     val messageValidationGenerator: MessageValidationGenerator =
         constantValidationGenerator(0.milliseconds, ValidationResult.Valid),
 
     val topology: Topology = RandomNPeers(10),
     val peersTimeShift: RandomDistribution<Duration> = RandomDistribution.const(Duration.ZERO),
 
-    val warmUpDelay: Duration = 5.seconds,
+    val warmUpDelay: Duration = gossipParams.heartbeatInterval.toKotlinDuration() * 3,
     val sentMessageCount: Int = 10,
     val startRandomSeed: Long = 0,
     val iterationThreadsCount: Int = 1,
@@ -65,10 +67,18 @@ fun constantValidationGenerator(
 ): MessageValidationGenerator =
     { _, _ -> MessageValidation(validationDelay, validationResult) }
 
-fun constantLatencyGenerator(latency: Duration): LatencyGenerator =
-    { it.simpleLatencyDelayer(latency) }
+fun constantLatencyGenerator(latency: Duration): LatencyDelayGenerator =
+    LatencyDistribution.createConst(latency).toLatencyGenerator()
+
+fun LatencyDistribution.toLatencyGenerator(): LatencyDelayGenerator =
+    { streamSimConnection ->
+        val rnd = streamSimConnection.dialer.random
+        val connectionLatencyValue = this.getLatency(streamSimConnection).newValue(rnd)
+        TimeDelayer(streamSimConnection.listener.simExecutor) { connectionLatencyValue.next() }
+    }
 
 fun constantBandwidthGenerator(bandwidth: Bandwidth): BandwidthGenerator = peerBandwidthGenerator { bandwidth }
+
 fun peerBandwidthGenerator(bandwidthSupplier: (GossipSimPeer) -> Bandwidth): BandwidthGenerator = { gossipSimPeer ->
     val bandwidth = bandwidthSupplier(gossipSimPeer)
     PeerBandwidth(

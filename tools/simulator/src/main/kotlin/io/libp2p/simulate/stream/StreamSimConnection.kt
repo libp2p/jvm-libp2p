@@ -57,9 +57,3 @@ class StreamSimConnection(
         return result
     }
 }
-
-fun StreamSimConnection.simpleLatencyDelayer(latency: Duration) =
-    TimeDelayer(this.listener.simExecutor) { latency }
-
-fun StreamSimConnection.randomLatencyDelayer(latency: RandomValue<Duration>) =
-    TimeDelayer(this.listener.simExecutor) { latency.next() }

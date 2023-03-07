@@ -1,6 +1,5 @@
 package io.libp2p.simulate.gossip
 
-import io.libp2p.pubsub.gossip.builders.GossipRouterBuilder
 import io.libp2p.simulate.Network
 import io.libp2p.simulate.generateAndConnect
 import io.libp2p.simulate.gossip.router.SimGossipRouterBuilder
@@ -8,7 +7,6 @@ import io.libp2p.simulate.stream.StreamSimConnection
 import io.libp2p.tools.schedulers.ControlledExecutorServiceImpl
 import io.libp2p.tools.schedulers.TimeControllerImpl
 import java.util.*
-import kotlin.time.Duration.Companion.milliseconds
 
 typealias GossipRouterBuilderFactory = (Int) -> SimGossipRouterBuilder
 typealias GossipSimPeerModifier = (Int, GossipSimPeer) -> Unit
@@ -58,7 +56,7 @@ class GossipSimNetwork(
         cfg.topology.random = commonRnd
         network = cfg.topology.generateAndConnect(peers.values.toList())
         network.activeConnections.forEach {
-            val latency = cfg.latencyGenerator(it as StreamSimConnection)
+            val latency = cfg.latencyDelayGenerator(it as StreamSimConnection)
             it.connectionLatency = latency
         }
     }

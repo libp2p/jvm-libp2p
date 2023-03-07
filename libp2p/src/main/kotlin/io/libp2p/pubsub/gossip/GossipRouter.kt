@@ -418,14 +418,20 @@ open class GossipRouter(
                     .filter { score.score(it.peerId) >= scoreParams.publishThreshold }
                     .plus(getDirectPeers())
             } else {
+                val choked =
+                    msg.topics
+                        .flatMap { chokedByPeers.getBySecond(it) }
+                        .toSet()
                 msg.topics
-                    .mapNotNull { topic ->
+                    .map { topic ->
                         mesh[topic] ?: fanout[topic] ?: getTopicPeers(topic).shuffled(random).take(params.D)
                             .also {
                                 if (it.isNotEmpty()) fanout[topic] = it.toMutableSet()
                             }
                     }
                     .flatten()
+                    .distinct()
+                    .minus(choked)
             }
         val list = peers.map { submitPublishMessage(it, msg) }
 
