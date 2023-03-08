@@ -1,52 +1,33 @@
-package io.libp2p.core;
+package io.libp2p.transport.quic;
 
-import io.libp2p.core.crypto.KeyKt;
-import io.libp2p.core.crypto.KeyType;
-import io.libp2p.core.crypto.PrivKey;
-import io.libp2p.core.crypto.PubKey;
-import io.libp2p.core.dsl.HostBuilder;
-import io.libp2p.core.multiformats.Multiaddr;
-import io.libp2p.core.mux.StreamMuxerProtocol;
+import io.libp2p.core.Host;
+import io.libp2p.core.PeerId;
+import io.libp2p.core.Stream;
+import io.libp2p.core.StreamPromise;
+import io.libp2p.core.crypto.*;
+import io.libp2p.core.dsl.*;
+import io.libp2p.core.multiformats.*;
 import io.libp2p.protocol.*;
-import io.libp2p.security.noise.*;
-import io.libp2p.security.tls.*;
-import io.libp2p.transport.tcp.TcpTransport;
 import io.netty.handler.logging.LogLevel;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import kotlin.Pair;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Test;
+import java.util.concurrent.*;
+import kotlin.*;
+import org.junit.jupiter.api.*;
 
-public class HostTestJava {
+public class QuicServerTestJava {
   @Test
-  void ping() throws Exception {
-    /*        HostImpl clientHost = BuildersJKt.hostJ(b -> {
-                b.getIdentity().random();
-                b.getTransports().add(TcpTransport::new);
-                b.getSecureChannels().add(SecIoSecureChannel::new);
-                b.getMuxers().add(MplexStreamMuxer::new);
-                b.getProtocols().add(new Ping());
-                b.getDebug().getMuxFramesHandler().setLogger(LogLevel.ERROR, "host-1-MUX");
-                b.getDebug().getBeforeSecureHandler().setLogger(LogLevel.ERROR, "host-1-BS");
-                b.getDebug().getAfterSecureHandler().setLogger(LogLevel.ERROR, "host-1-AS");
-            });
-    */
-    String localListenAddress = "/ip4/127.0.0.1/tcp/40002";
+  void pingJava() throws Exception {
+    String localListenAddress = "/ip4/127.0.0.1/udp/40002/quic";
 
     Host clientHost =
         new HostBuilder()
-            .transport(TcpTransport::new)
-            .secureChannel(TlsSecureChannel::ECDSA)
-            .muxer(StreamMuxerProtocol::getYamux)
+            //                .secureTransport(QuicTransport::Ed25519)
+            .secureTransport(QuicTransport::Ecdsa)
             .build();
 
     Host serverHost =
         new HostBuilder()
-            .transport(TcpTransport::new)
-            .secureChannel(TlsSecureChannel::new)
-            .muxer(StreamMuxerProtocol::getYamux)
+            //                .secureTransport(QuicTransport::Ed25519)
+            .secureTransport(QuicTransport::Ecdsa)
             .protocol(new Ping())
             .listen(localListenAddress)
             .build();
@@ -54,92 +35,33 @@ public class HostTestJava {
     CompletableFuture<Void> clientStarted = clientHost.start();
     CompletableFuture<Void> serverStarted = serverHost.start();
     clientStarted.get(5, TimeUnit.SECONDS);
-    System.out.println("Client started");
+    System.out.println("Client started " + clientHost.getPeerId());
     serverStarted.get(5, TimeUnit.SECONDS);
-    System.out.println("Server started");
+    System.out.println("Server started " + serverHost.getPeerId());
 
     Assertions.assertEquals(0, clientHost.listenAddresses().size());
     Assertions.assertEquals(1, serverHost.listenAddresses().size());
     Assertions.assertEquals(
         localListenAddress + "/p2p/" + serverHost.getPeerId(),
         serverHost.listenAddresses().get(0).toString());
+    System.out.println("Hosts running");
+    Thread.sleep(2_000);
 
     StreamPromise<PingController> ping =
         clientHost
             .getNetwork()
             .connect(serverHost.getPeerId(), new Multiaddr(localListenAddress))
-            .thenApply(it -> it.muxerSession().createStream(new Ping()))
-            .get(5, TimeUnit.SECONDS);
+            .thenApply(it -> it.muxerSession().createStream(new Ping(500)))
+            .get(5000, TimeUnit.SECONDS);
 
     Stream pingStream = ping.getStream().get(5, TimeUnit.SECONDS);
     System.out.println("Ping stream created");
-    PingController pingCtr = ping.getController().get(5, TimeUnit.SECONDS);
+    CompletableFuture<PingController> controller = ping.getController();
+    PingController pingCtr = controller.get(5000, TimeUnit.SECONDS);
     System.out.println("Ping controller created");
 
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < 1000; i++) {
       long latency = pingCtr.ping().get(1, TimeUnit.SECONDS);
-      System.out.println("Ping is " + latency);
-    }
-    pingStream.close().get(5, TimeUnit.SECONDS);
-    System.out.println("Ping stream closed");
-
-    Assertions.assertThrows(
-        ExecutionException.class, () -> pingCtr.ping().get(5, TimeUnit.SECONDS));
-
-    clientHost.stop().get(5, TimeUnit.SECONDS);
-    System.out.println("Client stopped");
-    serverHost.stop().get(5, TimeUnit.SECONDS);
-    System.out.println("Server stopped");
-  }
-
-  @Test
-  void largePing() throws Exception {
-    int pingSize = 200 * 1024;
-    String localListenAddress = "/ip4/127.0.0.1/tcp/40002";
-
-    Host clientHost =
-        new HostBuilder()
-            .transport(TcpTransport::new)
-            .secureChannel((k, m) -> new TlsSecureChannel(k, m, "ECDSA"))
-            .muxer(StreamMuxerProtocol::getYamux)
-            .build();
-
-    Host serverHost =
-        new HostBuilder()
-            .transport(TcpTransport::new)
-            .secureChannel(TlsSecureChannel::new)
-            .muxer(StreamMuxerProtocol::getYamux)
-            .protocol(new Ping(pingSize))
-            .listen(localListenAddress)
-            .build();
-
-    CompletableFuture<Void> clientStarted = clientHost.start();
-    CompletableFuture<Void> serverStarted = serverHost.start();
-    clientStarted.get(5, TimeUnit.SECONDS);
-    System.out.println("Client started");
-    serverStarted.get(5, TimeUnit.SECONDS);
-    System.out.println("Server started");
-
-    Assertions.assertEquals(0, clientHost.listenAddresses().size());
-    Assertions.assertEquals(1, serverHost.listenAddresses().size());
-    Assertions.assertEquals(
-        localListenAddress + "/p2p/" + serverHost.getPeerId(),
-        serverHost.listenAddresses().get(0).toString());
-
-    StreamPromise<PingController> ping =
-        clientHost
-            .getNetwork()
-            .connect(serverHost.getPeerId(), new Multiaddr(localListenAddress))
-            .thenApply(it -> it.muxerSession().createStream(new Ping(pingSize)))
-            .join();
-
-    Stream pingStream = ping.getStream().get(5, TimeUnit.SECONDS);
-    System.out.println("Ping stream created");
-    PingController pingCtr = ping.getController().get(5, TimeUnit.SECONDS);
-    System.out.println("Ping controller created");
-
-    for (int i = 0; i < 10; i++) {
-      long latency = pingCtr.ping().join(); // get(5, TimeUnit.SECONDS);
       System.out.println("Ping is " + latency);
     }
     pingStream.close().get(5, TimeUnit.SECONDS);
@@ -157,22 +79,18 @@ public class HostTestJava {
   @Test
   void largeBlob() throws Exception {
     int blobSize = 1024 * 1024;
-    String localListenAddress = "/ip4/127.0.0.1/tcp/40002";
+    String localListenAddress = "/ip4/127.0.0.1/udp/40002/quic";
 
     Host clientHost =
         new HostBuilder()
-            .transport(TcpTransport::new)
-            .secureChannel(NoiseXXSecureChannel::new)
-            .muxer(StreamMuxerProtocol::getYamux)
+            .secureTransport(QuicTransport::Ecdsa)
             .builderModifier(
                 b -> b.getDebug().getMuxFramesHandler().addCompactLogger(LogLevel.ERROR, "client"))
             .build();
 
     Host serverHost =
         new HostBuilder()
-            .transport(TcpTransport::new)
-            .secureChannel(NoiseXXSecureChannel::new)
-            .muxer(StreamMuxerProtocol::getYamux)
+            .secureTransport(QuicTransport::Ecdsa)
             .protocol(new Blob(blobSize))
             .listen(localListenAddress)
             .builderModifier(
@@ -222,22 +140,12 @@ public class HostTestJava {
 
   @Test
   void addPingAfterHostStart() throws Exception {
-    String localListenAddress = "/ip4/127.0.0.1/tcp/40002";
+    String localListenAddress = "/ip4/127.0.0.1/udp/40002/quic";
 
-    Host clientHost =
-        new HostBuilder()
-            .transport(TcpTransport::new)
-            .secureChannel((k, m) -> new TlsSecureChannel(k, m, "ECDSA"))
-            .muxer(StreamMuxerProtocol::getYamux)
-            .build();
+    Host clientHost = new HostBuilder().secureTransport(QuicTransport::Ecdsa).build();
 
     Host serverHost =
-        new HostBuilder()
-            .transport(TcpTransport::new)
-            .secureChannel(TlsSecureChannel::new)
-            .muxer(StreamMuxerProtocol::getYamux)
-            .listen(localListenAddress)
-            .build();
+        new HostBuilder().secureTransport(QuicTransport::Ecdsa).listen(localListenAddress).build();
 
     CompletableFuture<Void> clientStarted = clientHost.start();
     CompletableFuture<Void> serverStarted = serverHost.start();

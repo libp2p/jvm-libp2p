@@ -102,14 +102,14 @@ fun buildTlsHandler(
     expectedRemotePeer: Optional<PeerId>,
     muxers: List<StreamMuxer>,
     certAlgorithm: String,
-    ch: P2PChannel,
+    isInitiator: Boolean,
     handshakeComplete: CompletableFuture<SecureChannel.Session>,
     ctx: ChannelHandlerContext
 ): SslHandler {
     val connectionKeys = if (certAlgorithm.equals("ECDSA")) generateEcdsaKeyPair() else generateEd25519KeyPair()
     val javaPrivateKey = getJavaKey(connectionKeys.first)
     val sslContext = (
-        if (ch.isInitiator) {
+        if (isInitiator) {
             SslContextBuilder.forClient().keyManager(javaPrivateKey, listOf(buildCert(localKey, connectionKeys.first)))
         } else {
             SslContextBuilder.forServer(javaPrivateKey, listOf(buildCert(localKey, connectionKeys.first)))
@@ -130,7 +130,6 @@ fun buildTlsHandler(
         )
         .build()
     val handler = sslContext.newHandler(ctx.alloc())
-    handler.sslCloseFuture().addListener { _ -> ctx.close() }
     val handshake = handler.handshakeFuture()
     val engine = handler.engine()
     handshake.addListener { fut ->
@@ -180,17 +179,17 @@ private class ChannelSetup(
         if (!activated) {
             activated = true
             val expectedRemotePeerId = ctx.channel().attr(REMOTE_PEER_ID).get()
-            ctx.channel().pipeline().addLast(
-                buildTlsHandler(
-                    localKey,
-                    Optional.ofNullable(expectedRemotePeerId),
-                    muxers,
-                    certAlgorithm,
-                    ch,
-                    handshakeComplete,
-                    ctx
-                )
+            val handler = buildTlsHandler(
+                localKey,
+                Optional.ofNullable(expectedRemotePeerId),
+                muxers,
+                certAlgorithm,
+                ch.isInitiator,
+                handshakeComplete,
+                ctx
             )
+            ctx.channel().pipeline().addLast(handler)
+            handler.sslCloseFuture().addListener { _ -> ctx.close() }
             ctx.channel().pipeline().remove(SetupHandlerName)
         }
     }
@@ -215,18 +214,25 @@ private class ChannelSetup(
 }
 
 class Libp2pTrustManager(private val expectedRemotePeer: Optional<PeerId>) : X509TrustManager {
+    var remoteCert: Certificate?
+
+    init {
+        remoteCert = null
+    }
     override fun checkClientTrusted(certs: Array<out X509Certificate>?, authType: String?) {
         if (certs?.size != 1) {
             throw CertificateException()
         }
-        val claimedPeerId = verifyAndExtractPeerId(arrayOf(certs.get(0)))
+        val cert = certs.get(0)
+        remoteCert = cert
+        val claimedPeerId = verifyAndExtractPeerId(arrayOf(cert))
         if (expectedRemotePeer.map { ex -> !ex.equals(claimedPeerId) }.orElse(false)) {
             throw InvalidRemotePubKey()
         }
     }
 
     override fun checkServerTrusted(certs: Array<out X509Certificate>?, authType: String?) {
-        return checkClientTrusted(certs, authType)
+        checkClientTrusted(certs, authType)
     }
 
     override fun getAcceptedIssuers(): Array<X509Certificate> {
@@ -298,7 +304,9 @@ fun verifyAndExtractPeerId(chain: Array<Certificate>): PeerId {
     val pubKeyProto = (seq.getObjectAt(0) as DEROctetString).octets
     val signature = (seq.getObjectAt(1) as DEROctetString).octets
     val pubKey = unmarshalPublicKey(pubKeyProto)
-    if (!pubKey.verify(certificatePrefix.plus(cert.publicKey.encoded), signature)) {
+
+    val pubKeyAsn1 = bcCert.subjectPublicKeyInfo.encoded
+    if (!pubKey.verify(certificatePrefix.plus(pubKeyAsn1), signature)) {
         throw IllegalStateException("Invalid signature on TLS certificate extension!")
     }
 
