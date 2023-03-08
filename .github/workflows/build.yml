@@ -12,6 +12,8 @@ jobs:
         with:
           distribution: temurin
           java-version: 11
+      - name: Install and run ipfs
+        run: ./install-run-ipfs.sh
 
       - name: Setup Gradle
         uses: gradle/gradle-build-action@v2
