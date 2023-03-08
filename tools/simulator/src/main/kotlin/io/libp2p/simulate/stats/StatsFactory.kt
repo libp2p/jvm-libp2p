@@ -22,3 +22,5 @@ interface StatsFactory {
         }
     }
 }
+
+fun Collection<Number>.getStats() = StatsFactory.DEFAULT.createStats(this)

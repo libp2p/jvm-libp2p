@@ -6,25 +6,18 @@ import io.libp2p.simulate.SimConnection
 import io.libp2p.simulate.SimPeer
 import kotlin.time.Duration
 
-typealias ClusterId = Int
-
-class ClusteredLatencyDistribution(
-    val clusterLatencySupplier: (ClusterId) -> RandomDistribution<Duration>,
-    val interClusterLatencySupplier: (ClusterId) -> RandomDistribution<Duration>,
+class ClusteredLatencyDistribution<ClusterId>(
+    val interClusterLatencySupplier: (ClusterId, ClusterId) -> RandomDistribution<Duration>,
     val clusterFunction: (SimPeer) -> ClusterId
 ) : LatencyDistribution {
 
     override fun getLatency(connection: SimConnection): RandomDistribution<Duration> {
         val p1Cluster = clusterFunction(connection.dialer)
         val p2Cluster = clusterFunction(connection.listener)
-        return if (p1Cluster == p2Cluster) {
-            interClusterLatencySupplier(p1Cluster)
-        } else {
-            clusterLatencySupplier(p1Cluster) + clusterLatencySupplier(p2Cluster)
-        }
+        return interClusterLatencySupplier(p1Cluster, p2Cluster)
     }
 
-    private companion object {
+    companion object {
         operator fun RandomValue<Duration>.plus(other: RandomValue<Duration>) = RandomValue {
             this.next() + other.next()
         }

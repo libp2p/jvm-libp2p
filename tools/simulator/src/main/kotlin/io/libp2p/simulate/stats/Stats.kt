@@ -18,3 +18,10 @@ interface Stats {
     operator fun plus(others: List<Stats>): Stats =
         (listOf(this) + others).reduce { a, b -> a + b }
 }
+
+fun Stats.toLongDescrString(): String  {
+    val dstats = getDescriptiveStatistics()
+    return "${getCount()}:${dstats.min}/${dstats.getPercentile(5.0)}/${dstats.getPercentile(50.0)}/" +
+            "${dstats.getPercentile(95.0)}/${dstats.max}"
+}
+
