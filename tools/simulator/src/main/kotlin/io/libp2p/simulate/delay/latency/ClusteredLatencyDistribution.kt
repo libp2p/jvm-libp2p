@@ -18,13 +18,5 @@ class ClusteredLatencyDistribution<ClusterId>(
     }
 
     companion object {
-        operator fun RandomValue<Duration>.plus(other: RandomValue<Duration>) = RandomValue {
-            this.next() + other.next()
-        }
-
-        operator fun RandomDistribution<Duration>.plus(other: RandomDistribution<Duration>) =
-            RandomDistribution { random ->
-                this.newValue(random) + other.newValue(random)
-            }
     }
 }

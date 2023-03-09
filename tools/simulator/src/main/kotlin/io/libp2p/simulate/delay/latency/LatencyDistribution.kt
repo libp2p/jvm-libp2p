@@ -17,3 +17,13 @@ fun interface LatencyDistribution {
             UniformLatencyDistribution(latency)
     }
 }
+
+fun LatencyDistribution.named(name: String): LatencyDistribution =
+    object : LatencyDistribution {
+        override fun getLatency(connection: SimConnection): RandomDistribution<Duration> =
+            this@named.getLatency(connection)
+
+        override fun toString(): String {
+            return name
+        }
+    }

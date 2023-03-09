@@ -7,6 +7,11 @@ import io.libp2p.pubsub.gossip.choke.SimpleTopicChokeStrategy
 import io.libp2p.simulate.Bandwidth
 import io.libp2p.simulate.RandomDistribution
 import io.libp2p.simulate.bandwidthDistribution
+import io.libp2p.simulate.delay.latency.ClusteredNodesConfig
+import io.libp2p.simulate.delay.latency.LatencyDistribution
+import io.libp2p.simulate.delay.latency.aws.AwsLatencies
+import io.libp2p.simulate.delay.latency.aws.AwsRegion
+import io.libp2p.simulate.delay.latency.named
 import io.libp2p.simulate.gossip.Eth2DefaultGossipParams
 import io.libp2p.simulate.gossip.GossipSimPeer
 import io.libp2p.simulate.gossip.GossipSimulation
@@ -29,25 +34,31 @@ fun main() {
 
 class EpisubSimulation(
     val bandwidthsParams: List<RandomDistribution<Bandwidth>> = bandwidthDistributions
-        .byIndexes(0),
+        .byIndexes(0)
+   ,
     val decouplingParams: List<Decoupling> = listOf(
-        Decoupling.Coupled,
-//        Decoupling.FullyDecoupled
+//        Decoupling.Coupled,
+        Decoupling.FullyDecoupled
     ),
     val meshParams: List<MeshSimParams> = listOf(
         MeshSimParams(PubsubProtocol.Gossip_V_1_1, 6),
         MeshSimParams(PubsubProtocol.Gossip_V_1_2, Eth2DefaultGossipParams.D),
     ),
 
+    val latencyParams: List<LatencyDistribution> =
+//        listOf(LatencyDistribution.createConst(10.milliseconds)),
+        latencyDistributions.byIndexes(0),
+
     val validationDelayParams: List<RandomDistribution<Duration>> =
+//        listOf(RandomDistribution.const(10.milliseconds)),
         validatioDelayDistributions.byIndexes(0),
 
     val paramsSet: List<SimParams> =
         cartesianProduct(bandwidthsParams, validationDelayParams, decouplingParams, meshParams) {
-            SimParams(it.first, it.second, it.third, it.fourth.gossipVersion, it.fourth.D)
+            SimParams(it.first, it.second, latencyParams[0], it.third, it.fourth.gossipVersion, it.fourth.D)
         },
     val chokeWarmupMessageCount: Int = 10,
-    val testMessageCount: Int = 5
+    val testMessageCount: Int = 20
 ) {
 
     enum class Decoupling { Coupled, FullyDecoupled }
@@ -60,6 +71,7 @@ class EpisubSimulation(
     data class SimParams(
         val bandwidths: RandomDistribution<Bandwidth>,
         val validationDelays: RandomDistribution<Duration>,
+        val latency: LatencyDistribution,
         val decoupling: Decoupling,
         val gossipVersion: PubsubProtocol,
         val D: Int
@@ -224,11 +236,39 @@ class EpisubSimulation(
     }
 
     companion object {
+        val latencyDistributions = listOf(
+            ClusteredNodesConfig(
+                RandomDistribution.discreteEven(
+                    AwsRegion.EU_NORTH_1 to 50,
+                    AwsRegion.EU_CENTRAL_1 to 50,
+                    AwsRegion.EU_WEST_1 to 50,
+                    AwsRegion.EU_WEST_2 to 50,
+                    AwsRegion.AP_NORTHEAST_1 to 50,
+                    AwsRegion.AP_NORTHEAST_2 to 50,
+                    AwsRegion.AP_SOUTHEAST_1 to 50,
+                    AwsRegion.AP_SOUTHEAST_2 to 50,
+                    AwsRegion.AP_SOUTH_1 to 50,
+                    AwsRegion.SA_EAST_1 to 50,
+                    AwsRegion.CA_CENTRAL_1 to 50,
+                    AwsRegion.US_EAST_1 to 50,
+                    AwsRegion.US_EAST_2 to 50,
+                    AwsRegion.US_WEST_1 to 50,
+                    AwsRegion.US_WEST_2 to 50,
+                ).newValue(Random(0)),
+                { c1, c2 ->
+                    AwsLatencies.SAMPLE.getLatency(c1, c2)
+                },
+                5
+            )
+                .latencyDistribution
+                .named("AWS-1")
+        )
+
         val validatioDelayDistributions = listOf(
             RandomDistribution.discreteEven(
-                600.milliseconds to 33,
+                70.milliseconds to 33,
                 50.milliseconds to 33,
-                5.milliseconds to 33
+                20.milliseconds to 33
             )
         )
 

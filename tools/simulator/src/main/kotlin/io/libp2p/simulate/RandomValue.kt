@@ -3,6 +3,7 @@ package io.libp2p.simulate
 import io.libp2p.simulate.util.gcd
 import io.libp2p.simulate.util.infiniteLoopIterator
 import java.util.Random
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
 fun interface RandomValue<T> {
@@ -78,6 +79,15 @@ fun <T> RandomDistribution<T>.named(name: String): RandomDistribution<T> =
             this@named.newValue(rnd)
 
         override fun toString(): String = name
+    }
+
+operator fun RandomValue<Duration>.plus(other: RandomValue<Duration>) = RandomValue {
+    this.next() + other.next()
+}
+
+operator fun RandomDistribution<Duration>.plus(other: RandomDistribution<Duration>) =
+    RandomDistribution { random ->
+        this.newValue(random) + other.newValue(random)
     }
 
 fun RandomDistribution<Long>.milliseconds() = this.map { it.milliseconds }

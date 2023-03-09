@@ -2,6 +2,7 @@ package io.libp2p.simulate.main
 
 import io.libp2p.core.pubsub.Topic
 import io.libp2p.pubsub.gossip.GossipParams
+import io.libp2p.simulate.RandomDistribution
 import io.libp2p.simulate.gossip.*
 import io.libp2p.simulate.delay.latency.ClusteredNodesConfig
 import io.libp2p.simulate.delay.latency.aws.AwsLatencies
@@ -11,6 +12,7 @@ import io.libp2p.simulate.stats.getStats
 import io.libp2p.simulate.stats.toLongDescrString
 import io.libp2p.simulate.topology.RandomNPeers
 import io.libp2p.tools.log
+import java.util.Random
 
 fun main() {
     AwsPeersSimulation().run()
@@ -19,24 +21,24 @@ fun main() {
 class AwsPeersSimulation(
     val logger: (String) -> Unit = { log(it) },
 
-    val clusteredNodesConfig: ClusteredNodesConfig<AwsRegion> = ClusteredNodesConfig(
-        listOf(
-            EU_NORTH_1,
-            EU_CENTRAL_1,
-            EU_WEST_1,
-            EU_WEST_2,
-            AP_NORTHEAST_1,
-            AP_NORTHEAST_2,
-            AP_SOUTHEAST_1,
-            AP_SOUTHEAST_2,
-            AP_SOUTH_1,
-            SA_EAST_1,
-            CA_CENTRAL_1,
-            US_EAST_1,
-            US_EAST_2,
-            US_WEST_1,
-            US_WEST_2,
-        ).map { it to 50 },
+    val clusteredNodesConfig: ClusteredNodesConfig<*> = ClusteredNodesConfig(
+        RandomDistribution.discreteEven(
+            EU_NORTH_1 to 50,
+            EU_CENTRAL_1 to 50,
+            EU_WEST_1 to 50,
+            EU_WEST_2 to 50,
+            AP_NORTHEAST_1 to 50,
+            AP_NORTHEAST_2 to 50,
+            AP_SOUTHEAST_1 to 50,
+            AP_SOUTHEAST_2 to 50,
+            AP_SOUTH_1 to 50,
+            SA_EAST_1 to 50,
+            CA_CENTRAL_1 to 50,
+            US_EAST_1 to 50,
+            US_EAST_2 to 50,
+            US_WEST_1 to 50,
+            US_WEST_2 to 50,
+        ).newValue(Random(0)),
         { c1, c2 ->
             AwsLatencies.SAMPLE.getLatency(c1, c2)
         },
@@ -50,7 +52,7 @@ class AwsPeersSimulation(
     val messagesPerPeerCount: Int = 5,
 
     val simConfig: GossipSimConfig = GossipSimConfig(
-        totalPeers = clusteredNodesConfig.totalNodeCount,
+        totalPeers = 750,
         topics = listOf(testTopic),
         gossipParams = GossipParams(),
         topology = RandomNPeers(nodePeerCount),
