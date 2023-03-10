@@ -1,6 +1,7 @@
 package io.libp2p.simulate.gossip
 
 import io.libp2p.simulate.Network
+import io.libp2p.simulate.SimPeerId
 import io.libp2p.simulate.generateAndConnect
 import io.libp2p.simulate.gossip.router.SimGossipRouterBuilder
 import io.libp2p.simulate.stream.StreamSimConnection
@@ -8,22 +9,22 @@ import io.libp2p.tools.schedulers.ControlledExecutorServiceImpl
 import io.libp2p.tools.schedulers.TimeControllerImpl
 import java.util.*
 
-typealias GossipRouterBuilderFactory = (Int) -> SimGossipRouterBuilder
-typealias GossipSimPeerModifier = (Int, GossipSimPeer) -> Unit
+typealias GossipRouterBuilderFactory = (SimPeerId) -> SimGossipRouterBuilder
+typealias GossipSimPeerModifier = (SimPeerId, GossipSimPeer) -> Unit
 
 class GossipSimNetwork(
     val cfg: GossipSimConfig,
     val routerFactory: GossipRouterBuilderFactory = { SimGossipRouterBuilder() },
     val simPeerModifier: GossipSimPeerModifier = { _, _ -> }
 ) {
-    val peers = sortedMapOf<Int, GossipSimPeer>()
+    val peers = sortedMapOf<SimPeerId, GossipSimPeer>()
     lateinit var network: Network
 
     val timeController = TimeControllerImpl()
     val commonRnd = Random(cfg.startRandomSeed)
     val commonExecutor = ControlledExecutorServiceImpl(timeController)
 
-    protected fun createSimPeer(number: Int): GossipSimPeer {
+    protected fun createSimPeer(number: SimPeerId): GossipSimPeer {
         val additionalHeartbeatDelay = cfg.additionalHeartbeatDelay.newValue(commonRnd)
         val routerBuilder = routerFactory(number).also {
             it.protocol = cfg.gossipProtocol
@@ -33,15 +34,13 @@ class GossipSimNetwork(
         }
 
         val simPeer = GossipSimPeer(number, commonRnd, cfg.gossipProtocol)
+        val (inbound, outbound) = cfg.bandwidthGenerator(simPeer)
         simPeer.routerBuilder = routerBuilder
         simPeer.simExecutor = commonExecutor
         simPeer.currentTime = { timeController.time }
         simPeer.msgSizeEstimator = cfg.messageGenerator.sizeEstimator
-
-        val (inbound, outbound) = cfg.bandwidthGenerator(simPeer)
         simPeer.inboundBandwidth = inbound
         simPeer.outboundBandwidth = outbound
-        simPeer.msgSizeEstimator = cfg.messageGenerator.sizeEstimator
         simPeerModifier(number, simPeer)
         return simPeer
     }

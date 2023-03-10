@@ -13,6 +13,8 @@ class SimGossipRouterBuilder : GossipRouterBuilder() {
     var serializeMessagesToBytes: Boolean = false
     var additionalHeartbeatDelay: Duration = Duration.ZERO
 
+    var postModifier: (SimGossipRouterBuilder) -> Unit = { }
+
     init {
         messageFactory = { SimPubsubMessage(it) }
     }
@@ -50,6 +52,7 @@ class SimGossipRouterBuilder : GossipRouterBuilder() {
     }
 
     override fun build(): SimGossipRouter {
+        postModifier(this)
         return super.build() as SimGossipRouter
     }
 }

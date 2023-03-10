@@ -5,7 +5,6 @@ import io.libp2p.etc.types.toWBytes
 import io.libp2p.pubsub.MessageId
 import io.libp2p.simulate.SimPeer
 import io.libp2p.simulate.gossip.GossipPubMessageGenerator
-import io.libp2p.simulate.gossip.GossipSimPeer
 import io.libp2p.simulate.stats.collect.CollectedMessage
 import pubsub.pb.Rpc
 
@@ -43,9 +42,9 @@ class GossipMessageResult(
 
     data class IWantMessageWrapper(
         override val origMsg: CollectedMessage<Rpc.ControlIWant>,
-        val simMsgId: List<SimMessageId?>
+        val simMsgIds: List<SimMessageId?>
     ) : MessageWrapper<Rpc.ControlIWant> {
-        override fun toString() = "IWant[$origMsg, messageIds: $simMsgId]"
+        override fun toString() = "IWant[$origMsg, messageIds: $simMsgIds]"
     }
 
     data class ChokeMessageWrapper(
@@ -211,6 +210,15 @@ class GossipMessageResult(
         messages
             .filter { peer in setOf(it.sendingPeer, it.receivingPeer) }
             .sortedBy { if (it.sendingPeer == peer) it.sendTime else it.receiveTime }
+
+    fun isByIWantPubMessage(msg: PubMessageWrapper): Boolean =
+        iWantMessages.any { iWantMsg ->
+            iWantMsg.origMsg.sendingPeer == msg.origMsg.receivingPeer &&
+                    iWantMsg.origMsg.receivingPeer == msg.origMsg.sendingPeer &&
+                    msg.simMsgId in iWantMsg.simMsgIds &&
+                    iWantMsg.origMsg.receiveTime <= msg.origMsg.sendTime
+        }
+
 
     fun getTotalTraffic() = messages
         .sumOf { msgGenerator.sizeEstimator(it.message) }

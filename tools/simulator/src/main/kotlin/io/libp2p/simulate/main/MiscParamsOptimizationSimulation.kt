@@ -445,7 +445,7 @@ class MiscParamsOptimizationSimulation {
         )
         val receivedPeers = gossipPubDeliveryResult.deliveries
             .flatMap {
-                listOf(it.toPeer, it.origMsg.fromPeer)
+                listOf(it.toPeer, it.initialPublishMsg.fromPeer)
             }
             .toSet()
         return GossipStats(delayStats, allPeers - receivedPeers)

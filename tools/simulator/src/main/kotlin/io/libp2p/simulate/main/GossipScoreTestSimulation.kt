@@ -58,7 +58,7 @@ class GossipScoreTestSimulation {
 
         val msgDeliveryStats = StatsFactory.DEFAULT.createStats("msgDelay").also { stats ->
             results.deliveries
-                .groupingBy { it.origMsg.simMsgId }
+                .groupingBy { it.initialPublishMsg.simMsgId }
                 .eachCount()
                 .values
                 .forEach { stats += it.toDouble() / (simConfig.totalPeers - 1) }

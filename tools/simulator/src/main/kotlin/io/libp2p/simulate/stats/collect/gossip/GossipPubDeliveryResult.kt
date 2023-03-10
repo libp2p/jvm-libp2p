@@ -13,16 +13,17 @@ class GossipPubDeliveryResult(
     )
 
     data class MessageDelivery(
-        val origMsg: MessagePublish,
-        val toPeer: GossipSimPeer,
-        val receivedTime: Long
+        val initialPublishMsg: MessagePublish,
+        val origGossipMsg: GossipMessageResult.PubMessageWrapper
     ) {
-        val deliveryDelay get() = receivedTime - origMsg.sentTime
+        val toPeer: GossipSimPeer get() = origGossipMsg.origMsg.receivingPeer as GossipSimPeer
+        val receivedTime: Long get() = origGossipMsg.origMsg.receiveTime
+        val deliveryDelay get() = receivedTime - initialPublishMsg.sentTime
     }
 
     val originalMessages: List<MessagePublish> by lazy {
         deliveries
-            .map { it.origMsg }
+            .map { it.initialPublishMsg }
             .distinct()
     }
 
@@ -33,8 +34,7 @@ class GossipPubDeliveryResult(
     }
 
     val deliveryDelays by lazy {
-        deliveries
-            .map { it.receivedTime - it.origMsg.sentTime }
+        deliveries.map { it.deliveryDelay }
     }
 
     fun filter(predicate: (MessageDelivery) -> Boolean): GossipPubDeliveryResult =
@@ -55,13 +55,13 @@ class GossipPubDeliveryResult(
             .sortedBy { it.receivedTime }
             .let { GossipPubDeliveryResult(it) }
 
-    fun sliceByPublishTime(publishTime: Long) = filter { it.origMsg.sentTime == publishTime }
+    fun sliceByPublishTime(publishTime: Long) = filter { it.initialPublishMsg.sentTime == publishTime }
 
     fun aggregateSlowestBySimMessageId(messageGroups: Collection<Set<SimMessageId>>) =
         messageGroups
             .map { msgGroup ->
                 this
-                    .filter { it.origMsg.simMsgId in msgGroup }
+                    .filter { it.initialPublishMsg.simMsgId in msgGroup }
                     .selectSlowestPeerDeliveries()
             }
             .merge()
@@ -97,11 +97,10 @@ class GossipPubDeliveryResult(
                         ?: throw IllegalStateException("No originating message with id $simMsgId found")
                     MessageDelivery(
                         origMessage,
-                        receivedMsg.origMsg.receivingPeer as GossipSimPeer,
-                        receivedMsg.origMsg.receiveTime
+                        receivedMsg
                     )
                 }
-                .filter { it.toPeer != it.origMsg.fromPeer }
+                .filter { it.toPeer != it.initialPublishMsg.fromPeer }
                 .let { GossipPubDeliveryResult(it) }
         }
     }
