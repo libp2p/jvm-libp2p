@@ -2,6 +2,7 @@ package io.libp2p.simulate.gossip
 
 import io.libp2p.simulate.Network
 import io.libp2p.simulate.SimPeerId
+import io.libp2p.simulate.delay.bandwidth.AccurateBandwidthTracker
 import io.libp2p.simulate.generateAndConnect
 import io.libp2p.simulate.gossip.router.SimGossipRouterBuilder
 import io.libp2p.simulate.stream.StreamSimConnection
@@ -21,27 +22,41 @@ class GossipSimNetwork(
     lateinit var network: Network
 
     val timeController = TimeControllerImpl()
-    val commonRnd = Random(cfg.startRandomSeed)
+    val commonRnd = Random(cfg.randomSeed)
     val commonExecutor = ControlledExecutorServiceImpl(timeController)
 
     protected fun createSimPeer(number: SimPeerId): GossipSimPeer {
-        val additionalHeartbeatDelay = cfg.additionalHeartbeatDelay.newValue(commonRnd)
+        val peerConfig = cfg.peerConfigs[number]
+
         val routerBuilder = routerFactory(number).also {
-            it.protocol = cfg.gossipProtocol
-            it.params = cfg.gossipParams
-            it.scoreParams = cfg.gossipScoreParams
-            it.additionalHeartbeatDelay = additionalHeartbeatDelay.next()
+            val additionalHeartbeatDelay = peerConfig.additionalHeartbeatDelay
+            it.protocol = peerConfig.gossipProtocol
+            it.params = peerConfig.gossipParams
+            it.scoreParams = peerConfig.gossipScoreParams
+            it.additionalHeartbeatDelay = additionalHeartbeatDelay
         }
 
-        val simPeer = GossipSimPeer(number, commonRnd, cfg.gossipProtocol)
-        val (inbound, outbound) = cfg.bandwidthGenerator(simPeer)
-        simPeer.routerBuilder = routerBuilder
-        simPeer.simExecutor = commonExecutor
-        simPeer.currentTime = { timeController.time }
-        simPeer.msgSizeEstimator = cfg.messageGenerator.sizeEstimator
-        simPeer.inboundBandwidth = inbound
-        simPeer.outboundBandwidth = outbound
-        simPeerModifier(number, simPeer)
+        val simPeer = GossipSimPeer(number, commonRnd, peerConfig.gossipProtocol).also { simPeer ->
+            simPeer.routerBuilder = routerBuilder
+            simPeer.simExecutor = commonExecutor
+            simPeer.currentTime = { timeController.time }
+            simPeer.msgSizeEstimator = cfg.messageGenerator.sizeEstimator
+            simPeer.inboundBandwidth =
+                AccurateBandwidthTracker(
+                    peerConfig.bandwidth.inbound,
+                    simPeer.simExecutor,
+                    simPeer.currentTime,
+                    name = "[$simPeer]-in"
+                )
+            simPeer.outboundBandwidth =
+                AccurateBandwidthTracker(
+                    peerConfig.bandwidth.inbound,
+                    simPeer.simExecutor,
+                    simPeer.currentTime,
+                    name = "[$simPeer]-in"
+                )
+            simPeerModifier(number, simPeer)
+        }
         return simPeer
     }
 

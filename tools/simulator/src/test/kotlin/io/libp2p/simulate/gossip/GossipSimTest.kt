@@ -2,9 +2,8 @@ package io.libp2p.simulate.gossip
 
 import io.libp2p.core.pubsub.Topic
 import io.libp2p.simulate.Bandwidth
+import io.libp2p.simulate.RandomDistribution
 import io.libp2p.simulate.TopologyGraph
-import io.libp2p.simulate.delay.bandwidth.AccurateBandwidthTracker
-import io.libp2p.simulate.delay.bandwidth.LoggingBandwidthDelayer.Companion.logging
 import io.libp2p.simulate.gossip.router.SimGossipRouterBuilder
 import io.libp2p.simulate.stats.StatsFactory
 import io.libp2p.simulate.topology.AllToAllTopology
@@ -23,8 +22,9 @@ class GossipSimTest {
     @Test
     fun test1() {
         val simConfig = GossipSimConfig(
-            totalPeers = 3,
-            topics = listOf(Topic(BlocksTopic)),
+            peerConfigs = GossipSimPeerConfigGenerator(
+                topics = listOf(Topic(BlocksTopic)),
+            ).generate(0, 3),
             topology = AllToAllTopology(),
         )
 
@@ -82,28 +82,17 @@ class GossipSimTest {
         val blockTopic = Topic(BlocksTopic)
         val blobTopic = Topic("/eth2/00000000/beacon_blob/ssz_snappy")
         val simConfig = GossipSimConfig(
-            totalPeers = 4,
-            topics = listOf(blockTopic, blobTopic),
+            peerConfigs = GossipSimPeerConfigGenerator(
+                topics = listOf(blockTopic, blobTopic),
+                messageValidationDelays = RandomDistribution.const(10.milliseconds),
+                bandwidths = RandomDistribution.const(Bandwidth(1_000_000))
+            ).generate(0, 4),
             topology = TopologyGraph.customTopology(
                 0 to 1,
                 0 to 2,
                 0 to 3,
             ).asFixedTopology(),
-            messageValidationGenerator = constantValidationGenerator(10.milliseconds),
-            bandwidthGenerator = { peer ->
-                PeerBandwidth(
-                    AccurateBandwidthTracker(Bandwidth(1_000_000), peer.simExecutor, peer.currentTime),
-//                        .logging { log("${peer.currentTime()}: [${peer.name}] <==   $it") }
-                    AccurateBandwidthTracker(
-                        Bandwidth(1_000_000),
-                        peer.simExecutor,
-                        peer.currentTime,
-                        peer.name
-                    )
-                        .logging { log("${peer.currentTime()}: [${peer.name}]   ==> $it") },
-                )
-            },
-            startRandomSeed = 2
+            randomSeed = 2
         )
 
         val gossipParams = Eth2DefaultGossipParams

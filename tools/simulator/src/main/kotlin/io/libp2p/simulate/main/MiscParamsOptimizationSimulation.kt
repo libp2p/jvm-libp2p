@@ -342,27 +342,32 @@ class MiscParamsOptimizationSimulation {
 
         val ret = SimDetailedResult()
         for (n in 0 until opt.generatedNetworksCount) {
+            val randomSeed = opt.startRandomSeed + n
             val gossipSimConfig = GossipSimConfig(
-                totalPeers = cfg.totalPeers,
-                topics = listOf(topic),
-                gossipParams = gossipParams,
-                additionalHeartbeatDelay = cfg.gossipHeartbeatAddDelay,
-                messageGenerator = averagePubSubMsgSizeEstimator(cfg.avrgMessageSize, opt.measureTCPFramesOverhead),
-                bandwidthGenerator = constantBandwidthGenerator(Bandwidth.mbitsPerSec(1024)),
-                latencyDelayGenerator = LatencyDistribution.createUniform(cfg.latency).toLatencyGenerator(),
-                messageValidationGenerator = { peer, _ ->
-                    val validationResult =
-                        if (peer.simPeerId > cfg.totalPeers - cfg.badPeers) {
-                            ValidationResult.Ignore
+                peerConfigs = GossipSimPeerConfigGenerator(
+                    topics = listOf(topic),
+                    gossipParams = gossipParams,
+                    additionalHeartbeatDelay = cfg.gossipHeartbeatAddDelay,
+                    bandwidths = RandomDistribution.const(Bandwidth.mbitsPerSec(1024)),
+                    messageValidationDelays = RandomDistribution.const(cfg.gossipValidationDelay)
+                )
+                    .generate(randomSeed, cfg.totalPeers)
+                    .mapIndexed { idx, config ->
+                        if (idx > cfg.totalPeers - cfg.badPeers) {
+                            config.copy(
+                                messageValidationGenerator = { MessageValidation(cfg.gossipValidationDelay, ValidationResult.Ignore) }
+                            )
                         } else {
-                            ValidationResult.Valid
+                            config
                         }
-                    MessageValidation(cfg.gossipValidationDelay, validationResult)
-                },
+                    }
+                ,
+
+                messageGenerator = averagePubSubMsgSizeEstimator(cfg.avrgMessageSize, opt.measureTCPFramesOverhead),
+                latencyDelayGenerator = LatencyDistribution.createUniform(cfg.latency).toLatencyGenerator(),
                 topology = cfg.topology,
-                peersTimeShift = cfg.peersTimeShift,
                 warmUpDelay = opt.warmUpDelay,
-                startRandomSeed = opt.startRandomSeed + n,
+                randomSeed = randomSeed,
             )
 
             val simNetwork = GossipSimNetwork(gossipSimConfig)

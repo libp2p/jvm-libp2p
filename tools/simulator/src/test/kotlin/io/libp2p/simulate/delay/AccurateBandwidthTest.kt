@@ -149,8 +149,9 @@ class AccurateBandwidthTest {
 
     val topic = Topic("aaa")
     val simConfig = GossipSimConfig(
-        totalPeers = 2,
-        topics = listOf(topic),
+        peerConfigs = GossipSimPeerConfigGenerator(
+            topics = listOf(topic),
+        ).generate(0, 2),
         topology = AllToAllTopology(),
     )
 

@@ -1,7 +1,6 @@
 package io.libp2p.simulate.main.scenario
 
 import io.libp2p.core.pubsub.Topic
-import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.pubsub.PubsubProtocol
 import io.libp2p.pubsub.gossip.GossipParams
 import io.libp2p.pubsub.gossip.GossipScoreParams
@@ -40,11 +39,7 @@ class BlobDecouplingScenario(
     val sendingPeerBand: Bandwidth = 100.mbitsPerSecond,
 
     val peerBands: RandomDistribution<Bandwidth> = RandomDistribution.const(100.mbitsPerSecond),
-    val peerMessageValidationDelays: List<Duration> = List(nodeCount) { messageValidationDelay },
-
-    val messageValidationGenerator: MessageValidationGenerator = { peer, _ ->
-        MessageValidation(peerMessageValidationDelays[peer.simPeerId], ValidationResult.Valid)
-    },
+    val peerMessageValidationDelays: RandomDistribution<Duration> = RandomDistribution.const(messageValidationDelay),
 
     val routerFactory: GossipRouterBuilderFactory = { SimGossipRouterBuilder() }
 ) {
@@ -53,18 +48,18 @@ class BlobDecouplingScenario(
         .map {
             Topic("/eth2/00000000/beacon_blob_$it/ssz_snappy")
         }
-    val bandwidthRandomValue = peerBands.newValue(rnd)
     val simConfig = GossipSimConfig(
-        totalPeers = nodeCount,
-        topics = listOf(blockTopic) + blobTopics,
-        gossipProtocol = gossipProtocol,
-        gossipParams = gossipParams,
-        gossipScoreParams = gossipScoreParams,
+        peerConfigs = GossipSimPeerConfigGenerator(
+            topics = listOf(blockTopic) + blobTopics,
+            gossipProtocol = gossipProtocol,
+            gossipParams = gossipParams,
+            gossipScoreParams = gossipScoreParams,
+            messageValidationDelays = peerMessageValidationDelays,
+            bandwidths = peerBands,
+        ).generate(randomSeed, nodeCount),
         topology = RandomNPeers(nodePeerCount),
-        messageValidationGenerator = messageValidationGenerator,
-        bandwidthGenerator = peerBandwidthGenerator { bandwidthRandomValue.next() },
         latencyDelayGenerator = LatencyDistribution.createUniform(latency).toLatencyGenerator(),
-        startRandomSeed = randomSeed
+        randomSeed = randomSeed
     )
 
     val simNetwork = GossipSimNetwork(simConfig, routerFactory).also { simNetwork ->

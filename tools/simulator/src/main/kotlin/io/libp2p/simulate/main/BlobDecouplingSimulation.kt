@@ -1,7 +1,6 @@
 package io.libp2p.simulate.main
 
 import io.libp2p.simulate.Bandwidth
-import io.libp2p.simulate.RandomDistribution
 import io.libp2p.simulate.bandwidthDistribution
 import io.libp2p.simulate.gossip.Eth2DefaultGossipParams
 import io.libp2p.simulate.gossip.GossipSimulation
@@ -14,8 +13,6 @@ import io.libp2p.simulate.stats.collect.gossip.GossipMessageResult
 import io.libp2p.simulate.stats.collect.gossip.getGossipPubDeliveryResult
 import io.libp2p.simulate.util.byIndexes
 import io.libp2p.simulate.util.countValues
-import io.libp2p.simulate.util.infiniteIterator
-import io.libp2p.simulate.util.infiniteLoopIterator
 import io.libp2p.tools.log
 
 fun main() {

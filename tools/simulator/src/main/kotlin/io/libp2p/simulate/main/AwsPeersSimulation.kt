@@ -1,12 +1,10 @@
 package io.libp2p.simulate.main
 
 import io.libp2p.core.pubsub.Topic
-import io.libp2p.pubsub.gossip.GossipParams
 import io.libp2p.simulate.RandomDistribution
 import io.libp2p.simulate.gossip.*
 import io.libp2p.simulate.delay.latency.ClusteredNodesConfig
 import io.libp2p.simulate.delay.latency.aws.AwsLatencies
-import io.libp2p.simulate.delay.latency.aws.AwsRegion
 import io.libp2p.simulate.delay.latency.aws.AwsRegion.*
 import io.libp2p.simulate.stats.getStats
 import io.libp2p.simulate.stats.toLongDescrString
@@ -51,10 +49,12 @@ class AwsPeersSimulation(
     val sendingPeersCount: Int = 50,
     val messagesPerPeerCount: Int = 5,
 
+    val randomSeed: Long = 0,
+
     val simConfig: GossipSimConfig = GossipSimConfig(
-        totalPeers = 750,
-        topics = listOf(testTopic),
-        gossipParams = GossipParams(),
+        peerConfigs = GossipSimPeerConfigGenerator(
+            topics = listOf(testTopic),
+        ).generate(randomSeed, 750),
         topology = RandomNPeers(nodePeerCount),
 //        messageValidationGenerator = constantValidationGenerator(10.milliseconds),
 //        bandwidthGenerator = constantBandwidthGenerator(Bandwidth.mbitsPerSec(100)),

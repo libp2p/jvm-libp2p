@@ -1,6 +1,7 @@
 package io.libp2p.simulate.main
 
 import io.libp2p.core.pubsub.Topic
+import io.libp2p.simulate.RandomDistribution
 import io.libp2p.simulate.gossip.*
 import io.libp2p.simulate.stats.StatsFactory
 import io.libp2p.simulate.topology.RandomNPeers
@@ -16,12 +17,13 @@ class GossipScoreTestSimulation {
     fun run() {
 
         val simConfig = GossipSimConfig(
-            totalPeers = 1000,
-            topics = listOf(Topic(BlocksTopic)),
+            GossipSimPeerConfigGenerator(
+                topics = listOf(Topic(BlocksTopic)),
+                gossipParams = Eth2DefaultGossipParams,
+                gossipScoreParams = Eth2DefaultScoreParams,
+                messageValidationDelays = RandomDistribution.const(50.milliseconds)
+            ).generate(0, 1000),
             topology = RandomNPeers(30),
-            messageValidationGenerator = constantValidationGenerator(50.milliseconds),
-            gossipParams = Eth2DefaultGossipParams,
-            gossipScoreParams = Eth2DefaultScoreParams
         )
 
         val simNetwork = GossipSimNetwork(simConfig)

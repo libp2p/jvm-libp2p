@@ -3,6 +3,7 @@ package io.libp2p.simulate.main
 import io.libp2p.core.pubsub.Topic
 import io.libp2p.pubsub.gossip.GossipParams
 import io.libp2p.simulate.Bandwidth
+import io.libp2p.simulate.RandomDistribution
 import io.libp2p.simulate.gossip.*
 import io.libp2p.simulate.stats.StatsFactory
 import io.libp2p.simulate.topology.RandomNPeers
@@ -21,12 +22,13 @@ class SimpleSimulation(
     val messageSize: Int = 32 * 1024,
 
     val simConfig: GossipSimConfig = GossipSimConfig(
-        totalPeers = nodeCount,
-        topics = listOf(testTopic),
-        gossipParams = GossipParams(),
+        peerConfigs = GossipSimPeerConfigGenerator(
+            topics = listOf(testTopic),
+            gossipParams = GossipParams(),
+            bandwidths = RandomDistribution.const(Bandwidth.mbitsPerSec(100)),
+            messageValidationDelays = RandomDistribution.const(10.milliseconds)
+        ).generate(0, nodeCount),
         topology = RandomNPeers(nodePeerCount),
-        messageValidationGenerator = constantValidationGenerator(10.milliseconds),
-        bandwidthGenerator = constantBandwidthGenerator(Bandwidth.mbitsPerSec(100)),
         latencyDelayGenerator = constantLatencyGenerator(50.milliseconds),
     )
 ) {

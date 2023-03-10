@@ -2,6 +2,7 @@ package io.libp2p.simulate.gossip
 
 import io.libp2p.core.pubsub.*
 import io.libp2p.pubsub.gossip.CurrentTimeSupplier
+import io.libp2p.simulate.SimPeerId
 import io.libp2p.simulate.stats.collect.gossip.*
 import io.libp2p.tools.schedule
 import io.netty.buffer.Unpooled
@@ -51,7 +52,7 @@ class GossipSimulation(
 
     private fun subscribeAll() {
         network.peers.values.forEach { peer ->
-            cfg.topics.forEach { topic ->
+            cfg.peerConfigs[peer.simPeerId].topics.forEach { topic ->
                 subscribe(peer, topic)
             }
         }
@@ -67,7 +68,8 @@ class GossipSimulation(
         val subscription = peer.api.subscribe(
             Validator { message ->
                 onNewApiMessage(message)
-                val (validationDelay, validationResult) = cfg.messageValidationGenerator(peer, message)
+                val (validationDelay, validationResult) =
+                    cfg.peerConfigs[peer.simPeerId].messageValidationGenerator(message)
                 if (validationDelay == Duration.ZERO) {
                     CompletableFuture.completedFuture(validationResult)
                 } else {
@@ -121,12 +123,13 @@ class GossipSimulation(
     fun isAllMessagesDelivered(): Boolean =
         deliveredMessagesCount.values.sumOf { it.get() } == publishedMessagesMut.size * (network.peers.size - 1)
 
-    fun publishMessage(srcPeer: Int): SimMessage {
-        require(cfg.topics.size == 1)
-        return publishMessage(srcPeer, 0, cfg.topics[0])
+    fun publishMessage(srcPeer: SimPeerId): SimMessage {
+        val peerTopics = cfg.peerConfigs[srcPeer].topics
+        require(peerTopics.size == 1)
+        return publishMessage(srcPeer, 0, peerTopics[0])
     }
 
-    fun publishMessage(srcPeer: Int, size: Int, topic: Topic): SimMessage {
+    fun publishMessage(srcPeer: SimPeerId, size: Int, topic: Topic): SimMessage {
         val peer = network.peers[srcPeer] ?: throw IllegalArgumentException("Invalid peer index $srcPeer")
         val msgId = idCounter.incrementAndGet()
 
