@@ -15,7 +15,7 @@ typealias GossipSimPeerModifier = (SimPeerId, GossipSimPeer) -> Unit
 
 class GossipSimNetwork(
     val cfg: GossipSimConfig,
-    val routerFactory: GossipRouterBuilderFactory = { SimGossipRouterBuilder() },
+    val routerBuilderFactory: GossipRouterBuilderFactory = { SimGossipRouterBuilder() },
     val simPeerModifier: GossipSimPeerModifier = { _, _ -> }
 ) {
     val peers = sortedMapOf<SimPeerId, GossipSimPeer>()
@@ -28,12 +28,11 @@ class GossipSimNetwork(
     protected fun createSimPeer(number: SimPeerId): GossipSimPeer {
         val peerConfig = cfg.peerConfigs[number]
 
-        val routerBuilder = routerFactory(number).also {
-            val additionalHeartbeatDelay = peerConfig.additionalHeartbeatDelay
+        val routerBuilder = routerBuilderFactory(number).also {
             it.protocol = peerConfig.gossipProtocol
             it.params = peerConfig.gossipParams
             it.scoreParams = peerConfig.gossipScoreParams
-            it.additionalHeartbeatDelay = additionalHeartbeatDelay
+            it.additionalHeartbeatDelay = peerConfig.additionalHeartbeatDelay
         }
 
         val simPeer = GossipSimPeer(number, commonRnd, peerConfig.gossipProtocol).also { simPeer ->

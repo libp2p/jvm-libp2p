@@ -41,7 +41,7 @@ class BlobDecouplingScenario(
     val peerBands: RandomDistribution<Bandwidth> = RandomDistribution.const(100.mbitsPerSecond),
     val peerMessageValidationDelays: RandomDistribution<Duration> = RandomDistribution.const(messageValidationDelay),
 
-    val routerFactory: GossipRouterBuilderFactory = { SimGossipRouterBuilder() }
+    val routerBuilderFactory: GossipRouterBuilderFactory = { SimGossipRouterBuilder() }
 ) {
     val blockTopic = Topic(BlocksTopic)
     val blobTopics = (0 until blobCount)
@@ -62,7 +62,7 @@ class BlobDecouplingScenario(
         randomSeed = randomSeed
     )
 
-    val simNetwork = GossipSimNetwork(simConfig, routerFactory).also { simNetwork ->
+    val simNetwork = GossipSimNetwork(simConfig, routerBuilderFactory).also { simNetwork ->
         logger("Creating peers...")
         simNetwork.createAllPeers()
         logger("Connecting peers...")
