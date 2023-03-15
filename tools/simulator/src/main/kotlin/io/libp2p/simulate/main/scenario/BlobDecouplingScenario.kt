@@ -63,7 +63,7 @@ class BlobDecouplingScenario(
             bandwidths = peerBands,
         ).generate(randomSeed, nodeCount),
         topology = RandomNPeers(nodePeerCount),
-        latencyDelayGenerator = latency.toLatencyGenerator(),
+        latency = latency,
         randomSeed = randomSeed
     ).let {
         simConfigModifier(it)

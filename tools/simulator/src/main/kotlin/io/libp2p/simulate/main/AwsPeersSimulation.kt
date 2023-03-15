@@ -58,7 +58,7 @@ class AwsPeersSimulation(
         topology = RandomNPeers(nodePeerCount),
 //        messageValidationGenerator = constantValidationGenerator(10.milliseconds),
 //        bandwidthGenerator = constantBandwidthGenerator(Bandwidth.mbitsPerSec(100)),
-        latencyDelayGenerator = clusteredNodesConfig.latencyDistribution.toLatencyGenerator()
+        latency = clusteredNodesConfig.latencyDistribution
     )
 ) {
 
@@ -112,7 +112,6 @@ class AwsPeersSimulation(
     }
 
     fun run() {
-        val result = runAndCollectResults()
-        // print result
+        runAndCollectResults()
     }
 }

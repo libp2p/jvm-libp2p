@@ -4,6 +4,7 @@ import io.libp2p.core.pubsub.Topic
 import io.libp2p.pubsub.gossip.GossipParams
 import io.libp2p.simulate.Bandwidth
 import io.libp2p.simulate.RandomDistribution
+import io.libp2p.simulate.delay.latency.LatencyDistribution
 import io.libp2p.simulate.gossip.*
 import io.libp2p.simulate.stats.StatsFactory
 import io.libp2p.simulate.topology.RandomNPeers
@@ -29,7 +30,7 @@ class SimpleSimulation(
             messageValidationDelays = RandomDistribution.const(10.milliseconds)
         ).generate(0, nodeCount),
         topology = RandomNPeers(nodePeerCount),
-        latencyDelayGenerator = constantLatencyGenerator(50.milliseconds),
+        latency = LatencyDistribution.createConst(50.milliseconds),
     )
 ) {
 

@@ -364,7 +364,7 @@ class MiscParamsOptimizationSimulation {
                 ,
 
                 messageGenerator = averagePubSubMsgSizeEstimator(cfg.avrgMessageSize, opt.measureTCPFramesOverhead),
-                latencyDelayGenerator = LatencyDistribution.createRandomConst(cfg.latency).toLatencyGenerator(),
+                latency = LatencyDistribution.createRandomConst(cfg.latency),
                 topology = cfg.topology,
                 warmUpDelay = opt.warmUpDelay,
                 randomSeed = randomSeed,

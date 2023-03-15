@@ -93,4 +93,6 @@ operator fun RandomDistribution<Duration>.plus(other: RandomDistribution<Duratio
 
 fun RandomDistribution<Long>.milliseconds() = this.map { it.milliseconds }
 
+fun <T> RandomDistribution<T>.sampleValue(rnd: Random): T = newValue(rnd).next()
+
 fun <T> Iterator<T>.asRandomValue() = RandomValue { this.next() }

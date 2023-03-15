@@ -78,9 +78,7 @@ class GossipSimTest {
                     messageValidationDelays = RandomDistribution.uniform(100, 110).milliseconds(),
                     bandwidths = RandomDistribution.const(Bandwidth.UNLIM)
                 ).generate(seed, 4),
-                latencyDelayGenerator = LatencyDistribution
-                    .createUniformConst(200.milliseconds, 210.milliseconds)
-                    .toLatencyGenerator(),
+                latency = LatencyDistribution.createUniformConst(200.milliseconds, 210.milliseconds),
                 topology = TopologyGraph.customTopology(
                     0 to 1,
                     1 to 2,
@@ -143,7 +141,7 @@ class GossipSimTest {
             .also { latencies ->
                 assertThat(latencies).hasSize(3)
                 val connLatency = latencies
-                    .map { (conn, lat) ->
+                    .map { (_, lat) ->
                         assertThat(lat.distinct()).hasSize(1)
                         lat[0]
                     }

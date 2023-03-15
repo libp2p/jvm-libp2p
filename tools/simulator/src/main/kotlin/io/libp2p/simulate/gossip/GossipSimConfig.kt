@@ -48,7 +48,7 @@ data class GossipSimConfig(
     val peerConfigs: List<GossipSimPeerConfig>,
 
     val messageGenerator: GossipPubMessageGenerator = trickyPubSubMsgSizeEstimator(true),
-    val latencyDelayGenerator: LatencyDelayGenerator = { MessageDelayer.NO_DELAYER },
+    val latency: LatencyDistribution = LatencyDistribution.createConst(ZERO),
 
     val topology: Topology = RandomNPeers(10),
     val warmUpDelay: Duration = 10.seconds,
@@ -57,16 +57,6 @@ data class GossipSimConfig(
 
     val totalPeers: Int get() = peerConfigs.size
 }
-
-fun constantLatencyGenerator(latency: Duration): LatencyDelayGenerator =
-    LatencyDistribution.createConst(latency).toLatencyGenerator()
-
-fun LatencyDistribution.toLatencyGenerator(): LatencyDelayGenerator =
-    { streamSimConnection ->
-        val rnd = streamSimConnection.dialer.random
-        val connectionLatencyValue = this.getLatency(streamSimConnection, rnd)
-        TimeDelayer(streamSimConnection.listener.simExecutor) { connectionLatencyValue.next() }
-    }
 
 data class GossipSimPeerConfigGenerator(
     // Gossip router config
