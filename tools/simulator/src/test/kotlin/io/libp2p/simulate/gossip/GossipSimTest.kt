@@ -1,11 +1,12 @@
 package io.libp2p.simulate.gossip
 
 import io.libp2p.core.pubsub.Topic
-import io.libp2p.simulate.Bandwidth
-import io.libp2p.simulate.RandomDistribution
-import io.libp2p.simulate.TopologyGraph
+import io.libp2p.simulate.*
+import io.libp2p.simulate.delay.latency.LatencyDistribution
 import io.libp2p.simulate.gossip.router.SimGossipRouterBuilder
 import io.libp2p.simulate.stats.StatsFactory
+import io.libp2p.simulate.stats.collect.gossip.GossipMessageResult
+import io.libp2p.simulate.stats.collect.gossip.getGossipPubDeliveryResult
 import io.libp2p.simulate.topology.AllToAllTopology
 import io.libp2p.simulate.topology.asFixedTopology
 import io.libp2p.tools.log
@@ -67,6 +68,121 @@ class GossipSimTest {
 
         println("Done")
     }
+
+    @Test
+    fun `test latency and validation delays are fixed per peer and connection and vary with seed`() {
+        fun run(seed: Long): GossipMessageResult {
+            val simConfig = GossipSimConfig(
+                peerConfigs = GossipSimPeerConfigGenerator(
+                    topics = listOf(Topic(BlocksTopic)),
+                    messageValidationDelays = RandomDistribution.uniform(100, 110).milliseconds(),
+                    bandwidths = RandomDistribution.const(Bandwidth.UNLIM)
+                ).generate(seed, 4),
+                latencyDelayGenerator = LatencyDistribution
+                    .createUniformConst(200.milliseconds, 210.milliseconds)
+                    .toLatencyGenerator(),
+                topology = TopologyGraph.customTopology(
+                    0 to 1,
+                    1 to 2,
+                    2 to 3,
+                ).asFixedTopology(),
+                randomSeed = seed
+            )
+
+            val simNetwork = GossipSimNetwork(simConfig)
+            println("Creating peers...")
+            simNetwork.createAllPeers()
+            println("Connecting peers...")
+            simNetwork.connectAllPeers()
+
+            println("Creating simulation...")
+            val simulation = GossipSimulation(simConfig, simNetwork)
+
+            repeat(10) {
+                simulation.publishMessage(0)
+                simulation.forwardTime(5.seconds)
+            }
+
+            return simulation.gossipMessageCollector.gatherResult()
+        }
+
+        fun gatherActualConnectionLatencies(res: GossipMessageResult): Map<Pair<SimPeer, SimPeer>, List<Long>> {
+            return res.messages.groupBy {
+                listOf(it.sendingPeer, it.receivingPeer)
+                    .sortedBy { it.simPeerId }
+                    .let { it[0] to it[1] }
+            }.mapValues { (_, msg) ->
+                msg.map { it.delay }
+            }
+        }
+
+        fun gatherPeerValidationDelays(res: GossipMessageResult, peerId: SimPeerId): List<Long> {
+            val deliveryResult = res.getGossipPubDeliveryResult()
+            return deliveryResult.originalMessages.map { origPublish ->
+                val p1 = deliveryResult.deliveries
+                    .filter { it.initialPublishMsg == origPublish && it.toPeer.simPeerId == peerId }
+                val p2 = deliveryResult.deliveries
+                    .filter { it.initialPublishMsg == origPublish && it.fromPeer.simPeerId == peerId }
+                assertThat(p1).hasSize(1)
+                assertThat(p2).hasSize(1)
+
+                p2[0].origGossipMsg.origMsg.sendTime - p1[0].receivedTime
+            }
+        }
+
+        fun gatherValidationDelays(res: GossipMessageResult): Map<SimPeerId, List<Long>> =
+            listOf(1, 2)
+                .associateWith {
+                    gatherPeerValidationDelays(res, it)
+                }
+
+
+        val res1 = run(1)
+
+        val latencies1 = gatherActualConnectionLatencies(res1)
+            .also { latencies ->
+                assertThat(latencies).hasSize(3)
+                val connLatency = latencies
+                    .map { (conn, lat) ->
+                        assertThat(lat.distinct()).hasSize(1)
+                        lat[0]
+                    }
+                    .onEach {
+                        assertThat(it).isBetween(200, 210)
+                    }
+                assertThat(connLatency.distinct()).hasSize(3)
+
+            }
+
+        val valDelays1 = gatherValidationDelays(res1)
+            .also { delays ->
+                val peersDelay = delays.values
+                    .map {
+                        assertThat(it).hasSize(10)
+                        assertThat(it.distinct()).hasSize(1)
+                        it[0]
+                    }
+                    .onEach {
+                        assertThat(it).isBetween(100, 110)
+                    }
+                assertThat(peersDelay.distinct()).hasSize(2)
+            }
+
+        run(1).also {
+            // check the same results with the same seed
+            assertThat(gatherActualConnectionLatencies(it)).isEqualTo(latencies1)
+            assertThat(gatherValidationDelays(it)).isEqualTo(valDelays1)
+        }
+
+        run(2).also {
+            // check different results with a different seed
+            assertThat(gatherActualConnectionLatencies(it)).isNotEqualTo(latencies1)
+            assertThat(gatherValidationDelays(it)).isNotEqualTo(valDelays1)
+        }
+
+        println("Done")
+    }
+
 
     @Test
     fun testMinimal() {

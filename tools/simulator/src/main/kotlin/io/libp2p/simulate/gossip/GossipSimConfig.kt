@@ -64,7 +64,7 @@ fun constantLatencyGenerator(latency: Duration): LatencyDelayGenerator =
 fun LatencyDistribution.toLatencyGenerator(): LatencyDelayGenerator =
     { streamSimConnection ->
         val rnd = streamSimConnection.dialer.random
-        val connectionLatencyValue = this.getLatency(streamSimConnection).newValue(rnd)
+        val connectionLatencyValue = this.getLatency(streamSimConnection, rnd)
         TimeDelayer(streamSimConnection.listener.simExecutor) { connectionLatencyValue.next() }
     }
 
@@ -90,6 +90,7 @@ data class GossipSimPeerConfigGenerator(
         val messageValidationDelaysValue = messageValidationDelays.newValue(random)
         val bandwidthsValue = bandwidths.newValue(random)
         while (true) {
+            val msgValidationDelay = messageValidationDelaysValue.next()
             yield(
                 GossipSimPeerConfig(
                     gossipProtocol,
@@ -97,7 +98,7 @@ data class GossipSimPeerConfigGenerator(
                     gossipScoreParams,
                     additionalHeartbeatDelayValue.next(),
                     topics,
-                    { MessageValidation(messageValidationDelaysValue.next(), ValidationResult.Valid) },
+                    { MessageValidation(msgValidationDelay, ValidationResult.Valid) },
                     InOutBandwidth(bandwidthsValue.next())
                 )
             )

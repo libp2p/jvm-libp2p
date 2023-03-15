@@ -25,15 +25,16 @@ fun interface RandomDistribution<T> {
     companion object {
         fun <T> const(constVal: T) = RandomDistribution {
             RandomValue.const(constVal)
-        }
+        }.named(constVal.toString())
 
         fun uniform(from: Double, to: Double) = RandomDistribution {
             RandomValue.uniform(from, to, it)
-        }
+        }.named("[$from, $to)")
 
-        fun uniform(from: Long, toExclusive: Long) =
-            uniform(from.toDouble(), toExclusive.toDouble())
+        fun uniform(from: Long, toExclusive: Long) = RandomDistribution {
+            RandomValue.uniform(from.toDouble(), toExclusive.toDouble(), it)
                 .map { it.toLong() }
+        }.named("[$from, $toExclusive)")
 
         /**
          * Not really a random discrete distribution
