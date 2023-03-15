@@ -1,6 +1,7 @@
 package io.libp2p.simulate.util
 
 import java.lang.Long.min
+import java.util.Locale
 import kotlin.math.roundToLong
 
 fun <TKey, TValue, TSrc> Collection<TSrc>.groupByRangesBy(
@@ -83,6 +84,8 @@ fun Double.smartRound(meaningCount: Int = 3): Double {
         return n.roundToLong().toDouble() * 10.pow(cnt)
     }
 }
+
+fun Double.toString(decimalDigits: Int): String = String.format(Locale.US, "%.${decimalDigits}f", this)
 
 fun gcd(a: Int, b: Int): Int {
     return if (a == 0) b else gcd(b % a, a)

@@ -20,7 +20,8 @@ class BlobDecouplingScenario(
     val logger: (String) -> Unit = { log(it) },
 
     val messageValidationDelay: Duration = 10.milliseconds,
-    val latency: RandomDistribution<Duration> = RandomDistribution.uniform(0, 50).milliseconds(),
+    val latency: LatencyDistribution =
+        LatencyDistribution.createUniformConst(1.milliseconds, 50.milliseconds),
 
     val nodeCount: Int = 1000,
     val nodePeerCount: Int = 30,
@@ -37,11 +38,15 @@ class BlobDecouplingScenario(
     val gossipScoreParams: GossipScoreParams = Eth2DefaultScoreParams,
 
     val sendingPeerBand: Bandwidth = 100.mbitsPerSecond,
+    val sendingPeerFilter: (GossipSimPeer) -> Boolean = {
+        it.outboundBandwidth.totalBandwidth == sendingPeerBand
+    },
 
     val peerBands: RandomDistribution<Bandwidth> = RandomDistribution.const(100.mbitsPerSecond),
     val peerMessageValidationDelays: RandomDistribution<Duration> = RandomDistribution.const(messageValidationDelay),
 
-    val routerBuilderFactory: GossipRouterBuilderFactory = { SimGossipRouterBuilder() }
+    val routerBuilderFactory: GossipRouterBuilderFactory = { SimGossipRouterBuilder() },
+    val simConfigModifier: (GossipSimConfig) -> GossipSimConfig = { it }
 ) {
     val blockTopic = Topic(BlocksTopic)
     val blobTopics = (0 until blobCount)
@@ -58,9 +63,11 @@ class BlobDecouplingScenario(
             bandwidths = peerBands,
         ).generate(randomSeed, nodeCount),
         topology = RandomNPeers(nodePeerCount),
-        latencyDelayGenerator = LatencyDistribution.createUniform(latency).toLatencyGenerator(),
+        latencyDelayGenerator = latency.toLatencyGenerator(),
         randomSeed = randomSeed
-    )
+    ).let {
+        simConfigModifier(it)
+    }
 
     val simNetwork = GossipSimNetwork(simConfig, routerBuilderFactory).also { simNetwork ->
         logger("Creating peers...")
@@ -70,10 +77,10 @@ class BlobDecouplingScenario(
         logger("Peers connected. Graph diameter is " + simNetwork.network.topologyGraph.calcDiameter())
     }
 
-    val peerIndexesByBandwidth = simNetwork.peers.entries
-        .groupBy { it.value.outboundBandwidth.totalBandwidth }
-        .mapValues { it.value.map { it.key } }
-    val sendingPeerIndexes = peerIndexesByBandwidth[sendingPeerBand]!!
+    val sendingPeerIndexes = simNetwork.peers
+        .filterValues { sendingPeerFilter(it) }
+        .keys
+        .toList()
 
     val simulation = run {
         logger("Creating simulation...")

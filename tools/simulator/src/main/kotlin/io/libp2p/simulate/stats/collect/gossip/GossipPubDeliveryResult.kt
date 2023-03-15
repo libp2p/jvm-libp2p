@@ -17,6 +17,7 @@ class GossipPubDeliveryResult(
         val origGossipMsg: GossipMessageResult.PubMessageWrapper
     ) {
         val toPeer: GossipSimPeer get() = origGossipMsg.origMsg.receivingPeer as GossipSimPeer
+        val fromPeer: GossipSimPeer get() = origGossipMsg.origMsg.sendingPeer as GossipSimPeer
         val receivedTime: Long get() = origGossipMsg.origMsg.receiveTime
         val deliveryDelay get() = receivedTime - initialPublishMsg.sentTime
     }

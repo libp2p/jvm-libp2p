@@ -65,13 +65,6 @@ fun <T1, T2, T3, R> cartesianProduct(
         }
     }
 
-data class Quadriple<out T1, out T2, out T3, out T4> (
-    val first: T1,
-    val second: T2,
-    val third: T3,
-    val fourth: T4
-)
-
 fun <T1, T2, T3, T4, R> cartesianProduct(
     c1: Collection<T1>,
     c2: Collection<T2>,
@@ -84,6 +77,49 @@ fun <T1, T2, T3, T4, R> cartesianProduct(
             c3.flatMap { t3 ->
                 c4.map { t4 ->
                     aggregator(Quadriple(t1, t2, t3, t4))
+                }
+            }
+        }
+    }
+
+fun <T1, T2, T3, T4, T5, R> cartesianProduct(
+    c1: Collection<T1>,
+    c2: Collection<T2>,
+    c3: Collection<T3>,
+    c4: Collection<T4>,
+    c5: Collection<T5>,
+    aggregator: (Tuple5<T1, T2, T3, T4, T5>) -> R
+): List<R> =
+    c1.flatMap { t1 ->
+        c2.flatMap { t2 ->
+            c3.flatMap { t3 ->
+                c4.flatMap { t4 ->
+                    c5.map { t5 ->
+                        aggregator(Tuple5(t1, t2, t3, t4, t5))
+                    }
+                }
+            }
+        }
+    }
+
+fun <T1, T2, T3, T4, T5, T6, R> cartesianProduct(
+    c1: Collection<T1>,
+    c2: Collection<T2>,
+    c3: Collection<T3>,
+    c4: Collection<T4>,
+    c5: Collection<T5>,
+    c6: Collection<T6>,
+    aggregator: (Tuple6<T1, T2, T3, T4, T5, T6>) -> R
+): List<R> =
+    c1.flatMap { t1 ->
+        c2.flatMap { t2 ->
+            c3.flatMap { t3 ->
+                c4.flatMap { t4 ->
+                    c5.flatMap { t5 ->
+                        c6.map { t6 ->
+                            aggregator(Tuple6(t1, t2, t3, t4, t5, t6))
+                        }
+                    }
                 }
             }
         }

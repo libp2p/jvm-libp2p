@@ -177,6 +177,7 @@ class Table<TValue>(val data: Map<*, Map<*, TValue>>) {
         rowHeaderAlign: Align = Align.LEFT,
         columnAlign: Align = Align.RIGHT,
         printRowHeader: Boolean = true,
+        printColHeader: Boolean = true,
         colHeaderDelimiterColDelim: String = "|"
     ): String {
         val rawHeaderWidth = rowNames.maxOf { it.toString().length }
@@ -199,14 +200,16 @@ class Table<TValue>(val data: Map<*, Map<*, TValue>>) {
         fun optionalRawHeader(i: Int): Int = if (printRowHeader) i else 0
 
         var s = ""
-        s += optionalRawHeader("".padRowHeader() + rowHeaderDelimiter) +
-                columnNames.indices
-                    .joinToString(" ") { i -> columnNames[i].toString().padCol(i) } + "\n"
+        if (printColHeader) {
+            s += optionalRawHeader("".padRowHeader() + rowHeaderDelimiter) +
+                    columnNames.indices
+                        .joinToString(" ") { i -> columnNames[i].toString().padCol(i) } + "\n"
 
-        if (colHeaderDelimiter != null) {
-            s += optionalRawHeader(colHeaderDelimiter.repeat(rawHeaderWidth + rowHeaderDelimiter.length))
-            s += colWidths.joinToString(colHeaderDelimiterColDelim) { colHeaderDelimiter.repeat(it) }
-            s += "\n"
+            if (colHeaderDelimiter != null) {
+                s += optionalRawHeader(colHeaderDelimiter.repeat(rawHeaderWidth + rowHeaderDelimiter.length))
+                s += colWidths.joinToString(colHeaderDelimiterColDelim) { colHeaderDelimiter.repeat(it) }
+                s += "\n"
+            }
         }
         s += data
             .map { (rowHader, row) ->

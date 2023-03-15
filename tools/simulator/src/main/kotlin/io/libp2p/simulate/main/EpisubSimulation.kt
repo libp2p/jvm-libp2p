@@ -4,9 +4,7 @@ import io.libp2p.pubsub.PubsubProtocol
 import io.libp2p.pubsub.Topic
 import io.libp2p.pubsub.gossip.choke.ChokeStrategyPerTopic
 import io.libp2p.pubsub.gossip.choke.SimpleTopicChokeStrategy
-import io.libp2p.simulate.Bandwidth
-import io.libp2p.simulate.RandomDistribution
-import io.libp2p.simulate.bandwidthDistribution
+import io.libp2p.simulate.*
 import io.libp2p.simulate.delay.latency.ClusteredNodesConfig
 import io.libp2p.simulate.delay.latency.LatencyDistribution
 import io.libp2p.simulate.delay.latency.aws.AwsLatencies
@@ -16,15 +14,16 @@ import io.libp2p.simulate.gossip.Eth2DefaultGossipParams
 import io.libp2p.simulate.gossip.GossipSimPeer
 import io.libp2p.simulate.gossip.GossipSimulation
 import io.libp2p.simulate.gossip.router.SimGossipRouterBuilder
+import io.libp2p.simulate.main.PeerHonesty.Honest
+import io.libp2p.simulate.main.PeerHonesty.Malicious
 import io.libp2p.simulate.main.scenario.BlobDecouplingScenario
-import io.libp2p.simulate.mbitsPerSecond
+import io.libp2p.simulate.main.scenario.MaliciousPeerManager
 import io.libp2p.simulate.stats.StatsFactory
-import io.libp2p.simulate.stats.collect.gossip.GossipMessageResult
 import io.libp2p.simulate.stats.collect.gossip.getGossipPubDeliveryResult
-import io.libp2p.simulate.util.Table
-import io.libp2p.simulate.util.byIndexes
-import io.libp2p.simulate.util.cartesianProduct
+import io.libp2p.simulate.util.*
+import io.libp2p.tools.log
 import java.util.Random
+import kotlin.math.max
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -32,33 +31,70 @@ fun main() {
     EpisubSimulation().runAndPrint()
 }
 
+enum class PeerHonesty { Honest, Malicious }
+
 class EpisubSimulation(
-    val bandwidthsParams: List<RandomDistribution<Bandwidth>> = bandwidthDistributions
-        .byIndexes(0)
-   ,
+    val nodeCount: Int = 1000,
+    val blockSize: Int = 128 * 1024,
+    val blobSize: Int = 128 * 1024,
+    val randomSeed: Long = 0L,
+
+    val sendingPeerBandwidth: Bandwidth = 100.mbitsPerSecond,
+    val bandwidthsParams: List<RandomDistribution<Bandwidth>> =
+//        listOf(RandomDistribution.const(sendingPeerBandwidth)),
+        bandwidthDistributions.byIndexes(0),
+    val maliciousPeersParams: List<RandomDistribution<PeerHonesty>> =
+        listOf(
+            RandomDistribution.discreteEven(Honest to 100, Malicious to 0),
+//            RandomDistribution.discreteEven(Honest to 75, Malicious to 25),
+//            RandomDistribution.discreteEven(Honest to 50, Malicious to 50),
+//            RandomDistribution.discreteEven(Honest to 25, Malicious to 75),
+//            RandomDistribution.discreteEven(Honest to 10, Malicious to 90),
+//            RandomDistribution.discreteEven(Honest to 5, Malicious to 95),
+        ),
     val decouplingParams: List<Decoupling> = listOf(
-//        Decoupling.Coupled,
-        Decoupling.FullyDecoupled
+        Decoupling.Coupled,
+//        Decoupling.FullyDecoupled
     ),
     val meshParams: List<MeshSimParams> = listOf(
+//        MeshSimParams(PubsubProtocol.Gossip_V_1_1, 2),
+//        MeshSimParams(PubsubProtocol.Gossip_V_1_1, 4),
         MeshSimParams(PubsubProtocol.Gossip_V_1_1, 6),
-        MeshSimParams(PubsubProtocol.Gossip_V_1_2, Eth2DefaultGossipParams.D),
+//        MeshSimParams(PubsubProtocol.Gossip_V_1_1, 8),
+//        MeshSimParams(PubsubProtocol.Gossip_V_1_1, 12),
+        MeshSimParams(PubsubProtocol.Gossip_V_1_2, 8),
     ),
 
     val latencyParams: List<LatencyDistribution> =
-//        listOf(LatencyDistribution.createConst(10.milliseconds)),
-        latencyDistributions.byIndexes(0),
+        listOf(
+            LatencyDistribution.createConst(10.milliseconds),
+//            LatencyDistribution.createConst(50.milliseconds),
+//            LatencyDistribution.createConst(100.milliseconds),
+//            LatencyDistribution.createUniformConst(10.milliseconds, 20.milliseconds),
+//            LatencyDistribution.createUniformConst(10.milliseconds, 50.milliseconds),
+//            LatencyDistribution.createUniformConst(10.milliseconds, 100.milliseconds),
+//            LatencyDistribution.createUniformConst(10.milliseconds, 200.milliseconds),
+//            awsLatencyDistribution
+        ),
+//        listOf(awsLatencyDistribution),
 
     val validationDelayParams: List<RandomDistribution<Duration>> =
-//        listOf(RandomDistribution.const(10.milliseconds)),
-        validatioDelayDistributions.byIndexes(0),
+        listOf(RandomDistribution.const(10.milliseconds)),
+//        validatioDelayDistributions.byIndexes(0),
 
     val paramsSet: List<SimParams> =
-        cartesianProduct(bandwidthsParams, validationDelayParams, decouplingParams, meshParams) {
-            SimParams(it.first, it.second, latencyParams[0], it.third, it.fourth.gossipVersion, it.fourth.D)
+        cartesianProduct(
+            bandwidthsParams,
+            validationDelayParams,
+            latencyParams,
+            decouplingParams,
+            meshParams,
+            maliciousPeersParams
+        ) {
+            SimParams(it.first, it.second, it.third, it.fourth, it.fifth.gossipVersion, it.fifth.D, it.sixth)
         },
     val chokeWarmupMessageCount: Int = 10,
-    val testMessageCount: Int = 20
+    val testMessageCount: Int = 10
 ) {
 
     enum class Decoupling { Coupled, FullyDecoupled }
@@ -74,10 +110,9 @@ class EpisubSimulation(
         val latency: LatencyDistribution,
         val decoupling: Decoupling,
         val gossipVersion: PubsubProtocol,
-        val D: Int
-    ) {
-        override fun toString() = "$bandwidths, $decoupling, ${gossipVersion.version}, $D"
-    }
+        val D: Int,
+        val honestPeers: RandomDistribution<PeerHonesty>
+    )
 
     data class PeerChokeResult(
         val peer: GossipSimPeer,
@@ -88,9 +123,6 @@ class EpisubSimulation(
 
     data class TopicChokeResult(
         val peerResults: List<PeerChokeResult>
-//        val meshCounts: List<Int>,
-//        val chokedCounts: List<Int>,
-//        val chokedByCounts: List<Int>,
     )
 
     data class ChokeResult(
@@ -104,34 +136,51 @@ class EpisubSimulation(
 
     data class RunResult(
         val deliveryDelays: List<Long>,
+        val byIWantDeliveryRate: Double,
         val chokeResult: ChokeResult,
         val networkResult: NetworkResult
     )
 
-    fun createBlobScenario(simParams: SimParams): BlobDecouplingScenario {
-        val nodeCount = 1000
-        return BlobDecouplingScenario(
+    data class EpisubScenario(
+        val blobDecouplingScenario: BlobDecouplingScenario,
+        val maliciousPeerManager: MaliciousPeerManager
+    )
+
+    fun createBlobScenario(simParams: SimParams): EpisubScenario {
+        var maliciousPeerManager: MaliciousPeerManager? = null // TODO fix dirty stuff
+        val blobDecouplingScenario = BlobDecouplingScenario(
 //                logger = {},
+            blockSize = blockSize,
+            blobSize = blobSize,
+            sendingPeerFilter = {
+                it.outboundBandwidth.totalBandwidth == sendingPeerBandwidth &&
+                it.simPeerId !in maliciousPeerManager!!.maliciousPeerIds
+            },
             messageCount = 1,
             nodeCount = nodeCount,
             peerBands = simParams.bandwidths,
+            latency = simParams.latency,
             gossipParams = Eth2DefaultGossipParams.copy(
                 floodPublish = false,
                 D = simParams.D,
-                DLow = simParams.D - 2,
-                DHigh = simParams.D + 2
+                DLow = max(1, simParams.D - 2),
+                DHigh = simParams.D + 2,
+                DOut = 0
             ),
-            peerMessageValidationDelays = run {
-                val delays = simParams.validationDelays.newValue(Random(1))
-                List(nodeCount) { delays.next() }
-            },
+            peerMessageValidationDelays = simParams.validationDelays,
             gossipProtocol = simParams.gossipVersion,
-            routerFactory = {
+            routerBuilderFactory = {
                 SimGossipRouterBuilder().also {
                     it.chokeStrategy = ChokeStrategyPerTopic { SimpleTopicChokeStrategy(it) }
                 }
+            },
+            simConfigModifier = {
+                val maliciousSelector = simParams.honestPeers.newValue(Random(randomSeed))
+                maliciousPeerManager = MaliciousPeerManager({ maliciousSelector.next() == Malicious }, it)
+                maliciousPeerManager!!.maliciousConfig
             }
         )
+        return EpisubScenario(blobDecouplingScenario, maliciousPeerManager!!)
     }
 
     fun runAndPrint() {
@@ -140,29 +189,70 @@ class EpisubSimulation(
     }
 
     fun run(paramsSet: List<SimParams>): List<RunResult> =
-        paramsSet.map { run(it) }
-
-    fun run(params: SimParams): RunResult {
-        val scenario = createBlobScenario(params)
-        fun run(msgCount: Int) = when (params.decoupling) {
-            Decoupling.Coupled -> scenario.testCoupled(msgCount)
-            Decoupling.FullyDecoupled -> scenario.testAllDecoupled(msgCount)
+        paramsSet.mapIndexed { idx, params ->
+            log("Running ${idx + 1} of ${paramsSet.size}: $params")
+            run(params)
         }
 
-        run(chokeWarmupMessageCount)
+    fun run(params: SimParams): RunResult {
+        val (scenario, maliciousPeerManager) = createBlobScenario(params)
+
+        fun run(sendingPeerIndex: Int) = when (params.decoupling) {
+            Decoupling.Coupled -> scenario.testCoupledSingle(sendingPeerIndex)
+            Decoupling.FullyDecoupled -> scenario.testAllDecoupledSingle(sendingPeerIndex)
+        }
+
+        println("Worming up choking...")
+        repeat(chokeWarmupMessageCount) {
+            run(it)
+        }
 
         val chokeResults = calcChokeResults(scenario.simulation)
-        val tmp1 =
-            if (params.gossipVersion.version == PubsubProtocol.Gossip_V_1_2.version) {
-                scenario.peerMessageValidationDelays
-                    .zip(chokeResults.topicResults.values.first().peerResults)
-            } else {
-                emptyList()
-            }
+//        val tmp1 =
+//            if (params.gossipVersion.version == PubsubProtocol.Gossip_V_1_2.version) {
+//                scenario.peerMessageValidationDelays
+//                    .zip(chokeResults.topicResults.values.first().peerResults)
+//            } else {
+//                emptyList()
+//            }
 
         scenario.simulation.clearAllMessages()
 
-        run(testMessageCount)
+        maliciousPeerManager.propagateMessages = false
+        println("Sending test messages...")
+        repeat(testMessageCount) { sendingPeerIndex ->
+
+//            val sendingPeer = scenario.simulation.network.peers[scenario.sendingPeerIndexes[sendingPeerIndex]]!!
+//            val sendingRouter = sendingPeer.router
+//            val topics = sendingRouter.mesh
+//                .filterValues { it.isNotEmpty() }
+//                .keys
+//            val topicMeshes = topics
+//                .associateWith {
+//                    sendingRouter.mesh[it]!!.size to sendingRouter.chokedByPeers.getBySecond(it).size
+//                }
+//            println("Sending peer mesh: $topicMeshes")
+
+//            val startT = scenario.simulation.currentTimeSupplier()
+            run(sendingPeerIndex)
+
+
+//            val runMessages = scenario.simulation.gossipMessageCollector
+//                .gatherResult()
+//                .slice(startT)
+//            val allDeliveryResult = runMessages.getGossipPubDeliveryResult()
+//            val deliveryResult = allDeliveryResult.aggregateSlowestByPublishTime()
+//            val iWantDeliveries = deliveryResult.deliveries
+//                .filter { runMessages.isByIWantPubMessage(it.origGossipMsg) }
+//            println(
+//                "Message $sendingPeerIndex, deliveryStats: " + deliveryResult.deliveryDelays.getStats() +
+//                        ", IWant deliveries: ${iWantDeliveries.size}"
+//            )
+//            if (sendingPeer.simPeerId == 18) {
+//                val sendingPeerMessages = runMessages.getPeerGossipMessages(sendingPeer)
+//                println(sendingPeerMessages.joinToString("\n").prependIndent("  "))
+//            }
+        }
 
         return calcResult(scenario.simulation, chokeResults)
     }
@@ -196,24 +286,57 @@ class EpisubSimulation(
             .map {
                 it.map { it.simMessageId }.toSet()
             }
+
+        val allDeliveryResult = messageResult.getGossipPubDeliveryResult()
+        val deliveryResult = allDeliveryResult.aggregateSlowestByPublishTime()
+        val iWantDeliveries = deliveryResult.deliveries
+            .count { messageResult.isByIWantPubMessage(it.origGossipMsg) }
+
         return RunResult(
-            messageResult.getGossipPubDeliveryResult()
+            allDeliveryResult
                 .aggregateSlowestBySimMessageId(messageGroups)
                 .deliveryDelays,
+            iWantDeliveries.toDouble() / deliveryResult.deliveries.size,
             chokeResults,
             NetworkResult(messageResult.getTotalMessageCount(), messageResult.getTotalTraffic())
         )
     }
 
+    fun simFixedParams(params: Collection<SimParams>) =
+        Table.fromRow(
+        params.first().propertiesAsMap() -
+                simVaryingParamsToTable(params).columnNames.map { it as String } +
+                mapOf(
+                    "nodeCount" to nodeCount,
+                    "blockSize" to blockSize,
+                    "blobSize" to blobSize
+                )
+        ).transposed()
+
+
+    fun simVaryingParamsToTable(params: Collection<SimParams>): Table<Any> {
+        val tab1 = Table.fromRows(params.map { it.propertiesAsMap() })
+        val nonChangingParamIdxs = (0 until tab1.columnCount).filter { colIndex ->
+            tab1.getColumnValues(colIndex).distinct().count() == 1
+        }
+        return nonChangingParamIdxs
+            .sortedDescending()
+            .fold(tab1) { tab, removeIdx ->
+                tab.removeColumn(removeIdx)
+            }
+    }
+
+
     fun printResults(runs: Map<SimParams, RunResult>) {
         fun delayStatsAsMap(delays: List<Long>): Map<String, Long> {
-            val stats = StatsFactory.DEFAULT.createStats(delays)
+            val deliverStats = StatsFactory.DEFAULT.createStats(delays)
             return mapOf(
-                "count" to stats.getCount(),
-                "min" to stats.getDescriptiveStatistics().min.toLong(),
-                "50%" to stats.getDescriptiveStatistics().getPercentile(0.5).toLong(),
-                "90%" to stats.getDescriptiveStatistics().getPercentile(0.9).toLong(),
-                "max" to stats.getDescriptiveStatistics().max.toLong(),
+                "count" to deliverStats.getCount(),
+                "min" to deliverStats.getDescriptiveStatistics().min.toLong(),
+                "5%" to deliverStats.getDescriptiveStatistics().getPercentile(5.0).toLong(),
+                "50%" to deliverStats.getDescriptiveStatistics().getPercentile(50.0).toLong(),
+                "95%" to deliverStats.getDescriptiveStatistics().getPercentile(95.0).toLong(),
+                "max" to deliverStats.getDescriptiveStatistics().max.toLong(),
             )
         }
 
@@ -226,17 +349,35 @@ class EpisubSimulation(
                 "traffic" to res.networkResult.traffic,
             )
         })
-        val table = tableDelays.appendColumns(tableNetwork)
+        val tableIWantRate: Table<Any> = Table(runs.mapValues { (_, res) ->
+            val deliverRatio = res.deliveryDelays.size.toDouble() / ((nodeCount - 1) * testMessageCount)
+            mapOf(
+                "deliverRatio" to deliverRatio.toString(3),
+                "byIWant" to res.byIWantDeliveryRate.toString(3),
+            )
+        })
+
+        val table = simVaryingParamsToTable(runs.keys)
+            .appendColumns(tableDelays)
+            .appendColumns(tableNetwork)
+            .appendColumns(tableIWantRate)
+
+        val fixedParamsTable = simFixedParams(runs.keys)
 
         println("Pretty results:")
-        println(table.printPretty().prependIndent("  "))
+        println("======================")
+        println(fixedParamsTable.printPretty(printColHeader = false).prependIndent("  "))
+        println()
+        println(table.printPretty(printRowHeader = false).prependIndent("  "))
         println("\n\nTab separated results:")
         println("======================")
-        println(table.print())
+        println(table.print(printRowHeader = false))
+        println()
+        println(fixedParamsTable.print())
     }
 
     companion object {
-        val latencyDistributions = listOf(
+        val awsLatencyDistribution =
             ClusteredNodesConfig(
                 RandomDistribution.discreteEven(
                     AwsRegion.EU_NORTH_1 to 50,
@@ -262,7 +403,6 @@ class EpisubSimulation(
             )
                 .latencyDistribution
                 .named("AWS-1")
-        )
 
         val validatioDelayDistributions = listOf(
             RandomDistribution.discreteEven(
