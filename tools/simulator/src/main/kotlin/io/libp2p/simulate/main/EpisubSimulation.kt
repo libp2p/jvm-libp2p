@@ -42,7 +42,7 @@ class EpisubSimulation(
     val sendingPeerBandwidth: Bandwidth = 100.mbitsPerSecond,
     val bandwidthsParams: List<RandomDistribution<Bandwidth>> =
 //        listOf(RandomDistribution.const(sendingPeerBandwidth)),
-        bandwidthDistributions.byIndexes(0),
+        bandwidthDistributions,
     val maliciousPeersParams: List<RandomDistribution<PeerHonesty>> =
         listOf(
             RandomDistribution.discreteEven(Honest to 100, Malicious to 0),
@@ -54,7 +54,7 @@ class EpisubSimulation(
         ),
     val decouplingParams: List<Decoupling> = listOf(
         Decoupling.Coupled,
-//        Decoupling.FullyDecoupled
+        Decoupling.FullyDecoupled
     ),
     val meshParams: List<MeshSimParams> = listOf(
 //        MeshSimParams(PubsubProtocol.Gossip_V_1_1, 2),
@@ -79,19 +79,35 @@ class EpisubSimulation(
 //        listOf(awsLatencyDistribution),
 
     val validationDelayParams: List<RandomDistribution<Duration>> =
-        listOf(RandomDistribution.const(10.milliseconds)),
-//        validatioDelayDistributions.byIndexes(0),
+//        listOf(RandomDistribution.const(10.milliseconds)),
+        listOf(
+            RandomDistribution.const(20.milliseconds),
+//            RandomDistribution.discreteEven(
+//                70.milliseconds to 33,
+//                50.milliseconds to 33,
+//                20.milliseconds to 33
+//            ),
+//            RandomDistribution.discreteEven(
+//                300.milliseconds to 33,
+//                100.milliseconds to 33,
+//                10.milliseconds to 33
+//            ),
+//            RandomDistribution.uniform(10, 40).milliseconds(),
+//            RandomDistribution.uniform(10, 100).milliseconds(),
+//            RandomDistribution.uniform(10, 300).milliseconds(),
+//            RandomDistribution.uniform(10, 600).milliseconds(),
+        ),
 
     val paramsSet: List<SimParams> =
         cartesianProduct(
+            decouplingParams,
             bandwidthsParams,
             validationDelayParams,
             latencyParams,
-            decouplingParams,
             meshParams,
             maliciousPeersParams
         ) {
-            SimParams(it.first, it.second, it.third, it.fourth, it.fifth.gossipVersion, it.fifth.D, it.sixth)
+            SimParams(it.second, it.third, it.fourth, it.first, it.fifth.gossipVersion, it.fifth.D, it.sixth)
         },
     val chokeWarmupMessageCount: Int = 10,
     val testMessageCount: Int = 10
@@ -154,7 +170,7 @@ class EpisubSimulation(
             blobSize = blobSize,
             sendingPeerFilter = {
                 it.outboundBandwidth.totalBandwidth == sendingPeerBandwidth &&
-                it.simPeerId !in maliciousPeerManager!!.maliciousPeerIds
+                        it.simPeerId !in maliciousPeerManager!!.maliciousPeerIds
             },
             messageCount = 1,
             nodeCount = nodeCount,
@@ -304,13 +320,13 @@ class EpisubSimulation(
 
     fun simFixedParams(params: Collection<SimParams>) =
         Table.fromRow(
-        params.first().propertiesAsMap() -
-                simVaryingParamsToTable(params).columnNames.map { it as String } +
-                mapOf(
-                    "nodeCount" to nodeCount,
-                    "blockSize" to blockSize,
-                    "blobSize" to blobSize
-                )
+            params.first().propertiesAsMap() -
+                    simVaryingParamsToTable(params).columnNames.map { it as String } +
+                    mapOf(
+                        "nodeCount" to nodeCount,
+                        "blockSize" to blockSize,
+                        "blobSize" to blobSize
+                    )
         ).transposed()
 
 

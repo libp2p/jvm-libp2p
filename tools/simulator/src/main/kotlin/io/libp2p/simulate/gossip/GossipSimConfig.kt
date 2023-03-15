@@ -26,7 +26,6 @@ data class MessageValidation(
     val validationResult: ValidationResult
 )
 
-typealias LatencyDelayGenerator = (StreamSimConnection) -> MessageDelayer
 typealias MessageValidationGenerator = (MessageApi) -> MessageValidation
 
 data class GossipSimPeerConfig(
