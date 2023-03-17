@@ -4,6 +4,7 @@ import io.libp2p.simulate.Bandwidth
 import io.libp2p.simulate.RandomDistribution
 import io.libp2p.simulate.gossip.Eth2DefaultGossipParams
 import io.libp2p.simulate.main.scenario.BlobDecouplingScenario
+import io.libp2p.simulate.main.scenario.Decoupling
 import io.libp2p.simulate.stats.collect.gossip.GossipMessageResult
 import io.libp2p.simulate.util.*
 
@@ -17,13 +18,11 @@ class SlowPeersTrafficSimulation(
             .byIndexes(1, 2, 3),
     val decouplingParams: List<Decoupling> = listOf(
         Decoupling.Coupled,
-        Decoupling.FullyDecoupled
+        Decoupling.DecoupledManyTopics
     ),
     val paramsSet: List<SimParams> =
         cartesianProduct(bandwidthsParams, decouplingParams) { SimParams(it.first, it.second) }
 ) {
-
-    enum class Decoupling{ Coupled, FullyDecoupled }
 
     data class SimParams(
         val bandwidths: RandomDistribution<Bandwidth>,
@@ -63,10 +62,7 @@ class SlowPeersTrafficSimulation(
 
     fun run(params: SimParams): RunResult {
         val scenario = createBlobScenario(params)
-        when (params.decoupling) {
-            Decoupling.Coupled -> scenario.testCoupled()
-            Decoupling.FullyDecoupled -> scenario.testAllDecoupled()
-        }
+        scenario.test(params.decoupling)
         val messageResult = scenario.simulation.gossipMessageCollector.gatherResult()
         return calcResult(messageResult)
     }

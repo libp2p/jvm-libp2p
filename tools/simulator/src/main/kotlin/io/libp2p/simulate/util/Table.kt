@@ -156,12 +156,16 @@ class Table<TValue>(val data: Map<*, Map<*, TValue>>) {
         return Table(data.filter { filter(it.value) })
     }
 
-    fun print(delimiter: String = "\t", printRowHeader: Boolean = true): String {
+    fun print(delimiter: String = "\t", printRowHeader: Boolean = true, printColumnHeaders: Boolean = true): String {
         val s = StringBuilder()
         fun maybeRowHeader(s: String): String =
             if (printRowHeader) s else ""
-        s.append(maybeRowHeader(" $delimiter") +
-                data.values.first().keys.joinToString(separator = delimiter) + "\n")
+        if (printColumnHeaders) {
+            s.append(
+                maybeRowHeader(" $delimiter") +
+                        data.values.first().keys.joinToString(separator = delimiter) + "\n"
+            )
+        }
         s.append(data
             .map { (rowHead, row) ->
                 maybeRowHeader("" + rowHead + delimiter) + row.values.joinToString(separator = delimiter)

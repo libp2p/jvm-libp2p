@@ -17,7 +17,9 @@ import io.libp2p.simulate.gossip.router.SimGossipRouterBuilder
 import io.libp2p.simulate.main.PeerHonesty.Honest
 import io.libp2p.simulate.main.PeerHonesty.Malicious
 import io.libp2p.simulate.main.scenario.BlobDecouplingScenario
+import io.libp2p.simulate.main.scenario.Decoupling
 import io.libp2p.simulate.main.scenario.MaliciousPeerManager
+import io.libp2p.simulate.main.scenario.ResultPrinter
 import io.libp2p.simulate.stats.StatsFactory
 import io.libp2p.simulate.stats.collect.gossip.getGossipPubDeliveryResult
 import io.libp2p.simulate.util.*
@@ -41,8 +43,8 @@ class EpisubSimulation(
 
     val sendingPeerBandwidth: Bandwidth = 100.mbitsPerSecond,
     val bandwidthsParams: List<RandomDistribution<Bandwidth>> =
-//        listOf(RandomDistribution.const(sendingPeerBandwidth)),
-        bandwidthDistributions,
+        listOf(RandomDistribution.const(sendingPeerBandwidth)),
+//        bandwidthDistributions,
     val maliciousPeersParams: List<RandomDistribution<PeerHonesty>> =
         listOf(
             RandomDistribution.discreteEven(Honest to 100, Malicious to 0),
@@ -113,8 +115,6 @@ class EpisubSimulation(
     val chokeWarmupMessageCount: Int = 10,
     val testMessageCount: Int = 10
 ) {
-
-    enum class Decoupling { Coupled, DecoupledManyTopics, DecoupledSingleTopic }
 
     data class MeshSimParams(
         val gossipVersion: PubsubProtocol,
@@ -214,15 +214,10 @@ class EpisubSimulation(
     fun run(params: SimParams): RunResult {
         val (scenario, maliciousPeerManager) = createBlobScenario(params)
 
-        fun run(sendingPeerIndex: Int) = when (params.decoupling) {
-            Decoupling.Coupled -> scenario.testCoupledSingle(sendingPeerIndex)
-            Decoupling.DecoupledManyTopics -> scenario.testAllDecoupledSingle(sendingPeerIndex)
-            Decoupling.DecoupledSingleTopic -> scenario.testAllDecoupledOneTopicSingle(sendingPeerIndex)
-        }
 
         println("Worming up choking...")
         repeat(chokeWarmupMessageCount) {
-            run(it)
+            scenario.testSingle(params.decoupling, it)
         }
 
         val chokeResults = calcChokeResults(scenario.simulation)
@@ -252,8 +247,7 @@ class EpisubSimulation(
 //            println("Sending peer mesh: $topicMeshes")
 
 //            val startT = scenario.simulation.currentTimeSupplier()
-            run(sendingPeerIndex)
-
+            scenario.testSingle(params.decoupling, sendingPeerIndex)
 
 //            val runMessages = scenario.simulation.gossipMessageCollector
 //                .gatherResult()
@@ -320,78 +314,31 @@ class EpisubSimulation(
         )
     }
 
-    fun simFixedParams(params: Collection<SimParams>) =
-        Table.fromRow(
-            params.first().propertiesAsMap() -
-                    simVaryingParamsToTable(params).columnNames.map { it as String } +
-                    mapOf(
-                        "nodeCount" to nodeCount,
-                        "blockSize" to blockSize,
-                        "blobSize" to blobSize
-                    )
-        ).transposed()
-
-
-    fun simVaryingParamsToTable(params: Collection<SimParams>): Table<Any> {
-        val tab1 = Table.fromRows(params.map { it.propertiesAsMap() })
-        val nonChangingParamIdxs = (0 until tab1.columnCount).filter { colIndex ->
-            tab1.getColumnValues(colIndex).distinct().count() == 1
-        }
-        return nonChangingParamIdxs
-            .sortedDescending()
-            .fold(tab1) { tab, removeIdx ->
-                tab.removeColumn(removeIdx)
-            }
-    }
-
-
     fun printResults(runs: Map<SimParams, RunResult>) {
-        fun delayStatsAsMap(delays: List<Long>): Map<String, Long> {
-            val deliverStats = StatsFactory.DEFAULT.createStats(delays)
-            return mapOf(
-                "count" to deliverStats.getCount(),
-                "min" to deliverStats.getDescriptiveStatistics().min.toLong(),
-                "5%" to deliverStats.getDescriptiveStatistics().getPercentile(5.0).toLong(),
-                "50%" to deliverStats.getDescriptiveStatistics().getPercentile(50.0).toLong(),
-                "95%" to deliverStats.getDescriptiveStatistics().getPercentile(95.0).toLong(),
-                "max" to deliverStats.getDescriptiveStatistics().max.toLong(),
-            )
+        val printer = ResultPrinter(runs).apply {
+            addNumberStats { it.deliveryDelays }
+                .apply {
+                    addGeneric("count") { it.size }
+                    addLong("min") { it.min }
+                    addLong("5%") { it.getPercentile(5.0) }
+                    addLong("50%") { it.getPercentile(50.0) }
+                    addLong("95%") { it.getPercentile(95.0) }
+                    addLong("max") { it.max }
+                }
+            addMetric("msgCount") { it.networkResult.messageCount }
+            addMetric("traffic") { it.networkResult.traffic }
+            addMetric("deliveryRatio") {
+                it.deliveryDelays.size.toDouble() / ((nodeCount - 1) * testMessageCount)
+            }
+            addMetricDouble("byIWant", 3) { it.byIWantDeliveryRate }
         }
-
-        val tableDelays: Table<Any> = Table(runs.mapValues { (_, res) ->
-            delayStatsAsMap(res.deliveryDelays)
-        })
-        val tableNetwork: Table<Any> = Table(runs.mapValues { (_, res) ->
-            mapOf(
-                "msgCount" to res.networkResult.messageCount,
-                "traffic" to res.networkResult.traffic,
-            )
-        })
-        val tableIWantRate: Table<Any> = Table(runs.mapValues { (_, res) ->
-            val deliverRatio = res.deliveryDelays.size.toDouble() / ((nodeCount - 1) * testMessageCount)
-            mapOf(
-                "deliverRatio" to deliverRatio.toString(3),
-                "byIWant" to res.byIWantDeliveryRate.toString(3),
-            )
-        })
-
-        val table = simVaryingParamsToTable(runs.keys)
-            .appendColumns(tableDelays)
-            .appendColumns(tableNetwork)
-            .appendColumns(tableIWantRate)
-
-        val fixedParamsTable = simFixedParams(runs.keys)
 
         println("Pretty results:")
         println("======================")
-        println(fixedParamsTable.printPretty(printColHeader = false).prependIndent("  "))
-        println()
-        println(table.printPretty(printRowHeader = false).prependIndent("  "))
+        println(printer.printPretty())
         println("\n\nTab separated results:")
         println("======================")
-        println(table.print(printRowHeader = false))
-        println()
-        println(fixedParamsTable.print())
+        println(printer.printTabSeparated())
     }
 
     companion object {

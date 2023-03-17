@@ -5,6 +5,7 @@ import io.libp2p.simulate.bandwidthDistribution
 import io.libp2p.simulate.gossip.Eth2DefaultGossipParams
 import io.libp2p.simulate.gossip.GossipSimulation
 import io.libp2p.simulate.main.scenario.BlobDecouplingScenario
+import io.libp2p.simulate.main.scenario.Decoupling
 import io.libp2p.simulate.mbitsPerSecond
 import io.libp2p.simulate.stats.GroupByRangeAggregator
 import io.libp2p.simulate.stats.Stats
@@ -140,13 +141,13 @@ class BlobDecouplingSimulation() {
                 )
 
             val coupledDelays = createSimulation().let {
-                it.testCoupled()
+                it.test(Decoupling.Coupled)
                 println("$band\tCoupled\t${getResults(it)}\n")
                 getRangedDelays(it)
             }
 
             val decoupledDelays = createSimulation().let {
-                it.testAllDecoupled()
+                it.test(Decoupling.DecoupledManyTopics)
                 println("$band\tDecoupled\t${getResults(it)}\n")
                 getRangedDelays(it)
             }
