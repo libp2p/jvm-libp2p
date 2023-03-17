@@ -20,7 +20,6 @@ import io.libp2p.simulate.main.scenario.BlobDecouplingScenario
 import io.libp2p.simulate.main.scenario.Decoupling
 import io.libp2p.simulate.main.scenario.MaliciousPeerManager
 import io.libp2p.simulate.main.scenario.ResultPrinter
-import io.libp2p.simulate.stats.StatsFactory
 import io.libp2p.simulate.stats.collect.gossip.getGossipPubDeliveryResult
 import io.libp2p.simulate.util.*
 import io.libp2p.tools.log
@@ -56,7 +55,7 @@ class EpisubSimulation(
         ),
     val decouplingParams: List<Decoupling> = listOf(
         Decoupling.Coupled,
-        Decoupling.DecoupledManyTopics,
+//        Decoupling.DecoupledManyTopics,
 //        Decoupling.DecoupledSingleTopic,
     ),
     val meshParams: List<MeshSimParams> = listOf(
@@ -71,13 +70,13 @@ class EpisubSimulation(
     val latencyParams: List<LatencyDistribution> =
         listOf(
             LatencyDistribution.createConst(10.milliseconds),
-//            LatencyDistribution.createConst(50.milliseconds),
-//            LatencyDistribution.createConst(100.milliseconds),
-//            LatencyDistribution.createUniformConst(10.milliseconds, 20.milliseconds),
-//            LatencyDistribution.createUniformConst(10.milliseconds, 50.milliseconds),
-//            LatencyDistribution.createUniformConst(10.milliseconds, 100.milliseconds),
-//            LatencyDistribution.createUniformConst(10.milliseconds, 200.milliseconds),
-//            awsLatencyDistribution
+            LatencyDistribution.createConst(50.milliseconds),
+            LatencyDistribution.createConst(100.milliseconds),
+            LatencyDistribution.createUniformConst(10.milliseconds, 20.milliseconds),
+            LatencyDistribution.createUniformConst(10.milliseconds, 50.milliseconds),
+            LatencyDistribution.createUniformConst(10.milliseconds, 100.milliseconds),
+            LatencyDistribution.createUniformConst(10.milliseconds, 200.milliseconds),
+            awsLatencyDistribution
         ),
 //        listOf(awsLatencyDistribution),
 
@@ -163,10 +162,10 @@ class EpisubSimulation(
         val maliciousPeerManager: MaliciousPeerManager
     )
 
-    fun createBlobScenario(simParams: SimParams): EpisubScenario {
+    fun createBlobScenario(simParams: SimParams, logger: SimulationLogger): EpisubScenario {
         var maliciousPeerManager: MaliciousPeerManager? = null // TODO fix dirty stuff
         val blobDecouplingScenario = BlobDecouplingScenario(
-//                logger = {},
+            logger = logger,
             blockSize = blockSize,
             blobSize = blobSize,
             sendingPeerFilter = {
@@ -201,21 +200,17 @@ class EpisubSimulation(
     }
 
     fun runAndPrint() {
-        val results = run(paramsSet)
+        val results = SimulationRunner<SimParams, RunResult> { params, logger ->
+            run(params, logger)
+        }.runAll(paramsSet)
         printResults(paramsSet.zip(results).toMap())
     }
 
-    fun run(paramsSet: List<SimParams>): List<RunResult> =
-        paramsSet.mapIndexed { idx, params ->
-            log("Running ${idx + 1} of ${paramsSet.size}: $params")
-            run(params)
-        }
-
-    fun run(params: SimParams): RunResult {
-        val (scenario, maliciousPeerManager) = createBlobScenario(params)
+    fun run(params: SimParams, logger: SimulationLogger): RunResult {
+        val (scenario, maliciousPeerManager) = createBlobScenario(params, logger)
 
 
-        println("Worming up choking...")
+        logger("Worming up choking...")
         repeat(chokeWarmupMessageCount) {
             scenario.testSingle(params.decoupling, it)
         }
@@ -232,7 +227,7 @@ class EpisubSimulation(
         scenario.simulation.clearAllMessages()
 
         maliciousPeerManager.propagateMessages = false
-        println("Sending test messages...")
+        logger("Sending test messages...")
         repeat(testMessageCount) { sendingPeerIndex ->
 
 //            val sendingPeer = scenario.simulation.network.peers[scenario.sendingPeerIndexes[sendingPeerIndex]]!!

@@ -9,7 +9,7 @@ import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 import kotlin.time.Duration
 
-private val LOG_TIME_FORMAT = SimpleDateFormat("hh:mm:ss.SSS")
+val LOG_TIME_FORMAT = SimpleDateFormat("hh:mm:ss.SSS")
 
 fun log(s: String) {
     println("[${LOG_TIME_FORMAT.format(Date())}] $s")
