@@ -54,7 +54,8 @@ class EpisubSimulation(
         ),
     val decouplingParams: List<Decoupling> = listOf(
         Decoupling.Coupled,
-        Decoupling.FullyDecoupled
+        Decoupling.DecoupledManyTopics,
+//        Decoupling.DecoupledSingleTopic,
     ),
     val meshParams: List<MeshSimParams> = listOf(
 //        MeshSimParams(PubsubProtocol.Gossip_V_1_1, 2),
@@ -113,7 +114,7 @@ class EpisubSimulation(
     val testMessageCount: Int = 10
 ) {
 
-    enum class Decoupling { Coupled, FullyDecoupled }
+    enum class Decoupling { Coupled, DecoupledManyTopics, DecoupledSingleTopic }
 
     data class MeshSimParams(
         val gossipVersion: PubsubProtocol,
@@ -215,7 +216,8 @@ class EpisubSimulation(
 
         fun run(sendingPeerIndex: Int) = when (params.decoupling) {
             Decoupling.Coupled -> scenario.testCoupledSingle(sendingPeerIndex)
-            Decoupling.FullyDecoupled -> scenario.testAllDecoupledSingle(sendingPeerIndex)
+            Decoupling.DecoupledManyTopics -> scenario.testAllDecoupledSingle(sendingPeerIndex)
+            Decoupling.DecoupledSingleTopic -> scenario.testAllDecoupledOneTopicSingle(sendingPeerIndex)
         }
 
         println("Worming up choking...")

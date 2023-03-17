@@ -145,4 +145,25 @@ class BlobDecouplingScenario(
         logger("All messages delivered in $t2")
         simulation.forwardTimeUntilNoPendingMessages()
     }
+
+    fun testAllDecoupledOneTopic(methodMessageCount: Int = messageCount) {
+        for (i in 0 until methodMessageCount) {
+            testAllDecoupledOneTopicSingle(i)
+        }
+    }
+
+    fun testAllDecoupledOneTopicSingle(sendingPeerIndex: Int) {
+        val sendingPeer = sendingPeerIndexes[sendingPeerIndex]
+        logger("Sending message from peer $sendingPeer")
+        simulation.publishMessage(sendingPeer, blockSize, blockTopic)
+        (0 until blobCount).forEach {
+            simulation.publishMessage(sendingPeer, blobSize, blockTopic)
+        }
+
+        val t1 = simulation.network.timeController.time
+        simulation.forwardTimeUntilAllPubDelivered(maxDuration = 3.minutes)
+        val t2 = simulation.currentTimeSupplier() - t1
+        logger("All messages delivered in $t2")
+        simulation.forwardTimeUntilNoPendingMessages()
+    }
 }
