@@ -1,5 +1,6 @@
 package io.libp2p.core.multiformats
 
+import io.ipfs.multibase.Multibase
 import io.ipfs.multibase.binary.Base32
 import io.libp2p.core.PeerId
 import io.libp2p.etc.encode.Base58
@@ -49,6 +50,8 @@ enum class Protocol(
     ONION(444, 96, "onion", ONION_PARSER, ONION_STRINGIFIER),
     QUIC(460, 0, "quic"),
     QUICV1(461, 0, "quic-v1"),
+    WEBTRANSPORT(465, 0, "webtransport"),
+    CERTHASH(466, LENGTH_PREFIXED_VAR_SIZE, "certhash", BASE64_PARSER, BASE64_STRINGIFIER),
     WS(477, 0, "ws"),
     WSS(478, 0, "wss"),
     P2PCIRCUIT(290, 0, "p2p-circuit"),
@@ -181,6 +184,12 @@ private val BASE58_PARSER: (Protocol, String) -> ByteArray = { _, addr ->
 }
 private val BASE58_STRINGIFIER: (Protocol, ByteArray) -> String = { _, bytes ->
     Base58.encode(bytes)
+}
+private val BASE64_PARSER: (Protocol, String) -> ByteArray = { _, addr ->
+    Multibase.decode(addr)
+}
+private val BASE64_STRINGIFIER: (Protocol, ByteArray) -> String = { _, bytes ->
+    Multibase.encode(Multibase.Base.Base64Url, bytes)
 }
 private val ONION_PARSER: (Protocol, String) -> ByteArray = { _, addr ->
     val split = addr.split(":")
