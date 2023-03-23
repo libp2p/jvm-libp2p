@@ -101,3 +101,6 @@ fun gcd(arr: List<Int>): Int {
     }
     return result
 }
+
+fun Int.increasingSequence() = generateSequence({ this }, { it + 1 })
+

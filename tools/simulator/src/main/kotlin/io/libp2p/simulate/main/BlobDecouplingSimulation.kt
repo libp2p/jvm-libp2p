@@ -1,162 +1,216 @@
 package io.libp2p.simulate.main
 
+import io.libp2p.pubsub.PubsubProtocol
+import io.libp2p.pubsub.gossip.choke.ChokeStrategyPerTopic
+import io.libp2p.pubsub.gossip.choke.SimpleTopicChokeStrategy
 import io.libp2p.simulate.Bandwidth
+import io.libp2p.simulate.RandomDistribution
 import io.libp2p.simulate.bandwidthDistribution
+import io.libp2p.simulate.delay.latency.LatencyDistribution
 import io.libp2p.simulate.gossip.Eth2DefaultGossipParams
 import io.libp2p.simulate.gossip.GossipSimulation
+import io.libp2p.simulate.gossip.router.SimGossipRouterBuilder
 import io.libp2p.simulate.main.scenario.BlobDecouplingScenario
 import io.libp2p.simulate.main.scenario.Decoupling
+import io.libp2p.simulate.main.scenario.MaliciousPeerManager
+import io.libp2p.simulate.main.scenario.ResultPrinter
 import io.libp2p.simulate.mbitsPerSecond
 import io.libp2p.simulate.stats.GroupByRangeAggregator
 import io.libp2p.simulate.stats.Stats
 import io.libp2p.simulate.stats.StatsFactory
 import io.libp2p.simulate.stats.collect.gossip.GossipMessageResult
 import io.libp2p.simulate.stats.collect.gossip.getGossipPubDeliveryResult
+import io.libp2p.simulate.util.ReadableSize
 import io.libp2p.simulate.util.byIndexes
+import io.libp2p.simulate.util.cartesianProduct
 import io.libp2p.simulate.util.countValues
 import io.libp2p.tools.log
+import java.security.DrbgParameters.NextBytes
+import java.util.Random
+import kotlin.math.max
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 fun main() {
-    BlobDecouplingSimulation().run()
+    BlobDecouplingSimulation().runAndPrint()
 }
 
 
-class BlobDecouplingSimulation() {
+class BlobDecouplingSimulation(
+    val nodeCount: Int = 1000,
+    val nodePeerCount: Int = 30,
+    val randomSeed: Long = 0L,
+    val testMessageCount: Int = 5,
+    val floodPublish: Boolean = false,
 
-    fun printResults(simulation: GossipSimulation) {
-        log("Gathering results...")
+    val sendingPeerBandwidth: Bandwidth = 100.mbitsPerSecond,
+    val bandwidthsParams: List<RandomDistribution<Bandwidth>> =
+//        listOf(RandomDistribution.const(sendingPeerBandwidth)),
+        bandwidthDistributions.byIndexes(2),
+    val decouplingParams: List<Decoupling> = listOf(
+        Decoupling.Coupled,
+        Decoupling.DecoupledManyTopics,
+//        Decoupling.DecoupledSingleTopic,
+    ),
+    val latencyParams: List<LatencyDistribution> =
+        listOf(
+            LatencyDistribution.createUniformConst(1.milliseconds, 50.milliseconds)
+//            LatencyDistribution.createConst(10.milliseconds),
+//            LatencyDistribution.createConst(50.milliseconds),
+//            LatencyDistribution.createConst(100.milliseconds),
+//            LatencyDistribution.createConst(150.milliseconds),
+//            LatencyDistribution.createConst(200.milliseconds),
+//            LatencyDistribution.createUniformConst(10.milliseconds, 20.milliseconds),
+//            LatencyDistribution.createUniformConst(10.milliseconds, 50.milliseconds),
+//            LatencyDistribution.createUniformConst(10.milliseconds, 100.milliseconds),
+//            LatencyDistribution.createUniformConst(10.milliseconds, 200.milliseconds),
+//            awsLatencyDistribution
+        ),
+//        listOf(awsLatencyDistribution),
 
-        val messageDelayStats = gatherMessageDelayStats(simulation)
-        log("Results:")
-        log("Delivery stats: $messageDelayStats")
+    val validationDelayParams: List<RandomDistribution<Duration>> =
+//        listOf(RandomDistribution.const(10.milliseconds)),
+        listOf(
+            RandomDistribution.const(10.milliseconds),
+//            RandomDistribution.discreteEven(
+//                70.milliseconds to 33,
+//                50.milliseconds to 33,
+//                20.milliseconds to 33
+//            ),
+//            RandomDistribution.discreteEven(
+//                300.milliseconds to 33,
+//                100.milliseconds to 33,
+//                10.milliseconds to 33
+//            ),
+//            RandomDistribution.uniform(10, 40).milliseconds(),
+//            RandomDistribution.uniform(10, 100).milliseconds(),
+//            RandomDistribution.uniform(10, 300).milliseconds(),
+//            RandomDistribution.uniform(10, 600).milliseconds(),
+        ),
 
-        val messagesResult = simulation.gossipMessageCollector.gatherResult()
-        log(
-            "Network stats: msgCount: ${messagesResult.getTotalMessageCount()}, " +
-                "msgsSize: ${messagesResult.getTotalTraffic()}"
+    val blockConfigs: List<BlockConfig> = listOf(
+        BlockConfig.ofKilobytes(128, 128, 4)
+    ),
+
+    val paramsSet: List<SimParams> =
+        cartesianProduct(
+            bandwidthsParams,
+            latencyParams,
+            validationDelayParams,
+            decouplingParams,
+            blockConfigs
+        ) {
+            SimParams(it.first, it.second, it.third, it.fourth, it.fifth)
+        },
+
+    ) {
+
+    data class BlockConfig(
+        val blockSize: Int,
+        val blobSize: Int,
+        val blobCount: Int,
+    ) {
+        override fun toString() =
+            "BlockConfig[${ReadableSize.create(blockSize)} + ${ReadableSize.create(blobSize)} * $blobCount]"
+
+        companion object {
+            fun ofKilobytes(blockKBytes: Int, blobKBytes: Int, blobCount: Int) =
+                BlockConfig(blockKBytes * 1024, blobKBytes * 1024, blobCount)
+        }
+    }
+
+    data class SimParams(
+        val bandwidth: RandomDistribution<Bandwidth>,
+        val latency: LatencyDistribution,
+        val validationDelays: RandomDistribution<Duration>,
+        val decoupling: Decoupling,
+        val blockConfig: BlockConfig
+    )
+
+    data class RunResult(
+        val messages: GossipMessageResult
+    ) {
+        val deliveryResult =
+            messages.getGossipPubDeliveryResult().aggregateSlowestByPublishTime()
+    }
+
+    fun createBlobScenario(simParams: SimParams, logger: SimulationLogger = { log(it) }): BlobDecouplingScenario =
+        BlobDecouplingScenario(
+            logger = logger,
+            blockSize = simParams.blockConfig.blockSize,
+            blobSize = simParams.blockConfig.blobSize,
+            blobCount = simParams.blockConfig.blobCount,
+
+            sendingPeerBand = sendingPeerBandwidth,
+            messageCount = testMessageCount,
+            nodeCount = nodeCount,
+            nodePeerCount = nodePeerCount,
+            peerBands = simParams.bandwidth,
+            latency = simParams.latency,
+            gossipParams = Eth2DefaultGossipParams.copy(
+                floodPublish = floodPublish,
+            ),
+            peerMessageValidationDelays = simParams.validationDelays,
         )
+
+    fun runAndPrint() {
+        val results = SimulationRunner<SimParams, RunResult> { params, logger ->
+            run(params, logger)
+        }.runAll(paramsSet)
+        printResults(paramsSet.zip(results).toMap())
     }
 
-    fun gatherMessageDelayStats(simulation: GossipSimulation): Stats {
-        val allMessageDelays = simulation
-            .gossipMessageCollector
-            .gatherResult()
-            .getGossipPubDeliveryResult()
-            .aggregateSlowestByPublishTime()
-            .deliveryDelays
-        return StatsFactory.DEFAULT.createStats(allMessageDelays)
-    }
-
-    fun getGossipStats(results: GossipMessageResult): String {
-        val graftMsgCount = results.graftMessages.size
-        val pruneMsgCount = results.pruneMessages.size
-        val iHaveMsgCount = results.iHaveMessages.size
-        val iWantMsgCount = results.iWantMessages.size
-        val pubMsgCount = results.publishMessages.size
-        val rawMsgCount = results.messages.size
-        return "GossipMessagesStats: Total raw: $rawMsgCount, " +
-            "Total parts: ${pubMsgCount + graftMsgCount + pruneMsgCount + iHaveMsgCount + iWantMsgCount}, " +
-            "PUBLISH: $pubMsgCount, GRAFT: $graftMsgCount, PRUNE: $pruneMsgCount, IHAVE: $iHaveMsgCount, IWANT: $iWantMsgCount"
-    }
-
-    fun printGossipDetailedResults(simulation: GossipSimulation) {
-        val simNetwork = simulation.network
-        val gossipMessages = simulation.gossipMessageCollector.gatherResult()
-
-        println("IWANT messages count: " + gossipMessages.iWantMessages.size)
-
-        val slowestMessage = gossipMessages.receivedPublishMessagesByPeerFastest
-            .values
-            .flatten()
-            .maxByOrNull { it.origMsg.receiveTime }!!
-        println("The longest message: $slowestMessage")
-
-        val longestPath =
-            gossipMessages.findPubMessagePath(slowestMessage.origMsg.receivingPeer, slowestMessage.simMsgId)
-        println("Longest path (${longestPath.size} hops): \n  " + longestPath.joinToString("\n  "))
-
-        val fastestMessage = gossipMessages.receivedPublishMessagesByPeerFastest
-            .values
-            .flatten()
-            .minByOrNull { it.origMsg.receiveTime }!!
-        println("The fastest message: $fastestMessage")
-        val peer0PubOutbounds = gossipMessages.publishMessages
-            .filter { it.origMsg.sendingPeer == simNetwork.peers[0] }
-        println("Peer 0 outbounds: \n" + peer0PubOutbounds.joinToString("\n").prependIndent("  "))
-
-        val peer0AllOutbounds = gossipMessages.messages
-            .filter { it.sendingPeer == simNetwork.peers[0] }
-            .map { it to simulation.cfg.messageGenerator.sizeEstimator(it.message) }
-        println("Peer 0 all outbounds: \n" + peer0AllOutbounds.joinToString("\n").prependIndent("  "))
-
-        simNetwork.peers.values.flatMap {
-            it.router.mesh.map { (topic, peers) -> topic to peers.size }
-        }
-            .groupBy({ it.first }, { it.second })
-            .also {
-                println("Mesh sizes: ")
-                it.forEach { (topic, meshSizes) ->
-                    println("  [$topic]: " + meshSizes.countValues().toSortedMap())
+    private fun printResults(res: Map<SimParams, RunResult>) {
+        val printer = ResultPrinter(res).apply {
+            addNumberStats { it.deliveryResult.deliveryDelays }
+                .apply {
+                    addGeneric("count") { it.size }
+                    addLong("min") { it.min }
+                    addLong("5%") { it.getPercentile(5.0) }
+                    addLong("50%") { it.getPercentile(50.0) }
+                    addLong("95%") { it.getPercentile(95.0) }
+                    addLong("max") { it.max }
                 }
+            addMetric("msgCount") { it.messages.getTotalMessageCount() }
+            addMetric("traffic") { it.messages.getTotalTraffic() }
+            addMetric("publishCount") { it.messages.publishMessages.size }
+            addMetric("iWantCount") { it.messages.iWantMessages.size }
+            addMetric("iWantDeliveryCount") { res ->
+                res.deliveryResult.deliveries
+                    .count { res.messages.isByIWantPubMessage(it.origGossipMsg) }
             }
+            addMetric("iWantPublishCount") { res ->
+                res.messages.publishMessages
+                    .count { res.messages.isByIWantPubMessage(it) }
+            }
+        }
 
-        println("Peer0 meshes: " + simNetwork.peers[0]!!.router.mesh.mapValues { it.value.size })
+        log("Results:")
+        println(printer.printPretty())
+//        println()
+//        println("Ranged delays:")
+//        println("======================")
+//        println(printer
+//            .createRangedLongStats { it.deliveryResult.deliveryDelays }
+//            .apply {
+//                minValue = 0
+//                rangeSize = 50
+//            }
+//            .printTabSeparated()
+//        )
+        log("Done.")
     }
 
-    fun run() {
-        val bandwidths = bandwidthDistributions.byIndexes(2)
-        val slowBandwidth = Bandwidth.mbitsPerSec(10)
+    fun run(params: SimParams, logger: SimulationLogger): RunResult {
+        val scenario = createBlobScenario(params, logger)
 
-        bandwidths.forEach { band ->
-            fun getResults(sim: BlobDecouplingScenario): String {
-                val messageDelayStats = gatherMessageDelayStats(sim.simulation).getStatisticalSummary()
-                val messagesResult = sim.simulation.gossipMessageCollector.gatherResult()
-                return "${messageDelayStats.min.toLong()}\t" +
-                        "${messageDelayStats.mean.toLong()}\t" +
-                        "${messageDelayStats.max.toLong()}\t" +
-                        "${messagesResult.messages.size}\t" +
-                        "${messagesResult.getTotalTraffic()}"
-            }
+        scenario.simulation.clearAllMessages()
 
-            fun getRangedDelays(sim: BlobDecouplingScenario): GroupByRangeAggregator {
-                val groupedDelays = sim.simulation.gatherPubDeliveryStats()
-                    .aggregateSlowestByPublishTime()
-                    .groupBy {
-                        if (it.toPeer.inboundBandwidth.totalBandwidth == slowBandwidth)
-                            "Slow" else "Fast"
-                    }
-                    .mapValues { it.value.deliveryDelays }
-                return GroupByRangeAggregator(groupedDelays)
-            }
+        logger("Sending test messages...")
+        scenario.test(params.decoupling, testMessageCount)
 
-            fun createSimulation() =
-                BlobDecouplingScenario(
-//                logger = {},
-                    nodeCount = 1000,
-                    peerBands = band,
-                    gossipParams = Eth2DefaultGossipParams.copy(
-                        floodPublish = false
-                    )
-//                randomSeed = 2
-                )
-
-            val coupledDelays = createSimulation().let {
-                it.test(Decoupling.Coupled)
-                println("$band\tCoupled\t${getResults(it)}\n")
-                getRangedDelays(it)
-            }
-
-            val decoupledDelays = createSimulation().let {
-                it.test(Decoupling.DecoupledManyTopics)
-                println("$band\tDecoupled\t${getResults(it)}\n")
-                getRangedDelays(it)
-            }
-
-            (coupledDelays.withMappedNames { "Coupled $it" } + decoupledDelays.withMappedNames { "Decoupled $it" })
-                .aggregate(20)
-                .formatToString()
-                .also { println(it) }
-        }
+        return RunResult(scenario.simulation.gossipMessageCollector.gatherResult())
     }
 
     companion object {
