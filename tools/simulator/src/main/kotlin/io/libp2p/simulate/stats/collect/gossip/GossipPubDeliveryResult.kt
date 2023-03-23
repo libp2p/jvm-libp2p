@@ -81,7 +81,7 @@ class GossipPubDeliveryResult(
 
         fun fromGossipMessageResult(gossipMessageResult: GossipMessageResult): GossipPubDeliveryResult {
             val fastestReceives =
-                gossipMessageResult.receivedPublishMessagesByPeerFastest.values.flatten()
+                gossipMessageResult.receivedPublishMessagesByPeerFastest().values.flatten()
             val orinatingMessages =
                 gossipMessageResult.originatingPublishMessages.mapValues { (_, msg) ->
                     MessagePublish(
@@ -104,6 +104,20 @@ class GossipPubDeliveryResult(
                 .filter { it.toPeer != it.initialPublishMsg.fromPeer }
                 .let { GossipPubDeliveryResult(it) }
         }
+
+        private fun GossipMessageResult.receivedPublishMessagesByPeerFastest() =
+            this.peerReceivedMessages.mapValues { (_, msgs) ->
+                msgs
+                    .publishMessages
+                    .groupBy { it.simMsgId }
+                    .values
+                    .map { idMsgs ->
+                        idMsgs.minByOrNull { it.origMsg.receiveTime }
+                    }
+                    .filterNotNull()
+            }
+
+
     }
 }
 

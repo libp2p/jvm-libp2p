@@ -11,7 +11,7 @@ import pubsub.pb.Rpc
 typealias GossipMessageId = MessageId
 typealias SimMessageId = Long
 
-class GossipMessageResult(
+data class GossipMessageResult(
     val messages: List<CollectedMessage<Rpc.RPC>>,
     private val msgGenerator: GossipPubMessageGenerator,
     private val gossipMessageIdGenerator: GossipMessageIdGenerator
@@ -145,44 +145,37 @@ class GossipMessageResult(
             .sortedBy { it.origMsg.sendTime }
     }
 
-    val receivedPublishMessagesByPeer by lazy {
-        publishMessages.groupBy { it.origMsg.receivingPeer }
+    val peerReceivedMessages by lazy {
+        messages.groupBy { it.receivingPeer }
+            .mapValues { (_, msgs) ->
+                copyWithMessages(msgs)
+            }
     }
-    val receivedPublishMessagesByPeerFastest by lazy {
-        receivedPublishMessagesByPeer.mapValues { (_, msgs) ->
-            msgs
-                .groupBy { it.simMsgId }
-                .values
-                .map { idMsgs ->
-                    idMsgs.minByOrNull { it.origMsg.receiveTime }
-                }
-                .filterNotNull()
-        }
-    }
-    val sentPublishMessagesByPeer by lazy {
-        publishMessages.groupBy { it.origMsg.sendingPeer }
+    val peerSentMessages by lazy {
+        messages.groupBy { it.sendingPeer }
+            .mapValues { (_, msgs) ->
+                copyWithMessages(msgs)
+            }
     }
 
     val allPeers by lazy {
-        messages.flatMap { listOf(it.sendingPeer, it.receivingPeer) }.toSet()
+        peerSentMessages.keys + peerReceivedMessages.keys
     }
 
     fun slice(startTime: Long, endTime: Long = Long.MAX_VALUE): GossipMessageResult =
-        GossipMessageResult(
-            messages.filter { it.sendTime in (startTime until endTime) },
-            msgGenerator,
-            gossipMessageIdGenerator
+        copyWithMessages(
+            messages.filter { it.sendTime in (startTime until endTime) }
         )
 
     fun <K> groupBy(keySelectror: (CollectedMessage<Rpc.RPC>) -> K): Map<K, GossipMessageResult> =
         messages
             .groupBy { keySelectror(it) }
-            .mapValues { GossipMessageResult(it.value, msgGenerator, gossipMessageIdGenerator) }
+            .mapValues { copyWithMessages(it.value) }
 
     fun filter(predicate: (CollectedMessage<Rpc.RPC>) -> Boolean): GossipMessageResult =
         messages
             .filter(predicate)
-            .let { GossipMessageResult(it, msgGenerator, gossipMessageIdGenerator) }
+            .let { copyWithMessages(it) }
 
     fun findPubMessagePath(peer: SimPeer, msgId: Long): List<PubMessageWrapper> {
         val ret = mutableListOf<PubMessageWrapper>()
@@ -202,26 +195,30 @@ class GossipMessageResult(
             .minByOrNull { it.origMsg.receiveTime }
 
     fun getPeerGossipMessages(peer: SimPeer) =
-        allGossipMessages
-            .filter { peer in setOf(it.origMsg.sendingPeer, it.origMsg.receivingPeer) }
-            .sortedBy { if (it.origMsg.sendingPeer == peer) it.origMsg.sendTime else it.origMsg.receiveTime }
+        getPeerMessages(peer).allGossipMessages
 
     fun getPeerMessages(peer: SimPeer) =
-        messages
-            .filter { peer in setOf(it.sendingPeer, it.receivingPeer) }
+        ((peerReceivedMessages[peer]?.messages ?: emptyList()) +
+                (peerSentMessages[peer]?.messages ?: emptyList()))
             .sortedBy { if (it.sendingPeer == peer) it.sendTime else it.receiveTime }
+            .let { copyWithMessages(it) }
+
 
     fun isByIWantPubMessage(msg: PubMessageWrapper): Boolean =
-        iWantMessages.any { iWantMsg ->
-            iWantMsg.origMsg.sendingPeer == msg.origMsg.receivingPeer &&
-                    iWantMsg.origMsg.receivingPeer == msg.origMsg.sendingPeer &&
-                    msg.simMsgId in iWantMsg.simMsgIds &&
-                    iWantMsg.origMsg.receiveTime <= msg.origMsg.sendTime
-        }
+        peerSentMessages[msg.origMsg.receivingPeer]!!
+            .iWantMessages
+            .any { iWantMsg ->
+                iWantMsg.origMsg.receivingPeer == msg.origMsg.sendingPeer &&
+                        msg.simMsgId in iWantMsg.simMsgIds &&
+                        iWantMsg.origMsg.receiveTime <= msg.origMsg.sendTime
+            }
 
 
     fun getTotalTraffic() = messages
         .sumOf { msgGenerator.sizeEstimator(it.message) }
 
     fun getTotalMessageCount() = messages.size
+
+    private fun copyWithMessages(messages: List<CollectedMessage<Rpc.RPC>>) =
+        this.copy(messages = messages)
 }
