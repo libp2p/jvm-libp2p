@@ -27,6 +27,7 @@ import java.util.Random
 import kotlin.math.max
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 fun main() {
     EpisubSimulation().runAndPrint()
@@ -36,8 +37,8 @@ enum class PeerHonesty { Honest, Malicious }
 
 class EpisubSimulation(
     val nodeCount: Int = 1000,
-    val blockSize: Int = 128 * 1024,
-    val blobSize: Int = 128 * 1024,
+//    val blockSize: Int = 188 * 1024,
+    val blobSize: Int = 1,
     val randomSeed: Long = 0L,
 
     val sendingPeerBandwidth: Bandwidth = 100.mbitsPerSecond,
@@ -61,22 +62,24 @@ class EpisubSimulation(
     val meshParams: List<MeshSimParams> = listOf(
 //        MeshSimParams(PubsubProtocol.Gossip_V_1_1, 2),
 //        MeshSimParams(PubsubProtocol.Gossip_V_1_1, 4),
-        MeshSimParams(PubsubProtocol.Gossip_V_1_1, 6),
-//        MeshSimParams(PubsubProtocol.Gossip_V_1_1, 8),
+//        MeshSimParams(PubsubProtocol.Gossip_V_1_1, 6),
+        MeshSimParams(PubsubProtocol.Gossip_V_1_1, 8),
 //        MeshSimParams(PubsubProtocol.Gossip_V_1_1, 12),
-        MeshSimParams(PubsubProtocol.Gossip_V_1_2, 8),
+//        MeshSimParams(PubsubProtocol.Gossip_V_1_2, 8),
     ),
 
     val latencyParams: List<LatencyDistribution> =
         listOf(
-            LatencyDistribution.createConst(10.milliseconds),
-            LatencyDistribution.createConst(50.milliseconds),
+//            LatencyDistribution.createConst(10.milliseconds),
+//            LatencyDistribution.createConst(50.milliseconds),
             LatencyDistribution.createConst(100.milliseconds),
-            LatencyDistribution.createUniformConst(10.milliseconds, 20.milliseconds),
-            LatencyDistribution.createUniformConst(10.milliseconds, 50.milliseconds),
-            LatencyDistribution.createUniformConst(10.milliseconds, 100.milliseconds),
-            LatencyDistribution.createUniformConst(10.milliseconds, 200.milliseconds),
-            awsLatencyDistribution
+//            LatencyDistribution.createConst(150.milliseconds),
+//            LatencyDistribution.createConst(200.milliseconds),
+//            LatencyDistribution.createUniformConst(10.milliseconds, 20.milliseconds),
+//            LatencyDistribution.createUniformConst(10.milliseconds, 50.milliseconds),
+//            LatencyDistribution.createUniformConst(10.milliseconds, 100.milliseconds),
+//            LatencyDistribution.createUniformConst(10.milliseconds, 200.milliseconds),
+//            awsLatencyDistribution
         ),
 //        listOf(awsLatencyDistribution),
 
@@ -100,6 +103,12 @@ class EpisubSimulation(
 //            RandomDistribution.uniform(10, 600).milliseconds(),
         ),
 
+    val blockSizes: List<Int> = listOf(
+        300 * 1024,
+        700 * 1024,
+        2000 * 1024
+    ),
+
     val paramsSet: List<SimParams> =
         cartesianProduct(
             decouplingParams,
@@ -107,11 +116,12 @@ class EpisubSimulation(
             validationDelayParams,
             latencyParams,
             meshParams,
-            maliciousPeersParams
+//            maliciousPeersParams,
+            blockSizes
         ) {
-            SimParams(it.second, it.third, it.fourth, it.first, it.fifth.gossipVersion, it.fifth.D, it.sixth)
+            SimParams(it.second, it.third, it.fourth, it.first, it.fifth.gossipVersion, it.fifth.D, maliciousPeersParams[0], it.sixth)
         },
-    val chokeWarmupMessageCount: Int = 10,
+    val chokeWarmupMessageCount: Int = 0,
     val testMessageCount: Int = 10
 ) {
 
@@ -127,7 +137,8 @@ class EpisubSimulation(
         val decoupling: Decoupling,
         val gossipVersion: PubsubProtocol,
         val D: Int,
-        val honestPeers: RandomDistribution<PeerHonesty>
+        val honestPeers: RandomDistribution<PeerHonesty>,
+        val blockSize: Int
     )
 
     data class PeerChokeResult(
@@ -166,7 +177,7 @@ class EpisubSimulation(
         var maliciousPeerManager: MaliciousPeerManager? = null // TODO fix dirty stuff
         val blobDecouplingScenario = BlobDecouplingScenario(
             logger = logger,
-            blockSize = blockSize,
+            blockSize = simParams.blockSize,
             blobSize = blobSize,
             sendingPeerFilter = {
                 it.outboundBandwidth.totalBandwidth == sendingPeerBandwidth &&
@@ -174,10 +185,11 @@ class EpisubSimulation(
             },
             messageCount = 1,
             nodeCount = nodeCount,
+            nodePeerCount = 50,
             peerBands = simParams.bandwidths,
             latency = simParams.latency,
             gossipParams = Eth2DefaultGossipParams.copy(
-                floodPublish = false,
+                floodPublish = true,
                 D = simParams.D,
                 DLow = max(1, simParams.D - 2),
                 DHigh = simParams.D + 2,
@@ -334,6 +346,18 @@ class EpisubSimulation(
         println("\n\nTab separated results:")
         println("======================")
         println(printer.printTabSeparated())
+        println()
+        println("Ranged delays:")
+        println("======================")
+        println(printer
+            .createRangedLongStats { it.deliveryDelays }
+            .also {
+                it.minValue = 0
+                it.maxValue = 30.seconds.inWholeMilliseconds
+                it.rangeSize = 50
+            }
+            .printTabSeparated()
+        )
     }
 
     companion object {
