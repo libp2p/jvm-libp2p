@@ -1,11 +1,9 @@
 package io.libp2p.simulate.main.scenario
 
 import io.libp2p.simulate.main.EpisubSimulation
+import io.libp2p.simulate.stats.GroupByRangeAggregator
 import io.libp2p.simulate.stats.StatsFactory
-import io.libp2p.simulate.util.Table
-import io.libp2p.simulate.util.plus
-import io.libp2p.simulate.util.propertiesAsMap
-import io.libp2p.simulate.util.toString
+import io.libp2p.simulate.util.*
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics
 
 class ResultPrinter<TParams : Any, TResult : Any>(
@@ -47,6 +45,45 @@ class ResultPrinter<TParams : Any, TResult : Any>(
             }
     }
 
+    inner class RangedNumberStats(
+        val nums: NumberStats<Long>
+    ) {
+        var minValue: Long? = null
+        var maxValue: Long? = null
+        var rangeSize: Long? = null
+        var paramsFilter: (TParams) -> Boolean = { true }
+        var printRangeStartOnly = true
+
+        val numbers by lazy {
+            paramsAndResults
+                .filter { paramsFilter(it.first) }
+                .map { it.first to nums.extractor(it.second) }
+                .toMap()
+        }
+
+        fun printTabSeparated(printHeader: Boolean = true): String {
+            check(rangeSize != null)
+            val rangeAggregator = GroupByRangeAggregator(
+                numbers.mapKeys { (k, _) -> k.toString() }
+            )
+
+            val aggregate = rangeAggregator.aggregate(
+                rangeSize!!,
+                (minValue ?: rangeAggregator.minValue)..(maxValue ?: rangeAggregator.maxValue)
+            )
+
+            val dataS = aggregate.formatToString(printRangeStartOnly, printSeriesColumnHeaders = false)
+
+            if (printHeader) {
+                val headerS = varyingParams.transposed().print(printColumnHeaders = false)
+                return headerS + "\n" + dataS
+            } else {
+                return dataS
+            }
+
+        }
+    }
+
     inner class Metric(
         val name: String,
         val extractor: (TResult) -> Any
@@ -72,6 +109,9 @@ class ResultPrinter<TParams : Any, TResult : Any>(
                     varyingParams.columnNames.map { it as String }
         ).transposed()
 
+
+    fun createRangedLongStats(extractor: (TResult) -> List<Long>) =
+        RangedNumberStats(NumberStats("", extractor))
 
     fun <R : Any> addMetric(name: String, extractor: (TResult) -> R) {
         metrics += Metric(name, extractor)
