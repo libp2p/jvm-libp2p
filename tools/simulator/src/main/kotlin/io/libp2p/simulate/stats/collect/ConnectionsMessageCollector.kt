@@ -1,10 +1,7 @@
 package io.libp2p.simulate.stats.collect
 
 import io.libp2p.pubsub.gossip.CurrentTimeSupplier
-import io.libp2p.simulate.Network
-import io.libp2p.simulate.SimChannelMessageVisitor
-import io.libp2p.simulate.SimConnection
-import io.libp2p.simulate.SimPeer
+import io.libp2p.simulate.*
 import java.util.*
 
 open class ConnectionsMessageCollector<MessageT>(
@@ -40,13 +37,14 @@ open class ConnectionsMessageCollector<MessageT>(
                         stream.streamInitiatorPeer,
                         timeSupplier(),
                         Long.MAX_VALUE,
+                        EMPTY_DELAY_DATA,
                         message
                     )
                 }
-                override fun onInbound(message: Any) {
+                override fun onInbound(message: Any, delayData: DelayData) {
                     val sentMessage = pendingMessageMap.remove(message as MessageT)
                         ?: throw IllegalStateException("Pending message not found for message $message at ${timeSupplier()}")
-                    deliveredMessagesWrite += sentMessage.copy(receiveTime = timeSupplier())
+                    deliveredMessagesWrite += sentMessage.copy(receiveTime = timeSupplier(), delayData = delayData)
                 }
             }
 
@@ -58,16 +56,21 @@ open class ConnectionsMessageCollector<MessageT>(
                         stream.streamAcceptorPeer,
                         timeSupplier(),
                         Long.MAX_VALUE,
+                        EMPTY_DELAY_DATA,
                         message
                     )
                 }
-                override fun onInbound(message: Any) {
+                override fun onInbound(message: Any, delayData: DelayData) {
                     val sentMessage = pendingMessageMap.remove(message as MessageT)
                         ?: throw IllegalStateException("Pending message not found for message $message at ${timeSupplier()}")
-                    deliveredMessagesWrite += sentMessage.copy(receiveTime = timeSupplier())
+                    deliveredMessagesWrite += sentMessage.copy(receiveTime = timeSupplier(), delayData = delayData)
                 }
             }
         }
+    }
+
+    companion object {
+        private val EMPTY_DELAY_DATA = DelayData(0, 0, 0, 0)
     }
 }
 
@@ -76,15 +79,17 @@ data class CollectedMessage<T>(
     val sendingPeer: SimPeer,
     val sendTime: Long,
     val receiveTime: Long,
+    val delayData: DelayData,
     val message: T
 ) {
     val delay get() = receiveTime - sendTime
     val receivingPeer get() = if (connection.dialer === sendingPeer) connection.listener else connection.dialer
 
     fun <R> withMessage(msg: R): CollectedMessage<R> =
-        CollectedMessage(connection, sendingPeer, sendTime, receiveTime, msg)
+        CollectedMessage(connection, sendingPeer, sendTime, receiveTime, delayData, msg)
 
+    fun delayDataToString() = "$delay=${delayData.wireDelay}+${delayData.latencyDelay}+max(${delayData.outboundBandwidthDelay}, ${delayData.inboundBandwidthDelay})"
     override fun toString(): String {
-        return "CollectedMessage[$sendingPeer => $receivingPeer, $sendTime --($delay)-> $receiveTime]"
+        return "CollectedMessage[$sendingPeer => $receivingPeer, $sendTime --(${delayDataToString()})-> $receiveTime]"
     }
 }

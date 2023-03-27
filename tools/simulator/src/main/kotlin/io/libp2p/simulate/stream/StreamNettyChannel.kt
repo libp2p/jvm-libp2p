@@ -1,20 +1,12 @@
 package io.libp2p.simulate.stream
 
 import io.libp2p.etc.types.lazyVar
+import io.libp2p.pubsub.gossip.CurrentTimeSupplier
 import io.libp2p.simulate.*
-import io.libp2p.simulate.delay.SequentialDelayer.Companion.sequential
-import io.libp2p.simulate.util.GeneralSizeEstimator
-import io.netty.channel.Channel
-import io.netty.channel.ChannelFuture
-import io.netty.channel.ChannelHandler
-import io.netty.channel.ChannelId
-import io.netty.channel.ChannelPromise
-import io.netty.channel.DefaultChannelPromise
-import io.netty.channel.EventLoop
+import io.libp2p.simulate.util.MsgSizeEstimator
+import io.netty.channel.*
 import io.netty.channel.embedded.EmbeddedChannel
 import io.netty.util.internal.ObjectUtil
-import java.util.concurrent.CompletableFuture
-import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 
 class StreamNettyChannel(
@@ -23,22 +15,24 @@ class StreamNettyChannel(
     override val isStreamInitiator: Boolean,
     val inboundBandwidth: BandwidthDelayer,
     val outboundBandwidth: BandwidthDelayer,
+    val executor: ScheduledExecutorService,
+    val currentTime: CurrentTimeSupplier,
+    val msgSizeEstimator: MsgSizeEstimator,
     vararg handlers: ChannelHandler?
 ) :
-    SimChannel, EmbeddedChannel(
-    SimChannelId(id),
-    *handlers
-) {
+    SimChannel,
+    EmbeddedChannel(
+        SimChannelId(id),
+        *handlers
+    ) {
 
     override val msgVisitors: MutableList<SimChannelMessageVisitor> = mutableListOf()
 
     var link: StreamNettyChannel? = null
-    var executor: ScheduledExecutorService by lazyVar { Executors.newSingleThreadScheduledExecutor() }
-    var currentTime: () -> Long = System::currentTimeMillis
-    var msgSizeEstimator = GeneralSizeEstimator
-    private var msgDelayer: MessageDelayer by lazyVar {
+
+    private var msgDelayer: CompositeMessageDelayer by lazyVar {
         createMessageDelayer(outboundBandwidth, MessageDelayer.NO_DELAYER, inboundBandwidth)
-            .sequential(executor)
+//            .sequential(executor)
     }
 
     fun setLatency(latency: MessageDelayer) {
@@ -49,16 +43,14 @@ class StreamNettyChannel(
         outboundBandwidthDelayer: BandwidthDelayer,
         connectionLatencyDelayer: MessageDelayer,
         inboundBandwidthDelayer: BandwidthDelayer,
-    ): MessageDelayer {
-        return MessageDelayer { size ->
-            CompletableFuture.allOf(
-                outboundBandwidthDelayer.delay(size)
-                    .thenCompose { connectionLatencyDelayer.delay(size) },
-                connectionLatencyDelayer.delay(size)
-                    .thenCompose { inboundBandwidthDelayer.delay(size) }
-            ).thenApply { }
-        }
-            .sequential(executor)
+    ): CompositeMessageDelayer {
+        return CompositeMessageDelayer(
+            outboundBandwidthDelayer,
+            connectionLatencyDelayer,
+            inboundBandwidthDelayer,
+            executor,
+            currentTime
+        )
     }
 
     @Synchronized
@@ -67,16 +59,6 @@ class StreamNettyChannel(
             send(other, outboundMessages().poll())
         }
         link = other
-    }
-
-    override fun writeInbound(vararg msgs: Any): Boolean {
-        msgVisitors.forEach { visitor ->
-            msgs.forEach { msg ->
-                visitor.onInbound(msg)
-            }
-        }
-
-        return super.writeInbound(*msgs)
     }
 
     @Synchronized
@@ -94,12 +76,11 @@ class StreamNettyChannel(
         val size = msgSizeEstimator(msg)
         val delay = msgDelayer.delay(size)
 
-        val sendNow: () -> Unit = {
+        delay.thenApply { delayData ->
+            other.executor.execute {
+                msgVisitors.forEach { it.onInbound(msg, delayData) }
+            }
             other.writeInbound(msg)
-        }
-
-        delay.thenApply {
-            other.executor.execute(sendNow)
         }
 
 //        // this prevents message reordering

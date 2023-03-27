@@ -14,7 +14,14 @@ interface SimChannel {
     val msgVisitors: MutableList<SimChannelMessageVisitor>
 }
 
+data class DelayData(
+    val wireDelay: Long,
+    val outboundBandwidthDelay: Long,
+    val latencyDelay: Long,
+    val inboundBandwidthDelay: Long
+)
+
 interface SimChannelMessageVisitor {
-    fun onInbound(message: Any)
     fun onOutbound(message: Any)
+    fun onInbound(message: Any, delayData: DelayData)
 }

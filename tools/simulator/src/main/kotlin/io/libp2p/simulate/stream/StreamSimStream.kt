@@ -60,6 +60,9 @@ class StreamSimStream(
             streamInitiator,
             remote.inboundBandwidth,
             local.outboundBandwidth,
+            local.simExecutor,
+            local.currentTime,
+            local.msgSizeEstimator,
             nettyInitializer {
                 val channel = it.channel
                 wireLogs?.also { channel.pipeline().addFirst(LoggingHandler(channelName, it)) }
@@ -74,11 +77,7 @@ class StreamSimStream(
                 channel.attr(PROTOCOL).get().complete(streamProtocol)
                 local.simHandleStream(stream)
             }
-        ).also {
-            it.executor = local.simExecutor
-            it.currentTime = local.currentTime
-            it.msgSizeEstimator = local.msgSizeEstimator
-        }
+        )
     }
 
     fun setLatency(latency: MessageDelayer) {
