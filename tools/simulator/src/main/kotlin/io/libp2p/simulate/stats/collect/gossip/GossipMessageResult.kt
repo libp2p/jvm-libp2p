@@ -14,7 +14,8 @@ typealias SimMessageId = Long
 data class GossipMessageResult(
     val messages: List<CollectedMessage<Rpc.RPC>>,
     private val msgGenerator: GossipPubMessageGenerator,
-    private val gossipMessageIdGenerator: GossipMessageIdGenerator
+    private val gossipMessageIdGenerator: GossipMessageIdGenerator,
+    private val gossipMessageIdToSimMessageIdHint: Map<GossipMessageId, SimMessageId> = emptyMap()
 ) {
 
     interface MessageWrapper<TMessage> {
@@ -88,9 +89,7 @@ data class GossipMessageResult(
     }
 
     private val gossipMessageIdToSimMessageIdMap: Map<GossipMessageId, SimMessageId> by lazy {
-        originatingPublishMessages
-            .map { it.value.gossipMsgId to it.key }
-            .toMap()
+        publishMessages.associate { it.gossipMsgId to it.simMsgId } + gossipMessageIdToSimMessageIdHint
     }
 
     private fun <TMessage : AbstractMessage, TMsgWrapper : MessageWrapper<TMessage>> flattenControl(
@@ -161,6 +160,9 @@ data class GossipMessageResult(
     val allPeers by lazy {
         peerSentMessages.keys + peerReceivedMessages.keys
     }
+    val allPeersById by lazy {
+        allPeers.associateBy { it.simPeerId }
+    }
 
     fun slice(startTime: Long, endTime: Long = Long.MAX_VALUE): GossipMessageResult =
         copyWithMessages(
@@ -203,15 +205,21 @@ data class GossipMessageResult(
             .sortedBy { if (it.sendingPeer == peer) it.sendTime else it.receiveTime }
             .let { copyWithMessages(it) }
 
+    fun getConnectionMessages(peer1: SimPeer, peer2: SimPeer) =
+        getPeerMessages(peer1)
+            .getPeerMessages(peer2)
 
-    fun isByIWantPubMessage(msg: PubMessageWrapper): Boolean =
+    fun getIWantsForPubMessage(msg: PubMessageWrapper) =
         peerSentMessages[msg.origMsg.receivingPeer]!!
             .iWantMessages
-            .any { iWantMsg ->
+            .filter { iWantMsg ->
                 iWantMsg.origMsg.receivingPeer == msg.origMsg.sendingPeer &&
                         msg.simMsgId in iWantMsg.simMsgIds &&
                         iWantMsg.origMsg.receiveTime <= msg.origMsg.sendTime
             }
+
+    fun isByIWantPubMessage(msg: PubMessageWrapper): Boolean =
+        getIWantsForPubMessage(msg).isNotEmpty()
 
 
     fun getTotalTraffic() = messages
@@ -220,5 +228,5 @@ data class GossipMessageResult(
     fun getTotalMessageCount() = messages.size
 
     private fun copyWithMessages(messages: List<CollectedMessage<Rpc.RPC>>) =
-        this.copy(messages = messages)
+        this.copy(messages = messages, gossipMessageIdToSimMessageIdHint = gossipMessageIdToSimMessageIdMap)
 }
