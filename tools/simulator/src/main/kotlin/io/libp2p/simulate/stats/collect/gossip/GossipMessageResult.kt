@@ -54,6 +54,13 @@ data class GossipMessageResult(
         override fun toString() = "Choke[$origMsg, topicId: '${origMsg.message.topicID}']"
     }
 
+    data class ChokeMessageMessageWrapper(
+        override val origMsg: CollectedMessage<Rpc.ControlChokeMessage>,
+        val simMsgId: SimMessageId?
+    ) : MessageWrapper<Rpc.ControlChokeMessage> {
+        override fun toString() = "ChokeMessage[$origMsg, topicId: '$simMsgId']"
+    }
+
     data class UnChokeMessageWrapper(
         override val origMsg: CollectedMessage<Rpc.ControlUnChoke>,
     ) : MessageWrapper<Rpc.ControlUnChoke> {
@@ -138,9 +145,20 @@ data class GossipMessageResult(
     val unchokeMessages by lazy {
         flattenControl({ it.unchokeList }, { UnChokeMessageWrapper(it) })
     }
+    val chokeMessageMessages by lazy {
+        flattenControl({ it.chokeMessageList }, {
+            ChokeMessageMessageWrapper(
+                it,
+                gossipMessageIdToSimMessageIdMap[it.message.messageID.toWBytes()]
+            )
+        })
+    }
 
     val allGossipMessages by lazy {
-        (publishMessages + graftMessages + pruneMessages + iHaveMessages + iWantMessages + chokeMessages + unchokeMessages)
+        (publishMessages + graftMessages + pruneMessages +
+                iHaveMessages + iWantMessages +
+                chokeMessages + unchokeMessages +
+                chokeMessageMessages)
             .sortedBy { it.origMsg.sendTime }
     }
 
