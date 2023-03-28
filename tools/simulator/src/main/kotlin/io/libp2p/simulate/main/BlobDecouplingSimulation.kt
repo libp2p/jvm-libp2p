@@ -1,36 +1,18 @@
 package io.libp2p.simulate.main
 
-import io.libp2p.pubsub.PubsubProtocol
-import io.libp2p.pubsub.gossip.choke.ChokeStrategyPerTopic
-import io.libp2p.pubsub.gossip.choke.SimpleTopicChokeStrategy
-import io.libp2p.simulate.Bandwidth
-import io.libp2p.simulate.RandomDistribution
-import io.libp2p.simulate.bandwidthDistribution
+import io.libp2p.simulate.*
 import io.libp2p.simulate.delay.latency.LatencyDistribution
 import io.libp2p.simulate.gossip.Eth2DefaultGossipParams
-import io.libp2p.simulate.gossip.GossipSimulation
-import io.libp2p.simulate.gossip.router.SimGossipRouterBuilder
 import io.libp2p.simulate.main.scenario.BlobDecouplingScenario
 import io.libp2p.simulate.main.scenario.Decoupling
-import io.libp2p.simulate.main.scenario.MaliciousPeerManager
 import io.libp2p.simulate.main.scenario.ResultPrinter
-import io.libp2p.simulate.mbitsPerSecond
-import io.libp2p.simulate.stats.GroupByRangeAggregator
-import io.libp2p.simulate.stats.Stats
-import io.libp2p.simulate.stats.StatsFactory
-import io.libp2p.simulate.stats.collect.gossip.GossipMessageResult
-import io.libp2p.simulate.stats.collect.gossip.getGossipPubDeliveryResult
+import io.libp2p.simulate.stats.collect.gossip.*
 import io.libp2p.simulate.util.ReadableSize
 import io.libp2p.simulate.util.byIndexes
 import io.libp2p.simulate.util.cartesianProduct
-import io.libp2p.simulate.util.countValues
 import io.libp2p.tools.log
-import java.security.DrbgParameters.NextBytes
-import java.util.Random
-import kotlin.math.max
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.seconds
 
 fun main() {
     BlobDecouplingSimulation().runAndPrint()
@@ -47,16 +29,16 @@ class BlobDecouplingSimulation(
     val sendingPeerBandwidth: Bandwidth = 100.mbitsPerSecond,
     val bandwidthsParams: List<RandomDistribution<Bandwidth>> =
 //        listOf(RandomDistribution.const(sendingPeerBandwidth)),
-        bandwidthDistributions.byIndexes(2),
+        bandwidthDistributions.byIndexes(0, 1, 2),
     val decouplingParams: List<Decoupling> = listOf(
-        Decoupling.Coupled,
+//        Decoupling.Coupled,
         Decoupling.DecoupledManyTopics,
 //        Decoupling.DecoupledSingleTopic,
     ),
     val latencyParams: List<LatencyDistribution> =
         listOf(
-            LatencyDistribution.createUniformConst(1.milliseconds, 50.milliseconds)
-//            LatencyDistribution.createConst(10.milliseconds),
+//            LatencyDistribution.createUniformConst(1.milliseconds, 50.milliseconds)
+            LatencyDistribution.createConst(10.milliseconds),
 //            LatencyDistribution.createConst(50.milliseconds),
 //            LatencyDistribution.createConst(100.milliseconds),
 //            LatencyDistribution.createConst(150.milliseconds),
@@ -150,6 +132,7 @@ class BlobDecouplingSimulation(
             latency = simParams.latency,
             gossipParams = Eth2DefaultGossipParams.copy(
                 floodPublish = floodPublish,
+//                heartbeatInterval = 5.seconds
             ),
             peerMessageValidationDelays = simParams.validationDelays,
         )
@@ -174,15 +157,19 @@ class BlobDecouplingSimulation(
                 }
             addMetric("msgCount") { it.messages.getTotalMessageCount() }
             addMetric("traffic") { it.messages.getTotalTraffic() }
-            addMetric("publishCount") { it.messages.publishMessages.size }
-            addMetric("iWantCount") { it.messages.iWantMessages.size }
-            addMetric("iWantDeliveryCount") { res ->
-                res.deliveryResult.deliveries
-                    .count { res.messages.isByIWantPubMessage(it.origGossipMsg) }
+            addMetric("pubCount") { it.messages.publishMessages.size }
+            addMetric("iWants") { it.messages.iWantRequestCount }
+            addMetric("iWantDeliv") { res ->
+                res.deliveryResult.getDeliveriesByIWant(res.messages).size
             }
-            addMetric("iWantPublishCount") { res ->
-                res.messages.publishMessages
-                    .count { res.messages.isByIWantPubMessage(it) }
+            addMetric("iWantPub") { res ->
+                res.messages.publishesByIWant.size
+            }
+            addMetric("dupPub") { res ->
+                res.messages.duplicatePublishes.size
+            }
+            addMetric("roundPub") { res ->
+                res.messages.roundPublishes.size
             }
         }
 
@@ -199,7 +186,43 @@ class BlobDecouplingSimulation(
 //            }
 //            .printTabSeparated()
 //        )
+
+        tempResults(res)
+
         log("Done.")
+    }
+
+    private fun tempResults(results: Map<SimParams, RunResult>) {
+        val res = results.values.first()
+        val publishIWants = res.messages.publishMessages
+            .associateWith {
+                res.messages.getIWantsForPubMessage(it)
+            }
+            .filterValues { it.isNotEmpty() }
+//            .onEach {
+//                if (it.value.size > 1) {
+//                    println("Many IWants for a singe publish: ${it.value}, ${it.key}")
+//                }
+//            }
+//            .flatMap { it.value }
+
+        val missedIWants =
+            res.messages.iWantMessages.toSet() - publishIWants.flatMap { it.value }.toSet()
+
+
+        val connectionMessages = res.messages
+            .getConnectionMessages(res.messages.allPeersById[57]!!, res.messages.allPeersById[282]!!)
+
+        data class MessagePublishKey(
+            val messageId: SimMessageId,
+            val fromPeer: SimPeer,
+            val toPeer: SimPeer
+        )
+
+        val duplicatePublish = res.messages.duplicatePublishes
+        val roundPublish = res.messages.roundPublishes
+
+        println("Duplicate publishes: ${duplicatePublish.size}")
     }
 
     fun run(params: SimParams, logger: SimulationLogger): RunResult {
