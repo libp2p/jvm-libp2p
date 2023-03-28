@@ -28,6 +28,8 @@ interface GossipRpcPartsQueue : RpcPartsQueue {
 
     fun addChoke(topic: Topic)
     fun addUnChoke(topic: Topic)
+
+    fun addChokeMessage(messageId: MessageId)
 }
 
 /**
@@ -94,6 +96,11 @@ open class DefaultGossipRpcPartsQueue(
             builder.controlBuilder.addUnchokeBuilder().setTopicID(topic)
         }
     }
+    protected data class ChokeMessagePart(val messageId: MessageId) : AbstractPart {
+        override fun appendToBuilder(builder: Rpc.RPC.Builder) {
+            builder.controlBuilder.addChokeMessageBuilder().setMessageID(messageId.toProtobuf())
+        }
+    }
 
     override fun addIHave(messageId: MessageId) {
         addPart(IHavePart(messageId))
@@ -121,6 +128,10 @@ open class DefaultGossipRpcPartsQueue(
 
     override fun addUnChoke(topic: Topic) {
         addPart(UnChokePart(topic))
+    }
+
+    override fun addChokeMessage(messageId: MessageId) {
+        addPart(ChokeMessagePart(messageId))
     }
 
     override fun takeMerged(): List<Rpc.RPC> {

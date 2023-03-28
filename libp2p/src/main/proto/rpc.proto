@@ -30,6 +30,7 @@ message ControlMessage {
 	repeated ControlPrune prune = 4;
 	repeated ControlChoke choke = 5;
 	repeated ControlUnChoke unchoke = 6;
+	repeated ControlChokeMessage chokeMessage = 7;
 }
 
 message ControlIHave {
@@ -57,6 +58,10 @@ message ControlChoke {
 
 message ControlUnChoke {
 	optional string topicID = 1;
+}
+
+message ControlChokeMessage {
+	required bytes messageID = 1;
 }
 
 message PeerInfo {

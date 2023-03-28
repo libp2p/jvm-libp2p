@@ -118,6 +118,7 @@ open class GossipRouter(
     val mesh: MutableMap<Topic, MutableSet<PeerHandler>> = linkedMapOf()
     val chokedByPeers = mutableMultiBiMap<PeerHandler, Topic>()
     val chokedPeers = mutableMultiBiMap<PeerHandler, Topic>()
+    val chokedMessages = mutableMultiBiMap<PeerHandler, MessageId>()
 
     val eventBroadcaster = GossipRouterEventBroadcaster()
         .also {
@@ -166,6 +167,7 @@ open class GossipRouter(
         fanout.values.forEach { it.remove(peer) }
         chokedByPeers.removeAllByFirst(peer)
         chokedPeers.removeAllByFirst(peer)
+        chokedMessages.removeAllByFirst(peer)
         acceptRequestsWhitelist -= peer
         pendingRpcParts.popQueue(peer) // discard them
         super.onPeerDisconnected(peer)
@@ -180,6 +182,17 @@ open class GossipRouter(
     override fun notifyUnseenMessage(peer: PeerHandler, msg: PubsubMessage) {
         eventBroadcaster.notifyUnseenMessage(peer.peerId, msg)
         notifyAnyMessage(peer, msg)
+        broadcastChokeMessage(setOf(peer), msg)
+    }
+
+    private fun broadcastChokeMessage(exceptPeers: Set<PeerHandler>, msg: PubsubMessage) {
+        val topic = msg.topics[0]
+        val messageId = msg.messageId
+        val targetMeshPeers = (mesh[topic] ?: emptySet()) - exceptPeers
+        targetMeshPeers.onEach { peer ->
+            pendingRpcParts.getQueue(peer).addChokeMessage(messageId)
+            flushPending(peer)
+        }
     }
 
     override fun notifySeenMessage(
@@ -284,6 +297,7 @@ open class GossipRouter(
             is Rpc.ControlIWant -> handleIWant(controlMsg, receivedFrom)
             is Rpc.ControlChoke -> handleChoke(controlMsg, receivedFrom)
             is Rpc.ControlUnChoke -> handleUnChoke(controlMsg, receivedFrom)
+            is Rpc.ControlChokeMessage -> handleChokeMessage(controlMsg, receivedFrom)
         }
     }
 
@@ -376,6 +390,10 @@ open class GossipRouter(
         chokedByPeers.remove(peer, msg.topicID)
     }
 
+    private fun handleChokeMessage(controlMsg: Rpc.ControlChokeMessage, receivedFrom: PeerHandler) {
+        chokedMessages.add(receivedFrom, controlMsg.messageID.toWBytes())
+    }
+
     private fun processPrunePeers(peersList: List<Rpc.PeerInfo>) {
         peersList.shuffled(random).take(params.maxPrunePeers)
             .map { PeerId(it.peerID.toByteArray()) to it.signedPeerRecord.toByteArray() }
@@ -385,7 +403,7 @@ open class GossipRouter(
 
     override fun processControl(ctrl: Rpc.ControlMessage, receivedFrom: PeerHandler) {
         ctrl.run {
-            (graftList + pruneList + ihaveList + iwantList + chokeList + unchokeList)
+            (graftList + pruneList + ihaveList + iwantList + chokeList + unchokeList + chokeMessageList)
         }.forEach { processControlMessage(it, receivedFrom) }
     }
 
@@ -401,6 +419,7 @@ open class GossipRouter(
                 .distinct()
                 .plus(getDirectPeers())
                 .minus(choked)
+                .minus(chokedMessages.getBySecond(pubMsg.messageId))
                 .filter { it != receivedFrom }
                 .forEach { submitPublishMessage(it, pubMsg) }
             mCache += pubMsg
