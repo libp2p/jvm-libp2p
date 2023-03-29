@@ -186,12 +186,14 @@ open class GossipRouter(
     }
 
     private fun broadcastChokeMessage(exceptPeers: Set<PeerHandler>, msg: PubsubMessage) {
-        val topic = msg.topics[0]
-        val messageId = msg.messageId
-        val targetMeshPeers = (mesh[topic] ?: emptySet()) - exceptPeers
-        targetMeshPeers.onEach { peer ->
-            pendingRpcParts.getQueue(peer).addChokeMessage(messageId)
-            flushPending(peer)
+        if (params.chokeMessageEnabled) {
+            val topic = msg.topics[0]
+            val messageId = msg.messageId
+            val targetMeshPeers = (mesh[topic] ?: emptySet()) - exceptPeers
+            targetMeshPeers.onEach { peer ->
+                pendingRpcParts.getQueue(peer).addChokeMessage(messageId)
+                flushPending(peer)
+            }
         }
     }
 
@@ -391,7 +393,9 @@ open class GossipRouter(
     }
 
     private fun handleChokeMessage(controlMsg: Rpc.ControlChokeMessage, receivedFrom: PeerHandler) {
-        chokedMessages.add(receivedFrom, controlMsg.messageID.toWBytes())
+        if (params.chokeMessageEnabled) {
+            chokedMessages.add(receivedFrom, controlMsg.messageID.toWBytes())
+        }
     }
 
     private fun processPrunePeers(peersList: List<Rpc.PeerInfo>) {

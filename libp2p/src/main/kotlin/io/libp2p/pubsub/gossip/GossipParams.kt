@@ -264,7 +264,13 @@ data class GossipParams(
      * The number of peers per [chokeHeartbeatInterval] that can be added to an individual mesh.
      * @since 1.2
      */
-    val meshAdditionChurn: Int = 1
+    val meshAdditionChurn: Int = 1,
+
+    /**
+     * Send and process ChokeMessage control messages to choke specific publish messages from
+     * sending by mesh peers
+     */
+    val chokeMessageEnabled: Boolean = false
 ) {
     init {
         check(D >= 0, "D should be >= 0")
