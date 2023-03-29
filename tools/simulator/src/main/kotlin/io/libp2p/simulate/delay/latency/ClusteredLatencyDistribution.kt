@@ -13,8 +13,10 @@ class ClusteredLatencyDistribution<ClusterId>(
 ) : LatencyDistribution {
 
     override fun getLatency(connection: SimConnection, rnd:Random): RandomValue<Duration> {
-        val p1Cluster = clusterFunction(connection.dialer)
-        val p2Cluster = clusterFunction(connection.listener)
-        return interClusterLatencySupplier(p1Cluster, p2Cluster).newValue(rnd)
+        synchronized(this) {
+            val p1Cluster = clusterFunction(connection.dialer)
+            val p2Cluster = clusterFunction(connection.listener)
+            return interClusterLatencySupplier(p1Cluster, p2Cluster).newValue(rnd)
+        }
     }
 }

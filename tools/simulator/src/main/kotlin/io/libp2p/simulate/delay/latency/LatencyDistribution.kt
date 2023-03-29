@@ -10,10 +10,10 @@ fun interface LatencyDistribution {
 
     companion object {
 
-        fun createConst(latency: Duration) =
+        fun createConst(latency: Duration): LatencyDistribution =
             createRandomConst(RandomDistribution.const(latency))
 
-        fun createUniformConst(from: Duration, to: Duration) =
+        fun createUniformConst(from: Duration, to: Duration): LatencyDistribution =
             createRandomConst(
                 RandomDistribution
                     .uniform(from.inWholeMilliseconds, to.inWholeMilliseconds)
@@ -21,7 +21,7 @@ fun interface LatencyDistribution {
                     .named("[$from, $to)")
             )
 
-        fun createRandomConst(distrib: RandomDistribution<Duration>) =
+        fun createRandomConst(distrib: RandomDistribution<Duration>): LatencyDistribution =
             RandomConstLatencyDistribution(distrib)
     }
 }
