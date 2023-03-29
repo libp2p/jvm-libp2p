@@ -41,10 +41,10 @@ open class ConnectionsMessageCollector<MessageT>(
                         message
                     )
                 }
-                override fun onInbound(message: Any, delayData: DelayData) {
+                override fun onInbound(message: Any, delayDetails: DelayDetails) {
                     val sentMessage = pendingMessageMap.remove(message as MessageT)
                         ?: throw IllegalStateException("Pending message not found for message $message at ${timeSupplier()}")
-                    deliveredMessagesWrite += sentMessage.copy(receiveTime = timeSupplier(), delayData = delayData)
+                    deliveredMessagesWrite += sentMessage.copy(receiveTime = timeSupplier(), delayDetails = delayDetails)
                 }
             }
 
@@ -60,17 +60,17 @@ open class ConnectionsMessageCollector<MessageT>(
                         message
                     )
                 }
-                override fun onInbound(message: Any, delayData: DelayData) {
+                override fun onInbound(message: Any, delayDetails: DelayDetails) {
                     val sentMessage = pendingMessageMap.remove(message as MessageT)
                         ?: throw IllegalStateException("Pending message not found for message $message at ${timeSupplier()}")
-                    deliveredMessagesWrite += sentMessage.copy(receiveTime = timeSupplier(), delayData = delayData)
+                    deliveredMessagesWrite += sentMessage.copy(receiveTime = timeSupplier(), delayDetails = delayDetails)
                 }
             }
         }
     }
 
     companion object {
-        private val EMPTY_DELAY_DATA = DelayData(0, 0, 0, 0)
+        private val EMPTY_DELAY_DATA = DelayDetails(0, 0, 0, 0, 0)
     }
 }
 
@@ -79,17 +79,16 @@ data class CollectedMessage<T>(
     val sendingPeer: SimPeer,
     val sendTime: Long,
     val receiveTime: Long,
-    val delayData: DelayData,
+    val delayDetails: DelayDetails,
     val message: T
 ) {
     val delay get() = receiveTime - sendTime
     val receivingPeer get() = if (connection.dialer === sendingPeer) connection.listener else connection.dialer
 
     fun <R> withMessage(msg: R): CollectedMessage<R> =
-        CollectedMessage(connection, sendingPeer, sendTime, receiveTime, delayData, msg)
+        CollectedMessage(connection, sendingPeer, sendTime, receiveTime, delayDetails, msg)
 
-    fun delayDataToString() = "$delay=${delayData.wireDelay}+${delayData.latencyDelay}+max(${delayData.outboundBandwidthDelay}, ${delayData.inboundBandwidthDelay})"
     override fun toString(): String {
-        return "CollectedMessage[$sendingPeer => $receivingPeer, $sendTime --(${delayDataToString()})-> $receiveTime]"
+        return "CollectedMessage[$sendingPeer => $receivingPeer, $sendTime --($delay: $delayDetails)-> $receiveTime]"
     }
 }

@@ -14,14 +14,21 @@ interface SimChannel {
     val msgVisitors: MutableList<SimChannelMessageVisitor>
 }
 
-data class DelayData(
-    val wireDelay: Long,
-    val outboundBandwidthDelay: Long,
-    val latencyDelay: Long,
-    val inboundBandwidthDelay: Long
-)
-
 interface SimChannelMessageVisitor {
     fun onOutbound(message: Any)
-    fun onInbound(message: Any, delayData: DelayData)
+    fun onInbound(message: Any, delayDetails: DelayDetails)
 }
+
+data class DelayDetails(
+    val outQueueDelay: Long,
+    val outboundBandwidthDelay: Long,
+    val latencyDelay: Long,
+    val inboundBandwidthDelay: Long,
+    val orderingDelay: Long
+) {
+    private val maybeOrderingString = if (orderingDelay > 0) ("+$orderingDelay") else ""
+    private val maybeOutQueueString = if (outQueueDelay > 0) "$outQueueDelay/" else ""
+    override fun toString() =
+        "${maybeOutQueueString}$latencyDelay+max($outboundBandwidthDelay,$inboundBandwidthDelay)$maybeOrderingString"
+}
+

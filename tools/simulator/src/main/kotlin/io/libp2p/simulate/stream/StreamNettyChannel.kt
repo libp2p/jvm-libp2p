@@ -3,6 +3,7 @@ package io.libp2p.simulate.stream
 import io.libp2p.etc.types.lazyVar
 import io.libp2p.pubsub.gossip.CurrentTimeSupplier
 import io.libp2p.simulate.*
+import io.libp2p.simulate.delay.CompositeMessageDelayer
 import io.libp2p.simulate.util.MsgSizeEstimator
 import io.netty.channel.*
 import io.netty.channel.embedded.EmbeddedChannel
