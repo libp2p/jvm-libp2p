@@ -18,3 +18,18 @@ fun <T> ScheduledExecutorService.scheduleCompletable(delay: Duration, task: () -
     }, delay.inWholeMilliseconds, TimeUnit.MILLISECONDS)
     return ret
 }
+
+fun <T> ScheduledExecutorService.delay(delay: Duration, task: () -> T) = scheduleCompletable(delay, task)
+
+fun ScheduledExecutorService.scheduleAtFixedRate(
+    period: Duration,
+    initialDuration: Duration = Duration.ZERO,
+    task: () -> Unit
+) {
+    this.scheduleAtFixedRate(
+        task,
+        initialDuration.inWholeMilliseconds,
+        period.inWholeMilliseconds,
+        TimeUnit.MILLISECONDS
+    )
+}
