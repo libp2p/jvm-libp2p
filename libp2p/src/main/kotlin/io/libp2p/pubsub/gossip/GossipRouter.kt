@@ -182,19 +182,43 @@ open class GossipRouter(
     override fun notifyUnseenMessage(peer: PeerHandler, msg: PubsubMessage) {
         eventBroadcaster.notifyUnseenMessage(peer.peerId, msg)
         notifyAnyMessage(peer, msg)
-        broadcastChokeMessage(setOf(peer), msg)
+        if (params.chokeMessageEnabled && !params.sendingControlEnabled) {
+            broadcastChokeMessage(peer, msg)
+        }
     }
 
-    private fun broadcastChokeMessage(exceptPeers: Set<PeerHandler>, msg: PubsubMessage) {
-        if (params.chokeMessageEnabled) {
-            val topic = msg.topics[0]
-            val messageId = msg.messageId
-            val targetMeshPeers = (mesh[topic] ?: emptySet()) - exceptPeers
-            targetMeshPeers.onEach { peer ->
-                pendingRpcParts.getQueue(peer).addChokeMessage(messageId)
-                flushPending(peer)
+    private fun broadcastChokeMessage(exceptPeer: PeerHandler, msg: PubsubMessage) {
+        broadcastChokeMessages(
+            exceptPeer,
+            mapOf(msg.topics.first() to listOf(msg.messageId)) // TODO simplification for single topic messages
+        )
+    }
+
+    private fun broadcastChokeMessages(exceptPeer: PeerHandler, messages: Map<Topic, List<MessageId>>) {
+        val targetPeers = messages
+            .map { (topic, messageIds) ->
+                enqueueChokeMessages(exceptPeer, topic, messageIds)
+            }
+            .flatten()
+
+        targetPeers.forEach {
+            flushPending(it)
+        }
+    }
+
+    private fun enqueueChokeMessages(
+        exceptPeer: PeerHandler,
+        topic: Topic,
+        messageIds: List<MessageId>
+    ): Set<PeerHandler> {
+        val targetMeshPeers = (mesh[topic] ?: emptySet()) - exceptPeer
+        targetMeshPeers.forEach { peer ->
+            val partsQueue = pendingRpcParts.getQueue(peer)
+            messageIds.forEach { messageId ->
+                partsQueue.addChokeMessage(messageId)
             }
         }
+        return targetMeshPeers
     }
 
     override fun notifySeenMessage(
@@ -282,13 +306,13 @@ open class GossipRouter(
         val iHaveMessageIdCount = msg.control?.ihaveList?.map { w -> w.messageIDsCount }?.sum() ?: 0
 
         return params.maxPublishedMessages?.let { msg.publishCount <= it } ?: true &&
-            params.maxTopicsPerPublishedMessage?.let { msg.publishList.none { m -> m.topicIDsCount > it } } ?: true &&
-            params.maxSubscriptions?.let { msg.subscriptionsCount <= it } ?: true &&
-            params.maxIHaveLength.let { iHaveMessageIdCount <= it } &&
-            params.maxIWantMessageIds?.let { iWantMessageIdCount <= it } ?: true &&
-            params.maxGraftMessages?.let { (msg.control?.graftCount ?: 0) <= it } ?: true &&
-            params.maxPruneMessages?.let { (msg.control?.pruneCount ?: 0) <= it } ?: true &&
-            params.maxPeersPerPruneMessage?.let { msg.control?.pruneList?.none { p -> p.peersCount > it } } ?: true
+                params.maxTopicsPerPublishedMessage?.let { msg.publishList.none { m -> m.topicIDsCount > it } } ?: true &&
+                params.maxSubscriptions?.let { msg.subscriptionsCount <= it } ?: true &&
+                params.maxIHaveLength.let { iHaveMessageIdCount <= it } &&
+                params.maxIWantMessageIds?.let { iWantMessageIdCount <= it } ?: true &&
+                params.maxGraftMessages?.let { (msg.control?.graftCount ?: 0) <= it } ?: true &&
+                params.maxPruneMessages?.let { (msg.control?.pruneCount ?: 0) <= it } ?: true &&
+                params.maxPeersPerPruneMessage?.let { msg.control?.pruneList?.none { p -> p.peersCount > it } } ?: true
     }
 
     private fun processControlMessage(controlMsg: Any, receivedFrom: PeerHandler) {
@@ -300,6 +324,7 @@ open class GossipRouter(
             is Rpc.ControlChoke -> handleChoke(controlMsg, receivedFrom)
             is Rpc.ControlUnChoke -> handleUnChoke(controlMsg, receivedFrom)
             is Rpc.ControlChokeMessage -> handleChokeMessage(controlMsg, receivedFrom)
+            is Rpc.ControlSending -> handleSending(controlMsg, receivedFrom)
         }
     }
 
@@ -367,6 +392,7 @@ open class GossipRouter(
             .map { it.toWBytes() }
         val iWant = iHaveMessageIds
             .filterNot { seenMessages.isSeen(it) }
+            .filterNot { it in receivingMessages }
         val maxToAsk = min(iWant.size, params.maxIHaveLength - asked.get())
         asked.addAndGet(maxToAsk)
         iWant(peer, iWant.shuffled(random).subList(0, maxToAsk))
@@ -377,11 +403,12 @@ open class GossipRouter(
     private fun handleIWant(msg: Rpc.ControlIWant, peer: PeerHandler) {
         val peerScore = score.score(peer.peerId)
         if (peerScore < scoreParams.gossipThreshold) return
-        msg.messageIDsList
+        val messages = msg.messageIDsList
             .mapNotNull { mCache.getMessageForPeer(peer.peerId, it.toWBytes()) }
             .filter { it.sentCount < params.gossipRetransmission }
             .map { it.msg }
-            .forEach { submitPublishMessage(peer, it) }
+
+        submitPublishMessages(peer, messages)
     }
 
     private fun handleChoke(msg: Rpc.ControlChoke, peer: PeerHandler) {
@@ -398,6 +425,16 @@ open class GossipRouter(
         }
     }
 
+    val receivingMessages = mutableSetOf<MessageId>() // TODO make it limited
+
+    private fun handleSending(controlMsg: Rpc.ControlSending, receivedFrom: PeerHandler) {
+        if (params.sendingControlEnabled) {
+            val messageIds = controlMsg.messageIDsList.map { it.toWBytes() }
+            receivingMessages += messageIds
+            broadcastChokeMessages(receivedFrom, mapOf(controlMsg.topicID to messageIds))
+        }
+    }
+
     private fun processPrunePeers(peersList: List<Rpc.PeerInfo>) {
         peersList.shuffled(random).take(params.maxPrunePeers)
             .map { PeerId(it.peerID.toByteArray()) to it.signedPeerRecord.toByteArray() }
@@ -407,27 +444,41 @@ open class GossipRouter(
 
     override fun processControl(ctrl: Rpc.ControlMessage, receivedFrom: PeerHandler) {
         ctrl.run {
-            (graftList + pruneList + ihaveList + iwantList + chokeList + unchokeList + chokeMessageList)
+            (graftList + pruneList + ihaveList + iwantList + chokeList + unchokeList + chokeMessageList + sendingList)
         }.forEach { processControlMessage(it, receivedFrom) }
     }
 
     override fun broadcastInbound(msgs: List<PubsubMessage>, receivedFrom: PeerHandler) {
-        msgs.forEach { pubMsg ->
-            val choked =
+        data class MessageToPeer(
+            val message: PubsubMessage,
+            val toPeer: PeerHandler
+        )
+
+        val msgToPeerList = msgs
+            .flatMap { pubMsg ->
+                mCache += pubMsg
+                val choked =
+                    pubMsg.topics
+                        .flatMap { chokedByPeers.getBySecond(it) }
+                        .toSet()
                 pubMsg.topics
-                    .flatMap { chokedByPeers.getBySecond(it) }
-                    .toSet()
-            pubMsg.topics
-                .mapNotNull { mesh[it] }
-                .flatten()
-                .distinct()
-                .plus(getDirectPeers())
-                .minus(choked)
-                .minus(chokedMessages.getBySecond(pubMsg.messageId))
-                .filter { it != receivedFrom }
-                .forEach { submitPublishMessage(it, pubMsg) }
-            mCache += pubMsg
-        }
+                    .mapNotNull { mesh[it] }
+                    .flatten()
+                    .distinct()
+                    .plus(getDirectPeers())
+                    .minus(choked)
+                    .minus(chokedMessages.getBySecond(pubMsg.messageId))
+                    .filter { it != receivedFrom }
+                    .map { MessageToPeer(pubMsg, it) }
+            }
+        val peerMessages = msgToPeerList
+            .groupBy({ it.toPeer }, { it.message })
+
+        peerMessages
+            .forEach { (peer, messages) ->
+                submitPublishMessages(peer, messages)
+            }
+
         flushAllPending()
     }
 
@@ -456,7 +507,10 @@ open class GossipRouter(
                     .distinct()
                     .minus(choked)
             }
-        val list = peers.map { submitPublishMessage(it, msg) }
+        val list = peers
+            .map {
+                submitPublishMessages(it, listOf(msg)).first()
+            }
 
         mCache += msg
         flushAllPending()
@@ -467,6 +521,30 @@ open class GossipRouter(
             return completedExceptionally(
                 NoPeersForOutboundMessageException("No peers for message topics ${msg.topics} found")
             )
+        }
+    }
+
+    private fun sendForwardNotificationMaybe(toPeer: PeerHandler, msgs: List<PubsubMessage>) {
+        if (params.sendingControlEnabled) {
+            val partsQueue = pendingRpcParts.getQueue(toPeer)
+            msgs
+                .groupBy {
+                    it.topics.first()  // TODO() simplification for one topic per message case
+                }
+                .mapValues { (_, messages) ->
+                    messages.map { it.messageId }
+                }
+                .forEach { (topic, msgIds) ->
+                    partsQueue.addSending(topic, msgIds)
+                }
+            flushPending(toPeer)
+        }
+    }
+
+    fun submitPublishMessages(toPeer: PeerHandler, msgs: List<PubsubMessage>): List<CompletableFuture<Unit>> {
+        sendForwardNotificationMaybe(toPeer, msgs)
+        return msgs.map {
+            submitPublishMessage(toPeer, it)
         }
     }
 

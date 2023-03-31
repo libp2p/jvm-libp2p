@@ -270,7 +270,12 @@ data class GossipParams(
      * Send and process ChokeMessage control messages to choke specific publish messages from
      * sending by mesh peers
      */
-    val chokeMessageEnabled: Boolean = false
+    val chokeMessageEnabled: Boolean = false,
+
+    /**
+     * Prepends sending of larger size pulish messages with notification on its `messageId`
+     */
+    val sendingControlEnabled: Boolean = false
 ) {
     init {
         check(D >= 0, "D should be >= 0")

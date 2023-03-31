@@ -31,6 +31,7 @@ message ControlMessage {
 	repeated ControlChoke choke = 5;
 	repeated ControlUnChoke unchoke = 6;
 	repeated ControlChokeMessage chokeMessage = 7;
+	repeated ControlSending sending = 8;
 }
 
 message ControlIHave {
@@ -62,6 +63,11 @@ message ControlUnChoke {
 
 message ControlChokeMessage {
 	required bytes messageID = 1;
+}
+
+message ControlSending {
+	required string topicID = 1;
+	repeated bytes messageIDs = 2;
 }
 
 message PeerInfo {
