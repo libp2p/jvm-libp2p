@@ -151,7 +151,7 @@ public class ControlledExecutorServiceImpl implements ControlledExecutorService 
 
     activeFut[0] = schedule(() -> {
       command.run();
-      if (!activeFut[0].isCancelled()) {
+      if (activeFut[0]== null || !activeFut[0].isCancelled()) {
         activeFut[0] = scheduleAtFixedRate(command, period, period, unit);
       }
       return null;
