@@ -45,6 +45,8 @@ allprojects {
 
         implementation(kotlin("stdlib-jdk8"))
         implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core")
+        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8")
+        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test-jvm")
 
         implementation("com.google.guava:guava")
         implementation("org.apache.logging.log4j:log4j-api")

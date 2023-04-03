@@ -3,6 +3,7 @@ dependencyManagement {
 
         dependency "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4"
         dependency "org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.6.4"
+        dependency "org.jetbrains.kotlinx:kotlinx-coroutines-test-jvm:1.6.4"
         dependency "com.google.guava:guava:31.1-jre"
         dependencySet(group: 'org.apache.logging.log4j', version: '2.19.0') {
             entry 'log4j-api'
