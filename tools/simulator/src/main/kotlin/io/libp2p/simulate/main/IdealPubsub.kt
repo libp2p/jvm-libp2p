@@ -1,6 +1,7 @@
 package io.libp2p.simulate.main
 
 import io.libp2p.simulate.Bandwidth
+import io.libp2p.simulate.main.IdealPubsub.SendType.*
 import io.libp2p.simulate.main.scenario.ResultPrinter
 import io.libp2p.simulate.mbitsPerSecond
 import io.libp2p.simulate.util.cartesianProduct
@@ -43,7 +44,13 @@ class IdealPubsubSimulation(
         1000.milliseconds,
     ),
 
-    val parallelSends: List<Int> = listOf(1,2,3,4,8),
+    val sendTypeParams: List<IdealPubsub.SendType> = listOf(
+        Sequential,
+        Parallel2,
+        Parallel4,
+        Parallel8,
+        Decoupled
+    ),
     val messageSizeParams: List<Long> = listOf(5 * 128 * 1024),
     val nodeCountParams: List<Int> = listOf(10000),
     val maxSentParams: List<Int> = listOf(8),
@@ -52,14 +59,14 @@ class IdealPubsubSimulation(
         cartesianProduct(
             bandwidthParams,
             latencyParams,
-            parallelSends,
-            messageSizeParams,
+            sendTypeParams,
             nodeCountParams,
             maxSentParams
         ) {
-            IdealPubsub.SimParams(it.first, it.second, it.third, it.fourth, it.fifth, it.sixth)
+            IdealPubsub.SimParams(it.first, it.second, it.third, messageSizeParams[0], it.fourth, it.fifth)
         },
 ) {
+
     data class RunResult(
         val nodes: List<IdealPubsub.Node>
     )
@@ -123,18 +130,27 @@ class IdealPubsubSimulation(
 class IdealPubsub(
     val params: SimParams
 ) {
+    enum class SendType { Sequential, Parallel2, Parallel4, Parallel8, Decoupled }
+    val SendType.parallelCount get() =
+        when(this) {
+            Sequential -> 1
+            Parallel2 -> 2
+            Parallel4 -> 4
+            Parallel8 -> 8
+            Decoupled -> 1
+        }
+
     data class SimParams(
         val bandwidth: Bandwidth,
         val latency: Duration,
-        val parallelSends: Int,
+        val sendType: SendType,
         val messageSize: Long,
         val nodeCount: Int,
-        val maxSent: Int = Int.MAX_VALUE
+        val maxSent: Int = Int.MAX_VALUE,
     )
 
-
     val messageTransmitDuration = params.bandwidth.getTransmitTime(params.messageSize)
-    val messageParallelTransmitDuration = messageTransmitDuration * params.parallelSends
+    val messageParallelTransmitDuration = messageTransmitDuration * params.sendType.parallelCount
 
     val timeController = TimeControllerImpl()
     val executor = ControlledExecutorServiceImpl(timeController)
@@ -147,34 +163,37 @@ class IdealPubsub(
 
     inner class Node(
         val hop: Int,
+        val fromNode: Int,
         var sentCount: Int = 0,
         val number: Int = counter++,
         val deliverTime: Long = timeController.time
     ) {
         fun startBroadcasting() {
-//            executor.delay(params.validationTime) {
-                executor.scheduleAtFixedRate(messageParallelTransmitDuration, messageParallelTransmitDuration) {
-                    if (sentCount < params.maxSent) {
-                        sentCount += params.parallelSends
-                        executor.delay(params.latency) {
-                            repeat(params.parallelSends) {
-                                newNode(hop + 1)
-                            }
+            val initialDelay =
+                if (params.sendType == Decoupled && hop > 0)
+                    Duration.ZERO else messageParallelTransmitDuration
+
+            executor.scheduleAtFixedRate(messageParallelTransmitDuration, initialDelay) {
+                if (sentCount < params.maxSent) {
+                    sentCount += params.sendType.parallelCount
+                    executor.delay(params.latency) {
+                        repeat(params.sendType.parallelCount) {
+                            addNewNode(Node(hop + 1, number))
                         }
                     }
-                    if (nodes.size == params.nodeCount) {
-                        throw CancellationException()
-                    }
                 }
-//            }
+                if (nodes.size == params.nodeCount) {
+                    throw CancellationException()
+                }
+            }
         }
     }
 
-    private fun newNode(hop: Int): Node {
+    private fun addNewNode(node: Node): Node {
         if (nodes.size == params.nodeCount) {
             throw CancellationException()
         }
-        val node = Node(hop)
+//        val node = Node(hop)
         nodes += node
         node.startBroadcasting()
         return node
@@ -183,8 +202,7 @@ class IdealPubsub(
     private val nodes = mutableListOf<Node>()
 
     private fun simulate(): List<Node> {
-        val publishNode = newNode(0)
-        publishNode.startBroadcasting()
+        val publishNode = addNewNode(Node(0, -1))
 
         try {
             timeController.addTime(1.days.toJavaDuration())
