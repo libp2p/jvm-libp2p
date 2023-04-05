@@ -6,6 +6,7 @@ import io.libp2p.core.Stream
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.etc.util.P2PService
 import io.netty.channel.ChannelHandler
+import io.netty.channel.EventLoop
 import java.util.concurrent.CompletableFuture
 
 class ConnectionStub : Connection {
@@ -25,6 +26,11 @@ class ConnectionStub : Connection {
 class StreamStub : Stream {
     private val remotePeerId = PeerId.random()
     override val connection = ConnectionStub()
+
+    override fun eventLoop(): EventLoop {
+        TODO("Not yet implemented")
+    }
+
     override fun remotePeerId() = remotePeerId
     override fun getProtocol() = CompletableFuture.completedFuture("nop")
     override fun pushHandler(handler: ChannelHandler) = TODO()
