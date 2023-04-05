@@ -15,6 +15,7 @@ import io.libp2p.etc.util.netty.nettyInitializer
 import io.libp2p.transport.implementation.P2PChannelOverNetty
 import io.netty.channel.Channel
 import io.netty.channel.ChannelHandler
+import io.netty.channel.EventLoop
 import io.netty.channel.embedded.EmbeddedChannel
 import java.util.concurrent.CompletableFuture
 
@@ -40,6 +41,10 @@ class TestStreamChannel<TController>(
 private class TestStream(ch: Channel, initiator: Boolean) : P2PChannelOverNetty(ch, initiator), Stream {
     init {
         nettyChannel.attr(PROTOCOL).set(CompletableFuture())
+    }
+
+    override fun eventLoop(): EventLoop {
+        TODO("Not yet implemented")
     }
 
     override fun remotePeerId(): PeerId {
