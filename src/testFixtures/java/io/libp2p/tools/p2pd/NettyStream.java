@@ -3,7 +3,7 @@ package io.libp2p.tools.p2pd;
 import io.libp2p.tools.p2pd.libp2pj.Muxer;
 import io.libp2p.tools.p2pd.libp2pj.Stream;
 import io.netty.buffer.Unpooled;
-import io.netty.channel.Channel;
+import io.netty.channel.*;
 
 import java.nio.ByteBuffer;
 
@@ -28,6 +28,11 @@ public class NettyStream implements Stream<Muxer.MuxerAdress> {
 
     public NettyStream(Channel channel, boolean initiator) {
         this(channel, initiator, null, null);
+    }
+
+    @Override
+    public EventLoop eventLoop() {
+        return channel.eventLoop();
     }
 
     @Override
