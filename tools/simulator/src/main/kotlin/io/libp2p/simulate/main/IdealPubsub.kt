@@ -80,7 +80,7 @@ class IdealPubsubSimulation(
 
     fun runAndPrint() {
         val results =
-            SimulationRunner<IdealPubsub.SimParams, RunResult>(/*threadCount = 1*/) { params, logger ->
+            SimulationRunner<IdealPubsub.SimParams, RunResult>(/*threadCount = 1*/) { params, _ ->
                 run(params)
             }.runAll(paramsSet)
         printResults(paramsSet.zip(results).toMap())
@@ -122,7 +122,6 @@ class IdealPubsubSimulation(
     }
 }
 
-@OptIn(ExperimentalCoroutinesApi::class)
 class IdealPubsub(
     val params: SimParams
 ) {

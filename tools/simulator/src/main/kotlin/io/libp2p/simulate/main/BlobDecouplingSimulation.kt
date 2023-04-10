@@ -20,6 +20,7 @@ fun main() {
     BlobDecouplingSimulation().runAndPrint()
 }
 
+@Suppress("UNUSED_VARIABLE")
 class BlobDecouplingSimulation(
     val nodeCount: Int = 1000,
     val nodePeerCount: Int = 30,
