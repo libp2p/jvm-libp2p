@@ -1,6 +1,7 @@
 package io.libp2p.simulate.main
 
 import io.libp2p.simulate.Bandwidth
+import io.libp2p.simulate.main.IdealPubsub.SendParams
 import io.libp2p.simulate.main.IdealPubsub.SendType.*
 import io.libp2p.simulate.main.scenario.ResultPrinter
 import io.libp2p.simulate.mbitsPerSecond
@@ -11,6 +12,7 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.currentTime
 import kotlinx.coroutines.test.runTest
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.ZERO
 import kotlin.time.Duration.Companion.milliseconds
 
 fun main() {
@@ -41,16 +43,24 @@ class IdealPubsubSimulation(
         1000.milliseconds,
     ),
 
-    val sendTypeParams: List<IdealPubsub.SendType> = listOf(
-        Sequential,
-        Parallel2,
-        Parallel4,
-        Parallel8,
-        Decoupled
+    val sendTypeParams: List<SendParams> = listOf(
+        SendParams.sequential(),
+        SendParams.decoupled(2),
+        SendParams.decoupled(4),
+        SendParams.decoupled(8),
+        SendParams.decoupled(16),
+        SendParams.decoupled(64),
+        SendParams.decoupled(256),
+        SendParams.decoupled(1024),
+        SendParams.decoupledAbsolute(),
+        SendParams.parallel(2),
+        SendParams.parallel(4),
+        SendParams.parallel(8),
     ),
-    val messageSizeParams: List<Long> = listOf(5 * 128 * 1024),
+//    val messageSizeParams: List<Long> = listOf(5 * 128 * 1024),
+    val messageSizeParams: List<Long> = listOf(1 * 1024 * 1024),
     val nodeCountParams: List<Int> = listOf(10000),
-    val maxSentParams: List<Int> = listOf(8),
+    val maxSentParams: List<Int> = listOf(Int.MAX_VALUE),
 
     val paramsSet: List<IdealPubsub.SimParams> =
         cartesianProduct(
@@ -110,19 +120,43 @@ class IdealPubsubSimulation(
 
         log("Done.")
     }
-
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class IdealPubsub(
     val params: SimParams
 ) {
-    enum class SendType { Sequential, Parallel2, Parallel4, Parallel8, Decoupled }
+    enum class SendType { Sequential, Parallel, Decoupled }
+
+    class SendParams(
+        val type: SendType,
+        private val count: Int
+    ) {
+        val parallelCount get() = if (type == Parallel) count else 1
+        val decoupledChunkCount get() = if (type == Decoupled) count else 1
+        val absoluteDecoupled get() = type == Decoupled && count == Int.MAX_VALUE
+
+        override fun toString(): String {
+            val countStr = when {
+                type == Sequential -> ""
+                absoluteDecoupled -> "-inf"
+                else -> "-$count"
+            }
+            return "$type$countStr"
+        }
+
+        companion object {
+            fun sequential() = SendParams(Sequential, 1)
+            fun decoupled(chunkCount: Int) = SendParams(Decoupled, chunkCount)
+            fun decoupledAbsolute() = SendParams(Decoupled, Int.MAX_VALUE)
+            fun parallel(parallelSendCount: Int) = SendParams(Parallel, parallelSendCount)
+        }
+    }
 
     data class SimParams(
         val bandwidth: Bandwidth,
         val latency: Duration,
-        val sendType: SendType,
+        val sendParams: SendParams,
         val messageSize: Long,
         val nodeCount: Int,
         val maxSent: Int = Int.MAX_VALUE,
@@ -132,78 +166,69 @@ class IdealPubsub(
         simulate()
     }
 
-    private val SendType.parallelCount
-        get() =
-            when (this) {
-                Sequential -> 1
-                Parallel2 -> 2
-                Parallel4 -> 4
-                Parallel8 -> 8
-                Decoupled -> 1
-            }
 
+    private val scope = TestScope()
     private var counter = 0
     private val nodes = mutableListOf<Node>()
 
     inner class Node(
-        val scope: TestScope,
         val hop: Int,
-        val fromNode: Int,
-        var sentCount: Int = 0,
-        val number: Int = counter++,
     ) {
+        var sentCount: Int = 0
+        val number: Int = counter++
         var deliverTime: Long = -1
 
-        private fun newNodeSent(): Node {
-            val newNode = Node(scope, hop + 1, number)
+        private fun acquireNode(): Node {
+            val newNode = Node(hop + 1)
             sentCount++
             nodes += newNode
             return newNode
         }
 
 
-        suspend fun startBroadcasting() {
+        suspend fun deliver() {
             deliverTime = scope.currentTime
 
             // time to transmit a single message through the node bandwidth
-            val messageTransmitDuration = params.bandwidth.getTransmitTime(params.messageSize)
+            val throughputDuration = params.bandwidth.getTransmitTime(params.messageSize)
             // time to transmit a number of messages in parallel through the node bandwidth
-            val messageParallelTransmitDuration = messageTransmitDuration * params.sendType.parallelCount
+            val parallelThroughputDuration = throughputDuration * params.sendParams.parallelCount
 
-            if (params.sendType == Decoupled && hop > 0) {
-                // when send type is Decoupled a node 'streams' a message in parallel while receiving it
-                // thus the message is already sent to the _first_ peer and the initial delay is 0
-                // the publishing node (hop == 0) still needs time to transmit a message to the first peer
-            } else {
-                // sending the message to the first peers(s)
-                delay(messageParallelTransmitDuration)
-            }
+            val firstThroughputDuration =
+                when {
+                    hop == 0 -> parallelThroughputDuration
+                    params.sendParams.absoluteDecoupled -> ZERO
+                    else -> parallelThroughputDuration / params.sendParams.decoupledChunkCount
+                }
+
+            // simulate the first message throughput delay
+            delay(firstThroughputDuration)
 
             broadcast@ while (true) {
-                for (i in 0 until params.sendType.parallelCount) {
+                for (i in 0 until params.sendParams.parallelCount) {
                     if (sentCount == params.maxSent || nodes.size == params.nodeCount)
                         break@broadcast
 
-                    val newNode = newNodeSent()
+                    val receivingNode = acquireNode()
                     scope.launch {
-                        // delay by latency: time the message 'flies over network' to the `newNode`
-                        // + message validation time
+                        // simulate `latency`
                         delay(params.latency)
-                        // now `newNode` received the message and starts broadcasting it to its peers
-                        newNode.startBroadcasting()
+                        // `receivingNode` received a message and starts broadcasting it
+                        // asynchronously
+                        receivingNode.deliver()
                     }
                 }
-                // sending the message to the next peers(s)
-                delay(messageParallelTransmitDuration)
+                // simulate throughput delay
+                delay(parallelThroughputDuration)
             }
         }
     }
 
     private fun simulate(): List<Node> {
-        runTest {
-            val publishNode = Node(this, 0, -1)
+        scope.runTest {
+            val publishNode = Node(0)
             nodes += publishNode
-            publishNode.startBroadcasting()
+            publishNode.deliver()
         }
         return nodes
     }
