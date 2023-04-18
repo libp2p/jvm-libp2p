@@ -13,6 +13,7 @@ const val DEFAULT_MAX_YAMUX_FRAME_DATA_LENGTH = 1 shl 20
  * A Netty codec implementation that converts [YamuxFrame] instances to [ByteBuf] and vice-versa.
  */
 class YamuxFrameCodec(
+    val isInitiator: Boolean,
     val maxFrameDataLength: Int = DEFAULT_MAX_YAMUX_FRAME_DATA_LENGTH
 ) : ByteToMessageCodec<YamuxFrame>() {
 
@@ -48,7 +49,7 @@ class YamuxFrameCodec(
             val streamId = msg.readInt()
             val lenData = msg.readInt()
             if (type.toInt() != YamuxType.DATA) {
-                val yamuxFrame = YamuxFrame(MuxId(ctx.channel().id(), streamId.toLong(), streamId % 2 == 1), type.toInt(), flags, lenData)
+                val yamuxFrame = YamuxFrame(MuxId(ctx.channel().id(), streamId.toLong(), isInitiator.xor(streamId % 2 == 1).not()), type.toInt(), flags, lenData)
                 out.add(yamuxFrame)
                 return
             }
@@ -70,7 +71,7 @@ class YamuxFrameCodec(
             }
             val data = msg.readSlice(lenData)
             data.retain() // MessageToMessageCodec releases original buffer, but it needs to be relayed
-            val yamuxFrame = YamuxFrame(MuxId(ctx.channel().id(), streamId.toLong(), streamId % 2 == 1), type.toInt(), flags, lenData, data)
+            val yamuxFrame = YamuxFrame(MuxId(ctx.channel().id(), streamId.toLong(), isInitiator.xor(streamId % 2 == 1).not()), type.toInt(), flags, lenData, data)
             out.add(yamuxFrame)
         }
     }

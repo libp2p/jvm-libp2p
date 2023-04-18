@@ -17,6 +17,8 @@ class YamuxFrame(val id: MuxId, val type: Int, val flags: Int, val lenData: Int,
     DefaultByteBufHolder(data ?: Unpooled.EMPTY_BUFFER) {
 
     override fun toString(): String {
-        return "YamuxFrame(id=$id, type=$type, flag=$flags, data=${data?.toByteArray()?.toHex()})"
+        if (data == null)
+            return "YamuxFrame(id=$id, type=$type, flag=$flags)"
+        return "YamuxFrame(id=$id, type=$type, flag=$flags, data=${String(data.toByteArray())})"
     }
 }
