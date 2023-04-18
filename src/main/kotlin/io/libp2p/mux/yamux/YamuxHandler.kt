@@ -40,13 +40,13 @@ open class YamuxHandler(
     }
 
     override fun handlerAdded(ctx: ChannelHandlerContext) {
+        println("Yamux::handlerAdded")
         super.handlerAdded(ctx)
         ready?.complete(this)
     }
 
     override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
-        if (ready != null && ready.isDone.not())
-            ready.complete(this)
+        println("Yamux::channelRead")
         msg as YamuxFrame
         when (msg.type) {
             YamuxType.DATA -> handleDataRead(msg)
@@ -115,6 +115,7 @@ open class YamuxHandler(
     }
 
     override fun onLocalOpen(child: MuxChannel<ByteBuf>) {
+        println("Yamux::onLocalOpen")
         getChannelHandlerContext().writeAndFlush(YamuxFrame(child.id, YamuxType.DATA, YamuxFlags.SYN, 0))
     }
 
@@ -144,6 +145,7 @@ open class YamuxHandler(
     }
 
     fun <T> createStream(streamHandler: StreamHandler<T>): StreamPromise<T> {
+        println("Yamux::createStream")
         val controller = CompletableFuture<T>()
         val stream = newStream {
             streamHandler.handleStream(createStream(it)).forward(controller)

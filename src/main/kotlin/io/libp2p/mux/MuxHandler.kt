@@ -34,11 +34,13 @@ abstract class MuxHandler(
     }
 
     override fun handlerAdded(ctx: ChannelHandlerContext) {
+        println("MPlex::handlerAdded")
         super.handlerAdded(ctx)
         ready?.complete(this)
     }
 
     override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
+        println("MPlex::channelRead")
         msg as MuxFrame
         when (msg.flag) {
             MuxFrame.Flag.OPEN -> onRemoteOpen(msg.id)
@@ -60,6 +62,7 @@ abstract class MuxHandler(
     }
 
     override fun onLocalOpen(child: MuxChannel<ByteBuf>) {
+        println("MPlex::onLocalOpen")
         getChannelHandlerContext().writeAndFlush(MuxFrame(child.id, MuxFrame.Flag.OPEN))
     }
 
@@ -89,6 +92,7 @@ abstract class MuxHandler(
     }
 
     fun <T> createStream(streamHandler: StreamHandler<T>): StreamPromise<T> {
+        println("MPlex::createStream")
         val controller = CompletableFuture<T>()
         val stream = newStream {
             streamHandler.handleStream(createStream(it)).forward(controller)
