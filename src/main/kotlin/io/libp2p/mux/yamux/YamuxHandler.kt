@@ -45,6 +45,7 @@ open class YamuxHandler(
     }
 
     override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
+        channelActive(ctx)
         msg as YamuxFrame
         when (msg.type) {
             YamuxType.DATA -> handleDataRead(msg)
