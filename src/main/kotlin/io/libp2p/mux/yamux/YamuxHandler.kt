@@ -99,6 +99,7 @@ open class YamuxHandler(
     }
 
     override fun onChildWrite(child: MuxChannel<ByteBuf>, data: ByteBuf) {
+        println("Yamux::onChildWrite(start) sendWindow=" + sendWindow.get())
         val ctx = getChannelHandlerContext()
         while (sendWindow.get() <= 0) {
             // wait until the window is increased
@@ -112,6 +113,7 @@ open class YamuxHandler(
                 ctx.write(muxFrame)
             }
         ctx.flush()
+        println("Yamux::onChildWrite(end)")
     }
 
     override fun onLocalOpen(child: MuxChannel<ByteBuf>) {

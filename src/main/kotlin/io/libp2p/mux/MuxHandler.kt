@@ -51,6 +51,7 @@ abstract class MuxHandler(
     }
 
     override fun onChildWrite(child: MuxChannel<ByteBuf>, data: ByteBuf) {
+        println("MPlex::onChildWrite(start)")
         val ctx = getChannelHandlerContext()
         data.sliceMaxSize(maxFrameDataLength)
             .map { frameSliceBuf ->
@@ -59,6 +60,7 @@ abstract class MuxHandler(
                 ctx.write(muxFrame)
             }
         ctx.flush()
+        println("MPlex::onChildWrite(end)")
     }
 
     override fun onLocalOpen(child: MuxChannel<ByteBuf>) {
