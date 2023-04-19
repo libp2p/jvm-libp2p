@@ -7,6 +7,7 @@ import io.libp2p.etc.types.completedExceptionally
 import io.libp2p.etc.types.hasCauseOfType
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
+import java.lang.RuntimeException
 import java.util.concurrent.CompletableFuture
 import java.util.function.Function
 import java.util.logging.Level
@@ -37,6 +38,8 @@ abstract class AbstractMuxHandler<TData>() :
     }
 
     override fun channelUnregistered(ctx: ChannelHandlerContext?) {
+        println("Mux channel unregistered!")
+        RuntimeException().printStackTrace()
         activeFuture.completeExceptionally(ConnectionClosedException())
         closed = true
         super.channelUnregistered(ctx)
