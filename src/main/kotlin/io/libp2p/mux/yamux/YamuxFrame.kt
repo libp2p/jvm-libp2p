@@ -1,7 +1,6 @@
 package io.libp2p.mux.yamux
 
 import io.libp2p.etc.types.toByteArray
-import io.libp2p.etc.types.toHex
 import io.libp2p.etc.util.netty.mux.MuxId
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.DefaultByteBufHolder
@@ -17,6 +16,8 @@ class YamuxFrame(val id: MuxId, val type: Int, val flags: Int, val lenData: Int,
     DefaultByteBufHolder(data ?: Unpooled.EMPTY_BUFFER) {
 
     override fun toString(): String {
-        return "YamuxFrame(id=$id, type=$type, flag=$flags, data=${data?.toByteArray()?.toHex()})"
+        if (data == null)
+            return "YamuxFrame(id=$id, type=$type, flag=$flags)"
+        return "YamuxFrame(id=$id, type=$type, flag=$flags, data=${String(data.toByteArray())})"
     }
 }
