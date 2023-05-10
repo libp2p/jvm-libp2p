@@ -89,7 +89,7 @@ public final class Utf8 {
             } else {
                 utf8Length += 2;
                 // jdk7+: if (Character.isSurrogate(c)) {
-                if (MIN_SURROGATE <= c && c <= MAX_SURROGATE) {
+                if (Character.MIN_SURROGATE <= c && c <= Character.MAX_SURROGATE) {
                     // Check that we have a well-formed surrogate pair.
                     if (Character.codePointAt(sequence, i) == c) {
                         throw new IllegalArgumentException(unpairedSurrogateMsg(i));

@@ -60,7 +60,7 @@ public class AtomicDouble extends Number implements java.io.Serializable {
      * @param initialValue the initial value
      */
     public AtomicDouble(double initialValue) {
-        value = new AtomicLong(doubleToRawLongBits(initialValue));
+        value = new AtomicLong(Double.doubleToRawLongBits(initialValue));
     }
 
     /** Creates a new {@code AtomicDouble} with initial value {@code 0.0}. */
@@ -74,7 +74,7 @@ public class AtomicDouble extends Number implements java.io.Serializable {
      * @return the current value
      */
     public final double get() {
-        return longBitsToDouble(value.get());
+        return Double.longBitsToDouble(value.get());
     }
 
     /**
@@ -83,7 +83,7 @@ public class AtomicDouble extends Number implements java.io.Serializable {
      * @param newValue the new value
      */
     public final void set(double newValue) {
-        long next = doubleToRawLongBits(newValue);
+        long next = Double.doubleToRawLongBits(newValue);
         value.set(next);
     }
 
@@ -93,7 +93,7 @@ public class AtomicDouble extends Number implements java.io.Serializable {
      * @param newValue the new value
      */
     public final void lazySet(double newValue) {
-        long next = doubleToRawLongBits(newValue);
+        long next = Double.doubleToRawLongBits(newValue);
         value.lazySet(next);
     }
 
@@ -104,8 +104,8 @@ public class AtomicDouble extends Number implements java.io.Serializable {
      * @return the previous value
      */
     public final double getAndSet(double newValue) {
-        long next = doubleToRawLongBits(newValue);
-        return longBitsToDouble(value.getAndSet(next));
+        long next = Double.doubleToRawLongBits(newValue);
+        return Double.longBitsToDouble(value.getAndSet(next));
     }
 
     /**
@@ -118,7 +118,7 @@ public class AtomicDouble extends Number implements java.io.Serializable {
      *     bitwise equal to the expected value.
      */
     public final boolean compareAndSet(double expect, double update) {
-        return value.compareAndSet(doubleToRawLongBits(expect), doubleToRawLongBits(update));
+        return value.compareAndSet(Double.doubleToRawLongBits(expect), Double.doubleToRawLongBits(update));
     }
 
     /**
@@ -135,7 +135,7 @@ public class AtomicDouble extends Number implements java.io.Serializable {
      * @return {@code true} if successful
      */
     public final boolean weakCompareAndSet(double expect, double update) {
-        return value.weakCompareAndSet(doubleToRawLongBits(expect), doubleToRawLongBits(update));
+        return value.weakCompareAndSet(Double.doubleToRawLongBits(expect), Double.doubleToRawLongBits(update));
     }
 
     /**
@@ -147,9 +147,9 @@ public class AtomicDouble extends Number implements java.io.Serializable {
     public final double getAndAdd(double delta) {
         while (true) {
             long current = value.get();
-            double currentVal = longBitsToDouble(current);
+            double currentVal = Double.longBitsToDouble(current);
             double nextVal = currentVal + delta;
-            long next = doubleToRawLongBits(nextVal);
+            long next = Double.doubleToRawLongBits(nextVal);
             if (value.compareAndSet(current, next)) {
                 return currentVal;
             }
@@ -165,9 +165,9 @@ public class AtomicDouble extends Number implements java.io.Serializable {
     public final double addAndGet(double delta) {
         while (true) {
             long current = value.get();
-            double currentVal = longBitsToDouble(current);
+            double currentVal = Double.longBitsToDouble(current);
             double nextVal = currentVal + delta;
-            long next = doubleToRawLongBits(nextVal);
+            long next = Double.doubleToRawLongBits(nextVal);
             if (value.compareAndSet(current, next)) {
                 return nextVal;
             }
