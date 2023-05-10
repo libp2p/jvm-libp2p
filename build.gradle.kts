@@ -40,7 +40,7 @@ allprojects {
     repositories {
         mavenCentral()
         maven("https://artifacts.consensys.net/public/maven/maven/")
-        maven( "https://jitpack.io")
+        maven("https://jitpack.io")
     }
 
     sourceSets.create("jmh") {
@@ -182,3 +182,4 @@ allprojects {
             buildUponDefaultConfig = true
         }
     }
+}
