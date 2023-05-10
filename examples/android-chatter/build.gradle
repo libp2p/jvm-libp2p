@@ -1,18 +1,19 @@
 buildscript {
-    ext.kotlin_version = '1.6.4'
+//    ext.kotlin_version = '1.6.4'
     repositories {
         gradlePluginPortal()
         google()
         mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:3.5.3'
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.6.21"
+//        classpath 'com.android.tools.build:gradle:3.5.3'
+//        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.6.21"
     }
 }
 
 plugins {
     id("com.android.application").version("7.3.1")
+//    id("org.jetbrains.kotlin.android") version "1.6.21"
 //    id("kotlin-android").version("1.6.21")
 //    id("kotlin-android")
 }
@@ -21,7 +22,7 @@ repositories {
   google()
 }
 
-apply plugin: 'com.android.application'
+//apply plugin: 'com.android.application'
 //apply plugin: 'kotlin-android'
 //apply plugin: 'kotlin-android-extensions'
 
