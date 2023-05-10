@@ -40,52 +40,36 @@ allprojects {
     repositories {
         mavenCentral()
         maven("https://artifacts.consensys.net/public/maven/maven/")
+        maven( "https://jitpack.io")
     }
 
-repositories {
-    mavenCentral()
-    maven( "https://jitpack.io")
-}
-
-sourceSets.create("jmh") {
-    compileClasspath += sourceSets["main"].runtimeClasspath
-    compileClasspath += sourceSets["testFixtures"].runtimeClasspath
-    runtimeClasspath += sourceSets["main"].runtimeClasspath
-    runtimeClasspath += sourceSets["testFixtures"].runtimeClasspath
-}
+    sourceSets.create("jmh") {
+        compileClasspath += sourceSets["main"].runtimeClasspath
+        compileClasspath += sourceSets["testFixtures"].runtimeClasspath
+        runtimeClasspath += sourceSets["main"].runtimeClasspath
+        runtimeClasspath += sourceSets["testFixtures"].runtimeClasspath
+    }
 
     dependencies {
-        implementation(kotlin("stdlib-jdk8"))
-        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.0")
-        implementation("commons-codec:commons-codec:1.15")
+        api("io.netty:netty-buffer:4.1.88.Final")
+        api("io.netty:netty-codec-http2:4.1.88.Final")
+        api("io.netty:netty-transport:4.1.88.Final")
+        api("io.netty:netty-transport-classes-epoll:4.1.88.Final")
+        api("com.google.protobuf:protobuf-java:3.21.9")
 
-    api("io.netty:netty-buffer:4.1.88.Final")
-    api("io.netty:netty-codec-http2:4.1.88.Final")
-    api("io.netty:netty-transport:4.1.88.Final")
-    api("io.netty:netty-transport-classes-epoll:4.1.88.Final")
-    api("com.google.protobuf:protobuf-java:3.21.9")
+        implementation("com.github.peergos:noise-java:22.1.0")
 
-    implementation("com.github.peergos:noise-java:22.1.0")
+        implementation("org.bouncycastle:bcprov-jdk15on:1.70")
+        implementation("org.bouncycastle:bcpkix-jdk15on:1.70")
 
-    implementation("org.bouncycastle:bcprov-jdk15on:1.70")
-    implementation("org.bouncycastle:bcpkix-jdk15on:1.70")
+        implementation("com.github.multiformats:java-multibase:v1.1.1")
 
-    implementation("com.github.multiformats:java-multibase:v1.1.1")
+        testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.1")
+        testImplementation("org.junit.jupiter:junit-jupiter-params:5.9.1")
+        testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.9.1")
 
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.1")
-    testImplementation("org.junit.jupiter:junit-jupiter-params:5.9.1")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.9.1")
-
-    testImplementation("io.mockk:mockk:1.12.2")
-    testImplementation("org.assertj:assertj-core:3.23.1")
-
-        implementation("com.google.guava:guava")
-        implementation("org.apache.logging.log4j:log4j-api")
-
-        testFixturesImplementation("org.apache.logging.log4j:log4j-api")
-        testFixturesImplementation("com.google.guava:guava")
-
-        testImplementation("org.apache.logging.log4j:log4j-core")
+        testImplementation("io.mockk:mockk:1.12.2")
+        testImplementation("org.assertj:assertj-core:3.23.1")
     }
 
     java {
@@ -104,97 +88,97 @@ sourceSets.create("jmh") {
 
     tasks.withType<Copy> {
         duplicatesStrategy = DuplicatesStrategy.INCLUDE
-}
-
-java {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
-}
-
-tasks.withType<KotlinCompile> {
-    kotlinOptions.jvmTarget = "17"
-    kotlinOptions {
-        freeCompilerArgs = listOf("-Xjvm-default=all")
     }
+
+    java {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    tasks.withType<KotlinCompile> {
+        kotlinOptions.jvmTarget = "17"
+        kotlinOptions {
+            freeCompilerArgs = listOf("-Xjvm-default=all")
+        }
 
 // Parallel build execution
-    tasks.test {
-        description = "Runs the unit tests."
+        tasks.test {
+            description = "Runs the unit tests."
 
-        useJUnitPlatform {
-            excludeTags("interop")
-        }
+            useJUnitPlatform {
+                excludeTags("interop")
+            }
 
-        testLogging {
-            events("FAILED")
-            exceptionFormat = TestExceptionFormat.FULL
-            showCauses = true
-            showExceptions = true
-            showStackTraces = true
-        }
+            testLogging {
+                events("FAILED")
+                exceptionFormat = TestExceptionFormat.FULL
+                showCauses = true
+                showExceptions = true
+                showStackTraces = true
+            }
 
-        // disabling the parallel test runs for the time being due to port collisions
-        // If GRADLE_MAX_TEST_FORKS is not set, use half the available processors
+            // disabling the parallel test runs for the time being due to port collisions
+            // If GRADLE_MAX_TEST_FORKS is not set, use half the available processors
 //    maxParallelForks = (System.getenv("GRADLE_MAX_TEST_FORKS")?.toInt() ?:
 //    Runtime.getRuntime().availableProcessors().div(2))
-    }
+        }
 
-    kotlinter {
-        disabledRules = arrayOf("no-wildcard-imports", "enum-entry-name-case")
-    }
+        kotlinter {
+            disabledRules = arrayOf("no-wildcard-imports", "enum-entry-name-case")
+        }
 
-    val sourcesJar by tasks.registering(Jar::class) {
-        archiveClassifier.set("sources")
-        from(sourceSets.main.get().allSource)
-    }
+        val sourcesJar by tasks.registering(Jar::class) {
+            archiveClassifier.set("sources")
+            from(sourceSets.main.get().allSource)
+        }
 
-    tasks.dokkaHtml.configure {
-        outputDirectory.set(buildDir.resolve("dokka"))
-        dokkaSourceSets {
-            configureEach {
-                jdkVersion.set(17)
-                reportUndocumented.set(false)
-                externalDocumentationLink {
-                    url.set(URL("https://netty.io/4.1/api/"))
+        tasks.dokkaHtml.configure {
+            outputDirectory.set(buildDir.resolve("dokka"))
+            dokkaSourceSets {
+                configureEach {
+                    jdkVersion.set(17)
+                    reportUndocumented.set(false)
+                    externalDocumentationLink {
+                        url.set(URL("https://netty.io/4.1/api/"))
+                    }
                 }
             }
         }
-    }
 
-    val dokkaJar: TaskProvider<Jar> by tasks.registering(Jar::class) {
-        group = JavaBasePlugin.DOCUMENTATION_GROUP
-        val dokkaJavadocTask = tasks.getByName("dokkaJavadoc")
-        dependsOn(dokkaJavadocTask)
-        archiveClassifier.set("javadoc")
-        from(dokkaJavadocTask.outputs)
-    }
+        val dokkaJar: TaskProvider<Jar> by tasks.registering(Jar::class) {
+            group = JavaBasePlugin.DOCUMENTATION_GROUP
+            val dokkaJavadocTask = tasks.getByName("dokkaJavadoc")
+            dependsOn(dokkaJavadocTask)
+            archiveClassifier.set("javadoc")
+            from(dokkaJavadocTask.outputs)
+        }
 
-    publishing {
-        repositories {
-            maven {
-                name = "cloudsmith"
-                url = uri("https://api-g.cloudsmith.io/maven/libp2p/jvm-libp2p")
-                credentials {
-                    username = findProperty("cloudsmithUser") as String?
-                    password = findProperty("cloudsmithApiKey") as String?
+        publishing {
+            repositories {
+                maven {
+                    name = "cloudsmith"
+                    url = uri("https://api-g.cloudsmith.io/maven/libp2p/jvm-libp2p")
+                    credentials {
+                        username = findProperty("cloudsmithUser") as String?
+                        password = findProperty("cloudsmithApiKey") as String?
+                    }
+                }
+            }
+            if (hasProperty("mavenArtifactId")) {
+                publications {
+                    register("mavenJava", MavenPublication::class) {
+                        from(components["java"])
+                        artifact(sourcesJar.get())
+                        artifact(dokkaJar.get())
+                        groupId = "io.libp2p"
+                        artifactId = project.property("mavenArtifactId") as String
+                    }
                 }
             }
         }
-        if (hasProperty("mavenArtifactId")) {
-            publications {
-                register("mavenJava", MavenPublication::class) {
-                    from(components["java"])
-                    artifact(sourcesJar.get())
-                    artifact(dokkaJar.get())
-                    groupId = "io.libp2p"
-                    artifactId = project.property("mavenArtifactId") as String
-                }
-            }
+
+        detekt {
+            config = files("$rootDir/detekt/config.yml")
+            buildUponDefaultConfig = true
         }
     }
-
-    detekt {
-        config = files("$rootDir/detekt/config.yml")
-        buildUponDefaultConfig = true
-    }
-}
