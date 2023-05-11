@@ -19,12 +19,9 @@ plugins {
     id("org.jmailen.kotlinter").version("3.10.0")
     id("java-test-fixtures")
     id("io.spring.dependency-management").version("1.1.0")
+//    id("org.jetbrains.kotlin.android") version "1.6.21" apply false
 }
 
-val nonAndroidProjects = allprojects
-    .filterNot { it.name.contains("android", ignoreCase = true) }
-
-//configure(nonAndroidProjects) {
 allprojects {
     group = "io.libp2p"
     version = "develop"
