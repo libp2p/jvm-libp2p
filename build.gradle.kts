@@ -8,9 +8,9 @@ import java.net.URL
 description = "a minimal implementation of libp2p for the jvm"
 
 plugins {
-    id("com.android.application") version "7.3.1" apply false
-    id("org.jetbrains.kotlin.android") version "1.6.21" apply false
-    id("org.jetbrains.kotlin.jvm") version "1.6.21" apply false
+    val kotlinVersion = "1.6.21"
+
+    id("org.jetbrains.kotlin.jvm") version kotlinVersion apply false
 
     id("com.github.ben-manes.versions").version("0.44.0")
     id("idea")
@@ -21,7 +21,9 @@ plugins {
     id("org.jmailen.kotlinter").version("3.10.0")
     id("java-test-fixtures")
     id("io.spring.dependency-management").version("1.1.0")
-//    id("org.jetbrains.kotlin.android") version "1.6.21" apply false
+
+    id("org.jetbrains.kotlin.android") version kotlinVersion apply false
+    id("com.android.application") version "7.3.1" apply false
 }
 
 allprojects {
@@ -36,7 +38,7 @@ allprojects {
 
     val isAndroid = name.contains("android", ignoreCase = true)
     if (!isAndroid) {
-        apply(plugin = "org.jetbrains.kotlin.jvm")
+        apply(plugin = "kotlin")
         apply(plugin = "idea")
         apply(plugin = "java")
 
@@ -50,8 +52,8 @@ allprojects {
 
         dependencies {
 
-        implementation(kotlin("stdlib-jdk8"))
-        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core")
+            implementation(kotlin("stdlib-jdk8"))
+            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core")
 
             implementation("com.google.guava:guava")
             implementation("org.apache.logging.log4j:log4j-api")
