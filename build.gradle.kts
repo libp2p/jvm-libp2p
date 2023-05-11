@@ -8,7 +8,9 @@ import java.net.URL
 description = "a minimal implementation of libp2p for the jvm"
 
 plugins {
-    kotlin("jvm").version("1.6.21")
+    id("com.android.application") version "7.3.1" apply false
+    id("org.jetbrains.kotlin.android") version "1.6.21" apply false
+    id("org.jetbrains.kotlin.jvm") version "1.6.21" apply false
 
     id("com.github.ben-manes.versions").version("0.44.0")
     id("idea")
@@ -34,7 +36,7 @@ allprojects {
 
     val isAndroid = name.contains("android", ignoreCase = true)
     if (!isAndroid) {
-        apply(plugin = "kotlin")
+        apply(plugin = "org.jetbrains.kotlin.jvm")
         apply(plugin = "idea")
         apply(plugin = "java")
 
