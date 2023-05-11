@@ -1,9 +1,16 @@
 pluginManagement {
-
     repositories {
         gradlePluginPortal()
-        google()
         mavenCentral()
+        google()
+    }
+}
+
+dependencyResolutionManagement {
+    repositories {
+        mavenCentral()
+        maven { url "https://artifacts.consensys.net/public/maven/maven/" }
+        google()
     }
 }
 
