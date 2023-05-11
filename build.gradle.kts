@@ -23,7 +23,7 @@ plugins {
     id("io.spring.dependency-management").version("1.1.0")
 
     id("org.jetbrains.kotlin.android") version kotlinVersion apply false
-    id("com.android.application") version "7.3.1" apply false
+    id("com.android.application") version "7.4.2" apply false
 }
 
 allprojects {
