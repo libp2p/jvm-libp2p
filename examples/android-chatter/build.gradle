@@ -1,9 +1,5 @@
-plugins {
-    id("com.android.application")
-}
-
-//apply(plugin = "com.android.application") // doesn't work!!! Only with 'plugins' block
-apply plugin: "org.jetbrains.kotlin.android" // works both with 'apply' and 'plugins' block
+apply plugin: "com.android.application"
+apply plugin: "org.jetbrains.kotlin.android"
 
 apply plugin: "io.spring.dependency-management"
 apply from: "$rootDir/versions.gradle"
