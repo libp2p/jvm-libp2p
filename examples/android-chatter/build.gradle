@@ -29,6 +29,9 @@ android {
         exclude 'META-INF/io.netty.versions.properties'
         exclude 'META-INF/INDEX.LIST'
     }
+    kotlinOptions {
+        jvmTarget = "11"
+    }
     compileOptions {
         sourceCompatibility = 1.11
         targetCompatibility = 1.11
