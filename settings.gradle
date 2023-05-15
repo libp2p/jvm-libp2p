@@ -17,6 +17,8 @@ dependencyResolutionManagement {
 rootProject.name = 'jvm-libp2p-minimal'
 
 include ':libp2p'
+include ':tools:schedulers'
+include ':tools:simulator'
 include ':examples:chatter'
 include ':examples:cli-chatter'
 include ':examples:pinger'
