@@ -52,8 +52,8 @@ configure(
 
     dependencies {
 
-            implementation(kotlin("stdlib-jdk8"))
-            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core")
+        implementation(kotlin("stdlib-jdk8"))
+        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core")
 
         implementation("com.google.guava:guava")
         implementation("org.apache.logging.log4j:log4j-api")
@@ -165,5 +165,4 @@ configure(
         config = files("$rootDir/detekt/config.yml")
         buildUponDefaultConfig = true
     }
-
 }
