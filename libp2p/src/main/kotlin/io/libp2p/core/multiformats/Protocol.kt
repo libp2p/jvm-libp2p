@@ -9,7 +9,7 @@ import io.libp2p.etc.types.toByteArray
 import io.libp2p.etc.types.toByteBuf
 import io.libp2p.etc.types.writeUvarint
 import io.netty.buffer.ByteBuf
-import org.apache.commons.codec.binary.Base32
+import org.bouncycastle.util.encoders.Base32
 import java.net.Inet4Address
 import java.net.Inet6Address
 import java.net.InetAddress
@@ -186,10 +186,8 @@ private val ONION_PARSER: (Protocol, String) -> ByteArray = { _, addr ->
     // onion address without the ".onion" substring
     if (split[0].length != 16) throw IllegalArgumentException("failed to parse addr: $addr not a Tor onion address.")
 
-    val base32 = Base32()
     val base32Text = split[0].uppercase()
-    if (!base32.isInAlphabet(base32Text)) throw IllegalArgumentException("Invalid Base32 string in the Onion address: $base32Text")
-    val onionHostBytes = base32.decode(base32Text)
+    val onionHostBytes = Base32.decode(base32Text)
     val port = split[1].toInt()
     if (port > 65535) throw IllegalArgumentException("Port is > 65535: $port")
     if (port < 1) throw IllegalArgumentException("Port is < 1: $port")
@@ -203,5 +201,5 @@ private val ONION_STRINGIFIER: (Protocol, ByteArray) -> String = { _, bytes ->
     val byteBuf = bytes.toByteBuf()
     val host = byteBuf.readBytes(10).toByteArray()
     val port = byteBuf.readUnsignedShort()
-    String(Base32().encode(host)).lowercase() + ":" + port
+    Base32.toBase32String(host).lowercase() + ":" + port
 }

@@ -13,7 +13,6 @@ dependencies {
 
     api("com.google.protobuf:protobuf-java")
 
-    implementation("commons-codec:commons-codec")
     implementation("tech.pegasys:noise-java")
 
     implementation("org.bouncycastle:bcprov-jdk15on")
