@@ -5,7 +5,6 @@ import io.libp2p.core.ConnectionHandler
 import io.libp2p.core.Libp2pException
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.transport.Transport
-import org.apache.logging.log4j.LogManager
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
@@ -13,6 +12,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable
+import org.slf4j.LoggerFactory
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit.SECONDS
 import java.util.concurrent.atomic.AtomicBoolean
@@ -25,7 +25,7 @@ abstract class TransportTests {
     protected lateinit var transportUnderTest: Transport
 
     protected val nullConnHandler = ConnectionHandler { }
-    protected val logger = LogManager.getLogger("test")
+    protected val logger = LoggerFactory.getLogger("test")
 
     protected fun startListeners(server: Transport, startPortNumber: Int, howMany: Int) {
         val listening = (0 until howMany).map {

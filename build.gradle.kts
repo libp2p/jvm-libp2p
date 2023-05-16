@@ -47,16 +47,13 @@ allprojects {
         implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core")
 
         implementation("com.google.guava:guava")
-        implementation("org.apache.logging.log4j:log4j-api")
-
-        testFixturesImplementation("org.apache.logging.log4j:log4j-api")
-        testFixturesImplementation("com.google.guava:guava")
+        implementation("org.slf4j:slf4j-api:2.0.7")
 
         testImplementation("org.junit.jupiter:junit-jupiter")
         testImplementation("org.junit.jupiter:junit-jupiter-params")
         testImplementation("io.mockk:mockk")
         testImplementation("org.assertj:assertj-core")
-        testImplementation("org.apache.logging.log4j:log4j-core")
+        testRuntimeOnly("org.apache.logging.log4j:log4j-slf4j-impl")
     }
 
     java {

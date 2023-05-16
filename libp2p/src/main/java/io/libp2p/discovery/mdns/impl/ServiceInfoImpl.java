@@ -7,22 +7,14 @@ package io.libp2p.discovery.mdns.impl;
 import io.libp2p.discovery.mdns.ServiceInfo;
 import io.libp2p.discovery.mdns.impl.constants.DNSRecordClass;
 import io.libp2p.discovery.mdns.impl.util.ByteWrangler;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * JmDNS service information.
@@ -30,7 +22,7 @@ import java.util.Set;
  * @author Arthur van Hoff, Jeff Sonstein, Werner Randelshofer, Victor Toni
  */
 public class ServiceInfoImpl extends ServiceInfo {
-    private static Logger           logger = LogManager.getLogger(ServiceInfoImpl.class.getName());
+    private static Logger logger = LoggerFactory.getLogger(ServiceInfoImpl.class.getName());
 
     private String                  _domain;
     private String                  _protocol;

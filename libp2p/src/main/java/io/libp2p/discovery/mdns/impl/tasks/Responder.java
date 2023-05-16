@@ -4,6 +4,11 @@
 
 package io.libp2p.discovery.mdns.impl.tasks;
 
+import io.libp2p.discovery.mdns.impl.*;
+import io.libp2p.discovery.mdns.impl.constants.DNSConstants;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -11,21 +16,11 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
-
-import io.libp2p.discovery.mdns.impl.DNSIncoming;
-import io.libp2p.discovery.mdns.impl.DNSOutgoing;
-import io.libp2p.discovery.mdns.impl.DNSQuestion;
-import io.libp2p.discovery.mdns.impl.DNSRecord;
-import io.libp2p.discovery.mdns.impl.JmDNSImpl;
-import io.libp2p.discovery.mdns.impl.constants.DNSConstants;
-
 /**
  * The Responder sends a single answer for the specified service infos and for the host name.
  */
 public class Responder extends DNSTask {
-    static Logger logger = LogManager.getLogger(Responder.class.getName());
+    static Logger logger = LoggerFactory.getLogger(Responder.class.getName());
 
     private final DNSIncoming _in;
 

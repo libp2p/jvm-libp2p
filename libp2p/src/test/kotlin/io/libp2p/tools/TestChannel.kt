@@ -10,7 +10,7 @@ import io.libp2p.transport.implementation.ConnectionOverNetty
 import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelId
 import io.netty.channel.embedded.EmbeddedChannel
-import org.apache.logging.log4j.LogManager
+import org.slf4j.LoggerFactory
 import java.net.InetSocketAddress
 import java.net.SocketAddress
 import java.util.concurrent.CompletableFuture
@@ -101,7 +101,7 @@ class TestChannel(
             return TestConnection(ch1, ch2)
         }
 
-        private val logger = LogManager.getLogger(TestChannel::class.java)
+        private val logger = LoggerFactory.getLogger(TestChannel::class.java)
     }
 
     class TestConnection(val ch1: TestChannel, val ch2: TestChannel) {

@@ -4,15 +4,14 @@
 
 package io.libp2p.discovery.mdns.impl;
 
-import java.util.Set;
-
-import io.libp2p.discovery.mdns.impl.constants.DNSRecordClass;
-import io.libp2p.discovery.mdns.impl.constants.DNSRecordType;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
-
 import io.libp2p.discovery.mdns.ServiceInfo;
 import io.libp2p.discovery.mdns.impl.constants.DNSConstants;
+import io.libp2p.discovery.mdns.impl.constants.DNSRecordClass;
+import io.libp2p.discovery.mdns.impl.constants.DNSRecordType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Set;
 
 /**
  * A DNS question.
@@ -20,7 +19,7 @@ import io.libp2p.discovery.mdns.impl.constants.DNSConstants;
  * @author Arthur van Hoff, Pierre Frisch
  */
 public class DNSQuestion extends DNSEntry {
-    private static Logger logger = LogManager.getLogger(DNSQuestion.class.getName());
+    private static Logger logger = LoggerFactory.getLogger(DNSQuestion.class.getName());
 
     /**
      * Pointer question.

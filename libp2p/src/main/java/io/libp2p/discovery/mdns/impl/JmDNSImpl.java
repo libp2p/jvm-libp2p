@@ -12,32 +12,13 @@ import io.libp2p.discovery.mdns.impl.constants.DNSRecordType;
 import io.libp2p.discovery.mdns.impl.tasks.Responder;
 import io.libp2p.discovery.mdns.impl.tasks.ServiceResolver;
 import io.libp2p.discovery.mdns.impl.util.NamedThreadFactory;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.Inet6Address;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.MulticastSocket;
-import java.net.SocketAddress;
-import java.net.SocketException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.net.*;
+import java.util.*;
+import java.util.concurrent.*;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -46,7 +27,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * @author Arthur van Hoff, Rick Blair, Jeff Sonstein, Werner Randelshofer, Pierre Frisch, Scott Lewis, Kai Kreuzer, Victor Toni
  */
 public class JmDNSImpl extends JmDNS {
-    private static Logger logger = LogManager.getLogger(JmDNSImpl.class.getName());
+    private static Logger logger = LoggerFactory.getLogger(JmDNSImpl.class.getName());
 
     /**
      * This is the multicast group, we are listening to for multicast DNS messages.

@@ -4,12 +4,14 @@
 
 package io.libp2p.discovery.mdns.impl;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.net.*;
-import java.util.*;
-
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
+import java.util.Enumeration;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * HostInfo information on the local host to be able to cope with change of addresses.
@@ -17,7 +19,7 @@ import org.apache.logging.log4j.LogManager;
  * @author Pierre Frisch, Werner Randelshofer
  */
 public class HostInfo {
-    private static Logger       logger = LogManager.getLogger(HostInfo.class.getName());
+    private static Logger logger = LoggerFactory.getLogger(HostInfo.class.getName());
 
     protected String            _name;
 

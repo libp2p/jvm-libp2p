@@ -11,7 +11,7 @@ import io.netty.channel.ChannelHandler
 import io.netty.handler.codec.protobuf.ProtobufDecoder
 import io.netty.handler.codec.protobuf.ProtobufEncoder
 import io.netty.handler.codec.protobuf.ProtobufVarint32LengthFieldPrepender
-import org.apache.logging.log4j.LogManager
+import org.slf4j.LoggerFactory
 import pubsub.pb.Rpc
 import java.util.Collections.singletonList
 import java.util.Optional
@@ -29,7 +29,7 @@ open class DefaultPubsubMessage(override val protobufMessage: Rpc.Message) : Abs
     override val messageId: MessageId = protobufMessage.from.toWBytes() + protobufMessage.seqno.toWBytes()
 }
 
-private val logger = LogManager.getLogger(AbstractRouter::class.java)
+private val logger = LoggerFactory.getLogger(AbstractRouter::class.java)
 
 /**
  * Implements common logic for pubsub routers
