@@ -18,17 +18,17 @@ import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
 import io.netty.util.ResourceLeakDetector
-import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.fail
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
+import org.slf4j.LoggerFactory;
 
 typealias SecureChannelCtor = (PrivKey) -> SecureChannel
 
-val logger = LogManager.getLogger(SecureChannelTestBase::class.java)
+val logger = LoggerFactory.getLogger(SecureChannelTestBase::class.java)
 
 abstract class SecureChannelTestBase(
     val secureChannelCtor: SecureChannelCtor,

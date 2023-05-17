@@ -12,8 +12,8 @@ import io.libp2p.discovery.mdns.impl.constants.DNSRecordType;
 import io.libp2p.discovery.mdns.impl.tasks.Responder;
 import io.libp2p.discovery.mdns.impl.tasks.ServiceResolver;
 import io.libp2p.discovery.mdns.impl.util.NamedThreadFactory;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -46,7 +46,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * @author Arthur van Hoff, Rick Blair, Jeff Sonstein, Werner Randelshofer, Pierre Frisch, Scott Lewis, Kai Kreuzer, Victor Toni
  */
 public class JmDNSImpl extends JmDNS {
-    private static Logger logger = LogManager.getLogger(JmDNSImpl.class.getName());
+    private static Logger logger = LoggerFactory.getLogger(JmDNSImpl.class.getName());
 
     /**
      * This is the multicast group, we are listening to for multicast DNS messages.

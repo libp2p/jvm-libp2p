@@ -1,24 +1,17 @@
 package io.libp2p.tools
 
-import org.apache.logging.log4j.Level
-import org.apache.logging.log4j.LogManager
-import org.apache.logging.log4j.core.LogEvent
-import org.apache.logging.log4j.core.Logger
-import org.apache.logging.log4j.core.appender.AbstractAppender
-import java.util.ArrayList
+import java.util.logging.*
 
-class TestLogAppender : AbstractAppender("test", null, null, false, null), AutoCloseable {
-    val logs: MutableList<LogEvent> = ArrayList()
-
+class TestLogAppender : MemoryHandler(ConsoleHandler(), 1, Level.ALL), AutoCloseable {
+    val logs: MutableList<LogRecord> = ArrayList()
+    val logger: Logger = Logger.getLogger("") // root logger
     fun install(): TestLogAppender {
-        (LogManager.getRootLogger() as Logger).addAppender(this)
-        start()
+        logger.addHandler(this)
         return this
     }
 
     fun uninstall() {
-        stop()
-        (LogManager.getRootLogger() as Logger).removeAppender(this)
+        logger.removeHandler(this)
     }
 
     override fun close() {
@@ -26,9 +19,11 @@ class TestLogAppender : AbstractAppender("test", null, null, false, null), AutoC
     }
 
     fun hasAny(level: Level) = logs.any { it.level == level }
-    fun hasAnyWarns() = hasAny(Level.ERROR) || hasAny(Level.WARN)
+    fun hasAnyWarns() = hasAny(Level.SEVERE) || hasAny(Level.WARNING)
 
-    override fun append(event: LogEvent) {
-        logs += event.toImmutable()
+    @Synchronized
+    override fun publish(record: LogRecord) {
+        super.publish(record)
+        logs += record
     }
 }

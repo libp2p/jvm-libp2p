@@ -9,11 +9,11 @@ import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.codec.MessageToMessageCodec
-import org.apache.logging.log4j.LogManager
+import org.slf4j.LoggerFactory;
 import java.io.IOException
 import java.security.GeneralSecurityException
 
-private val logger = LogManager.getLogger(NoiseXXSecureChannel::class.java.name)
+private val logger = LoggerFactory.getLogger(NoiseXXSecureChannel::class.java.name)
 
 class NoiseXXCodec(val aliceCipher: CipherState, val bobCipher: CipherState) :
     MessageToMessageCodec<ByteBuf, ByteBuf>() {

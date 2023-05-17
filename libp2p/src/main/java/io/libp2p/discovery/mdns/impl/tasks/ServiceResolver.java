@@ -10,8 +10,8 @@ import io.libp2p.discovery.mdns.impl.JmDNSImpl;
 import io.libp2p.discovery.mdns.impl.constants.DNSConstants;
 import io.libp2p.discovery.mdns.impl.constants.DNSRecordClass;
 import io.libp2p.discovery.mdns.impl.constants.DNSRecordType;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 
 import java.io.IOException;
 import java.util.concurrent.Future;
@@ -22,7 +22,7 @@ import java.util.concurrent.TimeUnit;
  * The ServiceResolver queries three times consecutively for services of a given type, and then removes itself from the timer.
  */
 public class ServiceResolver extends DNSTask {
-    private static Logger logger = LogManager.getLogger(ServiceResolver.class.getName());
+    private static Logger logger = LoggerFactory.getLogger(ServiceResolver.class.getName());
 
     private final String _type;
     private final int _queryInterval;

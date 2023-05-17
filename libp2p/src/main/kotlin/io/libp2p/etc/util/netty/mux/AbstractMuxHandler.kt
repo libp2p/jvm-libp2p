@@ -7,13 +7,13 @@ import io.libp2p.etc.types.completedExceptionally
 import io.libp2p.etc.types.hasCauseOfType
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
-import org.apache.logging.log4j.LogManager
+import org.slf4j.LoggerFactory;
 import java.util.concurrent.CompletableFuture
 import java.util.function.Function
 
 typealias MuxChannelInitializer<TData> = (MuxChannel<TData>) -> Unit
 
-private val log = LogManager.getLogger(AbstractMuxHandler::class.java)
+private val log = LoggerFactory.getLogger(AbstractMuxHandler::class.java)
 
 abstract class AbstractMuxHandler<TData>() :
     ChannelInboundHandlerAdapter() {

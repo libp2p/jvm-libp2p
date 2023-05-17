@@ -1,8 +1,8 @@
 package io.libp2p.tools.schedulers;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -11,7 +11,7 @@ import java.util.function.Consumer;
 
 public class DefaultSchedulers extends AbstractSchedulers {
 
-  private static final Logger logger = LogManager.getLogger(DefaultSchedulers.class);
+  private static final Logger logger = LoggerFactory.getLogger(DefaultSchedulers.class);
 
   private Consumer<Throwable> errorHandler = t -> logger.error("Unhandled exception:", t);
   private volatile boolean started;
