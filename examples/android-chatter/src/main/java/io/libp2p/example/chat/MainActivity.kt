@@ -10,7 +10,6 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import java.util.concurrent.CompletableFuture.runAsync
 
-
 class MainActivity : AppCompatActivity() {
     private lateinit var chatScroller: ScrollView
     private lateinit var chatWindow: TextView
