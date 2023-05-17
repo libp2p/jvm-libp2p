@@ -23,8 +23,6 @@ dependencies {
 
     testFixturesImplementation("io.netty:netty-transport-classes-epoll")
 
-    testFixturesImplementation("io.netty:netty-transport-classes-epoll")
-
     jmhImplementation(project(":tools:schedulers"))
     jmhImplementation("org.openjdk.jmh:jmh-core")
     jmhAnnotationProcessor("org.openjdk.jmh:jmh-generator-annprocess")
