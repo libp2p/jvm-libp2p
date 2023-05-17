@@ -8,7 +8,9 @@ import java.net.URL
 description = "a minimal implementation of libp2p for the jvm"
 
 plugins {
-    kotlin("jvm").version("1.6.21")
+    val kotlinVersion = "1.6.21"
+
+    id("org.jetbrains.kotlin.jvm") version kotlinVersion apply false
 
     id("com.github.ben-manes.versions").version("0.44.0")
     id("idea")
@@ -19,27 +21,34 @@ plugins {
     id("org.jmailen.kotlinter").version("3.10.0")
     id("java-test-fixtures")
     id("io.spring.dependency-management").version("1.1.0")
+
+    id("org.jetbrains.kotlin.android") version kotlinVersion apply false
+    id("com.android.application") version "7.4.2" apply false
 }
 
-allprojects {
+fun Project.getBooleanPropertyOrFalse(propName: String) =
+    (this.properties[propName] as? String)?.toBoolean() ?: false
+
+configure(
+    allprojects
+        .filterNot {
+            it.getBooleanPropertyOrFalse("libp2p.gradle.custom")
+        }
+) {
     group = "io.libp2p"
     version = "develop"
 
     apply(plugin = "kotlin")
     apply(plugin = "idea")
-    apply(plugin = "io.gitlab.arturbosch.detekt")
     apply(plugin = "java")
+
+    apply(plugin = "io.gitlab.arturbosch.detekt")
     apply(plugin = "maven-publish")
     apply(plugin = "org.jetbrains.dokka")
     apply(plugin = "org.jmailen.kotlinter")
     apply(plugin = "java-test-fixtures")
     apply(plugin = "io.spring.dependency-management")
     apply(from = "$rootDir/versions.gradle")
-
-    repositories {
-        mavenCentral()
-        maven("https://artifacts.consensys.net/public/maven/maven/")
-    }
 
     dependencies {
 
