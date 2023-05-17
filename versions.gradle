@@ -27,7 +27,14 @@ dependencyManagement {
             entry 'protobuf-java'
             entry 'protoc'
         }
-        dependency "io.netty:netty-all:4.1.87.Final"
+        dependencySet(group: "io.netty", version: "4.1.87.Final") {
+            entry 'netty-common'
+            entry 'netty-handler'
+            entry 'netty-transport'
+            entry 'netty-buffer'
+            entry 'netty-codec-http'
+            entry 'netty-transport-classes-epoll'
+        }
         dependency "commons-codec:commons-codec:1.15"
         dependency "tech.pegasys:noise-java:22.1.0"
         dependencySet(group: "org.bouncycastle", version: "1.70") {
