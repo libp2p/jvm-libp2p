@@ -4,16 +4,22 @@
 
 package io.libp2p.discovery.mdns.impl;
 
-import io.libp2p.discovery.mdns.impl.constants.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.util.HashMap;
 import java.util.Map;
+
+import io.libp2p.discovery.mdns.impl.constants.DNSRecordClass;
+import io.libp2p.discovery.mdns.impl.constants.DNSRecordType;
+import io.libp2p.discovery.mdns.impl.constants.DNSResultCode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import io.libp2p.discovery.mdns.impl.constants.DNSConstants;
+import io.libp2p.discovery.mdns.impl.constants.DNSLabel;
+import io.libp2p.discovery.mdns.impl.constants.DNSOptionCode;
 
 /**
  * Parse an incoming DNS message into its components.

@@ -4,14 +4,15 @@
 
 package io.libp2p.discovery.mdns.impl;
 
-import io.libp2p.discovery.mdns.ServiceInfo;
-import io.libp2p.discovery.mdns.impl.constants.DNSConstants;
+import java.util.Set;
+
 import io.libp2p.discovery.mdns.impl.constants.DNSRecordClass;
 import io.libp2p.discovery.mdns.impl.constants.DNSRecordType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Set;
+import io.libp2p.discovery.mdns.ServiceInfo;
+import io.libp2p.discovery.mdns.impl.constants.DNSConstants;
 
 /**
  * A DNS question.

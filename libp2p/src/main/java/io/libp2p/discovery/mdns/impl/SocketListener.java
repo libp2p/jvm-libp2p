@@ -4,16 +4,17 @@
 
 package io.libp2p.discovery.mdns.impl;
 
-import io.libp2p.discovery.mdns.impl.constants.DNSConstants;
-import io.libp2p.discovery.mdns.impl.util.NamedThreadFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+
+import io.libp2p.discovery.mdns.impl.util.NamedThreadFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import io.libp2p.discovery.mdns.impl.constants.DNSConstants;
 
 /**
  * Listen for multicast packets.

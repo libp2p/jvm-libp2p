@@ -4,17 +4,22 @@
 
 package io.libp2p.discovery.mdns.impl.tasks;
 
-import io.libp2p.discovery.mdns.impl.*;
-import io.libp2p.discovery.mdns.impl.constants.DNSConstants;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import io.libp2p.discovery.mdns.impl.DNSIncoming;
+import io.libp2p.discovery.mdns.impl.DNSOutgoing;
+import io.libp2p.discovery.mdns.impl.DNSQuestion;
+import io.libp2p.discovery.mdns.impl.DNSRecord;
+import io.libp2p.discovery.mdns.impl.JmDNSImpl;
+import io.libp2p.discovery.mdns.impl.constants.DNSConstants;
 
 /**
  * The Responder sends a single answer for the specified service infos and for the host name.
