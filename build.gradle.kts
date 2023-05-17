@@ -56,7 +56,7 @@ configure(
         implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core")
 
         implementation("com.google.guava:guava")
-        implementation("org.slf4j:slf4j-api:2.0.7")
+        implementation("org.slf4j:slf4j-api")
 
         testImplementation("org.junit.jupiter:junit-jupiter")
         testImplementation("org.junit.jupiter:junit-jupiter-params")
