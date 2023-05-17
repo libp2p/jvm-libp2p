@@ -19,7 +19,6 @@ dependencies {
     implementation("org.bouncycastle:bcpkix-jdk15on")
 
     testImplementation(project(":tools:schedulers"))
-    testImplementation(project(":tools:schedulers"))
     testImplementation("org.apache.logging.log4j:log4j-core")
 
     testFixturesImplementation("io.netty:netty-transport-classes-epoll")
