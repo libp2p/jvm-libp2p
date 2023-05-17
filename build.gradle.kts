@@ -62,7 +62,7 @@ configure(
         testImplementation("org.junit.jupiter:junit-jupiter-params")
         testImplementation("io.mockk:mockk")
         testImplementation("org.assertj:assertj-core")
-        testRuntimeOnly("org.apache.logging.log4j:log4j-slf4j-impl")
+        testRuntimeOnly("org.apache.logging.log4j:log4j-slf4j2-impl")
     }
 
     java {
