@@ -133,7 +133,8 @@ class MultiaddrTest {
             "/ip4/1.2.3.4/tcp/80/unix/a/b/c/d/e/f",
             "/ip4/127.0.0.1/ipfs/QmcgpsyWgH8Y8ajJz1Cu72KnS5uo2Aa2LpzU7kinSupNKC/tcp/1234/unix/stdio",
             "/ip4/127.0.0.1/p2p/QmcgpsyWgH8Y8ajJz1Cu72KnS5uo2Aa2LpzU7kinSupNKC/tcp/1234/unix/stdio",
-            "/ip4/127.0.0.1/tcp/40001/p2p/16Uiu2HAkuqGKz8D6khfrnJnDrN5VxWWCoLU8Aq4eCFJuyXmfakB5"
+            "/ip4/127.0.0.1/tcp/40001/p2p/16Uiu2HAkuqGKz8D6khfrnJnDrN5VxWWCoLU8Aq4eCFJuyXmfakB5",
+            "/ip6/2001:6b0:30:1000:d00e:1dff:fe0b:c764/udp/4001/quic-v1/webtransport/certhash/uEiAEz_3prFf34VZff8XqA1iTdq2Ytp467ErTGr5dRFo60Q/certhash/uEiDyL7yksuIGJsYUvf0AHieLkTux5R5KBk-UsFtA1AG18A"
         )
 
         @JvmStatic
