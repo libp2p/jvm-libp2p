@@ -57,6 +57,7 @@ configure(
 
         implementation("com.google.guava:guava")
         implementation("org.slf4j:slf4j-api")
+        implementation("com.github.multiformats:java-multibase:v1.1.1")
 
         testImplementation("org.junit.jupiter:junit-jupiter")
         testImplementation("org.junit.jupiter:junit-jupiter-params")
