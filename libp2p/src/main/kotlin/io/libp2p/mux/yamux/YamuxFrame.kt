@@ -1,7 +1,6 @@
 package io.libp2p.mux.yamux
 
 import io.libp2p.etc.types.toByteArray
-import io.libp2p.etc.types.toHex
 import io.libp2p.etc.util.netty.mux.MuxId
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.DefaultByteBufHolder
