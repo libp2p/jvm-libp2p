@@ -51,6 +51,7 @@ class YamuxHandlerTest {
             MultistreamProtocolV1, DEFAULT_MAX_YAMUX_FRAME_DATA_LENGTH, null, streamHandler, true
         ) {
             // MuxHandler consumes the exception. Override this behaviour for testing
+            @Deprecated("Deprecated in Java")
             override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
                 ctx.fireExceptionCaught(cause)
             }
