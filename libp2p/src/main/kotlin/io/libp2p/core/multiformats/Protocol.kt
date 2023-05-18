@@ -52,7 +52,7 @@ enum class Protocol(
     QUIC(460, 0, "quic"),
     QUICV1(461, 0, "quic-v1"),
     WEBTRANSPORT(465, 0, "webtransport"),
-    CERTHASH(466, LENGTH_PREFIXED_VAR_SIZE, "certhash", BASE64_PARSER, BASE64_STRINGIFIER),
+    CERTHASH(466, LENGTH_PREFIXED_VAR_SIZE, "certhash", MULTIBASE_PARSER, MULTIBASE_BASE64_STRINGIFIER),
     WS(477, 0, "ws"),
     WSS(478, 0, "wss"),
     P2PCIRCUIT(290, 0, "p2p-circuit"),
@@ -186,10 +186,10 @@ private val BASE58_PARSER: (Protocol, String) -> ByteArray = { _, addr ->
 private val BASE58_STRINGIFIER: (Protocol, ByteArray) -> String = { _, bytes ->
     Base58.encode(bytes)
 }
-private val BASE64_PARSER: (Protocol, String) -> ByteArray = { _, addr ->
+private val MULTIBASE_PARSER: (Protocol, String) -> ByteArray = { _, addr ->
     Multibase.decode(addr)
 }
-private val BASE64_STRINGIFIER: (Protocol, ByteArray) -> String = { _, bytes ->
+private val MULTIBASE_BASE64_STRINGIFIER: (Protocol, ByteArray) -> String = { _, bytes ->
     Multibase.encode(Multibase.Base.Base64Url, bytes)
 }
 private val ONION_PARSER: (Protocol, String) -> ByteArray = { _, addr ->
