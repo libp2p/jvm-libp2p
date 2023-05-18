@@ -8,11 +8,11 @@ import io.libp2p.etc.types.toVoidCompletableFuture
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
 import io.netty.util.ReferenceCountUtil
-import org.apache.logging.log4j.LogManager
+import org.slf4j.LoggerFactory
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ScheduledExecutorService
 
-private val logger = LogManager.getLogger(P2PService::class.java)
+private val logger = LoggerFactory.getLogger(P2PService::class.java)
 
 /**
  * Base class for a service which manages many streams from different peers

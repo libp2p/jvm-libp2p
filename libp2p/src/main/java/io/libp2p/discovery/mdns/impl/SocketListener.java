@@ -11,8 +11,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import io.libp2p.discovery.mdns.impl.util.NamedThreadFactory;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.libp2p.discovery.mdns.impl.constants.DNSConstants;
 
@@ -20,7 +20,7 @@ import io.libp2p.discovery.mdns.impl.constants.DNSConstants;
  * Listen for multicast packets.
  */
 class SocketListener implements Runnable {
-    static Logger logger = LogManager.getLogger(SocketListener.class.getName());
+    static Logger logger = LoggerFactory.getLogger(SocketListener.class.getName());
 
     private final JmDNSImpl _jmDNSImpl;
     private final String _name;

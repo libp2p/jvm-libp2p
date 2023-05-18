@@ -8,8 +8,8 @@ import io.libp2p.discovery.mdns.impl.DNSOutgoing.MessageOutputStream;
 import io.libp2p.discovery.mdns.impl.constants.DNSRecordClass;
 import io.libp2p.discovery.mdns.impl.constants.DNSRecordType;
 import io.libp2p.discovery.mdns.impl.util.ByteWrangler;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -26,7 +26,7 @@ import java.util.Objects;
  * @author Arthur van Hoff, Rick Blair, Werner Randelshofer, Pierre Frisch
  */
 public abstract class DNSRecord extends DNSEntry {
-    private static Logger logger = LogManager.getLogger(DNSRecord.class.getName());
+    private static Logger logger = LoggerFactory.getLogger(DNSRecord.class.getName());
 
     private int           _ttl;
     private long          _created;

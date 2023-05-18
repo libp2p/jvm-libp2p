@@ -5,7 +5,7 @@ import io.libp2p.etc.types.toHex
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
-import org.apache.logging.log4j.LogManager
+import org.slf4j.LoggerFactory
 
 open class TestHandler(val name: String = "") : ChannelInboundHandlerAdapter() {
     override fun channelActive(ctx: ChannelHandlerContext) {
@@ -49,6 +49,6 @@ open class TestHandler(val name: String = "") : ChannelInboundHandlerAdapter() {
     }
 
     companion object {
-        private val logger = LogManager.getLogger(TestHandler::class.java)
+        private val logger = LoggerFactory.getLogger(TestHandler::class.java)
     }
 }

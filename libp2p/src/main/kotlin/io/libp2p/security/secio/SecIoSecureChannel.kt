@@ -12,10 +12,10 @@ import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.SimpleChannelInboundHandler
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder
 import io.netty.handler.codec.LengthFieldPrepender
-import org.apache.logging.log4j.LogManager
+import org.slf4j.LoggerFactory
 import java.util.concurrent.CompletableFuture
 
-private val log = LogManager.getLogger(SecIoSecureChannel::class.java)
+private val log = LoggerFactory.getLogger(SecIoSecureChannel::class.java)
 private val HandshakeHandlerName = "SecIoHandshake"
 
 class SecIoSecureChannel(private val localKey: PrivKey) : SecureChannel {

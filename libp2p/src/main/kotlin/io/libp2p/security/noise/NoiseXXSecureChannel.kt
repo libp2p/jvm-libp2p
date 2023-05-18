@@ -27,13 +27,13 @@ import io.netty.channel.SimpleChannelInboundHandler
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder
 import io.netty.handler.codec.LengthFieldPrepender
 import io.netty.handler.timeout.ReadTimeoutHandler
-import org.apache.logging.log4j.LogManager
+import org.slf4j.LoggerFactory
 import spipe.pb.Spipe
 import java.util.concurrent.CompletableFuture
 
 enum class Role(val intVal: Int) { INIT(HandshakeState.INITIATOR), RESP(HandshakeState.RESPONDER) }
 
-private val log = LogManager.getLogger(NoiseXXSecureChannel::class.java)
+private val log = LoggerFactory.getLogger(NoiseXXSecureChannel::class.java)
 const val HandshakeNettyHandlerName = "HandshakeNettyHandler"
 const val HandshakeReadTimeoutNettyHandlerName = "HandshakeReadTimeoutNettyHandler"
 const val NoiseCodeNettyHandlerName = "NoiseXXCodec"

@@ -10,16 +10,16 @@ import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.codec.MessageToMessageCodec
-import org.apache.logging.log4j.LogManager
 import org.bouncycastle.crypto.StreamCipher
 import org.bouncycastle.crypto.engines.AESEngine
 import org.bouncycastle.crypto.modes.SICBlockCipher
 import org.bouncycastle.crypto.params.KeyParameter
 import org.bouncycastle.crypto.params.ParametersWithIV
+import org.slf4j.LoggerFactory
 import java.io.IOException
 
 class SecIoCodec(val local: SecioParams, val remote: SecioParams) : MessageToMessageCodec<ByteBuf, ByteBuf>() {
-    private val log = LogManager.getLogger(SecIoCodec::class.java)
+    private val log = LoggerFactory.getLogger(SecIoCodec::class.java)
 
     private val localCipher = createCipher(local)
     private val remoteCipher = createCipher(remote)
