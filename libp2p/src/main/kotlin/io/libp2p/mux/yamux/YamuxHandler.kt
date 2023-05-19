@@ -31,8 +31,8 @@ open class YamuxHandler(
     initiator: Boolean
 ) : AbstractMuxHandler<ByteBuf>(), StreamMuxer.Session {
     private val idGenerator = AtomicInteger(if (initiator) 1 else 2) // 0 is reserved
-    private val receiveWindow = AtomicInteger(INITIAL_WINDOW_SIZE)
-    private val sendWindow = AtomicInteger(INITIAL_WINDOW_SIZE)
+    private val receiveWindows = HashMap<MuxId, AtomicInteger>()
+    private val sendWindows = HashMap<MuxId, AtomicInteger>()
     private val lock = Semaphore(1)
 
     override val inboundInitializer: MuxChannelInitializer<ByteBuf> = {
@@ -79,10 +79,13 @@ open class YamuxHandler(
         handleFlags(msg)
         if (size.toInt() == 0)
             return
-        val newWindow = receiveWindow.addAndGet(-size.toInt())
+        val recWindow = receiveWindows.get(msg.id)
+        if (recWindow == null)
+            throw IllegalStateException("No receive window for " + msg.id)
+        val newWindow = recWindow.addAndGet(-size.toInt())
         if (newWindow < INITIAL_WINDOW_SIZE / 2) {
             val delta = INITIAL_WINDOW_SIZE / 2
-            receiveWindow.addAndGet(delta)
+            recWindow.addAndGet(delta)
             ctx.write(YamuxFrame(msg.id, YamuxType.WINDOW_UPDATE, 0, delta.toLong()))
             ctx.flush()
         }
@@ -92,12 +95,19 @@ open class YamuxHandler(
     fun handleWindowUpdate(msg: YamuxFrame) {
         handleFlags(msg)
         val size = msg.lenData.toInt()
+        val sendWindow = sendWindows.get(msg.id)
+        if (sendWindow == null)
+            throw IllegalStateException("No send window for " + msg.id)
         sendWindow.addAndGet(size)
         lock.release()
     }
 
     override fun onChildWrite(child: MuxChannel<ByteBuf>, data: ByteBuf) {
         val ctx = getChannelHandlerContext()
+
+        val sendWindow = sendWindows.get(child.id)
+        if (sendWindow == null)
+            throw IllegalStateException("No send window for " + child.id)
         while (sendWindow.get() <= 0) {
             // wait until the window is increased
             lock.acquire()
@@ -114,17 +124,24 @@ open class YamuxHandler(
 
     override fun onLocalOpen(child: MuxChannel<ByteBuf>) {
         getChannelHandlerContext().writeAndFlush(YamuxFrame(child.id, YamuxType.DATA, YamuxFlags.SYN, 0))
+        receiveWindows.put(child.id, AtomicInteger(INITIAL_WINDOW_SIZE))
+        sendWindows.put(child.id, AtomicInteger(INITIAL_WINDOW_SIZE))
     }
 
     override fun onLocalDisconnect(child: MuxChannel<ByteBuf>) {
+        sendWindows.remove(child.id)
+        receiveWindows.remove(child.id)
         getChannelHandlerContext().writeAndFlush(YamuxFrame(child.id, YamuxType.DATA, YamuxFlags.FIN, 0))
     }
 
     override fun onLocalClose(child: MuxChannel<ByteBuf>) {
         getChannelHandlerContext().writeAndFlush(YamuxFrame(child.id, YamuxType.DATA, YamuxFlags.RST, 0))
+        sendWindows.remove(child.id)
     }
 
     override fun onRemoteCreated(child: MuxChannel<ByteBuf>) {
+        receiveWindows.put(child.id, AtomicInteger(INITIAL_WINDOW_SIZE))
+        sendWindows.put(child.id, AtomicInteger(INITIAL_WINDOW_SIZE))
     }
 
     override fun generateNextId() =
