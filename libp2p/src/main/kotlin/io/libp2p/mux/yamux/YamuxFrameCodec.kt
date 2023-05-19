@@ -53,7 +53,7 @@ class YamuxFrameCodec(
             if (type.toInt() != YamuxType.DATA) {
                 val yamuxFrame = YamuxFrame(MuxId(ctx.channel().id(), streamId, isInitiator.xor(streamId.mod(2).equals(1)).not()), type.toInt(), flags, lenData)
                 out.add(yamuxFrame)
-                return
+                continue
             }
             if (lenData > maxFrameDataLength) {
                 msg.skipBytes(msg.readableBytes())
