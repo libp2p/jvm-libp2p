@@ -1,5 +1,6 @@
 package io.libp2p.mux.yamux
 
+import io.libp2p.core.Libp2pException
 import io.libp2p.core.Stream
 import io.libp2p.core.StreamHandler
 import io.libp2p.core.StreamPromise
@@ -81,7 +82,7 @@ open class YamuxHandler(
             return
         val recWindow = receiveWindows.get(msg.id)
         if (recWindow == null)
-            throw IllegalStateException("No receive window for " + msg.id)
+            throw Libp2pException("No receive window for " + msg.id)
         val newWindow = recWindow.addAndGet(-size.toInt())
         if (newWindow < INITIAL_WINDOW_SIZE / 2) {
             val delta = INITIAL_WINDOW_SIZE / 2
@@ -97,7 +98,7 @@ open class YamuxHandler(
         val size = msg.lenData.toInt()
         val sendWindow = sendWindows.get(msg.id)
         if (sendWindow == null)
-            throw IllegalStateException("No send window for " + msg.id)
+            throw Libp2pException("No send window for " + msg.id)
         sendWindow.addAndGet(size)
         lock.release()
     }
@@ -107,7 +108,7 @@ open class YamuxHandler(
 
         val sendWindow = sendWindows.get(child.id)
         if (sendWindow == null)
-            throw IllegalStateException("No send window for " + child.id)
+            throw Libp2pException("No send window for " + child.id)
         while (sendWindow.get() <= 0) {
             // wait until the window is increased
             lock.acquire()
