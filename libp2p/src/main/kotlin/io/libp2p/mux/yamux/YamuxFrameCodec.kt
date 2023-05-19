@@ -42,6 +42,8 @@ class YamuxFrameCodec(
      */
     override fun decode(ctx: ChannelHandlerContext, msg: ByteBuf, out: MutableList<Any>) {
         while (msg.isReadable) {
+            if (msg.readableBytes() < 12)
+                return
             val readerIndex = msg.readerIndex()
             msg.readByte(); // version always 0
             val type = msg.readUnsignedByte()
