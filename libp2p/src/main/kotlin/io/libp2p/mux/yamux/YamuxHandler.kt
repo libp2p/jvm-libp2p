@@ -57,7 +57,7 @@ open class YamuxHandler(
     fun handlePing(msg: YamuxFrame) {
         val ctx = getChannelHandlerContext()
         when (msg.flags) {
-            YamuxFlags.SYN -> ctx.write(YamuxFrame(MuxId(msg.id.parentId, 0, msg.id.initiator), YamuxType.PING, YamuxFlags.ACK, msg.lenData))
+            YamuxFlags.SYN -> ctx.writeAndFlush(YamuxFrame(MuxId(msg.id.parentId, 0, msg.id.initiator), YamuxType.PING, YamuxFlags.ACK, msg.lenData))
             YamuxFlags.ACK -> {}
         }
     }
@@ -67,7 +67,7 @@ open class YamuxHandler(
         if (msg.flags == YamuxFlags.SYN) {
             // ACK the new stream
             onRemoteOpen(msg.id)
-            ctx.write(YamuxFrame(msg.id, YamuxType.WINDOW_UPDATE, YamuxFlags.ACK, 0))
+            ctx.writeAndFlush(YamuxFrame(msg.id, YamuxType.WINDOW_UPDATE, YamuxFlags.ACK, 0))
         }
         if (msg.flags == YamuxFlags.FIN)
             onRemoteDisconnect(msg.id)
