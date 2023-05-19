@@ -77,13 +77,13 @@ open class YamuxHandler(
         val ctx = getChannelHandlerContext()
         val size = msg.lenData
         handleFlags(msg)
-        if (size == 0)
+        if (size.toInt() == 0)
             return
-        val newWindow = receiveWindow.addAndGet(-size)
+        val newWindow = receiveWindow.addAndGet(-size.toInt())
         if (newWindow < INITIAL_WINDOW_SIZE / 2) {
             val delta = INITIAL_WINDOW_SIZE / 2
             receiveWindow.addAndGet(delta)
-            ctx.write(YamuxFrame(msg.id, YamuxType.WINDOW_UPDATE, 0, delta))
+            ctx.write(YamuxFrame(msg.id, YamuxType.WINDOW_UPDATE, 0, delta.toLong()))
             ctx.flush()
         }
         childRead(msg.id, msg.data!!)
@@ -91,7 +91,7 @@ open class YamuxHandler(
 
     fun handleWindowUpdate(msg: YamuxFrame) {
         handleFlags(msg)
-        val size = msg.lenData
+        val size = msg.lenData.toInt()
         sendWindow.addAndGet(size)
         lock.release()
     }
@@ -105,7 +105,7 @@ open class YamuxHandler(
         data.sliceMaxSize(minOf(maxFrameDataLength, sendWindow.get()))
             .map { frameSliceBuf ->
                 sendWindow.addAndGet(-frameSliceBuf.readableBytes())
-                YamuxFrame(child.id, YamuxType.DATA, 0, frameSliceBuf.readableBytes(), frameSliceBuf)
+                YamuxFrame(child.id, YamuxType.DATA, 0, frameSliceBuf.readableBytes().toLong(), frameSliceBuf)
             }.forEach { muxFrame ->
                 ctx.write(muxFrame)
             }

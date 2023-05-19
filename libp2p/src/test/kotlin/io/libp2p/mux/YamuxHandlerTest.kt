@@ -241,7 +241,7 @@ class YamuxHandlerTest {
     fun openStream(id: Long) =
         ech.writeInbound(YamuxFrame(MuxId(dummyParentChannelId, id, true), YamuxType.DATA, YamuxFlags.SYN, 0))
     fun writeStream(id: Long, msg: String) =
-        ech.writeInbound(YamuxFrame(MuxId(dummyParentChannelId, id, true), YamuxType.DATA, 0, msg.fromHex().size, msg.fromHex().toByteBuf()))
+        ech.writeInbound(YamuxFrame(MuxId(dummyParentChannelId, id, true), YamuxType.DATA, 0, msg.fromHex().size.toLong(), msg.fromHex().toByteBuf()))
     fun resetStream(id: Long) =
         ech.writeInbound(YamuxFrame(MuxId(dummyParentChannelId, id, true), YamuxType.GO_AWAY, 0, 0))
 

@@ -29,7 +29,7 @@ class YamuxFrameCodec(
         out.writeByte(msg.type)
         out.writeShort(msg.flags)
         out.writeInt(msg.id.id.toInt())
-        out.writeInt(msg.data?.readableBytes() ?: msg.lenData)
+        out.writeInt(msg.data?.readableBytes() ?: msg.lenData.toInt())
         out.writeBytes(msg.data ?: Unpooled.EMPTY_BUFFER)
     }
 
@@ -48,17 +48,11 @@ class YamuxFrameCodec(
             msg.readByte(); // version always 0
             val type = msg.readUnsignedByte()
             val flags = msg.readUnsignedShort()
-            val streamId = msg.readInt()
-            val lenData = msg.readInt()
+            val streamId = msg.readUnsignedInt()
+            val lenData = msg.readUnsignedInt()
             if (type.toInt() != YamuxType.DATA) {
-                val yamuxFrame = YamuxFrame(MuxId(ctx.channel().id(), streamId.toLong(), isInitiator.xor(streamId % 2 == 1).not()), type.toInt(), flags, lenData)
+                val yamuxFrame = YamuxFrame(MuxId(ctx.channel().id(), streamId, isInitiator.xor(streamId.mod(2).equals(1)).not()), type.toInt(), flags, lenData)
                 out.add(yamuxFrame)
-                return
-            }
-            if (lenData < 0) {
-                // not enough data to read the frame length
-                // will wait for more ...
-                msg.readerIndex(readerIndex)
                 return
             }
             if (lenData > maxFrameDataLength) {
@@ -71,9 +65,9 @@ class YamuxFrameCodec(
                 msg.readerIndex(readerIndex)
                 return
             }
-            val data = msg.readSlice(lenData)
+            val data = msg.readSlice(lenData.toInt())
             data.retain() // MessageToMessageCodec releases original buffer, but it needs to be relayed
-            val yamuxFrame = YamuxFrame(MuxId(ctx.channel().id(), streamId.toLong(), isInitiator.xor(streamId % 2 == 1).not()), type.toInt(), flags, lenData, data)
+            val yamuxFrame = YamuxFrame(MuxId(ctx.channel().id(), streamId, isInitiator.xor(streamId.mod(2).equals(1)).not()), type.toInt(), flags, lenData, data)
             out.add(yamuxFrame)
         }
     }

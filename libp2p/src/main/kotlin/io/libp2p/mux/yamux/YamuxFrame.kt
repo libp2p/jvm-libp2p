@@ -12,7 +12,7 @@ import io.netty.buffer.Unpooled
  * @param flag the flag value for this frame.
  * @param data the data segment.
  */
-class YamuxFrame(val id: MuxId, val type: Int, val flags: Int, val lenData: Int, val data: ByteBuf? = null) :
+class YamuxFrame(val id: MuxId, val type: Int, val flags: Int, val lenData: Long, val data: ByteBuf? = null) :
     DefaultByteBufHolder(data ?: Unpooled.EMPTY_BUFFER) {
 
     override fun toString(): String {
