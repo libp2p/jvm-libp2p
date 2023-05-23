@@ -12,11 +12,9 @@
  */
 package io.libp2p.mux.mplex
 
-import io.libp2p.etc.types.toByteArray
-import io.libp2p.etc.types.toHex
 import io.libp2p.etc.util.netty.mux.MuxId
-import io.libp2p.mux.MuxFrame
 import io.netty.buffer.ByteBuf
+import io.netty.buffer.Unpooled
 
 /**
  * Contains the fields that comprise an mplex frame.
@@ -26,11 +24,16 @@ import io.netty.buffer.ByteBuf
  * @param data the data segment.
  * @see [mplex documentation](https://github.com/libp2p/specs/tree/master/mplex#opening-a-new-stream)
  */
-class MplexFrame(channelId: MuxId, val mplexFlag: Int, data: ByteBuf? = null) :
-    MuxFrame(channelId, MplexFlags.toAbstractFlag(mplexFlag), data) {
+data class MplexFrame(val id: MuxId, val flag: MplexFlag, val data: ByteBuf) {
 
-    override fun toString(): String {
-        val init = if (MplexFlags.isInitiator(mplexFlag)) "init" else "resp"
-        return "MplexFrame(id=$id, flag=$flag ($init), data=${data?.toByteArray()?.toHex()})"
+    companion object {
+        fun createDataFrame(id: MuxId, data: ByteBuf) =
+            MplexFrame(id, MplexFlag.getByType(MplexFlag.Type.DATA, id.initiator), data)
+        fun createOpenFrame(id: MuxId) =
+            MplexFrame(id, MplexFlag.getByType(MplexFlag.Type.OPEN, id.initiator), Unpooled.EMPTY_BUFFER)
+        fun createCloseFrame(id: MuxId) =
+            MplexFrame(id, MplexFlag.getByType(MplexFlag.Type.CLOSE, id.initiator), Unpooled.EMPTY_BUFFER)
+        fun createResetFrame(id: MuxId) =
+            MplexFrame(id, MplexFlag.getByType(MplexFlag.Type.RESET, id.initiator), Unpooled.EMPTY_BUFFER)
     }
 }

@@ -6,7 +6,6 @@ import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.etc.types.sliceMaxSize
 import io.libp2p.etc.util.netty.mux.MuxChannel
 import io.libp2p.etc.util.netty.mux.MuxId
-import io.libp2p.mux.MuxFrame
 import io.libp2p.mux.MuxHandler
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
@@ -26,12 +25,12 @@ open class MplexHandler(
         MuxId(getChannelHandlerContext().channel().id(), idGenerator.incrementAndGet(), true)
 
     override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
-        msg as MuxFrame
-        when (msg.flag) {
-            MuxFrame.Flag.OPEN -> onRemoteOpen(msg.id)
-            MuxFrame.Flag.CLOSE -> onRemoteDisconnect(msg.id)
-            MuxFrame.Flag.RESET -> onRemoteClose(msg.id)
-            MuxFrame.Flag.DATA -> childRead(msg.id, msg.data!!)
+        msg as MplexFrame
+        when (msg.flag.type) {
+            MplexFlag.Type.OPEN -> onRemoteOpen(msg.id)
+            MplexFlag.Type.CLOSE -> onRemoteDisconnect(msg.id)
+            MplexFlag.Type.RESET -> onRemoteClose(msg.id)
+            MplexFlag.Type.DATA -> childRead(msg.id, msg.data!!)
         }
     }
 
@@ -39,7 +38,7 @@ open class MplexHandler(
         val ctx = getChannelHandlerContext()
         data.sliceMaxSize(maxFrameDataLength)
             .map { frameSliceBuf ->
-                MuxFrame(child.id, MuxFrame.Flag.DATA, frameSliceBuf)
+                MplexFrame.createDataFrame(child.id, frameSliceBuf)
             }.forEach { muxFrame ->
                 ctx.write(muxFrame)
             }
@@ -47,15 +46,15 @@ open class MplexHandler(
     }
 
     override fun onLocalOpen(child: MuxChannel<ByteBuf>) {
-        getChannelHandlerContext().writeAndFlush(MuxFrame(child.id, MuxFrame.Flag.OPEN))
+        getChannelHandlerContext().writeAndFlush(MplexFrame.createOpenFrame(child.id))
     }
 
     override fun onLocalDisconnect(child: MuxChannel<ByteBuf>) {
-        getChannelHandlerContext().writeAndFlush(MuxFrame(child.id, MuxFrame.Flag.CLOSE))
+        getChannelHandlerContext().writeAndFlush(MplexFrame.createCloseFrame(child.id))
     }
 
     override fun onLocalClose(child: MuxChannel<ByteBuf>) {
-        getChannelHandlerContext().writeAndFlush(MuxFrame(child.id, MuxFrame.Flag.RESET))
+        getChannelHandlerContext().writeAndFlush(MplexFrame.createResetFrame(child.id))
     }
 
     override fun onRemoteCreated(child: MuxChannel<ByteBuf>) {

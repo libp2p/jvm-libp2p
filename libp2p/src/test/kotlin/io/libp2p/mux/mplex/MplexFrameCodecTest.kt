@@ -36,7 +36,7 @@ class MplexFrameCodecTest {
         val channelLarge = EmbeddedChannel(MplexFrameCodec(maxFrameDataLength = 1024))
 
         val mplexFrame = MplexFrame(
-            MuxId(dummyId, 777, true), MplexFlags.MessageInitiator,
+            MuxId(dummyId, 777, true), MplexFlag.MessageInitiator,
             ByteArray(1024).toByteBuf()
         )
 
@@ -61,9 +61,9 @@ class MplexFrameCodecTest {
         val channel = EmbeddedChannel(MplexFrameCodec())
 
         val mplexFrames = arrayOf(
-            MplexFrame(MuxId(dummyId, 777, true), MplexFlags.MessageInitiator, "Hello-1".toByteArray().toByteBuf()),
-            MplexFrame(MuxId(dummyId, 888, true), MplexFlags.MessageInitiator, "Hello-2".toByteArray().toByteBuf()),
-            MplexFrame(MuxId(dummyId, 999, true), MplexFlags.MessageInitiator, "Hello-3".toByteArray().toByteBuf())
+            MplexFrame(MuxId(dummyId, 777, true), MplexFlag.MessageInitiator, "Hello-1".toByteArray().toByteBuf()),
+            MplexFrame(MuxId(dummyId, 888, true), MplexFlag.MessageInitiator, "Hello-2".toByteArray().toByteBuf()),
+            MplexFrame(MuxId(dummyId, 999, true), MplexFlag.MessageInitiator, "Hello-3".toByteArray().toByteBuf())
         )
         assertTrue(
             channel.writeOutbound(*mplexFrames)
