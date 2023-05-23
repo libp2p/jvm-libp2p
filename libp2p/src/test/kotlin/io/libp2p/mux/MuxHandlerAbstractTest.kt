@@ -4,15 +4,10 @@ import io.libp2p.core.ConnectionClosedException
 import io.libp2p.core.Libp2pException
 import io.libp2p.core.Stream
 import io.libp2p.core.StreamHandler
-import io.libp2p.core.multistream.MultistreamProtocolV1
-import io.libp2p.etc.types.fromHex
 import io.libp2p.etc.types.getX
 import io.libp2p.etc.types.toByteArray
-import io.libp2p.etc.types.toByteBuf
 import io.libp2p.etc.types.toHex
-import io.libp2p.etc.util.netty.mux.MuxId
 import io.libp2p.etc.util.netty.nettyInitializer
-import io.libp2p.mux.yamux.*
 import io.libp2p.tools.TestChannel
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandler
@@ -30,11 +25,16 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.util.concurrent.CompletableFuture
 
-class YamuxHandlerTest {
+/**
+ * Created by Anton Nashatyrev on 09.07.2019.
+ */
+abstract class MuxHandlerAbstractTest {
     val dummyParentChannelId = DefaultChannelId.newInstance()
     val childHandlers = mutableListOf<TestHandler>()
-    lateinit var multistreamHandler: YamuxHandler
+    lateinit var multistreamHandler: MuxHandler
     lateinit var ech: TestChannel
+
+    abstract fun createMuxHandler(streamHandler: StreamHandler<Unit>): MuxHandler
 
     @BeforeEach
     fun startMultiplexor() {
@@ -47,17 +47,28 @@ class YamuxHandlerTest {
                 childHandlers += handler
             }
         )
-        multistreamHandler = object : YamuxHandler(
-            MultistreamProtocolV1, DEFAULT_MAX_YAMUX_FRAME_DATA_LENGTH, null, streamHandler, true
-        ) {
-            // MuxHandler consumes the exception. Override this behaviour for testing
-            @Deprecated("Deprecated in Java")
-            override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
-                ctx.fireExceptionCaught(cause)
-            }
-        }
+        multistreamHandler = createMuxHandler(streamHandler)
 
         ech = TestChannel("test", true, LoggingHandler(LogLevel.ERROR), multistreamHandler)
+    }
+
+
+    abstract fun openStream(id: Long): Boolean
+    abstract fun writeStream(id: Long, msg: String): Boolean
+    abstract fun resetStream(id: Long): Boolean
+
+    fun createStreamHandler(channelInitializer: ChannelHandler) = object : StreamHandler<Unit> {
+        override fun handleStream(stream: Stream): CompletableFuture<Unit> {
+            stream.pushHandler(channelInitializer)
+            return CompletableFuture.completedFuture(Unit)
+        }
+    }
+
+    fun assertHandlerCount(count: Int) = assertEquals(count, childHandlers.size)
+    fun assertLastMessage(handler: Int, msgCount: Int, msg: String) {
+        val messages = childHandlers[handler].inboundMessages
+        assertEquals(msgCount, messages.size)
+        assertEquals(msg, messages.last())
     }
 
     @Test
@@ -229,27 +240,6 @@ class YamuxHandlerTest {
             }
 
         assertThrows(ConnectionClosedException::class.java) { staleStream.stream.getX(3.0) }
-    }
-
-    fun assertHandlerCount(count: Int) = assertEquals(count, childHandlers.size)
-    fun assertLastMessage(handler: Int, msgCount: Int, msg: String) {
-        val messages = childHandlers[handler].inboundMessages
-        assertEquals(msgCount, messages.size)
-        assertEquals(msg, messages.last())
-    }
-
-    fun openStream(id: Long) =
-        ech.writeInbound(YamuxFrame(MuxId(dummyParentChannelId, id, true), YamuxType.DATA, YamuxFlags.SYN, 0))
-    fun writeStream(id: Long, msg: String) =
-        ech.writeInbound(YamuxFrame(MuxId(dummyParentChannelId, id, true), YamuxType.DATA, 0, msg.fromHex().size.toLong(), msg.fromHex().toByteBuf()))
-    fun resetStream(id: Long) =
-        ech.writeInbound(YamuxFrame(MuxId(dummyParentChannelId, id, true), YamuxType.GO_AWAY, 0, 0))
-
-    fun createStreamHandler(channelInitializer: ChannelHandler) = object : StreamHandler<Unit> {
-        override fun handleStream(stream: Stream): CompletableFuture<Unit> {
-            stream.pushHandler(channelInitializer)
-            return CompletableFuture.completedFuture(Unit)
-        }
     }
 
     class TestHandler : ChannelInboundHandlerAdapter() {
