@@ -90,4 +90,32 @@ class MplexFrameCodecTest {
         assertEquals("Hello-2", resultFrames[1].data.toByteArray().toString(UTF_8))
         assertEquals("Hello-3", resultFrames[2].data.toByteArray().toString(UTF_8))
     }
+
+    @Test
+    fun `test id initiator is inverted on decoding`() {
+        val channel = EmbeddedChannel(MplexFrameCodec())
+
+        val mplexFrames = arrayOf(
+            MplexFrame.createOpenFrame(MuxId(dummyId, 1, true)),
+            MplexFrame.createDataFrame(MuxId(dummyId, 2, true), "Hello-2".toByteArray().toByteBuf()),
+            MplexFrame.createDataFrame(MuxId(dummyId, 3, false), "Hello-3".toByteArray().toByteBuf()),
+            MplexFrame.createCloseFrame(MuxId(dummyId, 4, true)),
+            MplexFrame.createCloseFrame(MuxId(dummyId, 5, false)),
+            MplexFrame.createResetFrame(MuxId(dummyId, 6, true)),
+            MplexFrame.createResetFrame(MuxId(dummyId, 7, false)),
+        )
+        assertTrue(
+            channel.writeOutbound(*mplexFrames)
+        )
+
+        repeat(mplexFrames.size) { idx ->
+            val wireBytes =channel.readOutbound<ByteBuf>()
+            channel.writeInbound(wireBytes)
+            val resFrame = channel.readInbound<MplexFrame>()
+
+            assertEquals(mplexFrames[idx].id.id, resFrame.id.id)
+            assertEquals(!mplexFrames[idx].id.initiator, resFrame.id.initiator)
+            assertEquals(mplexFrames[idx].flag, resFrame.flag)
+        }
+    }
 }
