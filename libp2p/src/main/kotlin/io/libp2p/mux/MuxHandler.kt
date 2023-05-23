@@ -9,22 +9,18 @@ import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.etc.CONNECTION
 import io.libp2p.etc.STREAM
 import io.libp2p.etc.types.forward
-import io.libp2p.etc.types.sliceMaxSize
 import io.libp2p.etc.util.netty.mux.AbstractMuxHandler
 import io.libp2p.etc.util.netty.mux.MuxChannel
 import io.libp2p.etc.util.netty.mux.MuxChannelInitializer
-import io.libp2p.etc.util.netty.mux.MuxId
 import io.libp2p.transport.implementation.StreamOverNetty
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
 import java.util.concurrent.CompletableFuture
-import java.util.concurrent.atomic.AtomicLong
 
 abstract class MuxHandler(
     private val ready: CompletableFuture<StreamMuxer.Session>?,
     inboundStreamHandler: StreamHandler<*>
 ) : AbstractMuxHandler<ByteBuf>(), StreamMuxer.Session {
-    private val idGenerator = AtomicLong(0xF)
 
     protected abstract val multistreamProtocol: MultistreamProtocol
     protected abstract val maxFrameDataLength: Int
@@ -37,45 +33,6 @@ abstract class MuxHandler(
         super.handlerAdded(ctx)
         ready?.complete(this)
     }
-
-    override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
-        msg as MuxFrame
-        when (msg.flag) {
-            MuxFrame.Flag.OPEN -> onRemoteOpen(msg.id)
-            MuxFrame.Flag.CLOSE -> onRemoteDisconnect(msg.id)
-            MuxFrame.Flag.RESET -> onRemoteClose(msg.id)
-            MuxFrame.Flag.DATA -> childRead(msg.id, msg.data!!)
-        }
-    }
-
-    override fun onChildWrite(child: MuxChannel<ByteBuf>, data: ByteBuf) {
-        val ctx = getChannelHandlerContext()
-        data.sliceMaxSize(maxFrameDataLength)
-            .map { frameSliceBuf ->
-                MuxFrame(child.id, MuxFrame.Flag.DATA, frameSliceBuf)
-            }.forEach { muxFrame ->
-                ctx.write(muxFrame)
-            }
-        ctx.flush()
-    }
-
-    override fun onLocalOpen(child: MuxChannel<ByteBuf>) {
-        getChannelHandlerContext().writeAndFlush(MuxFrame(child.id, MuxFrame.Flag.OPEN))
-    }
-
-    override fun onLocalDisconnect(child: MuxChannel<ByteBuf>) {
-        getChannelHandlerContext().writeAndFlush(MuxFrame(child.id, MuxFrame.Flag.CLOSE))
-    }
-
-    override fun onLocalClose(child: MuxChannel<ByteBuf>) {
-        getChannelHandlerContext().writeAndFlush(MuxFrame(child.id, MuxFrame.Flag.RESET))
-    }
-
-    override fun onRemoteCreated(child: MuxChannel<ByteBuf>) {
-    }
-
-    override fun generateNextId() =
-        MuxId(getChannelHandlerContext().channel().id(), idGenerator.incrementAndGet(), true)
 
     private fun createStream(channel: MuxChannel<ByteBuf>): Stream {
         val connection = ctx!!.channel().attr(CONNECTION).get()
