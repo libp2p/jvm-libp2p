@@ -86,8 +86,8 @@ class MplexFrameCodecTest {
         assertEquals(777, resultFrames[0].id.id)
         assertEquals(888, resultFrames[1].id.id)
         assertEquals(999, resultFrames[2].id.id)
-        assertEquals("Hello-1", resultFrames[0].data!!.toByteArray().toString(UTF_8))
-        assertEquals("Hello-2", resultFrames[1].data!!.toByteArray().toString(UTF_8))
-        assertEquals("Hello-3", resultFrames[2].data!!.toByteArray().toString(UTF_8))
+        assertEquals("Hello-1", resultFrames[0].data.toByteArray().toString(UTF_8))
+        assertEquals("Hello-2", resultFrames[1].data.toByteArray().toString(UTF_8))
+        assertEquals("Hello-3", resultFrames[2].data.toByteArray().toString(UTF_8))
     }
 }

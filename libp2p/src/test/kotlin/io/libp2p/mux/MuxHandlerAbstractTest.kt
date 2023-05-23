@@ -52,7 +52,6 @@ abstract class MuxHandlerAbstractTest {
         ech = TestChannel("test", true, LoggingHandler(LogLevel.ERROR), multistreamHandler)
     }
 
-
     abstract fun openStream(id: Long): Boolean
     abstract fun writeStream(id: Long, msg: String): Boolean
     abstract fun resetStream(id: Long): Boolean

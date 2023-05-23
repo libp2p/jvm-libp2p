@@ -30,7 +30,7 @@ open class MplexHandler(
             MplexFlag.Type.OPEN -> onRemoteOpen(msg.id)
             MplexFlag.Type.CLOSE -> onRemoteDisconnect(msg.id)
             MplexFlag.Type.RESET -> onRemoteClose(msg.id)
-            MplexFlag.Type.DATA -> childRead(msg.id, msg.data!!)
+            MplexFlag.Type.DATA -> childRead(msg.id, msg.data)
         }
     }
 

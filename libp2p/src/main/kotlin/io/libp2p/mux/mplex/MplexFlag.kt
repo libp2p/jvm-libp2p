@@ -38,7 +38,7 @@ enum class MplexFlag(
 
     val isInitiator get() = value % 2 == 0
 
-    private val initiatorString get() = when(isInitiator) {
+    private val initiatorString get() = when (isInitiator) {
         true -> "init"
         false -> "resp"
     }

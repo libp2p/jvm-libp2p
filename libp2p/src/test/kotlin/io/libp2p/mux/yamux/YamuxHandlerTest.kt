@@ -5,9 +5,8 @@ import io.libp2p.core.multistream.MultistreamProtocolV1
 import io.libp2p.etc.types.fromHex
 import io.libp2p.etc.types.toByteBuf
 import io.libp2p.etc.util.netty.mux.MuxId
-import io.libp2p.mux.MuxHandlerAbstractTest
 import io.libp2p.mux.MuxHandler
-import io.libp2p.mux.yamux.*
+import io.libp2p.mux.MuxHandlerAbstractTest
 import io.netty.channel.ChannelHandlerContext
 
 class YamuxHandlerTest : MuxHandlerAbstractTest() {
