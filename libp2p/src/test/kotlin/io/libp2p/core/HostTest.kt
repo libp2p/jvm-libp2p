@@ -4,7 +4,7 @@ import io.libp2p.core.multistream.ProtocolMatcher
 import io.libp2p.etc.PROTOCOL
 import io.libp2p.etc.types.seconds
 import io.libp2p.etc.types.toByteArray
-import io.libp2p.mux.MuxFrame
+import io.libp2p.mux.mplex.MplexFrame
 import io.libp2p.protocol.Ping
 import io.libp2p.protocol.PingBinding
 import io.libp2p.protocol.PingProtocol
@@ -131,7 +131,7 @@ class HostTest {
         val afterSecureTestHandler1 = TestByteBufChannelHandler<Connection>("1-afterSecure")
         val preStreamTestHandler1 = TestByteBufChannelHandler<Stream>("1-preStream")
         val streamTestHandler1 = TestByteBufChannelHandler<Stream>("1-stream")
-        val muxFrameTestHandler1 = TestChannelHandler<Connection, MuxFrame>("1-mux")
+        val muxFrameTestHandler1 = TestChannelHandler<Connection, MplexFrame>("1-mux")
 
         hostFactory.hostBuilderModifier = {
             debug {
@@ -148,7 +148,7 @@ class HostTest {
         val afterSecureTestHandler2 = TestByteBufChannelHandler<Connection>("2-afterSecure")
         val preStreamTestHandler2 = TestByteBufChannelHandler<Stream>("2-preStream")
         val streamTestHandler2 = TestByteBufChannelHandler<Stream>("2-stream")
-        val muxFrameTestHandler2 = TestChannelHandler<Connection, MuxFrame>("2-mux")
+        val muxFrameTestHandler2 = TestChannelHandler<Connection, MplexFrame>("2-mux")
 
         hostFactory.hostBuilderModifier = {
             debug {
