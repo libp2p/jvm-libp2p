@@ -19,10 +19,11 @@ import io.libp2p.transport.implementation.StreamOverNetty
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
 import java.util.concurrent.CompletableFuture
-import java.util.concurrent.Semaphore
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
 const val INITIAL_WINDOW_SIZE = 256 * 1024
+const val MAX_BUFFERED_CONNECTION_WRITES = 1024 * 1024
 
 open class YamuxHandler(
     protected val multistreamProtocol: MultistreamProtocol,
@@ -32,12 +33,35 @@ open class YamuxHandler(
     initiator: Boolean
 ) : AbstractMuxHandler<ByteBuf>(), StreamMuxer.Session {
     private val idGenerator = AtomicInteger(if (initiator) 1 else 2) // 0 is reserved
-    private val receiveWindows = HashMap<MuxId, AtomicInteger>()
-    private val sendWindows = HashMap<MuxId, AtomicInteger>()
-    private val lock = Semaphore(1)
+    private val receiveWindows = ConcurrentHashMap<MuxId, AtomicInteger>()
+    private val sendWindows = ConcurrentHashMap<MuxId, AtomicInteger>()
+    private val sendBuffers = ConcurrentHashMap<MuxId, SendBuffer>()
+    private val totalBufferedWrites = AtomicInteger()
 
     override val inboundInitializer: MuxChannelInitializer<ByteBuf> = {
         inboundStreamHandler.handleStream(createStream(it))
+    }
+
+    inner class SendBuffer(val ctx: ChannelHandlerContext) {
+        private val buffered = ArrayDeque<ByteBuf>()
+
+        fun add(data: ByteBuf) {
+            buffered.add(data)
+        }
+
+        fun flush(sendWindow: AtomicInteger, id: MuxId): Int {
+            var written = 0
+            while (! buffered.isEmpty()) {
+                val buf = buffered.first()
+                if (buf.readableBytes() + written < sendWindow.get()) {
+                    buffered.removeFirst()
+                    sendBlocks(ctx, buf, sendWindow, id)
+                    written += buf.readableBytes()
+                } else
+                    break
+            }
+            return written
+        }
     }
 
     override fun handlerAdded(ctx: ChannelHandlerContext) {
@@ -100,7 +124,11 @@ open class YamuxHandler(
         if (sendWindow == null)
             throw Libp2pException("No send window for " + msg.id)
         sendWindow.addAndGet(size)
-        lock.release()
+        val buffer = sendBuffers.get(msg.id)
+        if (buffer != null) {
+            val writtenBytes = buffer.flush(sendWindow, msg.id)
+            totalBufferedWrites.addAndGet(-writtenBytes)
+        }
     }
 
     override fun onChildWrite(child: MuxChannel<ByteBuf>, data: ByteBuf) {
@@ -109,14 +137,22 @@ open class YamuxHandler(
         val sendWindow = sendWindows.get(child.id)
         if (sendWindow == null)
             throw Libp2pException("No send window for " + child.id)
-        while (sendWindow.get() <= 0) {
-            // wait until the window is increased
-            lock.acquire()
+        if (sendWindow.get() <= 0) {
+            // wait until the window is increased to send more data
+            val buffer = sendBuffers.getOrPut(child.id, { SendBuffer(ctx) })
+            buffer.add(data)
+            if (totalBufferedWrites.addAndGet(data.readableBytes()) > MAX_BUFFERED_CONNECTION_WRITES)
+                throw Libp2pException("Overflowed send buffer for connection")
+            return
         }
+        sendBlocks(ctx, data, sendWindow, child.id)
+    }
+
+    fun sendBlocks(ctx: ChannelHandlerContext, data: ByteBuf, sendWindow: AtomicInteger, id: MuxId) {
         data.sliceMaxSize(minOf(maxFrameDataLength, sendWindow.get()))
             .map { frameSliceBuf ->
                 sendWindow.addAndGet(-frameSliceBuf.readableBytes())
-                YamuxFrame(child.id, YamuxType.DATA, 0, frameSliceBuf.readableBytes().toLong(), frameSliceBuf)
+                YamuxFrame(id, YamuxType.DATA, 0, frameSliceBuf.readableBytes().toLong(), frameSliceBuf)
             }.forEach { muxFrame ->
                 ctx.write(muxFrame)
             }
