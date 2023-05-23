@@ -109,7 +109,7 @@ class MplexFrameCodecTest {
         )
 
         repeat(mplexFrames.size) { idx ->
-            val wireBytes =channel.readOutbound<ByteBuf>()
+            val wireBytes = channel.readOutbound<ByteBuf>()
             channel.writeInbound(wireBytes)
             val resFrame = channel.readInbound<MplexFrame>()
 
