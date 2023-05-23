@@ -5,10 +5,10 @@ import io.libp2p.core.multistream.MultistreamProtocolV1
 import io.libp2p.etc.types.fromHex
 import io.libp2p.etc.types.toByteBuf
 import io.libp2p.etc.util.netty.mux.MuxId
-import io.libp2p.mux.MuxHandlerAbstractTest
-import io.libp2p.mux.MuxFrame
 import io.libp2p.mux.MuxHandler
+import io.libp2p.mux.MuxHandlerAbstractTest
 import io.netty.buffer.ByteBuf
+import io.netty.buffer.Unpooled
 import io.netty.channel.ChannelHandlerContext
 
 class MplexHandlerTest : MuxHandlerAbstractTest() {
@@ -24,10 +24,9 @@ class MplexHandlerTest : MuxHandlerAbstractTest() {
             }
         }
 
-    override fun openStream(id: Long) = writeFrame(id, MuxFrame.Flag.OPEN)
-    override fun writeStream(id: Long, msg: String) = writeFrame(id, MuxFrame.Flag.DATA, msg.fromHex().toByteBuf())
-    override fun resetStream(id: Long) = writeFrame(id, MuxFrame.Flag.RESET)
-    fun writeFrame(id: Long, flag: MuxFrame.Flag, data: ByteBuf? = null) =
-        ech.writeInbound(MuxFrame(MuxId(dummyParentChannelId, id, true), flag, data))
-
+    override fun openStream(id: Long) = writeFrame(id, MplexFlag.Type.OPEN)
+    override fun writeStream(id: Long, msg: String) = writeFrame(id, MplexFlag.Type.DATA, msg.fromHex().toByteBuf())
+    override fun resetStream(id: Long) = writeFrame(id, MplexFlag.Type.RESET)
+    fun writeFrame(id: Long, flagType: MplexFlag.Type, data: ByteBuf = Unpooled.EMPTY_BUFFER) =
+        ech.writeInbound(MplexFrame(MuxId(dummyParentChannelId, id, true), MplexFlag.getByType(flagType, true), data))
 }
