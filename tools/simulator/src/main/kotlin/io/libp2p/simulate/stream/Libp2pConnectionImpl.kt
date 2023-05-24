@@ -24,7 +24,8 @@ class Libp2pConnectionImpl(
             SecureChannel.Session(
                 PeerId.fromPubKey(localPubkey),
                 PeerId.fromPubKey(remotePubkey),
-                remotePubkey
+                remotePubkey,
+                ""
             )
         )
     }
