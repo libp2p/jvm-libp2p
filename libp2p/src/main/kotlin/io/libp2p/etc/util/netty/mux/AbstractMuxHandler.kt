@@ -56,12 +56,19 @@ abstract class AbstractMuxHandler<TData>() :
 
     protected fun childRead(id: MuxId, msg: TData) {
         val child = streamMap[id]
-        if (child != null) {
-            pendingReadComplete += id
-            child.pipeline().fireChannelRead(msg)
-        } else {
-            releaseMessage(msg)
-            throw ConnectionClosedException("Channel with id $id not opened")
+        when {
+            child == null -> {
+                releaseMessage(msg)
+                throw ConnectionClosedException("Channel with id $id not opened")
+            }
+            child.remoteDisconnected -> {
+                releaseMessage(msg)
+                throw ConnectionClosedException("Channel with id $id was closed for sending by remote")
+            }
+            else -> {
+                pendingReadComplete += id
+                child.pipeline().fireChannelRead(msg)
+            }
         }
     }
 

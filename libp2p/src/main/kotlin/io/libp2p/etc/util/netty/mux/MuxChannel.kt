@@ -17,8 +17,8 @@ class MuxChannel<TData>(
     val initiator: Boolean
 ) : AbstractChildChannel(parent.ctx!!.channel(), id) {
 
-    private var remoteDisconnected = false
-    private var localDisconnected = false
+    var remoteDisconnected = false
+    var localDisconnected = false
 
     override fun metadata(): ChannelMetadata = ChannelMetadata(true)
     override fun localAddress0() =
