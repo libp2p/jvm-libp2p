@@ -12,8 +12,6 @@ import io.netty.channel.socket.nio.NioServerSocketChannel
 import io.netty.channel.socket.nio.NioSocketChannel
 import io.netty.handler.logging.LogLevel
 import io.netty.handler.logging.LoggingHandler
-import org.junit.jupiter.api.Disabled
-import org.junit.jupiter.api.Test
 import java.util.concurrent.CompletableFuture
 
 // Utility class (aka sniffer) that just forwards TCP traffic back'n'forth to another TCP address and log it
@@ -67,8 +65,6 @@ class TCPProxy {
         return future
     }
 
-    @Test
-    @Disabled
     fun run() {
         start(11111, "localhost", 10000)
             .channel().closeFuture().await()

@@ -19,9 +19,12 @@ dependencies {
     implementation("org.bouncycastle:bcpkix-jdk15on")
 
     testImplementation(project(":tools:schedulers"))
-    testImplementation("org.apache.logging.log4j:log4j-core")
 
+    testFixturesApi("org.apache.logging.log4j:log4j-core")
+    testFixturesImplementation(project(":tools:schedulers"))
     testFixturesImplementation("io.netty:netty-transport-classes-epoll")
+    testFixturesImplementation("io.netty:netty-handler")
+    testFixturesImplementation("org.junit.jupiter:junit-jupiter-api")
 
     jmhImplementation(project(":tools:schedulers"))
     jmhImplementation("org.openjdk.jmh:jmh-core")

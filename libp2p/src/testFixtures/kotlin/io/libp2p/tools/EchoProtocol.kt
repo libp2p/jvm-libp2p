@@ -44,7 +44,8 @@ open class EchoProtocol : ProtocolHandler<EchoController>(Long.MAX_VALUE, Long.M
         }
     }
 
-    open inner class EchoInitiator(val ready: CompletableFuture<Void>) : ProtocolMessageHandler<ByteBuf>, EchoController {
+    open inner class EchoInitiator(val ready: CompletableFuture<Void>) :
+        ProtocolMessageHandler<ByteBuf>, EchoController {
         lateinit var stream: Stream
         var ret = CompletableFuture<String>()
 
