@@ -8,13 +8,11 @@ import io.libp2p.core.mux.StreamMuxerProtocol
 import io.libp2p.multistream.MultistreamProtocolDebugV1
 import io.libp2p.security.InvalidRemotePubKey
 import io.libp2p.security.SecureChannelTestBase
-import io.libp2p.security.logger
 import io.libp2p.tools.TestChannel
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import java.util.concurrent.TimeUnit
-import java.util.logging.Level
 
 val MultistreamProtocolV1: MultistreamProtocolDebug = MultistreamProtocolDebugV1()
 
