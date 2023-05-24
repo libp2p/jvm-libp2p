@@ -36,7 +36,6 @@ class TlsSecureChannelTest : SecureChannelTestBase(
         val eCh1 = makeDialChannel("#1", protocolSelect1, PeerId.fromPubKey(wrongPubKey))
         val eCh2 = makeListenChannel("#2", protocolSelect2)
 
-        logger.log(Level.FINE, "Connecting channels...")
         TestChannel.interConnect(eCh1, eCh2)
 
         Assertions.assertThatThrownBy { protocolSelect1.selectedFuture.get(10, TimeUnit.SECONDS) }
