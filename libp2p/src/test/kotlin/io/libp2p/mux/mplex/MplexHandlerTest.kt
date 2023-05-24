@@ -3,11 +3,12 @@ package io.libp2p.mux.mplex
 import io.libp2p.core.StreamHandler
 import io.libp2p.core.multistream.MultistreamProtocolV1
 import io.libp2p.etc.types.fromHex
-import io.libp2p.etc.types.toByteBuf
+import io.libp2p.etc.types.toHex
 import io.libp2p.etc.util.netty.mux.MuxId
 import io.libp2p.mux.MuxHandler
 import io.libp2p.mux.MuxHandlerAbstractTest
-import io.netty.buffer.ByteBuf
+import io.libp2p.mux.MuxHandlerAbstractTest.AbstractTestMuxFrame.Flag.*
+import io.libp2p.tools.readAllBytesAndRelease
 import io.netty.buffer.Unpooled
 import io.netty.channel.ChannelHandlerContext
 
@@ -15,7 +16,7 @@ class MplexHandlerTest : MuxHandlerAbstractTest() {
 
     override val maxFrameDataLength = 256
 
-    override fun createMuxHandler(streamHandler: StreamHandler<Unit>): MuxHandler =
+    override fun createMuxHandler(streamHandler: StreamHandler<*>): MuxHandler =
         object : MplexHandler(
             MultistreamProtocolV1, maxFrameDataLength, null, streamHandler
         ) {
@@ -26,9 +27,34 @@ class MplexHandlerTest : MuxHandlerAbstractTest() {
             }
         }
 
-    override fun openStream(id: Long) = writeFrame(id, MplexFlag.Type.OPEN)
-    override fun writeStream(id: Long, msg: String) = writeFrame(id, MplexFlag.Type.DATA, msg.fromHex().toByteBuf(allocateBuf()))
-    override fun resetStream(id: Long) = writeFrame(id, MplexFlag.Type.RESET)
-    fun writeFrame(id: Long, flagType: MplexFlag.Type, data: ByteBuf = Unpooled.EMPTY_BUFFER) =
-        ech.writeInbound(MplexFrame(MuxId(dummyParentChannelId, id, true), MplexFlag.getByType(flagType, true), data))
+    override fun writeFrame(frame: AbstractTestMuxFrame) {
+        val mplexFlag = when(frame.flag) {
+            Open -> MplexFlag.Type.OPEN
+            Data -> MplexFlag.Type.DATA
+            Close -> MplexFlag.Type.CLOSE
+            Reset -> MplexFlag.Type.RESET
+        }
+        val data = when {
+            frame.data.isEmpty() -> Unpooled.EMPTY_BUFFER
+            else -> frame.data.fromHex().toByteBuf(allocateBuf())
+        }
+        val mplexFrame =
+            MplexFrame(MuxId(parentChannelId, frame.streamId, true), MplexFlag.getByType(mplexFlag, true), data)
+        ech.writeInbound(mplexFrame)
+    }
+
+    override fun readFrame(): AbstractTestMuxFrame? {
+        val maybeMplexFrame = ech.readOutbound<MplexFrame>()
+        return maybeMplexFrame?.let { mplexFrame ->
+            val flag = when(mplexFrame.flag.type) {
+                MplexFlag.Type.OPEN -> Open
+                MplexFlag.Type.DATA -> Data
+                MplexFlag.Type.CLOSE -> Close
+                MplexFlag.Type.RESET -> Reset
+                else -> throw AssertionError("Unknown mplex flag: ${mplexFrame.flag}")
+            }
+            val sData = maybeMplexFrame.data.readAllBytesAndRelease().toHex()
+            AbstractTestMuxFrame(mplexFrame.id.id, flag, sData)
+        }
+    }
 }
