@@ -88,8 +88,10 @@ open class YamuxHandler(
         if (size.toInt() == 0)
             return
         val recWindow = receiveWindows.get(msg.id)
-        if (recWindow == null)
+        if (recWindow == null) {
+            releaseMessage(msg.data!!)
             throw Libp2pException("No receive window for " + msg.id)
+        }
         val newWindow = recWindow.addAndGet(-size.toInt())
         if (newWindow < INITIAL_WINDOW_SIZE / 2) {
             val delta = INITIAL_WINDOW_SIZE / 2

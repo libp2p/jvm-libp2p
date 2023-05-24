@@ -52,4 +52,8 @@ abstract class MuxHandler(
         }.thenApply { it.attr(STREAM).get() }
         return StreamPromise(stream, controller)
     }
+
+    override fun releaseMessage(msg: ByteBuf) {
+        msg.release()
+    }
 }

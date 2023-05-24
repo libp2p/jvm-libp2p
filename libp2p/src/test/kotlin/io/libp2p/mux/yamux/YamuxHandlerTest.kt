@@ -11,9 +11,11 @@ import io.netty.channel.ChannelHandlerContext
 
 class YamuxHandlerTest : MuxHandlerAbstractTest() {
 
+    override val maxFrameDataLength = 256
+
     override fun createMuxHandler(streamHandler: StreamHandler<Unit>): MuxHandler =
         object : YamuxHandler(
-            MultistreamProtocolV1, DEFAULT_MAX_YAMUX_FRAME_DATA_LENGTH, null, streamHandler, true
+            MultistreamProtocolV1, maxFrameDataLength, null, streamHandler, true
         ) {
             // MuxHandler consumes the exception. Override this behaviour for testing
             @Deprecated("Deprecated in Java")
@@ -32,7 +34,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
                 YamuxType.DATA,
                 0,
                 msg.fromHex().size.toLong(),
-                msg.fromHex().toByteBuf()
+                msg.fromHex().toByteBuf(allocateBuf())
             )
         )
 

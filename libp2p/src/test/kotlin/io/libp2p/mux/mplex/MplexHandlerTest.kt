@@ -13,9 +13,11 @@ import io.netty.channel.ChannelHandlerContext
 
 class MplexHandlerTest : MuxHandlerAbstractTest() {
 
+    override val maxFrameDataLength = 256
+
     override fun createMuxHandler(streamHandler: StreamHandler<Unit>): MuxHandler =
         object : MplexHandler(
-            MultistreamProtocolV1, DEFAULT_MAX_MPLEX_FRAME_DATA_LENGTH, null, streamHandler
+            MultistreamProtocolV1, maxFrameDataLength, null, streamHandler
         ) {
             // MuxHandler consumes the exception. Override this behaviour for testing
             @Deprecated("Deprecated in Java")
@@ -25,7 +27,7 @@ class MplexHandlerTest : MuxHandlerAbstractTest() {
         }
 
     override fun openStream(id: Long) = writeFrame(id, MplexFlag.Type.OPEN)
-    override fun writeStream(id: Long, msg: String) = writeFrame(id, MplexFlag.Type.DATA, msg.fromHex().toByteBuf())
+    override fun writeStream(id: Long, msg: String) = writeFrame(id, MplexFlag.Type.DATA, msg.fromHex().toByteBuf(allocateBuf()))
     override fun resetStream(id: Long) = writeFrame(id, MplexFlag.Type.RESET)
     fun writeFrame(id: Long, flagType: MplexFlag.Type, data: ByteBuf = Unpooled.EMPTY_BUFFER) =
         ech.writeInbound(MplexFrame(MuxId(dummyParentChannelId, id, true), MplexFlag.getByType(flagType, true), data))

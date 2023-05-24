@@ -10,6 +10,7 @@ import io.libp2p.etc.types.toHex
 import io.libp2p.etc.util.netty.nettyInitializer
 import io.libp2p.tools.TestChannel
 import io.netty.buffer.ByteBuf
+import io.netty.buffer.Unpooled
 import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
@@ -17,6 +18,7 @@ import io.netty.channel.DefaultChannelId
 import io.netty.handler.logging.LogLevel
 import io.netty.handler.logging.LoggingHandler
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertThrows
@@ -34,11 +36,13 @@ abstract class MuxHandlerAbstractTest {
     lateinit var multistreamHandler: MuxHandler
     lateinit var ech: TestChannel
 
+    val allocatedBufs = mutableListOf<ByteBuf>()
+
+    abstract val maxFrameDataLength: Int
     abstract fun createMuxHandler(streamHandler: StreamHandler<Unit>): MuxHandler
 
     @BeforeEach
     fun startMultiplexor() {
-        childHandlers.clear()
         val streamHandler = createStreamHandler(
             nettyInitializer {
                 println("New child channel created")
@@ -52,9 +56,25 @@ abstract class MuxHandlerAbstractTest {
         ech = TestChannel("test", true, LoggingHandler(LogLevel.ERROR), multistreamHandler)
     }
 
+    @AfterEach
+    open fun cleanUpAndCheck() {
+        childHandlers.clear()
+
+        allocatedBufs.forEach {
+            assertThat(it.refCnt()).isEqualTo(0)
+        }
+        allocatedBufs.clear()
+    }
+
     abstract fun openStream(id: Long): Boolean
     abstract fun writeStream(id: Long, msg: String): Boolean
     abstract fun resetStream(id: Long): Boolean
+
+    protected fun allocateBuf(): ByteBuf {
+        val buf = Unpooled.buffer()
+        allocatedBufs += buf
+        return buf
+    }
 
     fun createStreamHandler(channelInitializer: ChannelHandler) = object : StreamHandler<Unit> {
         override fun handleStream(stream: Stream): CompletableFuture<Unit> {
@@ -190,20 +210,20 @@ abstract class MuxHandlerAbstractTest {
     @Test
     fun streamIsReset() {
         openStream(22)
-        assertFalse(childHandlers[0].ctx!!.channel().closeFuture().isDone)
+        assertFalse(childHandlers[0].ctx.channel().closeFuture().isDone)
 
         resetStream(22)
-        assertTrue(childHandlers[0].ctx!!.channel().closeFuture().isDone)
+        assertTrue(childHandlers[0].ctx.channel().closeFuture().isDone)
     }
 
     @Test
     fun streamIsResetWhenChannelIsClosed() {
         openStream(22)
-        assertFalse(childHandlers[0].ctx!!.channel().closeFuture().isDone)
+        assertFalse(childHandlers[0].ctx.channel().closeFuture().isDone)
 
         ech.close().await()
 
-        assertTrue(childHandlers[0].ctx!!.channel().closeFuture().isDone)
+        assertTrue(childHandlers[0].ctx.channel().closeFuture().isDone)
     }
 
     @Test
@@ -243,24 +263,31 @@ abstract class MuxHandlerAbstractTest {
 
     class TestHandler : ChannelInboundHandlerAdapter() {
         val inboundMessages = mutableListOf<String>()
-        var ctx: ChannelHandlerContext? = null
+        lateinit var ctx: ChannelHandlerContext
         var readCompleteEventCount = 0
 
-        override fun channelInactive(ctx: ChannelHandlerContext?) {
+        fun ByteBuf.readAllBytesAndRelease(): ByteArray {
+            val arr = ByteArray(readableBytes())
+            this.readBytes(arr)
+            this.release()
+            return arr
+        }
+
+        override fun channelInactive(ctx: ChannelHandlerContext) {
             println("MultiplexHandlerTest.channelInactive")
         }
 
-        override fun channelRead(ctx: ChannelHandlerContext?, msg: Any?) {
+        override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
             println("MultiplexHandlerTest.channelRead")
             msg as ByteBuf
-            inboundMessages += msg.toByteArray().toHex()
+            inboundMessages += msg.readAllBytesAndRelease().toHex()
         }
 
         override fun channelUnregistered(ctx: ChannelHandlerContext?) {
             println("MultiplexHandlerTest.channelUnregistered")
         }
 
-        override fun channelActive(ctx: ChannelHandlerContext?) {
+        override fun channelActive(ctx: ChannelHandlerContext) {
             println("MultiplexHandlerTest.channelActive")
         }
 
@@ -273,7 +300,7 @@ abstract class MuxHandlerAbstractTest {
             println("MultiplexHandlerTest.channelReadComplete")
         }
 
-        override fun handlerAdded(ctx: ChannelHandlerContext?) {
+        override fun handlerAdded(ctx: ChannelHandlerContext) {
             println("MultiplexHandlerTest.handlerAdded")
             this.ctx = ctx
         }
@@ -285,5 +312,9 @@ abstract class MuxHandlerAbstractTest {
         override fun handlerRemoved(ctx: ChannelHandlerContext?) {
             println("MultiplexHandlerTest.handlerRemoved")
         }
+    }
+
+    companion object {
+        fun ByteArray.toByteBuf(buf: ByteBuf): ByteBuf = buf.writeBytes(this)
     }
 }

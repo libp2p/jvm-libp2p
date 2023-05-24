@@ -50,19 +50,31 @@ abstract class AbstractMuxHandler<TData>() :
     }
 
     fun getChannelHandlerContext(): ChannelHandlerContext {
-        return ctx ?: throw InternalErrorException("Internal error: handler context should be initialized at this stage")
+        return ctx
+            ?: throw InternalErrorException("Internal error: handler context should be initialized at this stage")
     }
 
     protected fun childRead(id: MuxId, msg: TData) {
-        val child = streamMap[id] ?: throw ConnectionClosedException("Channel with id $id not opened")
-        pendingReadComplete += id
-        child.pipeline().fireChannelRead(msg)
+        val child = streamMap[id]
+        if (child != null) {
+            pendingReadComplete += id
+            child.pipeline().fireChannelRead(msg)
+        } else {
+            releaseMessage(msg)
+            throw ConnectionClosedException("Channel with id $id not opened")
+        }
     }
 
     override fun channelReadComplete(ctx: ChannelHandlerContext) {
         pendingReadComplete.forEach { streamMap[it]?.pipeline()?.fireChannelReadComplete() }
         pendingReadComplete.clear()
     }
+
+    /**
+     * Needs to be called when message was not passed to the child channel pipeline due to any error.
+     * (if a message was passed to the child channel it's the child channel's responsibility to release the message)
+     */
+    abstract fun releaseMessage(msg: TData)
 
     abstract fun onChildWrite(child: MuxChannel<TData>, data: TData)
 
@@ -142,5 +154,6 @@ abstract class AbstractMuxHandler<TData>() :
         }
     }
 
-    private fun checkClosed() = if (closed) throw ConnectionClosedException("Can't create a new stream: connection was closed: " + ctx!!.channel()) else Unit
+    private fun checkClosed() =
+        if (closed) throw ConnectionClosedException("Can't create a new stream: connection was closed: " + ctx!!.channel()) else Unit
 }
