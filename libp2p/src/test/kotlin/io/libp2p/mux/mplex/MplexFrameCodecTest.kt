@@ -30,20 +30,20 @@ class MplexFrameCodecTest {
         )
     }
     val dummyId = DefaultChannelId.newInstance()
+    val maxFrameDataLength = 1024
+    val channel = EmbeddedChannel(MplexFrameCodec(maxFrameDataLength = maxFrameDataLength))
 
     @Test
     fun `check max frame size limit`() {
-        val channelLarge = EmbeddedChannel(MplexFrameCodec(maxFrameDataLength = 1024))
-
         val mplexFrame = MplexFrame(
             MuxId(dummyId, 777, true), MplexFlag.MessageInitiator,
-            ByteArray(1024).toByteBuf()
+            ByteArray(maxFrameDataLength).toByteBuf()
         )
 
         assertTrue(
-            channelLarge.writeOutbound(mplexFrame)
+            channel.writeOutbound(mplexFrame)
         )
-        val largeFrameBytes = channelLarge.readOutbound<ByteBuf>()
+        val largeFrameBytes = channel.readOutbound<ByteBuf>()
         val largeFrameBytesTrunc = largeFrameBytes.slice(0, largeFrameBytes.readableBytes() - 1)
 
         val channelSmall = EmbeddedChannel(MplexFrameCodec(maxFrameDataLength = 128))
@@ -58,8 +58,6 @@ class MplexFrameCodecTest {
     @ParameterizedTest
     @MethodSource("splitIndexes")
     fun testDecoder(sliceIdx: List<Int>) {
-        val channel = EmbeddedChannel(MplexFrameCodec())
-
         val mplexFrames = arrayOf(
             MplexFrame(MuxId(dummyId, 777, true), MplexFlag.MessageInitiator, "Hello-1".toByteArray().toByteBuf()),
             MplexFrame(MuxId(dummyId, 888, true), MplexFlag.MessageInitiator, "Hello-2".toByteArray().toByteBuf()),
@@ -93,8 +91,6 @@ class MplexFrameCodecTest {
 
     @Test
     fun `test id initiator is inverted on decoding`() {
-        val channel = EmbeddedChannel(MplexFrameCodec())
-
         val mplexFrames = arrayOf(
             MplexFrame.createOpenFrame(MuxId(dummyId, 1, true)),
             MplexFrame.createDataFrame(MuxId(dummyId, 2, true), "Hello-2".toByteArray().toByteBuf()),
@@ -117,5 +113,22 @@ class MplexFrameCodecTest {
             assertEquals(!mplexFrames[idx].id.initiator, resFrame.id.initiator)
             assertEquals(mplexFrames[idx].flag, resFrame.flag)
         }
+    }
+
+    @Test
+    fun `check the frame underlying buffer is released after send`() {
+        val frameDataBuf = "Hello-1".toByteArray().toByteBuf()
+
+        assertTrue(frameDataBuf.refCnt() == 1)
+
+        channel.writeOutbound(
+            MplexFrame(MuxId(dummyId, 777, true), MplexFlag.MessageInitiator, frameDataBuf)
+        )
+
+        val encodedFrame = channel.readOutbound<ByteBuf>()
+        // bytes are released after sending to the wire
+        encodedFrame.release()
+
+        assertTrue(frameDataBuf.refCnt() == 0)
     }
 }
