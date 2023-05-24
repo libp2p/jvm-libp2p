@@ -1,5 +1,6 @@
 package io.libp2p.etc.util.netty.mux
 
+import io.libp2p.core.ConnectionClosedException
 import io.libp2p.etc.util.netty.AbstractChildChannel
 import io.netty.channel.ChannelMetadata
 import io.netty.channel.ChannelOutboundBuffer
@@ -35,6 +36,9 @@ class MuxChannel<TData>(
         while (true) {
             val msg = buf.current() ?: break
             try {
+                if (localDisconnected) {
+                    throw ConnectionClosedException("The stream was closed for writing locally: $id")
+                }
                 // the msg is released by both onChildWrite and buf.remove() so we need to retain
                 // however it is still to be confirmed that no buf leaks happen here TODO
                 ReferenceCountUtil.retain(msg)
