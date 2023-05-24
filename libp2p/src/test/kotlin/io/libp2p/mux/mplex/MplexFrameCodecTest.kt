@@ -36,7 +36,7 @@ class MplexFrameCodecTest {
         val channelLarge = EmbeddedChannel(MplexFrameCodec(maxFrameDataLength = 1024))
 
         val mplexFrame = MplexFrame(
-            MuxId(dummyId, 777, true), MplexFlags.MessageInitiator,
+            MuxId(dummyId, 777, true), MplexFlag.MessageInitiator,
             ByteArray(1024).toByteBuf()
         )
 
@@ -61,9 +61,9 @@ class MplexFrameCodecTest {
         val channel = EmbeddedChannel(MplexFrameCodec())
 
         val mplexFrames = arrayOf(
-            MplexFrame(MuxId(dummyId, 777, true), MplexFlags.MessageInitiator, "Hello-1".toByteArray().toByteBuf()),
-            MplexFrame(MuxId(dummyId, 888, true), MplexFlags.MessageInitiator, "Hello-2".toByteArray().toByteBuf()),
-            MplexFrame(MuxId(dummyId, 999, true), MplexFlags.MessageInitiator, "Hello-3".toByteArray().toByteBuf())
+            MplexFrame(MuxId(dummyId, 777, true), MplexFlag.MessageInitiator, "Hello-1".toByteArray().toByteBuf()),
+            MplexFrame(MuxId(dummyId, 888, true), MplexFlag.MessageInitiator, "Hello-2".toByteArray().toByteBuf()),
+            MplexFrame(MuxId(dummyId, 999, true), MplexFlag.MessageInitiator, "Hello-3".toByteArray().toByteBuf())
         )
         assertTrue(
             channel.writeOutbound(*mplexFrames)
@@ -86,8 +86,36 @@ class MplexFrameCodecTest {
         assertEquals(777, resultFrames[0].id.id)
         assertEquals(888, resultFrames[1].id.id)
         assertEquals(999, resultFrames[2].id.id)
-        assertEquals("Hello-1", resultFrames[0].data!!.toByteArray().toString(UTF_8))
-        assertEquals("Hello-2", resultFrames[1].data!!.toByteArray().toString(UTF_8))
-        assertEquals("Hello-3", resultFrames[2].data!!.toByteArray().toString(UTF_8))
+        assertEquals("Hello-1", resultFrames[0].data.toByteArray().toString(UTF_8))
+        assertEquals("Hello-2", resultFrames[1].data.toByteArray().toString(UTF_8))
+        assertEquals("Hello-3", resultFrames[2].data.toByteArray().toString(UTF_8))
+    }
+
+    @Test
+    fun `test id initiator is inverted on decoding`() {
+        val channel = EmbeddedChannel(MplexFrameCodec())
+
+        val mplexFrames = arrayOf(
+            MplexFrame.createOpenFrame(MuxId(dummyId, 1, true)),
+            MplexFrame.createDataFrame(MuxId(dummyId, 2, true), "Hello-2".toByteArray().toByteBuf()),
+            MplexFrame.createDataFrame(MuxId(dummyId, 3, false), "Hello-3".toByteArray().toByteBuf()),
+            MplexFrame.createCloseFrame(MuxId(dummyId, 4, true)),
+            MplexFrame.createCloseFrame(MuxId(dummyId, 5, false)),
+            MplexFrame.createResetFrame(MuxId(dummyId, 6, true)),
+            MplexFrame.createResetFrame(MuxId(dummyId, 7, false)),
+        )
+        assertTrue(
+            channel.writeOutbound(*mplexFrames)
+        )
+
+        repeat(mplexFrames.size) { idx ->
+            val wireBytes = channel.readOutbound<ByteBuf>()
+            channel.writeInbound(wireBytes)
+            val resFrame = channel.readInbound<MplexFrame>()
+
+            assertEquals(mplexFrames[idx].id.id, resFrame.id.id)
+            assertEquals(!mplexFrames[idx].id.initiator, resFrame.id.initiator)
+            assertEquals(mplexFrames[idx].flag, resFrame.flag)
+        }
     }
 }

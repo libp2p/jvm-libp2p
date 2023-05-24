@@ -4,19 +4,10 @@ import io.libp2p.core.ConnectionClosedException
 import io.libp2p.core.Libp2pException
 import io.libp2p.core.Stream
 import io.libp2p.core.StreamHandler
-import io.libp2p.core.multistream.MultistreamProtocolV1
-import io.libp2p.etc.types.fromHex
 import io.libp2p.etc.types.getX
 import io.libp2p.etc.types.toByteArray
-import io.libp2p.etc.types.toByteBuf
 import io.libp2p.etc.types.toHex
-import io.libp2p.etc.util.netty.mux.MuxId
 import io.libp2p.etc.util.netty.nettyInitializer
-import io.libp2p.mux.MuxFrame.Flag.DATA
-import io.libp2p.mux.MuxFrame.Flag.OPEN
-import io.libp2p.mux.MuxFrame.Flag.RESET
-import io.libp2p.mux.mplex.DEFAULT_MAX_MPLEX_FRAME_DATA_LENGTH
-import io.libp2p.mux.mplex.MplexHandler
 import io.libp2p.tools.TestChannel
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandler
@@ -37,11 +28,13 @@ import java.util.concurrent.CompletableFuture
 /**
  * Created by Anton Nashatyrev on 09.07.2019.
  */
-class MultiplexHandlerTest {
+abstract class MuxHandlerAbstractTest {
     val dummyParentChannelId = DefaultChannelId.newInstance()
     val childHandlers = mutableListOf<TestHandler>()
     lateinit var multistreamHandler: MuxHandler
     lateinit var ech: TestChannel
+
+    abstract fun createMuxHandler(streamHandler: StreamHandler<Unit>): MuxHandler
 
     @BeforeEach
     fun startMultiplexor() {
@@ -54,17 +47,27 @@ class MultiplexHandlerTest {
                 childHandlers += handler
             }
         )
-        multistreamHandler = object : MplexHandler(
-            MultistreamProtocolV1, DEFAULT_MAX_MPLEX_FRAME_DATA_LENGTH, null, streamHandler
-        ) {
-            // MuxHandler consumes the exception. Override this behaviour for testing
-            @Deprecated("Deprecated in Java")
-            override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
-                ctx.fireExceptionCaught(cause)
-            }
-        }
+        multistreamHandler = createMuxHandler(streamHandler)
 
         ech = TestChannel("test", true, LoggingHandler(LogLevel.ERROR), multistreamHandler)
+    }
+
+    abstract fun openStream(id: Long): Boolean
+    abstract fun writeStream(id: Long, msg: String): Boolean
+    abstract fun resetStream(id: Long): Boolean
+
+    fun createStreamHandler(channelInitializer: ChannelHandler) = object : StreamHandler<Unit> {
+        override fun handleStream(stream: Stream): CompletableFuture<Unit> {
+            stream.pushHandler(channelInitializer)
+            return CompletableFuture.completedFuture(Unit)
+        }
+    }
+
+    fun assertHandlerCount(count: Int) = assertEquals(count, childHandlers.size)
+    fun assertLastMessage(handler: Int, msgCount: Int, msg: String) {
+        val messages = childHandlers[handler].inboundMessages
+        assertEquals(msgCount, messages.size)
+        assertEquals(msg, messages.last())
     }
 
     @Test
@@ -236,26 +239,6 @@ class MultiplexHandlerTest {
             }
 
         assertThrows(ConnectionClosedException::class.java) { staleStream.stream.getX(3.0) }
-    }
-
-    fun assertHandlerCount(count: Int) = assertEquals(count, childHandlers.size)
-    fun assertLastMessage(handler: Int, msgCount: Int, msg: String) {
-        val messages = childHandlers[handler].inboundMessages
-        assertEquals(msgCount, messages.size)
-        assertEquals(msg, messages.last())
-    }
-
-    fun openStream(id: Long) = writeFrame(id, OPEN)
-    fun writeStream(id: Long, msg: String) = writeFrame(id, DATA, msg.fromHex().toByteBuf())
-    fun resetStream(id: Long) = writeFrame(id, RESET)
-    fun writeFrame(id: Long, flag: MuxFrame.Flag, data: ByteBuf? = null) =
-        ech.writeInbound(MuxFrame(MuxId(dummyParentChannelId, id, true), flag, data))
-
-    fun createStreamHandler(channelInitializer: ChannelHandler) = object : StreamHandler<Unit> {
-        override fun handleStream(stream: Stream): CompletableFuture<Unit> {
-            stream.pushHandler(channelInitializer)
-            return CompletableFuture.completedFuture(Unit)
-        }
     }
 
     class TestHandler : ChannelInboundHandlerAdapter() {
