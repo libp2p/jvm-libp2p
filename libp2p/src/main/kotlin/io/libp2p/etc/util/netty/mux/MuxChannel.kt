@@ -55,7 +55,7 @@ class MuxChannel<TData>(
     }
 
     fun onRemoteDisconnected() {
-        pipeline().fireUserEventTriggered(RemoteWriteClosed())
+        pipeline().fireUserEventTriggered(RemoteWriteClosed)
         remoteDisconnected = true
         closeIfBothDisconnected()
     }
@@ -73,11 +73,6 @@ class MuxChannel<TData>(
         if (remoteDisconnected && localDisconnected) closeImpl()
     }
 }
-
-/**
- * This Netty user event is fired to the [Stream] channel when remote peer closes its write side of the Stream
- */
-class RemoteWriteClosed
 
 data class MultiplexSocketAddress(val parentAddress: SocketAddress, val streamId: MuxId) : SocketAddress() {
     override fun toString(): String {
