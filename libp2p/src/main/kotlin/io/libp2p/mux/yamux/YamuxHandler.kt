@@ -72,13 +72,15 @@ open class YamuxHandler(
 
     fun handleFlags(msg: YamuxFrame) {
         val ctx = getChannelHandlerContext()
-        if (msg.flags == YamuxFlags.SYN) {
-            // ACK the new stream
-            onRemoteOpen(msg.id)
-            ctx.writeAndFlush(YamuxFrame(msg.id, YamuxType.WINDOW_UPDATE, YamuxFlags.ACK, 0))
+        when(msg.flags) {
+            YamuxFlags.SYN -> {
+                // ACK the new stream
+                onRemoteOpen(msg.id)
+                ctx.writeAndFlush(YamuxFrame(msg.id, YamuxType.WINDOW_UPDATE, YamuxFlags.ACK, 0))
+            }
+            YamuxFlags.FIN -> onRemoteDisconnect(msg.id)
+            YamuxFlags.RST -> onRemoteClose(msg.id)
         }
-        if (msg.flags == YamuxFlags.FIN)
-            onRemoteDisconnect(msg.id)
     }
 
     fun handleDataRead(msg: YamuxFrame) {
