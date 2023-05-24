@@ -28,7 +28,7 @@ class MplexHandlerTest : MuxHandlerAbstractTest() {
         }
 
     override fun writeFrame(frame: AbstractTestMuxFrame) {
-        val mplexFlag = when(frame.flag) {
+        val mplexFlag = when (frame.flag) {
             Open -> MplexFlag.Type.OPEN
             Data -> MplexFlag.Type.DATA
             Close -> MplexFlag.Type.CLOSE
@@ -46,7 +46,7 @@ class MplexHandlerTest : MuxHandlerAbstractTest() {
     override fun readFrame(): AbstractTestMuxFrame? {
         val maybeMplexFrame = ech.readOutbound<MplexFrame>()
         return maybeMplexFrame?.let { mplexFrame ->
-            val flag = when(mplexFrame.flag.type) {
+            val flag = when (mplexFrame.flag.type) {
                 MplexFlag.Type.OPEN -> Open
                 MplexFlag.Type.DATA -> Data
                 MplexFlag.Type.CLOSE -> Close

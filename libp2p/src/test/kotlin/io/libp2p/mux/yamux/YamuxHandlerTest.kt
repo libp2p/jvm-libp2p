@@ -8,7 +8,6 @@ import io.libp2p.etc.util.netty.mux.MuxId
 import io.libp2p.mux.MuxHandler
 import io.libp2p.mux.MuxHandlerAbstractTest
 import io.libp2p.mux.MuxHandlerAbstractTest.AbstractTestMuxFrame.Flag.*
-import io.libp2p.mux.mplex.MplexFlag
 import io.libp2p.tools.readAllBytesAndRelease
 import io.netty.channel.ChannelHandlerContext
 
@@ -29,7 +28,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
 
     override fun writeFrame(frame: AbstractTestMuxFrame) {
         val muxId = MuxId(parentChannelId, frame.streamId, true)
-        val yamuxFrame = when(frame.flag) {
+        val yamuxFrame = when (frame.flag) {
             Open -> YamuxFrame(muxId, YamuxType.DATA, YamuxFlags.SYN, 0)
             Data -> YamuxFrame(
                 muxId,

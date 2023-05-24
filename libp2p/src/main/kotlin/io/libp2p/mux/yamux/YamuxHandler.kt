@@ -72,7 +72,7 @@ open class YamuxHandler(
 
     fun handleFlags(msg: YamuxFrame) {
         val ctx = getChannelHandlerContext()
-        when(msg.flags) {
+        when (msg.flags) {
             YamuxFlags.SYN -> {
                 // ACK the new stream
                 onRemoteOpen(msg.id)

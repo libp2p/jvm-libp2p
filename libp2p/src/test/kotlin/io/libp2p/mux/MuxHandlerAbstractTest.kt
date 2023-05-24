@@ -42,12 +42,14 @@ abstract class MuxHandlerAbstractTest {
     abstract val maxFrameDataLength: Int
     abstract fun createMuxHandler(streamHandler: StreamHandler<*>): MuxHandler
 
-    fun createTestStreamHandler(): StreamHandler<TestHandler>  =
+    fun createTestStreamHandler(): StreamHandler<TestHandler> =
         StreamHandler { stream ->
             val handler = TestHandler()
-            stream.pushHandler(nettyInitializer {
-                it.addLastLocal(handler)
-            })
+            stream.pushHandler(
+                nettyInitializer {
+                    it.addLastLocal(handler)
+                }
+            )
             CompletableFuture.completedFuture(handler)
         }
 
@@ -86,7 +88,7 @@ abstract class MuxHandlerAbstractTest {
         val flag: Flag,
         val data: String = ""
     ) {
-        enum class Flag { Open, Data, Close, Reset}
+        enum class Flag { Open, Data, Close, Reset }
     }
 
     abstract fun writeFrame(frame: AbstractTestMuxFrame)
