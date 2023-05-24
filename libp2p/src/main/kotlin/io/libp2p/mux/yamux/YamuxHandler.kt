@@ -147,7 +147,15 @@ open class YamuxHandler(
     }
 
     override fun onLocalOpen(child: MuxChannel<ByteBuf>) {
+        onStreamCreate(child)
         getChannelHandlerContext().writeAndFlush(YamuxFrame(child.id, YamuxType.DATA, YamuxFlags.SYN, 0))
+    }
+
+    override fun onRemoteCreated(child: MuxChannel<ByteBuf>) {
+        onStreamCreate(child)
+    }
+
+    private fun onStreamCreate(child: MuxChannel<ByteBuf>) {
         receiveWindows.put(child.id, AtomicInteger(INITIAL_WINDOW_SIZE))
         sendWindows.put(child.id, AtomicInteger(INITIAL_WINDOW_SIZE))
     }
@@ -162,15 +170,13 @@ open class YamuxHandler(
     }
 
     override fun onLocalClose(child: MuxChannel<ByteBuf>) {
-        sendWindows.remove(child.id)
-        receiveWindows.remove(child.id)
-        sendBuffers.remove(child.id)
         getChannelHandlerContext().writeAndFlush(YamuxFrame(child.id, YamuxType.DATA, YamuxFlags.RST, 0))
     }
 
-    override fun onRemoteCreated(child: MuxChannel<ByteBuf>) {
-        receiveWindows.put(child.id, AtomicInteger(INITIAL_WINDOW_SIZE))
-        sendWindows.put(child.id, AtomicInteger(INITIAL_WINDOW_SIZE))
+    override fun onChildClosed(child: MuxChannel<ByteBuf>) {
+        sendWindows.remove(child.id)
+        receiveWindows.remove(child.id)
+        sendBuffers.remove(child.id)
     }
 
     override fun generateNextId() =

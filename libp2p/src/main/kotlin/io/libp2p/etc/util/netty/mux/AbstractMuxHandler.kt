@@ -115,6 +115,7 @@ abstract class AbstractMuxHandler<TData>() :
 
     fun onClosed(child: MuxChannel<TData>) {
         streamMap.remove(child.id)
+        onChildClosed(child)
     }
 
     abstract override fun channelRead(ctx: ChannelHandlerContext, msg: Any)
@@ -122,6 +123,7 @@ abstract class AbstractMuxHandler<TData>() :
     protected abstract fun onLocalOpen(child: MuxChannel<TData>)
     protected abstract fun onLocalClose(child: MuxChannel<TData>)
     protected abstract fun onLocalDisconnect(child: MuxChannel<TData>)
+    protected abstract fun onChildClosed(child: MuxChannel<TData>)
 
     private fun createChild(
         id: MuxId,
