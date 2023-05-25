@@ -14,6 +14,7 @@ package io.libp2p.mux.mplex
 
 import io.libp2p.etc.util.netty.mux.MuxId
 import io.netty.buffer.ByteBuf
+import io.netty.buffer.DefaultByteBufHolder
 import io.netty.buffer.Unpooled
 
 /**
@@ -24,7 +25,7 @@ import io.netty.buffer.Unpooled
  * @param data the data segment.
  * @see [mplex documentation](https://github.com/libp2p/specs/tree/master/mplex#opening-a-new-stream)
  */
-data class MplexFrame(val id: MuxId, val flag: MplexFlag, val data: ByteBuf) {
+data class MplexFrame(val id: MuxId, val flag: MplexFlag, val data: ByteBuf) : DefaultByteBufHolder(data) {
 
     companion object {
         fun createDataFrame(id: MuxId, data: ByteBuf) =

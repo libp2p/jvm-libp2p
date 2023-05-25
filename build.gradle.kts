@@ -59,6 +59,9 @@ configure(
         implementation("org.slf4j:slf4j-api")
         implementation("com.github.multiformats:java-multibase:v1.1.1")
 
+        testFixturesImplementation("com.google.guava:guava")
+        testFixturesImplementation("org.slf4j:slf4j-api")
+
         testImplementation("org.junit.jupiter:junit-jupiter")
         testImplementation("org.junit.jupiter:junit-jupiter-params")
         testImplementation("io.mockk:mockk")
