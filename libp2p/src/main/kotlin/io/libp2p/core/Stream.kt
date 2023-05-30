@@ -2,7 +2,6 @@ package io.libp2p.core
 
 import io.libp2p.protocol.ProtocolMessageHandler
 import io.libp2p.protocol.ProtocolMessageHandlerAdapter
-import io.netty.channel.EventLoop
 import java.util.concurrent.CompletableFuture
 
 /**
@@ -10,11 +9,6 @@ import java.util.concurrent.CompletableFuture
  */
 interface Stream : P2PChannel {
     val connection: Connection
-
-    /**
-     * Return the underlying EventLoop
-     */
-    fun eventLoop(): EventLoop
 
     /**
      * Returns the [PeerId] of the remote peer [Connection] which this

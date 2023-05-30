@@ -6,7 +6,6 @@ import io.libp2p.core.Stream
 import io.libp2p.etc.PROTOCOL
 import io.libp2p.etc.types.toVoidCompletableFuture
 import io.netty.channel.Channel
-import io.netty.channel.EventLoop
 import java.util.concurrent.CompletableFuture
 
 class StreamOverNetty(
@@ -14,14 +13,9 @@ class StreamOverNetty(
     override val connection: Connection,
     initiator: Boolean
 ) : Stream, P2PChannelOverNetty(ch, initiator) {
-
-    val group: EventLoop
     init {
         nettyChannel.attr(PROTOCOL).set(CompletableFuture())
-        group = ch.eventLoop()
     }
-
-    override fun eventLoop() = group
 
     /**
      * Returns the [PeerId] of the remote peer [Connection] which this
