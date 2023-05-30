@@ -57,6 +57,5 @@ open class MplexHandler(
         getChannelHandlerContext().writeAndFlush(MplexFrame.createResetFrame(child.id))
     }
 
-    override fun onRemoteCreated(child: MuxChannel<ByteBuf>) {
-    }
+    override fun onChildClosed(child: MuxChannel<ByteBuf>) {}
 }

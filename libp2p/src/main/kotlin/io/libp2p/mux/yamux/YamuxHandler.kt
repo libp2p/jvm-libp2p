@@ -72,13 +72,15 @@ open class YamuxHandler(
 
     fun handleFlags(msg: YamuxFrame) {
         val ctx = getChannelHandlerContext()
-        if (msg.flags == YamuxFlags.SYN) {
-            // ACK the new stream
-            onRemoteOpen(msg.id)
-            ctx.writeAndFlush(YamuxFrame(msg.id, YamuxType.WINDOW_UPDATE, YamuxFlags.ACK, 0))
+        when (msg.flags) {
+            YamuxFlags.SYN -> {
+                // ACK the new stream
+                onRemoteOpen(msg.id)
+                ctx.writeAndFlush(YamuxFrame(msg.id, YamuxType.WINDOW_UPDATE, YamuxFlags.ACK, 0))
+            }
+            YamuxFlags.FIN -> onRemoteDisconnect(msg.id)
+            YamuxFlags.RST -> onRemoteClose(msg.id)
         }
-        if (msg.flags == YamuxFlags.FIN)
-            onRemoteDisconnect(msg.id)
     }
 
     fun handleDataRead(msg: YamuxFrame) {
@@ -88,8 +90,10 @@ open class YamuxHandler(
         if (size.toInt() == 0)
             return
         val recWindow = receiveWindows.get(msg.id)
-        if (recWindow == null)
+        if (recWindow == null) {
+            releaseMessage(msg.data!!)
             throw Libp2pException("No receive window for " + msg.id)
+        }
         val newWindow = recWindow.addAndGet(-size.toInt())
         if (newWindow < INITIAL_WINDOW_SIZE / 2) {
             val delta = INITIAL_WINDOW_SIZE / 2
@@ -143,30 +147,36 @@ open class YamuxHandler(
     }
 
     override fun onLocalOpen(child: MuxChannel<ByteBuf>) {
+        onStreamCreate(child)
         getChannelHandlerContext().writeAndFlush(YamuxFrame(child.id, YamuxType.DATA, YamuxFlags.SYN, 0))
+    }
+
+    override fun onRemoteCreated(child: MuxChannel<ByteBuf>) {
+        onStreamCreate(child)
+    }
+
+    private fun onStreamCreate(child: MuxChannel<ByteBuf>) {
         receiveWindows.put(child.id, AtomicInteger(INITIAL_WINDOW_SIZE))
         sendWindows.put(child.id, AtomicInteger(INITIAL_WINDOW_SIZE))
     }
 
     override fun onLocalDisconnect(child: MuxChannel<ByteBuf>) {
-        sendWindows.remove(child.id)
-        receiveWindows.remove(child.id)
-        sendBuffers.remove(child.id)
-        getChannelHandlerContext().writeAndFlush(YamuxFrame(child.id, YamuxType.DATA, YamuxFlags.FIN, 0))
-    }
-
-    override fun onLocalClose(child: MuxChannel<ByteBuf>) {
-        getChannelHandlerContext().writeAndFlush(YamuxFrame(child.id, YamuxType.DATA, YamuxFlags.RST, 0))
         val sendWindow = sendWindows.remove(child.id)
         val buffered = sendBuffers.remove(child.id)
         if (buffered != null && sendWindow != null) {
             buffered.flush(sendWindow, child.id)
         }
+        getChannelHandlerContext().writeAndFlush(YamuxFrame(child.id, YamuxType.DATA, YamuxFlags.FIN, 0))
     }
 
-    override fun onRemoteCreated(child: MuxChannel<ByteBuf>) {
-        receiveWindows.put(child.id, AtomicInteger(INITIAL_WINDOW_SIZE))
-        sendWindows.put(child.id, AtomicInteger(INITIAL_WINDOW_SIZE))
+    override fun onLocalClose(child: MuxChannel<ByteBuf>) {
+        getChannelHandlerContext().writeAndFlush(YamuxFrame(child.id, YamuxType.DATA, YamuxFlags.RST, 0))
+    }
+
+    override fun onChildClosed(child: MuxChannel<ByteBuf>) {
+        sendWindows.remove(child.id)
+        receiveWindows.remove(child.id)
+        sendBuffers.remove(child.id)
     }
 
     override fun generateNextId() =
