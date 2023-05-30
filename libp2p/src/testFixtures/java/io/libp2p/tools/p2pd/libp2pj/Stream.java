@@ -1,7 +1,5 @@
 package io.libp2p.tools.p2pd.libp2pj;
 
-import io.netty.channel.*;
-
 import java.nio.ByteBuffer;
 
 /**
@@ -10,8 +8,6 @@ import java.nio.ByteBuffer;
 public interface Stream<TEndpoint> {
 
     boolean isInitiator();
-
-    EventLoop eventLoop();
 
     void write(ByteBuffer data);
 
