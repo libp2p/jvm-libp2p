@@ -44,7 +44,7 @@ interface ProtocolBinding<out TController> {
     /**
      * Returns initializer for this protocol on the provided channel, together with an optional controller object.
      */
-    fun initChannel(ch: P2PChannel, selectedProtocol: String): CompletableFuture<out TController>
+    fun initChannel(ch: P2PChannel, selectedProtocol: ProtocolId): CompletableFuture<out TController>
 
     /**
      * If the [matcher] of this binding is not [Mode.STRICT] then it can't play initiator role since
@@ -56,7 +56,7 @@ interface ProtocolBinding<out TController> {
         val srcBinding = this
         return object : ProtocolBinding<TController> {
             override val protocolDescriptor = ProtocolDescriptor(protocols, srcBinding.protocolDescriptor.protocolMatcher)
-            override fun initChannel(ch: P2PChannel, selectedProtocol: String): CompletableFuture<out TController> =
+            override fun initChannel(ch: P2PChannel, selectedProtocol: ProtocolId): CompletableFuture<out TController> =
                 srcBinding.initChannel(ch, selectedProtocol)
         }
     }
@@ -68,7 +68,7 @@ interface ProtocolBinding<out TController> {
         fun <T> createSimple(protocolName: ProtocolId, handler: P2PChannelHandler<T>): ProtocolBinding<T> {
             return object : ProtocolBinding<T> {
                 override val protocolDescriptor = ProtocolDescriptor(protocolName)
-                override fun initChannel(ch: P2PChannel, selectedProtocol: String): CompletableFuture<out T> {
+                override fun initChannel(ch: P2PChannel, selectedProtocol: ProtocolId): CompletableFuture<out T> {
                     return handler.initChannel(ch)
                 }
             }

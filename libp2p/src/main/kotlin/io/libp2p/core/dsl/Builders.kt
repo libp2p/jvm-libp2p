@@ -35,7 +35,7 @@ import io.netty.handler.logging.LogLevel
 import io.netty.handler.logging.LoggingHandler
 
 typealias TransportCtor = (ConnectionUpgrader) -> Transport
-typealias SecureChannelCtor = (PrivKey, List<String>) -> SecureChannel
+typealias SecureChannelCtor = (PrivKey, List<StreamMuxer>) -> SecureChannel
 typealias IdentityFactory = () -> PrivKey
 
 class HostConfigurationException(message: String) : RuntimeException(message)
@@ -175,7 +175,7 @@ open class Builder {
 
         val muxers = muxers.map { it.createMuxer(streamMultistreamProtocol, protocols.values) }
 
-        val secureChannels = secureChannels.values.map { it(privKey, muxers.flatMap { it.protocolDescriptor.announceProtocols }) }
+        val secureChannels = secureChannels.values.map { it(privKey, muxers) }
 
         if (debug.muxFramesHandler.handlers.isNotEmpty()) {
             val broadcast = ChannelVisitor.createBroadcast(*debug.muxFramesHandler.handlers.toTypedArray())

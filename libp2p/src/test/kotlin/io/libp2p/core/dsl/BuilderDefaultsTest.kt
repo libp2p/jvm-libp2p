@@ -46,7 +46,7 @@ class BuilderDefaultsTest {
             host(Builder.Defaults.None) {
                 identity { random() }
                 transports { +::TcpTransport }
-                secureChannels { +::SecIoSecureChannel }
+                secureChannels { add(::SecIoSecureChannel) }
             }
         }
     }
@@ -56,7 +56,7 @@ class BuilderDefaultsTest {
         val host = host(Builder.Defaults.None) {
             identity { random() }
             transports { +::TcpTransport }
-            secureChannels { +::SecIoSecureChannel }
+            secureChannels { add(::SecIoSecureChannel) }
             muxers { + StreamMuxerProtocol.Mplex }
         }
 

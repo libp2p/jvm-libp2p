@@ -3,6 +3,7 @@ package io.libp2p.security
 import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.generateKeyPair
+import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.tools.TestChannel
 import io.libp2p.tools.TestLogAppender
 import io.netty.buffer.Unpooled
@@ -12,8 +13,8 @@ import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import java.util.concurrent.TimeUnit.SECONDS
 
-abstract class CipherSecureChannelTest(secureChannelCtor: SecureChannelCtor, muxerIds: List<String>, announce: String) :
-    SecureChannelTestBase(secureChannelCtor, muxerIds, announce) {
+abstract class CipherSecureChannelTest(secureChannelCtor: SecureChannelCtor, muxers: List<StreamMuxer>, announce: String) :
+    SecureChannelTestBase(secureChannelCtor, muxers, announce) {
 
     @Test
     fun `incorrect initiator remote PeerId should throw`() {

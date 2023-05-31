@@ -32,7 +32,11 @@ class ConnectionBuilder(
         upgrader.establishSecureChannel(connection)
             .thenCompose {
                 connection.setSecureSession(it)
-                upgrader.establishMuxer(it.nextProto, connection)
+                if (it.earlyMuxer != null) {
+                    ConnectionUpgrader.establishMuxer(it.earlyMuxer, connection)
+                } else {
+                    upgrader.establishMuxer(connection)
+                }
             }.thenApply {
                 connection.setMuxerSession(it)
                 connHandler.handleConnection(connection)

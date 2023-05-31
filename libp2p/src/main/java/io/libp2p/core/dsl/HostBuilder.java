@@ -40,7 +40,7 @@ public class HostBuilder {
 
     @SafeVarargs
     public final HostBuilder secureChannel(
-            BiFunction<PrivKey, List<String>, SecureChannel>... secureChannels) {
+            BiFunction<PrivKey, List<StreamMuxer>, SecureChannel>... secureChannels) {
         secureChannels_.addAll(Arrays.asList(secureChannels));
         return this;
     }
@@ -75,7 +75,7 @@ public class HostBuilder {
                     b.getTransports().add(t::apply)
                 );
                 secureChannels_.forEach(sc ->
-                    b.getSecureChannels().add((k, m) -> sc.apply(k, (List<String>)m))
+                    b.getSecureChannels().add((k, m) -> sc.apply(k, (List<StreamMuxer>)m))
                 );
                 muxers_.forEach(m ->
                     b.getMuxers().add(m.get())
@@ -90,7 +90,7 @@ public class HostBuilder {
 
     private DefaultMode defaultMode_;
     private List<Function<ConnectionUpgrader, Transport>> transports_ = new ArrayList<>();
-    private List<BiFunction<PrivKey, List<String>, SecureChannel>> secureChannels_ = new ArrayList<>();
+    private List<BiFunction<PrivKey, List<StreamMuxer>, SecureChannel>> secureChannels_ = new ArrayList<>();
     private List<Supplier<StreamMuxerProtocol>> muxers_ = new ArrayList<>();
     private List<ProtocolBinding<?>> protocols_ = new ArrayList<>();
     private List<String> listenAddresses_ = new ArrayList<>();

@@ -11,6 +11,7 @@ import io.libp2p.core.crypto.PubKey
 import io.libp2p.core.crypto.marshalPublicKey
 import io.libp2p.core.crypto.unmarshalPublicKey
 import io.libp2p.core.multistream.ProtocolDescriptor
+import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.core.security.SecureChannel
 import io.libp2p.etc.REMOTE_PEER_ID
 import io.libp2p.etc.types.toByteArray
@@ -45,8 +46,11 @@ class UShortLengthCodec : CombinedChannelDuplexHandler<LengthFieldBasedFrameDeco
     LengthFieldPrepender(2)
 )
 
-class NoiseXXSecureChannel(private val localKey: PrivKey, private val muxers: List<String>) :
+class NoiseXXSecureChannel(private val localKey: PrivKey) :
     SecureChannel {
+
+    @Suppress("UNUSED_PARAMETER")
+    constructor(localKey: PrivKey, muxerProtocols: List<StreamMuxer>) : this(localKey)
 
     companion object {
         const val protocolName = "Noise_XX_25519_ChaChaPoly_SHA256"
@@ -62,10 +66,6 @@ class NoiseXXSecureChannel(private val localKey: PrivKey, private val muxers: Li
     }
 
     override val protocolDescriptor = ProtocolDescriptor(announce)
-
-    fun initChannel(ch: P2PChannel): CompletableFuture<SecureChannel.Session> {
-        return initChannel(ch, "")
-    } // initChannel
 
     override fun initChannel(
         ch: P2PChannel,

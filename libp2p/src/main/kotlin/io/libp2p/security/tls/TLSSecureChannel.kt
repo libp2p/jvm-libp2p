@@ -5,7 +5,11 @@ import io.libp2p.core.*
 import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.crypto.PubKey
 import io.libp2p.core.crypto.unmarshalPublicKey
+import io.libp2p.core.multistream.ProtocolBinding
 import io.libp2p.core.multistream.ProtocolDescriptor
+import io.libp2p.core.multistream.ProtocolId
+import io.libp2p.core.mux.NegotiatedStreamMuxer
+import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.core.security.SecureChannel
 import io.libp2p.crypto.Libp2pCrypto
 import io.libp2p.crypto.keys.EcdsaPublicKey
@@ -52,13 +56,15 @@ import java.util.logging.Logger
 import javax.net.ssl.X509TrustManager
 
 private val log = Logger.getLogger(TlsSecureChannel::class.java.name)
-private val SetupHandlerName = "TlsSetup"
+
+const val NoEarlyMuxerNegotiationEntry = "libp2p"
+const val SetupHandlerName = "TlsSetup"
 val certificatePrefix = "libp2p-tls-handshake:".encodeToByteArray()
 
-class TlsSecureChannel(private val localKey: PrivKey, private val muxerIds: List<String>, private val certAlgorithm: String) :
+class TlsSecureChannel(private val localKey: PrivKey, private val muxers: List<StreamMuxer>, private val certAlgorithm: String) :
     SecureChannel {
 
-    constructor(localKey: PrivKey, muxerIds: List<String>) : this(localKey, muxerIds, "Ed25519") {}
+    constructor(localKey: PrivKey, muxerIds: List<StreamMuxer>) : this(localKey, muxerIds, "Ed25519") {}
 
     companion object {
         const val announce = "/tls/1.0.0"
@@ -79,7 +85,7 @@ class TlsSecureChannel(private val localKey: PrivKey, private val muxerIds: List
         selectedProtocol: String
     ): CompletableFuture<SecureChannel.Session> {
         val handshakeComplete = CompletableFuture<SecureChannel.Session>()
-        ch.pushHandler(SetupHandlerName, ChannelSetup(localKey, muxerIds, certAlgorithm, ch, handshakeComplete))
+        ch.pushHandler(SetupHandlerName, ChannelSetup(localKey, muxers, certAlgorithm, ch, handshakeComplete))
         return handshakeComplete
     }
 }
@@ -87,7 +93,7 @@ class TlsSecureChannel(private val localKey: PrivKey, private val muxerIds: List
 fun buildTlsHandler(
     localKey: PrivKey,
     expectedRemotePeer: Optional<PeerId>,
-    muxerIds: List<String>,
+    muxers: List<StreamMuxer>,
     certAlgorithm: String,
     ch: P2PChannel,
     handshakeComplete: CompletableFuture<SecureChannel.Session>,
@@ -111,7 +117,7 @@ fun buildTlsHandler(
                 ApplicationProtocolConfig.Protocol.ALPN,
                 ApplicationProtocolConfig.SelectorFailureBehavior.FATAL_ALERT,
                 ApplicationProtocolConfig.SelectedListenerFailureBehavior.FATAL_ALERT,
-                muxerIds.plus("libp2p") // early muxer negotiation
+                muxers.allProtocols + NoEarlyMuxerNegotiationEntry // early muxer negotiation
             )
         )
         .build()
@@ -127,13 +133,13 @@ fun buildTlsHandler(
             handshakeComplete.completeExceptionally(cause)
         } else {
             val negotiatedProtocols = sslContext.applicationProtocolNegotiator().protocols()
-            val selectedProtocol = negotiatedProtocols.filter { name -> muxerIds.contains(name) }.getOrElse(0, defaultValue = { _ -> "" })
+            val selectedMuxer = muxers.findBestMatch(negotiatedProtocols)
             handshakeComplete.complete(
                 SecureChannel.Session(
                     PeerId.fromPubKey(localKey.publicKey()),
                     verifyAndExtractPeerId(engine.session.peerCertificates),
                     getPublicKeyFromCert(engine.session.peerCertificates),
-                    selectedProtocol
+                    selectedMuxer
                 )
             )
             ctx.fireChannelActive()
@@ -142,9 +148,21 @@ fun buildTlsHandler(
     return handler
 }
 
+private val <T : ProtocolBinding<*>> List<T>.allProtocols: List<ProtocolId> get() =
+    this.flatMap { it.protocolDescriptor.announceProtocols }
+
+private fun List<StreamMuxer>.findBestMatch(remoteProtocols: List<ProtocolId>): NegotiatedStreamMuxer? =
+    this.firstNotNullOfOrNull { muxer ->
+        remoteProtocols.firstOrNull { remoteProtocol ->
+            muxer.protocolDescriptor.protocolMatcher.matches(remoteProtocol)
+        }?.let { negotiatedProtocol ->
+            NegotiatedStreamMuxer(muxer, negotiatedProtocol)
+        }
+    }
+
 private class ChannelSetup(
     private val localKey: PrivKey,
-    private val muxerIds: List<String>,
+    private val muxers: List<StreamMuxer>,
     private val certAlgorithm: String,
     private val ch: P2PChannel,
     private val handshakeComplete: CompletableFuture<SecureChannel.Session>
@@ -155,7 +173,17 @@ private class ChannelSetup(
         if (! activated) {
             activated = true
             val expectedRemotePeerId = ctx.channel().attr(REMOTE_PEER_ID).get()
-            ctx.channel().pipeline().addLast(buildTlsHandler(localKey, Optional.ofNullable(expectedRemotePeerId), muxerIds, certAlgorithm, ch, handshakeComplete, ctx))
+            ctx.channel().pipeline().addLast(
+                buildTlsHandler(
+                    localKey,
+                    Optional.ofNullable(expectedRemotePeerId),
+                    muxers,
+                    certAlgorithm,
+                    ch,
+                    handshakeComplete,
+                    ctx
+                )
+            )
             ctx.channel().pipeline().remove(SetupHandlerName)
         }
     }
