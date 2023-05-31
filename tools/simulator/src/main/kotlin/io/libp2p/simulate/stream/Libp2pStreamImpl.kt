@@ -6,6 +6,7 @@ import io.libp2p.etc.PROTOCOL
 import io.libp2p.etc.types.toVoidCompletableFuture
 import io.libp2p.transport.implementation.P2PChannelOverNetty
 import io.netty.channel.Channel
+import io.netty.channel.EventLoop
 import java.util.concurrent.CompletableFuture
 
 class Libp2pStreamImpl(
@@ -28,4 +29,8 @@ class Libp2pStreamImpl(
 
     override fun closeWrite(): CompletableFuture<Unit> =
         nettyChannel.disconnect().toVoidCompletableFuture()
+
+    override fun eventLoop(): EventLoop {
+        TODO("Not yet implemented")
+    }
 }
