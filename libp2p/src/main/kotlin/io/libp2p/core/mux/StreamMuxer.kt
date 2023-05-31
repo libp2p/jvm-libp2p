@@ -1,9 +1,6 @@
 package io.libp2p.core.mux
 
-import io.libp2p.core.ChannelVisitor
-import io.libp2p.core.Connection
-import io.libp2p.core.StreamHandler
-import io.libp2p.core.StreamPromise
+import io.libp2p.core.*
 import io.libp2p.core.multistream.ProtocolBinding
 
 /**

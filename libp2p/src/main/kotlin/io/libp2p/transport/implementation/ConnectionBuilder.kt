@@ -32,8 +32,8 @@ class ConnectionBuilder(
         upgrader.establishSecureChannel(connection)
             .thenCompose {
                 connection.setSecureSession(it)
-                if (it.muxerProtocol != null) {
-                    upgrader.establishMuxer(it.muxerProtocol, connection)
+                if (it.earlyMuxer != null) {
+                    ConnectionUpgrader.establishMuxer(it.earlyMuxer, connection)
                 } else {
                     upgrader.establishMuxer(connection)
                 }

@@ -12,6 +12,7 @@ import io.libp2p.core.crypto.marshalPublicKey
 import io.libp2p.core.crypto.unmarshalPublicKey
 import io.libp2p.core.multistream.ProtocolDescriptor
 import io.libp2p.core.multistream.ProtocolId
+import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.core.security.SecureChannel
 import io.libp2p.etc.REMOTE_PEER_ID
 import io.libp2p.etc.types.toByteArray
@@ -50,7 +51,7 @@ class NoiseXXSecureChannel(private val localKey: PrivKey) :
     SecureChannel {
 
     @Suppress("UNUSED_PARAMETER")
-    constructor(localKey: PrivKey, muxerProtocols: List<ProtocolId>) : this(localKey)
+    constructor(localKey: PrivKey, muxerProtocols: List<StreamMuxer>) : this(localKey)
 
     companion object {
         const val protocolName = "Noise_XX_25519_ChaChaPoly_SHA256"
