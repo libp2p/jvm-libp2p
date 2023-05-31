@@ -26,7 +26,7 @@ class NullConnectionUpgrader :
             PeerId.random(),
             PeerId.random(),
             generateKeyPair(KEY_TYPE.RSA).second,
-            ""
+            null
         )
         return CompletableFuture.completedFuture(nonsenseSession)
     } // establishSecureChannel

@@ -127,7 +127,9 @@ fun buildTlsHandler(
             handshakeComplete.completeExceptionally(cause)
         } else {
             val negotiatedProtocols = sslContext.applicationProtocolNegotiator().protocols()
-            val selectedProtocol = negotiatedProtocols.filter { name -> muxerIds.contains(name) }.getOrElse(0, defaultValue = { _ -> "" })
+            val selectedProtocol = negotiatedProtocols
+                .filter { name -> muxerIds.contains(name) }
+                .getOrNull(0)
             handshakeComplete.complete(
                 SecureChannel.Session(
                     PeerId.fromPubKey(localKey.publicKey()),

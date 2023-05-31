@@ -25,7 +25,7 @@ class Libp2pConnectionImpl(
                 PeerId.fromPubKey(localPubkey),
                 PeerId.fromPubKey(remotePubkey),
                 remotePubkey,
-                ""
+                null
             )
         )
     }

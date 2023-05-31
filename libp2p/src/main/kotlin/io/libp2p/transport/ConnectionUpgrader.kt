@@ -4,6 +4,7 @@ import io.libp2p.core.Connection
 import io.libp2p.core.NoSuchLocalProtocolException
 import io.libp2p.core.multistream.MultistreamProtocol
 import io.libp2p.core.multistream.ProtocolBinding
+import io.libp2p.core.multistream.ProtocolId
 import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.core.security.SecureChannel
 import io.libp2p.etc.getP2PChannel
@@ -37,12 +38,10 @@ open class ConnectionUpgrader(
         )
     }
 
-    open fun establishMuxer(muxerId: String, connection: Connection): CompletableFuture<StreamMuxer.Session> {
-        if (muxerId.isEmpty() || muxerId.equals("libp2p")) {
-            return establishMuxer(connection)
-        }
-        val muxer = muxers.find { m -> m.protocolDescriptor.announceProtocols.contains(muxerId) }
-            ?: throw NoSuchLocalProtocolException("Early Muxer negotiation selected unsupported muxer: $muxerId")
+    open fun establishMuxer(muxerId: ProtocolId, connection: Connection): CompletableFuture<StreamMuxer.Session> {
+        val muxer = muxers.find { m ->
+            m.protocolDescriptor.matchesAny(listOf( muxerId))
+        } ?: throw NoSuchLocalProtocolException("Early Muxer negotiation selected unsupported muxer: $muxerId")
         val res = CompletableFuture<StreamMuxer.Session>()
         connection.pushHandler(
             nettyInitializer {
@@ -55,9 +54,9 @@ open class ConnectionUpgrader(
     private fun <T : ProtocolBinding<R>, R> establish(
         multistreamProtocol: MultistreamProtocol,
         connection: Connection,
-        channels: List<T>
+        bindings: List<T>
     ): CompletableFuture<R> {
-        val multistream = multistreamProtocol.createMultistream(channels)
+        val multistream = multistreamProtocol.createMultistream(bindings)
         return multistream.initChannel(connection)
     } // establish
 } // ConnectionUpgrader
