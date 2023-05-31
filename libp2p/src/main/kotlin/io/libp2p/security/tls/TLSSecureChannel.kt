@@ -56,7 +56,9 @@ import java.util.logging.Logger
 import javax.net.ssl.X509TrustManager
 
 private val log = Logger.getLogger(TlsSecureChannel::class.java.name)
-private val SetupHandlerName = "TlsSetup"
+
+const val NoEarlyMuxerNegotiationEntry = "libp2p"
+const val SetupHandlerName = "TlsSetup"
 val certificatePrefix = "libp2p-tls-handshake:".encodeToByteArray()
 
 class TlsSecureChannel(private val localKey: PrivKey, private val muxers: List<StreamMuxer>, private val certAlgorithm: String) :
@@ -115,7 +117,7 @@ fun buildTlsHandler(
                 ApplicationProtocolConfig.Protocol.ALPN,
                 ApplicationProtocolConfig.SelectorFailureBehavior.FATAL_ALERT,
                 ApplicationProtocolConfig.SelectedListenerFailureBehavior.FATAL_ALERT,
-                muxers.allProtocols // early muxer negotiation
+                muxers.allProtocols + NoEarlyMuxerNegotiationEntry// early muxer negotiation
             )
         )
         .build()
