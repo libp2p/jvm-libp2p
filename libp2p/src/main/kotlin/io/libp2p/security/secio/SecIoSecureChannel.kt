@@ -5,7 +5,6 @@ import io.libp2p.core.P2PChannel
 import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.multistream.ProtocolDescriptor
-import io.libp2p.core.multistream.ProtocolId
 import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.core.security.SecureChannel
 import io.libp2p.etc.REMOTE_PEER_ID

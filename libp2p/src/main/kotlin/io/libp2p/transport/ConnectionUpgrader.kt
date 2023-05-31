@@ -3,8 +3,8 @@ package io.libp2p.transport
 import io.libp2p.core.Connection
 import io.libp2p.core.multistream.MultistreamProtocol
 import io.libp2p.core.multistream.ProtocolBinding
-import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.core.mux.NegotiatedStreamMuxer
+import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.core.security.SecureChannel
 import io.libp2p.etc.getP2PChannel
 import io.libp2p.etc.types.forward

@@ -9,7 +9,6 @@ import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.crypto.PubKey
 import io.libp2p.core.crypto.unmarshalPublicKey
 import io.libp2p.core.multistream.ProtocolDescriptor
-import io.libp2p.core.multistream.ProtocolId
 import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.core.security.SecureChannel
 import io.libp2p.etc.types.toProtobuf

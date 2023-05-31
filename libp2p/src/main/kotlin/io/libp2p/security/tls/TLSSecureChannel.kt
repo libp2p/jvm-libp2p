@@ -8,8 +8,8 @@ import io.libp2p.core.crypto.unmarshalPublicKey
 import io.libp2p.core.multistream.ProtocolBinding
 import io.libp2p.core.multistream.ProtocolDescriptor
 import io.libp2p.core.multistream.ProtocolId
-import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.core.mux.NegotiatedStreamMuxer
+import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.core.security.SecureChannel
 import io.libp2p.crypto.Libp2pCrypto
 import io.libp2p.crypto.keys.EcdsaPublicKey
@@ -117,7 +117,7 @@ fun buildTlsHandler(
                 ApplicationProtocolConfig.Protocol.ALPN,
                 ApplicationProtocolConfig.SelectorFailureBehavior.FATAL_ALERT,
                 ApplicationProtocolConfig.SelectedListenerFailureBehavior.FATAL_ALERT,
-                muxers.allProtocols + NoEarlyMuxerNegotiationEntry// early muxer negotiation
+                muxers.allProtocols + NoEarlyMuxerNegotiationEntry // early muxer negotiation
             )
         )
         .build()
@@ -159,7 +159,6 @@ private fun List<StreamMuxer>.findBestMatch(remoteProtocols: List<ProtocolId>): 
             NegotiatedStreamMuxer(muxer, negotiatedProtocol)
         }
     }
-
 
 private class ChannelSetup(
     private val localKey: PrivKey,
