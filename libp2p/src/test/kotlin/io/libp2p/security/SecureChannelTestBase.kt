@@ -5,6 +5,7 @@ import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.multistream.ProtocolMatcher
+import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.core.security.SecureChannel
 import io.libp2p.etc.types.seconds
 import io.libp2p.etc.types.toByteArray
@@ -26,12 +27,13 @@ import java.nio.charset.StandardCharsets
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 
-typealias SecureChannelCtor = (PrivKey) -> SecureChannel
+typealias SecureChannelCtor = (PrivKey, List<StreamMuxer>) -> SecureChannel
 
 val logger = LoggerFactory.getLogger(SecureChannelTestBase::class.java)
 
 abstract class SecureChannelTestBase(
     val secureChannelCtor: SecureChannelCtor,
+    val muxerIds: List<StreamMuxer>,
     val announce: String
 ) {
     init {
@@ -56,8 +58,8 @@ abstract class SecureChannelTestBase(
         val (privKey1, _) = generateKeyPair(KEY_TYPE.ECDSA)
         val (privKey2, pubKey2) = generateKeyPair(KEY_TYPE.ECDSA)
 
-        val protocolSelect1 = makeSelector(privKey1)
-        val protocolSelect2 = makeSelector(privKey2)
+        val protocolSelect1 = makeSelector(privKey1, muxerIds)
+        val protocolSelect2 = makeSelector(privKey2, muxerIds)
 
         val eCh1 = makeDialChannel("#1", protocolSelect1, PeerId.fromPubKey(pubKey2))
         val eCh2 = makeListenChannel("#2", protocolSelect2)
@@ -117,7 +119,7 @@ abstract class SecureChannelTestBase(
         }
     } // secureInterconnect
 
-    protected fun makeSelector(key: PrivKey) = ProtocolSelect(listOf(secureChannelCtor(key)))
+    protected fun makeSelector(key: PrivKey, muxers: List<StreamMuxer>) = ProtocolSelect(listOf(secureChannelCtor(key, muxers)))
 
     protected fun makeDialChannel(
         name: String,

@@ -3,8 +3,12 @@ package io.libp2p.transport
 import io.libp2p.core.Connection
 import io.libp2p.core.multistream.MultistreamProtocol
 import io.libp2p.core.multistream.ProtocolBinding
+import io.libp2p.core.mux.NegotiatedStreamMuxer
 import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.core.security.SecureChannel
+import io.libp2p.etc.getP2PChannel
+import io.libp2p.etc.types.forward
+import io.libp2p.etc.util.netty.nettyInitializer
 import java.util.concurrent.CompletableFuture
 
 /**
@@ -31,14 +35,26 @@ open class ConnectionUpgrader(
             connection,
             muxers
         )
-    } // establishMuxer
+    }
 
     private fun <T : ProtocolBinding<R>, R> establish(
         multistreamProtocol: MultistreamProtocol,
         connection: Connection,
-        channels: List<T>
+        bindings: List<T>
     ): CompletableFuture<R> {
-        val multistream = multistreamProtocol.createMultistream(channels)
+        val multistream = multistreamProtocol.createMultistream(bindings)
         return multistream.initChannel(connection)
     } // establish
+
+    companion object {
+        fun establishMuxer(muxer: NegotiatedStreamMuxer, connection: Connection): CompletableFuture<StreamMuxer.Session> {
+            val res = CompletableFuture<StreamMuxer.Session>()
+            connection.pushHandler(
+                nettyInitializer {
+                    muxer.initChannel(it.channel.getP2PChannel()).forward(res)
+                }
+            )
+            return res
+        }
+    }
 } // ConnectionUpgrader

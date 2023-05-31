@@ -7,6 +7,7 @@ import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.crypto.PubKey
 import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.dsl.Builder
+import io.libp2p.core.dsl.SecureChannelCtor
 import io.libp2p.core.dsl.host
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multiformats.Protocol
@@ -26,7 +27,7 @@ class HostFactory {
     var keyType = KEY_TYPE.ECDSA
     var tcpPort = 5000
     var transportCtor = ::TcpTransport
-    var secureCtor = ::NoiseXXSecureChannel
+    var secureCtor: SecureChannelCtor = ::NoiseXXSecureChannel
     var mplexCtor = ::MplexStreamMuxer
     var muxLogLevel: LogLevel? = LogLevel.DEBUG
 

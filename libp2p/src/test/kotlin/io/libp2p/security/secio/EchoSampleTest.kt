@@ -63,7 +63,7 @@ class EchoSampleTest {
         }
         val upgrader = ConnectionUpgrader(
             MultistreamProtocolV1.copyWithHandlers(nettyToChannelHandler(LoggingHandler("#1", LogLevel.INFO))),
-            listOf(SecIoSecureChannel(privKey1)),
+            listOf(SecIoSecureChannel(privKey1, listOf())),
             MultistreamProtocolV1.copyWithHandlers(nettyToChannelHandler(LoggingHandler("#2", LogLevel.INFO))),
             listOf(muxer)
         )

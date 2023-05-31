@@ -27,7 +27,7 @@ dependencyManagement {
             entry 'protobuf-java'
             entry 'protoc'
         }
-        dependencySet(group: "io.netty", version: "4.1.87.Final") {
+        dependencySet(group: "io.netty", version: "4.1.90.Final") {
             entry 'netty-common'
             entry 'netty-handler'
             entry 'netty-transport'
@@ -40,6 +40,7 @@ dependencyManagement {
         dependencySet(group: "org.bouncycastle", version: "1.70") {
             entry 'bcprov-jdk15on'
             entry 'bcpkix-jdk15on'
+            entry 'bctls-jdk15on'
         }
     }
 }

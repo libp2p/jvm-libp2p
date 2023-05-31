@@ -5,6 +5,7 @@ import io.libp2p.core.P2PChannel
 import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.multistream.ProtocolDescriptor
+import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.core.security.SecureChannel
 import io.libp2p.etc.REMOTE_PEER_ID
 import io.netty.buffer.ByteBuf
@@ -19,6 +20,10 @@ private val log = LoggerFactory.getLogger(SecIoSecureChannel::class.java)
 private val HandshakeHandlerName = "SecIoHandshake"
 
 class SecIoSecureChannel(private val localKey: PrivKey) : SecureChannel {
+
+    @Suppress("UNUSED_PARAMETER")
+    constructor(localKey: PrivKey, muxerProtocols: List<StreamMuxer>) : this(localKey)
+
     override val protocolDescriptor = ProtocolDescriptor("/secio/1.0.0")
 
     override fun initChannel(ch: P2PChannel, selectedProtocol: String): CompletableFuture<SecureChannel.Session> {
@@ -68,7 +73,8 @@ private class SecIoHandshake(
             val session = SecureChannel.Session(
                 PeerId.fromPubKey(secIoCodec.local.permanentPubKey),
                 PeerId.fromPubKey(secIoCodec.remote.permanentPubKey),
-                secIoCodec.remote.permanentPubKey
+                secIoCodec.remote.permanentPubKey,
+                null
             )
             handshakeComplete.complete(session)
             ctx.channel().pipeline().remove(HandshakeHandlerName)
