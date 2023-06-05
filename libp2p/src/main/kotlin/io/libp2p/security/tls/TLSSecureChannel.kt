@@ -71,6 +71,8 @@ class TlsSecureChannel(private val localKey: PrivKey, private val muxers: List<S
         init {
             Security.insertProviderAt(Libp2pCrypto.provider, 1)
             Security.insertProviderAt(BouncyCastleJsseProvider(), 2)
+            Security.setProperty("ssl.KeyManagerFactory.algorithm", "PKIX")
+            Security.setProperty("ssl.TrustManagerFactory.algorithm", "PKIX")
         }
     }
 
