@@ -145,7 +145,7 @@ fun buildTlsHandler(
                     mux.protocolDescriptor.protocolMatcher.matches(nextProtocol)
                 }
                 .map { mux ->
-                    NegotiatedStreamMuxer(mux, nextProtocol) 
+                    NegotiatedStreamMuxer(mux, nextProtocol)
                 }
                 .firstOrNull()
             handshakeComplete.complete(
