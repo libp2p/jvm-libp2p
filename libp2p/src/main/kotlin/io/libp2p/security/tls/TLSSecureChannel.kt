@@ -71,6 +71,13 @@ class TlsSecureChannel(private val localKey: PrivKey, private val muxers: List<S
         init {
             Security.insertProviderAt(Libp2pCrypto.provider, 1)
             Security.insertProviderAt(BouncyCastleJsseProvider(), 2)
+            Security.setProperty("ssl.KeyManagerFactory.algorithm", "PKIX")
+            Security.setProperty("ssl.TrustManagerFactory.algorithm", "PKIX")
+        }
+
+        @JvmStatic
+        fun ECDSA(localKey: PrivKey, muxerIds: List<StreamMuxer>): TlsSecureChannel {
+            return TlsSecureChannel(localKey, muxerIds, "ECDSA")
         }
     }
 
@@ -132,8 +139,15 @@ fun buildTlsHandler(
                 cause = cause.cause
             handshakeComplete.completeExceptionally(cause)
         } else {
-            val negotiatedProtocols = sslContext.applicationProtocolNegotiator().protocols()
-            val selectedMuxer = muxers.findBestMatch(negotiatedProtocols)
+            val nextProtocol = handler.applicationProtocol()
+            val selectedMuxer = muxers
+                .filter { mux ->
+                    mux.protocolDescriptor.protocolMatcher.matches(nextProtocol)
+                }
+                .map { mux ->
+                    NegotiatedStreamMuxer(mux, nextProtocol)
+                }
+                .firstOrNull()
             handshakeComplete.complete(
                 SecureChannel.Session(
                     PeerId.fromPubKey(localKey.publicKey()),
@@ -150,15 +164,6 @@ fun buildTlsHandler(
 
 private val <T : ProtocolBinding<*>> List<T>.allProtocols: List<ProtocolId> get() =
     this.flatMap { it.protocolDescriptor.announceProtocols }
-
-private fun List<StreamMuxer>.findBestMatch(remoteProtocols: List<ProtocolId>): NegotiatedStreamMuxer? =
-    this.firstNotNullOfOrNull { muxer ->
-        remoteProtocols.firstOrNull { remoteProtocol ->
-            muxer.protocolDescriptor.protocolMatcher.matches(remoteProtocol)
-        }?.let { negotiatedProtocol ->
-            NegotiatedStreamMuxer(muxer, negotiatedProtocol)
-        }
-    }
 
 private class ChannelSetup(
     private val localKey: PrivKey,
