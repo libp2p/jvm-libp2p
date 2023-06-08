@@ -14,12 +14,12 @@ import java.util.concurrent.*;
 
 public class QuicPingTestJava {
     @Test
-    @Disabled
+//    @Disabled
     void ping() throws Exception {
         PeerId peerId = PeerId.fromBase58(getKuboPeerId());
 
         Host clientHost = new HostBuilder()
-                .secureTransport(QuicTransport::Ed25519)
+                .secureTransport(QuicTransport::Ecdsa)
                 .build();
 
         CompletableFuture<Void> clientStarted = clientHost.start();
