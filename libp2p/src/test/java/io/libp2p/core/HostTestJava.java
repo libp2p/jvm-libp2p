@@ -37,7 +37,7 @@ public class HostTestJava {
 
         Host clientHost = new HostBuilder()
                 .transport(TcpTransport::new)
-                .secureChannel((k, m) -> new TlsSecureChannel(k, m, "ECDSA"))
+                .secureChannel(TlsSecureChannel::ECDSA)
                 .muxer(StreamMuxerProtocol::getYamux)
                 .build();
 
