@@ -140,14 +140,14 @@ fun buildTlsHandler(
             handshakeComplete.completeExceptionally(cause)
         } else {
             val nextProtocol = handler.applicationProtocol()
-            val selectedMuxer = muxers.stream()
-                .flatMap { mux ->
-                    mux.protocolDescriptor.announceProtocols.stream()
-                        .filter({ it.equals(nextProtocol) })
-                        .map { NegotiatedStreamMuxer(mux, it) }
+            val selectedMuxer = muxers
+                .filter { mux ->
+                    mux.protocolDescriptor.protocolMatcher.matches(nextProtocol)
                 }
-                .findFirst()
-                .orElse(null)
+                .map { mux ->
+                    NegotiatedStreamMuxer(mux, nextProtocol) 
+                }
+                .firstOrNull()
             handshakeComplete.complete(
                 SecureChannel.Session(
                     PeerId.fromPubKey(localKey.publicKey()),
