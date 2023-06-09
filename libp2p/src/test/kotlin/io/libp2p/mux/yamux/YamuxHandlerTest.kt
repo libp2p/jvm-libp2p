@@ -14,6 +14,7 @@ import io.netty.channel.ChannelHandlerContext
 class YamuxHandlerTest : MuxHandlerAbstractTest() {
 
     override val maxFrameDataLength = 256
+    private val readFrameQueue = ArrayDeque<AbstractTestMuxFrame>()
 
     override fun createMuxHandler(streamHandler: StreamHandler<*>): MuxHandler =
         object : YamuxHandler(
@@ -44,17 +45,24 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
     }
 
     override fun readFrame(): AbstractTestMuxFrame? {
-        val maybeYamuxFrame = ech.readOutbound<YamuxFrame>()
-        return maybeYamuxFrame?.let { yamuxFrame ->
-            val flag = when {
-                yamuxFrame.flags == YamuxFlags.SYN -> Open
-                yamuxFrame.flags == YamuxFlags.FIN -> Close
-                yamuxFrame.flags == YamuxFlags.RST -> Reset
-                yamuxFrame.type == YamuxType.DATA -> Data
-                else -> throw AssertionError("Unsupported yamux frame: $yamuxFrame")
+        val yamuxFrame = ech.readOutbound<YamuxFrame>()
+        if (yamuxFrame != null) {
+            when (yamuxFrame.flags) {
+                YamuxFlags.SYN -> readFrameQueue += AbstractTestMuxFrame(yamuxFrame.id.id, Open)
             }
-            val sData = yamuxFrame.data?.readAllBytesAndRelease()?.toHex() ?: ""
-            AbstractTestMuxFrame(yamuxFrame.id.id, flag, sData)
+
+            val data = yamuxFrame.data?.readAllBytesAndRelease()?.toHex() ?: ""
+            when {
+                yamuxFrame.type == YamuxType.DATA && data.isNotEmpty()->
+                    readFrameQueue += AbstractTestMuxFrame(yamuxFrame.id.id, Data, data)
+            }
+
+            when (yamuxFrame.flags) {
+                YamuxFlags.FIN -> readFrameQueue += AbstractTestMuxFrame(yamuxFrame.id.id, Close)
+                YamuxFlags.RST -> readFrameQueue += AbstractTestMuxFrame(yamuxFrame.id.id, Reset)
+            }
         }
+
+        return readFrameQueue.removeFirstOrNull()
     }
 }
