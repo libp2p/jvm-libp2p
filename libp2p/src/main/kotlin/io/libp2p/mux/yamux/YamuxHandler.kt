@@ -75,8 +75,7 @@ open class YamuxHandler(
         when (msg.flags) {
             YamuxFlags.SYN -> {
                 // ACK the new stream
-                onStreamCreate(msg.id) // sometimes writes can happen before onRemoteCreated is called
-                onRemoteOpen(msg.id)
+                onRemoteYamuxOpen(msg.id)
                 ctx.writeAndFlush(YamuxFrame(msg.id, YamuxType.WINDOW_UPDATE, YamuxFlags.ACK, 0))
             }
             YamuxFlags.FIN -> onRemoteDisconnect(msg.id)
@@ -156,8 +155,9 @@ open class YamuxHandler(
         getChannelHandlerContext().writeAndFlush(YamuxFrame(child.id, YamuxType.DATA, YamuxFlags.SYN, 0))
     }
 
-    override fun onRemoteCreated(child: MuxChannel<ByteBuf>) {
-        onStreamCreate(child.id)
+    private fun onRemoteYamuxOpen(id: MuxId) {
+        onStreamCreate(id)
+        onRemoteOpen(id)
     }
 
     private fun onStreamCreate(childId: MuxId) {
