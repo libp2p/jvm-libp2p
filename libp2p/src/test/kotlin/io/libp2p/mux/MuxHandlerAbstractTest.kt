@@ -77,7 +77,7 @@ abstract class MuxHandlerAbstractTest {
     @AfterEach
     open fun cleanUpAndCheck() {
         childHandlers.forEach {
-//            assertThat(it.exceptions).isEmpty()
+            assertThat(it.exceptions).isEmpty()
         }
         childHandlers.clear()
 

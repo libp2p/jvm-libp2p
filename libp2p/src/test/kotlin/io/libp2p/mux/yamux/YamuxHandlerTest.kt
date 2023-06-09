@@ -53,7 +53,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
 
             val data = yamuxFrame.data?.readAllBytesAndRelease()?.toHex() ?: ""
             when {
-                yamuxFrame.type == YamuxType.DATA && data.isNotEmpty()->
+                yamuxFrame.type == YamuxType.DATA && data.isNotEmpty() ->
                     readFrameQueue += AbstractTestMuxFrame(yamuxFrame.id.id, Data, data)
             }
 
