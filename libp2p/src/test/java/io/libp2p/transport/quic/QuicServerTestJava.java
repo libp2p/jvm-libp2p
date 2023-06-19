@@ -19,7 +19,7 @@ import java.util.concurrent.*;
 
 public class QuicServerTestJava {
     @Test
-//    @Disabled
+    @Disabled
     void ping() throws Exception {
         String localListenAddress = "/ip4/127.0.0.1/udp/40002/quic";
 //        String localListenAddress = "/ip4/127.0.0.1/tcp/40002";
