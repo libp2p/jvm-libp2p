@@ -1,5 +1,9 @@
-package io.libp2p.core;
+package io.libp2p.transport.quic;
 
+import io.libp2p.core.Host;
+import io.libp2p.core.PeerId;
+import io.libp2p.core.Stream;
+import io.libp2p.core.StreamPromise;
 import io.libp2p.core.crypto.*;
 import io.libp2p.core.dsl.*;
 import io.libp2p.core.multiformats.*;
@@ -15,7 +19,7 @@ import java.util.concurrent.*;
 
 public class QuicServerTestJava {
     @Test
-    @Disabled
+//    @Disabled
     void ping() throws Exception {
         String localListenAddress = "/ip4/127.0.0.1/udp/40002/quic";
 //        String localListenAddress = "/ip4/127.0.0.1/tcp/40002";

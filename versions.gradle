@@ -42,5 +42,6 @@ dependencyManagement {
             entry 'bcpkix-jdk15on'
             entry 'bctls-jdk15on'
         }
+        dependency "io.netty.incubator:netty-incubator-codec-native-quic:0.0.38.Final"
     }
 }
