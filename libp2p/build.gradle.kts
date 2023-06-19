@@ -11,6 +11,7 @@ dependencies {
     implementation("io.netty:netty-handler")
     implementation("io.netty:netty-codec-http")
     implementation("io.netty:netty-transport-classes-epoll:4.1.90.Final")
+    implementation("io.netty.incubator:netty-incubator-codec-native-quic")
 
     api("com.google.protobuf:protobuf-java")
 
