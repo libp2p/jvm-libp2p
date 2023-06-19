@@ -18,7 +18,7 @@ import java.util.concurrent.*;
 
 public class QuicPingTestJava {
     @Test
-//    @Disabled
+    @Disabled
     void ping() throws Exception {
         PeerId peerId = PeerId.fromBase58(getKuboPeerId());
 
