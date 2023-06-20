@@ -25,16 +25,10 @@ public class QuicServerTestJava {
 //        String localListenAddress = "/ip4/127.0.0.1/tcp/40002";
 
         Host clientHost = new HostBuilder()
-                .transport(TcpTransport::new)
-                .secureChannel(TlsSecureChannel::new)
-                .muxer(StreamMuxerProtocol::getYamux)
                 .secureTransport(QuicTransport::Ecdsa)
                 .build();
 
         Host serverHost = new HostBuilder()
-                .transport(TcpTransport::new)
-                .secureChannel(TlsSecureChannel::new)
-                .muxer(StreamMuxerProtocol::getYamux)
                 .secureTransport(QuicTransport::Ecdsa)
                 .protocol(new Ping())
                 .listen(localListenAddress)
