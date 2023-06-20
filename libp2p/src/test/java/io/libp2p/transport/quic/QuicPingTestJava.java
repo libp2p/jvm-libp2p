@@ -1,5 +1,9 @@
-package io.libp2p.core;
+package io.libp2p.transport.quic;
 
+import io.libp2p.core.Host;
+import io.libp2p.core.PeerId;
+import io.libp2p.core.Stream;
+import io.libp2p.core.StreamPromise;
 import io.libp2p.core.crypto.*;
 import io.libp2p.core.dsl.*;
 import io.libp2p.core.multiformats.*;
