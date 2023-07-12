@@ -78,6 +78,10 @@ class HostImpl(
         protocolHandlers -= protocolBinding
     }
 
+    override fun getProtocols(): List<ProtocolBinding<Any>> {
+        return protocolHandlers
+    }
+
     override fun addConnectionHandler(handler: ConnectionHandler) {
         connectionHandlers += handler
     }
