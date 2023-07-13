@@ -6,7 +6,6 @@ import io.libp2p.core.multistream.Multistream
 import io.libp2p.core.multistream.ProtocolBinding
 import java.time.Duration
 import java.util.concurrent.CompletableFuture
-import java.util.concurrent.CopyOnWriteArrayList
 
 class MultistreamImpl<TController>(
     initList: List<ProtocolBinding<TController>> = listOf(),
