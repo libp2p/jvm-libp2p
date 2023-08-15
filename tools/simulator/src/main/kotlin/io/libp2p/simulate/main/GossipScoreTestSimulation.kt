@@ -16,7 +16,6 @@ fun main() {
 class GossipScoreTestSimulation {
 
     fun run() {
-
         val simConfig = GossipSimConfig(
             totalPeers = 1000,
             topics = listOf(Topic(BlocksTopic)),

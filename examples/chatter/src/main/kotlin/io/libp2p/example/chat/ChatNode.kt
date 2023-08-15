@@ -50,8 +50,9 @@ class ChatNode(private val printMsg: OnMessage) {
     fun send(message: String) {
         peers.values.forEach { it.controller.send(message) }
 
-        if (message.startsWith("alias "))
+        if (message.startsWith("alias ")) {
             currentAlias = message.substring(6).trim()
+        }
     } // send
 
     fun stop() {
@@ -83,8 +84,9 @@ class ChatNode(private val printMsg: OnMessage) {
         if (
             info.peerId == chatHost.peerId ||
             knownNodes.contains(info.peerId)
-        )
+        ) {
             return
+        }
 
         knownNodes.add(info.peerId)
 
@@ -126,10 +128,11 @@ class ChatNode(private val printMsg: OnMessage) {
                 .filterIsInstance<Inet4Address>()
                 .filter { it.isSiteLocalAddress }
                 .sortedBy { it.hostAddress }
-            return if (addresses.isNotEmpty())
+            return if (addresses.isNotEmpty()) {
                 addresses[0]
-            else
+            } else {
                 InetAddress.getLoopbackAddress()
+            }
         }
     }
 } // class ChatNode

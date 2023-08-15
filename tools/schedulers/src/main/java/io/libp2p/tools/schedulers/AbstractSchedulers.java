@@ -5,8 +5,8 @@ import java.util.concurrent.ScheduledExecutorService;
 /**
  * The collection of standard Schedulers, Scheduler factory and system time supplier
  *
- * For debugging and testing the default <code>Schedulers</code> instance can be replaced
- * with appropriate one
+ * <p>For debugging and testing the default <code>Schedulers</code> instance can be replaced with
+ * appropriate one
  */
 public abstract class AbstractSchedulers implements Schedulers {
   private static final int BLOCKING_THREAD_COUNT = 128;
