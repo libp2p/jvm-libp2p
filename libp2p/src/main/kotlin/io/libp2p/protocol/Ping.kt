@@ -22,19 +22,22 @@ interface PingController {
     fun ping(): CompletableFuture<Long>
 }
 
-class Ping : PingBinding(PingProtocol())
+class Ping(pingSize: Int) : PingBinding(PingProtocol(pingSize)) {
+    constructor() : this(32)
+}
 
 open class PingBinding(ping: PingProtocol) :
     StrictProtocolBinding<PingController>("/ipfs/ping/1.0.0", ping)
 
 class PingTimeoutException : Libp2pException()
 
-open class PingProtocol : ProtocolHandler<PingController>(Long.MAX_VALUE, Long.MAX_VALUE) {
+open class PingProtocol(var pingSize: Int) : ProtocolHandler<PingController>(Long.MAX_VALUE, Long.MAX_VALUE) {
     var timeoutScheduler by lazyVar { Executors.newSingleThreadScheduledExecutor() }
     var curTime: () -> Long = { System.currentTimeMillis() }
     var random = Random()
-    var pingSize = 32
     var pingTimeout = Duration.ofSeconds(10)
+
+    constructor() : this(32)
 
     override fun onStartInitiator(stream: Stream): CompletableFuture<PingController> {
         val handler = PingInitiator()

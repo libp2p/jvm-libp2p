@@ -34,19 +34,26 @@ open class YamuxHandler(
         private val buffered = ArrayDeque<ByteBuf>()
 
         fun add(data: ByteBuf) {
-            buffered.add(data)
+            buffered.add(data.retain())
         }
 
         fun flush(sendWindow: AtomicInteger, id: MuxId): Int {
             var written = 0
             while (! buffered.isEmpty()) {
                 val buf = buffered.first()
-                if (buf.readableBytes() + written < sendWindow.get()) {
-                    buffered.removeFirst()
+                val readableBytes = buf.readableBytes()
+                if (readableBytes + written < sendWindow.get()) {
                     sendBlocks(ctx, buf, sendWindow, id)
-                    written += buf.readableBytes()
-                } else
+                    written += readableBytes
+                    buf.release()
+                    buffered.removeFirst()
+                } else {
+                    // partial write to fit within window
+                    val toRead = sendWindow.get() - written
+                    sendBlocks(ctx, buf.readSlice(toRead), sendWindow, id)
+                    written += toRead
                     break
+                }
             }
             return written
         }
@@ -96,7 +103,7 @@ open class YamuxHandler(
         }
         val newWindow = recWindow.addAndGet(-size.toInt())
         if (newWindow < INITIAL_WINDOW_SIZE / 2) {
-            val delta = INITIAL_WINDOW_SIZE / 2
+            val delta = INITIAL_WINDOW_SIZE - newWindow
             recWindow.addAndGet(delta)
             ctx.write(YamuxFrame(msg.id, YamuxType.WINDOW_UPDATE, 0, delta.toLong()))
             ctx.flush()

@@ -10,6 +10,8 @@ import io.libp2p.mux.MuxHandlerAbstractTest
 import io.libp2p.mux.MuxHandlerAbstractTest.AbstractTestMuxFrame.Flag.*
 import io.libp2p.tools.readAllBytesAndRelease
 import io.netty.channel.ChannelHandlerContext
+import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Test
 
 class YamuxHandlerTest : MuxHandlerAbstractTest() {
 
@@ -27,8 +29,10 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
             }
         }
 
+    private fun Long.toMuxId() = MuxId(parentChannelId, this, true)
+
     override fun writeFrame(frame: AbstractTestMuxFrame) {
-        val muxId = MuxId(parentChannelId, frame.streamId, true)
+        val muxId = frame.streamId.toMuxId()
         val yamuxFrame = when (frame.flag) {
             Open -> YamuxFrame(muxId, YamuxType.DATA, YamuxFlags.SYN, 0)
             Data -> YamuxFrame(
@@ -64,5 +68,28 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
         }
 
         return readFrameQueue.removeFirstOrNull()
+    }
+
+    @Test
+    fun `data should be buffered and sent after window increased from zero`() {
+        val handler = openStreamByLocal()
+        val streamId = readFrameOrThrow().streamId
+
+        ech.writeInbound(
+            YamuxFrame(
+                streamId.toMuxId(),
+                YamuxType.WINDOW_UPDATE,
+                YamuxFlags.ACK,
+                -INITIAL_WINDOW_SIZE.toLong()
+            )
+        )
+
+        handler.ctx.writeAndFlush("1984".fromHex().toByteBuf(allocateBuf()))
+
+        assertThat(readFrame()).isNull()
+
+        ech.writeInbound(YamuxFrame(streamId.toMuxId(), YamuxType.WINDOW_UPDATE, YamuxFlags.ACK, 5000))
+        val frame = readFrameOrThrow()
+        assertThat(frame.data).isEqualTo("1984")
     }
 }
