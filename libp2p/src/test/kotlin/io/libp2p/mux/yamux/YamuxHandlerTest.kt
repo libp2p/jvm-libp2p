@@ -128,7 +128,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
                 streamId.toMuxId(),
                 YamuxType.WINDOW_UPDATE,
                 YamuxFlags.ACK,
-                -INITIAL_WINDOW_SIZE.toLong(),
+                -INITIAL_WINDOW_SIZE.toLong()
             )
         )
 
