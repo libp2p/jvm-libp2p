@@ -84,14 +84,16 @@ class PlaintextHandshakeHandler(
         val exchangeRecv = Plaintext.Exchange.parser().parseFrom(msg.nioBuffer())
             ?: throw InvalidInitialPacket()
 
-        if (!exchangeRecv.hasPubkey())
+        if (!exchangeRecv.hasPubkey()) {
             throw InvalidRemotePubKey()
+        }
 
         remotePeerId = PeerId(exchangeRecv.id.toByteArray())
         remotePubKey = unmarshalPublicKey(exchangeRecv.pubkey.toByteArray())
         val calculatedPeerId = PeerId.fromPubKey(remotePubKey)
-        if (remotePeerId != calculatedPeerId)
+        if (remotePeerId != calculatedPeerId) {
             throw InvalidRemotePubKey()
+        }
 
         handshakeCompleted(ctx)
     } // channelRead0

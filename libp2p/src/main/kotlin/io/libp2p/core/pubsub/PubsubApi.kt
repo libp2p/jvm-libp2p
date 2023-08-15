@@ -173,14 +173,17 @@ interface MessageApi {
      * Message body
      */
     val data: ByteBuf
+
     /**
      * Sender identity. Usually it a [PeerId] derived from the sender's public key
      */
     val from: ByteArray?
+
     /**
      * Sequence id for the sender. A pair [from]` + `[seqId] should be globally unique
      */
     val seqId: Long?
+
     /**
      * A set of message topics
      */

@@ -17,18 +17,20 @@ class MultiaddrDns {
         private val dnsProtocols = arrayOf(Protocol.DNS4, Protocol.DNS6, Protocol.DNSADDR)
 
         fun resolve(addr: Multiaddr, resolver: Resolver = DefaultResolver): List<Multiaddr> {
-            if (!addr.hasAny(*dnsProtocols))
+            if (!addr.hasAny(*dnsProtocols)) {
                 return listOf(addr)
+            }
 
             val addressesToResolve = addr.split { isDnsProtocol(it) }
 
             val resolvedAddresses = mutableListOf<List<Multiaddr>>()
             for (address in addressesToResolve) {
                 val toResolve = address.filterComponents(*dnsProtocols).firstOrNull()
-                val resolved = if (toResolve != null)
+                val resolved = if (toResolve != null) {
                     resolve(toResolve.protocol, toResolve.stringValue!!, address, resolver)
-                else
+                } else {
                     listOf(address)
+                }
                 resolvedAddresses.add(resolved)
             }
 
@@ -70,13 +72,14 @@ class MultiaddrDns {
         // * /ip4/1.1.1.2/p2p-circuit/ip4/2.1.1.1
         // * /ip4/1.1.1.2/p2p-circuit/ip4/2.1.1.2
         private fun crossProduct(addressMatrix: List<List<Multiaddr>>): List<Multiaddr> {
-            return if (addressMatrix.size == 1)
+            return if (addressMatrix.size == 1) {
                 addressMatrix[0]
-            else
+            } else {
                 addressMatrix[0].flatMap { parent ->
                     crossProduct(addressMatrix.subList(1, addressMatrix.size))
                         .map { child -> parent.concatenated(child) }
                 }
+            }
         }
 
         private fun isDnsProtocol(proto: Protocol): Boolean {

@@ -103,7 +103,8 @@ open class PingProtocol(var pingSize: Int) : ProtocolHandler<PingController>(Lon
                     {
                         requests.remove(dataS)?.second?.completeExceptionally(PingTimeoutException())
                     },
-                    pingTimeout.toMillis(), TimeUnit.MILLISECONDS
+                    pingTimeout.toMillis(),
+                    TimeUnit.MILLISECONDS
                 )
             }
 

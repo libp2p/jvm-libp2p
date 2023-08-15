@@ -43,10 +43,11 @@ open class ConnectionOverNetty(
         toMultiaddr(nettyChannel.remoteAddress() as InetSocketAddress)
 
     private fun toMultiaddr(addr: InetSocketAddress): Multiaddr {
-        if (transport is NettyTransport)
+        if (transport is NettyTransport) {
             return transport.toMultiaddr(addr)
-        else
+        } else {
             return toMultiaddrDefault(addr)
+        }
     }
 
     fun toMultiaddrDefault(addr: InetSocketAddress): Multiaddr {

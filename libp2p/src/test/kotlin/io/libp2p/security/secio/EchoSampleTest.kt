@@ -4,7 +4,7 @@ import io.libp2p.core.ChannelVisitor
 import io.libp2p.core.Connection
 import io.libp2p.core.P2PChannel
 import io.libp2p.core.P2PChannelHandler
-import io.libp2p.core.crypto.KEY_TYPE
+import io.libp2p.core.crypto.KeyType
 import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multistream.MultistreamProtocolV1
@@ -53,7 +53,7 @@ class EchoSampleTest {
     fun connect1() {
         val logger = LoggerFactory.getLogger("test")
 
-        val (privKey1, _) = generateKeyPair(KEY_TYPE.ECDSA)
+        val (privKey1, _) = generateKeyPair(KeyType.ECDSA)
         val applicationProtocols = listOf(createSimpleBinding("/echo/1.0.0") { EchoProtocol() })
         val muxer = StreamMuxerProtocol.Mplex.createMuxer(MultistreamProtocolV1, applicationProtocols).also {
             it as MplexStreamMuxer

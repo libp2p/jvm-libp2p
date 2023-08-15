@@ -36,7 +36,8 @@ class MplexFrameCodecTest {
     @Test
     fun `check max frame size limit`() {
         val mplexFrame = MplexFrame(
-            MuxId(dummyId, 777, true), MplexFlag.MessageInitiator,
+            MuxId(dummyId, 777, true),
+            MplexFlag.MessageInitiator,
             ByteArray(maxFrameDataLength).toByteBuf()
         )
 

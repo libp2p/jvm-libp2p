@@ -30,13 +30,14 @@ class Gossip @JvmOverloads constructor(
     }
 
     override val protocolDescriptor =
-        if (router.protocol == PubsubProtocol.Gossip_V_1_1)
+        if (router.protocol == PubsubProtocol.Gossip_V_1_1) {
             ProtocolDescriptor(
                 PubsubProtocol.Gossip_V_1_1.announceStr,
                 PubsubProtocol.Gossip_V_1_0.announceStr
             )
-        else
+        } else {
             ProtocolDescriptor(PubsubProtocol.Gossip_V_1_0.announceStr)
+        }
 
     override fun handleConnection(conn: Connection) {
         conn.muxerSession().createStream(listOf(this))

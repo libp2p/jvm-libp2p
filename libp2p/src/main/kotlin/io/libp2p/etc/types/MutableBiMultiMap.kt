@@ -55,6 +55,7 @@ operator fun <K, V> MutableBiMultiMap<K, V>.minusAssign(key: K) = removeKey(key)
 internal class MutableBiMultiMapImpl<Key, Value> : MutableBiMultiMap<Key, Value> {
     @VisibleForTesting
     internal val keyToValue: MutableMap<Key, Value> = mutableMapOf()
+
     @VisibleForTesting
     internal val valueToKeys: MutableMap<Value, Set<Key>> = mutableMapOf()
 

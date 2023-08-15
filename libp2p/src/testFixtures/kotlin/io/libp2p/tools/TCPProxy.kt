@@ -26,7 +26,6 @@ class TCPProxy {
                     it.addLastLocal(object : ChannelInboundHandlerAdapter() {
                         val client = CompletableFuture<ChannelHandlerContext>()
                         override fun channelActive(serverCtx: ChannelHandlerContext) {
-
                             serverCtx.channel().pipeline().addFirst(LoggingHandler("server", LogLevel.INFO))
 
                             Bootstrap().apply {

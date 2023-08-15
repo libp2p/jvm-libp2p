@@ -3,7 +3,7 @@ package io.libp2p.transport
 import io.libp2p.core.Connection
 import io.libp2p.core.PeerId
 import io.libp2p.core.StreamPromise
-import io.libp2p.core.crypto.KEY_TYPE
+import io.libp2p.core.crypto.KeyType
 import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.multistream.MultistreamProtocol
 import io.libp2p.core.multistream.ProtocolBinding
@@ -20,19 +20,17 @@ class NullMultistreamProtocol : MultistreamProtocol {
 class NullConnectionUpgrader :
     ConnectionUpgrader(NullMultistreamProtocol(), emptyList(), NullMultistreamProtocol(), emptyList()) {
 
-    override fun establishSecureChannel(connection: Connection):
-        CompletableFuture<SecureChannel.Session> {
+    override fun establishSecureChannel(connection: Connection): CompletableFuture<SecureChannel.Session> {
         val nonsenseSession = SecureChannel.Session(
             PeerId.random(),
             PeerId.random(),
-            generateKeyPair(KEY_TYPE.RSA).second,
+            generateKeyPair(KeyType.RSA).second,
             null
         )
         return CompletableFuture.completedFuture(nonsenseSession)
     } // establishSecureChannel
 
-    override fun establishMuxer(connection: Connection):
-        CompletableFuture<StreamMuxer.Session> {
+    override fun establishMuxer(connection: Connection): CompletableFuture<StreamMuxer.Session> {
         return CompletableFuture.completedFuture(DoNothingMuxerSession())
     } // establishMuxer
 

@@ -31,7 +31,7 @@ import java.security.SecureRandom
 import crypto.pb.Crypto.PrivateKey as PbPrivateKey
 import crypto.pb.Crypto.PublicKey as PbPublicKey
 
-enum class KEY_TYPE {
+enum class KeyType {
 
     /**
      * RSA is an enum for the supported RSA key type
@@ -56,7 +56,7 @@ enum class KEY_TYPE {
 
 interface Key {
 
-    val keyType: crypto.pb.Crypto.KeyType
+    val keyType: Crypto.KeyType
 
     /**
      * Bytes returns a serialized, storeable representation of this key.
@@ -124,12 +124,12 @@ abstract class PubKey(override val keyType: Crypto.KeyType) : Key {
  * @param bits the number of bits desired for the key (only applicable for RSA).
  */
 @JvmOverloads
-fun generateKeyPair(type: KEY_TYPE, bits: Int = 2048, random: SecureRandom = SecureRandom()): Pair<PrivKey, PubKey> {
+fun generateKeyPair(type: KeyType, bits: Int = 2048, random: SecureRandom = SecureRandom()): Pair<PrivKey, PubKey> {
     return when (type) {
-        KEY_TYPE.RSA -> generateRsaKeyPair(bits, random)
-        KEY_TYPE.ED25519 -> generateEd25519KeyPair(random)
-        KEY_TYPE.SECP256K1 -> generateSecp256k1KeyPair(random)
-        KEY_TYPE.ECDSA -> generateEcdsaKeyPair(random)
+        KeyType.RSA -> generateRsaKeyPair(bits, random)
+        KeyType.ED25519 -> generateEd25519KeyPair(random)
+        KeyType.SECP256K1 -> generateSecp256k1KeyPair(random)
+        KeyType.ECDSA -> generateEcdsaKeyPair(random)
     }
 }
 

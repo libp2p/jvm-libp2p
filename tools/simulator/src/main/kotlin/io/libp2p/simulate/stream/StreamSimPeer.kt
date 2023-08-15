@@ -3,7 +3,7 @@ package io.libp2p.simulate.stream
 import io.libp2p.core.PeerId
 import io.libp2p.core.Stream
 import io.libp2p.core.StreamHandler
-import io.libp2p.core.crypto.KEY_TYPE
+import io.libp2p.core.crypto.KeyType
 import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multiformats.MultiaddrComponent
@@ -42,7 +42,7 @@ abstract class StreamSimPeer<TProtocolController>(
     lateinit var currentTime: () -> Long
     var keyPair by lazyVar {
         generateKeyPair(
-            KEY_TYPE.ECDSA,
+            KeyType.ECDSA,
             random = SecureRandom(ByteArray(4).also { random.nextBytes(it) })
         )
     }

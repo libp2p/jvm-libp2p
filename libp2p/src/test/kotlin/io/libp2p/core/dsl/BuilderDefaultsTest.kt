@@ -57,7 +57,7 @@ class BuilderDefaultsTest {
             identity { random() }
             transports { +::TcpTransport }
             secureChannels { add(::SecIoSecureChannel) }
-            muxers { + StreamMuxerProtocol.Mplex }
+            muxers { +StreamMuxerProtocol.Mplex }
         }
 
         host.start().get(5, SECONDS)

@@ -226,7 +226,6 @@ class NoiseIoHandshake(
     } // sendNoiseStaticKeyAsPayload
 
     private fun sendNoiseMessage(ctx: ChannelHandlerContext, msg: ByteArray? = null) {
-
         val lenMsg = if (!NoiseXXSecureChannel.rustInteroperability) {
             msg
         } else if (msg != null) {

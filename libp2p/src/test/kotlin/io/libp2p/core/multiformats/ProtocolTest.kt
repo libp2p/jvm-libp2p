@@ -21,6 +21,7 @@ class ProtocolTest {
             assertEquals(protocol, roundTrippedProtocol)
         }
     }
+
     @Test
     fun tcpProtocolProperties() {
         assertEquals(Protocol.TCP, Protocol.get("tcp"))

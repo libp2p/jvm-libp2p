@@ -1,7 +1,7 @@
 package io.libp2p.security
 
 import io.libp2p.core.PeerId
-import io.libp2p.core.crypto.KEY_TYPE
+import io.libp2p.core.crypto.KeyType
 import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.tools.TestChannel
@@ -18,9 +18,9 @@ abstract class CipherSecureChannelTest(secureChannelCtor: SecureChannelCtor, mux
 
     @Test
     fun `incorrect initiator remote PeerId should throw`() {
-        val (privKey1, _) = generateKeyPair(KEY_TYPE.ECDSA)
-        val (privKey2, _) = generateKeyPair(KEY_TYPE.ECDSA)
-        val (_, wrongPubKey) = generateKeyPair(KEY_TYPE.ECDSA)
+        val (privKey1, _) = generateKeyPair(KeyType.ECDSA)
+        val (privKey2, _) = generateKeyPair(KeyType.ECDSA)
+        val (_, wrongPubKey) = generateKeyPair(KeyType.ECDSA)
 
         val protocolSelect1 = makeSelector(privKey1, muxerIds)
         val protocolSelect2 = makeSelector(privKey2, muxerIds)
@@ -37,8 +37,8 @@ abstract class CipherSecureChannelTest(secureChannelCtor: SecureChannelCtor, mux
 
     @Test
     fun `test that on malformed message from remote the connection closes and no log noise`() {
-        val (privKey1, _) = generateKeyPair(KEY_TYPE.ECDSA)
-        val (privKey2, pubKey2) = generateKeyPair(KEY_TYPE.ECDSA)
+        val (privKey1, _) = generateKeyPair(KeyType.ECDSA)
+        val (privKey2, pubKey2) = generateKeyPair(KeyType.ECDSA)
 
         val protocolSelect1 = makeSelector(privKey1, muxerIds)
         val protocolSelect2 = makeSelector(privKey2, muxerIds)

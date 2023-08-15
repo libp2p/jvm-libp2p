@@ -27,6 +27,7 @@ interface Connection : P2PChannel {
      * Returns the local [Multiaddr] of this [Connection]
      */
     fun localAddress(): Multiaddr
+
     /**
      * Returns the remote [Multiaddr] of this [Connection]
      */

@@ -15,10 +15,12 @@ interface ProtocolMatcher {
         fun strict(protocol: ProtocolId) = object : ProtocolMatcher {
             override fun matches(proposed: ProtocolId) = protocol == proposed
         }
+
         @JvmStatic
         fun prefix(protocolPrefix: String) = object : ProtocolMatcher {
             override fun matches(proposed: ProtocolId) = proposed.startsWith(protocolPrefix)
         }
+
         @JvmStatic
         fun list(protocols: Collection<String>) = object : ProtocolMatcher {
             override fun matches(proposed: ProtocolId) = proposed in protocols

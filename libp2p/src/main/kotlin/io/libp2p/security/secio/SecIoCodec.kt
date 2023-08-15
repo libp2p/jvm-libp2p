@@ -58,8 +58,9 @@ class SecIoCodec(val local: SecioParams, val remote: SecioParams) : MessageToMes
 
             val macArr = updateMac(remote, cipherBytes)
 
-            if (!macBytes.contentEquals(macArr))
+            if (!macBytes.contentEquals(macArr)) {
                 throw InvalidMacException()
+            }
 
             val clearText = processBytes(remoteCipher, cipherBytes)
             out.add(clearText.toByteBuf())
