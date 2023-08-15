@@ -48,14 +48,14 @@ class YamuxFrameCodec(
             val readerIndex = msg.readerIndex()
             msg.readByte(); // version always 0
             val type = msg.readUnsignedByte()
-            val flag = msg.readUnsignedShort()
+            val flags = msg.readUnsignedShort()
             val streamId = msg.readUnsignedInt()
             val length = msg.readUnsignedInt()
             if (type.toInt() != YamuxType.DATA) {
                 val yamuxFrame = YamuxFrame(
                     MuxId(ctx.channel().id(), streamId, isInitiator.xor(streamId.mod(2) == 1).not()),
                     type.toInt(),
-                    flag,
+                    flags,
                     length
                 )
                 out.add(yamuxFrame)
@@ -76,7 +76,7 @@ class YamuxFrameCodec(
             val yamuxFrame = YamuxFrame(
                 MuxId(ctx.channel().id(), streamId, isInitiator.xor(streamId.mod(2) == 1).not()),
                 type.toInt(),
-                flag,
+                flags,
                 length,
                 data
             )
