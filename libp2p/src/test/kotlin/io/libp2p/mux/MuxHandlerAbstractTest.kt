@@ -6,9 +6,11 @@ import io.libp2p.core.StreamHandler
 import io.libp2p.etc.types.fromHex
 import io.libp2p.etc.types.getX
 import io.libp2p.etc.types.toHex
+import io.libp2p.etc.util.netty.mux.MuxId
 import io.libp2p.etc.util.netty.mux.RemoteWriteClosed
 import io.libp2p.etc.util.netty.nettyInitializer
 import io.libp2p.mux.MuxHandlerAbstractTest.AbstractTestMuxFrame.Flag.*
+import io.libp2p.mux.MuxHandlerAbstractTest.TestEventHandler
 import io.libp2p.tools.TestChannel
 import io.libp2p.tools.readAllBytesAndRelease
 import io.netty.buffer.ByteBuf
@@ -20,10 +22,7 @@ import io.netty.handler.logging.LoggingHandler
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.data.Index
 import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertThrows
-import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.util.concurrent.CompletableFuture
@@ -95,10 +94,11 @@ abstract class MuxHandlerAbstractTest {
         enum class Flag { Open, Data, Close, Reset }
     }
 
+    fun Long.toMuxId() = MuxId(parentChannelId, this, true)
+
     abstract fun writeFrame(frame: AbstractTestMuxFrame)
     abstract fun readFrame(): AbstractTestMuxFrame?
     fun readFrameOrThrow() = readFrame() ?: throw AssertionError("No outbound frames")
-
     fun openStream(id: Long) = writeFrame(AbstractTestMuxFrame(id, Open))
     fun writeStream(id: Long, msg: String) = writeFrame(AbstractTestMuxFrame(id, Data, msg))
     fun closeStream(id: Long) = writeFrame(AbstractTestMuxFrame(id, Close))
@@ -478,7 +478,7 @@ abstract class MuxHandlerAbstractTest {
         override fun handlerAdded(ctx: ChannelHandlerContext) {
             assertFalse(isHandlerAdded)
             isHandlerAdded = true
-            println("MultiplexHandlerTest.handlerAdded")
+            println("MuxHandlerAbstractTest.handlerAdded")
             this.ctx = ctx
         }
 
@@ -486,58 +486,58 @@ abstract class MuxHandlerAbstractTest {
             assertTrue(isHandlerAdded)
             assertFalse(isRegistered)
             isRegistered = true
-            println("MultiplexHandlerTest.channelRegistered")
+            println("MuxHandlerAbstractTest.channelRegistered")
         }
 
         override fun channelActive(ctx: ChannelHandlerContext) {
             assertTrue(isRegistered)
             assertFalse(isActivated)
             isActivated = true
-            println("MultiplexHandlerTest.channelActive")
+            println("MuxHandlerAbstractTest.channelActive")
             activeEventHandlers.forEach { it.handle(this) }
         }
 
         override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
             assertTrue(isActivated)
-            println("MultiplexHandlerTest.channelRead")
+            println("MuxHandlerAbstractTest.channelRead")
             msg as ByteBuf
             inboundMessages += msg.readAllBytesAndRelease().toHex()
         }
 
         override fun channelReadComplete(ctx: ChannelHandlerContext?) {
             readCompleteEventCount++
-            println("MultiplexHandlerTest.channelReadComplete")
+            println("MuxHandlerAbstractTest.channelReadComplete")
         }
 
         override fun userEventTriggered(ctx: ChannelHandlerContext, evt: Any) {
             userEvents += evt
-            println("MultiplexHandlerTest.userEventTriggered: $evt")
+            println("MuxHandlerAbstractTest.userEventTriggered: $evt")
         }
 
         override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
             exceptions += cause
-            println("MultiplexHandlerTest.exceptionCaught")
+            println("MuxHandlerAbstractTest.exceptionCaught")
         }
 
         override fun channelInactive(ctx: ChannelHandlerContext) {
             assertTrue(isActivated)
             assertFalse(isInactivated)
             isInactivated = true
-            println("MultiplexHandlerTest.channelInactive")
+            println("MuxHandlerAbstractTest.channelInactive")
         }
 
         override fun channelUnregistered(ctx: ChannelHandlerContext?) {
             assertTrue(isInactivated)
             assertFalse(isUnregistered)
             isUnregistered = true
-            println("MultiplexHandlerTest.channelUnregistered")
+            println("MuxHandlerAbstractTest.channelUnregistered")
         }
 
         override fun handlerRemoved(ctx: ChannelHandlerContext?) {
             assertTrue(isUnregistered)
             assertFalse(isHandlerRemoved)
             isHandlerRemoved = true
-            println("MultiplexHandlerTest.handlerRemoved")
+            println("MuxHandlerAbstractTest.handlerRemoved")
         }
     }
 

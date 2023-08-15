@@ -4,7 +4,6 @@ import io.libp2p.core.StreamHandler
 import io.libp2p.core.multistream.MultistreamProtocolV1
 import io.libp2p.etc.types.fromHex
 import io.libp2p.etc.types.toHex
-import io.libp2p.etc.util.netty.mux.MuxId
 import io.libp2p.mux.MuxHandler
 import io.libp2p.mux.MuxHandlerAbstractTest
 import io.libp2p.mux.MuxHandlerAbstractTest.AbstractTestMuxFrame.Flag.*
@@ -28,6 +27,7 @@ class MplexHandlerTest : MuxHandlerAbstractTest() {
         }
 
     override fun writeFrame(frame: AbstractTestMuxFrame) {
+        val muxId = frame.streamId.toMuxId()
         val mplexFlag = when (frame.flag) {
             Open -> MplexFlag.Type.OPEN
             Data -> MplexFlag.Type.DATA
@@ -39,7 +39,7 @@ class MplexHandlerTest : MuxHandlerAbstractTest() {
             else -> frame.data.fromHex().toByteBuf(allocateBuf())
         }
         val mplexFrame =
-            MplexFrame(MuxId(parentChannelId, frame.streamId, true), MplexFlag.getByType(mplexFlag, true), data)
+            MplexFrame(muxId, MplexFlag.getByType(mplexFlag, true), data)
         ech.writeInbound(mplexFrame)
     }
 
@@ -51,10 +51,9 @@ class MplexHandlerTest : MuxHandlerAbstractTest() {
                 MplexFlag.Type.DATA -> Data
                 MplexFlag.Type.CLOSE -> Close
                 MplexFlag.Type.RESET -> Reset
-                else -> throw AssertionError("Unknown mplex flag: ${mplexFrame.flag}")
             }
-            val sData = maybeMplexFrame.data.readAllBytesAndRelease().toHex()
-            AbstractTestMuxFrame(mplexFrame.id.id, flag, sData)
+            val data = maybeMplexFrame.data.readAllBytesAndRelease().toHex()
+            AbstractTestMuxFrame(mplexFrame.id.id, flag, data)
         }
     }
 }
