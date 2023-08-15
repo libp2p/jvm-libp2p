@@ -27,9 +27,9 @@ class YamuxFrameCodec(
     override fun encode(ctx: ChannelHandlerContext, msg: YamuxFrame, out: ByteBuf) {
         out.writeByte(0) // version
         out.writeByte(msg.type)
-        out.writeShort(msg.flags)
+        out.writeShort(msg.flag)
         out.writeInt(msg.id.id.toInt())
-        out.writeInt(msg.data?.readableBytes() ?: msg.lenData.toInt())
+        out.writeInt(msg.data?.readableBytes() ?: msg.length.toInt())
         out.writeBytes(msg.data ?: Unpooled.EMPTY_BUFFER)
     }
 
@@ -42,32 +42,44 @@ class YamuxFrameCodec(
      */
     override fun decode(ctx: ChannelHandlerContext, msg: ByteBuf, out: MutableList<Any>) {
         while (msg.isReadable) {
-            if (msg.readableBytes() < 12)
+            if (msg.readableBytes() < 12) {
                 return
+            }
             val readerIndex = msg.readerIndex()
             msg.readByte(); // version always 0
             val type = msg.readUnsignedByte()
-            val flags = msg.readUnsignedShort()
+            val flag = msg.readUnsignedShort()
             val streamId = msg.readUnsignedInt()
-            val lenData = msg.readUnsignedInt()
+            val length = msg.readUnsignedInt()
             if (type.toInt() != YamuxType.DATA) {
-                val yamuxFrame = YamuxFrame(MuxId(ctx.channel().id(), streamId, isInitiator.xor(streamId.mod(2).equals(1)).not()), type.toInt(), flags, lenData)
+                val yamuxFrame = YamuxFrame(
+                    MuxId(ctx.channel().id(), streamId, isInitiator.xor(streamId.mod(2) == 1).not()),
+                    type.toInt(),
+                    flag,
+                    length
+                )
                 out.add(yamuxFrame)
                 continue
             }
-            if (lenData > maxFrameDataLength) {
+            if (length > maxFrameDataLength) {
                 msg.skipBytes(msg.readableBytes())
-                throw ProtocolViolationException("Yamux frame is too large: $lenData")
+                throw ProtocolViolationException("Yamux frame is too large: $length")
             }
-            if (msg.readableBytes() < lenData) {
+            if (msg.readableBytes() < length) {
                 // not enough data to read the frame content
                 // will wait for more ...
                 msg.readerIndex(readerIndex)
                 return
             }
-            val data = msg.readSlice(lenData.toInt())
+            val data = msg.readSlice(length.toInt())
             data.retain() // MessageToMessageCodec releases original buffer, but it needs to be relayed
-            val yamuxFrame = YamuxFrame(MuxId(ctx.channel().id(), streamId, isInitiator.xor(streamId.mod(2).equals(1)).not()), type.toInt(), flags, lenData, data)
+            val yamuxFrame = YamuxFrame(
+                MuxId(ctx.channel().id(), streamId, isInitiator.xor(streamId.mod(2) == 1).not()),
+                type.toInt(),
+                flag,
+                length,
+                data
+            )
             out.add(yamuxFrame)
         }
     }

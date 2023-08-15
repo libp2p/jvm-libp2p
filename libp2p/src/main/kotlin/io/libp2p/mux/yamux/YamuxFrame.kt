@@ -8,16 +8,18 @@ import io.netty.buffer.Unpooled
 
 /**
  * Contains the fields that comprise a yamux frame.
- * @param streamId the ID of the stream.
+ * @param id the ID of the stream.
  * @param flag the flag value for this frame.
+ * @param length the length field for this frame.
  * @param data the data segment.
  */
-class YamuxFrame(val id: MuxId, val type: Int, val flags: Int, val lenData: Long, val data: ByteBuf? = null) :
+class YamuxFrame(val id: MuxId, val type: Int, val flag: Int, val length: Long, val data: ByteBuf? = null) :
     DefaultByteBufHolder(data ?: Unpooled.EMPTY_BUFFER) {
 
     override fun toString(): String {
-        if (data == null)
-            return "YamuxFrame(id=$id, type=$type, flag=$flags)"
-        return "YamuxFrame(id=$id, type=$type, flag=$flags, data=${String(data.toByteArray())})"
+        if (data == null) {
+            return "YamuxFrame(id=$id, type=$type, flag=$flag, length=$length)"
+        }
+        return "YamuxFrame(id=$id, type=$type, flag=$flag, length=$length, data=${String(data.toByteArray())})"
     }
 }

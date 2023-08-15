@@ -1,7 +1,7 @@
 package io.libp2p.mux.yamux
 
 /**
- * Contains all the permissible values for flags in the <code>yamux</code> protocol.
+ * Contains all the permissible values for types in the <code>yamux</code> protocol.
  */
 object YamuxType {
     const val DATA = 0
