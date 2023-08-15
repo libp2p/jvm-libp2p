@@ -27,7 +27,7 @@ class YamuxFrameCodec(
     override fun encode(ctx: ChannelHandlerContext, msg: YamuxFrame, out: ByteBuf) {
         out.writeByte(0) // version
         out.writeByte(msg.type)
-        out.writeShort(msg.flag)
+        out.writeShort(msg.flags)
         out.writeInt(msg.id.id.toInt())
         out.writeInt(msg.data?.readableBytes() ?: msg.length.toInt())
         out.writeBytes(msg.data ?: Unpooled.EMPTY_BUFFER)

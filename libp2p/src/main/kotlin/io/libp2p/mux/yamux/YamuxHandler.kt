@@ -74,7 +74,7 @@ open class YamuxHandler(
 
     private fun handlePing(msg: YamuxFrame) {
         val ctx = getChannelHandlerContext()
-        when (msg.flag) {
+        when (msg.flags) {
             YamuxFlags.SYN -> ctx.writeAndFlush(
                 YamuxFrame(
                     MuxId(msg.id.parentId, 0, msg.id.initiator),
@@ -88,9 +88,9 @@ open class YamuxHandler(
         }
     }
 
-    private fun handleFlag(msg: YamuxFrame) {
+    private fun handleFlags(msg: YamuxFrame) {
         val ctx = getChannelHandlerContext()
-        when (msg.flag) {
+        when (msg.flags) {
             YamuxFlags.SYN -> {
                 // ACK the new stream
                 onRemoteYamuxOpen(msg.id)
@@ -105,7 +105,7 @@ open class YamuxHandler(
     private fun handleDataRead(msg: YamuxFrame) {
         val ctx = getChannelHandlerContext()
         val size = msg.length
-        handleFlag(msg)
+        handleFlags(msg)
         if (size.toInt() == 0) {
             return
         }
@@ -125,7 +125,7 @@ open class YamuxHandler(
     }
 
     private fun handleWindowUpdate(msg: YamuxFrame) {
-        handleFlag(msg)
+        handleFlags(msg)
         val size = msg.length.toInt()
         if (size == 0) {
             return

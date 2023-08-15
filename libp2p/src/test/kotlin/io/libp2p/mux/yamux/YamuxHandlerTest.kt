@@ -91,7 +91,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
         val ackFrame = readYamuxFrameOrThrow()
 
         // receives ack stream
-        assertThat(ackFrame.flag).isEqualTo(YamuxFlags.ACK)
+        assertThat(ackFrame.flags).isEqualTo(YamuxFlags.ACK)
         assertThat(ackFrame.type).isEqualTo(YamuxType.WINDOW_UPDATE)
 
         closeStream(12)
@@ -109,7 +109,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
 
         val windowUpdateFrame = readYamuxFrameOrThrow()
 
-        assertThat(windowUpdateFrame.flag).isZero()
+        assertThat(windowUpdateFrame.flags).isZero()
         assertThat(windowUpdateFrame.type).isEqualTo(YamuxType.WINDOW_UPDATE)
         assertThat(windowUpdateFrame.length).isEqualTo((INITIAL_WINDOW_SIZE + 1).toLong())
 
@@ -129,7 +129,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
                 YamuxType.WINDOW_UPDATE,
                 YamuxFlags.ACK,
                 -INITIAL_WINDOW_SIZE.toLong(),
-            ),
+            )
         )
 
         handler.ctx.writeAndFlush("1984".fromHex().toByteBuf(allocateBuf()))
@@ -152,7 +152,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
                 YamuxFlags.SYN,
                 // opaque value, echoed back
                 3,
-            ),
+            )
         )
 
         // ignore ack stream frame
@@ -160,7 +160,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
 
         val pingFrame = readYamuxFrameOrThrow()
 
-        assertThat(pingFrame.flag).isEqualTo(YamuxFlags.ACK)
+        assertThat(pingFrame.flags).isEqualTo(YamuxFlags.ACK)
         assertThat(pingFrame.type).isEqualTo(YamuxType.PING)
         assertThat(pingFrame.length).isEqualTo(3)
 
@@ -178,7 +178,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
                 0,
                 // normal termination
                 0x0,
-            ),
+            )
         )
 
         // verify session termination
