@@ -43,9 +43,10 @@ open class YamuxHandler(
                 val buf = buffered.first()
                 val readableBytes = buf.readableBytes()
                 if (readableBytes + written < sendWindow.get()) {
-                    buffered.removeFirst()
                     sendBlocks(ctx, buf, sendWindow, id)
                     written += readableBytes
+                    buf.release()
+                    buffered.removeFirst()
                 } else {
                     // partial write to fit within window
                     val toRead = sendWindow.get() - written
