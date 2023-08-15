@@ -151,7 +151,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
                 YamuxType.PING,
                 YamuxFlags.SYN,
                 // opaque value, echoed back
-                3,
+                3
             )
         )
 
@@ -177,7 +177,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
                 YamuxType.GO_AWAY,
                 0,
                 // normal termination
-                0x0,
+                0x0
             )
         )
 

@@ -25,7 +25,7 @@ open class YamuxHandler(
     override val maxFrameDataLength: Int,
     ready: CompletableFuture<StreamMuxer.Session>?,
     inboundStreamHandler: StreamHandler<*>,
-    initiator: Boolean,
+    initiator: Boolean
 ) : MuxHandler(ready, inboundStreamHandler) {
     private val idGenerator = AtomicInteger(if (initiator) 1 else 2) // 0 is reserved
     private val receiveWindows = ConcurrentHashMap<MuxId, AtomicInteger>()
@@ -81,7 +81,7 @@ open class YamuxHandler(
                     YamuxType.PING,
                     YamuxFlags.ACK,
                     msg.length
-                ),
+                )
             )
 
             YamuxFlags.ACK -> {}
