@@ -19,7 +19,9 @@ interface SeenCache<TValue> {
     val size: Int
 
     /**
-     * Returns the 'matching' key if it already exist in the cache or returns the argument if not
+     * Returns the 'matching' message if it exists in the cache or falls back to returning the argument if not
+     * The returned instance may have some data prepared and cached (e.g. `messageId`) which may
+     * have positive performance effect
      */
     fun getSeenMessage(msg: PubsubMessage): PubsubMessage
     fun getValue(msg: PubsubMessage): TValue?
@@ -138,6 +140,10 @@ class FastIdSeenCache<TValue>(private val fastIdFunction: (PubsubMessage) -> Any
         fastIdMap.removeAllByValue(slowId)
     }
 
+    /**
+     * Wraps [delegate] instance and overrides [messageId] with a cached value
+     * to avoid slow `messageId` computation by the [delegate] instance
+     */
     private class FastIdPubsubMessage(
         val delegate: PubsubMessage,
         override val messageId: MessageId
