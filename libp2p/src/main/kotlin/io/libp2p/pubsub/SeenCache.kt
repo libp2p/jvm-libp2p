@@ -18,20 +18,21 @@ import java.util.LinkedList
 interface SeenCache<TValue> {
     val size: Int
 
+    fun put(msg: PubsubMessage, value: TValue)
+    fun get(msg: PubsubMessage): TValue?
+    fun isSeen(msg: PubsubMessage): Boolean
+    fun isSeen(messageId: MessageId): Boolean
+    fun remove(messageId: MessageId)
+
     /**
      * Returns the 'matching' message if it exists in the cache or falls back to returning the argument if not
      * The returned instance may have some data prepared and cached (e.g. `messageId`) which may
      * have positive performance effect
      */
-    fun getSeenMessage(msg: PubsubMessage): PubsubMessage
-    fun getValue(msg: PubsubMessage): TValue?
-    fun isSeen(msg: PubsubMessage): Boolean
-    fun isSeen(messageId: MessageId): Boolean
-    fun put(msg: PubsubMessage, value: TValue)
-    fun remove(messageId: MessageId)
+    fun getSeenMessageCached(msg: PubsubMessage): PubsubMessage
 }
 
-operator fun <TValue> SeenCache<TValue>.get(msg: PubsubMessage) = getValue(msg)
+operator fun <TValue> SeenCache<TValue>.get(msg: PubsubMessage) = get(msg)
 operator fun <TValue> SeenCache<TValue>.set(msg: PubsubMessage, value: TValue) = put(msg, value)
 operator fun <TValue> SeenCache<TValue>.contains(msg: PubsubMessage) = isSeen(msg)
 operator fun <TValue> SeenCache<TValue>.minusAssign(messageId: MessageId) = remove(messageId)
@@ -42,8 +43,8 @@ class SimpleSeenCache<TValue> : SeenCache<TValue> {
     override val size: Int
         get() = map.size
 
-    override fun getSeenMessage(msg: PubsubMessage) = msg
-    override fun getValue(msg: PubsubMessage) = map[msg.messageId]
+    override fun getSeenMessageCached(msg: PubsubMessage) = msg
+    override fun get(msg: PubsubMessage) = map[msg.messageId]
     override fun isSeen(msg: PubsubMessage) = msg.messageId in map
     override fun isSeen(messageId: MessageId) = messageId in map
 
@@ -110,7 +111,7 @@ class FastIdSeenCache<TValue>(private val fastIdFunction: (PubsubMessage) -> Any
     override val size: Int
         get() = slowIdMap.size
 
-    override fun getSeenMessage(msg: PubsubMessage): PubsubMessage {
+    override fun getSeenMessageCached(msg: PubsubMessage): PubsubMessage {
         val slowId = fastIdMap[fastIdFunction(msg)]
         return when {
             slowId == null -> msg
@@ -119,7 +120,7 @@ class FastIdSeenCache<TValue>(private val fastIdFunction: (PubsubMessage) -> Any
         }
     }
 
-    override fun getValue(msg: PubsubMessage): TValue? {
+    override fun get(msg: PubsubMessage): TValue? {
         val slowId = fastIdMap[fastIdFunction(msg)] ?: msg.messageId
         return slowIdMap[slowId]
     }
