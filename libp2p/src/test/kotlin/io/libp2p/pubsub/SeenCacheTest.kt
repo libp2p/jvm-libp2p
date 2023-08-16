@@ -24,6 +24,7 @@ fun createMessage(number: Int): Rpc.Message {
 fun createPubsubMessage(number: Int) = TestPubsubMessage(createMessage(number))
 fun createPubsubMessage(number: Int, fastId: Int) =
     TestPubsubMessage(createMessage(number)).also { it.fastID = fastId }
+operator fun SeenCache<*>.minusAssign(msg: PubsubMessage) = this.remove(msg.messageId)
 
 fun assertContainsEntry(cache: SeenCache<String>, fakeMsg: Int) {
     assertThat(cache.isSeen(createPubsubMessage(fakeMsg))).isTrue()
