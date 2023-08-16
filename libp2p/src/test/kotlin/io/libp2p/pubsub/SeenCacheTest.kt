@@ -132,8 +132,6 @@ class LRUSeenCacheTest {
         assertThat(backingCache.size).isEqualTo(0)
     }
 
-
-
     @Test
     fun `test old entries are evicted`() {
         val backingCache = SimpleSeenCache<String>()
@@ -143,7 +141,7 @@ class LRUSeenCacheTest {
         lruCache[createPubsubMessage(3)] = "3"
 
         assertThat(lruCache.size).isEqualTo(3)
-        assertContainsEntries(lruCache, 1, 2 ,3)
+        assertContainsEntries(lruCache, 1, 2, 3)
 
         lruCache[createPubsubMessage(4)] = "4"
 
@@ -151,12 +149,11 @@ class LRUSeenCacheTest {
         assertDoesntContainEntry(lruCache, 1)
         assertContainsEntries(lruCache, 2, 3, 4)
 
-
         lruCache[createPubsubMessage(5)] = "5"
 
         assertThat(lruCache.size).isEqualTo(3)
         assertDoesntContainEntries(lruCache, 1, 2)
-        assertContainsEntries(lruCache, 3, 4 ,5)
+        assertContainsEntries(lruCache, 3, 4, 5)
 
         lruCache[createPubsubMessage(1)] = "1"
 
