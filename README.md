@@ -126,6 +126,12 @@ To build the library from the `jvm-libp2p` folder, run:
 
 After the build is complete you may find the library `.jar` file here: `jvm-libp2p/build/libs/jvm-libp2p-minimal-0.x.y-RELEASE.jar`
 
+## Notable users
+
+- [Teku](https://github.com/ConsenSys/teku) - Ethereum Consensus Layer client 
+
+(Please open a pull request if you want your project to be added here)
+
 ## License
 
 Dual-licensed under MIT and ASLv2, by way of the [Permissive License
