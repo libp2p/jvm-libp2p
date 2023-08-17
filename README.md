@@ -69,7 +69,7 @@ Please check the Simulator [README](tools/simulator/README.md) for more details
 
 Hosting of artefacts is graciously provided by [Cloudsmith](https://cloudsmith.com).
 
-[![Latest version of 'jvm-libp2p-minimal' @ Cloudsmith](https://api-prd.cloudsmith.io/v1/badges/version/libp2p/jvm-libp2p/maven/jvm-libp2p-minimal/latest/a=noarch;xg=io.libp2p/?render=true&show_latest=true)](https://cloudsmith.io/~libp2p/repos/jvm-libp2p/packages/detail/maven/jvm-libp2p-minimal/latest/a=noarch;xg=io.libp2p/)
+[![Latest version of 'jvm-libp2p' @ Cloudsmith](https://api-prd.cloudsmith.io/v1/badges/version/libp2p/jvm-libp2p/maven/jvm-libp2p/latest/a=noarch;xg=io.libp2p/?render=true&show_latest=true)](https://cloudsmith.io/~libp2p/repos/jvm-libp2p/packages/detail/maven/jvm-libp2p/latest/a=noarch;xg=io.libp2p/)
 
 As an alternative, artefacts are also available on [JitPack](https://jitpack.io/).
 
@@ -87,7 +87,7 @@ Add the library to the `implementation` part of your Gradle file.
 ```groovy
 dependencies {
   // ...
-  implementation 'io.libp2p:jvm-libp2p-minimal:X.Y.Z-RELEASE'
+  implementation 'io.libp2p:jvm-libp2p:X.Y.Z-RELEASE'
 }
 ```
 ### Using Maven
@@ -113,7 +113,7 @@ And then add jvm-libp2p as a dependency:
 ``` xml
 <dependency>
   <groupId>io.libp2p</groupId>
-  <artifactId>jvm-libp2p-minimal</artifactId>
+  <artifactId>jvm-libp2p</artifactId>
   <version>X.Y.Z-RELEASE</version>
   <type>pom</type>
 </dependency>
@@ -138,7 +138,7 @@ To build the library from the `jvm-libp2p` folder, run:
 ./gradlew build
 ```
 
-After the build is complete you may find the library `.jar` file here: `jvm-libp2p/build/libs/jvm-libp2p-minimal-0.x.y-RELEASE.jar`
+After the build is complete you may find the library `.jar` file here: `jvm-libp2p/build/libs/jvm-libp2p-x.y.z-RELEASE.jar`
 
 ## License
 

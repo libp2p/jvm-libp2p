@@ -15,7 +15,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = 'jvm-libp2p-minimal'
+rootProject.name = 'jvm-libp2p'
 
 include ':libp2p'
 include ':tools:schedulers'
