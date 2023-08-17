@@ -12,33 +12,34 @@
 
 List of components in the Libp2p spec and their JVM implementation status 
 
-|                          | Component                                                                                       |          Status          |
-|--------------------------|-------------------------------------------------------------------------------------------------|:------------------------:|
-| **Transport**            | tcp                                                                                             |    :green_apple:    |
-|                          | [quic](https://github.com/libp2p/specs/tree/master/quic)                                        | :tomato: |
-|                          | websocket                                                                                       |    :lemon:     |
-|                          | [webtransport](https://github.com/libp2p/specs/tree/master/webtransport)                        |                       |
-|                          | [webrtc-browser-to-server](https://github.com/libp2p/specs/blob/master/webrtc/webrtc-direct.md) |                       |
-|                          | [webrtc-private-to-private](https://github.com/libp2p/specs/blob/master/webrtc/webrtc.md)       |                       |
-| **Secure Communication** | [noise](https://github.com/libp2p/specs/blob/master/noise/)                                     |    :green_apple:    |
-|                          | [tls](https://github.com/libp2p/specs/blob/master/tls/tls.md)                                   |    :lemon:     |
-|                          | [plaintext](https://github.com/libp2p/specs/blob/master/plaintext/README.md)                    |    :lemon:     |
-| **Protocol Select**      | [multistream](https://github.com/multiformats/multistream-select)                               |    :green_apple:     |
-| **Stream Multiplexing**  | [yamux](https://github.com/libp2p/specs/blob/master/yamux/README.md)                            |    :lemon:     |
-|                          | [mplex](https://github.com/libp2p/specs/blob/master/mplex/README.md)                            |    :green_apple:     |
-| **NAT Traversal**        | [circuit-relay-v2](https://github.com/libp2p/specs/blob/master/relay/circuit-v2.md)             |       |
-|                          | [autonat](https://github.com/libp2p/specs/tree/master/autonat)                                  |       |
-|                          | [hole-punching](https://github.com/libp2p/specs/blob/master/connections/hole-punching.md)       |       |
-| **Discovery**            | [bootstrap](https://github.com/libp2p/specs/blob/master/kad-dht/README.md#bootstrap-process)    |       |
-|                          | random-walk                                                                                     |         |
-|                          | [mdns-discovery](https://github.com/libp2p/specs/blob/master/discovery/mdns.md)                 |    :lemon:     |
-|                          | [rendezvous](https://github.com/libp2p/specs/blob/master/rendezvous/README.md)                  |         |
-| **Peer Routing**         | [kad-dht](https://github.com/libp2p/specs/blob/master/kad-dht/README.md)                        |         |
-| **Publish/Subscribe**    | floodsub                                                                                        |    :lemon:     |
-|                          | [gossipsub](https://github.com/libp2p/specs/tree/master/pubsub/gossipsub)                       |    :green_apple:     |
-| **Storage**              | record                                                                                          |         |
-| **Other protocols**      | [ping](https://github.com/libp2p/specs/blob/master/ping/ping.md)                                |    :green_apple:     |
-|                          | [identify](https://github.com/libp2p/specs/blob/master/identify/README.md)                      |    :green_apple:     |
+|                          | Component                                                                                       |      Status      |
+|--------------------------|-------------------------------------------------------------------------------------------------|:----------------:|
+| **Transport**            | tcp                                                                                             |  :green_apple:   |
+|                          | [quic](https://github.com/libp2p/specs/tree/master/quic)                                        |     :tomato:     |
+|                          | websocket                                                                                       |     :lemon:      |
+|                          | [webtransport](https://github.com/libp2p/specs/tree/master/webtransport)                        |                  |
+|                          | [webrtc-browser-to-server](https://github.com/libp2p/specs/blob/master/webrtc/webrtc-direct.md) |                  |
+|                          | [webrtc-private-to-private](https://github.com/libp2p/specs/blob/master/webrtc/webrtc.md)       |                  |
+| **Secure Communication** | [noise](https://github.com/libp2p/specs/blob/master/noise/)                                     |  :green_apple:   |
+|                          | [tls](https://github.com/libp2p/specs/blob/master/tls/tls.md)                                   |     :lemon:      |
+|                          | [plaintext](https://github.com/libp2p/specs/blob/master/plaintext/README.md)                    |     :lemon:      |
+|                          | [secio](https://github.com/libp2p/specs/blob/master/secio/README.md) **(deprecated)**           |  :green_apple:   |
+| **Protocol Select**      | [multistream](https://github.com/multiformats/multistream-select)                               |  :green_apple:   |
+| **Stream Multiplexing**  | [yamux](https://github.com/libp2p/specs/blob/master/yamux/README.md)                            |     :lemon:      |
+|                          | [mplex](https://github.com/libp2p/specs/blob/master/mplex/README.md)                            |  :green_apple:   |
+| **NAT Traversal**        | [circuit-relay-v2](https://github.com/libp2p/specs/blob/master/relay/circuit-v2.md)             |                  |
+|                          | [autonat](https://github.com/libp2p/specs/tree/master/autonat)                                  |                  |
+|                          | [hole-punching](https://github.com/libp2p/specs/blob/master/connections/hole-punching.md)       |                  |
+| **Discovery**            | [bootstrap](https://github.com/libp2p/specs/blob/master/kad-dht/README.md#bootstrap-process)    |                  |
+|                          | random-walk                                                                                     |                  |
+|                          | [mdns-discovery](https://github.com/libp2p/specs/blob/master/discovery/mdns.md)                 |     :lemon:      |
+|                          | [rendezvous](https://github.com/libp2p/specs/blob/master/rendezvous/README.md)                  |                  |
+| **Peer Routing**         | [kad-dht](https://github.com/libp2p/specs/blob/master/kad-dht/README.md)                        |                  |
+| **Publish/Subscribe**    | floodsub                                                                                        |     :lemon:      |
+|                          | [gossipsub](https://github.com/libp2p/specs/tree/master/pubsub/gossipsub)                       |  :green_apple:   |
+| **Storage**              | record                                                                                          |                  |
+| **Other protocols**      | [ping](https://github.com/libp2p/specs/blob/master/ping/ping.md)                                |  :green_apple:   |
+|                          | [identify](https://github.com/libp2p/specs/blob/master/identify/README.md)                      |  :green_apple:   |
 
 Legend:
 - :green_apple: - tested in production
