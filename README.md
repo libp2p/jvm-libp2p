@@ -54,8 +54,8 @@ Please check the Simulator [README](tools/simulator/README.md) for more details
 
 ## Android support
 
-The library is basically being developed with Android compatibility in mind. However we don't aware of any library usage
-in production. 
+The library is basically being developed with Android compatibility in mind. 
+However we are not aware of anyone using it in production.
 
 The `examples/android-chatter` module contains working sample Android application. This module is ignored by the Gradle 
 build when no Android SDK is installed. 
