@@ -138,7 +138,7 @@ To build the library from the `jvm-libp2p` folder, run:
 ./gradlew build
 ```
 
-After the build is complete you may find the library `.jar` file here: `jvm-libp2p/build/libs/jvm-libp2p-x.y.z-RELEASE.jar`
+After the build is complete you may find the library `.jar` file here: `jvm-libp2p/build/libs/jvm-libp2p-X.Y.Z-RELEASE.jar`
 
 ## License
 
