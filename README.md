@@ -129,7 +129,7 @@ After the build is complete you may find the library `.jar` file here: `jvm-libp
 
 ## Notable users
 
-- [Teku](https://github.com/ConsenSys/teku) - Ethereum Consensus Layer client 
+- [Teku](https://github.com/Consensys/teku) - Ethereum Consensus Layer client 
 
 (Please open a pull request if you want your project to be added here)
 
