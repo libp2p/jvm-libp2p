@@ -52,6 +52,18 @@ Deterministic Gossip simulator which may simulate networks as large as 10000 of 
 
 Please check the Simulator [README](tools/simulator/README.md) for more details
 
+## Android support
+
+The library is basically being developed with Android compatibility in mind. However we don't aware of any library usage
+in production. 
+
+The `examples/android-chatter` module contains working sample Android application. This module is ignored by the Gradle 
+build when no Android SDK is installed. 
+To include the Android module define a valid SDK location with an `ANDROID_HOME` environment variable
+or by setting the `sdk.dir` path in your project's local properties file local.properties.
+
+Importing the project into Android Studio should work out of the box.
+
 ## Adding as a dependency to your project
 
 Hosting of artefacts is graciously provided by [Cloudsmith](https://cloudsmith.com).
