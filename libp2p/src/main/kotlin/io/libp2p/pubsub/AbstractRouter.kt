@@ -194,7 +194,7 @@ abstract class AbstractRouter(
                 val validationResult = seenMessages[subscribedMessage]
                 if (validationResult != null) {
                     // Message has been seen
-                    notifySeenMessage(peer, seenMessages.getSeenMessage(subscribedMessage), validationResult)
+                    notifySeenMessage(peer, seenMessages.getSeenMessageCached(subscribedMessage), validationResult)
                     false
                 } else {
                     // Message is unseen

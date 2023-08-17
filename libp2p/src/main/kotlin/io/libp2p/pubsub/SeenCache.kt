@@ -17,60 +17,60 @@ import java.util.LinkedList
  */
 interface SeenCache<TValue> {
     val size: Int
-    val messages: Collection<PubsubMessage>
 
-    /**
-     * Returns the 'matching' key if it already exist in the cache or returns the argument if not
-     */
-    fun getSeenMessage(msg: PubsubMessage): PubsubMessage
-    fun getValue(msg: PubsubMessage): TValue?
+    fun put(msg: PubsubMessage, value: TValue)
+    fun get(msg: PubsubMessage): TValue?
     fun isSeen(msg: PubsubMessage): Boolean
     fun isSeen(messageId: MessageId): Boolean
-    fun put(msg: PubsubMessage, value: TValue)
-    fun remove(msg: PubsubMessage)
+    fun remove(messageId: MessageId)
+
+    /**
+     * Returns the 'matching' message if it exists in the cache or falls back to returning the argument if not
+     * The returned instance may have some data prepared and cached (e.g. `messageId`) which may
+     * have positive performance effect
+     */
+    fun getSeenMessageCached(msg: PubsubMessage): PubsubMessage
 }
 
-operator fun <TValue> SeenCache<TValue>.get(msg: PubsubMessage) = getValue(msg)
+operator fun <TValue> SeenCache<TValue>.get(msg: PubsubMessage) = get(msg)
 operator fun <TValue> SeenCache<TValue>.set(msg: PubsubMessage, value: TValue) = put(msg, value)
 operator fun <TValue> SeenCache<TValue>.contains(msg: PubsubMessage) = isSeen(msg)
-operator fun <TValue> SeenCache<TValue>.minusAssign(msg: PubsubMessage) = remove(msg)
+operator fun <TValue> SeenCache<TValue>.minusAssign(messageId: MessageId) = remove(messageId)
 
 class SimpleSeenCache<TValue> : SeenCache<TValue> {
-    private val map: MutableMap<MessageId, Pair<PubsubMessage, TValue>> = mutableMapOf()
+    private val map: MutableMap<MessageId, TValue> = mutableMapOf()
 
     override val size: Int
         get() = map.size
-    override val messages: Collection<PubsubMessage>
-        get() = map.values.map { it.first }
 
-    override fun getSeenMessage(msg: PubsubMessage) = msg
-    override fun getValue(msg: PubsubMessage) = map[msg.messageId]?.second
+    override fun getSeenMessageCached(msg: PubsubMessage) = msg
+    override fun get(msg: PubsubMessage) = map[msg.messageId]
     override fun isSeen(msg: PubsubMessage) = msg.messageId in map
     override fun isSeen(messageId: MessageId) = messageId in map
 
     override fun put(msg: PubsubMessage, value: TValue) {
-        map[msg.messageId] = msg to value
+        map[msg.messageId] = value
     }
-    override fun remove(msg: PubsubMessage) { map -= msg.messageId }
+    override fun remove(messageId: MessageId) { map -= messageId }
 }
 
 class LRUSeenCache<TValue>(val delegate: SeenCache<TValue>, private val maxSize: Int) : SeenCache<TValue> by delegate {
-    val evictingQueue = LinkedList<PubsubMessage>()
+    val evictingQueue = LinkedList<MessageId>()
 
     override fun put(msg: PubsubMessage, value: TValue) {
         val oldSize = delegate.size
         delegate[msg] = value
         if (oldSize < delegate.size) {
-            evictingQueue += msg
+            evictingQueue += msg.messageId
             if (evictingQueue.size > maxSize) {
                 delegate -= evictingQueue.removeFirst()
             }
         }
     }
 
-    override fun remove(msg: PubsubMessage) {
-        delegate -= msg
-        evictingQueue -= msg
+    override fun remove(messageId: MessageId) {
+        delegate -= messageId
+        evictingQueue -= messageId
     }
 }
 
@@ -80,13 +80,13 @@ class TTLSeenCache<TValue>(
     private val curTime: () -> Long
 ) : SeenCache<TValue> by delegate {
 
-    data class TimedMessage(val time: Long, val message: PubsubMessage)
+    data class TimedMessage(val time: Long, val messageId: MessageId)
 
     val putTimes = LinkedList<TimedMessage>()
 
     override fun put(msg: PubsubMessage, value: TValue) {
         delegate[msg] = value
-        putTimes += TimedMessage(curTime(), msg)
+        putTimes += TimedMessage(curTime(), msg.messageId)
         pruneOld()
     }
 
@@ -98,7 +98,7 @@ class TTLSeenCache<TValue>(
             if (n.time >= pruneBefore) {
                 break
             }
-            delegate -= n.message
+            delegate -= n.messageId
             it.remove()
         }
     }
@@ -106,35 +106,46 @@ class TTLSeenCache<TValue>(
 
 class FastIdSeenCache<TValue>(private val fastIdFunction: (PubsubMessage) -> Any) : SeenCache<TValue> {
     val fastIdMap = mutableBiMultiMap<Any, MessageId>()
-    val slowIdMap: MutableMap<MessageId, Pair<PubsubMessage, TValue>> = mutableMapOf()
+    val slowIdMap: MutableMap<MessageId, TValue> = mutableMapOf()
 
     override val size: Int
         get() = slowIdMap.size
-    override val messages: Collection<PubsubMessage>
-        get() = slowIdMap.values.map { it.first }
 
-    override fun getSeenMessage(msg: PubsubMessage): PubsubMessage {
+    override fun getSeenMessageCached(msg: PubsubMessage): PubsubMessage {
         val slowId = fastIdMap[fastIdFunction(msg)]
-        return if (slowId == null) msg else slowIdMap[slowId]!!.first
+        return when {
+            slowId == null -> msg
+            msg is FastIdPubsubMessage -> msg
+            else -> FastIdPubsubMessage(msg, slowId)
+        }
     }
 
-    override fun getValue(msg: PubsubMessage): TValue? {
+    override fun get(msg: PubsubMessage): TValue? {
         val slowId = fastIdMap[fastIdFunction(msg)] ?: msg.messageId
-        return slowIdMap[slowId]?.second
+        return slowIdMap[slowId]
     }
 
     override fun isSeen(msg: PubsubMessage) =
         fastIdFunction(msg) in fastIdMap || msg.messageId in slowIdMap
+
     override fun isSeen(messageId: MessageId) = messageId in slowIdMap
 
     override fun put(msg: PubsubMessage, value: TValue) {
         fastIdMap[fastIdFunction(msg)] = msg.messageId
-        slowIdMap[msg.messageId] = msg to value
+        slowIdMap[msg.messageId] = value
     }
 
-    override fun remove(msg: PubsubMessage) {
-        val slowId = msg.messageId
-        slowIdMap -= slowId
-        fastIdMap.removeAllByValue(slowId)
+    override fun remove(messageId: MessageId) {
+        slowIdMap -= messageId
+        fastIdMap.removeAllByValue(messageId)
     }
+
+    /**
+     * Wraps [delegate] instance and overrides [messageId] with a cached value
+     * to avoid slow `messageId` computation by the [delegate] instance
+     */
+    private class FastIdPubsubMessage(
+        val delegate: PubsubMessage,
+        override val messageId: MessageId
+    ) : PubsubMessage by delegate
 }

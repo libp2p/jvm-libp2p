@@ -24,6 +24,29 @@ fun createMessage(number: Int): Rpc.Message {
 fun createPubsubMessage(number: Int) = TestPubsubMessage(createMessage(number))
 fun createPubsubMessage(number: Int, fastId: Int) =
     TestPubsubMessage(createMessage(number)).also { it.fastID = fastId }
+operator fun SeenCache<*>.minusAssign(msg: PubsubMessage) = this.remove(msg.messageId)
+
+fun assertContainsEntry(cache: SeenCache<String>, fakeMsg: Int) {
+    assertThat(cache.isSeen(createPubsubMessage(fakeMsg))).isTrue()
+    assertThat(cache.isSeen(createPubsubMessage(fakeMsg).messageId)).isTrue()
+    assertThat(cache.get(createPubsubMessage(fakeMsg))).isEqualTo(fakeMsg.toString())
+}
+fun assertContainsEntries(cache: SeenCache<String>, vararg fakeMsgs: Int) {
+    fakeMsgs.forEach {
+        assertContainsEntry(cache, it)
+    }
+}
+
+fun assertDoesntContainEntry(cache: SeenCache<String>, fakeMsg: Int) {
+    assertThat(cache.isSeen(createPubsubMessage(fakeMsg))).isFalse()
+    assertThat(cache.isSeen(createPubsubMessage(fakeMsg).messageId)).isFalse()
+    assertThat(cache.get(createPubsubMessage(fakeMsg))).isNull()
+}
+fun assertDoesntContainEntries(cache: SeenCache<String>, vararg fakeMsgs: Int) {
+    fakeMsgs.forEach {
+        assertDoesntContainEntry(cache, it)
+    }
+}
 
 class TestPubsubMessage(override val protobufMessage: Rpc.Message) : PubsubMessage {
     var canonicalIdCalculator: (Rpc.Message) -> WBytes = {
@@ -57,48 +80,43 @@ fun genericSanityTest(cache: SeenCache<String>) {
     cache[createPubsubMessage(1)] = "1"
 
     assertThat(cache.size).isEqualTo(1)
-    assertThat(cache.messages).containsExactly(createPubsubMessage(1))
     assertThat(cache.isSeen(createPubsubMessage(1))).isTrue()
     assertThat(cache.isSeen(createPubsubMessage(2))).isFalse()
-    assertThat(cache.getValue(createPubsubMessage(1))).isEqualTo("1")
-    assertThat(cache.getValue(createPubsubMessage(2))).isNull()
-    assertThat(cache.getSeenMessage(createPubsubMessage(1))).isEqualTo(createPubsubMessage(1))
+    assertThat(cache.get(createPubsubMessage(1))).isEqualTo("1")
+    assertThat(cache.get(createPubsubMessage(2))).isNull()
+    assertThat(cache.getSeenMessageCached(createPubsubMessage(1))).isEqualTo(createPubsubMessage(1))
 
     cache[createPubsubMessage(1)] = "1-1"
 
     assertThat(cache.size).isEqualTo(1)
-    assertThat(cache.messages).containsExactly(createPubsubMessage(1))
     assertThat(cache.isSeen(createPubsubMessage(1))).isTrue()
     assertThat(cache.isSeen(createPubsubMessage(2))).isFalse()
-    assertThat(cache.getValue(createPubsubMessage(1))).isEqualTo("1-1")
-    assertThat(cache.getValue(createPubsubMessage(2))).isNull()
+    assertThat(cache.get(createPubsubMessage(1))).isEqualTo("1-1")
+    assertThat(cache.get(createPubsubMessage(2))).isNull()
 
     cache[createPubsubMessage(2)] = "2"
 
     assertThat(cache.size).isEqualTo(2)
-    assertThat(cache.messages).containsExactly(createPubsubMessage(1), createPubsubMessage(2))
     assertThat(cache.isSeen(createPubsubMessage(1))).isTrue()
     assertThat(cache.isSeen(createPubsubMessage(2))).isTrue()
-    assertThat(cache.getValue(createPubsubMessage(1))).isEqualTo("1-1")
-    assertThat(cache.getValue(createPubsubMessage(2))).isEqualTo("2")
+    assertThat(cache.get(createPubsubMessage(1))).isEqualTo("1-1")
+    assertThat(cache.get(createPubsubMessage(2))).isEqualTo("2")
 
     cache -= createPubsubMessage(1)
 
     assertThat(cache.size).isEqualTo(1)
-    assertThat(cache.messages).containsExactly(createPubsubMessage(2))
     assertThat(cache.isSeen(createPubsubMessage(1))).isFalse()
     assertThat(cache.isSeen(createPubsubMessage(2))).isTrue()
-    assertThat(cache.getValue(createPubsubMessage(1))).isNull()
-    assertThat(cache.getValue(createPubsubMessage(2))).isEqualTo("2")
+    assertThat(cache.get(createPubsubMessage(1))).isNull()
+    assertThat(cache.get(createPubsubMessage(2))).isEqualTo("2")
 
     cache -= createPubsubMessage(2)
 
     assertThat(cache.size).isEqualTo(0)
-    assertThat(cache.messages).isEmpty()
     assertThat(cache.isSeen(createPubsubMessage(1))).isFalse()
     assertThat(cache.isSeen(createPubsubMessage(2))).isFalse()
-    assertThat(cache.getValue(createPubsubMessage(1))).isNull()
-    assertThat(cache.getValue(createPubsubMessage(2))).isNull()
+    assertThat(cache.get(createPubsubMessage(1))).isNull()
+    assertThat(cache.get(createPubsubMessage(2))).isNull()
 }
 
 class LRUSeenCacheTest {
@@ -112,7 +130,6 @@ class LRUSeenCacheTest {
 
         assertThat(lruCache.evictingQueue).isEmpty()
         assertThat(backingCache.size).isEqualTo(0)
-        assertThat(backingCache.messages).isEmpty()
     }
 
     @Test
@@ -124,38 +141,25 @@ class LRUSeenCacheTest {
         lruCache[createPubsubMessage(3)] = "3"
 
         assertThat(lruCache.size).isEqualTo(3)
-        assertThat(lruCache.messages).containsExactly(
-            createPubsubMessage(1),
-            createPubsubMessage(2),
-            createPubsubMessage(3)
-        )
+        assertContainsEntries(lruCache, 1, 2, 3)
 
         lruCache[createPubsubMessage(4)] = "4"
 
         assertThat(lruCache.size).isEqualTo(3)
-        assertThat(lruCache.messages).containsExactly(
-            createPubsubMessage(2),
-            createPubsubMessage(3),
-            createPubsubMessage(4)
-        )
+        assertDoesntContainEntry(lruCache, 1)
+        assertContainsEntries(lruCache, 2, 3, 4)
 
         lruCache[createPubsubMessage(5)] = "5"
 
         assertThat(lruCache.size).isEqualTo(3)
-        assertThat(lruCache.messages).containsExactly(
-            createPubsubMessage(3),
-            createPubsubMessage(4),
-            createPubsubMessage(5)
-        )
+        assertDoesntContainEntries(lruCache, 1, 2)
+        assertContainsEntries(lruCache, 3, 4, 5)
 
         lruCache[createPubsubMessage(1)] = "1"
 
         assertThat(lruCache.size).isEqualTo(3)
-        assertThat(lruCache.messages).containsExactly(
-            createPubsubMessage(4),
-            createPubsubMessage(5),
-            createPubsubMessage(1)
-        )
+        assertDoesntContainEntries(lruCache, 2, 3)
+        assertContainsEntries(lruCache, 1, 4, 5)
         assertThat(backingCache.size).isEqualTo(3)
     }
 
@@ -188,11 +192,8 @@ class LRUSeenCacheTest {
         lruCache[createPubsubMessage(6)] = "6"
 
         assertThat(lruCache.size).isEqualTo(3)
-        assertThat(lruCache.messages).containsExactly(
-            createPubsubMessage(3),
-            createPubsubMessage(4),
-            createPubsubMessage(6)
-        )
+        assertDoesntContainEntries(lruCache, 1, 2, 5)
+        assertContainsEntries(lruCache, 3, 4, 6)
 
         lruCache -= createPubsubMessage(3)
         lruCache -= createPubsubMessage(4)
@@ -207,21 +208,18 @@ class LRUSeenCacheTest {
         lruCache[createPubsubMessage(9)] = "9"
 
         assertThat(lruCache.size).isEqualTo(3)
-        assertThat(lruCache.messages).containsExactly(
-            createPubsubMessage(7),
-            createPubsubMessage(8),
-            createPubsubMessage(9)
-        )
+        assertDoesntContainEntries(lruCache, 1, 2, 3, 4, 5, 6)
+        assertContainsEntries(lruCache, 7, 8, 9)
 
         lruCache -= createPubsubMessage(7)
         lruCache -= createPubsubMessage(8)
         lruCache -= createPubsubMessage(9)
 
         assertThat(lruCache.size).isEqualTo(0)
-        assertThat(lruCache.messages).isEmpty()
+        assertDoesntContainEntries(lruCache, 1, 2, 3, 4, 5, 6, 7, 8, 9)
         assertThat(lruCache.evictingQueue).isEmpty()
         assertThat(backingCache.size).isEqualTo(0)
-        assertThat(backingCache.messages).isEmpty()
+        assertDoesntContainEntries(backingCache, 1, 2, 3, 4, 5, 6, 7, 8, 9)
     }
 }
 
@@ -247,50 +245,35 @@ class TTLSeenCacheTest {
         ttlCache[createPubsubMessage(3)] = "3"
 
         assertThat(ttlCache.size).isEqualTo(3)
-        assertThat(ttlCache.messages).containsExactly(
-            createPubsubMessage(1),
-            createPubsubMessage(2),
-            createPubsubMessage(3)
-        )
+        assertContainsEntries(ttlCache, 1, 2, 3)
 
         time.set(1001)
         ttlCache[createPubsubMessage(4)] = "4"
 
         assertThat(ttlCache.size).isEqualTo(3)
-        assertThat(ttlCache.messages).containsExactly(
-            createPubsubMessage(2),
-            createPubsubMessage(3),
-            createPubsubMessage(4)
-        )
+        assertDoesntContainEntries(ttlCache, 1)
+        assertContainsEntries(ttlCache, 2, 3, 4)
 
         time.set(1002)
         ttlCache[createPubsubMessage(5)] = "5"
 
         assertThat(ttlCache.size).isEqualTo(4)
-        assertThat(ttlCache.messages).containsExactly(
-            createPubsubMessage(2),
-            createPubsubMessage(3),
-            createPubsubMessage(4),
-            createPubsubMessage(5)
-        )
+        assertDoesntContainEntries(ttlCache, 1)
+        assertContainsEntries(ttlCache, 2, 3, 4, 5)
 
         time.set(1102)
         ttlCache[createPubsubMessage(1)] = "1"
 
         assertThat(ttlCache.size).isEqualTo(3)
-        assertThat(ttlCache.messages).containsExactly(
-            createPubsubMessage(4),
-            createPubsubMessage(5),
-            createPubsubMessage(1)
-        )
+        assertDoesntContainEntries(ttlCache, 2, 3)
+        assertContainsEntries(ttlCache, 1, 4, 5)
 
         time.set(3000)
         ttlCache[createPubsubMessage(6)] = "6"
 
         assertThat(ttlCache.size).isEqualTo(1)
-        assertThat(ttlCache.messages).containsExactly(
-            createPubsubMessage(6)
-        )
+        assertDoesntContainEntries(ttlCache, 1, 2, 3, 4, 5)
+        assertContainsEntries(ttlCache, 6)
         assertThat(ttlCache.putTimes.size).isLessThan(2)
     }
 
@@ -324,9 +307,8 @@ class TTLSeenCacheTest {
         ttlCache[createPubsubMessage(6)] = "6"
 
         assertThat(ttlCache.size).isEqualTo(1)
-        assertThat(ttlCache.messages).containsExactly(
-            createPubsubMessage(6)
-        )
+        assertDoesntContainEntries(ttlCache, 1, 2, 3, 4, 5)
+        assertContainsEntries(ttlCache, 6)
         assertThat(ttlCache.putTimes.size).isLessThan(2)
     }
 
@@ -381,14 +363,14 @@ class FastIdSeenCacheTest {
         assertThat(m1_1.canonicalId).isNotNull()
         assertThat(m1_2.canonicalId).isNull()
 
-        val m1_3 = cache.getSeenMessage(m1_2) as TestPubsubMessage
-        assertThat(m1_3.canonicalId).isEqualTo(m1_1.canonicalId)
+        val m1_3 = cache.getSeenMessageCached(m1_2)
+        assertThat(m1_3.messageId).isEqualTo(m1_1.canonicalId)
         assertThat(m1_2.canonicalId).isNull()
 
         assertThat(m1_2 in cache).isTrue()
         assertThat(m1_2.canonicalId).isNull()
 
-        assertThat(cache.getValue(m1_2)).isEqualTo("1-1")
+        assertThat(cache.get(m1_2)).isEqualTo("1-1")
         assertThat(m1_2.canonicalId).isNull()
     }
 
@@ -401,14 +383,14 @@ class FastIdSeenCacheTest {
         cache[m1_1] = "1-1"
         assertThat(m1_1 in cache).isTrue()
         assertThat(m1_2 in cache).isTrue()
-        assertThat(cache.getValue(m1_1)).isEqualTo("1-1")
-        assertThat(cache.getValue(m1_2)).isEqualTo("1-1")
+        assertThat(cache.get(m1_1)).isEqualTo("1-1")
+        assertThat(cache.get(m1_2)).isEqualTo("1-1")
 
         cache[m1_2] = "1-2"
         assertThat(m1_1 in cache).isTrue()
         assertThat(m1_2 in cache).isTrue()
-        assertThat(cache.getValue(m1_1)).isEqualTo("1-2")
-        assertThat(cache.getValue(m1_2)).isEqualTo("1-2")
+        assertThat(cache.get(m1_1)).isEqualTo("1-2")
+        assertThat(cache.get(m1_2)).isEqualTo("1-2")
 
         val m1_1_1 = createPubsubMessage(1, 1)
         val m1_2_1 = createPubsubMessage(1, 2)
@@ -420,8 +402,8 @@ class FastIdSeenCacheTest {
         cache -= m1_1
         assertThat(m1_1 in cache).isFalse()
         assertThat(m1_2 in cache).isFalse()
-        assertThat(cache.getValue(m1_1)).isNull()
-        assertThat(cache.getValue(m1_2)).isNull()
+        assertThat(cache.get(m1_1)).isNull()
+        assertThat(cache.get(m1_2)).isNull()
 
         assertThat(cache.fastIdMap.isEmpty()).isTrue()
         assertThat(cache.slowIdMap).isEmpty()
