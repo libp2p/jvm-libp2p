@@ -157,6 +157,69 @@ public class HostTestJava {
     }
 
     @Test
+    void addPingAfterHostStart() throws Exception {
+        String localListenAddress = "/ip4/127.0.0.1/tcp/40002";
+
+        Host clientHost = new HostBuilder()
+                .transport(TcpTransport::new)
+                .secureChannel((k, m) -> new TlsSecureChannel(k, m, "ECDSA"))
+                .muxer(StreamMuxerProtocol::getYamux)
+                .build();
+
+        Host serverHost = new HostBuilder()
+                .transport(TcpTransport::new)
+                .secureChannel(TlsSecureChannel::new)
+                .muxer(StreamMuxerProtocol::getYamux)
+                .listen(localListenAddress)
+                .build();
+
+        CompletableFuture<Void> clientStarted = clientHost.start();
+        CompletableFuture<Void> serverStarted = serverHost.start();
+        clientStarted.get(5, TimeUnit.SECONDS);
+        System.out.println("Client started");
+        serverStarted.get(5, TimeUnit.SECONDS);
+        System.out.println("Server started");
+
+        Assertions.assertEquals(0, clientHost.listenAddresses().size());
+        Assertions.assertEquals(1, serverHost.listenAddresses().size());
+        Assertions.assertEquals(
+                localListenAddress + "/p2p/" + serverHost.getPeerId(),
+                serverHost.listenAddresses().get(0).toString()
+        );
+
+        serverHost.addProtocolHandler(new Ping());
+
+        StreamPromise<PingController> ping =
+                clientHost.getNetwork().connect(
+                                serverHost.getPeerId(),
+                                new Multiaddr(localListenAddress)
+                        ).thenApply(
+                                it -> it.muxerSession().createStream(new Ping())
+                        )
+                        .get(5, TimeUnit.SECONDS);
+
+        Stream pingStream = ping.getStream().get(5, TimeUnit.SECONDS);
+        System.out.println("Ping stream created");
+        PingController pingCtr = ping.getController().get(5, TimeUnit.SECONDS);
+        System.out.println("Ping controller created");
+
+        for (int i = 0; i < 10; i++) {
+            long latency = pingCtr.ping().get(1, TimeUnit.SECONDS);
+            System.out.println("Ping is " + latency);
+        }
+        pingStream.close().get(5, TimeUnit.SECONDS);
+        System.out.println("Ping stream closed");
+
+        Assertions.assertThrows(ExecutionException.class, () ->
+                pingCtr.ping().get(5, TimeUnit.SECONDS));
+
+        clientHost.stop().get(5, TimeUnit.SECONDS);
+        System.out.println("Client stopped");
+        serverHost.stop().get(5, TimeUnit.SECONDS);
+        System.out.println("Server stopped");
+    }
+
+    @Test
     void keyPairGeneration() {
         Pair<PrivKey, PubKey> pair = KeyKt.generateKeyPair(KEY_TYPE.SECP256K1);
         PeerId peerId = PeerId.fromPubKey(pair.component2());

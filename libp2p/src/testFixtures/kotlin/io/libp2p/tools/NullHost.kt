@@ -55,6 +55,10 @@ open class NullHost : Host {
         TODO("not implemented")
     }
 
+    override fun getProtocols(): List<ProtocolBinding<Any>> {
+        TODO("not implemented")
+    }
+
     override fun addConnectionHandler(handler: ConnectionHandler) {
         TODO("not implemented")
     }
