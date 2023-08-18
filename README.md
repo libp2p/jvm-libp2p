@@ -142,6 +142,8 @@ After the build is complete you may find the library `.jar` file here: `jvm-libp
 ## Notable users
 
 - [Teku](https://github.com/Consensys/teku) - Ethereum Consensus Layer client 
+- [Nabu](https://github.com/peergos/nabu) - minimal Java implementation of IPFS
+- [Peergos](https://github.com/peergos/peergos) - peer-to-peer encrypted global filesystem
 
 (Please open a pull request if you want your project to be added here)
 
