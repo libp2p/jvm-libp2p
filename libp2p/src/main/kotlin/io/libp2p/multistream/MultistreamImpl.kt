@@ -8,13 +8,11 @@ import java.time.Duration
 import java.util.concurrent.CompletableFuture
 
 class MultistreamImpl<TController>(
-    initList: List<ProtocolBinding<TController>> = listOf(),
+    override val bindings: List<ProtocolBinding<TController>>,
     val preHandler: P2PChannelHandler<*>? = null,
     val postHandler: P2PChannelHandler<*>? = null,
     val negotiationTimeLimit: Duration = DEFAULT_NEGOTIATION_TIME_LIMIT
 ) : Multistream<TController> {
-
-    override val bindings: List<ProtocolBinding<TController>> = initList
 
     override fun initChannel(ch: P2PChannel): CompletableFuture<TController> {
         return with(ch) {

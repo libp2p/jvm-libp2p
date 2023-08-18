@@ -33,6 +33,7 @@ import io.libp2p.transport.tcp.TcpTransport
 import io.netty.channel.ChannelHandler
 import io.netty.handler.logging.LogLevel
 import io.netty.handler.logging.LoggingHandler
+import java.util.concurrent.CopyOnWriteArrayList
 
 typealias TransportCtor = (ConnectionUpgrader) -> Transport
 typealias SecureChannelCtor = (PrivKey, List<StreamMuxer>) -> SecureChannel
@@ -173,7 +174,8 @@ open class Builder {
             }
         }
 
-        val muxers = muxers.map { it.createMuxer(streamMultistreamProtocol, protocols.values) }
+        val updatableProtocols: MutableList<ProtocolBinding<Any>> = CopyOnWriteArrayList(protocols.values)
+        val muxers = muxers.map { it.createMuxer(streamMultistreamProtocol, updatableProtocols) }
 
         val secureChannels = secureChannels.values.map { it(privKey, muxers) }
 
@@ -201,7 +203,7 @@ open class Builder {
             networkImpl,
             addressBook,
             network.listen.map { Multiaddr(it) },
-            protocols.values,
+            updatableProtocols,
             broadcastConnHandler,
             streamVisitors
         )
