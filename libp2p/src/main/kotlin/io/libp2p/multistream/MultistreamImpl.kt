@@ -14,7 +14,6 @@ class MultistreamImpl<TController>(
     val negotiationTimeLimit: Duration = DEFAULT_NEGOTIATION_TIME_LIMIT
 ) : Multistream<TController> {
 
-
     override fun initChannel(ch: P2PChannel): CompletableFuture<TController> {
         return with(ch) {
             preHandler?.also {
