@@ -2,6 +2,7 @@ package io.libp2p.example.chat
 
 import io.libp2p.core.PeerId
 import io.libp2p.core.Stream
+import io.libp2p.core.multistream.ProtocolId
 import io.libp2p.core.multistream.StrictProtocolBinding
 import io.libp2p.etc.types.toByteBuf
 import io.libp2p.protocol.ProtocolHandler
@@ -15,20 +16,18 @@ interface ChatController {
 }
 
 typealias OnChatMessage = (PeerId, String) -> Unit
+
 class Chat(chatCallback: OnChatMessage) : ChatBinding(ChatProtocol(chatCallback))
 
-open class ChatBinding(echo: ChatProtocol) : StrictProtocolBinding<ChatController>(echo) {
-    override val announce = ChatProtocol.announce
-}
+const val protocolId: ProtocolId = "/example/chat/0.1.0"
+
+open class ChatBinding(echo: ChatProtocol) : StrictProtocolBinding<ChatController>(protocolId, echo)
 
 open class ChatProtocol(
-        private val chatCallback : OnChatMessage
-) : ProtocolHandler<ChatController>() {
-    companion object {
-        val announce = "/example/chat/0.1.0"
-    }
+    private val chatCallback: OnChatMessage
+) : ProtocolHandler<ChatController>(Long.MAX_VALUE, Long.MAX_VALUE) {
 
-    override fun onStartInitiator(stream: Stream)= onStart(stream)
+    override fun onStartInitiator(stream: Stream) = onStart(stream)
     override fun onStartResponder(stream: Stream) = onStart(stream)
 
     private fun onStart(stream: Stream): CompletableFuture<ChatController> {
@@ -39,8 +38,8 @@ open class ChatProtocol(
     }
 
     open inner class Chatter(
-            private val chatCallback: OnChatMessage,
-            val ready: CompletableFuture<Void>
+        private val chatCallback: OnChatMessage,
+        val ready: CompletableFuture<Void>
     ) : ProtocolMessageHandler<ByteBuf>, ChatController {
         lateinit var stream: Stream
 
