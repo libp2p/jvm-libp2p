@@ -1,7 +1,7 @@
 package io.libp2p.core.dsl;
 
 import io.libp2p.core.Host;
-import io.libp2p.core.crypto.PrivKey;
+import io.libp2p.core.crypto.*;
 import io.libp2p.core.multistream.ProtocolBinding;
 import io.libp2p.core.mux.*;
 import io.libp2p.core.security.SecureChannel;
@@ -39,6 +39,13 @@ public class HostBuilder {
     }
 
     @SafeVarargs
+    public final HostBuilder secureTransport(
+            BiFunction<PrivKey, List<ProtocolBinding<?>>, Transport>... transports) {
+        secureTransports_.addAll(Arrays.asList(transports));
+        return this;
+    }
+
+    @SafeVarargs
     public final HostBuilder secureChannel(
             BiFunction<PrivKey, List<StreamMuxer>, SecureChannel>... secureChannels) {
         secureChannels_.addAll(Arrays.asList(secureChannels));
@@ -69,8 +76,15 @@ public class HostBuilder {
         return BuilderJKt.hostJ(
             defaultMode_.asBuilderDefault(),
             b -> {
-                b.getIdentity().random();
+                IdentityBuilder identity = b.getIdentity();
+                identity.random(KEY_TYPE.ED25519);
+                PrivKey peerId = identity.getFactory().invoke();
+                identity.setFactory(() -> peerId);
 
+                secureTransports_.forEach(t ->
+                        b.getTransports().add(c ->
+                                t.apply(identity.getFactory().invoke(), protocols_))
+                );
                 transports_.forEach(t ->
                     b.getTransports().add(t::apply)
                 );
@@ -89,6 +103,8 @@ public class HostBuilder {
     } // build
 
     private DefaultMode defaultMode_;
+    private List<BiFunction<PrivKey, List<ProtocolBinding<?>>, Transport>> secureTransports_ = new ArrayList<>();
+
     private List<Function<ConnectionUpgrader, Transport>> transports_ = new ArrayList<>();
     private List<BiFunction<PrivKey, List<StreamMuxer>, SecureChannel>> secureChannels_ = new ArrayList<>();
     private List<Supplier<StreamMuxerProtocol>> muxers_ = new ArrayList<>();

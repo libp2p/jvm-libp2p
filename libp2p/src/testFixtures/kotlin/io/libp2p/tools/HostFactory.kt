@@ -20,12 +20,13 @@ import io.libp2p.protocol.Ping
 import io.libp2p.security.noise.NoiseXXSecureChannel
 import io.libp2p.transport.tcp.TcpTransport
 import io.netty.handler.logging.LogLevel
+import java.util.*
 import java.util.concurrent.TimeUnit
 
 class HostFactory {
 
     var keyType = KEY_TYPE.ECDSA
-    var tcpPort = 5000
+    var tcpPort = Random().nextInt(10_000) + 6000
     var transportCtor = ::TcpTransport
     var secureCtor: SecureChannelCtor = ::NoiseXXSecureChannel
     var mplexCtor = ::MplexStreamMuxer
