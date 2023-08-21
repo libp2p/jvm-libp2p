@@ -1,7 +1,7 @@
 package io.libp2p.core;
 
-import io.libp2p.core.crypto.KEY_TYPE;
 import io.libp2p.core.crypto.KeyKt;
+import io.libp2p.core.crypto.KeyType;
 import io.libp2p.core.crypto.PrivKey;
 import io.libp2p.core.crypto.PubKey;
 import io.libp2p.core.dsl.HostBuilder;
@@ -217,7 +217,7 @@ public class HostTestJava {
 
   @Test
   void keyPairGeneration() {
-    Pair<PrivKey, PubKey> pair = KeyKt.generateKeyPair(KEY_TYPE.SECP256K1);
+    Pair<PrivKey, PubKey> pair = KeyKt.generateKeyPair(KeyType.SECP256K1);
     PeerId peerId = PeerId.fromPubKey(pair.component2());
     System.out.println("PeerId: " + peerId.toHex());
   }
