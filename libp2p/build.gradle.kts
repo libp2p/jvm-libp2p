@@ -1,11 +1,10 @@
-
 plugins {
     id("com.google.protobuf").version("0.9.2")
     id("me.champeau.jmh").version("0.6.8")
 }
 
+// https://docs.gradle.org/current/userguide/java_testing.html#ex-disable-publishing-of-test-fixtures-variants
 val javaComponent = components["java"] as AdhocComponentWithVariants
-
 javaComponent.withVariantsFromConfiguration(configurations["testFixturesApiElements"]) { skip() }
 javaComponent.withVariantsFromConfiguration(configurations["testFixturesRuntimeElements"]) { skip() }
 
@@ -50,4 +49,3 @@ protobuf {
         }
     }
 }
-
