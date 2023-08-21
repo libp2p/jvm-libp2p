@@ -27,15 +27,16 @@ import io.libp2p.host.HostImpl
 import io.libp2p.host.MemoryAddressBook
 import io.libp2p.network.NetworkImpl
 import io.libp2p.protocol.IdentifyBinding
-import io.libp2p.security.secio.SecIoSecureChannel
+import io.libp2p.security.noise.NoiseXXSecureChannel
 import io.libp2p.transport.ConnectionUpgrader
 import io.libp2p.transport.tcp.TcpTransport
 import io.netty.channel.ChannelHandler
 import io.netty.handler.logging.LogLevel
 import io.netty.handler.logging.LoggingHandler
+import java.util.concurrent.CopyOnWriteArrayList
 
 typealias TransportCtor = (ConnectionUpgrader) -> Transport
-typealias SecureChannelCtor = (PrivKey) -> SecureChannel
+typealias SecureChannelCtor = (PrivKey, List<StreamMuxer>) -> SecureChannel
 typealias IdentityFactory = () -> PrivKey
 
 class HostConfigurationException(message: String) : RuntimeException(message)
@@ -131,7 +132,7 @@ open class Builder {
         if (def == Defaults.Standard) {
             if (identity.factory == null) identity.random()
             if (transports.values.isEmpty()) transports { add(::TcpTransport) }
-            if (secureChannels.values.isEmpty()) secureChannels { add(::SecIoSecureChannel) }
+            if (secureChannels.values.isEmpty()) secureChannels { add(::NoiseXXSecureChannel) }
             if (muxers.values.isEmpty()) muxers { add(StreamMuxerProtocol.Mplex) }
         }
 
@@ -160,8 +161,6 @@ open class Builder {
 
         val privKey = identity.factory!!()
 
-        val secureChannels = secureChannels.values.map { it(privKey) }
-
         protocols.values.mapNotNull { (it as? IdentifyBinding) }.map { it.protocol }.find { it.idMessage == null }?.apply {
             // initializing Identify with appropriate values
             IdentifyOuterClass.Identify.newBuilder().apply {
@@ -175,7 +174,10 @@ open class Builder {
             }
         }
 
-        val muxers = muxers.map { it.createMuxer(streamMultistreamProtocol, protocols.values) }
+        val updatableProtocols: MutableList<ProtocolBinding<Any>> = CopyOnWriteArrayList(protocols.values)
+        val muxers = muxers.map { it.createMuxer(streamMultistreamProtocol, updatableProtocols) }
+
+        val secureChannels = secureChannels.values.map { it(privKey, muxers) }
 
         if (debug.muxFramesHandler.handlers.isNotEmpty()) {
             val broadcast = ChannelVisitor.createBroadcast(*debug.muxFramesHandler.handlers.toTypedArray())
@@ -201,7 +203,7 @@ open class Builder {
             networkImpl,
             addressBook,
             network.listen.map { Multiaddr(it) },
-            protocols.values,
+            updatableProtocols,
             broadcastConnHandler,
             streamVisitors
         )

@@ -81,6 +81,8 @@ interface Host {
      */
     fun addProtocolHandler(protocolBinding: ProtocolBinding<Any>)
 
+    fun getProtocols(): List<ProtocolBinding<Any>>
+
     /**
      * Removes the handler added with [addProtocolHandler]
      */

@@ -91,6 +91,10 @@ class EcdsaPublicKey(val pub: JavaECPublicKey) : PubKey(Crypto.KeyType.ECDSA) {
 
     override fun raw(): ByteArray = pub.encoded
 
+    fun javaKey(): JavaECPublicKey {
+        return pub
+    }
+
     fun toUncompressedBytes(): ByteArray =
         byteArrayOf(0x04) + pub.w.affineX.toBytes(32) + pub.w.affineY.toBytes(32)
 

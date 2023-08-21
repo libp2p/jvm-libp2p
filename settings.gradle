@@ -1,4 +1,21 @@
-rootProject.name = 'jvm-libp2p-minimal'
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        mavenCentral()
+        google()
+    }
+}
+
+dependencyResolutionManagement {
+    repositories {
+        mavenCentral()
+        maven { url "https://artifacts.consensys.net/public/maven/maven/" }
+        maven { url "https://jitpack.io" }
+        google()
+    }
+}
+
+rootProject.name = 'jvm-libp2p'
 
 include ':libp2p'
 include ':tools:schedulers'
@@ -6,3 +23,27 @@ include ':tools:simulator'
 include ':examples:chatter'
 include ':examples:cli-chatter'
 include ':examples:pinger'
+
+def getAndroidSdkDir() {
+    def localPropertiesSdkDir = null
+    if (file('local.properties').canRead()) {
+        def properties = new Properties()
+        properties.load(file('local.properties').newDataInputStream())
+        localPropertiesSdkDir = properties.getProperty('sdk.dir')
+    }
+    def androidHomeEnv = System.getenv("ANDROID_HOME")
+    if (localPropertiesSdkDir != null) {
+        return localPropertiesSdkDir
+    } else {
+        return androidHomeEnv
+    }
+}
+
+if (getAndroidSdkDir() != null) {
+    println "Build configured with Android submodules using Android SDK: ${getAndroidSdkDir()}"
+    include ':examples:android-chatter'
+} else {
+    println "Build configured without Android submodules."
+    println "    To include Android submodules define a valid SDK location with an ANDROID_HOME environment variable "
+    println "    or by setting the sdk.dir path in your project's local properties file local.properties."
+}

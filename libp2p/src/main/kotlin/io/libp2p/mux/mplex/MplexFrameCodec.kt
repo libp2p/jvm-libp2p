@@ -16,9 +16,7 @@ import io.libp2p.core.ProtocolViolationException
 import io.libp2p.etc.types.readUvarint
 import io.libp2p.etc.types.writeUvarint
 import io.libp2p.etc.util.netty.mux.MuxId
-import io.libp2p.mux.MuxFrame
 import io.netty.buffer.ByteBuf
-import io.netty.buffer.Unpooled
 import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.codec.ByteToMessageCodec
 
@@ -29,7 +27,7 @@ const val DEFAULT_MAX_MPLEX_FRAME_DATA_LENGTH = 1 shl 20
  */
 class MplexFrameCodec(
     val maxFrameDataLength: Int = DEFAULT_MAX_MPLEX_FRAME_DATA_LENGTH
-) : ByteToMessageCodec<MuxFrame>() {
+) : ByteToMessageCodec<MplexFrame>() {
 
     /**
      * Encodes the given mplex frame into bytes and writes them into the output list.
@@ -38,10 +36,10 @@ class MplexFrameCodec(
      * @param msg the mplex frame.
      * @param out the list to write the bytes to.
      */
-    override fun encode(ctx: ChannelHandlerContext, msg: MuxFrame, out: ByteBuf) {
-        out.writeUvarint(msg.id.id.shl(3).or(MplexFlags.toMplexFlag(msg.flag, msg.id.initiator).toLong()))
-        out.writeUvarint(msg.data?.readableBytes() ?: 0)
-        out.writeBytes(msg.data ?: Unpooled.EMPTY_BUFFER)
+    override fun encode(ctx: ChannelHandlerContext, msg: MplexFrame, out: ByteBuf) {
+        out.writeUvarint(msg.id.id.shl(3).or(msg.flag.value.toLong()))
+        out.writeUvarint(msg.data.readableBytes())
+        out.writeBytes(msg.data)
     }
 
     /**
@@ -76,8 +74,8 @@ class MplexFrameCodec(
             val streamId = header.shr(3)
             val data = msg.readSlice(lenData.toInt())
             data.retain() // MessageToMessageCodec releases original buffer, but it needs to be relayed
-            val initiator = if (streamTag == MplexFlags.NewStream) false else !MplexFlags.isInitiator(streamTag)
-            val mplexFrame = MplexFrame(MuxId(ctx.channel().id(), streamId, initiator), streamTag, data)
+            val flag = MplexFlag.getByValue(streamTag)
+            val mplexFrame = MplexFrame(MuxId(ctx.channel().id(), streamId, !flag.isInitiator), flag, data)
             out.add(mplexFrame)
         }
     }

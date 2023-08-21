@@ -1,5 +1,6 @@
 package io.libp2p.etc.util.netty.mux
 
+import io.libp2p.core.ConnectionClosedException
 import io.libp2p.etc.util.netty.AbstractChildChannel
 import io.netty.channel.ChannelMetadata
 import io.netty.channel.ChannelOutboundBuffer
@@ -16,8 +17,8 @@ class MuxChannel<TData>(
     val initiator: Boolean
 ) : AbstractChildChannel(parent.ctx!!.channel(), id) {
 
-    private var remoteDisconnected = false
-    private var localDisconnected = false
+    var remoteDisconnected = false
+    var localDisconnected = false
 
     override fun metadata(): ChannelMetadata = ChannelMetadata(true)
     override fun localAddress0() =
@@ -35,6 +36,9 @@ class MuxChannel<TData>(
         while (true) {
             val msg = buf.current() ?: break
             try {
+                if (localDisconnected) {
+                    throw ConnectionClosedException("The stream was closed for writing locally: $id")
+                }
                 // the msg is released by both onChildWrite and buf.remove() so we need to retain
                 // however it is still to be confirmed that no buf leaks happen here TODO
                 ReferenceCountUtil.retain(msg)
@@ -55,7 +59,7 @@ class MuxChannel<TData>(
     }
 
     fun onRemoteDisconnected() {
-        pipeline().fireUserEventTriggered(RemoteWriteClosed())
+        pipeline().fireUserEventTriggered(RemoteWriteClosed)
         remoteDisconnected = true
         closeIfBothDisconnected()
     }
@@ -73,11 +77,6 @@ class MuxChannel<TData>(
         if (remoteDisconnected && localDisconnected) closeImpl()
     }
 }
-
-/**
- * This Netty user event is fired to the [Stream] channel when remote peer closes its write side of the Stream
- */
-class RemoteWriteClosed
 
 data class MultiplexSocketAddress(val parentAddress: SocketAddress, val streamId: MuxId) : SocketAddress() {
     override fun toString(): String {

@@ -7,8 +7,8 @@ package io.libp2p.discovery.mdns.impl;
 import io.libp2p.discovery.mdns.ServiceInfo;
 import io.libp2p.discovery.mdns.impl.constants.DNSRecordClass;
 import io.libp2p.discovery.mdns.impl.util.ByteWrangler;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.Inet4Address;
@@ -30,7 +30,7 @@ import java.util.Set;
  * @author Arthur van Hoff, Jeff Sonstein, Werner Randelshofer, Victor Toni
  */
 public class ServiceInfoImpl extends ServiceInfo {
-    private static Logger           logger = LogManager.getLogger(ServiceInfoImpl.class.getName());
+    private static Logger logger = LoggerFactory.getLogger(ServiceInfoImpl.class.getName());
 
     private String                  _domain;
     private String                  _protocol;

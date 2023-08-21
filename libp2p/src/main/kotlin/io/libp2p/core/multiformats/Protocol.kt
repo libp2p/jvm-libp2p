@@ -2,6 +2,8 @@ package io.libp2p.core.multiformats
 
 import com.google.common.base.Utf8
 import com.google.common.net.InetAddresses
+import io.ipfs.multibase.Multibase
+import io.ipfs.multibase.binary.Base32
 import io.libp2p.core.PeerId
 import io.libp2p.etc.encode.Base58
 import io.libp2p.etc.types.readUvarint
@@ -9,7 +11,6 @@ import io.libp2p.etc.types.toByteArray
 import io.libp2p.etc.types.toByteBuf
 import io.libp2p.etc.types.writeUvarint
 import io.netty.buffer.ByteBuf
-import org.apache.commons.codec.binary.Base32
 import java.net.Inet4Address
 import java.net.Inet6Address
 import java.net.InetAddress
@@ -36,6 +37,7 @@ enum class Protocol(
     DCCP(33, 16, "dccp", UINT16_PARSER, UINT16_STRINGIFIER),
     IP6(41, 128, "ip6", IP6_PARSER, IP6_STRINGIFIER),
     IP6ZONE(42, LENGTH_PREFIXED_VAR_SIZE, "ip6zone", UTF8_PARSER, UTF8_STRINGIFIER, UTF8_VALIDATOR),
+    DNS(53, LENGTH_PREFIXED_VAR_SIZE, "dns", UTF8_PARSER, UTF8_STRINGIFIER, UTF8_VALIDATOR),
     DNS4(54, LENGTH_PREFIXED_VAR_SIZE, "dns4", UTF8_PARSER, UTF8_STRINGIFIER, UTF8_VALIDATOR),
     DNS6(55, LENGTH_PREFIXED_VAR_SIZE, "dns6", UTF8_PARSER, UTF8_STRINGIFIER, UTF8_VALIDATOR),
     DNSADDR(56, LENGTH_PREFIXED_VAR_SIZE, "dnsaddr", UTF8_PARSER, UTF8_STRINGIFIER, UTF8_VALIDATOR),
@@ -48,7 +50,11 @@ enum class Protocol(
     HTTPS(443, 0, "https"),
     ONION(444, 96, "onion", ONION_PARSER, ONION_STRINGIFIER),
     QUIC(460, 0, "quic"),
+    QUICV1(461, 0, "quic-v1"),
+    WEBTRANSPORT(465, 0, "webtransport"),
+    CERTHASH(466, LENGTH_PREFIXED_VAR_SIZE, "certhash", MULTIBASE_PARSER, MULTIBASE_BASE64_STRINGIFIER),
     WS(477, 0, "ws"),
+    WSS(478, 0, "wss"),
     P2PCIRCUIT(290, 0, "p2p-circuit"),
     HTTP(480, 0, "http");
 
@@ -180,6 +186,12 @@ private val BASE58_PARSER: (Protocol, String) -> ByteArray = { _, addr ->
 private val BASE58_STRINGIFIER: (Protocol, ByteArray) -> String = { _, bytes ->
     Base58.encode(bytes)
 }
+private val MULTIBASE_PARSER: (Protocol, String) -> ByteArray = { _, addr ->
+    Multibase.decode(addr)
+}
+private val MULTIBASE_BASE64_STRINGIFIER: (Protocol, ByteArray) -> String = { _, bytes ->
+    Multibase.encode(Multibase.Base.Base64Url, bytes)
+}
 private val ONION_PARSER: (Protocol, String) -> ByteArray = { _, addr ->
     val split = addr.split(":")
     if (split.size != 2) throw IllegalArgumentException("Onion address needs a port: $addr")
@@ -188,7 +200,6 @@ private val ONION_PARSER: (Protocol, String) -> ByteArray = { _, addr ->
 
     val base32 = Base32()
     val base32Text = split[0].uppercase()
-    if (!base32.isInAlphabet(base32Text)) throw IllegalArgumentException("Invalid Base32 string in the Onion address: $base32Text")
     val onionHostBytes = base32.decode(base32Text)
     val port = split[1].toInt()
     if (port > 65535) throw IllegalArgumentException("Port is > 65535: $port")

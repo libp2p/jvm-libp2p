@@ -25,5 +25,5 @@ interface Multistream<TController> : P2PChannelHandler<TController> {
      * For _initiator_ role this is the list of protocols the initiator wants to instantiate.
      * Basically this is either a single protocol or a protocol versions
      */
-    val bindings: MutableList<ProtocolBinding<TController>>
+    val bindings: List<ProtocolBinding<TController>>
 }

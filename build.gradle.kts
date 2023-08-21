@@ -5,10 +5,12 @@ import java.net.URL
 // To publish the release artifact to CloudSmith repo run the following :
 // ./gradlew publish -PcloudsmithUser=<user> -PcloudsmithApiKey=<api-key>
 
-description = "a minimal implementation of libp2p for the jvm"
+description = "an implementation of libp2p for the jvm"
 
 plugins {
-    kotlin("jvm").version("1.6.21")
+    val kotlinVersion = "1.6.21"
+
+    id("org.jetbrains.kotlin.jvm") version kotlinVersion apply false
 
     id("com.github.ben-manes.versions").version("0.44.0")
     id("idea")
@@ -19,16 +21,28 @@ plugins {
     id("org.jmailen.kotlinter").version("3.10.0")
     id("java-test-fixtures")
     id("io.spring.dependency-management").version("1.1.0")
+
+    id("org.jetbrains.kotlin.android") version kotlinVersion apply false
+    id("com.android.application") version "7.4.2" apply false
 }
 
-allprojects {
+fun Project.getBooleanPropertyOrFalse(propName: String) =
+    (this.properties[propName] as? String)?.toBoolean() ?: false
+
+configure(
+    allprojects
+        .filterNot {
+            it.getBooleanPropertyOrFalse("libp2p.gradle.custom")
+        }
+) {
     group = "io.libp2p"
     version = "develop"
 
     apply(plugin = "kotlin")
     apply(plugin = "idea")
-    apply(plugin = "io.gitlab.arturbosch.detekt")
     apply(plugin = "java")
+
+    apply(plugin = "io.gitlab.arturbosch.detekt")
     apply(plugin = "maven-publish")
     apply(plugin = "org.jetbrains.dokka")
     apply(plugin = "org.jmailen.kotlinter")
@@ -36,27 +50,23 @@ allprojects {
     apply(plugin = "io.spring.dependency-management")
     apply(from = "$rootDir/versions.gradle")
 
-    repositories {
-        mavenCentral()
-        maven("https://artifacts.consensys.net/public/maven/maven/")
-    }
-
     dependencies {
 
         implementation(kotlin("stdlib-jdk8"))
         implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core")
 
         implementation("com.google.guava:guava")
-        implementation("org.apache.logging.log4j:log4j-api")
+        implementation("org.slf4j:slf4j-api")
+        implementation("com.github.multiformats:java-multibase:v1.1.1")
 
-        testFixturesImplementation("org.apache.logging.log4j:log4j-api")
         testFixturesImplementation("com.google.guava:guava")
+        testFixturesImplementation("org.slf4j:slf4j-api")
 
         testImplementation("org.junit.jupiter:junit-jupiter")
         testImplementation("org.junit.jupiter:junit-jupiter-params")
         testImplementation("io.mockk:mockk")
         testImplementation("org.assertj:assertj-core")
-        testImplementation("org.apache.logging.log4j:log4j-core")
+        testRuntimeOnly("org.apache.logging.log4j:log4j-slf4j2-impl")
     }
 
     java {

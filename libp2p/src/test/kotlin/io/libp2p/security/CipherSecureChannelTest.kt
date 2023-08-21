@@ -3,6 +3,7 @@ package io.libp2p.security
 import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.KEY_TYPE
 import io.libp2p.core.crypto.generateKeyPair
+import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.tools.TestChannel
 import io.libp2p.tools.TestLogAppender
 import io.netty.buffer.Unpooled
@@ -12,8 +13,8 @@ import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import java.util.concurrent.TimeUnit.SECONDS
 
-abstract class CipherSecureChannelTest(secureChannelCtor: SecureChannelCtor, announce: String) :
-    SecureChannelTestBase(secureChannelCtor, announce) {
+abstract class CipherSecureChannelTest(secureChannelCtor: SecureChannelCtor, muxers: List<StreamMuxer>, announce: String) :
+    SecureChannelTestBase(secureChannelCtor, muxers, announce) {
 
     @Test
     fun `incorrect initiator remote PeerId should throw`() {
@@ -21,8 +22,8 @@ abstract class CipherSecureChannelTest(secureChannelCtor: SecureChannelCtor, ann
         val (privKey2, _) = generateKeyPair(KEY_TYPE.ECDSA)
         val (_, wrongPubKey) = generateKeyPair(KEY_TYPE.ECDSA)
 
-        val protocolSelect1 = makeSelector(privKey1)
-        val protocolSelect2 = makeSelector(privKey2)
+        val protocolSelect1 = makeSelector(privKey1, muxerIds)
+        val protocolSelect2 = makeSelector(privKey2, muxerIds)
 
         val eCh1 = makeDialChannel("#1", protocolSelect1, PeerId.fromPubKey(wrongPubKey))
         val eCh2 = makeListenChannel("#2", protocolSelect2)
@@ -39,8 +40,8 @@ abstract class CipherSecureChannelTest(secureChannelCtor: SecureChannelCtor, ann
         val (privKey1, _) = generateKeyPair(KEY_TYPE.ECDSA)
         val (privKey2, pubKey2) = generateKeyPair(KEY_TYPE.ECDSA)
 
-        val protocolSelect1 = makeSelector(privKey1)
-        val protocolSelect2 = makeSelector(privKey2)
+        val protocolSelect1 = makeSelector(privKey1, muxerIds)
+        val protocolSelect2 = makeSelector(privKey2, muxerIds)
 
         val eCh1 = makeDialChannel("#1", protocolSelect1, PeerId.fromPubKey(pubKey2))
         val eCh2 = makeListenChannel("#2", protocolSelect2)

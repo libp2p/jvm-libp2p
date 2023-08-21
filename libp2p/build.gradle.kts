@@ -5,16 +5,27 @@ plugins {
 }
 
 dependencies {
-    api("io.netty:netty-all")
+    api("io.netty:netty-common")
+    api("io.netty:netty-buffer")
+    api("io.netty:netty-transport")
+    implementation("io.netty:netty-handler")
+    implementation("io.netty:netty-codec-http")
+
     api("com.google.protobuf:protobuf-java")
 
-    implementation("commons-codec:commons-codec")
     implementation("tech.pegasys:noise-java")
 
     implementation("org.bouncycastle:bcprov-jdk15on")
     implementation("org.bouncycastle:bcpkix-jdk15on")
+    implementation("org.bouncycastle:bctls-jdk15on")
 
     testImplementation(project(":tools:schedulers"))
+
+    testFixturesApi("org.apache.logging.log4j:log4j-core")
+    testFixturesImplementation(project(":tools:schedulers"))
+    testFixturesImplementation("io.netty:netty-transport-classes-epoll")
+    testFixturesImplementation("io.netty:netty-handler")
+    testFixturesImplementation("org.junit.jupiter:junit-jupiter-api")
 
     jmhImplementation(project(":tools:schedulers"))
     jmhImplementation("org.openjdk.jmh:jmh-core")

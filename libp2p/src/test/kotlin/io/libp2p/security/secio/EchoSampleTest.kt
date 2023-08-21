@@ -21,10 +21,10 @@ import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.logging.LogLevel
 import io.netty.handler.logging.LoggingHandler
-import org.apache.logging.log4j.LogManager
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
+import org.slf4j.LoggerFactory
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 
@@ -51,7 +51,7 @@ class EchoSampleTest {
     @Test
     @Disabled
     fun connect1() {
-        val logger = LogManager.getLogger("test")
+        val logger = LoggerFactory.getLogger("test")
 
         val (privKey1, _) = generateKeyPair(KEY_TYPE.ECDSA)
         val applicationProtocols = listOf(createSimpleBinding("/echo/1.0.0") { EchoProtocol() })
@@ -63,7 +63,7 @@ class EchoSampleTest {
         }
         val upgrader = ConnectionUpgrader(
             MultistreamProtocolV1.copyWithHandlers(nettyToChannelHandler(LoggingHandler("#1", LogLevel.INFO))),
-            listOf(SecIoSecureChannel(privKey1)),
+            listOf(SecIoSecureChannel(privKey1, listOf())),
             MultistreamProtocolV1.copyWithHandlers(nettyToChannelHandler(LoggingHandler("#2", LogLevel.INFO))),
             listOf(muxer)
         )

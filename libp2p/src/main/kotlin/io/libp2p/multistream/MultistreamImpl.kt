@@ -6,17 +6,13 @@ import io.libp2p.core.multistream.Multistream
 import io.libp2p.core.multistream.ProtocolBinding
 import java.time.Duration
 import java.util.concurrent.CompletableFuture
-import java.util.concurrent.CopyOnWriteArrayList
 
 class MultistreamImpl<TController>(
-    initList: List<ProtocolBinding<TController>> = listOf(),
+    override val bindings: List<ProtocolBinding<TController>>,
     val preHandler: P2PChannelHandler<*>? = null,
     val postHandler: P2PChannelHandler<*>? = null,
     val negotiationTimeLimit: Duration = DEFAULT_NEGOTIATION_TIME_LIMIT
 ) : Multistream<TController> {
-
-    override val bindings: MutableList<ProtocolBinding<TController>> =
-        CopyOnWriteArrayList(initList)
 
     override fun initChannel(ch: P2PChannel): CompletableFuture<TController> {
         return with(ch) {

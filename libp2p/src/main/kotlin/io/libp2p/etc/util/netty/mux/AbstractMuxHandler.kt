@@ -7,13 +7,13 @@ import io.libp2p.etc.types.completedExceptionally
 import io.libp2p.etc.types.hasCauseOfType
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
-import org.apache.logging.log4j.LogManager
+import org.slf4j.LoggerFactory
 import java.util.concurrent.CompletableFuture
 import java.util.function.Function
 
 typealias MuxChannelInitializer<TData> = (MuxChannel<TData>) -> Unit
 
-private val log = LogManager.getLogger(AbstractMuxHandler::class.java)
+private val log = LoggerFactory.getLogger(AbstractMuxHandler::class.java)
 
 abstract class AbstractMuxHandler<TData>() :
     ChannelInboundHandlerAdapter() {
@@ -50,19 +50,38 @@ abstract class AbstractMuxHandler<TData>() :
     }
 
     fun getChannelHandlerContext(): ChannelHandlerContext {
-        return ctx ?: throw InternalErrorException("Internal error: handler context should be initialized at this stage")
+        return ctx
+            ?: throw InternalErrorException("Internal error: handler context should be initialized at this stage")
     }
 
     protected fun childRead(id: MuxId, msg: TData) {
-        val child = streamMap[id] ?: throw ConnectionClosedException("Channel with id $id not opened")
-        pendingReadComplete += id
-        child.pipeline().fireChannelRead(msg)
+        val child = streamMap[id]
+        when {
+            child == null -> {
+                releaseMessage(msg)
+                throw ConnectionClosedException("Channel with id $id not opened")
+            }
+            child.remoteDisconnected -> {
+                releaseMessage(msg)
+                throw ConnectionClosedException("Channel with id $id was closed for sending by remote")
+            }
+            else -> {
+                pendingReadComplete += id
+                child.pipeline().fireChannelRead(msg)
+            }
+        }
     }
 
     override fun channelReadComplete(ctx: ChannelHandlerContext) {
         pendingReadComplete.forEach { streamMap[it]?.pipeline()?.fireChannelReadComplete() }
         pendingReadComplete.clear()
     }
+
+    /**
+     * Needs to be called when message was not passed to the child channel pipeline due to any error.
+     * (if a message was passed to the child channel it's the child channel's responsibility to release the message)
+     */
+    abstract fun releaseMessage(msg: TData)
 
     abstract fun onChildWrite(child: MuxChannel<TData>, data: TData)
 
@@ -96,6 +115,7 @@ abstract class AbstractMuxHandler<TData>() :
 
     fun onClosed(child: MuxChannel<TData>) {
         streamMap.remove(child.id)
+        onChildClosed(child)
     }
 
     abstract override fun channelRead(ctx: ChannelHandlerContext, msg: Any)
@@ -103,6 +123,7 @@ abstract class AbstractMuxHandler<TData>() :
     protected abstract fun onLocalOpen(child: MuxChannel<TData>)
     protected abstract fun onLocalClose(child: MuxChannel<TData>)
     protected abstract fun onLocalDisconnect(child: MuxChannel<TData>)
+    protected abstract fun onChildClosed(child: MuxChannel<TData>)
 
     private fun createChild(
         id: MuxId,
@@ -142,5 +163,6 @@ abstract class AbstractMuxHandler<TData>() :
         }
     }
 
-    private fun checkClosed() = if (closed) throw ConnectionClosedException("Can't create a new stream: connection was closed: " + ctx!!.channel()) else Unit
+    private fun checkClosed() =
+        if (closed) throw ConnectionClosedException("Can't create a new stream: connection was closed: " + ctx!!.channel()) else Unit
 }

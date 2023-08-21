@@ -3,10 +3,10 @@ dependencyManagement {
 
         dependency "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4"
         dependency "com.google.guava:guava:31.1-jre"
-        dependencySet(group: 'org.apache.logging.log4j', version: '2.19.0') {
-            entry 'log4j-api'
+
+        dependency "org.slf4j:slf4j-api:2.0.7"
+        dependencySet(group: 'org.apache.logging.log4j', version: '2.20.0') {
             entry 'log4j-core'
-            entry 'log4j-slf4j-impl'
             entry 'log4j-slf4j2-impl'
         }
 
@@ -27,12 +27,20 @@ dependencyManagement {
             entry 'protobuf-java'
             entry 'protoc'
         }
-        dependency "io.netty:netty-all:4.1.87.Final"
+        dependencySet(group: "io.netty", version: "4.1.90.Final") {
+            entry 'netty-common'
+            entry 'netty-handler'
+            entry 'netty-transport'
+            entry 'netty-buffer'
+            entry 'netty-codec-http'
+            entry 'netty-transport-classes-epoll'
+        }
         dependency "commons-codec:commons-codec:1.15"
         dependency "tech.pegasys:noise-java:22.1.0"
         dependencySet(group: "org.bouncycastle", version: "1.70") {
             entry 'bcprov-jdk15on'
             entry 'bcpkix-jdk15on'
+            entry 'bctls-jdk15on'
         }
     }
 }

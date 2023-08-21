@@ -9,6 +9,7 @@ import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.crypto.PubKey
 import io.libp2p.core.crypto.unmarshalPublicKey
 import io.libp2p.core.multistream.ProtocolDescriptor
+import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.core.security.SecureChannel
 import io.libp2p.etc.types.toProtobuf
 import io.libp2p.security.InvalidInitialPacket
@@ -23,6 +24,10 @@ import plaintext.pb.Plaintext
 import java.util.concurrent.CompletableFuture
 
 class PlaintextInsecureChannel(private val localKey: PrivKey) : SecureChannel {
+
+    @Suppress("UNUSED_PARAMETER")
+    constructor(localKey: PrivKey, muxerProtocols: List<StreamMuxer>) : this(localKey)
+
     override val protocolDescriptor = ProtocolDescriptor("/plaintext/2.0.0")
 
     override fun initChannel(ch: P2PChannel, selectedProtocol: String): CompletableFuture<out SecureChannel.Session> {
@@ -107,7 +112,8 @@ class PlaintextHandshakeHandler(
         val session = SecureChannel.Session(
             localPeerId,
             remotePeerId,
-            remotePubKey
+            remotePubKey,
+            null
         )
 
         handshakeCompleted.complete(session)
