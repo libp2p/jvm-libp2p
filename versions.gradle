@@ -1,4 +1,8 @@
 dependencyManagement {
+    // https://docs.spring.io/dependency-management-plugin/docs/current/reference/html/#pom-generation-disabling
+    generatedPomCustomization {
+        enabled = false
+    }
     dependencies {
 
         dependency "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4"

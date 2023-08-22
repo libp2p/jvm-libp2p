@@ -153,6 +153,14 @@ configure(
             publications {
                 register("mavenJava", MavenPublication::class) {
                     from(components["java"])
+                    versionMapping {
+                        usage("java-api") {
+                            fromResolutionOf("runtimeClasspath")
+                        }
+                        usage("java-runtime") {
+                            fromResolutionResult()
+                        }
+                    }
                     artifact(sourcesJar.get())
                     artifact(dokkaJar.get())
                     groupId = "io.libp2p"
