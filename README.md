@@ -75,11 +75,13 @@ As an alternative, artefacts are also available on [JitPack](https://jitpack.io/
 [![](https://jitpack.io/v/libp2p/jvm-libp2p.svg)](https://jitpack.io/#libp2p/jvm-libp2p)
 
 ### Using Gradle
-Add the Cloudsmith repository to the `repositories` section of your Gradle file.
+Add the required repositories to the `repositories` section of your Gradle file.
 ```groovy
 repositories {
   // ...
   maven { url "https://dl.cloudsmith.io/public/libp2p/jvm-libp2p/maven/" }
+  maven { url "https://jitpack.io" }  
+  maven { url "https://artifacts.consensys.net/public/maven/maven/" }
 }
 ```
 Add the library to the `implementation` part of your Gradle file.
@@ -90,7 +92,7 @@ dependencies {
 }
 ```
 ### Using Maven
-Add the repository to the `dependencyManagement` section of the pom file:
+Add the required repositories  to the `dependencyManagement` section of the pom file:
 ```xml
 <repositories>
   <repository>
@@ -105,10 +107,17 @@ Add the repository to the `dependencyManagement` section of the pom file:
       <updatePolicy>always</updatePolicy>
     </snapshots>
   </repository>
+  <repository>
+    <id>JitPack</id>
+    <url>https://jitpack.io</url>
+  </repository>
+  <repository>
+    <id>Consensys</id>
+    <url>https://artifacts.consensys.net/public/maven/maven/</url>
+  </repository>
 </repositories>
 ```
-
-And then add jvm-libp2p as a dependency:
+Add the library to the `dependencies` section of the pom file:
 ``` xml
 <dependency>
   <groupId>io.libp2p</groupId>
