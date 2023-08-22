@@ -80,8 +80,8 @@ Add the required repositories to the `repositories` section of your Gradle file.
 repositories {
   // ...
   maven { url "https://dl.cloudsmith.io/public/libp2p/jvm-libp2p/maven/" }
+  maven { url "https://jitpack.io" }  
   maven { url "https://artifacts.consensys.net/public/maven/maven/" }
-  maven { url "https://jitpack.io" }
 }
 ```
 Add the library to the `implementation` part of your Gradle file.
