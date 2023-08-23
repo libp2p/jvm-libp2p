@@ -25,7 +25,8 @@ public class ControlledSchedulersImpl extends AbstractSchedulers implements Cont
 
   @Override
   protected ScheduledExecutorService createExecutor(String namePattern, int threads) {
-    ControlledExecutorServiceImpl service = new ControlledExecutorServiceImpl(createDelegateExecutor());
+    ControlledExecutorServiceImpl service =
+        new ControlledExecutorServiceImpl(createDelegateExecutor());
     service.setTimeController(timeController);
     return service;
   }

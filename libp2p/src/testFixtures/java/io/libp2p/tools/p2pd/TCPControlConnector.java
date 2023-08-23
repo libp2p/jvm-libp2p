@@ -8,47 +8,48 @@ import io.netty.channel.ChannelOption;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
-
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
-/**
- * Created by Anton Nashatyrev on 06.08.2019.
- */
+/** Created by Anton Nashatyrev on 06.08.2019. */
 public class TCPControlConnector extends ControlConnector {
-    static NioEventLoopGroup group = new NioEventLoopGroup();
+  static NioEventLoopGroup group = new NioEventLoopGroup();
 
-    public CompletableFuture<DaemonChannelHandler> connect(String host, int port) {
-        return connect(new InetSocketAddress(host, port));
-    }
-    public CompletableFuture<DaemonChannelHandler> connect(SocketAddress addr) {
-        CompletableFuture<DaemonChannelHandler> ret = new CompletableFuture<>();
+  public CompletableFuture<DaemonChannelHandler> connect(String host, int port) {
+    return connect(new InetSocketAddress(host, port));
+  }
 
-        ChannelFuture channelFuture = new Bootstrap()
-                .group(group)
-                .channel(NioSocketChannel.class)
-                .handler(new ChannelInit(ret::complete, true))
-                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, connectTimeoutSec * 1000)
-                .connect(addr);
+  public CompletableFuture<DaemonChannelHandler> connect(SocketAddress addr) {
+    CompletableFuture<DaemonChannelHandler> ret = new CompletableFuture<>();
 
-        channelFuture.addListener((ChannelFutureListener) future -> {
-            try {
+    ChannelFuture channelFuture =
+        new Bootstrap()
+            .group(group)
+            .channel(NioSocketChannel.class)
+            .handler(new ChannelInit(ret::complete, true))
+            .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, connectTimeoutSec * 1000)
+            .connect(addr);
+
+    channelFuture.addListener(
+        (ChannelFutureListener)
+            future -> {
+              try {
                 future.get();
-            } catch (Exception e) {
+              } catch (Exception e) {
                 ret.completeExceptionally(e);
-            }
-        });
-        return ret;
-    }
+              }
+            });
+    return ret;
+  }
 
-    public ChannelFuture listen(SocketAddress addr, Consumer<DaemonChannelHandler> handlersConsumer) {
-        return new ServerBootstrap()
-                .group(group)
-                .channel(NioServerSocketChannel.class)
-                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, connectTimeoutSec * 1000)
-                .childHandler(new ChannelInit(handlersConsumer, false))
-                .bind(addr);
-    }
+  public ChannelFuture listen(SocketAddress addr, Consumer<DaemonChannelHandler> handlersConsumer) {
+    return new ServerBootstrap()
+        .group(group)
+        .channel(NioServerSocketChannel.class)
+        .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, connectTimeoutSec * 1000)
+        .childHandler(new ChannelInit(handlersConsumer, false))
+        .bind(addr);
+  }
 }

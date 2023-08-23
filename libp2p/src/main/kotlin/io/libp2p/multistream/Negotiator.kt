@@ -94,8 +94,11 @@ object Negotiator {
 
         override fun channelRead0(ctx: ChannelHandlerContext, msg: String) {
             if (msg == MULTISTREAM_PROTO) {
-                if (!headerRead) headerRead = true else
+                if (!headerRead) {
+                    headerRead = true
+                } else {
                     throw ProtocolNegotiationException("Received multistream header more than once")
+                }
             } else {
                 processMsg(ctx, msg)?.also { completeEvent ->
                     // first fire event to setup a handler for selected protocol

@@ -134,7 +134,8 @@ internal class MaxCountTopicSubscriptionFilterTest {
             PubsubSubscription("allow_10", true),
         )
         val result = filter.filterIncomingSubscriptions(
-            subscriptions, listOf("allow_1", "allow_2", "allow_3", "allow_4", "allow_5", "allow_6", "allow_7")
+            subscriptions,
+            listOf("allow_1", "allow_2", "allow_3", "allow_4", "allow_5", "allow_6", "allow_7")
         )
         assertThat(result).isEqualTo(subscriptions)
     }

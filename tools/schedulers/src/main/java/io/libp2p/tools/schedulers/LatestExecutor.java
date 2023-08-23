@@ -3,15 +3,14 @@ package io.libp2p.tools.schedulers;
 import java.util.function.Consumer;
 
 /**
- * Processes events submitted via {@link #newEvent(T)} with the specified
- * <code>eventProcessor</code> on the specified <code>scheduler</code>.
+ * Processes events submitted via {@link #newEvent(T)} with the specified <code>eventProcessor
+ * </code> on the specified <code>scheduler</code>.
  *
- * Guarantees that the latest event would be processed, though other
- * intermediate events could be skipped.
+ * <p>Guarantees that the latest event would be processed, though other intermediate events could be
+ * skipped.
  *
- * Skips subsequent events if any previous is still processing.
- * Avoids creating scheduling a task for each event thus allowing frequent
- * events submitting.
+ * <p>Skips subsequent events if any previous is still processing. Avoids creating scheduling a task
+ * for each event thus allowing frequent events submitting.
  */
 public class LatestExecutor<T> {
   private final Scheduler scheduler;
@@ -25,9 +24,8 @@ public class LatestExecutor<T> {
   }
 
   /**
-   * Submits a new event for processing.
-   * This particular event may not be processed if a subsequent event submitted
-   * shortly
+   * Submits a new event for processing. This particular event may not be processed if a subsequent
+   * event submitted shortly
    */
   public synchronized void newEvent(T event) {
     latestEvent = event;

@@ -164,12 +164,13 @@ class MultiaddrDnsTest {
 
         val TestResolver = object : MultiaddrDns.Resolver {
             override fun resolveDns4(hostname: String): List<Multiaddr> {
-                val address = if ("pig.com".equals(hostname))
+                val address = if ("pig.com".equals(hostname)) {
                     listOf("/ip4/1.1.1.1", "/ip4/1.1.1.2")
-                else if ("localhost".equals(hostname))
+                } else if ("localhost".equals(hostname)) {
                     listOf("/ip4/127.0.0.1")
-                else
+                } else {
                     listOf("/ip4/2.2.2.1", "/ip4/2.2.2.2")
+                }
 
                 return address.map { Multiaddr(it) }
             }

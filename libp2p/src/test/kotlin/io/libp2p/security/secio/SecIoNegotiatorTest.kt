@@ -1,7 +1,7 @@
 package io.libp2p.security.secio
 
 import io.libp2p.core.PeerId
-import io.libp2p.core.crypto.KEY_TYPE
+import io.libp2p.core.crypto.KeyType
 import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.crypto.unmarshalPrivateKey
 import io.libp2p.crypto.keys.secp256k1PublicKeyFromCoordinates
@@ -19,8 +19,8 @@ import java.math.BigInteger
 class SecIoNegotiatorTest {
     @Test
     fun handshake() {
-        val (privKey1, pubKey1) = generateKeyPair(KEY_TYPE.ECDSA)
-        val (privKey2, pubKey2) = generateKeyPair(KEY_TYPE.ECDSA)
+        val (privKey1, pubKey1) = generateKeyPair(KeyType.ECDSA)
+        val (privKey2, pubKey2) = generateKeyPair(KeyType.ECDSA)
         var bb1: ByteBuf? = null
         var bb2: ByteBuf? = null
 

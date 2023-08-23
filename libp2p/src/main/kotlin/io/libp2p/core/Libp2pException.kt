@@ -50,6 +50,7 @@ open class NoSuchProtocolException(message: String) : Libp2pException(message)
  * Indicates that the protocol is not registered at local configuration
  */
 class NoSuchLocalProtocolException(message: String) : NoSuchProtocolException(message)
+
 /**
  * Indicates that the protocol is not known by the remote party
  */

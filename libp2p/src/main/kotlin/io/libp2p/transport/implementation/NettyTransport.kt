@@ -129,8 +129,7 @@ abstract class NettyTransport(
             ?: throw Libp2pException("No listeners on address $addr")
     } // unlisten
 
-    override fun dial(addr: Multiaddr, connHandler: ConnectionHandler, preHandler: ChannelVisitor<P2PChannel>?):
-        CompletableFuture<Connection> {
+    override fun dial(addr: Multiaddr, connHandler: ConnectionHandler, preHandler: ChannelVisitor<P2PChannel>?): CompletableFuture<Connection> {
         if (closed) throw Libp2pException("Transport is closed")
 
         val remotePeerId = addr.getPeerId()
@@ -186,8 +185,9 @@ abstract class NettyTransport(
 
     protected fun hostFromMultiaddr(addr: Multiaddr): String {
         val resolvedAddresses = MultiaddrDns.resolve(addr)
-        if (resolvedAddresses.isEmpty())
+        if (resolvedAddresses.isEmpty()) {
             throw Libp2pException("Could not resolve $addr to an IP address")
+        }
 
         return resolvedAddresses[0].components.find {
             it.protocol in arrayOf(Protocol.IP4, Protocol.IP6)

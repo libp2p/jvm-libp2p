@@ -1,3 +1,4 @@
+import com.diffplug.gradle.spotless.SpotlessExtension
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.net.URL
@@ -18,7 +19,7 @@ plugins {
     id("java")
     id("maven-publish")
     id("org.jetbrains.dokka").version("1.7.20")
-    id("org.jmailen.kotlinter").version("3.10.0")
+    id("com.diffplug.spotless").version("6.20.0")
     id("java-test-fixtures")
     id("io.spring.dependency-management").version("1.1.0")
 
@@ -45,7 +46,7 @@ configure(
     apply(plugin = "io.gitlab.arturbosch.detekt")
     apply(plugin = "maven-publish")
     apply(plugin = "org.jetbrains.dokka")
-    apply(plugin = "org.jmailen.kotlinter")
+    apply(plugin = "com.diffplug.spotless")
     apply(plugin = "java-test-fixtures")
     apply(plugin = "io.spring.dependency-management")
     apply(from = "$rootDir/versions.gradle")
@@ -108,8 +109,21 @@ configure(
 //    Runtime.getRuntime().availableProcessors().div(2))
     }
 
-    kotlinter {
-        disabledRules = arrayOf("no-wildcard-imports", "enum-entry-name-case")
+    configure<SpotlessExtension> {
+        kotlin {
+            ktlint().editorConfigOverride(
+                mapOf(
+                    "ktlint_standard_no-wildcard-imports" to "disabled",
+                    "ktlint_standard_enum-entry-name-case" to "disabled",
+                    "ktlint_standard_trailing-comma-on-call-site" to "disabled",
+                    "ktlint_standard_trailing-comma-on-declaration-site" to "disabled"
+                )
+            )
+        }
+        java {
+            targetExclude("**/generated/**/proto/**")
+            googleJavaFormat()
+        }
     }
 
     val sourcesJar by tasks.registering(Jar::class) {

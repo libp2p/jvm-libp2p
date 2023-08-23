@@ -21,6 +21,7 @@ interface GossipRpcPartsQueue : RpcPartsQueue {
      * Gossip 1.0 variant
      */
     fun addPrune(topic: Topic)
+
     /**
      * Gossip 1.1 variant
      */
@@ -118,7 +119,6 @@ open class DefaultGossipRpcPartsQueue(
                 publishCount > 0 && subscriptionCount > 0 && iHaveCount > 0 &&
                 iWantCount > 0 && graftCount > 0 && pruneCount > 0
             ) {
-
                 val part = parts[partIdx++]
                 when (part) {
                     is PublishPart -> publishCount--

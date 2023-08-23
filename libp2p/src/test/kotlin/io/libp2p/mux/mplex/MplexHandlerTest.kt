@@ -17,7 +17,10 @@ class MplexHandlerTest : MuxHandlerAbstractTest() {
 
     override fun createMuxHandler(streamHandler: StreamHandler<*>): MuxHandler =
         object : MplexHandler(
-            MultistreamProtocolV1, maxFrameDataLength, null, streamHandler
+            MultistreamProtocolV1,
+            maxFrameDataLength,
+            null,
+            streamHandler
         ) {
             // MuxHandler consumes the exception. Override this behaviour for testing
             @Deprecated("Deprecated in Java")

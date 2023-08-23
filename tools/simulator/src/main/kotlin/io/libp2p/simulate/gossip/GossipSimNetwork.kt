@@ -26,10 +26,11 @@ class GossipSimNetwork(
     val commonExecutor = ControlledExecutorServiceImpl(timeController)
 
     protected val peerExecutors =
-        if (cfg.iterationThreadsCount > 1)
+        if (cfg.iterationThreadsCount > 1) {
             (0 until cfg.iterationThreadsCount).map { Executors.newSingleThreadScheduledExecutor() }
-        else
+        } else {
             listOf(Executor { it.run() })
+        }
 
     var simPeerFactory: (Int, SimGossipRouterBuilder) -> GossipSimPeer = { number, router ->
         GossipSimPeer(number, commonRnd).apply {

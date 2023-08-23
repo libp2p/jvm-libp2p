@@ -26,9 +26,9 @@ class StreamNettyChannel(
     vararg handlers: ChannelHandler?
 ) :
     SimChannel, EmbeddedChannel(
-    SimChannelId(id),
-    *handlers
-) {
+        SimChannelId(id),
+        *handlers
+    ) {
 
     override val msgVisitors: MutableList<SimChannelMessageVisitor> = mutableListOf()
 

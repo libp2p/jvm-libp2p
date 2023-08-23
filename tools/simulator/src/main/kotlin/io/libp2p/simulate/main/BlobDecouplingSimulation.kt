@@ -135,7 +135,6 @@ class BlobDecouplingSimulation(
     }
 
     fun testOnlyBlockDecoupled() {
-
         for (i in 0 until messageCount) {
             val sendingPeer = sendingPeerIndexes[i]
             logger("Sending message $i from peer $sendingPeer")
@@ -153,7 +152,6 @@ class BlobDecouplingSimulation(
     }
 
     fun testAllDecoupled() {
-
         for (i in 0 until messageCount) {
             val sendingPeer = sendingPeerIndexes[i]
             logger("Sending message $i from peer $sendingPeer")
@@ -262,7 +260,7 @@ class BlobDecouplingSimulation(
 fun main() {
     val bandwidths = bandwidthDistributions.entries.toList()
         .let {
-            listOf(/*it[0],*/ it[2])
+            listOf(it[2])
         }.toMap()
     val slowBandwidth = Bandwidth.mbitsPerSec(10)
 
@@ -281,8 +279,11 @@ fun main() {
             val groupedDelays = sim.simulation.gatherPubDeliveryStats()
                 .aggregateSlowestByPublishTime()
                 .groupBy {
-                    if (it.toPeer.inboundBandwidth.totalBandwidth == slowBandwidth)
-                        "Slow" else "Fast"
+                    if (it.toPeer.inboundBandwidth.totalBandwidth == slowBandwidth) {
+                        "Slow"
+                    } else {
+                        "Fast"
+                    }
                 }
                 .mapValues { it.value.deliveryDelays }
             return GroupByRangeAggregator(groupedDelays)

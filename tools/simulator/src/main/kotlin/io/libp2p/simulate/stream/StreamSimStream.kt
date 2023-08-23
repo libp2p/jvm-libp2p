@@ -22,11 +22,17 @@ class StreamSimStream(
 
     init {
         val from =
-            if (streamInitiator == SimStream.StreamInitiator.CONNECTION_DIALER) connection.dialer
-            else connection.listener
+            if (streamInitiator == SimStream.StreamInitiator.CONNECTION_DIALER) {
+                connection.dialer
+            } else {
+                connection.listener
+            }
         val to =
-            if (streamInitiator == SimStream.StreamInitiator.CONNECTION_LISTENER) connection.dialer
-            else connection.listener
+            if (streamInitiator == SimStream.StreamInitiator.CONNECTION_LISTENER) {
+                connection.dialer
+            } else {
+                connection.listener
+            }
 
         val fromIsInitiator = from === connection.dialer
         val toIsInitiator = !fromIsInitiator
@@ -53,7 +59,6 @@ class StreamSimStream(
         connectionInitiator: Boolean,
         streamInitiator: Boolean
     ): StreamNettyChannel {
-
         return StreamNettyChannel(
             channelName,
             this,

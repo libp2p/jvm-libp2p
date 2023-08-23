@@ -61,16 +61,19 @@ fun <C> anyComplete(all: List<CompletableFuture<C>>): CompletableFuture<C> =
     anyComplete(*all.toTypedArray())
 
 fun <C> anyComplete(vararg all: CompletableFuture<C>): CompletableFuture<C> {
-    return if (all.isEmpty()) completedExceptionally(NothingToCompleteException())
-    else object : CompletableFuture<C>() {
-        init {
-            val counter = AtomicInteger(all.size)
-            all.forEach {
-                it.whenComplete { v, t ->
-                    if (t == null) {
-                        complete(v)
-                    } else if (counter.decrementAndGet() == 0) {
-                        completeExceptionally(NonCompleteException(t))
+    return if (all.isEmpty()) {
+        completedExceptionally(NothingToCompleteException())
+    } else {
+        object : CompletableFuture<C>() {
+            init {
+                val counter = AtomicInteger(all.size)
+                all.forEach {
+                    it.whenComplete { v, t ->
+                        if (t == null) {
+                            complete(v)
+                        } else if (counter.decrementAndGet() == 0) {
+                            completeExceptionally(NonCompleteException(t))
+                        }
                     }
                 }
             }

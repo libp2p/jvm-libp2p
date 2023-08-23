@@ -8,7 +8,7 @@ import io.libp2p.core.ConnectionHandler
 import io.libp2p.core.Host
 import io.libp2p.core.P2PChannel
 import io.libp2p.core.Stream
-import io.libp2p.core.crypto.KEY_TYPE
+import io.libp2p.core.crypto.KeyType
 import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.multiformats.Multiaddr
@@ -219,8 +219,8 @@ class NetworkConfigBuilder {
 class IdentityBuilder {
     var factory: IdentityFactory? = null
 
-    fun random() = random(KEY_TYPE.ECDSA)
-    fun random(keyType: KEY_TYPE): IdentityBuilder = apply { factory = { generateKeyPair(keyType).first } }
+    fun random() = random(KeyType.ECDSA)
+    fun random(keyType: KeyType): IdentityBuilder = apply { factory = { generateKeyPair(keyType).first } }
 }
 
 class AddressBookBuilder {
@@ -241,11 +241,13 @@ class DebugBuilder {
      * Could be primarily useful for security handshake debugging/monitoring
      */
     val beforeSecureHandler = DebugHandlerBuilder<Connection>("wire.sec.before")
+
     /**
      * Injects the [ChannelHandler] right after the connection cipher
      * to handle plain wire messages
      */
     val afterSecureHandler = DebugHandlerBuilder<Connection>("wire.sec.after")
+
     /**
      * Injects the [ChannelHandler] right after the [StreamMuxer] pipeline handler
      * It intercepts [io.libp2p.mux.MuxFrame] instances

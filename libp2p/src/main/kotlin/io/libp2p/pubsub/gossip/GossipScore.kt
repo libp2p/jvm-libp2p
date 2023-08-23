@@ -91,9 +91,11 @@ class DefaultGossipScore(
             inMesh() && ((curTimeMillis() - joinedMeshTimeMillis).millis > params.meshMessageDeliveriesActivation)
 
         private fun meshMessageDeliveriesDeficit() =
-            if (isMeshMessageDeliveriesActive())
+            if (isMeshMessageDeliveriesActive()) {
                 max(0.0, params.meshMessageDeliveriesThreshold - meshMessageDeliveries)
-            else 0.0
+            } else {
+                0.0
+            }
 
         fun meshMessageDeliveriesDeficitSqr() = meshMessageDeliveriesDeficit().pow(2)
 
@@ -142,8 +144,11 @@ class DefaultGossipScore(
         fun isConnected() = connectedTimeMillis > 0 && disconnectedTimeMillis == 0L
         fun isDisconnected() = disconnectedTimeMillis > 0
         fun getDisconnectDuration() =
-            if (isDisconnected()) (curTimeMillis() - disconnectedTimeMillis).millis
-            else throw IllegalStateException("Peer is not disconnected")
+            if (isDisconnected()) {
+                (curTimeMillis() - disconnectedTimeMillis).millis
+            } else {
+                throw IllegalStateException("Peer is not disconnected")
+            }
     }
 
     val peerParams = params.peerScoreParams
@@ -197,8 +202,11 @@ class DefaultGossipScore(
 
         val behaviorExcess = peerScore.behaviorPenalty - peerParams.behaviourPenaltyThreshold
         val routerPenalty =
-            if (behaviorExcess < 0) 0.0
-            else behaviorExcess.pow(2) * peerParams.behaviourPenaltyWeight
+            if (behaviorExcess < 0) {
+                0.0
+            } else {
+                behaviorExcess.pow(2) * peerParams.behaviourPenaltyWeight
+            }
 
         val computedScore = topicsScore + appScore + ipColocationPenalty + routerPenalty
         peerScore.cachedScore = computedScore

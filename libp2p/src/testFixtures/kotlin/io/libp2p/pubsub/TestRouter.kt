@@ -1,7 +1,7 @@
 package io.libp2p.pubsub
 
 import io.libp2p.core.PeerId
-import io.libp2p.core.crypto.KEY_TYPE
+import io.libp2p.core.crypto.KeyType
 import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.pubsub.RESULT_VALID
 import io.libp2p.core.pubsub.ValidationResult
@@ -47,7 +47,7 @@ class TestRouter(
 
     var testExecutor: ScheduledExecutorService by lazyVar { Executors.newSingleThreadScheduledExecutor() }
 
-    var keyPair = generateKeyPair(KEY_TYPE.ECDSA)
+    var keyPair = generateKeyPair(KeyType.ECDSA)
     val peerId by lazy { PeerId.fromPubKey(keyPair.second) }
     val protocol = router.protocol.announceStr
 
@@ -62,13 +62,15 @@ class TestRouter(
         pubsubLogs: LogLevel? = null,
         initiator: Boolean
     ): TestChannel {
-
         val parentChannel = TestChannel("dummy-parent-channel", false)
         val connection =
             ConnectionOverNetty(parentChannel, NullTransport(), initiator)
         connection.setSecureSession(
             SecureChannel.Session(
-                peerId, remoteRouter.peerId, remoteRouter.keyPair.second, null
+                peerId,
+                remoteRouter.peerId,
+                remoteRouter.keyPair.second,
+                null
             )
         )
 
@@ -90,7 +92,6 @@ class TestRouter(
         wireLogs: LogLevel? = null,
         pubsubLogs: LogLevel? = null
     ): TestConnection {
-
         val thisChannel = newChannel("[${idCnt.incrementAndGet()}]$name=>${another.name}", another, wireLogs, pubsubLogs, true)
         val anotherChannel = another.newChannel("[${idCnt.incrementAndGet()}]${another.name}=>$name", this, wireLogs, pubsubLogs, false)
         listOf(thisChannel, anotherChannel).forEach {

@@ -1,21 +1,19 @@
 package io.libp2p.tools.p2pd.libp2pj;
 
-/**
- * Created by Anton Nashatyrev on 18.12.2018.
- */
+/** Created by Anton Nashatyrev on 18.12.2018. */
 public class Protocol {
-    private final String name;
+  private final String name;
 
-    public Protocol(String name) {
-        this.name = name;
-    }
+  public Protocol(String name) {
+    this.name = name;
+  }
 
-    public String getName() {
-        return name;
-    }
+  public String getName() {
+    return name;
+  }
 
-    @Override
-    public String toString() {
-        return getName();
-    }
+  @Override
+  public String toString() {
+    return getName();
+  }
 }

@@ -106,7 +106,7 @@ class RpcHandlerTest {
                 add(::SecIoSecureChannel)
             }
             muxers {
-                + StreamMuxerProtocol.Mplex
+                +StreamMuxerProtocol.Mplex
             }
             protocols {
                 +RpcProtocol()
@@ -127,7 +127,7 @@ class RpcHandlerTest {
                 add(::SecIoSecureChannel)
             }
             muxers {
-                + StreamMuxerProtocol.Mplex
+                +StreamMuxerProtocol.Mplex
             }
             protocols {
                 +RpcProtocol()
@@ -166,8 +166,11 @@ class RpcHandlerTest {
         Assertions.assertEquals(1, streamCounter2)
         Assertions.assertEquals(1, streamCounter1)
         for (i in 1..100) {
-            if (host1.streams.isNotEmpty() || host2.streams.isNotEmpty()) Thread.sleep(10)
-            else break
+            if (host1.streams.isNotEmpty() || host2.streams.isNotEmpty()) {
+                Thread.sleep(10)
+            } else {
+                break
+            }
         }
         Assertions.assertEquals(0, host1.streams.size)
         Assertions.assertEquals(0, host2.streams.size)
@@ -188,8 +191,11 @@ class RpcHandlerTest {
         Assertions.assertEquals(2, streamCounter1)
         Assertions.assertEquals(2, streamCounter2)
         for (i in 1..100) {
-            if (host1.streams.isNotEmpty() || host2.streams.isNotEmpty()) Thread.sleep(10)
-            else break
+            if (host1.streams.isNotEmpty() || host2.streams.isNotEmpty()) {
+                Thread.sleep(10)
+            } else {
+                break
+            }
         }
         Assertions.assertEquals(0, host1.streams.size)
         Assertions.assertEquals(0, host2.streams.size)

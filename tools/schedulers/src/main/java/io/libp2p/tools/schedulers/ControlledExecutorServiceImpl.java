@@ -16,14 +16,15 @@ import java.util.function.Consumer;
 
 public class ControlledExecutorServiceImpl implements ControlledExecutorService {
 
-  private class ScheduledTask<V> implements TimeController.Task{
+  private class ScheduledTask<V> implements TimeController.Task {
     Callable<V> callable;
     final ScheduledFutureImpl<V> future = new ScheduledFutureImpl<V>(b -> cancel());
     long targetTime;
 
     public ScheduledTask(Callable<V> callable, long targetTime) {
       if (targetTime < getCurrentTime()) {
-        throw new IllegalStateException("Invalid target time: " + targetTime + " < " + getCurrentTime());
+        throw new IllegalStateException(
+            "Invalid target time: " + targetTime + " < " + getCurrentTime());
       }
       this.callable = callable;
       this.targetTime = targetTime;
@@ -34,14 +35,15 @@ public class ControlledExecutorServiceImpl implements ControlledExecutorService 
     }
 
     public CompletableFuture<Void> execute() {
-      delegateExecutor.execute(() -> {
-        try {
-          V res = callable.call();
-          future.delegate.complete(res);
-        } catch (Exception e) {
-          future.delegate.completeExceptionally(e);
-        }
-      });
+      delegateExecutor.execute(
+          () -> {
+            try {
+              V res = callable.call();
+              future.delegate.complete(res);
+            } catch (Exception e) {
+              future.delegate.completeExceptionally(e);
+            }
+          });
       return future.delegate.thenApply(i -> null);
     }
 
@@ -56,8 +58,7 @@ public class ControlledExecutorServiceImpl implements ControlledExecutorService 
     }
   }
 
-
-  private class ScheduledFutureImpl<V> implements ScheduledFuture<V>  {
+  private class ScheduledFutureImpl<V> implements ScheduledFuture<V> {
     final CompletableFuture<V> delegate = new CompletableFuture<>();
     private final Consumer<Boolean> canceller;
 
@@ -108,7 +109,7 @@ public class ControlledExecutorServiceImpl implements ControlledExecutorService 
   private TimeController timeController;
 
   public ControlledExecutorServiceImpl() {
-    this(Runnable::run);  // default immediate executor
+    this(Runnable::run); // default immediate executor
   }
 
   public ControlledExecutorServiceImpl(TimeController timeController) {
@@ -138,55 +139,65 @@ public class ControlledExecutorServiceImpl implements ControlledExecutorService 
     if (delay < 0) {
       delay = 0;
     }
-    ScheduledTask<V> scheduledTask = new ScheduledTask<>(callable, getCurrentTime() + unit.toMillis(delay));
+    ScheduledTask<V> scheduledTask =
+        new ScheduledTask<>(callable, getCurrentTime() + unit.toMillis(delay));
     timeController.addTask(scheduledTask);
     return scheduledTask.future;
   }
 
   @Override
-  public ScheduledFuture<?> scheduleAtFixedRate(Runnable command,
-      long initialDelay, long period, TimeUnit unit) {
+  public ScheduledFuture<?> scheduleAtFixedRate(
+      Runnable command, long initialDelay, long period, TimeUnit unit) {
     ScheduledFuture<?>[] activeFut = new ScheduledFutureImpl[1];
     ScheduledFutureImpl<?> ret = new ScheduledFutureImpl<>(b -> activeFut[0].cancel(b));
 
-    activeFut[0] = schedule(() -> {
-      command.run();
-      if (!activeFut[0].isCancelled()) {
-        activeFut[0] = scheduleAtFixedRate(command, period, period, unit);
-      }
-      return null;
-    }, initialDelay, unit);
+    activeFut[0] =
+        schedule(
+            () -> {
+              command.run();
+              if (!activeFut[0].isCancelled()) {
+                activeFut[0] = scheduleAtFixedRate(command, period, period, unit);
+              }
+              return null;
+            },
+            initialDelay,
+            unit);
 
     return ret;
   }
 
   @Override
   public ScheduledFuture<?> schedule(Runnable command, long delay, TimeUnit unit) {
-    return schedule(() -> {
-      command.run();
-      return null;
-    }, delay, unit);
+    return schedule(
+        () -> {
+          command.run();
+          return null;
+        },
+        delay,
+        unit);
   }
 
   @Override
   public <T> Future<T> submit(Callable<T> task) {
     CompletableFuture<T> ret = new CompletableFuture<>();
-    execute(() -> {
-      try {
-        ret.complete(task.call());
-      } catch (Throwable e) {
-        ret.completeExceptionally(e);
-      }
-    });
+    execute(
+        () -> {
+          try {
+            ret.complete(task.call());
+          } catch (Throwable e) {
+            ret.completeExceptionally(e);
+          }
+        });
     return ret;
   }
 
   @Override
   public <T> Future<T> submit(Runnable task, T result) {
-    return submit(() -> {
-      task.run();
-      return result;
-    });
+    return submit(
+        () -> {
+          task.run();
+          return result;
+        });
   }
 
   @Override
@@ -204,8 +215,8 @@ public class ControlledExecutorServiceImpl implements ControlledExecutorService 
   }
 
   @Override
-  public ScheduledFuture<?> scheduleWithFixedDelay(Runnable command, long initialDelay, long delay,
-      TimeUnit unit) {
+  public ScheduledFuture<?> scheduleWithFixedDelay(
+      Runnable command, long initialDelay, long delay, TimeUnit unit) {
     return scheduleAtFixedRate(command, initialDelay, delay, unit);
   }
 
@@ -216,8 +227,9 @@ public class ControlledExecutorServiceImpl implements ControlledExecutorService 
   }
 
   @Override
-  public <T> List<Future<T>> invokeAll(Collection<? extends Callable<T>> tasks, long timeout,
-      TimeUnit unit) throws InterruptedException {
+  public <T> List<Future<T>> invokeAll(
+      Collection<? extends Callable<T>> tasks, long timeout, TimeUnit unit)
+      throws InterruptedException {
     throw new UnsupportedOperationException();
   }
 
@@ -234,8 +246,7 @@ public class ControlledExecutorServiceImpl implements ControlledExecutorService 
   }
 
   @Override
-  public void shutdown() {
-  }
+  public void shutdown() {}
 
   @Override
   public List<Runnable> shutdownNow() {

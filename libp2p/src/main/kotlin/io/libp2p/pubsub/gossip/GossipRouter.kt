@@ -234,7 +234,6 @@ open class GossipRouter(
             curTime <= whitelistEntry.whitelistedTill &&
             whitelistEntry.messagesAccepted < acceptRequestsWhitelistMaxMessages
         ) {
-
             acceptRequestsWhitelist[peer] = whitelistEntry.incrementMessageCount()
             return true
         }

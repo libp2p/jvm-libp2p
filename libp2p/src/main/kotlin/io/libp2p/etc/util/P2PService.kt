@@ -34,6 +34,7 @@ abstract class P2PService(
 ) {
 
     private val peersMutable = mutableListOf<PeerHandler>()
+
     /**
      * List of connected peers.
      * Note that connected peer could not be ready for writing yet, so consider [activePeers]
@@ -42,6 +43,7 @@ abstract class P2PService(
     val peers: List<PeerHandler> = peersMutable
 
     private val activePeersMutable = mutableListOf<PeerHandler>()
+
     /**
      * List of active peers to which data could be written
      */
@@ -241,6 +243,7 @@ abstract class P2PService(
      * Executes the code on the service event thread
      */
     fun <C> submitOnEventThread(run: () -> C): CompletableFuture<C> = CompletableFuture.supplyAsync({ run() }, executor)
+
     /**
      * Executes the code on the service event thread
      */

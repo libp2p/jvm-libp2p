@@ -15,14 +15,17 @@ interface Host {
      * Our private key which can be used by different protocols to sign messages
      */
     val privKey: PrivKey
+
     /**
      * Our [PeerId] which is normally derived from [privKey]
      */
     val peerId: PeerId
+
     /**
      * [Network] implementation
      */
     val network: Network
+
     /**
      * [AddressBook] implementation
      */

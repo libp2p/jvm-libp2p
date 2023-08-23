@@ -25,7 +25,7 @@ public class TimeControllerImpl implements TimeController {
   public void setTime(long newTime) {
     if (parent != null) {
       throw new IllegalStateException(
-              "setTime() is allowed only for the topmost TimeController (without parent)");
+          "setTime() is allowed only for the topmost TimeController (without parent)");
     }
     if (newTime < curTime) {
       throw new IllegalArgumentException("newTime < curTime: " + newTime + ", " + curTime);

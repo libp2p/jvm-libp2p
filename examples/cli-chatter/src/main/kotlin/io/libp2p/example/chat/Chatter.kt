@@ -17,8 +17,9 @@ fun main() {
         print(">> ")
         message = readLine()?.trim()
 
-        if (message == null || message.isEmpty())
+        if (message == null || message.isEmpty()) {
             continue
+        }
 
         node.send(message)
     } while ("bye" != message)

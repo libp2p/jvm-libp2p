@@ -54,10 +54,12 @@ class ProtocolMessageHandlerAdapter<TMessage>(
     }
 
     private fun checkedRelease(count: Int, obj: Any) {
-        if (count == -1)
+        if (count == -1) {
             return
+        }
         val rc = obj as ReferenceCounted
-        if (count == rc.refCnt())
+        if (count == rc.refCnt()) {
             rc.release()
+        }
     }
 }
