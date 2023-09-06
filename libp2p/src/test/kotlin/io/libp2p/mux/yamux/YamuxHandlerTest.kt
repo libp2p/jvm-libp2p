@@ -177,6 +177,8 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
         frame = readFrameOrThrow()
         // the other message is partially received
         assertThat(frame.data).isEqualTo("19")
+        // need to wait for another window update to receive more data
+        assertThat(readFrame()).isNull()
     }
 
     @Test
