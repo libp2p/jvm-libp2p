@@ -142,7 +142,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
     }
 
     @Test
-    fun `partial buffered data is sent if it fits windows`() {
+    fun `buffered data should be partially sent if it does not fit within window`() {
         val handler = openStreamByLocal()
         val streamId = readFrameOrThrow().streamId
 
