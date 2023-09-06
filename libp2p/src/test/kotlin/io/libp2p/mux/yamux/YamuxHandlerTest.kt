@@ -171,9 +171,12 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
             )
         )
 
-        val frame = readFrameOrThrow()
+        var frame = readFrameOrThrow()
         // one message is fully received
         assertThat(frame.data).isEqualTo("1984")
+        frame = readFrameOrThrow()
+        // the other message is partially received
+        assertThat(frame.data).isEqualTo("19")
     }
 
     @Test
