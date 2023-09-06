@@ -142,6 +142,41 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
     }
 
     @Test
+    fun `partial data is written if it fits windows`() {
+        val handler = openStreamByLocal()
+        val streamId = readFrameOrThrow().streamId
+
+        ech.writeInbound(
+            YamuxFrame(
+                streamId.toMuxId(),
+                YamuxType.WINDOW_UPDATE,
+                YamuxFlags.ACK,
+                -INITIAL_WINDOW_SIZE.toLong()
+            )
+        )
+
+        val message = "1984".fromHex().toByteBuf(allocateBuf())
+        // 2 bytes per message
+        handler.ctx.writeAndFlush(message)
+        handler.ctx.writeAndFlush(message.copy())
+
+        assertThat(readFrame()).isNull()
+
+        ech.writeInbound(
+            YamuxFrame(
+                streamId.toMuxId(),
+                YamuxType.WINDOW_UPDATE,
+                YamuxFlags.ACK,
+                3
+            )
+        )
+
+        val frame = readFrameOrThrow()
+        // one message is fully received
+        assertThat(frame.data).isEqualTo("1984")
+    }
+
+    @Test
     fun `test ping`() {
         val id: Long = 0
         openStream(id)

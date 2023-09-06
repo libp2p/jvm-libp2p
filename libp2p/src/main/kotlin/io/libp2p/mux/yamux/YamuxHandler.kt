@@ -10,15 +10,12 @@ import io.libp2p.etc.util.netty.mux.MuxId
 import io.libp2p.mux.MuxHandler
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
-import org.slf4j.LoggerFactory
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
 const val INITIAL_WINDOW_SIZE = 256 * 1024
 const val MAX_BUFFERED_CONNECTION_WRITES = 1024 * 1024
-
-private val log = LoggerFactory.getLogger(YamuxHandler::class.java)
 
 open class YamuxHandler(
     override val multistreamProtocol: MultistreamProtocol,
@@ -44,21 +41,28 @@ open class YamuxHandler(
             var written = 0
             while (!buffered.isEmpty()) {
                 val buf = buffered.first()
-                val readableBytes = buf.readableBytes()
-                if (readableBytes + written < sendWindow.get()) {
+                val bufLength = buf.readableBytes()
+                if (bufLength <= sendWindow.get()) {
                     sendBlocks(ctx, buf, sendWindow, id)
-                    written += readableBytes
+                    written += bufLength
                     buf.release()
                     buffered.removeFirst()
                 } else {
                     // partial write to fit within window
-                    val toRead = sendWindow.get() - written
-                    sendBlocks(ctx, buf.readSlice(toRead), sendWindow, id)
-                    written += toRead
+                    val toRead = sendWindow.get()
+                    if (toRead > 0) {
+                        val partialBuf = buf.readSlice(toRead)
+                        sendBlocks(ctx, partialBuf, sendWindow, id)
+                        written += toRead
+                    }
                     break
                 }
             }
             return written
+        }
+
+        fun totalBytes(): Int {
+            return buffered.sumOf { it.readableBytes() }
         }
     }
 
@@ -88,33 +92,20 @@ open class YamuxHandler(
         }
     }
 
-    private fun handleFlags(msg: YamuxFrame) {
-        val ctx = getChannelHandlerContext()
-        when (msg.flags) {
-            YamuxFlags.SYN -> {
-                // ACK the new stream
-                onRemoteYamuxOpen(msg.id)
-                ctx.writeAndFlush(YamuxFrame(msg.id, YamuxType.WINDOW_UPDATE, YamuxFlags.ACK, 0))
-            }
-
-            YamuxFlags.FIN -> onRemoteDisconnect(msg.id)
-            YamuxFlags.RST -> onRemoteClose(msg.id)
-        }
-    }
-
     private fun handleDataRead(msg: YamuxFrame) {
         val ctx = getChannelHandlerContext()
-        val size = msg.length
         handleFlags(msg)
-        if (size.toInt() == 0) {
+        val size = msg.length.toInt()
+        if (size == 0) {
             return
         }
         val recWindow = receiveWindows[msg.id]
         if (recWindow == null) {
             releaseMessage(msg.data!!)
-            throw Libp2pException("No receive window for " + msg.id)
+            throw Libp2pException("No receive window for ${msg.id}")
         }
-        val newWindow = recWindow.addAndGet(-size.toInt())
+        val newWindow = recWindow.addAndGet(-size)
+        // send a window update frame once half of the window is depleted
         if (newWindow < INITIAL_WINDOW_SIZE / 2) {
             val delta = INITIAL_WINDOW_SIZE - newWindow
             recWindow.addAndGet(delta)
@@ -126,21 +117,33 @@ open class YamuxHandler(
 
     private fun handleWindowUpdate(msg: YamuxFrame) {
         handleFlags(msg)
-        val size = msg.length.toInt()
-        if (size == 0) {
+        val delta = msg.length.toInt()
+        if (delta == 0) {
             return
         }
         val sendWindow = sendWindows[msg.id] ?: return
-        sendWindow.addAndGet(size)
-        val buffer = sendBuffers[msg.id]
-        if (buffer != null) {
-            val writtenBytes = buffer.flush(sendWindow, msg.id)
-            totalBufferedWrites.addAndGet(-writtenBytes)
+        sendWindow.addAndGet(delta)
+        val buffer = sendBuffers[msg.id] ?: return
+        // try to send any buffered messages after the window update
+        val writtenBytes = buffer.flush(sendWindow, msg.id)
+        totalBufferedWrites.addAndGet(-writtenBytes)
+    }
+
+    private fun handleFlags(msg: YamuxFrame) {
+        val ctx = getChannelHandlerContext()
+        when (msg.flags) {
+            YamuxFlags.SYN -> {
+                onRemoteYamuxOpen(msg.id)
+                // ACK the new stream
+                ctx.writeAndFlush(YamuxFrame(msg.id, YamuxType.WINDOW_UPDATE, YamuxFlags.ACK, 0))
+            }
+
+            YamuxFlags.FIN -> onRemoteDisconnect(msg.id)
+            YamuxFlags.RST -> onRemoteClose(msg.id)
         }
     }
 
     private fun handleGoAway(msg: YamuxFrame) {
-        log.debug("Session will be terminated. Go Away message with with error code ${msg.length} has been received.")
         onRemoteClose(msg.id)
     }
 
@@ -162,10 +165,11 @@ open class YamuxHandler(
     }
 
     fun sendBlocks(ctx: ChannelHandlerContext, data: ByteBuf, sendWindow: AtomicInteger, id: MuxId) {
-        data.sliceMaxSize(minOf(maxFrameDataLength, sendWindow.get()))
-            .map { frameSliceBuf ->
-                sendWindow.addAndGet(-frameSliceBuf.readableBytes())
-                YamuxFrame(id, YamuxType.DATA, 0, frameSliceBuf.readableBytes().toLong(), frameSliceBuf)
+        data.sliceMaxSize(minOf(sendWindow.get(), maxFrameDataLength))
+            .map { slicedData ->
+                val length = slicedData.readableBytes()
+                sendWindow.addAndGet(-length)
+                YamuxFrame(id, YamuxType.DATA, 0, length.toLong(), slicedData)
             }.forEach { muxFrame ->
                 ctx.write(muxFrame)
             }
@@ -188,22 +192,34 @@ open class YamuxHandler(
     }
 
     override fun onLocalDisconnect(child: MuxChannel<ByteBuf>) {
-        val sendWindow = sendWindows.remove(child.id)
-        val buffered = sendBuffers.remove(child.id)
-        if (buffered != null && sendWindow != null) {
-            buffered.flush(sendWindow, child.id)
-        }
+        flushAndClearSendBuffers(child.id)
         getChannelHandlerContext().writeAndFlush(YamuxFrame(child.id, YamuxType.DATA, YamuxFlags.FIN, 0))
     }
 
+    private fun flushAndClearSendBuffers(id: MuxId) {
+        val sendWindow = sendWindows.remove(id)
+        val buffer = sendBuffers.remove(id)
+        if (buffer != null && sendWindow != null) {
+            val writtenBytes = buffer.flush(sendWindow, id)
+            totalBufferedWrites.addAndGet(-writtenBytes)
+        }
+    }
+
     override fun onLocalClose(child: MuxChannel<ByteBuf>) {
+        clearSendBuffers(child.id)
         getChannelHandlerContext().writeAndFlush(YamuxFrame(child.id, YamuxType.DATA, YamuxFlags.RST, 0))
     }
 
     override fun onChildClosed(child: MuxChannel<ByteBuf>) {
         sendWindows.remove(child.id)
         receiveWindows.remove(child.id)
-        sendBuffers.remove(child.id)
+        clearSendBuffers(child.id)
+    }
+
+    private fun clearSendBuffers(id: MuxId) {
+        sendBuffers.remove(id)?.let {
+            totalBufferedWrites.addAndGet(-it.totalBytes())
+        }
     }
 
     override fun generateNextId() =
