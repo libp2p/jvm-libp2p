@@ -87,7 +87,6 @@ open class YamuxHandler(
     }
 
     private fun handleDataRead(msg: YamuxFrame) {
-        val ctx = getChannelHandlerContext()
         handleFlags(msg)
         val size = msg.length.toInt()
         if (size == 0) {
@@ -96,8 +95,9 @@ open class YamuxHandler(
         val windowSize = windowSizes[msg.id]
         if (windowSize == null) {
             releaseMessage(msg.data!!)
-            throw Libp2pException("No window size initialised for ${msg.id}")
+            throw Libp2pException("Unable to retrieve window size for ${msg.id}")
         }
+        val ctx = getChannelHandlerContext()
         val newWindow = windowSize.addAndGet(-size)
         // send a window update frame once half of the window is depleted
         if (newWindow < INITIAL_WINDOW_SIZE / 2) {
@@ -143,7 +143,8 @@ open class YamuxHandler(
     override fun onChildWrite(child: MuxChannel<ByteBuf>, data: ByteBuf) {
         val ctx = getChannelHandlerContext()
 
-        val windowSize = windowSizes[child.id] ?: throw Libp2pException("No window size initialised for " + child.id)
+        val windowSize =
+            windowSizes[child.id] ?: throw Libp2pException("Unable to retrieve window size for ${child.id}")
 
         if (windowSize.get() <= 0) {
             // wait until the window is increased to send more data
