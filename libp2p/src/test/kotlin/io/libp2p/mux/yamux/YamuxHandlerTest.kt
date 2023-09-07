@@ -99,23 +99,28 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
 
     @Test
     fun `test window update`() {
-        openStream(12)
+        openStreamByLocal()
+        val streamId = readFrameOrThrow().streamId
 
-        val largeMessage = "42".repeat(INITIAL_WINDOW_SIZE + 1)
-        writeStream(12, largeMessage)
+        // reducing window size to 5
+        ech.writeInbound(
+            YamuxFrame(
+                streamId.toMuxId(),
+                YamuxType.WINDOW_UPDATE,
+                YamuxFlags.ACK,
+                -(INITIAL_WINDOW_SIZE.toLong() - 5)
+            )
+        )
 
-        // ignore ack stream frame
-        readYamuxFrameOrThrow()
+        // 3 bytes > 1/2 of window size
+        writeStream(streamId, "123456")
 
         val windowUpdateFrame = readYamuxFrameOrThrow()
 
+        // window frame is send based on the new window
         assertThat(windowUpdateFrame.flags).isZero()
         assertThat(windowUpdateFrame.type).isEqualTo(YamuxType.WINDOW_UPDATE)
-        assertThat(windowUpdateFrame.length).isEqualTo((INITIAL_WINDOW_SIZE + 1).toLong())
-
-        assertLastMessage(0, 1, largeMessage)
-
-        closeStream(12)
+        assertThat(windowUpdateFrame.length).isEqualTo((INITIAL_WINDOW_SIZE - 2).toLong())
     }
 
     @Test
