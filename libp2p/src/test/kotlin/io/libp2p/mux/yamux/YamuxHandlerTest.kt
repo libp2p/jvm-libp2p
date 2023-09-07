@@ -184,6 +184,17 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
         assertThat(frame.data).isEqualTo("19")
         // need to wait for another window update to receive more data
         assertThat(readFrame()).isNull()
+        // sending window update to read the final part of the buffer
+        ech.writeInbound(
+            YamuxFrame(
+                streamId.toMuxId(),
+                YamuxType.WINDOW_UPDATE,
+                YamuxFlags.ACK,
+                1
+            )
+        )
+        frame = readFrameOrThrow()
+        assertThat(frame.data).isEqualTo("84")
     }
 
     @Test

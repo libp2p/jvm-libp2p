@@ -32,7 +32,7 @@ open class YamuxHandler(
         private val bufferedData = ArrayDeque<ByteBuf>()
 
         fun add(data: ByteBuf) {
-            bufferedData.add(data.retain())
+            bufferedData.add(data)
         }
 
         fun bufferedBytes(): Int {
@@ -45,13 +45,12 @@ open class YamuxHandler(
                 val length = data.readableBytes()
                 if (length <= windowSize.get()) {
                     sendBlocks(ctx, data, windowSize, id)
-                    data.release()
                     bufferedData.removeFirst()
                 } else {
                     // partial write to fit within window
                     val toRead = windowSize.get()
                     if (toRead > 0) {
-                        val partialData = data.readSlice(toRead)
+                        val partialData = data.readRetainedSlice(toRead)
                         sendBlocks(ctx, partialData, windowSize, id)
                     }
                     break
