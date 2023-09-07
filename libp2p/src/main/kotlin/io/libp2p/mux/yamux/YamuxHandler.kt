@@ -47,8 +47,8 @@ open class YamuxHandler(
                 val length = data.readableBytes()
                 if (length <= windowSize.get()) {
                     sendBlocks(ctx, data, windowSize, id)
-                    bufferedBytes.addAndGet(-length)
                     data.release()
+                    bufferedBytes.addAndGet(-length)
                     bufferedData.removeFirst()
                 } else {
                     // partial write to fit within window
