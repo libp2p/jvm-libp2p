@@ -150,7 +150,7 @@ open class YamuxHandler(
             val buffer = sendBuffers.getOrPut(child.id) { SendBuffer(child.id, ctx) }
             buffer.add(data)
             if (calculateTotalBufferedWrites() > MAX_BUFFERED_CONNECTION_WRITES) {
-                throw Libp2pException("Overflowed send buffer for connection")
+                throw Libp2pException("Overflowed send buffer for connection ${ctx.channel().id()}")
             }
             return
         }
