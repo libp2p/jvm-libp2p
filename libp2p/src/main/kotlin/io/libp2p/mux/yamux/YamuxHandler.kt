@@ -88,14 +88,14 @@ open class YamuxHandler(
 
     private fun handleDataRead(msg: YamuxFrame) {
         handleFlags(msg)
-        val size = msg.length.toInt()
-        if (size == 0) {
-            return
-        }
         val windowSize = windowSizes[msg.id]
         if (windowSize == null) {
             releaseMessage(msg.data!!)
             throw Libp2pException("Unable to retrieve window size for ${msg.id}")
+        }
+        val size = msg.length.toInt()
+        if (size == 0) {
+            return
         }
         val ctx = getChannelHandlerContext()
         val newWindow = windowSize.addAndGet(-size)
@@ -111,15 +111,14 @@ open class YamuxHandler(
 
     private fun handleWindowUpdate(msg: YamuxFrame) {
         handleFlags(msg)
+        val windowSize = windowSizes[msg.id] ?: throw Libp2pException("Unable to retrieve window size for ${msg.id}")
         val delta = msg.length.toInt()
         if (delta == 0) {
             return
         }
-        val windowSize = windowSizes[msg.id] ?: return
         windowSize.addAndGet(delta)
-        val buffer = sendBuffers[msg.id] ?: return
         // try to send any buffered messages after the window update
-        buffer.flush(windowSize)
+        sendBuffers[msg.id]?.flush(windowSize)
     }
 
     private fun handleFlags(msg: YamuxFrame) {
