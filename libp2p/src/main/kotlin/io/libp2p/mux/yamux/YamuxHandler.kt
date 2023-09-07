@@ -30,15 +30,13 @@ open class YamuxHandler(
 
     inner class SendBuffer(val id: MuxId, val ctx: ChannelHandlerContext) {
         private val bufferedData = ArrayDeque<ByteBuf>()
-        private val bufferedBytes = AtomicInteger(0)
 
         fun add(data: ByteBuf) {
-            bufferedBytes.addAndGet(data.readableBytes())
             bufferedData.add(data.retain())
         }
 
         fun bufferedBytes(): Int {
-            return bufferedBytes.get()
+            return bufferedData.sumOf { it.readableBytes() }
         }
 
         fun flush(windowSize: AtomicInteger) {
@@ -48,7 +46,6 @@ open class YamuxHandler(
                 if (length <= windowSize.get()) {
                     sendBlocks(ctx, data, windowSize, id)
                     data.release()
-                    bufferedBytes.addAndGet(-length)
                     bufferedData.removeFirst()
                 } else {
                     // partial write to fit within window
@@ -56,7 +53,6 @@ open class YamuxHandler(
                     if (toRead > 0) {
                         val partialData = data.readSlice(toRead)
                         sendBlocks(ctx, partialData, windowSize, id)
-                        bufferedBytes.addAndGet(-toRead)
                     }
                     break
                 }
