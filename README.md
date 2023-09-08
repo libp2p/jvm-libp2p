@@ -98,14 +98,6 @@ Add the required repositories  to the `dependencyManagement` section of the pom 
   <repository>
     <id>libp2p-jvm-libp2p</id>
     <url>https://dl.cloudsmith.io/public/libp2p/jvm-libp2p/maven/</url>
-    <releases>
-      <enabled>true</enabled>
-      <updatePolicy>always</updatePolicy>
-    </releases>
-    <snapshots>
-      <enabled>true</enabled>
-      <updatePolicy>always</updatePolicy>
-    </snapshots>
   </repository>
   <repository>
     <id>JitPack</id>
