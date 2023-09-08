@@ -99,23 +99,28 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
 
     @Test
     fun `test window update`() {
-        openStream(12)
+        openStreamByLocal()
+        val streamId = readFrameOrThrow().streamId
 
-        val largeMessage = "42".repeat(INITIAL_WINDOW_SIZE + 1)
-        writeStream(12, largeMessage)
+        // reducing window size to 5
+        ech.writeInbound(
+            YamuxFrame(
+                streamId.toMuxId(),
+                YamuxType.WINDOW_UPDATE,
+                YamuxFlags.ACK,
+                -(INITIAL_WINDOW_SIZE.toLong() - 5)
+            )
+        )
 
-        // ignore ack stream frame
-        readYamuxFrameOrThrow()
+        // 3 bytes > 1/2 of window size
+        writeStream(streamId, "123456")
 
         val windowUpdateFrame = readYamuxFrameOrThrow()
 
+        // window frame is send based on the new window
         assertThat(windowUpdateFrame.flags).isZero()
         assertThat(windowUpdateFrame.type).isEqualTo(YamuxType.WINDOW_UPDATE)
-        assertThat(windowUpdateFrame.length).isEqualTo((INITIAL_WINDOW_SIZE + 1).toLong())
-
-        assertLastMessage(0, 1, largeMessage)
-
-        closeStream(12)
+        assertThat(windowUpdateFrame.length).isEqualTo((INITIAL_WINDOW_SIZE - 2).toLong())
     }
 
     @Test
@@ -139,6 +144,57 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
         ech.writeInbound(YamuxFrame(streamId.toMuxId(), YamuxType.WINDOW_UPDATE, YamuxFlags.ACK, 5000))
         val frame = readFrameOrThrow()
         assertThat(frame.data).isEqualTo("1984")
+    }
+
+    @Test
+    fun `buffered data should be partially sent if it does not fit within window`() {
+        val handler = openStreamByLocal()
+        val streamId = readFrameOrThrow().streamId
+
+        ech.writeInbound(
+            YamuxFrame(
+                streamId.toMuxId(),
+                YamuxType.WINDOW_UPDATE,
+                YamuxFlags.ACK,
+                -INITIAL_WINDOW_SIZE.toLong()
+            )
+        )
+
+        val message = "1984".fromHex().toByteBuf(allocateBuf())
+        // 2 bytes per message
+        handler.ctx.writeAndFlush(message)
+        handler.ctx.writeAndFlush(message.copy())
+
+        assertThat(readFrame()).isNull()
+
+        ech.writeInbound(
+            YamuxFrame(
+                streamId.toMuxId(),
+                YamuxType.WINDOW_UPDATE,
+                YamuxFlags.ACK,
+                3
+            )
+        )
+
+        var frame = readFrameOrThrow()
+        // one message is fully received
+        assertThat(frame.data).isEqualTo("1984")
+        frame = readFrameOrThrow()
+        // the other message is partially received
+        assertThat(frame.data).isEqualTo("19")
+        // need to wait for another window update to receive more data
+        assertThat(readFrame()).isNull()
+        // sending window update to read the final part of the buffer
+        ech.writeInbound(
+            YamuxFrame(
+                streamId.toMuxId(),
+                YamuxType.WINDOW_UPDATE,
+                YamuxFlags.ACK,
+                1
+            )
+        )
+        frame = readFrameOrThrow()
+        assertThat(frame.data).isEqualTo("84")
     }
 
     @Test
