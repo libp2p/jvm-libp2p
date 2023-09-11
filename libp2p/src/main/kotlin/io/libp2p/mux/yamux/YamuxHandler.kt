@@ -151,10 +151,15 @@ open class YamuxHandler(
 
         if (windowSize.get() <= 0) {
             // add to buffer until the window is increased
-            log.trace("Adding message of {} bytes to the send buffer for {}", data.readableBytes(), child.id)
             val buffer = sendBuffers.getOrPut(child.id) { SendBuffer(child.id, ctx) }
             buffer.add(data)
             val bufferedBytes = buffer.bufferedBytes()
+            log.trace(
+                "Added {} bytes to the send buffer for {}. Its buffer size is now {} bytes",
+                data.readableBytes(),
+                child.id,
+                bufferedBytes
+            )
             if (bufferedBytes > MAX_BUFFER_SIZE) {
                 throw Libp2pException(
                     "Overflowed send buffer ($bufferedBytes/$MAX_BUFFER_SIZE) for ${child.id}"
