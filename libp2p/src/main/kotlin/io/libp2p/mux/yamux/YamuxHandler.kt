@@ -10,12 +10,15 @@ import io.libp2p.etc.util.netty.mux.MuxId
 import io.libp2p.mux.MuxHandler
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
+import org.slf4j.LoggerFactory
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
 const val INITIAL_WINDOW_SIZE = 256 * 1024
 const val MAX_BUFFER_SIZE = 1024 * 1024
+
+private val log = LoggerFactory.getLogger(YamuxHandler::class.java)
 
 open class YamuxHandler(
     override val multistreamProtocol: MultistreamProtocol,
@@ -102,6 +105,7 @@ open class YamuxHandler(
         if (newWindow < INITIAL_WINDOW_SIZE / 2) {
             val delta = INITIAL_WINDOW_SIZE - newWindow
             windowSize.addAndGet(delta)
+            log.trace("Sending window update for {} with delta {}", msg.id, delta)
             ctx.write(YamuxFrame(msg.id, YamuxType.WINDOW_UPDATE, 0, delta.toLong()))
             ctx.flush()
         }
@@ -114,6 +118,7 @@ open class YamuxHandler(
         if (delta == 0) {
             return
         }
+        log.trace("Received window update for {} with delta {}", msg.id, delta)
         val windowSize = windowSizes[msg.id] ?: throw Libp2pException("Unable to retrieve window size for ${msg.id}")
         windowSize.addAndGet(delta)
         // try to send any buffered messages after the window update
@@ -146,6 +151,7 @@ open class YamuxHandler(
 
         if (windowSize.get() <= 0) {
             // add to buffer until the window is increased
+            log.trace("Adding message of {} bytes to the send buffer for {}", data.readableBytes(), child.id)
             val buffer = sendBuffers.getOrPut(child.id) { SendBuffer(child.id, ctx) }
             buffer.add(data)
             val bufferedBytes = buffer.bufferedBytes()
