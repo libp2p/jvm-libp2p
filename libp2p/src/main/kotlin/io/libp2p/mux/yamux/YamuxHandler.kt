@@ -171,7 +171,7 @@ open class YamuxHandler(
     }
 
     fun sendFrames(ctx: ChannelHandlerContext, data: ByteBuf, windowSize: AtomicInteger, id: MuxId) {
-        data.sliceMaxSize(minOf(windowSize.get(), maxFrameDataLength))
+        data.sliceMaxSize(maxFrameDataLength)
             .map { slicedData ->
                 val length = slicedData.readableBytes()
                 windowSize.addAndGet(-length)
