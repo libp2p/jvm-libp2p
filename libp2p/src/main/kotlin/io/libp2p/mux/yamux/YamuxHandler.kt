@@ -144,12 +144,7 @@ open class YamuxHandler(
         val windowSize =
             windowSizes[child.id] ?: throw Libp2pException("Unable to retrieve window size for ${child.id}")
 
-        if (data.readableBytes() > windowSize.get()) {
-            if (windowSize.get() > 0) {
-                // send partial data to fit within window
-                val partialData = data.readRetainedSlice(windowSize.get())
-                sendFrames(ctx, partialData, windowSize, child.id)
-            }
+        if (windowSize.get() <= 0) {
             // add to buffer until the window is increased
             val buffer = sendBuffers.getOrPut(child.id) { SendBuffer(child.id, ctx) }
             buffer.add(data)
