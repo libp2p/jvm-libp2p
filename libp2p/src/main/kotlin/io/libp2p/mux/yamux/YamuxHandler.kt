@@ -15,20 +15,21 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
 const val INITIAL_WINDOW_SIZE = 256 * 1024
-const val MAX_BUFFERED_CONNECTION_WRITES = 1024 * 1024
+const val DEFAULT_MAX_BUFFERED_CONNECTION_WRITES = 10 * 1024 * 1024 // 10 MiB
 
 open class YamuxHandler(
     override val multistreamProtocol: MultistreamProtocol,
     override val maxFrameDataLength: Int,
     ready: CompletableFuture<StreamMuxer.Session>?,
     inboundStreamHandler: StreamHandler<*>,
-    initiator: Boolean
+    initiator: Boolean,
+    private val maxBufferedConnectionWrites: Int
 ) : MuxHandler(ready, inboundStreamHandler) {
     private val idGenerator = AtomicInteger(if (initiator) 1 else 2) // 0 is reserved
     private val windowSizes = ConcurrentHashMap<MuxId, AtomicInteger>()
     private val sendBuffers = ConcurrentHashMap<MuxId, SendBuffer>()
 
-    inner class SendBuffer(val id: MuxId, val ctx: ChannelHandlerContext) {
+    private inner class SendBuffer(val id: MuxId, val ctx: ChannelHandlerContext) {
         private val bufferedData = ArrayDeque<ByteBuf>()
 
         fun add(data: ByteBuf) {
@@ -44,14 +45,14 @@ open class YamuxHandler(
                 val data = bufferedData.first()
                 val length = data.readableBytes()
                 if (length <= windowSize.get()) {
-                    sendBlocks(ctx, data, windowSize, id)
+                    sendFrames(ctx, data, windowSize, id)
                     bufferedData.removeFirst()
                 } else {
                     // partial write to fit within window
                     val toRead = windowSize.get()
                     if (toRead > 0) {
                         val partialData = data.readRetainedSlice(toRead)
-                        sendBlocks(ctx, partialData, windowSize, id)
+                        sendFrames(ctx, partialData, windowSize, id)
                     }
                     break
                 }
@@ -149,23 +150,23 @@ open class YamuxHandler(
             val buffer = sendBuffers.getOrPut(child.id) { SendBuffer(child.id, ctx) }
             buffer.add(data)
             val totalBufferedWrites = calculateTotalBufferedWrites()
-            if (totalBufferedWrites > MAX_BUFFERED_CONNECTION_WRITES) {
+            if (totalBufferedWrites > maxBufferedConnectionWrites) {
                 throw Libp2pException(
-                    "Overflowed send buffer ($totalBufferedWrites/$MAX_BUFFERED_CONNECTION_WRITES) for connection ${
+                    "Overflowed send buffer ($totalBufferedWrites/$maxBufferedConnectionWrites) for connection ${
                         ctx.channel().id().asLongText()
                     }"
                 )
             }
             return
         }
-        sendBlocks(ctx, data, windowSize, child.id)
+        sendFrames(ctx, data, windowSize, child.id)
     }
 
     private fun calculateTotalBufferedWrites(): Int {
         return sendBuffers.values.sumOf { it.bufferedBytes() }
     }
 
-    fun sendBlocks(ctx: ChannelHandlerContext, data: ByteBuf, windowSize: AtomicInteger, id: MuxId) {
+    fun sendFrames(ctx: ChannelHandlerContext, data: ByteBuf, windowSize: AtomicInteger, id: MuxId) {
         data.sliceMaxSize(minOf(windowSize.get(), maxFrameDataLength))
             .map { slicedData ->
                 val length = slicedData.readableBytes()

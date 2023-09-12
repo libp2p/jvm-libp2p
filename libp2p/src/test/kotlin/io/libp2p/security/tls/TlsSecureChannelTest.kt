@@ -19,7 +19,7 @@ val MultistreamProtocolV1: MultistreamProtocolDebug = MultistreamProtocolDebugV1
 @Tag("secure-channel")
 class TlsSecureChannelTest : SecureChannelTestBase(
     ::TlsSecureChannel,
-    listOf(StreamMuxerProtocol.Yamux.createMuxer(MultistreamProtocolV1, listOf())),
+    listOf(StreamMuxerProtocol.getYamux().createMuxer(MultistreamProtocolV1, listOf())),
     TlsSecureChannel.announce
 ) {
     @Test

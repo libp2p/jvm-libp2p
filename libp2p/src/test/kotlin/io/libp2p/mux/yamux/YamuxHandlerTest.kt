@@ -23,7 +23,8 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
             maxFrameDataLength,
             null,
             streamHandler,
-            true
+            true,
+            DEFAULT_MAX_BUFFERED_CONNECTION_WRITES
         ) {
             // MuxHandler consumes the exception. Override this behaviour for testing
             @Deprecated("Deprecated in Java")

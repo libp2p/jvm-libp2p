@@ -12,7 +12,8 @@ import java.util.concurrent.CompletableFuture
 
 class YamuxStreamMuxer(
     val inboundStreamHandler: StreamHandler<*>,
-    private val multistreamProtocol: MultistreamProtocol
+    private val multistreamProtocol: MultistreamProtocol,
+    private val maxBufferedConnectionWrites: Int
 ) : StreamMuxer, StreamMuxerDebug {
 
     override val protocolDescriptor = ProtocolDescriptor("/yamux/1.0.0")
@@ -30,7 +31,8 @@ class YamuxStreamMuxer(
                 yamuxFrameCodec.maxFrameDataLength,
                 muxSessionReady,
                 inboundStreamHandler,
-                ch.isInitiator
+                ch.isInitiator,
+                maxBufferedConnectionWrites
             )
         )
 
