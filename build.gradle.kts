@@ -6,7 +6,7 @@ import java.net.URL
 // To publish the release artifact to CloudSmith repo run the following :
 // ./gradlew publish -PcloudsmithUser=<user> -PcloudsmithApiKey=<api-key>
 
-description = "an implementation of libp2p for the jvm"
+description = "a libp2p implementation for the JVM, written in Kotlin"
 
 plugins {
     val kotlinVersion = "1.6.21"

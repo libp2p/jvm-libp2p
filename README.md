@@ -115,7 +115,6 @@ Add the library to the `dependencies` section of the pom file:
   <groupId>io.libp2p</groupId>
   <artifactId>jvm-libp2p</artifactId>
   <version>X.Y.Z-RELEASE</version>
-  <type>pom</type>
 </dependency>
 ```
 

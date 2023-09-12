@@ -1,5 +1,6 @@
 package io.libp2p.mux.yamux
 
+import io.libp2p.core.Libp2pException
 import io.libp2p.core.StreamHandler
 import io.libp2p.core.multistream.MultistreamProtocolV1
 import io.libp2p.etc.types.fromHex
@@ -8,6 +9,7 @@ import io.libp2p.mux.MuxHandler
 import io.libp2p.mux.MuxHandlerAbstractTest
 import io.libp2p.mux.MuxHandlerAbstractTest.AbstractTestMuxFrame.Flag.*
 import io.libp2p.tools.readAllBytesAndRelease
+import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -15,6 +17,8 @@ import org.junit.jupiter.api.Test
 class YamuxHandlerTest : MuxHandlerAbstractTest() {
 
     override val maxFrameDataLength = 256
+    private val maxBufferedConnectionWrites = 512
+
     private val readFrameQueue = ArrayDeque<AbstractTestMuxFrame>()
 
     override fun createMuxHandler(streamHandler: StreamHandler<*>): MuxHandler =
@@ -23,7 +27,8 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
             maxFrameDataLength,
             null,
             streamHandler,
-            true
+            true,
+            maxBufferedConnectionWrites
         ) {
             // MuxHandler consumes the exception. Override this behaviour for testing
             @Deprecated("Deprecated in Java")
@@ -195,6 +200,36 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
         )
         frame = readFrameOrThrow()
         assertThat(frame.data).isEqualTo("84")
+    }
+
+    @Test
+    fun `overflowing buffer throws an exception`() {
+        val handler = openStreamByLocal()
+        val streamId = readFrameOrThrow().streamId
+
+        ech.writeInbound(
+            YamuxFrame(
+                streamId.toMuxId(),
+                YamuxType.WINDOW_UPDATE,
+                YamuxFlags.ACK,
+                -INITIAL_WINDOW_SIZE.toLong()
+            )
+        )
+
+        val createMessage: () -> ByteBuf =
+            { "42".repeat(maxBufferedConnectionWrites / 5).fromHex().toByteBuf(allocateBuf()) }
+
+        for (i in 1..5) {
+            val writeResult = handler.ctx.writeAndFlush(createMessage())
+            assertThat(writeResult.isSuccess).isTrue()
+        }
+
+        // next message will overflow the configured buffer
+        val writeResult = handler.ctx.writeAndFlush(createMessage())
+        assertThat(writeResult.isSuccess).isFalse()
+        assertThat(writeResult.cause())
+            .isInstanceOf(Libp2pException::class.java)
+            .hasMessage("Overflowed send buffer (612/512) for connection test")
     }
 
     @Test
