@@ -8,6 +8,7 @@ import io.libp2p.mux.MuxHandler
 import io.libp2p.mux.MuxHandlerAbstractTest
 import io.libp2p.mux.MuxHandlerAbstractTest.AbstractTestMuxFrame.Flag.*
 import io.libp2p.tools.readAllBytesAndRelease
+import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -15,6 +16,8 @@ import org.junit.jupiter.api.Test
 class YamuxHandlerTest : MuxHandlerAbstractTest() {
 
     override val maxFrameDataLength = 256
+    private val maxBufferedConnectionWrites = 512
+
     private val readFrameQueue = ArrayDeque<AbstractTestMuxFrame>()
 
     override fun createMuxHandler(streamHandler: StreamHandler<*>): MuxHandler =
@@ -24,7 +27,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
             null,
             streamHandler,
             true,
-            DEFAULT_MAX_BUFFERED_CONNECTION_WRITES
+            maxBufferedConnectionWrites
         ) {
             // MuxHandler consumes the exception. Override this behaviour for testing
             @Deprecated("Deprecated in Java")
@@ -196,6 +199,29 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
         )
         frame = readFrameOrThrow()
         assertThat(frame.data).isEqualTo("84")
+    }
+
+    @Test
+    fun `should terminate connection when send buffer has overflowed`() {
+        val handler = openStreamByLocal()
+        val streamId = readFrameOrThrow().streamId
+
+        ech.writeInbound(
+            YamuxFrame(
+                streamId.toMuxId(),
+                YamuxType.WINDOW_UPDATE,
+                YamuxFlags.ACK,
+                -INITIAL_WINDOW_SIZE.toLong()
+            )
+        )
+
+        // 6 such messages will overflow the configured buffer
+        val createMessage: () -> ByteBuf =
+            { "42".repeat(maxBufferedConnectionWrites / 5).fromHex().toByteBuf(allocateBuf()) }
+
+        for (i in 1..6) {
+            handler.ctx.writeAndFlush(createMessage)
+        }
     }
 
     @Test

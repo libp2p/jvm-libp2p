@@ -58,6 +58,11 @@ open class YamuxHandler(
                 }
             }
         }
+
+        fun close() {
+            bufferedData.forEach { it.release() }
+            bufferedData.clear()
+        }
     }
 
     override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
@@ -151,6 +156,7 @@ open class YamuxHandler(
             buffer.add(data)
             val totalBufferedWrites = calculateTotalBufferedWrites()
             if (totalBufferedWrites > maxBufferedConnectionWrites) {
+                buffer.close()
                 throw Libp2pException(
                     "Overflowed send buffer ($totalBufferedWrites/$maxBufferedConnectionWrites) for connection ${
                         ctx.channel().id().asLongText()
