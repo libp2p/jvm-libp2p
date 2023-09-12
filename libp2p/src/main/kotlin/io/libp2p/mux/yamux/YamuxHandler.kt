@@ -181,8 +181,8 @@ open class YamuxHandler(
                 val length = slicedData.readableBytes()
                 windowSize.addAndGet(-length)
                 YamuxFrame(id, YamuxType.DATA, 0, length.toLong(), slicedData)
-            }.forEach { muxFrame ->
-                ctx.write(muxFrame)
+            }.forEach { frame ->
+                ctx.write(frame)
             }
         ctx.flush()
     }
