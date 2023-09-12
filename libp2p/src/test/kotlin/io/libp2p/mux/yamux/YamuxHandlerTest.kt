@@ -103,29 +103,28 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
     }
 
     @Test
-    fun `test window update`() {
+    fun `test window update is sent after more than half of the window is depleted`() {
         openStreamByLocal()
         val streamId = readFrameOrThrow().streamId
 
-        // reducing window size to 5
+        // > 1/2 window size
+        val length = (INITIAL_WINDOW_SIZE / 2) + 42
         ech.writeInbound(
             YamuxFrame(
                 streamId.toMuxId(),
-                YamuxType.WINDOW_UPDATE,
-                YamuxFlags.ACK,
-                -(INITIAL_WINDOW_SIZE.toLong() - 5)
+                YamuxType.DATA,
+                0,
+                length.toLong(),
+                "42".repeat(length).fromHex().toByteBuf(allocateBuf())
             )
         )
 
-        // 3 bytes > 1/2 of window size
-        writeStream(streamId, "123456")
-
         val windowUpdateFrame = readYamuxFrameOrThrow()
 
-        // window frame is send based on the new window
+        // window frame is sent based on the new window
         assertThat(windowUpdateFrame.flags).isZero()
         assertThat(windowUpdateFrame.type).isEqualTo(YamuxType.WINDOW_UPDATE)
-        assertThat(windowUpdateFrame.length).isEqualTo((INITIAL_WINDOW_SIZE - 2).toLong())
+        assertThat(windowUpdateFrame.length).isEqualTo(length.toLong())
     }
 
     @Test

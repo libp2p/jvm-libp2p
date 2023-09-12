@@ -26,11 +26,13 @@ open class YamuxHandler(
     private val maxBufferedConnectionWrites: Int
 ) : MuxHandler(ready, inboundStreamHandler) {
     private val idGenerator = AtomicInteger(if (initiator) 1 else 2) // 0 is reserved
-    private val windowSizes = ConcurrentHashMap<MuxId, AtomicInteger>()
+    private val sendWindowSizes = ConcurrentHashMap<MuxId, AtomicInteger>()
     private val sendBuffers = ConcurrentHashMap<MuxId, SendBuffer>()
+    private val receiveWindowSizes = ConcurrentHashMap<MuxId, AtomicInteger>()
 
-    private inner class SendBuffer(val id: MuxId, val ctx: ChannelHandlerContext) {
+    private inner class SendBuffer(val id: MuxId) {
         private val bufferedData = ArrayDeque<ByteBuf>()
+        private val ctx = getChannelHandlerContext()
 
         fun add(data: ByteBuf) {
             bufferedData.add(data)
@@ -97,10 +99,10 @@ open class YamuxHandler(
         if (size == 0) {
             return
         }
-        val windowSize = windowSizes[msg.id]
+        val windowSize = receiveWindowSizes[msg.id]
         if (windowSize == null) {
             releaseMessage(msg.data!!)
-            throw Libp2pException("Unable to retrieve window size for ${msg.id}")
+            throw Libp2pException("Unable to retrieve receive window size for ${msg.id}")
         }
         val ctx = getChannelHandlerContext()
         val newWindow = windowSize.addAndGet(-size)
@@ -120,7 +122,8 @@ open class YamuxHandler(
         if (delta == 0) {
             return
         }
-        val windowSize = windowSizes[msg.id] ?: throw Libp2pException("Unable to retrieve window size for ${msg.id}")
+        val windowSize =
+            sendWindowSizes[msg.id] ?: throw Libp2pException("Unable to retrieve send window size for ${msg.id}")
         windowSize.addAndGet(delta)
         // try to send any buffered messages after the window update
         sendBuffers[msg.id]?.flush(windowSize)
@@ -148,11 +151,11 @@ open class YamuxHandler(
         val ctx = getChannelHandlerContext()
 
         val windowSize =
-            windowSizes[child.id] ?: throw Libp2pException("Unable to retrieve window size for ${child.id}")
+            sendWindowSizes[child.id] ?: throw Libp2pException("Unable to retrieve send window size for ${child.id}")
 
         if (windowSize.get() <= 0) {
             // wait until the window is increased to send more data
-            val buffer = sendBuffers.getOrPut(child.id) { SendBuffer(child.id, ctx) }
+            val buffer = sendBuffers.getOrPut(child.id) { SendBuffer(child.id) }
             buffer.add(data)
             val totalBufferedWrites = calculateTotalBufferedWrites()
             if (totalBufferedWrites > maxBufferedConnectionWrites) {
@@ -195,12 +198,13 @@ open class YamuxHandler(
     }
 
     private fun onStreamCreate(id: MuxId) {
-        windowSizes.putIfAbsent(id, AtomicInteger(INITIAL_WINDOW_SIZE))
+        sendWindowSizes.putIfAbsent(id, AtomicInteger(INITIAL_WINDOW_SIZE))
+        receiveWindowSizes.putIfAbsent(id, AtomicInteger(INITIAL_WINDOW_SIZE))
     }
 
     override fun onLocalDisconnect(child: MuxChannel<ByteBuf>) {
         // transfer buffered data before sending FIN
-        val windowSize = windowSizes[child.id]
+        val windowSize = sendWindowSizes[child.id]
         val sendBuffer = sendBuffers.remove(child.id)
         if (windowSize != null && sendBuffer != null) {
             sendBuffer.flush(windowSize)
@@ -215,8 +219,9 @@ open class YamuxHandler(
     }
 
     override fun onChildClosed(child: MuxChannel<ByteBuf>) {
-        windowSizes.remove(child.id)
+        sendWindowSizes.remove(child.id)
         sendBuffers.remove(child.id)
+        receiveWindowSizes.remove(child.id)
     }
 
     override fun generateNextId() =
