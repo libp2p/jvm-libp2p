@@ -1,5 +1,6 @@
 package io.libp2p.mux.yamux
 
+import io.libp2p.core.Libp2pException
 import io.libp2p.core.StreamHandler
 import io.libp2p.core.multistream.MultistreamProtocolV1
 import io.libp2p.etc.types.fromHex
@@ -202,7 +203,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
     }
 
     @Test
-    fun `should terminate connection when send buffer has overflowed`() {
+    fun `overflowing buffer throws an exception`() {
         val handler = openStreamByLocal()
         val streamId = readFrameOrThrow().streamId
 
@@ -215,13 +216,20 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
             )
         )
 
-        // 6 such messages will overflow the configured buffer
         val createMessage: () -> ByteBuf =
             { "42".repeat(maxBufferedConnectionWrites / 5).fromHex().toByteBuf(allocateBuf()) }
 
-        for (i in 1..6) {
-            handler.ctx.writeAndFlush(createMessage)
+        for (i in 1..5) {
+            val writeResult = handler.ctx.writeAndFlush(createMessage())
+            assertThat(writeResult.isSuccess).isTrue()
         }
+
+        // next message will overflow the configured buffer
+        val writeResult = handler.ctx.writeAndFlush(createMessage())
+        assertThat(writeResult.isSuccess).isFalse()
+        assertThat(writeResult.cause())
+            .isInstanceOf(Libp2pException::class.java)
+            .hasMessage("Overflowed send buffer (612/512) for connection test")
     }
 
     @Test
