@@ -158,13 +158,12 @@ open class YamuxHandler(
                     val length = slicedData.readableBytes()
                     windowSize.addAndGet(-length)
                     val frame = YamuxFrame(id, YamuxType.DATA, 0, length.toLong(), slicedData)
-                    ctx.write(frame)
+                    ctx.writeAndFlush(frame)
                 } else {
                     // wait until the window is increased to send
                     addToSendBuffer(id, data, ctx)
                 }
             }
-        ctx.flush()
     }
 
     private fun addToSendBuffer(id: MuxId, data: ByteBuf, ctx: ChannelHandlerContext) {
