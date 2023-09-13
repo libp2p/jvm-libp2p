@@ -90,8 +90,7 @@ open class YamuxHandler(
         if (size == 0) {
             return
         }
-        val windowSize = receiveWindowSizes[msg.id]
-        if (windowSize == null) {
+        val windowSize = receiveWindowSizes[msg.id] ?: run {
             releaseMessage(msg.data!!)
             throw Libp2pException("Unable to retrieve receive window size for ${msg.id}")
         }
@@ -141,8 +140,7 @@ open class YamuxHandler(
     override fun onChildWrite(child: MuxChannel<ByteBuf>, data: ByteBuf) {
         val ctx = getChannelHandlerContext()
 
-        val windowSize = sendWindowSizes[child.id]
-        if (windowSize == null) {
+        val windowSize = sendWindowSizes[child.id] ?: run {
             releaseMessage(data)
             throw Libp2pException("Unable to retrieve receive send window size for ${child.id}")
         }
