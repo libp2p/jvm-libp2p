@@ -53,7 +53,7 @@ open class YamuxHandler(
         }
 
         fun close() {
-            bufferedData.forEach { it.release() }
+            bufferedData.forEach { releaseMessage(it) }
             bufferedData.clear()
         }
     }
@@ -141,8 +141,11 @@ open class YamuxHandler(
     override fun onChildWrite(child: MuxChannel<ByteBuf>, data: ByteBuf) {
         val ctx = getChannelHandlerContext()
 
-        val windowSize =
-            sendWindowSizes[child.id] ?: throw Libp2pException("Unable to retrieve send window size for ${child.id}")
+        val windowSize = sendWindowSizes[child.id]
+        if (windowSize == null) {
+            releaseMessage(data)
+            throw Libp2pException("Unable to retrieve receive send window size for ${child.id}")
+        }
 
         sendData(ctx, data, windowSize, child.id)
     }
