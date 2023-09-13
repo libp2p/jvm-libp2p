@@ -101,8 +101,8 @@ open class YamuxHandler(
         if (newWindow < INITIAL_WINDOW_SIZE / 2) {
             val delta = INITIAL_WINDOW_SIZE - newWindow
             windowSize.addAndGet(delta)
-            ctx.write(YamuxFrame(msg.id, YamuxType.WINDOW_UPDATE, 0, delta.toLong()))
-            ctx.flush()
+            val frame = YamuxFrame(msg.id, YamuxType.WINDOW_UPDATE, 0, delta.toLong())
+            ctx.writeAndFlush(frame)
         }
         childRead(msg.id, msg.data!!)
     }
