@@ -175,12 +175,12 @@ open class YamuxHandler(
             }
     }
 
-    private fun addToSendBuffer(id: MuxId, data: ByteBuf, ctx: ChannelHandlerContext) {
-        val buffer = sendBuffers.getOrPut(id) { SendBuffer(id) }
+    private fun addToSendBuffer(child: MuxChannel<ByteBuf>, data: ByteBuf, ctx: ChannelHandlerContext) {
+        val buffer = sendBuffers.getOrPut(child.id) { SendBuffer(child.id) }
         buffer.add(data)
         val totalBufferedWrites = calculateTotalBufferedWrites()
         if (totalBufferedWrites > maxBufferedConnectionWrites) {
-            buffer.close()
+            onLocalClose(child)
             throw Libp2pException(
                 "Overflowed send buffer ($totalBufferedWrites/$maxBufferedConnectionWrites) for connection ${
                     ctx.channel().id().asLongText()
@@ -206,23 +206,25 @@ open class YamuxHandler(
 
     override fun onLocalDisconnect(child: MuxChannel<ByteBuf>) {
         // transfer buffered data before sending FIN
-        val windowSize = sendWindowSizes[child.id]
+        val windowSize = sendWindowSizes.remove(child.id)
         val sendBuffer = sendBuffers.remove(child.id)
         if (windowSize != null && sendBuffer != null) {
             sendBuffer.flush(windowSize)
+            sendBuffer.close()
         }
         getChannelHandlerContext().writeAndFlush(YamuxFrame(child.id, YamuxType.DATA, YamuxFlags.FIN, 0))
     }
 
     override fun onLocalClose(child: MuxChannel<ByteBuf>) {
         // close stream immediately so not transferring buffered data
-        sendBuffers.remove(child.id)
+        sendWindowSizes.remove(child.id)
+        sendBuffers.remove(child.id)?.close()
         getChannelHandlerContext().writeAndFlush(YamuxFrame(child.id, YamuxType.DATA, YamuxFlags.RST, 0))
     }
 
     override fun onChildClosed(child: MuxChannel<ByteBuf>) {
         sendWindowSizes.remove(child.id)
-        sendBuffers.remove(child.id)
+        sendBuffers.remove(child.id)?.close()
         receiveWindowSizes.remove(child.id)
     }
 

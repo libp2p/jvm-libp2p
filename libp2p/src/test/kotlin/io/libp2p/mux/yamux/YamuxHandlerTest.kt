@@ -199,7 +199,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
     }
 
     @Test
-    fun `overflowing buffer throws an exception`() {
+    fun `overflowing buffer sends RST flag and throws an exception`() {
         val handler = openStreamByLocal()
         val streamId = readFrameOrThrow().streamId
 
@@ -226,6 +226,9 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
         assertThat(writeResult.cause())
             .isInstanceOf(Libp2pException::class.java)
             .hasMessage("Overflowed send buffer (612/512) for connection test")
+
+        val frame = readYamuxFrameOrThrow()
+        assertThat(frame.flags).isEqualTo(YamuxFlags.RST)
     }
 
     @Test
