@@ -63,7 +63,7 @@ open class YamuxHandler(
         sendBuffers.values.forEach { it.close() }
         sendBuffers.clear()
         receiveWindowSizes.clear()
-        super.channelUnregistered(ctx)
+        super.channelInactive(ctx)
     }
 
     override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
