@@ -19,6 +19,8 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
 
     override val maxFrameDataLength = 256
     private val maxBufferedConnectionWrites = 512
+    override val localMuxIdGenerator = YamuxStreamIdGenerator(isLocalConnectionInitiator).toIterator()
+    override val remoteMuxIdGenerator = YamuxStreamIdGenerator(!isLocalConnectionInitiator).toIterator()
 
     private val readFrameQueue = ArrayDeque<AbstractTestMuxFrame>()
     fun Long.toMuxId() = YamuxId(parentChannelId, this)
@@ -91,7 +93,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
     @Test
     fun `test ack new stream`() {
         // signal opening of new stream
-        openStream(12)
+        openStreamRemote(12)
 
         writeStream(12, "23")
 
@@ -106,7 +108,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
 
     @Test
     fun `test window update is sent after more than half of the window is depleted`() {
-        openStreamByLocal()
+        openStreamLocal()
         val streamId = readFrameOrThrow().streamId
 
         // > 1/2 window size
@@ -131,7 +133,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
 
     @Test
     fun `data should be buffered and sent after window increased from zero`() {
-        val handler = openStreamByLocal()
+        val handler = openStreamLocal()
         val streamId = readFrameOrThrow().streamId
 
         ech.writeInbound(
@@ -154,7 +156,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
 
     @Test
     fun `buffered data should not be sent if it does not fit within window`() {
-        val handler = openStreamByLocal()
+        val handler = openStreamLocal()
         val streamId = readFrameOrThrow().streamId
 
         ech.writeInbound(
@@ -202,7 +204,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
 
     @Test
     fun `overflowing buffer sends RST flag and throws an exception`() {
-        val handler = openStreamByLocal()
+        val handler = openStreamLocal()
         val streamId = readFrameOrThrow().streamId
 
         ech.writeInbound(
@@ -284,8 +286,16 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
         val correctRemoteId = 10L + if (isRemoteConnectionInitiator) 1 else 0
         val incorrectId = correctRemoteId + 1
         Assertions.assertThrows(Libp2pException::class.java) {
-            openStream(incorrectId)
+            openStreamRemote(incorrectId)
         }
         assertThat(ech.isOpen).isFalse()
+    }
+
+    companion object {
+        private fun YamuxStreamIdGenerator.toIterator() = iterator {
+            while (true) {
+                yield(this@toIterator.next())
+            }
+        }
     }
 }

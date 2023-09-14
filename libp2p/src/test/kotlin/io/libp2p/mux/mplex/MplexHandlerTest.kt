@@ -16,6 +16,9 @@ class MplexHandlerTest : MuxHandlerAbstractTest() {
 
     override val maxFrameDataLength = 256
 
+    override val localMuxIdGenerator = (0L..Long.MAX_VALUE).iterator()
+    override val remoteMuxIdGenerator = (0L..Long.MAX_VALUE).iterator()
+
     override fun createMuxHandler(streamHandler: StreamHandler<*>): MuxHandler =
         object : MplexHandler(
             MultistreamProtocolV1,
