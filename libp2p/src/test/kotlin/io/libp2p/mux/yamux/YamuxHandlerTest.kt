@@ -237,8 +237,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
 
     @Test
     fun `test ping`() {
-        val id: Long = 0
-        openStream(id)
+        val id: Long = YamuxId.SESSION_STREAM_ID
         ech.writeInbound(
             YamuxFrame(
                 id.toMuxId(),
