@@ -165,6 +165,15 @@ open class YamuxHandler(
         goAwayPromise.complete(msg.length)
     }
 
+    override fun isChildWritable(child: MuxChannel<ByteBuf>): Boolean {
+        val windowSize = windowSizes[child.id]?.send
+        return if (windowSize == null) {
+            false
+        } else {
+            windowSize.get() > 0
+        }
+    }
+
     override fun onChildWrite(child: MuxChannel<ByteBuf>, data: ByteBuf) {
         val windowSize = windowSizes[child.id]?.send
         if (windowSize == null) {

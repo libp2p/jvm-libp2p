@@ -32,6 +32,10 @@ class MuxChannel<TData>(
         initializer(this)
     }
 
+    override fun isWritable(): Boolean {
+        return super.isWritable() && parent.isChildWritable(this)
+    }
+
     override fun doWrite(buf: ChannelOutboundBuffer) {
         while (true) {
             val msg = buf.current() ?: break

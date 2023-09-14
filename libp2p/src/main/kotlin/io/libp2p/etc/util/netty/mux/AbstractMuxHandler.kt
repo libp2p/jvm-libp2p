@@ -83,6 +83,8 @@ abstract class AbstractMuxHandler<TData>() :
      */
     abstract fun releaseMessage(msg: TData)
 
+    abstract fun isChildWritable(child: MuxChannel<TData>): Boolean
+
     abstract fun onChildWrite(child: MuxChannel<TData>, data: TData)
 
     protected fun onRemoteOpen(id: MuxId) {
