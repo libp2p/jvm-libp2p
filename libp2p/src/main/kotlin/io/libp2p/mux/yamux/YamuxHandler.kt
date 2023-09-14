@@ -22,10 +22,10 @@ open class YamuxHandler(
     override val maxFrameDataLength: Int,
     ready: CompletableFuture<StreamMuxer.Session>?,
     inboundStreamHandler: StreamHandler<*>,
-    initiator: Boolean,
+    private val connectionInitiator: Boolean,
     private val maxBufferedConnectionWrites: Int
 ) : MuxHandler(ready, inboundStreamHandler) {
-    private val idGenerator = YamuxStreamIdGenerator(initiator)
+    private val idGenerator = YamuxStreamIdGenerator(connectionInitiator)
     private val sendWindowSizes = ConcurrentHashMap<MuxId, AtomicInteger>()
     private val sendBuffers = ConcurrentHashMap<MuxId, SendBuffer>()
     private val receiveWindowSizes = ConcurrentHashMap<MuxId, AtomicInteger>()
@@ -129,10 +129,26 @@ open class YamuxHandler(
         sendBuffers[msg.id]?.flush(windowSize)
     }
 
+    private fun validateSynRemoteMuxId(id: MuxId) {
+        val isRemoteConnectionInitiator = !connectionInitiator
+        try {
+            if (!YamuxStreamIdGenerator.isRemoteSynStreamIdValid(isRemoteConnectionInitiator, id.id)) {
+                throw Libp2pException("Invalid remote SYN StreamID: $id, isRemoteInitiator: $isRemoteConnectionInitiator")
+            }
+            if (sendWindowSizes.containsKey(id) || receiveWindowSizes.containsKey(id)) {
+                throw Libp2pException("Remote party attempts to open a stream with existing id: $id")
+            }
+        } catch (e: Libp2pException) {
+            getChannelHandlerContext().close()
+            throw e
+        }
+    }
+
     private fun handleFlags(msg: YamuxFrame) {
         val ctx = getChannelHandlerContext()
         when (msg.flags) {
             YamuxFlags.SYN -> {
+                validateSynRemoteMuxId(msg.id)
                 onRemoteYamuxOpen(msg.id)
                 // ACK the new stream
                 ctx.writeAndFlush(YamuxFrame(msg.id, YamuxType.WINDOW_UPDATE, YamuxFlags.ACK, 0))

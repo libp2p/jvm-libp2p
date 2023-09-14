@@ -6,7 +6,6 @@ import io.libp2p.core.StreamHandler
 import io.libp2p.etc.types.fromHex
 import io.libp2p.etc.types.getX
 import io.libp2p.etc.types.toHex
-import io.libp2p.etc.util.netty.mux.MuxId
 import io.libp2p.etc.util.netty.mux.RemoteWriteClosed
 import io.libp2p.etc.util.netty.nettyInitializer
 import io.libp2p.mux.MuxHandlerAbstractTest.AbstractTestMuxFrame.Flag.*
@@ -38,6 +37,7 @@ abstract class MuxHandlerAbstractTest {
 
     val allocatedBufs = mutableListOf<ByteBuf>()
     val activeEventHandlers = mutableListOf<TestEventHandler>()
+    val isLocalConnectionInitiator = true
 
     abstract val maxFrameDataLength: Int
     abstract fun createMuxHandler(streamHandler: StreamHandler<*>): MuxHandler
@@ -70,7 +70,7 @@ abstract class MuxHandlerAbstractTest {
             }
         multistreamHandler = createMuxHandler(streamHandler)
 
-        ech = TestChannel("test", true, LoggingHandler(LogLevel.ERROR), multistreamHandler)
+        ech = TestChannel("test", isLocalConnectionInitiator, LoggingHandler(LogLevel.ERROR), multistreamHandler)
     }
 
     @AfterEach
@@ -319,6 +319,16 @@ abstract class MuxHandlerAbstractTest {
 
         assertThrows(ConnectionClosedException::class.java) { staleStream.stream.getX(3.0) }
         assertHandlerCount(0)
+    }
+
+    @Test
+    fun `opening a stream with existing id causes connection close`() {
+        openStream(34)
+        assertThrows(Libp2pException::class.java) {
+            openStream(34)
+        }
+
+        assertThat(ech.isOpen).isFalse()
     }
 
     @Test

@@ -8,11 +8,11 @@ import io.libp2p.etc.types.toHex
 import io.libp2p.mux.MuxHandler
 import io.libp2p.mux.MuxHandlerAbstractTest
 import io.libp2p.mux.MuxHandlerAbstractTest.AbstractTestMuxFrame.Flag.*
-import io.libp2p.mux.mplex.MplexId
 import io.libp2p.tools.readAllBytesAndRelease
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 
 class YamuxHandlerTest : MuxHandlerAbstractTest() {
@@ -276,5 +276,16 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
         // verify session termination
         assertThat(childHandlers[0].isHandlerRemoved).isTrue()
         assertThat(childHandlers[0].isUnregistered).isTrue()
+    }
+
+    @Test
+    fun `opening a stream with wrong streamId parity should throw and close connection`() {
+        val isRemoteConnectionInitiator = !isLocalConnectionInitiator
+        val correctRemoteId = 10L + if (isRemoteConnectionInitiator) 1 else 0
+        val incorrectId = correctRemoteId + 1
+        Assertions.assertThrows(Libp2pException::class.java) {
+            openStream(incorrectId)
+        }
+        assertThat(ech.isOpen).isFalse()
     }
 }
