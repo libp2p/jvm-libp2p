@@ -102,14 +102,13 @@ open class YamuxHandler(
             releaseMessage(msg.data!!)
             throw Libp2pException("Unable to retrieve receive window size for ${msg.id}")
         }
-        val ctx = getChannelHandlerContext()
         val newWindow = windowSize.addAndGet(-size)
         // send a window update frame once half of the window is depleted
         if (newWindow < INITIAL_WINDOW_SIZE / 2) {
             val delta = INITIAL_WINDOW_SIZE - newWindow
             windowSize.addAndGet(delta)
             val frame = YamuxFrame(msg.id, YamuxType.WINDOW_UPDATE, 0, delta.toLong())
-            ctx.writeAndFlush(frame)
+            getChannelHandlerContext().writeAndFlush(frame)
         }
         childRead(msg.id, msg.data!!)
     }
@@ -146,44 +145,46 @@ open class YamuxHandler(
     }
 
     override fun onChildWrite(child: MuxChannel<ByteBuf>, data: ByteBuf) {
-        val ctx = getChannelHandlerContext()
-
         val windowSize = sendWindowSizes[child.id] ?: run {
             releaseMessage(data)
-            throw Libp2pException("Unable to retrieve receive send window size for ${child.id}")
+            throw Libp2pException("Unable to retrieve send window size for ${child.id}")
         }
 
-        sendData(ctx, data, windowSize, child.id)
+        sendData(child, windowSize, data)
     }
 
     private fun calculateTotalBufferedWrites(): Int {
         return sendBuffers.values.sumOf { it.bufferedBytes() }
     }
 
-    private fun sendData(ctx: ChannelHandlerContext, data: ByteBuf, windowSize: AtomicInteger, id: MuxId) {
+    private fun sendData(
+        child: MuxChannel<ByteBuf>,
+        windowSize: AtomicInteger,
+        data: ByteBuf
+    ) {
         data.sliceMaxSize(maxFrameDataLength)
             .forEach { slicedData ->
                 if (windowSize.get() > 0) {
                     val length = slicedData.readableBytes()
                     windowSize.addAndGet(-length)
-                    val frame = YamuxFrame(id, YamuxType.DATA, 0, length.toLong(), slicedData)
-                    ctx.writeAndFlush(frame)
+                    val frame = YamuxFrame(child.id, YamuxType.DATA, 0, length.toLong(), slicedData)
+                    getChannelHandlerContext().writeAndFlush(frame)
                 } else {
                     // wait until the window is increased to send
-                    addToSendBuffer(id, data, ctx)
+                    addToSendBuffer(child, data)
                 }
             }
     }
 
-    private fun addToSendBuffer(id: MuxId, data: ByteBuf, ctx: ChannelHandlerContext) {
-        val buffer = sendBuffers.getOrPut(id) { SendBuffer(id) }
+    private fun addToSendBuffer(child: MuxChannel<ByteBuf>, data: ByteBuf) {
+        val buffer = sendBuffers.getOrPut(child.id) { SendBuffer(child.id) }
         buffer.add(data)
         val totalBufferedWrites = calculateTotalBufferedWrites()
         if (totalBufferedWrites > maxBufferedConnectionWrites) {
-            buffer.close()
+            onLocalClose(child)
             throw Libp2pException(
                 "Overflowed send buffer ($totalBufferedWrites/$maxBufferedConnectionWrites) for connection ${
-                    ctx.channel().id().asLongText()
+                    getChannelHandlerContext().channel().id().asLongText()
                 }"
             )
         }
@@ -206,23 +207,25 @@ open class YamuxHandler(
 
     override fun onLocalDisconnect(child: MuxChannel<ByteBuf>) {
         // transfer buffered data before sending FIN
-        val windowSize = sendWindowSizes[child.id]
+        val windowSize = sendWindowSizes.remove(child.id)
         val sendBuffer = sendBuffers.remove(child.id)
         if (windowSize != null && sendBuffer != null) {
             sendBuffer.flush(windowSize)
+            sendBuffer.close()
         }
         getChannelHandlerContext().writeAndFlush(YamuxFrame(child.id, YamuxType.DATA, YamuxFlags.FIN, 0))
     }
 
     override fun onLocalClose(child: MuxChannel<ByteBuf>) {
         // close stream immediately so not transferring buffered data
-        sendBuffers.remove(child.id)
+        sendWindowSizes.remove(child.id)
+        sendBuffers.remove(child.id)?.close()
         getChannelHandlerContext().writeAndFlush(YamuxFrame(child.id, YamuxType.DATA, YamuxFlags.RST, 0))
     }
 
     override fun onChildClosed(child: MuxChannel<ByteBuf>) {
         sendWindowSizes.remove(child.id)
-        sendBuffers.remove(child.id)
+        sendBuffers.remove(child.id)?.close()
         receiveWindowSizes.remove(child.id)
     }
 
