@@ -151,7 +151,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
     }
 
     @Test
-    fun `buffered data should be partially sent if it does not fit within window`() {
+    fun `buffered data should not be sent if it does not fit within window`() {
         val handler = openStreamByLocal()
         val streamId = readFrameOrThrow().streamId
 
@@ -176,19 +176,16 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
                 streamId.toMuxId(),
                 YamuxType.WINDOW_UPDATE,
                 YamuxFlags.ACK,
-                3
+                2
             )
         )
 
         var frame = readFrameOrThrow()
-        // one message is fully received
+        // one message is received
         assertThat(frame.data).isEqualTo("1984")
-        frame = readFrameOrThrow()
-        // the other message is partially received
-        assertThat(frame.data).isEqualTo("19")
-        // need to wait for another window update to receive more data
+        // need to wait for another window update to send more data
         assertThat(readFrame()).isNull()
-        // sending window update to read the final part of the buffer
+        // sending window update
         ech.writeInbound(
             YamuxFrame(
                 streamId.toMuxId(),
@@ -198,7 +195,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
             )
         )
         frame = readFrameOrThrow()
-        assertThat(frame.data).isEqualTo("84")
+        assertThat(frame.data).isEqualTo("1984")
     }
 
     @Test
