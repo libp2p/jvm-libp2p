@@ -201,12 +201,13 @@ open class YamuxHandler(
                     val frame = YamuxFrame(child.id, YamuxType.DATA, 0, length.toLong(), slicedData)
                     getChannelHandlerContext().writeAndFlush(frame)
                 } else {
-                    // wait until the window is increased to send
+                    // add to internal outbound buffer until the window is increased
                     addToSendBuffer(child, data)
                 }
             }
     }
 
+    // Can't rely only on the Netty outbound buffer to handle window updates, so specifying an internal outbound buffer
     private fun addToSendBuffer(child: MuxChannel<ByteBuf>, data: ByteBuf) {
         val buffer = sendBuffers.getOrPut(child.id) { SendBuffer(child.id) }
         buffer.add(data)
