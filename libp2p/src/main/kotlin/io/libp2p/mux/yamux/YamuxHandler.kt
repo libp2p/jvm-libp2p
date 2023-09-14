@@ -138,16 +138,9 @@ open class YamuxHandler(
 
     private fun validateSynRemoteMuxId(id: MuxId) {
         val isRemoteConnectionInitiator = !connectionInitiator
-        try {
-            if (!YamuxStreamIdGenerator.isRemoteSynStreamIdValid(isRemoteConnectionInitiator, id.id)) {
-                throw Libp2pException("Invalid remote SYN StreamID: $id, isRemoteInitiator: $isRemoteConnectionInitiator")
-            }
-            if (sendWindowSizes.containsKey(id) || receiveWindowSizes.containsKey(id)) {
-                throw Libp2pException("Remote party attempts to open a stream with existing id: $id")
-            }
-        } catch (e: Libp2pException) {
+        if (!YamuxStreamIdGenerator.isRemoteSynStreamIdValid(isRemoteConnectionInitiator, id.id)) {
             getChannelHandlerContext().close()
-            throw e
+            throw Libp2pException("Invalid remote SYN StreamID: $id, isRemoteInitiator: $isRemoteConnectionInitiator")
         }
     }
 
