@@ -16,7 +16,9 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
 const val INITIAL_WINDOW_SIZE = 256 * 1024
-const val DEFAULT_MAX_BUFFERED_CONNECTION_WRITES = 10 * 1024 * 1024 // 10 MiB
+
+// defaulting the maxBufferedConnectionWrites to 150 MiB as a band-aid fix until proper backpressure is implemented
+const val DEFAULT_MAX_BUFFERED_CONNECTION_WRITES = 150 * 1024 * 1024
 
 open class YamuxHandler(
     override val multistreamProtocol: MultistreamProtocol,
