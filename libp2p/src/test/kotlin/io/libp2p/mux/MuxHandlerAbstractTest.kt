@@ -94,8 +94,6 @@ abstract class MuxHandlerAbstractTest {
         enum class Flag { Open, Data, Close, Reset }
     }
 
-    fun Long.toMuxId() = MuxId(parentChannelId, this, true)
-
     abstract fun writeFrame(frame: AbstractTestMuxFrame)
     abstract fun readFrame(): AbstractTestMuxFrame?
     fun readFrameOrThrow() = readFrame() ?: throw AssertionError("No outbound frames")

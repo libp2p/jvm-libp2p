@@ -8,6 +8,7 @@ import io.libp2p.etc.types.toHex
 import io.libp2p.mux.MuxHandler
 import io.libp2p.mux.MuxHandlerAbstractTest
 import io.libp2p.mux.MuxHandlerAbstractTest.AbstractTestMuxFrame.Flag.*
+import io.libp2p.mux.mplex.MplexId
 import io.libp2p.tools.readAllBytesAndRelease
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
@@ -20,6 +21,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
     private val maxBufferedConnectionWrites = 512
 
     private val readFrameQueue = ArrayDeque<AbstractTestMuxFrame>()
+    fun Long.toMuxId() = YamuxId(parentChannelId, this)
 
     override fun createMuxHandler(streamHandler: StreamHandler<*>): MuxHandler =
         object : YamuxHandler(

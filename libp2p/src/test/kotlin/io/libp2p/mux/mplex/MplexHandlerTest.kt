@@ -4,6 +4,7 @@ import io.libp2p.core.StreamHandler
 import io.libp2p.core.multistream.MultistreamProtocolV1
 import io.libp2p.etc.types.fromHex
 import io.libp2p.etc.types.toHex
+import io.libp2p.etc.util.netty.mux.MuxId
 import io.libp2p.mux.MuxHandler
 import io.libp2p.mux.MuxHandlerAbstractTest
 import io.libp2p.mux.MuxHandlerAbstractTest.AbstractTestMuxFrame.Flag.*
@@ -30,7 +31,7 @@ class MplexHandlerTest : MuxHandlerAbstractTest() {
         }
 
     override fun writeFrame(frame: AbstractTestMuxFrame) {
-        val muxId = frame.streamId.toMuxId()
+        val muxId = MplexId(parentChannelId, frame.streamId, true)
         val mplexFlag = when (frame.flag) {
             Open -> MplexFlag.Type.OPEN
             Data -> MplexFlag.Type.DATA

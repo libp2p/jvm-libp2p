@@ -25,7 +25,7 @@ open class YamuxHandler(
     initiator: Boolean,
     private val maxBufferedConnectionWrites: Int
 ) : MuxHandler(ready, inboundStreamHandler) {
-    private val idGenerator = AtomicInteger(if (initiator) 1 else 2) // 0 is reserved
+    private val idGenerator = YamuxStreamIdGenerator(initiator)
     private val sendWindowSizes = ConcurrentHashMap<MuxId, AtomicInteger>()
     private val sendBuffers = ConcurrentHashMap<MuxId, SendBuffer>()
     private val receiveWindowSizes = ConcurrentHashMap<MuxId, AtomicInteger>()
@@ -82,7 +82,7 @@ open class YamuxHandler(
         when (msg.flags) {
             YamuxFlags.SYN -> ctx.writeAndFlush(
                 YamuxFrame(
-                    MuxId(msg.id.parentId, 0, msg.id.initiator),
+                    YamuxId.sessionId(msg.id.parentId),
                     YamuxType.PING,
                     YamuxFlags.ACK,
                     msg.length
@@ -225,5 +225,5 @@ open class YamuxHandler(
     }
 
     override fun generateNextId() =
-        MuxId(getChannelHandlerContext().channel().id(), idGenerator.addAndGet(2).toLong(), true)
+        YamuxId(getChannelHandlerContext().channel().id(), idGenerator.next())
 }

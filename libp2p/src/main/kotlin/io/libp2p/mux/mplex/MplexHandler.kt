@@ -22,7 +22,7 @@ open class MplexHandler(
     private val idGenerator = AtomicLong(0xF)
 
     override fun generateNextId() =
-        MuxId(getChannelHandlerContext().channel().id(), idGenerator.incrementAndGet(), true)
+        MplexId(getChannelHandlerContext().channel().id(), idGenerator.incrementAndGet(), true)
 
     override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
         msg as MplexFrame
