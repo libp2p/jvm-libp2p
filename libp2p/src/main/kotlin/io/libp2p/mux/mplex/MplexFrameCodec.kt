@@ -15,7 +15,6 @@ package io.libp2p.mux.mplex
 import io.libp2p.core.ProtocolViolationException
 import io.libp2p.etc.types.readUvarint
 import io.libp2p.etc.types.writeUvarint
-import io.libp2p.etc.util.netty.mux.MuxId
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.codec.ByteToMessageCodec

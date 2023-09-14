@@ -4,7 +4,6 @@ import io.libp2p.core.StreamHandler
 import io.libp2p.core.multistream.MultistreamProtocolV1
 import io.libp2p.etc.types.fromHex
 import io.libp2p.etc.types.toHex
-import io.libp2p.etc.util.netty.mux.MuxId
 import io.libp2p.mux.MuxHandler
 import io.libp2p.mux.MuxHandlerAbstractTest
 import io.libp2p.mux.MuxHandlerAbstractTest.AbstractTestMuxFrame.Flag.*
