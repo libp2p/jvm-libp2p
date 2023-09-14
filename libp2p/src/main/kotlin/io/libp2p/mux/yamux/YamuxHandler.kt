@@ -27,9 +27,8 @@ open class YamuxHandler(
     private val maxBufferedConnectionWrites: Int
 ) : MuxHandler(ready, inboundStreamHandler) {
     private val idGenerator = YamuxStreamIdGenerator(connectionInitiator)
-    private val sendWindowSizes = ConcurrentHashMap<MuxId, AtomicInteger>()
+    private val windowSizes = ConcurrentHashMap<MuxId, AtomicInteger>()
     private val sendBuffers = ConcurrentHashMap<MuxId, SendBuffer>()
-    private val receiveWindowSizes = ConcurrentHashMap<MuxId, AtomicInteger>()
 
     /**
      * Would contain GoAway error code when received, or would be completed with [ConnectionClosedException]
@@ -66,10 +65,9 @@ open class YamuxHandler(
     }
 
     override fun channelUnregistered(ctx: ChannelHandlerContext?) {
-        sendWindowSizes.clear()
+        windowSizes.clear()
         sendBuffers.values.forEach { it.close() }
         sendBuffers.clear()
-        receiveWindowSizes.clear()
         if (!goAwayPromise.isDone) {
             goAwayPromise.completeExceptionally(ConnectionClosedException("Connection was closed without Go Away message"))
         }
@@ -108,10 +106,12 @@ open class YamuxHandler(
         if (size == 0) {
             return
         }
-        val windowSize = receiveWindowSizes[msg.id] ?: run {
+        val windowSize = windowSizes[msg.id]
+        if (windowSize == null) {
             releaseMessage(msg.data!!)
-            throw Libp2pException("Unable to retrieve receive window size for ${msg.id}")
+            throw Libp2pException("Unable to retrieve window size for ${msg.id}")
         }
+
         val newWindow = windowSize.addAndGet(-size)
         // send a window update frame once half of the window is depleted
         if (newWindow < INITIAL_WINDOW_SIZE / 2) {
@@ -130,7 +130,7 @@ open class YamuxHandler(
             return
         }
         val windowSize =
-            sendWindowSizes[msg.id] ?: throw Libp2pException("Unable to retrieve send window size for ${msg.id}")
+            windowSizes[msg.id] ?: throw Libp2pException("Unable to retrieve window size for ${msg.id}")
         windowSize.addAndGet(delta)
         // try to send any buffered messages after the window update
         sendBuffers[msg.id]?.flush(windowSize)
@@ -164,9 +164,10 @@ open class YamuxHandler(
     }
 
     override fun onChildWrite(child: MuxChannel<ByteBuf>, data: ByteBuf) {
-        val windowSize = sendWindowSizes[child.id] ?: run {
+        val windowSize = windowSizes[child.id]
+        if (windowSize == null) {
             releaseMessage(data)
-            throw Libp2pException("Unable to retrieve send window size for ${child.id}")
+            throw Libp2pException("Unable to retrieve window size for ${child.id}")
         }
 
         sendData(child, windowSize, data)
@@ -220,13 +221,12 @@ open class YamuxHandler(
     }
 
     private fun onStreamCreate(id: MuxId) {
-        sendWindowSizes.putIfAbsent(id, AtomicInteger(INITIAL_WINDOW_SIZE))
-        receiveWindowSizes.putIfAbsent(id, AtomicInteger(INITIAL_WINDOW_SIZE))
+        windowSizes.putIfAbsent(id, AtomicInteger(INITIAL_WINDOW_SIZE))
     }
 
     override fun onLocalDisconnect(child: MuxChannel<ByteBuf>) {
         // transfer buffered data before sending FIN
-        val windowSize = sendWindowSizes.remove(child.id)
+        val windowSize = windowSizes[child.id]
         val sendBuffer = sendBuffers.remove(child.id)
         if (windowSize != null && sendBuffer != null) {
             sendBuffer.flush(windowSize)
@@ -237,15 +237,14 @@ open class YamuxHandler(
 
     override fun onLocalClose(child: MuxChannel<ByteBuf>) {
         // close stream immediately so not transferring buffered data
-        sendWindowSizes.remove(child.id)
+        windowSizes.remove(child.id)
         sendBuffers.remove(child.id)?.close()
         getChannelHandlerContext().writeAndFlush(YamuxFrame(child.id, YamuxType.DATA, YamuxFlags.RST, 0))
     }
 
     override fun onChildClosed(child: MuxChannel<ByteBuf>) {
-        sendWindowSizes.remove(child.id)
+        windowSizes.remove(child.id)
         sendBuffers.remove(child.id)?.close()
-        receiveWindowSizes.remove(child.id)
     }
 
     override fun generateNextId() =
