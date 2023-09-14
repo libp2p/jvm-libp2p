@@ -1,5 +1,6 @@
 package io.libp2p.mux.yamux
 
+import io.libp2p.core.ConnectionClosedException
 import io.libp2p.core.Libp2pException
 import io.libp2p.core.StreamHandler
 import io.libp2p.core.multistream.MultistreamProtocol
@@ -22,13 +23,19 @@ open class YamuxHandler(
     override val maxFrameDataLength: Int,
     ready: CompletableFuture<StreamMuxer.Session>?,
     inboundStreamHandler: StreamHandler<*>,
-    initiator: Boolean,
+    private val connectionInitiator: Boolean,
     private val maxBufferedConnectionWrites: Int
 ) : MuxHandler(ready, inboundStreamHandler) {
-    private val idGenerator = AtomicInteger(if (initiator) 1 else 2) // 0 is reserved
+    private val idGenerator = YamuxStreamIdGenerator(connectionInitiator)
     private val sendWindowSizes = ConcurrentHashMap<MuxId, AtomicInteger>()
     private val sendBuffers = ConcurrentHashMap<MuxId, SendBuffer>()
     private val receiveWindowSizes = ConcurrentHashMap<MuxId, AtomicInteger>()
+
+    /**
+     * Would contain GoAway error code when received, or would be completed with [ConnectionClosedException]
+     * when the connection closed without GoAway message
+     */
+    val goAwayPromise = CompletableFuture<Long>()
 
     private inner class SendBuffer(val id: MuxId) {
         private val bufferedData = ArrayDeque<ByteBuf>()
@@ -63,6 +70,9 @@ open class YamuxHandler(
         sendBuffers.values.forEach { it.close() }
         sendBuffers.clear()
         receiveWindowSizes.clear()
+        if (!goAwayPromise.isDone) {
+            goAwayPromise.completeExceptionally(ConnectionClosedException("Connection was closed without Go Away message"))
+        }
         super.channelUnregistered(ctx)
     }
 
@@ -81,7 +91,7 @@ open class YamuxHandler(
         when (msg.flags) {
             YamuxFlags.SYN -> ctx.writeAndFlush(
                 YamuxFrame(
-                    MuxId(msg.id.parentId, 0, msg.id.initiator),
+                    YamuxId.sessionId(msg.id.parentId),
                     YamuxType.PING,
                     YamuxFlags.ACK,
                     msg.length
@@ -126,10 +136,19 @@ open class YamuxHandler(
         sendBuffers[msg.id]?.flush(windowSize)
     }
 
+    private fun validateSynRemoteMuxId(id: MuxId) {
+        val isRemoteConnectionInitiator = !connectionInitiator
+        if (!YamuxStreamIdGenerator.isRemoteSynStreamIdValid(isRemoteConnectionInitiator, id.id)) {
+            getChannelHandlerContext().close()
+            throw Libp2pException("Invalid remote SYN StreamID: $id, isRemoteInitiator: $isRemoteConnectionInitiator")
+        }
+    }
+
     private fun handleFlags(msg: YamuxFrame) {
         val ctx = getChannelHandlerContext()
         when (msg.flags) {
             YamuxFlags.SYN -> {
+                validateSynRemoteMuxId(msg.id)
                 onRemoteYamuxOpen(msg.id)
                 // ACK the new stream
                 ctx.writeAndFlush(YamuxFrame(msg.id, YamuxType.WINDOW_UPDATE, YamuxFlags.ACK, 0))
@@ -141,7 +160,7 @@ open class YamuxHandler(
     }
 
     private fun handleGoAway(msg: YamuxFrame) {
-        onRemoteClose(msg.id)
+        goAwayPromise.complete(msg.length)
     }
 
     override fun onChildWrite(child: MuxChannel<ByteBuf>, data: ByteBuf) {
@@ -230,5 +249,5 @@ open class YamuxHandler(
     }
 
     override fun generateNextId() =
-        MuxId(getChannelHandlerContext().channel().id(), idGenerator.addAndGet(2).toLong(), true)
+        YamuxId(getChannelHandlerContext().channel().id(), idGenerator.next())
 }

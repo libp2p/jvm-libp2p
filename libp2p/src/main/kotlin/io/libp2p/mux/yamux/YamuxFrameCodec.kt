@@ -1,7 +1,6 @@
 package io.libp2p.mux.yamux
 
 import io.libp2p.core.ProtocolViolationException
-import io.libp2p.etc.util.netty.mux.MuxId
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 import io.netty.channel.ChannelHandlerContext
@@ -13,7 +12,6 @@ const val DEFAULT_MAX_YAMUX_FRAME_DATA_LENGTH = 1 shl 20
  * A Netty codec implementation that converts [YamuxFrame] instances to [ByteBuf] and vice-versa.
  */
 class YamuxFrameCodec(
-    val isInitiator: Boolean,
     val maxFrameDataLength: Int = DEFAULT_MAX_YAMUX_FRAME_DATA_LENGTH
 ) : ByteToMessageCodec<YamuxFrame>() {
 
@@ -51,9 +49,10 @@ class YamuxFrameCodec(
             val flags = msg.readUnsignedShort()
             val streamId = msg.readUnsignedInt()
             val length = msg.readUnsignedInt()
+            val yamuxId = YamuxId(ctx.channel().id(), streamId)
             if (type.toInt() != YamuxType.DATA) {
                 val yamuxFrame = YamuxFrame(
-                    MuxId(ctx.channel().id(), streamId, isInitiator.xor(streamId.mod(2) == 1).not()),
+                    yamuxId,
                     type.toInt(),
                     flags,
                     length
@@ -74,7 +73,7 @@ class YamuxFrameCodec(
             val data = msg.readSlice(length.toInt())
             data.retain() // MessageToMessageCodec releases original buffer, but it needs to be relayed
             val yamuxFrame = YamuxFrame(
-                MuxId(ctx.channel().id(), streamId, isInitiator.xor(streamId.mod(2) == 1).not()),
+                yamuxId,
                 type.toInt(),
                 flags,
                 length,

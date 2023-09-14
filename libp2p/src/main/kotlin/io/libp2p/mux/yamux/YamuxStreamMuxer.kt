@@ -22,7 +22,7 @@ class YamuxStreamMuxer(
     override fun initChannel(ch: P2PChannel, selectedProtocol: String): CompletableFuture<out StreamMuxer.Session> {
         val muxSessionReady = CompletableFuture<StreamMuxer.Session>()
 
-        val yamuxFrameCodec = YamuxFrameCodec(ch.isInitiator)
+        val yamuxFrameCodec = YamuxFrameCodec()
         ch.pushHandler(yamuxFrameCodec)
         muxFramesDebugHandler?.also { it.visit(ch as Connection) }
         ch.pushHandler(

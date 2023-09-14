@@ -12,14 +12,18 @@ import io.libp2p.tools.readAllBytesAndRelease
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 
 class YamuxHandlerTest : MuxHandlerAbstractTest() {
 
     override val maxFrameDataLength = 256
     private val maxBufferedConnectionWrites = 512
+    override val localMuxIdGenerator = YamuxStreamIdGenerator(isLocalConnectionInitiator).toIterator()
+    override val remoteMuxIdGenerator = YamuxStreamIdGenerator(!isLocalConnectionInitiator).toIterator()
 
     private val readFrameQueue = ArrayDeque<AbstractTestMuxFrame>()
+    fun Long.toMuxId() = YamuxId(parentChannelId, this)
 
     override fun createMuxHandler(streamHandler: StreamHandler<*>): MuxHandler =
         object : YamuxHandler(
@@ -89,7 +93,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
     @Test
     fun `test ack new stream`() {
         // signal opening of new stream
-        openStream(12)
+        openStreamRemote(12)
 
         writeStream(12, "23")
 
@@ -104,7 +108,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
 
     @Test
     fun `test window update is sent after more than half of the window is depleted`() {
-        openStreamByLocal()
+        openStreamLocal()
         val streamId = readFrameOrThrow().streamId
 
         // > 1/2 window size
@@ -129,7 +133,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
 
     @Test
     fun `data should be buffered and sent after window increased from zero`() {
-        val handler = openStreamByLocal()
+        val handler = openStreamLocal()
         val streamId = readFrameOrThrow().streamId
 
         ech.writeInbound(
@@ -152,7 +156,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
 
     @Test
     fun `buffered data should not be sent if it does not fit within window`() {
-        val handler = openStreamByLocal()
+        val handler = openStreamLocal()
         val streamId = readFrameOrThrow().streamId
 
         ech.writeInbound(
@@ -200,7 +204,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
 
     @Test
     fun `overflowing buffer sends RST flag and throws an exception`() {
-        val handler = openStreamByLocal()
+        val handler = openStreamLocal()
         val streamId = readFrameOrThrow().streamId
 
         ech.writeInbound(
@@ -233,8 +237,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
 
     @Test
     fun `test ping`() {
-        val id: Long = 0
-        openStream(id)
+        val id: Long = YamuxId.SESSION_STREAM_ID
         ech.writeInbound(
             YamuxFrame(
                 id.toMuxId(),
@@ -244,9 +247,6 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
                 3
             )
         )
-
-        // ignore ack stream frame
-        readYamuxFrameOrThrow()
 
         val pingFrame = readYamuxFrameOrThrow()
 
@@ -259,20 +259,46 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
 
     @Test
     fun `test go away`() {
-        val id: Long = 0
-        openStream(id)
+        val id: Long = YamuxId.SESSION_STREAM_ID
         ech.writeInbound(
             YamuxFrame(
                 id.toMuxId(),
                 YamuxType.GO_AWAY,
                 0,
                 // normal termination
-                0x0
+                0x2
             )
         )
 
-        // verify session termination
-        assertThat(childHandlers[0].isHandlerRemoved).isTrue()
-        assertThat(childHandlers[0].isUnregistered).isTrue()
+        val yamuxHandler = multistreamHandler as YamuxHandler
+        assertThat(yamuxHandler.goAwayPromise).isCompletedWithValue(0x2)
+    }
+
+    @Test
+    fun `test no go away on close`() {
+        val yamuxHandler = multistreamHandler as YamuxHandler
+
+        assertThat(yamuxHandler.goAwayPromise).isNotDone
+        ech.close()
+        assertThat(yamuxHandler.goAwayPromise).isCompletedExceptionally
+    }
+
+    @Test
+    fun `opening a stream with wrong streamId parity should throw and close connection`() {
+        val isRemoteConnectionInitiator = !isLocalConnectionInitiator
+        val correctRemoteId = 10L + if (isRemoteConnectionInitiator) 1 else 0
+        val incorrectId = correctRemoteId + 1
+        Assertions.assertThrows(Libp2pException::class.java) {
+            openStreamRemote(incorrectId)
+        }
+        assertThat(ech.isOpen).isFalse()
+    }
+
+    companion object {
+        private fun YamuxStreamIdGenerator.toIterator() = iterator {
+            while (true) {
+                yield(this@toIterator.next())
+            }
+        }
     }
 }

@@ -15,6 +15,9 @@ class MplexHandlerTest : MuxHandlerAbstractTest() {
 
     override val maxFrameDataLength = 256
 
+    override val localMuxIdGenerator = (0L..Long.MAX_VALUE).iterator()
+    override val remoteMuxIdGenerator = (0L..Long.MAX_VALUE).iterator()
+
     override fun createMuxHandler(streamHandler: StreamHandler<*>): MuxHandler =
         object : MplexHandler(
             MultistreamProtocolV1,
@@ -30,7 +33,7 @@ class MplexHandlerTest : MuxHandlerAbstractTest() {
         }
 
     override fun writeFrame(frame: AbstractTestMuxFrame) {
-        val muxId = frame.streamId.toMuxId()
+        val muxId = MplexId(parentChannelId, frame.streamId, true)
         val mplexFlag = when (frame.flag) {
             Open -> MplexFlag.Type.OPEN
             Data -> MplexFlag.Type.DATA
