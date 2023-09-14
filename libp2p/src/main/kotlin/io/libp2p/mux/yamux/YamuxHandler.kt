@@ -1,5 +1,6 @@
 package io.libp2p.mux.yamux
 
+import io.libp2p.core.ConnectionClosedException
 import io.libp2p.core.Libp2pException
 import io.libp2p.core.StreamHandler
 import io.libp2p.core.multistream.MultistreamProtocol
@@ -29,6 +30,12 @@ open class YamuxHandler(
     private val sendWindowSizes = ConcurrentHashMap<MuxId, AtomicInteger>()
     private val sendBuffers = ConcurrentHashMap<MuxId, SendBuffer>()
     private val receiveWindowSizes = ConcurrentHashMap<MuxId, AtomicInteger>()
+
+    /**
+     * Would contain GoAway error code when received, or would be completed with [ConnectionClosedException]
+     * when the connection closed without GoAway message
+     */
+    val goAwayPromise = CompletableFuture<Long>()
 
     private inner class SendBuffer(val id: MuxId) {
         private val bufferedData = ArrayDeque<ByteBuf>()
@@ -63,6 +70,9 @@ open class YamuxHandler(
         sendBuffers.values.forEach { it.close() }
         sendBuffers.clear()
         receiveWindowSizes.clear()
+        if (!goAwayPromise.isDone) {
+            goAwayPromise.completeExceptionally(ConnectionClosedException("Connection was closed without Go Away message"))
+        }
         super.channelUnregistered(ctx)
     }
 
@@ -157,7 +167,7 @@ open class YamuxHandler(
     }
 
     private fun handleGoAway(msg: YamuxFrame) {
-        onRemoteClose(msg.id)
+        goAwayPromise.complete(msg.length)
     }
 
     override fun onChildWrite(child: MuxChannel<ByteBuf>, data: ByteBuf) {

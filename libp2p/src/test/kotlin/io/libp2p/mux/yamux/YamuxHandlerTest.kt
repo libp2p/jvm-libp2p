@@ -248,9 +248,6 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
             )
         )
 
-        // ignore ack stream frame
-        readYamuxFrameOrThrow()
-
         val pingFrame = readYamuxFrameOrThrow()
 
         assertThat(pingFrame.flags).isEqualTo(YamuxFlags.ACK)
@@ -262,21 +259,28 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
 
     @Test
     fun `test go away`() {
-        val id: Long = 0
-        openStream(id)
+        val id: Long = YamuxId.SESSION_STREAM_ID
         ech.writeInbound(
             YamuxFrame(
                 id.toMuxId(),
                 YamuxType.GO_AWAY,
                 0,
                 // normal termination
-                0x0
+                0x2
             )
         )
 
-        // verify session termination
-        assertThat(childHandlers[0].isHandlerRemoved).isTrue()
-        assertThat(childHandlers[0].isUnregistered).isTrue()
+        val yamuxHandler = multistreamHandler as YamuxHandler
+        assertThat(yamuxHandler.goAwayPromise).isCompletedWithValue(0x2)
+    }
+
+    @Test
+    fun `test no go away on close`() {
+        val yamuxHandler = multistreamHandler as YamuxHandler
+
+        assertThat(yamuxHandler.goAwayPromise).isNotDone
+        ech.close()
+        assertThat(yamuxHandler.goAwayPromise).isCompletedExceptionally
     }
 
     @Test
