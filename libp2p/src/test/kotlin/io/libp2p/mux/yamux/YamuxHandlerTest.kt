@@ -253,8 +253,6 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
         assertThat(pingFrame.flags).isEqualTo(YamuxFlags.ACK)
         assertThat(pingFrame.type).isEqualTo(YamuxType.PING)
         assertThat(pingFrame.length).isEqualTo(3)
-
-        closeStream(id)
     }
 
     @Test
