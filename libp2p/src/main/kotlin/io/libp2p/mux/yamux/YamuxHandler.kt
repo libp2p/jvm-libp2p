@@ -169,8 +169,7 @@ open class YamuxHandler(
      */
     val goAwayPromise = CompletableFuture<Long>()
 
-    private fun getStreamHandlerOrThrow(id: MuxId): YamuxStreamHandler =
-        streamHandlers[id] ?: throw UnknownStreamIdMuxerException(id)
+    private fun getStreamHandlerOrThrow(id: MuxId): YamuxStreamHandler = getStreamHandlerOrReleaseAndThrow(id, null)
 
     private fun getStreamHandlerOrReleaseAndThrow(id: MuxId, msgToRelease: ByteBuf?): YamuxStreamHandler =
         streamHandlers[id] ?: run {
