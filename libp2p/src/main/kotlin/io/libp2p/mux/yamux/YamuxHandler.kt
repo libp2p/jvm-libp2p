@@ -58,8 +58,7 @@ open class YamuxHandler(
             if (newWindow < initialWindowSize / 2) {
                 val delta = initialWindowSize - newWindow
                 receiveWindowSize.addAndGet(delta)
-                val frame = YamuxFrame(msg.id, YamuxType.WINDOW_UPDATE, 0, delta.toLong())
-                getChannelHandlerContext().writeAndFlush(frame)
+                writeAndFlushFrame(YamuxFrame(msg.id, YamuxType.WINDOW_UPDATE, 0, delta.toLong()))
             }
             childRead(msg.id, msg.data!!)
         }
@@ -78,11 +77,10 @@ open class YamuxHandler(
         }
 
         private fun handleFlags(msg: YamuxFrame) {
-            val ctx = getChannelHandlerContext()
             when (msg.flags) {
                 YamuxFlags.SYN -> {
                     // ACK the new stream
-                    ctx.writeAndFlush(YamuxFrame(msg.id, YamuxType.WINDOW_UPDATE, YamuxFlags.ACK, 0))
+                    writeAndFlushFrame(YamuxFrame(msg.id, YamuxType.WINDOW_UPDATE, YamuxFlags.ACK, 0))
                 }
 
                 YamuxFlags.FIN -> onRemoteDisconnect(msg.id)
@@ -98,8 +96,7 @@ open class YamuxHandler(
                     if (sendWindowSize.get() > 0) {
                         val length = slicedData.readableBytes()
                         sendWindowSize.addAndGet(-length)
-                        val frame = YamuxFrame(id, YamuxType.DATA, 0, length.toLong(), slicedData)
-                        getChannelHandlerContext().writeAndFlush(frame)
+                        writeAndFlushFrame(YamuxFrame(id, YamuxType.DATA, 0, length.toLong(), slicedData))
                     } else {
                         // wait until the window is increased to send
                         addToSendBuffer(data)
@@ -113,16 +110,14 @@ open class YamuxHandler(
             if (totalBufferedWrites > maxBufferedConnectionWrites) {
                 onLocalClose()
                 throw WriteBufferOverflowMuxerException(
-                    "Overflowed send buffer ($totalBufferedWrites/$maxBufferedConnectionWrites) for connection ${
-                        getChannelHandlerContext().channel().id().asLongText()
-                    }"
+                    "Overflowed send buffer ($totalBufferedWrites/$maxBufferedConnectionWrites) for connection ${id.asLongText()}"
                 )
             }
         }
 
 
         fun onLocalOpen() {
-            getChannelHandlerContext().writeAndFlush(YamuxFrame(id, YamuxType.DATA, YamuxFlags.SYN, 0))
+            writeAndFlushFrame(YamuxFrame(id, YamuxType.DATA, YamuxFlags.SYN, 0))
         }
 
         fun onRemoteOpen() {
@@ -133,20 +128,19 @@ open class YamuxHandler(
             // TODO: this implementation drops remaining data
             sendBuffer.flush(sendWindowSize)
             sendBuffer.dispose()
-            getChannelHandlerContext().writeAndFlush(YamuxFrame(id, YamuxType.DATA, YamuxFlags.FIN, 0))
+            writeAndFlushFrame(YamuxFrame(id, YamuxType.DATA, YamuxFlags.FIN, 0))
         }
 
         fun onLocalClose() {
             // close stream immediately so not transferring buffered data
             sendBuffer.dispose()
-            getChannelHandlerContext().writeAndFlush(YamuxFrame(id, YamuxType.DATA, YamuxFlags.RST, 0))
+            writeAndFlushFrame(YamuxFrame(id, YamuxType.DATA, YamuxFlags.RST, 0))
         }
 
     }
 
     private inner class SendBuffer(val id: MuxId) {
         private val bufferedData = ArrayDeque<ByteBuf>()
-        private val ctx = getChannelHandlerContext()
 
         fun add(data: ByteBuf) {
             bufferedData.add(data)
@@ -161,8 +155,7 @@ open class YamuxHandler(
                 val data = bufferedData.removeFirst()
                 val length = data.readableBytes()
                 windowSize.addAndGet(-length)
-                val frame = YamuxFrame(id, YamuxType.DATA, 0, length.toLong(), data)
-                ctx.writeAndFlush(frame)
+                writeAndFlushFrame(YamuxFrame(id, YamuxType.DATA, 0, length.toLong(), data))
             }
         }
 
@@ -220,10 +213,18 @@ open class YamuxHandler(
         }
     }
 
+    private fun writeAndFlushFrame(yamuxFrame: YamuxFrame) {
+        getChannelHandlerContext().writeAndFlush(yamuxFrame)
+    }
+
+    private fun abruptlyCloseConnection() {
+        getChannelHandlerContext().close()
+    }
+
     private fun validateSynRemoteMuxId(id: MuxId) {
         val isRemoteConnectionInitiator = !connectionInitiator
         if (!YamuxStreamIdGenerator.isRemoteSynStreamIdValid(isRemoteConnectionInitiator, id.id)) {
-            getChannelHandlerContext().close()
+            abruptlyCloseConnection()
             throw Libp2pException("Invalid remote SYN StreamID: $id, isRemoteInitiator: $isRemoteConnectionInitiator")
         }
     }
@@ -267,9 +268,8 @@ open class YamuxHandler(
         if (msg.id.id != YamuxId.SESSION_STREAM_ID) {
             throw InvalidFrameMuxerException("Invalid StreamId for Ping frame type: ${msg.id}")
         }
-        val ctx = getChannelHandlerContext()
         when (msg.flags) {
-            YamuxFlags.SYN -> ctx.writeAndFlush(
+            YamuxFlags.SYN -> writeAndFlushFrame(
                 YamuxFrame(
                     YamuxId.sessionId(msg.id.parentId),
                     YamuxType.PING,
