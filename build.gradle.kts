@@ -13,15 +13,15 @@ plugins {
 
     id("org.jetbrains.kotlin.jvm") version kotlinVersion apply false
 
-    id("com.github.ben-manes.versions").version("0.44.0")
+    id("com.github.ben-manes.versions").version("0.48.0")
     id("idea")
     id("io.gitlab.arturbosch.detekt").version("1.22.0")
     id("java")
     id("maven-publish")
-    id("org.jetbrains.dokka").version("1.7.20")
-    id("com.diffplug.spotless").version("6.20.0")
+    id("org.jetbrains.dokka").version("1.9.0")
+    id("com.diffplug.spotless").version("6.21.0")
     id("java-test-fixtures")
-    id("io.spring.dependency-management").version("1.1.0")
+    id("io.spring.dependency-management").version("1.1.3")
 
     id("org.jetbrains.kotlin.android") version kotlinVersion apply false
     id("com.android.application") version "7.4.2" apply false
@@ -58,7 +58,6 @@ configure(
 
         implementation("com.google.guava:guava")
         implementation("org.slf4j:slf4j-api")
-        implementation("com.github.multiformats:java-multibase:v1.1.1")
 
         testFixturesImplementation("com.google.guava:guava")
         testFixturesImplementation("org.slf4j:slf4j-api")
