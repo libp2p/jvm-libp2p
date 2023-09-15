@@ -115,7 +115,6 @@ open class YamuxHandler(
             }
         }
 
-
         fun onLocalOpen() {
             writeAndFlushFrame(YamuxFrame(id, YamuxType.DATA, YamuxFlags.SYN, 0))
         }
@@ -136,7 +135,6 @@ open class YamuxHandler(
             sendBuffer.dispose()
             writeAndFlushFrame(YamuxFrame(id, YamuxType.DATA, YamuxFlags.RST, 0))
         }
-
     }
 
     private inner class SendBuffer(val id: MuxId) {
