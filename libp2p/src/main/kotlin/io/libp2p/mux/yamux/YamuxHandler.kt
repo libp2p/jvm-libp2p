@@ -107,7 +107,7 @@ open class YamuxHandler(
             if (totalBufferedWrites > maxBufferedConnectionWrites) {
                 onLocalClose()
                 throw WriteBufferOverflowMuxerException(
-                    "Overflowed send buffer ($totalBufferedWrites/$maxBufferedConnectionWrites) for connection ${id.asLongText()}"
+                    "Overflowed send buffer ($totalBufferedWrites/$maxBufferedConnectionWrites). Last stream attempting to write: $id"
                 )
             }
         }
