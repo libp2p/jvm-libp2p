@@ -282,7 +282,7 @@ open class YamuxHandler(
 
     private fun handleGoAway(msg: YamuxFrame) {
         if (msg.id.id != YamuxId.SESSION_STREAM_ID) {
-            throw InvalidFrameMuxerException("Invalid StreamId for Ping frame type: ${msg.id}")
+            throw InvalidFrameMuxerException("Invalid StreamId for GoAway frame type: ${msg.id}")
         }
         goAwayPromise.complete(msg.length)
     }
