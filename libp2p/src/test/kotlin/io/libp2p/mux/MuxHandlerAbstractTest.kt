@@ -310,11 +310,12 @@ abstract class MuxHandlerAbstractTest {
     }
 
     @Test
+    @SuppressWarnings("SwallowedException")
     fun `resetting non existing stream doesnt close connection`() {
         try {
             resetStream(99)
         } catch (e: UnknownStreamIdMuxerException) {
-            // that could thrown
+            // Muxer is free to either throw an exception or just ignore
         }
         assertHandlerCount(0)
         assertThat(ech.isOpen).isTrue()
