@@ -6,15 +6,15 @@ dependencyManagement {
     dependencies {
 
         dependency "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4"
-        dependency "com.google.guava:guava:31.1-jre"
+        dependency "com.google.guava:guava:32.1.2-jre"
 
-        dependency "org.slf4j:slf4j-api:2.0.7"
+        dependency "org.slf4j:slf4j-api:2.0.9"
         dependencySet(group: 'org.apache.logging.log4j', version: '2.20.0') {
             entry 'log4j-core'
             entry 'log4j-slf4j2-impl'
         }
 
-        dependencySet(group: 'org.junit.jupiter', version: '5.9.2') {
+        dependencySet(group: 'org.junit.jupiter', version: '5.10.0') {
             entry 'junit-jupiter-api'
             entry 'junit-jupiter-engine'
             entry 'junit-jupiter-params'
@@ -27,11 +27,11 @@ dependencyManagement {
             entry 'jmh-generator-annprocess'
         }
 
-        dependencySet(group: "com.google.protobuf", version: "3.21.12") {
+        dependencySet(group: "com.google.protobuf", version: "3.24.3") {
             entry 'protobuf-java'
             entry 'protoc'
         }
-        dependencySet(group: "io.netty", version: "4.1.90.Final") {
+        dependencySet(group: "io.netty", version: "4.1.97.Final") {
             entry 'netty-common'
             entry 'netty-handler'
             entry 'netty-transport'
@@ -39,12 +39,12 @@ dependencyManagement {
             entry 'netty-codec-http'
             entry 'netty-transport-classes-epoll'
         }
-        dependency "commons-codec:commons-codec:1.15"
+        dependency "com.github.multiformats:java-multibase:v1.1.1"
         dependency "tech.pegasys:noise-java:22.1.0"
-        dependencySet(group: "org.bouncycastle", version: "1.70") {
-            entry 'bcprov-jdk15on'
-            entry 'bcpkix-jdk15on'
-            entry 'bctls-jdk15on'
+        dependencySet(group: "org.bouncycastle", version: "1.76") {
+            entry 'bcprov-jdk18on'
+            entry 'bcpkix-jdk18on'
+            entry 'bctls-jdk18on'
         }
     }
 }
