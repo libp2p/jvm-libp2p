@@ -30,9 +30,6 @@ open class YamuxHandler(
     private val maxBufferedConnectionWrites: Int,
     private val initialWindowSize: Int = INITIAL_WINDOW_SIZE
 ) : MuxHandler(ready, inboundStreamHandler) {
-    private val idGenerator = YamuxStreamIdGenerator(connectionInitiator)
-
-    private val streamHandlers = ConcurrentHashMap<MuxId, YamuxStreamHandler>()
 
     private inner class YamuxStreamHandler(
         val id: MuxId
@@ -162,6 +159,10 @@ open class YamuxHandler(
             bufferedData.clear()
         }
     }
+
+    private val idGenerator = YamuxStreamIdGenerator(connectionInitiator)
+
+    private val streamHandlers: MutableMap<MuxId, YamuxStreamHandler> = ConcurrentHashMap()
 
     /**
      * Would contain GoAway error code when received, or would be completed with [ConnectionClosedException]
