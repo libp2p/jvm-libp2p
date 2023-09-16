@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:class-naming")
+
 package io.libp2p.pubsub.gossip
 
 import com.google.common.util.concurrent.AtomicDouble
@@ -74,8 +76,11 @@ class GossipV1_1Tests {
         fun connect(routerIndexes: IntRange, outbound: Boolean = true): List<SemiduplexConnection> {
             val list =
                 routers.slice(routerIndexes).map {
-                    if (outbound) router0.connectSemiDuplex(it, null, LogLevel.ERROR)
-                    else it.connectSemiDuplex(router0, null, LogLevel.ERROR)
+                    if (outbound) {
+                        router0.connectSemiDuplex(it, null, LogLevel.ERROR)
+                    } else {
+                        it.connectSemiDuplex(router0, null, LogLevel.ERROR)
+                    }
                 }
             connections += list
             return list
@@ -696,8 +701,12 @@ class GossipV1_1Tests {
     fun testAdaptiveGossip() {
         val appScore = mutableMapOf<PeerId, Double>().withDefault { 0.0 }
         val coreParams = GossipParams(
-            3, 3, 3, DLazy = 3,
-            floodPublish = false, gossipFactor = 0.5
+            3,
+            3,
+            3,
+            DLazy = 3,
+            floodPublish = false,
+            gossipFactor = 0.5
         )
         val peerScoreParams = GossipPeerScoreParams(
             appSpecificScore = { appScore.getValue(it) },
@@ -806,8 +815,13 @@ class GossipV1_1Tests {
     fun testOpportunisticGraft() {
         val appScore = mutableMapOf<PeerId, Double>().withDefault { 0.0 }
         val coreParams = GossipParams(
-            3, 3, 10, DLazy = 3, DOut = 1,
-            opportunisticGraftPeers = 2, opportunisticGraftTicks = 60
+            3,
+            3,
+            10,
+            DLazy = 3,
+            DOut = 1,
+            opportunisticGraftPeers = 2,
+            opportunisticGraftTicks = 60
         )
         val peerScoreParams = GossipPeerScoreParams(
             appSpecificScore = { appScore.getValue(it) },
@@ -970,7 +984,10 @@ class GossipV1_1Tests {
 
         val validationResult = CompletableFuture<ValidationResult>()
         val receivedMessages = LinkedBlockingQueue<MessageApi>()
-        val slowValidator = Validator { receivedMessages += it; validationResult }
+        val slowValidator = Validator {
+            receivedMessages += it
+            validationResult
+        }
         api.subscribe(slowValidator, io.libp2p.core.pubsub.Topic("topic1"))
         test.mockRouters.forEach { it.subscribe("topic1") }
 

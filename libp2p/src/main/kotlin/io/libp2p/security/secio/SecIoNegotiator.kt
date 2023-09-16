@@ -140,8 +140,9 @@ class SecIoNegotiator(
         val pubKey = unmarshalPublicKey(remotePubKeyBytes)
 
         val calcedPeerId = PeerId.fromPubKey(pubKey)
-        if (remotePeerId != null && calcedPeerId != remotePeerId)
+        if (remotePeerId != null && calcedPeerId != remotePeerId) {
             throw InvalidRemotePubKey()
+        }
 
         return pubKey
     } // validateRemoteKey
@@ -151,8 +152,9 @@ class SecIoNegotiator(
         val h2 = sha256(localPubKeyBytes + remoteNonce)
 
         val keyOrder = h1.compareTo(h2)
-        if (keyOrder == 0)
+        if (keyOrder == 0) {
             throw SelfConnecting()
+        }
 
         return keyOrder
     } // orderKeys
@@ -203,8 +205,9 @@ class SecIoNegotiator(
             exchangeMsg.signature.toByteArray()
         )
 
-        if (!signatureIsOk)
+        if (!signatureIsOk) {
             throw InvalidSignature()
+        }
     } // validateExchangeMessage
 
     private fun calcHMac(macKey: ByteArray): HMac {
@@ -241,8 +244,9 @@ class SecIoNegotiator(
     } // generateSharedSecret
 
     private fun verifyNonceResponse(buf: ByteBuf) {
-        if (!nonce.contentEquals(buf.toByteArray()))
+        if (!nonce.contentEquals(buf.toByteArray())) {
             throw InvalidInitialPacket()
+        }
 
         state = State.FinalValidated
     } // verifyNonceResponse

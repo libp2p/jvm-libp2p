@@ -485,7 +485,7 @@ data class GossipTopicScoreParams(
      * The penalty is only activated after [meshMessageDeliveriesActivation] time in the mesh.
      * The weight of the parameter MUST be negative (or zero to disable).
      */
-    val meshMessageDeliveriesWeight: Weight = 0.0 /*-1.0*/, // TODO temporarily exclude this parameter
+    val meshMessageDeliveriesWeight: Weight = 0.0, // TODO temporarily exclude this parameter
     /** @see meshMessageDeliveriesWeight */
     val meshMessageDeliveriesDecay: Double = 0.0,
     /** @see meshMessageDeliveriesWeight */

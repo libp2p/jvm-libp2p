@@ -25,16 +25,18 @@ import io.netty.buffer.Unpooled
  * @param data the data segment.
  * @see [mplex documentation](https://github.com/libp2p/specs/tree/master/mplex#opening-a-new-stream)
  */
-data class MplexFrame(val id: MuxId, val flag: MplexFlag, val data: ByteBuf) : DefaultByteBufHolder(data) {
+data class MplexFrame(val id: MplexId, val flag: MplexFlag, val data: ByteBuf) : DefaultByteBufHolder(data) {
 
     companion object {
+        private fun createFrame(id: MuxId, type: MplexFlag.Type, data: ByteBuf) =
+            MplexFrame(id as MplexId, MplexFlag.getByType(type, id.initiator), data)
         fun createDataFrame(id: MuxId, data: ByteBuf) =
-            MplexFrame(id, MplexFlag.getByType(MplexFlag.Type.DATA, id.initiator), data)
+            createFrame(id, MplexFlag.Type.DATA, data)
         fun createOpenFrame(id: MuxId) =
-            MplexFrame(id, MplexFlag.getByType(MplexFlag.Type.OPEN, id.initiator), Unpooled.EMPTY_BUFFER)
+            createFrame(id, MplexFlag.Type.OPEN, Unpooled.EMPTY_BUFFER)
         fun createCloseFrame(id: MuxId) =
-            MplexFrame(id, MplexFlag.getByType(MplexFlag.Type.CLOSE, id.initiator), Unpooled.EMPTY_BUFFER)
+            createFrame(id, MplexFlag.Type.CLOSE, Unpooled.EMPTY_BUFFER)
         fun createResetFrame(id: MuxId) =
-            MplexFrame(id, MplexFlag.getByType(MplexFlag.Type.RESET, id.initiator), Unpooled.EMPTY_BUFFER)
+            createFrame(id, MplexFlag.Type.RESET, Unpooled.EMPTY_BUFFER)
     }
 }

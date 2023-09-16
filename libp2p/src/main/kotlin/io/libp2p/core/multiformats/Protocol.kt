@@ -115,8 +115,9 @@ enum class Protocol(
 private const val LENGTH_PREFIXED_VAR_SIZE = -1
 
 private val SIZE_VALIDATOR: (Protocol, ByteArray?) -> Unit = { protocol, bytes ->
-    if (!protocol.hasValue && bytes != null)
+    if (!protocol.hasValue && bytes != null) {
         throw IllegalArgumentException("No value expected for protocol $protocol, but got ${bytes.contentToString()}")
+    }
     if (protocol.hasValue) {
         requireNotNull(bytes) { "Non-null value expected for protocol $protocol" }
         if (protocol.sizeBits != LENGTH_PREFIXED_VAR_SIZE && bytes.size * 8 != protocol.sizeBits) {

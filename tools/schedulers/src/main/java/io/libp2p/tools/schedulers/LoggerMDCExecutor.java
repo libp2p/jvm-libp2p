@@ -1,11 +1,10 @@
 package io.libp2p.tools.schedulers;
 
-import org.slf4j.MDC;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.function.Supplier;
+import org.slf4j.MDC;
 
 public class LoggerMDCExecutor implements Executor {
 

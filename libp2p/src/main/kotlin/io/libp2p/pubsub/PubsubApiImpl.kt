@@ -81,8 +81,11 @@ open class PubsubApiImpl(val router: PubsubRouter) : PubsubApi {
             it.receiver.apply(rpc2Msg(msg))
         }
         return validationFuts.thenApplyAll {
-            if (it.isEmpty()) ValidationResult.Ignore
-            else it.reduce(validationResultReduce)
+            if (it.isEmpty()) {
+                ValidationResult.Ignore
+            } else {
+                it.reduce(validationResultReduce)
+            }
         }
     }
 
@@ -139,8 +142,10 @@ class MessageImpl(override val originalMessage: PubsubMessage) : MessageApi {
     private val msg = originalMessage.protobufMessage
     override val data = msg.data.toByteArray().toByteBuf()
     override val from = if (msg.hasFrom()) msg.from.toByteArray() else null
-    override val seqId = if (msg.hasSeqno() && msg.seqno.size() >= 8)
+    override val seqId = if (msg.hasSeqno() && msg.seqno.size() >= 8) {
         msg.seqno.toByteArray().copyOfRange(0, 8).toLongBigEndian()
-    else null
+    } else {
+        null
+    }
     override val topics = msg.topicIDsList.map { Topic(it) }
 }

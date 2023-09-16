@@ -2,9 +2,14 @@ package io.libp2p.etc.util.netty.mux
 
 import io.netty.channel.ChannelId
 
-data class MuxId(val parentId: ChannelId, val id: Long, val initiator: Boolean) : ChannelId {
-    override fun asShortText() = "${parentId.asShortText()}/$id/$initiator"
-    override fun asLongText() = "${parentId.asLongText()}/$id/$initiator"
+abstract class MuxId(
+    val parentId: ChannelId,
+    val id: Long
+) : ChannelId {
+
     override fun compareTo(other: ChannelId?) = asShortText().compareTo(other?.asShortText() ?: "")
     override fun toString() = asLongText()
+
+    abstract override fun hashCode(): Int
+    abstract override fun equals(other: Any?): Boolean
 }

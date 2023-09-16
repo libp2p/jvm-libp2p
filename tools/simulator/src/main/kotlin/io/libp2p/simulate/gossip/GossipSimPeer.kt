@@ -41,8 +41,11 @@ class GossipSimPeer(
         val logConnection = pubsubLogs(stream.remotePeerId())
         router.addPeerWithDebugHandler(
             stream,
-            if (logConnection)
-                LoggingHandler(name, LogLevel.ERROR) else null
+            if (logConnection) {
+                LoggingHandler(name, LogLevel.ERROR)
+            } else {
+                null
+            }
         )
         return dummy
     }

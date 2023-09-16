@@ -1,7 +1,7 @@
 package io.libp2p.security.tls
 
 import io.libp2p.core.PeerId
-import io.libp2p.core.crypto.KEY_TYPE
+import io.libp2p.core.crypto.KeyType
 import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.multistream.MultistreamProtocolDebug
 import io.libp2p.core.mux.StreamMuxerProtocol
@@ -19,14 +19,14 @@ val MultistreamProtocolV1: MultistreamProtocolDebug = MultistreamProtocolDebugV1
 @Tag("secure-channel")
 class TlsSecureChannelTest : SecureChannelTestBase(
     ::TlsSecureChannel,
-    listOf(StreamMuxerProtocol.Yamux.createMuxer(MultistreamProtocolV1, listOf())),
+    listOf(StreamMuxerProtocol.getYamux().createMuxer(MultistreamProtocolV1, listOf())),
     TlsSecureChannel.announce
 ) {
     @Test
     fun `incorrect initiator remote PeerId should throw`() {
-        val (privKey1, _) = generateKeyPair(KEY_TYPE.ECDSA)
-        val (privKey2, _) = generateKeyPair(KEY_TYPE.ECDSA)
-        val (_, wrongPubKey) = generateKeyPair(KEY_TYPE.ECDSA)
+        val (privKey1, _) = generateKeyPair(KeyType.ECDSA)
+        val (privKey2, _) = generateKeyPair(KeyType.ECDSA)
+        val (_, wrongPubKey) = generateKeyPair(KeyType.ECDSA)
 
         val protocolSelect1 = makeSelector(privKey1, muxerIds)
         val protocolSelect2 = makeSelector(privKey2, muxerIds)

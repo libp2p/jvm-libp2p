@@ -75,13 +75,17 @@ class HostTest {
             var interceptRead = false
             var interceptWrite = false
             override fun interceptRead(buf: ByteBuf) =
-                if (interceptRead)
+                if (interceptRead) {
                     Unpooled.wrappedBuffer("RRR".toByteArray(Charsets.UTF_8))
-                else buf
+                } else {
+                    buf
+                }
             override fun interceptWrite(buf: ByteBuf) =
-                if (interceptWrite)
+                if (interceptWrite) {
                     Unpooled.wrappedBuffer("WWW".toByteArray(Charsets.UTF_8))
-                else buf
+                } else {
+                    buf
+                }
         }
         val interceptor = TestInterceptor()
 

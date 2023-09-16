@@ -87,6 +87,10 @@ abstract class AbstractMuxHandler<TData>() :
 
     protected fun onRemoteOpen(id: MuxId) {
         val initializer = inboundInitializer
+        if (id in streamMap) {
+            getChannelHandlerContext().close()
+            throw Libp2pException("Remote party attempts to open a stream with existing id: $id")
+        }
         val child = createChild(
             id,
             initializer,

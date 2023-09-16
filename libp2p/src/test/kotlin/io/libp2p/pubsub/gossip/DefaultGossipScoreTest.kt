@@ -732,7 +732,6 @@ class DefaultGossipScoreTest {
 
     @Test
     fun `test IP colocation penalty`() {
-
         val addr1 = Multiaddr.fromString("/ip4/0.0.0.1")
         val addr2 = Multiaddr.fromString("/ip4/0.0.0.2")
         val peer1 = PeerId.random()

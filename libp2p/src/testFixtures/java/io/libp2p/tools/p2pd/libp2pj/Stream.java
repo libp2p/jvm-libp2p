@@ -2,20 +2,18 @@ package io.libp2p.tools.p2pd.libp2pj;
 
 import java.nio.ByteBuffer;
 
-/**
- * Created by Anton Nashatyrev on 18.12.2018.
- */
+/** Created by Anton Nashatyrev on 18.12.2018. */
 public interface Stream<TEndpoint> {
 
-    boolean isInitiator();
+  boolean isInitiator();
 
-    void write(ByteBuffer data);
+  void write(ByteBuffer data);
 
-    void flush();
+  void flush();
 
-    void close();
+  void close();
 
-    TEndpoint getRemoteAddress();
+  TEndpoint getRemoteAddress();
 
-    TEndpoint getLocalAddress();
+  TEndpoint getLocalAddress();
 }

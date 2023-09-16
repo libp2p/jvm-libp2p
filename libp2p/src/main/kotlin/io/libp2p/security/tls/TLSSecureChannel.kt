@@ -109,10 +109,11 @@ fun buildTlsHandler(
     val connectionKeys = if (certAlgorithm.equals("ECDSA")) generateEcdsaKeyPair() else generateEd25519KeyPair()
     val javaPrivateKey = getJavaKey(connectionKeys.first)
     val sslContext = (
-        if (ch.isInitiator)
+        if (ch.isInitiator) {
             SslContextBuilder.forClient().keyManager(javaPrivateKey, listOf(buildCert(localKey, connectionKeys.first)))
-        else
+        } else {
             SslContextBuilder.forServer(javaPrivateKey, listOf(buildCert(localKey, connectionKeys.first)))
+        }
         )
         .protocols(listOf("TLSv1.3"))
         .ciphers(listOf("TLS_AES_128_GCM_SHA256", "TLS_AES_256_GCM_SHA384", "TLS_CHACHA20_POLY1305_SHA256"))
@@ -133,10 +134,11 @@ fun buildTlsHandler(
     val handshake = handler.handshakeFuture()
     val engine = handler.engine()
     handshake.addListener { fut ->
-        if (! fut.isSuccess) {
+        if (!fut.isSuccess) {
             var cause = fut.cause()
-            if (cause != null && cause.cause != null)
+            if (cause != null && cause.cause != null) {
                 cause = cause.cause
+            }
             handshakeComplete.completeExceptionally(cause)
         } else {
             val nextProtocol = handler.applicationProtocol()
@@ -175,7 +177,7 @@ private class ChannelSetup(
     private var activated = false
 
     override fun channelActive(ctx: ChannelHandlerContext) {
-        if (! activated) {
+        if (!activated) {
             activated = true
             val expectedRemotePeerId = ctx.channel().attr(REMOTE_PEER_ID).get()
             ctx.channel().pipeline().addLast(
@@ -214,11 +216,13 @@ private class ChannelSetup(
 
 class Libp2pTrustManager(private val expectedRemotePeer: Optional<PeerId>) : X509TrustManager {
     override fun checkClientTrusted(certs: Array<out X509Certificate>?, authType: String?) {
-        if (certs?.size != 1)
+        if (certs?.size != 1) {
             throw CertificateException()
+        }
         val claimedPeerId = verifyAndExtractPeerId(arrayOf(certs.get(0)))
-        if (expectedRemotePeer.map { ex -> ! ex.equals(claimedPeerId) }.orElse(false))
+        if (expectedRemotePeer.map { ex -> !ex.equals(claimedPeerId) }.orElse(false)) {
             throw InvalidRemotePubKey()
+        }
     }
 
     override fun checkServerTrusted(certs: Array<out X509Certificate>?, authType: String?) {
@@ -268,14 +272,16 @@ fun getPubKey(pub: PublicKey): PubKey {
     if (pub.algorithm.equals("EC")) {
         return EcdsaPublicKey(pub as ECPublicKey)
     }
-    if (pub.algorithm.equals("RSA"))
+    if (pub.algorithm.equals("RSA")) {
         throw IllegalStateException("Unimplemented RSA public key support for TLS")
+    }
     throw IllegalStateException("Unsupported key type: " + pub.algorithm)
 }
 
 fun verifyAndExtractPeerId(chain: Array<Certificate>): PeerId {
-    if (chain.size != 1)
+    if (chain.size != 1) {
         throw java.lang.IllegalStateException("Cert chain must have exactly 1 element!")
+    }
     val cert = chain.get(0)
     // peerid is in the certificate extension
     val bcCert = org.bouncycastle.asn1.x509.Certificate
@@ -283,29 +289,34 @@ fun verifyAndExtractPeerId(chain: Array<Certificate>): PeerId {
     val bcX509Cert = X509CertificateHolder(bcCert)
     val libp2pOid = ASN1ObjectIdentifier("1.3.6.1.4.1.53594.1.1")
     val extension = bcX509Cert.extensions.getExtension(libp2pOid)
-    if (extension == null)
+    if (extension == null) {
         throw IllegalStateException("Certificate extension not present!")
+    }
     val input = ASN1InputStream(extension.extnValue.encoded)
     val wrapper = input.readObject() as DEROctetString
     val seq = ASN1InputStream(wrapper.octets).readObject() as DLSequence
     val pubKeyProto = (seq.getObjectAt(0) as DEROctetString).octets
     val signature = (seq.getObjectAt(1) as DEROctetString).octets
     val pubKey = unmarshalPublicKey(pubKeyProto)
-    if (! pubKey.verify(certificatePrefix.plus(cert.publicKey.encoded), signature))
+    if (!pubKey.verify(certificatePrefix.plus(cert.publicKey.encoded), signature)) {
         throw IllegalStateException("Invalid signature on TLS certificate extension!")
+    }
 
     cert.verify(cert.publicKey)
     val now = Date()
-    if (bcCert.endDate.date.before(now))
+    if (bcCert.endDate.date.before(now)) {
         throw IllegalStateException("TLS certificate has expired!")
-    if (bcCert.startDate.date.after(now))
+    }
+    if (bcCert.startDate.date.after(now)) {
         throw IllegalStateException("TLS certificate is not valid yet!")
+    }
     return PeerId.fromPubKey(pubKey)
 }
 
 fun getPublicKeyFromCert(chain: Array<Certificate>): PubKey {
-    if (chain.size != 1)
+    if (chain.size != 1) {
         throw java.lang.IllegalStateException("Cert chain must have exactly 1 element!")
+    }
     val cert = chain.get(0)
     return getPubKey(cert.publicKey)
 }

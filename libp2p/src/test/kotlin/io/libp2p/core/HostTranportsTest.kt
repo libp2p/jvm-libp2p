@@ -32,17 +32,20 @@ import java.util.concurrent.TimeUnit
 
 @Tag("secure-channel")
 class PlaintextTcpTest : TcpTransportHostTest(::PlaintextInsecureChannel)
+
 @Tag("secure-channel")
 class PlaintextWsTest : WsTransportHostTest(::PlaintextInsecureChannel)
 
 @Tag("secure-channel")
 class SecioTcpTest : TcpTransportHostTest(::SecIoSecureChannel)
+
 @Tag("secure-channel")
 class SecioWsTest : WsTransportHostTest(::SecIoSecureChannel)
 
 @DisabledIfEnvironmentVariable(named = "TRAVIS", matches = "true")
 @Tag("secure-channel")
 class NoiseXXTcpTest : TcpTransportHostTest(::NoiseXXSecureChannel)
+
 @DisabledIfEnvironmentVariable(named = "TRAVIS", matches = "true")
 @Tag("secure-channel")
 class NoiseXXWsTest : WsTransportHostTest(::NoiseXXSecureChannel)
@@ -96,7 +99,7 @@ abstract class HostTransportsTest(
             add(secureChannelCtor)
         }
         muxers {
-            + StreamMuxerProtocol.Mplex
+            +StreamMuxerProtocol.Mplex
         }
         protocols {
             +Ping()
@@ -121,7 +124,7 @@ abstract class HostTransportsTest(
             add(secureChannelCtor)
         }
         muxers {
-            + StreamMuxerProtocol.Mplex
+            +StreamMuxerProtocol.Mplex
         }
         network {
             listen(listenAddress)

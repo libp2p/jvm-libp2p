@@ -1,6 +1,6 @@
 package io.libp2p.pubsub
 
-import io.libp2p.core.crypto.KEY_TYPE
+import io.libp2p.core.crypto.KeyType
 import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.etc.types.lazyVar
 import io.libp2p.pubsub.flood.FloodRouter
@@ -37,7 +37,7 @@ class DeterministicFuzz {
         return TestRouter("" + (cnt++), router).apply {
             val randomBytes = ByteArray(8)
             random.nextBytes(randomBytes)
-            keyPair = generateKeyPair(KEY_TYPE.ECDSA, random = SecureRandom(randomBytes))
+            keyPair = generateKeyPair(KeyType.ECDSA, random = SecureRandom(randomBytes))
             testExecutor = deterministicExecutor
         }
     }

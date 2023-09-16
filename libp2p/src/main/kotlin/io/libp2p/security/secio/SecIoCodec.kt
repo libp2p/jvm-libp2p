@@ -27,10 +27,10 @@ class SecIoCodec(val local: SecioParams, val remote: SecioParams) : MessageToMes
 
     companion object {
         fun createCipher(params: SecioParams): StreamCipher {
-            val aesEngine = AESEngine().apply {
+            val aesEngine = AESEngine.newInstance().apply {
                 init(true, KeyParameter(params.keys.cipherKey))
             }
-            return SICBlockCipher(aesEngine).apply {
+            return SICBlockCipher.newInstance(aesEngine).apply {
                 init(true, ParametersWithIV(null, params.keys.iv))
             }
         }
@@ -58,8 +58,9 @@ class SecIoCodec(val local: SecioParams, val remote: SecioParams) : MessageToMes
 
             val macArr = updateMac(remote, cipherBytes)
 
-            if (!macBytes.contentEquals(macArr))
+            if (!macBytes.contentEquals(macArr)) {
                 throw InvalidMacException()
+            }
 
             val clearText = processBytes(remoteCipher, cipherBytes)
             out.add(clearText.toByteBuf())

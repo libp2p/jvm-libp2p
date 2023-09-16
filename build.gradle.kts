@@ -1,3 +1,4 @@
+import com.diffplug.gradle.spotless.SpotlessExtension
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.net.URL
@@ -5,22 +6,22 @@ import java.net.URL
 // To publish the release artifact to CloudSmith repo run the following :
 // ./gradlew publish -PcloudsmithUser=<user> -PcloudsmithApiKey=<api-key>
 
-description = "an implementation of libp2p for the jvm"
+description = "a libp2p implementation for the JVM, written in Kotlin"
 
 plugins {
     val kotlinVersion = "1.6.21"
 
     id("org.jetbrains.kotlin.jvm") version kotlinVersion apply false
 
-    id("com.github.ben-manes.versions").version("0.44.0")
+    id("com.github.ben-manes.versions").version("0.48.0")
     id("idea")
     id("io.gitlab.arturbosch.detekt").version("1.22.0")
     id("java")
     id("maven-publish")
-    id("org.jetbrains.dokka").version("1.7.20")
-    id("org.jmailen.kotlinter").version("3.10.0")
+    id("org.jetbrains.dokka").version("1.9.0")
+    id("com.diffplug.spotless").version("6.21.0")
     id("java-test-fixtures")
-    id("io.spring.dependency-management").version("1.1.0")
+    id("io.spring.dependency-management").version("1.1.3")
 
     id("org.jetbrains.kotlin.android") version kotlinVersion apply false
     id("com.android.application") version "7.4.2" apply false
@@ -36,7 +37,7 @@ configure(
         }
 ) {
     group = "io.libp2p"
-    version = "1.0.0-RELEASE"
+    version = "1.0.1-RELEASE"
 
     apply(plugin = "kotlin")
     apply(plugin = "idea")
@@ -45,7 +46,7 @@ configure(
     apply(plugin = "io.gitlab.arturbosch.detekt")
     apply(plugin = "maven-publish")
     apply(plugin = "org.jetbrains.dokka")
-    apply(plugin = "org.jmailen.kotlinter")
+    apply(plugin = "com.diffplug.spotless")
     apply(plugin = "java-test-fixtures")
     apply(plugin = "io.spring.dependency-management")
     apply(from = "$rootDir/versions.gradle")
@@ -57,7 +58,6 @@ configure(
 
         implementation("com.google.guava:guava")
         implementation("org.slf4j:slf4j-api")
-        implementation("com.github.multiformats:java-multibase:v1.1.1")
 
         testFixturesImplementation("com.google.guava:guava")
         testFixturesImplementation("org.slf4j:slf4j-api")
@@ -108,8 +108,21 @@ configure(
 //    Runtime.getRuntime().availableProcessors().div(2))
     }
 
-    kotlinter {
-        disabledRules = arrayOf("no-wildcard-imports", "enum-entry-name-case")
+    configure<SpotlessExtension> {
+        kotlin {
+            ktlint().editorConfigOverride(
+                mapOf(
+                    "ktlint_standard_no-wildcard-imports" to "disabled",
+                    "ktlint_standard_enum-entry-name-case" to "disabled",
+                    "ktlint_standard_trailing-comma-on-call-site" to "disabled",
+                    "ktlint_standard_trailing-comma-on-declaration-site" to "disabled"
+                )
+            )
+        }
+        java {
+            targetExclude("**/generated/**/proto/**")
+            googleJavaFormat()
+        }
     }
 
     val sourcesJar by tasks.registering(Jar::class) {

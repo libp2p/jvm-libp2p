@@ -1,7 +1,7 @@
 package io.libp2p.security
 
 import io.libp2p.core.PeerId
-import io.libp2p.core.crypto.KEY_TYPE
+import io.libp2p.core.crypto.KeyType
 import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.multistream.ProtocolMatcher
@@ -55,8 +55,8 @@ abstract class SecureChannelTestBase(
     @ParameterizedTest
     @MethodSource("plainDataSizes")
     fun secureInterconnect(dataSize: Int) {
-        val (privKey1, _) = generateKeyPair(KEY_TYPE.ECDSA)
-        val (privKey2, pubKey2) = generateKeyPair(KEY_TYPE.ECDSA)
+        val (privKey1, _) = generateKeyPair(KeyType.ECDSA)
+        val (privKey2, pubKey2) = generateKeyPair(KeyType.ECDSA)
 
         val protocolSelect1 = makeSelector(privKey1, muxerIds)
         val protocolSelect2 = makeSelector(privKey2, muxerIds)

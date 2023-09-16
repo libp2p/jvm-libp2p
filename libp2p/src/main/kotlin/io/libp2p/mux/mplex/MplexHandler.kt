@@ -5,7 +5,6 @@ import io.libp2p.core.multistream.MultistreamProtocol
 import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.etc.types.sliceMaxSize
 import io.libp2p.etc.util.netty.mux.MuxChannel
-import io.libp2p.etc.util.netty.mux.MuxId
 import io.libp2p.mux.MuxHandler
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
@@ -22,7 +21,7 @@ open class MplexHandler(
     private val idGenerator = AtomicLong(0xF)
 
     override fun generateNextId() =
-        MuxId(getChannelHandlerContext().channel().id(), idGenerator.incrementAndGet(), true)
+        MplexId(getChannelHandlerContext().channel().id(), idGenerator.incrementAndGet(), true)
 
     override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
         msg as MplexFrame

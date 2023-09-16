@@ -1,5 +1,6 @@
 package io.libp2p.mux.yamux
 
+import io.libp2p.core.Libp2pException
 import io.libp2p.core.StreamHandler
 import io.libp2p.core.multistream.MultistreamProtocolV1
 import io.libp2p.etc.types.fromHex
@@ -8,14 +9,21 @@ import io.libp2p.mux.MuxHandler
 import io.libp2p.mux.MuxHandlerAbstractTest
 import io.libp2p.mux.MuxHandlerAbstractTest.AbstractTestMuxFrame.Flag.*
 import io.libp2p.tools.readAllBytesAndRelease
+import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 
 class YamuxHandlerTest : MuxHandlerAbstractTest() {
 
     override val maxFrameDataLength = 256
+    private val maxBufferedConnectionWrites = 512
+    override val localMuxIdGenerator = YamuxStreamIdGenerator(isLocalConnectionInitiator).toIterator()
+    override val remoteMuxIdGenerator = YamuxStreamIdGenerator(!isLocalConnectionInitiator).toIterator()
+
     private val readFrameQueue = ArrayDeque<AbstractTestMuxFrame>()
+    fun Long.toMuxId() = YamuxId(parentChannelId, this)
 
     override fun createMuxHandler(streamHandler: StreamHandler<*>): MuxHandler =
         object : YamuxHandler(
@@ -23,7 +31,8 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
             maxFrameDataLength,
             null,
             streamHandler,
-            true
+            true,
+            maxBufferedConnectionWrites
         ) {
             // MuxHandler consumes the exception. Override this behaviour for testing
             @Deprecated("Deprecated in Java")
@@ -84,7 +93,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
     @Test
     fun `test ack new stream`() {
         // signal opening of new stream
-        openStream(12)
+        openStreamRemote(12)
 
         writeStream(12, "23")
 
@@ -98,29 +107,33 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
     }
 
     @Test
-    fun `test window update`() {
-        openStream(12)
+    fun `test window update is sent after more than half of the window is depleted`() {
+        openStreamLocal()
+        val streamId = readFrameOrThrow().streamId
 
-        val largeMessage = "42".repeat(INITIAL_WINDOW_SIZE + 1)
-        writeStream(12, largeMessage)
-
-        // ignore ack stream frame
-        readYamuxFrameOrThrow()
+        // > 1/2 window size
+        val length = (INITIAL_WINDOW_SIZE / 2) + 42
+        ech.writeInbound(
+            YamuxFrame(
+                streamId.toMuxId(),
+                YamuxType.DATA,
+                0,
+                length.toLong(),
+                "42".repeat(length).fromHex().toByteBuf(allocateBuf())
+            )
+        )
 
         val windowUpdateFrame = readYamuxFrameOrThrow()
 
+        // window frame is sent based on the new window
         assertThat(windowUpdateFrame.flags).isZero()
         assertThat(windowUpdateFrame.type).isEqualTo(YamuxType.WINDOW_UPDATE)
-        assertThat(windowUpdateFrame.length).isEqualTo((INITIAL_WINDOW_SIZE + 1).toLong())
-
-        assertLastMessage(0, 1, largeMessage)
-
-        closeStream(12)
+        assertThat(windowUpdateFrame.length).isEqualTo(length.toLong())
     }
 
     @Test
     fun `data should be buffered and sent after window increased from zero`() {
-        val handler = openStreamByLocal()
+        val handler = openStreamLocal()
         val streamId = readFrameOrThrow().streamId
 
         ech.writeInbound(
@@ -142,9 +155,89 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
     }
 
     @Test
+    fun `buffered data should not be sent if it does not fit within window`() {
+        val handler = openStreamLocal()
+        val streamId = readFrameOrThrow().streamId
+
+        ech.writeInbound(
+            YamuxFrame(
+                streamId.toMuxId(),
+                YamuxType.WINDOW_UPDATE,
+                YamuxFlags.ACK,
+                -INITIAL_WINDOW_SIZE.toLong()
+            )
+        )
+
+        val message = "1984".fromHex().toByteBuf(allocateBuf())
+        // 2 bytes per message
+        handler.ctx.writeAndFlush(message)
+        handler.ctx.writeAndFlush(message.copy())
+
+        assertThat(readFrame()).isNull()
+
+        ech.writeInbound(
+            YamuxFrame(
+                streamId.toMuxId(),
+                YamuxType.WINDOW_UPDATE,
+                YamuxFlags.ACK,
+                2
+            )
+        )
+
+        var frame = readFrameOrThrow()
+        // one message is received
+        assertThat(frame.data).isEqualTo("1984")
+        // need to wait for another window update to send more data
+        assertThat(readFrame()).isNull()
+        // sending window update
+        ech.writeInbound(
+            YamuxFrame(
+                streamId.toMuxId(),
+                YamuxType.WINDOW_UPDATE,
+                YamuxFlags.ACK,
+                1
+            )
+        )
+        frame = readFrameOrThrow()
+        assertThat(frame.data).isEqualTo("1984")
+    }
+
+    @Test
+    fun `overflowing buffer sends RST flag and throws an exception`() {
+        val handler = openStreamLocal()
+        val streamId = readFrameOrThrow().streamId
+
+        ech.writeInbound(
+            YamuxFrame(
+                streamId.toMuxId(),
+                YamuxType.WINDOW_UPDATE,
+                YamuxFlags.ACK,
+                -INITIAL_WINDOW_SIZE.toLong()
+            )
+        )
+
+        val createMessage: () -> ByteBuf =
+            { "42".repeat(maxBufferedConnectionWrites / 5).fromHex().toByteBuf(allocateBuf()) }
+
+        for (i in 1..5) {
+            val writeResult = handler.ctx.writeAndFlush(createMessage())
+            assertThat(writeResult.isSuccess).isTrue()
+        }
+
+        // next message will overflow the configured buffer
+        val writeResult = handler.ctx.writeAndFlush(createMessage())
+        assertThat(writeResult.isSuccess).isFalse()
+        assertThat(writeResult.cause())
+            .isInstanceOf(Libp2pException::class.java)
+            .hasMessage("Overflowed send buffer (612/512) for connection test")
+
+        val frame = readYamuxFrameOrThrow()
+        assertThat(frame.flags).isEqualTo(YamuxFlags.RST)
+    }
+
+    @Test
     fun `test ping`() {
-        val id: Long = 0
-        openStream(id)
+        val id: Long = YamuxId.SESSION_STREAM_ID
         ech.writeInbound(
             YamuxFrame(
                 id.toMuxId(),
@@ -154,9 +247,6 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
                 3
             )
         )
-
-        // ignore ack stream frame
-        readYamuxFrameOrThrow()
 
         val pingFrame = readYamuxFrameOrThrow()
 
@@ -169,20 +259,46 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
 
     @Test
     fun `test go away`() {
-        val id: Long = 0
-        openStream(id)
+        val id: Long = YamuxId.SESSION_STREAM_ID
         ech.writeInbound(
             YamuxFrame(
                 id.toMuxId(),
                 YamuxType.GO_AWAY,
                 0,
                 // normal termination
-                0x0
+                0x2
             )
         )
 
-        // verify session termination
-        assertThat(childHandlers[0].isHandlerRemoved).isTrue()
-        assertThat(childHandlers[0].isUnregistered).isTrue()
+        val yamuxHandler = multistreamHandler as YamuxHandler
+        assertThat(yamuxHandler.goAwayPromise).isCompletedWithValue(0x2)
+    }
+
+    @Test
+    fun `test no go away on close`() {
+        val yamuxHandler = multistreamHandler as YamuxHandler
+
+        assertThat(yamuxHandler.goAwayPromise).isNotDone
+        ech.close()
+        assertThat(yamuxHandler.goAwayPromise).isCompletedExceptionally
+    }
+
+    @Test
+    fun `opening a stream with wrong streamId parity should throw and close connection`() {
+        val isRemoteConnectionInitiator = !isLocalConnectionInitiator
+        val correctRemoteId = 10L + if (isRemoteConnectionInitiator) 1 else 0
+        val incorrectId = correctRemoteId + 1
+        Assertions.assertThrows(Libp2pException::class.java) {
+            openStreamRemote(incorrectId)
+        }
+        assertThat(ech.isOpen).isFalse()
+    }
+
+    companion object {
+        private fun YamuxStreamIdGenerator.toIterator() = iterator {
+            while (true) {
+                yield(this@toIterator.next())
+            }
+        }
     }
 }

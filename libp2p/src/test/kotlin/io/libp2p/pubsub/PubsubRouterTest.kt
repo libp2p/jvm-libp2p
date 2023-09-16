@@ -296,7 +296,7 @@ abstract class PubsubRouterTest(val routerFactory: DeterministicFuzzRouterFactor
         }
         for (i in 0 until nodesCount) {
             for (j in 1..neighboursCount / 2)
-                allConnections += allRouters[i].connectSemiDuplex(allRouters[(i + j) % 21]/*, pubsubLogs = LogLevel.ERROR*/)
+                allConnections += allRouters[i].connectSemiDuplex(allRouters[(i + j) % 21])
                     .connections
         }
 
@@ -409,7 +409,10 @@ abstract class PubsubRouterTest(val routerFactory: DeterministicFuzzRouterFactor
 
         val subs2 = topics
             .map { it to RecordingSubscriber() }
-            .map { apis[2].subscribe(it.second, it.first); it.second }
+            .map {
+                apis[2].subscribe(it.second, it.first)
+                it.second
+            }
 
         val scheduler = fuzz.createControlledExecutor()
         val delayed = { result: ValidationResult, delayMs: Long ->

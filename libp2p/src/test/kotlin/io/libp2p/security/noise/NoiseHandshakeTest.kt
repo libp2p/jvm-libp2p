@@ -2,7 +2,7 @@ package io.libp2p.security.noise
 
 import com.google.protobuf.ByteString
 import com.southernstorm.noise.protocol.HandshakeState
-import io.libp2p.core.crypto.KEY_TYPE
+import io.libp2p.core.crypto.KeyType
 import io.libp2p.core.crypto.generateKeyPair
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation
@@ -120,7 +120,7 @@ class NoiseHandshakeTest {
         // generate a Peer Identity protobuf object
         // use it for encoding and decoding peer identities from the wire
         // this identity is intended to be sent as a Noise transport payload
-        val (privKey, pubKey) = generateKeyPair(KEY_TYPE.ECDSA)
+        val (privKey, pubKey) = generateKeyPair(KeyType.ECDSA)
         assert(pubKey.bytes().maxOrNull()?.compareTo(0) != 0)
 
         // sign the identity using the identity's private key
@@ -144,7 +144,7 @@ class NoiseHandshakeTest {
 
     @Test
     fun testAnnounceAndMatch() {
-        val (privKey1, _) = generateKeyPair(KEY_TYPE.ECDSA)
+        val (privKey1, _) = generateKeyPair(KeyType.ECDSA)
 
         val ch1 = NoiseXXSecureChannel(privKey1, listOf())
 
@@ -155,11 +155,11 @@ class NoiseHandshakeTest {
 
     @Test
     fun testStaticNoiseKeyPerProcess() {
-        val (privKey1, _) = generateKeyPair(KEY_TYPE.ECDSA)
+        val (privKey1, _) = generateKeyPair(KeyType.ECDSA)
         NoiseXXSecureChannel(privKey1, listOf())
         val b1 = NoiseXXSecureChannel.localStaticPrivateKey25519.copyOf()
 
-        val (privKey2, _) = generateKeyPair(KEY_TYPE.ECDSA)
+        val (privKey2, _) = generateKeyPair(KeyType.ECDSA)
         NoiseXXSecureChannel(privKey2, listOf())
         val b2 = NoiseXXSecureChannel.localStaticPrivateKey25519.copyOf()
 
