@@ -6,9 +6,11 @@ import io.libp2p.core.StreamHandler
 import io.libp2p.core.multistream.MultistreamProtocol
 import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.etc.types.sliceMaxSize
+import io.libp2p.etc.types.writeOnce
 import io.libp2p.etc.util.netty.ByteBufQueue
 import io.libp2p.etc.util.netty.mux.MuxChannel
 import io.libp2p.etc.util.netty.mux.MuxId
+import io.libp2p.mux.ClosedForWritingMuxerException
 import io.libp2p.mux.InvalidFrameMuxerException
 import io.libp2p.mux.MuxHandler
 import io.libp2p.mux.UnknownStreamIdMuxerException
@@ -19,6 +21,7 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.max
+import kotlin.properties.Delegates
 
 const val INITIAL_WINDOW_SIZE = 256 * 1024
 const val DEFAULT_MAX_BUFFERED_CONNECTION_WRITES = 10 * 1024 * 1024 // 10 MiB
@@ -39,6 +42,7 @@ open class YamuxHandler(
         val sendWindowSize = AtomicInteger(initialWindowSize)
         val receiveWindowSize = AtomicInteger(initialWindowSize)
         val sendBuffer = ByteBufQueue()
+        var closedForWriting by Delegates.writeOnce(false)
 
         fun dispose() {
             sendBuffer.dispose()
@@ -72,7 +76,7 @@ open class YamuxHandler(
             val delta = msg.length.toInt()
             sendWindowSize.addAndGet(delta)
             // try to send any buffered messages after the window update
-            drainBuffer()
+            drainBufferAndMaybeClose()
         }
 
         private fun handleFlags(msg: YamuxFrame) {
@@ -98,7 +102,7 @@ open class YamuxHandler(
             }
         }
 
-        private fun drainBuffer() {
+        private fun drainBufferAndMaybeClose() {
             val maxSendLength = max(0, sendWindowSize.get())
             val data = sendBuffer.take(maxSendLength)
             sendWindowSize.addAndGet(-data.readableBytes())
@@ -107,11 +111,18 @@ open class YamuxHandler(
                     val length = slicedData.readableBytes()
                     writeAndFlushFrame(YamuxFrame(id, YamuxType.DATA, 0, length.toLong(), slicedData))
                 }
+
+            if (closedForWriting && sendBuffer.readableBytes() == 0) {
+                writeAndFlushFrame(YamuxFrame(id, YamuxType.DATA, YamuxFlags.FIN, 0))
+            }
         }
 
         fun sendData(data: ByteBuf) {
+            if (closedForWriting) {
+                throw ClosedForWritingMuxerException(id)
+            }
             fillBuffer(data)
-            drainBuffer()
+            drainBufferAndMaybeClose()
         }
 
         fun onLocalOpen() {
@@ -123,10 +134,8 @@ open class YamuxHandler(
         }
 
         fun onLocalDisconnect() {
-            // TODO: this implementation drops remaining data
-            drainBuffer()
-            sendBuffer.dispose()
-            writeAndFlushFrame(YamuxFrame(id, YamuxType.DATA, YamuxFlags.FIN, 0))
+            closedForWriting = true
+            drainBufferAndMaybeClose()
         }
 
         fun onLocalClose() {
