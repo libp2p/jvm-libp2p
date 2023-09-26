@@ -47,7 +47,7 @@ open class YamuxHandler(
         }
 
         fun flush(windowSize: AtomicInteger) {
-            while (!bufferedData.isEmpty() && windowSize.get() > 0) {
+            while (!isEmpty() && windowSize.get() > 0) {
                 val data = bufferedData.removeFirst()
                 val length = data.readableBytes()
                 windowSize.addAndGet(-length)
