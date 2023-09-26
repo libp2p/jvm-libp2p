@@ -46,10 +46,6 @@ open class YamuxHandler(
             bufferedData.add(data)
         }
 
-        fun bufferedBytes(): Int {
-            return bufferedData.sumOf { it.readableBytes() }
-        }
-
         fun flush(windowSize: AtomicInteger) {
             while (!bufferedData.isEmpty() && windowSize.get() > 0) {
                 val data = bufferedData.removeFirst()
@@ -58,6 +54,14 @@ open class YamuxHandler(
                 val frame = YamuxFrame(id, YamuxType.DATA, 0, length.toLong(), data)
                 ctx.writeAndFlush(frame)
             }
+        }
+
+        fun bufferedBytes(): Int {
+            return bufferedData.sumOf { it.readableBytes() }
+        }
+
+        fun isEmpty(): Boolean {
+            return bufferedData.isEmpty()
         }
 
         fun close() {
@@ -186,7 +190,7 @@ open class YamuxHandler(
     ) {
         data.sliceMaxSize(maxFrameDataLength)
             .forEach { slicedData ->
-                if (windowSize.get() > 0) {
+                if (windowSize.get() > 0 && sendBufferIsEmpty(child.id)) {
                     val length = slicedData.readableBytes()
                     windowSize.addAndGet(-length)
                     val frame = YamuxFrame(child.id, YamuxType.DATA, 0, length.toLong(), slicedData)
@@ -210,6 +214,11 @@ open class YamuxHandler(
                 }"
             )
         }
+    }
+
+    private fun sendBufferIsEmpty(id: MuxId): Boolean {
+        val sendBuffer = sendBuffers[id] ?: return true
+        return sendBuffer.isEmpty()
     }
 
     override fun onLocalOpen(child: MuxChannel<ByteBuf>) {
