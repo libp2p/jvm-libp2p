@@ -236,6 +236,56 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
     }
 
     @Test
+    fun `frames are sent in order when send buffer is used`() {
+        val handler = openStreamLocal()
+        val streamId = readFrameOrThrow().streamId
+
+        val createMessage: (String) -> ByteBuf =
+            { it.toByteArray().toByteBuf(allocateBuf()) }
+
+        val sendWindowUpdate: (Long) -> Unit = {
+            ech.writeInbound(
+                YamuxFrame(
+                    streamId.toMuxId(),
+                    YamuxType.WINDOW_UPDATE,
+                    YamuxFlags.ACK,
+                    it
+                )
+            )
+        }
+
+        // approximately every 5 messages window size will be depleted
+        val messagesToSend = 500
+        val customWindowSize = 14
+        sendWindowUpdate(-INITIAL_WINDOW_SIZE.toLong() + customWindowSize)
+
+        val range = 1..messagesToSend
+
+        // 100 window updates should be sent to ensure buffer is flushed and all messages are sent so will send them at random times
+        val windowUpdatesIndices = (range).shuffled().take(100).toSet()
+
+        for (i in range) {
+            if (i in windowUpdatesIndices) {
+                sendWindowUpdate(customWindowSize.toLong())
+            }
+            handler.ctx.writeAndFlush(createMessage(i.toString()))
+        }
+
+        // verify the order of messages
+        for (i in range) {
+            val frame = readYamuxFrame()
+            assertThat(frame).overridingErrorMessage(
+                "Expected to send %s messages but it sent only %s",
+                messagesToSend,
+                messagesToSend - i
+            ).isNotNull()
+            assertThat(frame!!.data).isNotNull()
+            val data = String(frame.data!!.readAllBytesAndRelease())
+            assertThat(data).isEqualTo(i.toString())
+        }
+    }
+
+    @Test
     fun `test ping`() {
         val id: Long = YamuxId.SESSION_STREAM_ID
         ech.writeInbound(
