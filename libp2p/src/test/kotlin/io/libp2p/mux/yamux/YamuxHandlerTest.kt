@@ -243,7 +243,6 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
         val createMessage: (String) -> ByteBuf =
             { it.toByteArray().toByteBuf(allocateBuf()) }
 
-        val customWindowSize = 14
         val sendWindowUpdate: (Long) -> Unit = {
             ech.writeInbound(
                 YamuxFrame(
@@ -254,9 +253,10 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
                 )
             )
         }
-        val messagesToSend = 500
 
         // approximately every 5 messages window size will be depleted
+        val messagesToSend = 500
+        val customWindowSize = 14
         sendWindowUpdate(-INITIAL_WINDOW_SIZE.toLong() + customWindowSize)
 
         val range = 1..messagesToSend
@@ -271,6 +271,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
             handler.ctx.writeAndFlush(createMessage(i.toString()))
         }
 
+        // verify the order of messages
         for (i in range) {
             val frame = readYamuxFrame()
             assertThat(frame).overridingErrorMessage(
