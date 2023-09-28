@@ -2,6 +2,7 @@ package io.libp2p.transport.tcp
 
 import io.libp2p.core.InternalErrorException
 import io.libp2p.core.multiformats.Multiaddr
+import io.libp2p.core.multiformats.Protocol.DNSADDR
 import io.libp2p.core.multiformats.Protocol.IP4
 import io.libp2p.core.multiformats.Protocol.IP6
 import io.libp2p.core.multiformats.Protocol.TCP
@@ -27,7 +28,8 @@ open class TcpTransport(
     override fun handles(addr: Multiaddr) =
         handlesHost(addr) &&
             addr.has(TCP) &&
-            !addr.has(WS)
+            !addr.has(WS) &&
+            !addr.has(DNSADDR)
 
     override fun serverTransportBuilder(
         connectionBuilder: ConnectionBuilder,
