@@ -261,8 +261,11 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
 
         val range = 1..messagesToSend
 
-        // 100 window updates should be sent to ensure buffer is flushed and all messages are sent so will send them at random times
-        val windowUpdatesIndices = (range).shuffled().take(100).toSet()
+        // 100 window updates should be sent to ensure buffer is flushed and all messages are sent
+        // so will send them at random times ensuring maxBufferedConnectionWrites can never be reached
+        val windowUpdatesIndices = (range).chunked(100).flatMap {
+            it.shuffled().take(20)
+        }
 
         for (i in range) {
             if (i in windowUpdatesIndices) {
