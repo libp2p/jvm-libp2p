@@ -174,45 +174,48 @@ public class HostTestJava {
             .listen(localListenAddress)
             .build();
 
-    CompletableFuture<Void> clientStarted = clientHost.start();
-    CompletableFuture<Void> serverStarted = serverHost.start();
-    clientStarted.get(5, TimeUnit.SECONDS);
-    System.out.println("Client started");
-    serverStarted.get(5, TimeUnit.SECONDS);
-    System.out.println("Server started");
+    try {
+      CompletableFuture<Void> clientStarted = clientHost.start();
+      CompletableFuture<Void> serverStarted = serverHost.start();
+      clientStarted.get(5, TimeUnit.SECONDS);
+      System.out.println("Client started");
+      serverStarted.get(5, TimeUnit.SECONDS);
+      System.out.println("Server started");
 
-    Assertions.assertEquals(0, clientHost.listenAddresses().size());
-    Assertions.assertEquals(1, serverHost.listenAddresses().size());
-    Assertions.assertEquals(
-        localListenAddress + "/p2p/" + serverHost.getPeerId(),
-        serverHost.listenAddresses().get(0).toString());
+      Assertions.assertEquals(0, clientHost.listenAddresses().size());
+      Assertions.assertEquals(1, serverHost.listenAddresses().size());
+      Assertions.assertEquals(
+              localListenAddress + "/p2p/" + serverHost.getPeerId(),
+              serverHost.listenAddresses().get(0).toString());
 
-    StreamPromise<BlobController> blob =
-        clientHost
-            .getNetwork()
-            .connect(serverHost.getPeerId(), new Multiaddr(localListenAddress))
-            .thenApply(it -> it.muxerSession().createStream(new Blob(blobSize)))
-            .join();
+      StreamPromise<BlobController> blob =
+              clientHost
+                      .getNetwork()
+                      .connect(serverHost.getPeerId(), new Multiaddr(localListenAddress))
+                      .thenApply(it -> it.muxerSession().createStream(new Blob(blobSize)))
+                      .join();
 
-    Stream blobStream = blob.getStream().get(5, TimeUnit.SECONDS);
-    System.out.println("Blob stream created");
-    BlobController blobCtr = blob.getController().get(5, TimeUnit.SECONDS);
-    System.out.println("Blob controller created");
+      Stream blobStream = blob.getStream().get(5, TimeUnit.SECONDS);
+      System.out.println("Blob stream created");
+      BlobController blobCtr = blob.getController().get(5, TimeUnit.SECONDS);
+      System.out.println("Blob controller created");
 
-    for (int i = 0; i < 10; i++) {
-      long latency = blobCtr.blob().join();
-      System.out.println("Blob round trip is " + latency);
+      for (int i = 0; i < 10; i++) {
+        long latency = blobCtr.blob().join();
+        System.out.println("Blob round trip is " + latency);
+      }
+      blobStream.close().get(5, TimeUnit.SECONDS);
+      System.out.println("Blob stream closed");
+
+      Assertions.assertThrows(
+              ExecutionException.class, () -> blobCtr.blob().get(5, TimeUnit.SECONDS));
+
+    } finally {
+      clientHost.stop().get(5, TimeUnit.SECONDS);
+      System.out.println("Client stopped");
+      serverHost.stop().get(5, TimeUnit.SECONDS);
+      System.out.println("Server stopped");
     }
-    blobStream.close().get(5, TimeUnit.SECONDS);
-    System.out.println("Blob stream closed");
-
-    Assertions.assertThrows(
-        ExecutionException.class, () -> blobCtr.blob().get(5, TimeUnit.SECONDS));
-
-    clientHost.stop().get(5, TimeUnit.SECONDS);
-    System.out.println("Client stopped");
-    serverHost.stop().get(5, TimeUnit.SECONDS);
-    System.out.println("Server stopped");
   }
 
   @Test
