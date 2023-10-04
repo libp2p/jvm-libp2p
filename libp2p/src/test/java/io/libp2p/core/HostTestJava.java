@@ -156,7 +156,7 @@ public class HostTestJava {
   @Test
   void largeBlob() throws Exception {
     int blobSize = 1024 * 1024;
-    String localListenAddress = "/ip4/127.0.0.1/tcp/40002";
+    String localListenAddress = "/ip4/127.0.0.1/tcp/40020";
 
     Host clientHost =
         new HostBuilder()
