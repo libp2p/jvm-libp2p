@@ -8,13 +8,10 @@ import io.libp2p.core.multistream.StrictProtocolBinding
 import io.libp2p.etc.types.completedExceptionally
 import io.libp2p.etc.types.lazyVar
 import io.libp2p.etc.types.toByteArray
-import io.libp2p.etc.types.toByteBuf
 import io.libp2p.etc.types.toHex
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.codec.ByteToMessageCodec
-import java.io.ByteArrayOutputStream
-import java.io.DataOutputStream
 import java.time.Duration
 import java.util.Collections
 import java.util.Random
@@ -26,7 +23,7 @@ interface BlobController {
     fun blob(): CompletableFuture<Long>
 }
 
-class Blob(blobSize: Int) : BlobBinding(BlobProtocol(blobSize)) {}
+class Blob(blobSize: Int) : BlobBinding(BlobProtocol(blobSize))
 
 open class BlobBinding(blob: BlobProtocol) :
     StrictProtocolBinding<BlobController>("/ipfs/blob-echo/1.0.0", blob)
@@ -38,7 +35,6 @@ open class BlobProtocol(var blobSize: Int) : ProtocolHandler<BlobController>(Lon
     var curTime: () -> Long = { System.currentTimeMillis() }
     var random = Random()
     var blobTimeout = Duration.ofSeconds(10)
-
 
     override fun onStartInitiator(stream: Stream): CompletableFuture<BlobController> {
         val handler = BlobInitiator()
@@ -66,8 +62,9 @@ open class BlobProtocol(var blobSize: Int) : ProtocolHandler<BlobController>(Lon
         override fun decode(ctx: ChannelHandlerContext?, msg: ByteBuf, out: MutableList<Any>) {
             println("Codec::decode " + msg.readableBytes())
             val readerIndex = msg.readerIndex()
-            if (msg.readableBytes() < 4)
+            if (msg.readableBytes() < 4) {
                 return
+            }
             val len = msg.readInt()
             if (msg.readableBytes() < len) {
                 // not enough data to read the full array
@@ -78,7 +75,6 @@ open class BlobProtocol(var blobSize: Int) : ProtocolHandler<BlobController>(Lon
             val data = msg.readSlice(len)
             out.add(data.toByteArray())
         }
-
     }
 
     open inner class BlobResponder : ProtocolMessageHandler<ByteArray>, BlobController {

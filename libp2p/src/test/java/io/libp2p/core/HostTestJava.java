@@ -160,19 +160,19 @@ public class HostTestJava {
 
     Host clientHost =
         new HostBuilder()
-                .transport(TcpTransport::new)
-                .secureChannel(NoiseXXSecureChannel::new)
-                .muxer(StreamMuxerProtocol::getYamux)
-                .build();
+            .transport(TcpTransport::new)
+            .secureChannel(NoiseXXSecureChannel::new)
+            .muxer(StreamMuxerProtocol::getYamux)
+            .build();
 
     Host serverHost =
-            new HostBuilder()
-                    .transport(TcpTransport::new)
-                    .secureChannel(NoiseXXSecureChannel::new)
-                    .muxer(StreamMuxerProtocol::getYamux)
-                    .protocol(new Blob(blobSize))
-                    .listen(localListenAddress)
-                    .build();
+        new HostBuilder()
+            .transport(TcpTransport::new)
+            .secureChannel(NoiseXXSecureChannel::new)
+            .muxer(StreamMuxerProtocol::getYamux)
+            .protocol(new Blob(blobSize))
+            .listen(localListenAddress)
+            .build();
 
     CompletableFuture<Void> clientStarted = clientHost.start();
     CompletableFuture<Void> serverStarted = serverHost.start();
