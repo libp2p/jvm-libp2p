@@ -7,8 +7,8 @@ import io.libp2p.core.crypto.PubKey;
 import io.libp2p.core.dsl.HostBuilder;
 import io.libp2p.core.multiformats.Multiaddr;
 import io.libp2p.core.mux.StreamMuxerProtocol;
-import io.libp2p.protocol.Ping;
-import io.libp2p.protocol.PingController;
+import io.libp2p.protocol.*;
+import io.libp2p.security.noise.*;
 import io.libp2p.security.tls.*;
 import io.libp2p.transport.tcp.TcpTransport;
 import java.util.concurrent.CompletableFuture;
@@ -146,6 +146,68 @@ public class HostTestJava {
 
     Assertions.assertThrows(
         ExecutionException.class, () -> pingCtr.ping().get(5, TimeUnit.SECONDS));
+
+    clientHost.stop().get(5, TimeUnit.SECONDS);
+    System.out.println("Client stopped");
+    serverHost.stop().get(5, TimeUnit.SECONDS);
+    System.out.println("Server stopped");
+  }
+
+  @Test
+  void largeBlob() throws Exception {
+    int blobSize = 1024 * 1024;
+    String localListenAddress = "/ip4/127.0.0.1/tcp/40002";
+
+    Host clientHost =
+        new HostBuilder()
+                .transport(TcpTransport::new)
+                .secureChannel(NoiseXXSecureChannel::new)
+                .muxer(StreamMuxerProtocol::getYamux)
+                .build();
+
+    Host serverHost =
+            new HostBuilder()
+                    .transport(TcpTransport::new)
+                    .secureChannel(NoiseXXSecureChannel::new)
+                    .muxer(StreamMuxerProtocol::getYamux)
+                    .protocol(new Blob(blobSize))
+                    .listen(localListenAddress)
+                    .build();
+
+    CompletableFuture<Void> clientStarted = clientHost.start();
+    CompletableFuture<Void> serverStarted = serverHost.start();
+    clientStarted.get(5, TimeUnit.SECONDS);
+    System.out.println("Client started");
+    serverStarted.get(5, TimeUnit.SECONDS);
+    System.out.println("Server started");
+
+    Assertions.assertEquals(0, clientHost.listenAddresses().size());
+    Assertions.assertEquals(1, serverHost.listenAddresses().size());
+    Assertions.assertEquals(
+        localListenAddress + "/p2p/" + serverHost.getPeerId(),
+        serverHost.listenAddresses().get(0).toString());
+
+    StreamPromise<BlobController> blob =
+        clientHost
+            .getNetwork()
+            .connect(serverHost.getPeerId(), new Multiaddr(localListenAddress))
+            .thenApply(it -> it.muxerSession().createStream(new Blob(blobSize)))
+            .join();
+
+    Stream blobStream = blob.getStream().get(5, TimeUnit.SECONDS);
+    System.out.println("Blob stream created");
+    BlobController blobCtr = blob.getController().get(5, TimeUnit.SECONDS);
+    System.out.println("Blob controller created");
+
+    for (int i = 0; i < 10; i++) {
+      long latency = blobCtr.blob().join();
+      System.out.println("Blob round trip is " + latency);
+    }
+    blobStream.close().get(5, TimeUnit.SECONDS);
+    System.out.println("Blob stream closed");
+
+    Assertions.assertThrows(
+        ExecutionException.class, () -> blobCtr.blob().get(5, TimeUnit.SECONDS));
 
     clientHost.stop().get(5, TimeUnit.SECONDS);
     System.out.println("Client stopped");
