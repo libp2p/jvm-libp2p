@@ -185,15 +185,15 @@ public class HostTestJava {
       Assertions.assertEquals(0, clientHost.listenAddresses().size());
       Assertions.assertEquals(1, serverHost.listenAddresses().size());
       Assertions.assertEquals(
-              localListenAddress + "/p2p/" + serverHost.getPeerId(),
-              serverHost.listenAddresses().get(0).toString());
+          localListenAddress + "/p2p/" + serverHost.getPeerId(),
+          serverHost.listenAddresses().get(0).toString());
 
       StreamPromise<BlobController> blob =
-              clientHost
-                      .getNetwork()
-                      .connect(serverHost.getPeerId(), new Multiaddr(localListenAddress))
-                      .thenApply(it -> it.muxerSession().createStream(new Blob(blobSize)))
-                      .join();
+          clientHost
+              .getNetwork()
+              .connect(serverHost.getPeerId(), new Multiaddr(localListenAddress))
+              .thenApply(it -> it.muxerSession().createStream(new Blob(blobSize)))
+              .join();
 
       Stream blobStream = blob.getStream().get(5, TimeUnit.SECONDS);
       System.out.println("Blob stream created");
@@ -208,7 +208,7 @@ public class HostTestJava {
       System.out.println("Blob stream closed");
 
       Assertions.assertThrows(
-              ExecutionException.class, () -> blobCtr.blob().get(5, TimeUnit.SECONDS));
+          ExecutionException.class, () -> blobCtr.blob().get(5, TimeUnit.SECONDS));
 
     } finally {
       clientHost.stop().get(5, TimeUnit.SECONDS);
