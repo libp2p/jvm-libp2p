@@ -202,7 +202,7 @@ class GossipParamsBuilder {
             iWantFollowupTime = iWantFollowupTime!!,
             maxGraftMessages = maxGraftMessages,
             maxPrunePeers = maxPrunePeers!!,
-            maxPeersPerPruneMessage = maxPeersPerPruneMessage,
+            maxPeersPerPruneMessage = maxPeersPerPruneMessage!!,
             pruneBackoff = pruneBackoff!!,
             maxPruneMessages = maxPruneMessages,
             gossipRetransmission = gossipRetransmission!!,

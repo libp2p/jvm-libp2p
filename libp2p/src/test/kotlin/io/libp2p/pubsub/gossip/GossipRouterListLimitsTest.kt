@@ -44,7 +44,7 @@ class GossipRouterListLimitsTest {
 
     @Test
     fun validateProtobufLists_validMessageWithLargeLists_noLimits() {
-        val msg = fullMsgBuilder(20).build()
+        val msg = fullMsgBuilder(16).build()
 
         Assertions.assertThat(routerWithNoLimits.validateMessageListLimits(msg)).isTrue()
     }

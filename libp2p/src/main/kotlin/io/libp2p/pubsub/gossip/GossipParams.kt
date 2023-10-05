@@ -203,7 +203,7 @@ data class GossipParams(
     /**
      * [maxPeersPerPruneMessage] is the maximum number of peers allowed in an incoming prune message
      */
-    val maxPeersPerPruneMessage: Int? = null,
+    val maxPeersPerPruneMessage: Int = 16,
 
     /**
      * [pruneBackoff] controls the backoff time for pruned peers. This is how long
