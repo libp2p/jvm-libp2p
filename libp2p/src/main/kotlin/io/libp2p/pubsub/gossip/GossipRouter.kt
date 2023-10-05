@@ -572,6 +572,7 @@ open class GossipRouter(
         val peerQueue = pendingRpcParts.getQueue(peer)
         if (peer.getPeerProtocol() == PubsubProtocol.Gossip_V_1_1 && this.protocol == PubsubProtocol.Gossip_V_1_1) {
             val backoffPeers = (getTopicPeers(topic) - peer)
+                .take(params.maxPrunePeers)
                 .filter { score.score(it.peerId) >= 0 }
                 .map { it.peerId }
             peerQueue.addPrune(topic, params.pruneBackoff.seconds, backoffPeers)
