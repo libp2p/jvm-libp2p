@@ -102,7 +102,7 @@ class GossipV1_1Tests {
     class TwoRoutersTest(
         val coreParams: GossipParams = GossipParams(),
         val scoreParams: GossipScoreParams = GossipScoreParams(),
-        mockRouterFactory: DeterministicFuzzRouterFactory = createMockFuzzRouterFactory()
+        val mockRouterFactory: DeterministicFuzzRouterFactory = createMockFuzzRouterFactory()
     ) {
         val fuzz = DeterministicFuzz()
         val gossipRouterBuilderFactory = { GossipRouterBuilder(params = coreParams, scoreParams = scoreParams) }
@@ -1139,5 +1139,34 @@ class GossipV1_1Tests {
             .flatMap { it.messageIDsList }
         assertEquals(5, iWandIds1.size)
         assertEquals(5, iWandIds1.distinct().size)
+    }
+
+    @Test
+    fun testMaxPeersSentInPruneMsg() {
+        val test = TwoRoutersTest()
+
+        val topic = "topic1"
+        test.mockRouter.subscribe(topic)
+        test.gossipRouter.subscribe(topic)
+
+        for (i in 0..20) {
+            val router = test.fuzz.createTestRouter(test.mockRouterFactory)
+            (router.router as MockRouter).subscribe(topic)
+            test.router1.connectSemiDuplex(router, null, LogLevel.ERROR)
+        }
+
+        // 2 heartbeats - the topic should be GRAFTed
+        test.fuzz.timeController.addTime(2.seconds)
+        test.mockRouter.waitForMessage { it.hasControl() && it.control.graftCount > 0 }
+
+        test.gossipRouter.unsubscribe(topic)
+        test.fuzz.timeController.addTime(2.seconds)
+        assertEquals(
+            1,
+            test.mockRouter.inboundMessages.count {
+                it.hasControl() && it.control.pruneCount == 1 &&
+                    it.control.getPrune(0).peersCount == test.gossipRouter.params.maxPeersSentInPruneMsg
+            }
+        )
     }
 }
