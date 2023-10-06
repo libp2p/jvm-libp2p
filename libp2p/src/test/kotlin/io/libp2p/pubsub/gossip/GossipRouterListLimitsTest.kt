@@ -15,7 +15,7 @@ class GossipRouterListLimitsTest {
     private val maxIWantMessageIds = 14
     private val maxGraftMessages = 15
     private val maxPruneMessages = 16
-    private val maxPeersPerPruneMessage = 17
+    private val maxPeersAcceptedInPruneMsg = 17
 
     private val gossipParamsWithLimits = GossipParamsBuilder()
         .maxPublishedMessages(maxPublishedMessages)
@@ -25,7 +25,7 @@ class GossipRouterListLimitsTest {
         .maxIWantMessageIds(maxIWantMessageIds)
         .maxGraftMessages(maxGraftMessages)
         .maxPruneMessages(maxPruneMessages)
-        .maxPeersPerPruneMessage(maxPeersPerPruneMessage)
+        .maxPeersAcceptedInPruneMsg(maxPeersAcceptedInPruneMsg)
         .build()
 
     private val gossipParamsNoLimits = GossipParamsBuilder()
@@ -148,9 +148,9 @@ class GossipRouterListLimitsTest {
     }
 
     @Test
-    fun validateProtobufLists_tooManyPrunePeers() {
+    fun validateProtobufLists_tooManyPeersToAcceptInPruneMsg() {
         val builder = fullMsgBuilder()
-        builder.addPrunes(1, maxPeersPerPruneMessage + 1)
+        builder.addPrunes(1, maxPeersAcceptedInPruneMsg + 1)
         val msg = builder.build()
 
         Assertions.assertThat(routerWithLimits.validateMessageListLimits(msg)).isFalse()
@@ -238,9 +238,9 @@ class GossipRouterListLimitsTest {
     }
 
     @Test
-    fun validateProtobufLists_maxPrunePeers() {
+    fun validateProtobufLists_maxPeersAcceptedInPruneMsg() {
         val builder = fullMsgBuilder()
-        builder.addPrunes(1, maxPeersPerPruneMessage - 1)
+        builder.addPrunes(1, maxPeersAcceptedInPruneMsg - 1)
         val msg = builder.build()
 
         Assertions.assertThat(routerWithLimits.validateMessageListLimits(msg)).isTrue()

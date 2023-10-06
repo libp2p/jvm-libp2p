@@ -193,17 +193,17 @@ data class GossipParams(
     val maxGraftMessages: Int? = null,
 
     /**
-     * [maxPrunePeers] controls the number of peers to include in prune Peer eXchange.
+     * [maxPeersSentInPruneMsg] controls the number of peers to include in prune Peer eXchange.
      * When we prune a peer that's eligible for PX (has a good score, etc), we will try to
-     * send them signed peer records for up to [maxPrunePeers] other peers that we
+     * send them signed peer records for up to [maxPeersSentInPruneMsg] other peers that we
      * know of.
      */
-    val maxPrunePeers: Int = 16,
+    val maxPeersSentInPruneMsg: Int = 16,
 
     /**
-     * [maxPeersPerPruneMessage] is the maximum number of peers allowed in an incoming prune message
+     * [maxPeersAcceptedInPruneMsg] is the maximum number of peers allowed in an incoming prune message
      */
-    val maxPeersPerPruneMessage: Int = 16,
+    val maxPeersAcceptedInPruneMsg: Int = 16,
 
     /**
      * [pruneBackoff] controls the backoff time for pruned peers. This is how long

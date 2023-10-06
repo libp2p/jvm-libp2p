@@ -34,9 +34,9 @@ class GossipParamsBuilder {
 
     private var seenTTL: Duration? = null
 
-    private var maxPrunePeers: Int? = null
+    private var maxPeersSentInPruneMsg: Int? = null
 
-    private var maxPeersPerPruneMessage: Int? = null
+    private var maxPeersAcceptedInPruneMsg: Int? = null
 
     private var pruneBackoff: Duration? = null
 
@@ -81,8 +81,8 @@ class GossipParamsBuilder {
         this.gossipHistoryLength = source.gossipHistoryLength
         this.heartbeatInterval = source.heartbeatInterval
         this.seenTTL = source.seenTTL
-        this.maxPrunePeers = source.maxPrunePeers
-        this.maxPeersPerPruneMessage = source.maxPeersPerPruneMessage
+        this.maxPeersSentInPruneMsg = source.maxPeersSentInPruneMsg
+        this.maxPeersAcceptedInPruneMsg = source.maxPeersAcceptedInPruneMsg
         this.pruneBackoff = source.pruneBackoff
         this.floodPublish = source.floodPublish
         this.gossipFactor = source.gossipFactor
@@ -126,9 +126,9 @@ class GossipParamsBuilder {
 
     fun seenTTL(value: Duration): GossipParamsBuilder = apply { seenTTL = value }
 
-    fun maxPrunePeers(value: Int): GossipParamsBuilder = apply { maxPrunePeers = value }
+    fun maxPeersSentInPruneMsg(value: Int): GossipParamsBuilder = apply { maxPeersSentInPruneMsg = value }
 
-    fun maxPeersPerPruneMessage(value: Int): GossipParamsBuilder = apply { maxPeersPerPruneMessage = value }
+    fun maxPeersAcceptedInPruneMsg(value: Int): GossipParamsBuilder = apply { maxPeersAcceptedInPruneMsg = value }
 
     fun pruneBackoff(value: Duration): GossipParamsBuilder = apply { pruneBackoff = value }
 
@@ -201,8 +201,8 @@ class GossipParamsBuilder {
             maxIWantMessageIds = maxIWantMessageIds,
             iWantFollowupTime = iWantFollowupTime!!,
             maxGraftMessages = maxGraftMessages,
-            maxPrunePeers = maxPrunePeers!!,
-            maxPeersPerPruneMessage = maxPeersPerPruneMessage!!,
+            maxPeersSentInPruneMsg = maxPeersSentInPruneMsg!!,
+            maxPeersAcceptedInPruneMsg = maxPeersAcceptedInPruneMsg!!,
             pruneBackoff = pruneBackoff!!,
             maxPruneMessages = maxPruneMessages,
             gossipRetransmission = gossipRetransmission!!,
@@ -232,7 +232,7 @@ class GossipParamsBuilder {
         check(gossipHistoryLength != null, { "gossipHistoryLength must not be null" })
         check(heartbeatInterval != null, { "heartbeatInterval must not be null" })
         check(seenTTL != null, { "seenTTL must not be null" })
-        check(maxPrunePeers != null, { "maxPrunePeers must not be null" })
+        check(maxPeersSentInPruneMsg != null, { "maxPeersSentInPruneMsg must not be null" })
         check(pruneBackoff != null, { "pruneBackoff must not be null" })
         check(floodPublish != null, { "floodPublish must not be null" })
         check(gossipFactor != null, { "gossipFactor must not be null" })

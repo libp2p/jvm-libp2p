@@ -260,7 +260,7 @@ open class GossipRouter(
             params.maxIWantMessageIds?.let { iWantMessageIdCount <= it } ?: true &&
             params.maxGraftMessages?.let { (msg.control?.graftCount ?: 0) <= it } ?: true &&
             params.maxPruneMessages?.let { (msg.control?.pruneCount ?: 0) <= it } ?: true &&
-            params.maxPeersPerPruneMessage.let { msg.control?.pruneList?.none { p -> p.peersCount > it } } ?: true
+            params.maxPeersAcceptedInPruneMsg.let { msg.control?.pruneList?.none { p -> p.peersCount > it } } ?: true
     }
 
     private fun processControlMessage(controlMsg: Any, receivedFrom: PeerHandler) {
@@ -349,7 +349,7 @@ open class GossipRouter(
     }
 
     private fun processPrunePeers(peersList: List<Rpc.PeerInfo>) {
-        peersList.shuffled(random).take(params.maxPeersPerPruneMessage)
+        peersList.shuffled(random).take(params.maxPeersAcceptedInPruneMsg)
             .map { PeerId(it.peerID.toByteArray()) to it.signedPeerRecord.toByteArray() }
             .filter { (id, _) -> !isConnected(id) }
             .forEach { (id, record) -> params.connectCallback(id, record) }
@@ -572,7 +572,7 @@ open class GossipRouter(
         val peerQueue = pendingRpcParts.getQueue(peer)
         if (peer.getPeerProtocol() == PubsubProtocol.Gossip_V_1_1 && this.protocol == PubsubProtocol.Gossip_V_1_1) {
             val backoffPeers = (getTopicPeers(topic) - peer)
-                .take(params.maxPrunePeers)
+                .take(params.maxPeersSentInPruneMsg)
                 .filter { score.score(it.peerId) >= 0 }
                 .map { it.peerId }
             peerQueue.addPrune(topic, params.pruneBackoff.seconds, backoffPeers)
