@@ -33,6 +33,10 @@ open class MplexHandler(
         }
     }
 
+    override fun isChildWritable(child: MuxChannel<ByteBuf>): Boolean {
+        return true
+    }
+
     override fun onChildWrite(child: MuxChannel<ByteBuf>, data: ByteBuf) {
         val ctx = getChannelHandlerContext()
         data.sliceMaxSize(maxFrameDataLength)

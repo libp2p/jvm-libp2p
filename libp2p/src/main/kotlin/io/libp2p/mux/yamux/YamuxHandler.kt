@@ -169,6 +169,15 @@ open class YamuxHandler(
         goAwayPromise.complete(msg.length)
     }
 
+    override fun isChildWritable(child: MuxChannel<ByteBuf>): Boolean {
+        val windowSize = windowSizes[child.id]?.send
+        return if (windowSize == null) {
+            false
+        } else {
+            windowSize.get() > 0
+        }
+    }
+
     override fun onChildWrite(child: MuxChannel<ByteBuf>, data: ByteBuf) {
         val windowSize = windowSizes[child.id]?.send
         if (windowSize == null) {
@@ -196,12 +205,13 @@ open class YamuxHandler(
                     val frame = YamuxFrame(child.id, YamuxType.DATA, 0, length.toLong(), slicedData)
                     getChannelHandlerContext().writeAndFlush(frame)
                 } else {
-                    // wait until the window is increased to send
+                    // add to internal outbound buffer until the window is increased
                     addToSendBuffer(child, data)
                 }
             }
     }
 
+    // Can't rely only on the Netty outbound buffer to handle window updates, so specifying an internal outbound buffer
     private fun addToSendBuffer(child: MuxChannel<ByteBuf>, data: ByteBuf) {
         val buffer = sendBuffers.getOrPut(child.id) { SendBuffer(child.id) }
         buffer.add(data)

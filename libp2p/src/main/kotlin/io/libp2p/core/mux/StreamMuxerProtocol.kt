@@ -22,7 +22,7 @@ fun interface StreamMuxerProtocol {
         }
 
         /**
-         * @param maxBufferedConnectionWrites the maximum amount of bytes in the write buffer per connection
+         * @param maxBufferedConnectionWrites the maximum amount of bytes in the internal write buffer per connection
          */
         @JvmStatic
         @JvmOverloads
