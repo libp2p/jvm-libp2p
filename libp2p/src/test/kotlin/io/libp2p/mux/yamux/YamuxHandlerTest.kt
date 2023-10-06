@@ -46,20 +46,20 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
     override fun writeFrame(frame: AbstractTestMuxFrame) {
         val muxId = frame.streamId.toMuxId()
         val yamuxFrame = when (frame.flag) {
-            Open -> YamuxFrame(muxId, YamuxType.DATA, YamuxFlags.SYN, 0)
+            Open -> YamuxFrame(muxId, YamuxType.DATA, YamuxFlag.SYN.asSet, 0)
             Data -> {
                 val data = frame.data.fromHex()
                 YamuxFrame(
                     muxId,
                     YamuxType.DATA,
-                    0,
+                    YamuxFlag.NONE,
                     data.size.toLong(),
                     data.toByteBuf(allocateBuf())
                 )
             }
 
-            Close -> YamuxFrame(muxId, YamuxType.DATA, YamuxFlags.FIN, 0)
-            Reset -> YamuxFrame(muxId, YamuxType.DATA, YamuxFlags.RST, 0)
+            Close -> YamuxFrame(muxId, YamuxType.DATA, YamuxFlag.FIN.asSet, 0)
+            Reset -> YamuxFrame(muxId, YamuxType.DATA, YamuxFlag.RST.asSet, 0)
         }
         ech.writeInbound(yamuxFrame)
     }
@@ -67,8 +67,8 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
     override fun readFrame(): AbstractTestMuxFrame? {
         val yamuxFrame = readYamuxFrame()
         if (yamuxFrame != null) {
-            when (yamuxFrame.flags) {
-                YamuxFlags.SYN -> readFrameQueue += AbstractTestMuxFrame(yamuxFrame.id.id, Open)
+            when {
+                YamuxFlag.SYN in yamuxFrame.flags -> readFrameQueue += AbstractTestMuxFrame(yamuxFrame.id.id, Open)
             }
 
             val data = yamuxFrame.data?.readAllBytesAndRelease()?.toHex() ?: ""
@@ -77,9 +77,9 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
                     readFrameQueue += AbstractTestMuxFrame(yamuxFrame.id.id, Data, data)
             }
 
-            when (yamuxFrame.flags) {
-                YamuxFlags.FIN -> readFrameQueue += AbstractTestMuxFrame(yamuxFrame.id.id, Close)
-                YamuxFlags.RST -> readFrameQueue += AbstractTestMuxFrame(yamuxFrame.id.id, Reset)
+            when {
+                YamuxFlag.FIN in yamuxFrame.flags -> readFrameQueue += AbstractTestMuxFrame(yamuxFrame.id.id, Close)
+                YamuxFlag.RST in yamuxFrame.flags  -> readFrameQueue += AbstractTestMuxFrame(yamuxFrame.id.id, Reset)
             }
         }
 
@@ -102,7 +102,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
         val ackFrame = readYamuxFrameOrThrow()
 
         // receives ack stream
-        assertThat(ackFrame.flags).isEqualTo(YamuxFlags.ACK)
+        assertThat(ackFrame.flags).containsExactly(YamuxFlag.ACK)
         assertThat(ackFrame.type).isEqualTo(YamuxType.WINDOW_UPDATE)
 
         closeStream(12)
@@ -119,7 +119,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
             YamuxFrame(
                 streamId.toMuxId(),
                 YamuxType.DATA,
-                0,
+                YamuxFlag.NONE,
                 length.toLong(),
                 "42".repeat(length).fromHex().toByteBuf(allocateBuf())
             )
@@ -128,7 +128,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
         val windowUpdateFrame = readYamuxFrameOrThrow()
 
         // window frame is sent based on the new window
-        assertThat(windowUpdateFrame.flags).isZero()
+        assertThat(windowUpdateFrame.flags).isEmpty()
         assertThat(windowUpdateFrame.type).isEqualTo(YamuxType.WINDOW_UPDATE)
         assertThat(windowUpdateFrame.length).isEqualTo(length.toLong())
     }
@@ -142,7 +142,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
             YamuxFrame(
                 streamId.toMuxId(),
                 YamuxType.WINDOW_UPDATE,
-                YamuxFlags.ACK,
+                YamuxFlag.ACK.asSet,
                 -initialWindowSize.toLong()
             )
         )
@@ -151,7 +151,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
 
         assertThat(readFrame()).isNull()
 
-        ech.writeInbound(YamuxFrame(streamId.toMuxId(), YamuxType.WINDOW_UPDATE, YamuxFlags.ACK, 5000))
+        ech.writeInbound(YamuxFrame(streamId.toMuxId(), YamuxType.WINDOW_UPDATE, YamuxFlag.ACK.asSet, 5000))
         val frame = readFrameOrThrow()
         assertThat(frame.data).isEqualTo("1984")
     }
@@ -165,7 +165,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
             YamuxFrame(
                 streamId.toMuxId(),
                 YamuxType.WINDOW_UPDATE,
-                YamuxFlags.ACK,
+                YamuxFlag.ACK.asSet,
                 -initialWindowSize.toLong()
             )
         )
@@ -181,7 +181,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
             YamuxFrame(
                 streamId.toMuxId(),
                 YamuxType.WINDOW_UPDATE,
-                YamuxFlags.ACK,
+                YamuxFlag.ACK.asSet,
                 2
             )
         )
@@ -196,7 +196,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
             YamuxFrame(
                 streamId.toMuxId(),
                 YamuxType.WINDOW_UPDATE,
-                YamuxFlags.ACK,
+                YamuxFlag.ACK.asSet,
                 1
             )
         )
@@ -207,7 +207,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
             YamuxFrame(
                 streamId.toMuxId(),
                 YamuxType.WINDOW_UPDATE,
-                YamuxFlags.ACK,
+                YamuxFlag.ACK.asSet,
                 10000
             )
         )
@@ -224,7 +224,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
             YamuxFrame(
                 muxId,
                 YamuxType.WINDOW_UPDATE,
-                YamuxFlags.ACK,
+                YamuxFlag.ACK.asSet,
                 -initialWindowSize.toLong()
             )
         )
@@ -245,7 +245,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
             .hasMessage("Overflowed send buffer (612/512). Last stream attempting to write: $muxId")
 
         val frame = readYamuxFrameOrThrow()
-        assertThat(frame.flags).isEqualTo(YamuxFlags.RST)
+        assertThat(frame.flags).containsExactly(YamuxFlag.RST)
     }
 
     @Test
@@ -308,7 +308,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
             YamuxFrame(
                 id.toMuxId(),
                 YamuxType.PING,
-                YamuxFlags.SYN,
+                YamuxFlag.SYN.asSet,
                 // opaque value, echoed back
                 3
             )
@@ -316,7 +316,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
 
         val pingFrame = readYamuxFrameOrThrow()
 
-        assertThat(pingFrame.flags).isEqualTo(YamuxFlags.ACK)
+        assertThat(pingFrame.flags).containsExactly(YamuxFlag.ACK)
         assertThat(pingFrame.type).isEqualTo(YamuxType.PING)
         assertThat(pingFrame.length).isEqualTo(3)
     }
@@ -328,7 +328,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
             YamuxFrame(
                 id.toMuxId(),
                 YamuxType.GO_AWAY,
-                0,
+                YamuxFlag.NONE,
                 // normal termination
                 0x2
             )

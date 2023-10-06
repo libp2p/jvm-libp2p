@@ -67,7 +67,7 @@ open class YamuxHandler(
             if (newWindow < initialWindowSize / 2) {
                 val delta = initialWindowSize - newWindow
                 receiveWindowSize.addAndGet(delta)
-                writeAndFlushFrame(YamuxFrame(msg.id, YamuxType.WINDOW_UPDATE, 0, delta.toLong()))
+                writeAndFlushFrame(YamuxFrame(msg.id, YamuxType.WINDOW_UPDATE, YamuxFlag.NONE, delta.toLong()))
             }
             childRead(msg.id, msg.data!!)
         }
@@ -80,14 +80,14 @@ open class YamuxHandler(
         }
 
         private fun handleFlags(msg: YamuxFrame) {
-            when (msg.flags) {
-                YamuxFlags.SYN -> {
+            when {
+                YamuxFlag.SYN in msg.flags -> {
                     // ACK the new stream
-                    writeAndFlushFrame(YamuxFrame(msg.id, YamuxType.WINDOW_UPDATE, YamuxFlags.ACK, 0))
+                    writeAndFlushFrame(YamuxFrame(msg.id, YamuxType.WINDOW_UPDATE, YamuxFlag.ACK.asSet, 0))
                 }
 
-                YamuxFlags.FIN -> onRemoteDisconnect(msg.id)
-                YamuxFlags.RST -> onRemoteClose(msg.id)
+                YamuxFlag.FIN in msg.flags -> onRemoteDisconnect(msg.id)
+                YamuxFlag.RST in msg.flags -> onRemoteClose(msg.id)
             }
         }
 
@@ -109,11 +109,11 @@ open class YamuxHandler(
             data.sliceMaxSize(maxFrameDataLength)
                 .forEach { slicedData ->
                     val length = slicedData.readableBytes()
-                    writeAndFlushFrame(YamuxFrame(id, YamuxType.DATA, 0, length.toLong(), slicedData))
+                    writeAndFlushFrame(YamuxFrame(id, YamuxType.DATA, YamuxFlag.NONE, length.toLong(), slicedData))
                 }
 
             if (closedForWriting && sendBuffer.readableBytes() == 0) {
-                writeAndFlushFrame(YamuxFrame(id, YamuxType.DATA, YamuxFlags.FIN, 0))
+                writeAndFlushFrame(YamuxFrame(id, YamuxType.DATA, YamuxFlag.FIN.asSet, 0))
             }
         }
 
@@ -126,7 +126,7 @@ open class YamuxHandler(
         }
 
         fun onLocalOpen() {
-            writeAndFlushFrame(YamuxFrame(id, YamuxType.DATA, YamuxFlags.SYN, 0))
+            writeAndFlushFrame(YamuxFrame(id, YamuxType.DATA, YamuxFlag.SYN.asSet, 0))
         }
 
         fun onRemoteOpen() {
@@ -141,7 +141,7 @@ open class YamuxHandler(
         fun onLocalClose() {
             // close stream immediately so not transferring buffered data
             sendBuffer.dispose()
-            writeAndFlushFrame(YamuxFrame(id, YamuxType.DATA, YamuxFlags.RST, 0))
+            writeAndFlushFrame(YamuxFrame(id, YamuxType.DATA, YamuxFlag.RST.asSet, 0))
         }
     }
 
@@ -181,7 +181,7 @@ open class YamuxHandler(
             YamuxType.PING -> handlePing(msg)
             YamuxType.GO_AWAY -> handleGoAway(msg)
             else -> {
-                if (msg.flags == YamuxFlags.SYN) {
+                if (YamuxFlag.SYN in msg.flags) {
                     // remote opens a new stream
                     validateSynRemoteMuxId(msg.id)
                     onRemoteYamuxOpen(msg.id)
@@ -247,17 +247,15 @@ open class YamuxHandler(
         if (msg.id.id != YamuxId.SESSION_STREAM_ID) {
             throw InvalidFrameMuxerException("Invalid StreamId for Ping frame type: ${msg.id}")
         }
-        when (msg.flags) {
-            YamuxFlags.SYN -> writeAndFlushFrame(
+        if (YamuxFlag.SYN in msg.flags) {
+            writeAndFlushFrame(
                 YamuxFrame(
                     YamuxId.sessionId(msg.id.parentId),
                     YamuxType.PING,
-                    YamuxFlags.ACK,
+                    YamuxFlag.ACK.asSet,
                     msg.length
                 )
             )
-
-            YamuxFlags.ACK -> {}
         }
     }
 
