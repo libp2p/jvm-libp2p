@@ -141,12 +141,8 @@ open class YamuxHandler(
             bufferedData.add(data)
         }
 
-        fun bufferedBytes(): Int {
-            return bufferedData.sumOf { it.readableBytes() }
-        }
-
         fun flush(windowSize: AtomicInteger) {
-            while (!bufferedData.isEmpty() && windowSize.get() > 0) {
+            while (!isEmpty() && windowSize.get() > 0) {
                 val data = bufferedData.removeFirst()
                 val length = data.readableBytes()
                 windowSize.addAndGet(-length)
