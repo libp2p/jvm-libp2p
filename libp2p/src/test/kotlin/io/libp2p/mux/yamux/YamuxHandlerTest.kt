@@ -14,7 +14,6 @@ import io.netty.channel.ChannelHandlerContext
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
-import kotlin.random.Random
 
 class YamuxHandlerTest : MuxHandlerAbstractTest() {
 
