@@ -90,7 +90,7 @@ open class YamuxHandler(
         ) {
             data.sliceMaxSize(maxFrameDataLength)
                 .forEach { slicedData ->
-                    if (sendWindowSize.get() > 0) {
+                    if (sendWindowSize.get() > 0 && sendBuffer.isEmpty()) {
                         val length = slicedData.readableBytes()
                         sendWindowSize.addAndGet(-length)
                         writeAndFlushFrame(YamuxFrame(id, YamuxType.DATA, 0, length.toLong(), slicedData))
@@ -148,6 +148,14 @@ open class YamuxHandler(
                 windowSize.addAndGet(-length)
                 writeAndFlushFrame(YamuxFrame(id, YamuxType.DATA, 0, length.toLong(), data))
             }
+        }
+
+        fun isEmpty(): Boolean {
+            return bufferedData.isEmpty()
+        }
+
+        fun bufferedBytes(): Int {
+            return bufferedData.sumOf { it.readableBytes() }
         }
 
         fun dispose() {
