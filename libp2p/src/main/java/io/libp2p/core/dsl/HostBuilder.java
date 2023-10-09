@@ -62,6 +62,12 @@ public class HostBuilder {
     return this;
   }
 
+  public final HostBuilder builderModifier(Consumer<BuilderJ> builderModifier) {
+    this.builderModifier = builderModifier;
+    return this;
+  }
+
+  @SuppressWarnings("unchecked")
   public Host build() {
     return BuilderJKt.hostJ(
         defaultMode_.asBuilderDefault(),
@@ -74,6 +80,7 @@ public class HostBuilder {
           muxers_.forEach(m -> b.getMuxers().add(m.get()));
           b.getProtocols().addAll(protocols_);
           listenAddresses_.forEach(a -> b.getNetwork().listen(a));
+          builderModifier.accept(b);
         });
   } // build
 
@@ -84,4 +91,5 @@ public class HostBuilder {
   private List<Supplier<StreamMuxerProtocol>> muxers_ = new ArrayList<>();
   private List<ProtocolBinding<?>> protocols_ = new ArrayList<>();
   private List<String> listenAddresses_ = new ArrayList<>();
+  private Consumer<BuilderJ> builderModifier = b -> {};
 }
