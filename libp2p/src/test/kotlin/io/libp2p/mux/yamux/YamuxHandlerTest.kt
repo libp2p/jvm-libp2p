@@ -205,11 +205,11 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
     @Test
     fun `overflowing buffer sends RST flag and throws an exception`() {
         val handler = openStreamLocal()
-        val streamId = readFrameOrThrow().streamId
+        val muxId = readFrameOrThrow().streamId.toMuxId()
 
         ech.writeInbound(
             YamuxFrame(
-                streamId.toMuxId(),
+                muxId,
                 YamuxType.WINDOW_UPDATE,
                 YamuxFlags.ACK,
                 -INITIAL_WINDOW_SIZE.toLong()
@@ -229,7 +229,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
         assertThat(writeResult.isSuccess).isFalse()
         assertThat(writeResult.cause())
             .isInstanceOf(Libp2pException::class.java)
-            .hasMessage("Overflowed send buffer (612/512) for connection test")
+            .hasMessage("Overflowed send buffer (612/512). Last stream attempting to write: $muxId")
 
         val frame = readYamuxFrameOrThrow()
         assertThat(frame.flags).isEqualTo(YamuxFlags.RST)
@@ -306,8 +306,6 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
         assertThat(pingFrame.flags).isEqualTo(YamuxFlags.ACK)
         assertThat(pingFrame.type).isEqualTo(YamuxType.PING)
         assertThat(pingFrame.length).isEqualTo(3)
-
-        closeStream(id)
     }
 
     @Test
