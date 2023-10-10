@@ -6,6 +6,7 @@ import io.libp2p.core.StreamHandler
 import io.libp2p.core.multistream.MultistreamProtocol
 import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.etc.types.sliceMaxSize
+import io.libp2p.etc.util.netty.ByteBufQueue
 import io.libp2p.etc.util.netty.mux.MuxChannel
 import io.libp2p.etc.util.netty.mux.MuxId
 import io.libp2p.mux.InvalidFrameMuxerException
@@ -17,6 +18,7 @@ import io.netty.channel.ChannelHandlerContext
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.math.max
 
 const val INITIAL_WINDOW_SIZE = 256 * 1024
 const val DEFAULT_MAX_BUFFERED_CONNECTION_WRITES = 10 * 1024 * 1024 // 10 MiB
@@ -36,15 +38,21 @@ open class YamuxHandler(
     ) {
         val sendWindowSize = AtomicInteger(initialWindowSize)
         val receiveWindowSize = AtomicInteger(initialWindowSize)
-        val sendBuffer = SendBuffer(id)
+        val sendBuffer = ByteBufQueue()
 
         fun dispose() {
             sendBuffer.dispose()
         }
 
-        fun handleDataRead(msg: YamuxFrame) {
+        fun handleFrameRead(msg: YamuxFrame) {
             handleFlags(msg)
+            when (msg.type) {
+                YamuxType.DATA -> handleDataRead(msg)
+                YamuxType.WINDOW_UPDATE -> handleWindowUpdate(msg)
+            }
+        }
 
+        private fun handleDataRead(msg: YamuxFrame) {
             val size = msg.length.toInt()
             if (size == 0) {
                 return
@@ -60,17 +68,11 @@ open class YamuxHandler(
             childRead(msg.id, msg.data!!)
         }
 
-        fun handleWindowUpdate(msg: YamuxFrame) {
-            handleFlags(msg)
-
+        private fun handleWindowUpdate(msg: YamuxFrame) {
             val delta = msg.length.toInt()
-            if (delta == 0) {
-                return
-            }
-
             sendWindowSize.addAndGet(delta)
             // try to send any buffered messages after the window update
-            sendBuffer.flush(sendWindowSize)
+            drainBuffer()
         }
 
         private fun handleFlags(msg: YamuxFrame) {
@@ -85,31 +87,31 @@ open class YamuxHandler(
             }
         }
 
-        fun sendData(
-            data: ByteBuf
-        ) {
-            data.sliceMaxSize(maxFrameDataLength)
-                .forEach { slicedData ->
-                    if (sendWindowSize.get() > 0 && sendBuffer.isEmpty()) {
-                        val length = slicedData.readableBytes()
-                        sendWindowSize.addAndGet(-length)
-                        writeAndFlushFrame(YamuxFrame(id, YamuxType.DATA, 0, length.toLong(), slicedData))
-                    } else {
-                        // wait until the window is increased to send
-                        addToSendBuffer(data)
-                    }
-                }
-        }
-
-        private fun addToSendBuffer(data: ByteBuf) {
-            sendBuffer.add(data)
+        private fun fillBuffer(data: ByteBuf) {
+            sendBuffer.push(data)
             val totalBufferedWrites = calculateTotalBufferedWrites()
-            if (totalBufferedWrites > maxBufferedConnectionWrites) {
+            if (totalBufferedWrites > maxBufferedConnectionWrites + sendWindowSize.get()) {
                 onLocalClose()
                 throw WriteBufferOverflowMuxerException(
                     "Overflowed send buffer ($totalBufferedWrites/$maxBufferedConnectionWrites). Last stream attempting to write: $id"
                 )
             }
+        }
+
+        private fun drainBuffer() {
+            val maxSendLength = max(0, sendWindowSize.get())
+            val data = sendBuffer.take(maxSendLength)
+            sendWindowSize.addAndGet(-data.readableBytes())
+            data.sliceMaxSize(maxFrameDataLength)
+                .forEach { slicedData ->
+                    val length = slicedData.readableBytes()
+                    writeAndFlushFrame(YamuxFrame(id, YamuxType.DATA, 0, length.toLong(), slicedData))
+                }
+        }
+
+        fun sendData(data: ByteBuf) {
+            fillBuffer(data)
+            drainBuffer()
         }
 
         fun onLocalOpen() {
@@ -122,7 +124,7 @@ open class YamuxHandler(
 
         fun onLocalDisconnect() {
             // TODO: this implementation drops remaining data
-            sendBuffer.flush(sendWindowSize)
+            drainBuffer()
             sendBuffer.dispose()
             writeAndFlushFrame(YamuxFrame(id, YamuxType.DATA, YamuxFlags.FIN, 0))
         }
@@ -131,36 +133,6 @@ open class YamuxHandler(
             // close stream immediately so not transferring buffered data
             sendBuffer.dispose()
             writeAndFlushFrame(YamuxFrame(id, YamuxType.DATA, YamuxFlags.RST, 0))
-        }
-    }
-
-    private inner class SendBuffer(val id: MuxId) {
-        private val bufferedData = ArrayDeque<ByteBuf>()
-
-        fun add(data: ByteBuf) {
-            bufferedData.add(data)
-        }
-
-        fun flush(windowSize: AtomicInteger) {
-            while (!isEmpty() && windowSize.get() > 0) {
-                val data = bufferedData.removeFirst()
-                val length = data.readableBytes()
-                windowSize.addAndGet(-length)
-                writeAndFlushFrame(YamuxFrame(id, YamuxType.DATA, 0, length.toLong(), data))
-            }
-        }
-
-        fun isEmpty(): Boolean {
-            return bufferedData.isEmpty()
-        }
-
-        fun bufferedBytes(): Int {
-            return bufferedData.sumOf { it.readableBytes() }
-        }
-
-        fun dispose() {
-            bufferedData.forEach { releaseMessage(it) }
-            bufferedData.clear()
         }
     }
 
@@ -206,11 +178,7 @@ open class YamuxHandler(
                     onRemoteYamuxOpen(msg.id)
                 }
 
-                val streamHandler = getStreamHandlerOrReleaseAndThrow(msg.id, msg.data)
-                when (msg.type) {
-                    YamuxType.DATA -> streamHandler.handleDataRead(msg)
-                    YamuxType.WINDOW_UPDATE -> streamHandler.handleWindowUpdate(msg)
-                }
+                getStreamHandlerOrReleaseAndThrow(msg.id, msg.data).handleFrameRead(msg)
             }
         }
     }
@@ -263,7 +231,7 @@ open class YamuxHandler(
     }
 
     private fun calculateTotalBufferedWrites(): Int {
-        return streamHandlers.values.sumOf { it.sendBuffer.bufferedBytes() }
+        return streamHandlers.values.sumOf { it.sendBuffer.readableBytes() }
     }
 
     private fun handlePing(msg: YamuxFrame) {

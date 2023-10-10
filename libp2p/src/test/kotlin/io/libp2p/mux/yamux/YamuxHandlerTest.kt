@@ -19,6 +19,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
 
     override val maxFrameDataLength = 256
     private val maxBufferedConnectionWrites = 512
+    private val initialWindowSize = 300
     override val localMuxIdGenerator = YamuxStreamIdGenerator(isLocalConnectionInitiator).toIterator()
     override val remoteMuxIdGenerator = YamuxStreamIdGenerator(!isLocalConnectionInitiator).toIterator()
 
@@ -32,7 +33,8 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
             null,
             streamHandler,
             true,
-            maxBufferedConnectionWrites
+            maxBufferedConnectionWrites,
+            initialWindowSize
         ) {
             // MuxHandler consumes the exception. Override this behaviour for testing
             @Deprecated("Deprecated in Java")
@@ -112,7 +114,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
         val streamId = readFrameOrThrow().streamId
 
         // > 1/2 window size
-        val length = (INITIAL_WINDOW_SIZE / 2) + 42
+        val length = (initialWindowSize / 2) + 42
         ech.writeInbound(
             YamuxFrame(
                 streamId.toMuxId(),
@@ -141,7 +143,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
                 streamId.toMuxId(),
                 YamuxType.WINDOW_UPDATE,
                 YamuxFlags.ACK,
-                -INITIAL_WINDOW_SIZE.toLong()
+                -initialWindowSize.toLong()
             )
         )
 
@@ -164,7 +166,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
                 streamId.toMuxId(),
                 YamuxType.WINDOW_UPDATE,
                 YamuxFlags.ACK,
-                -INITIAL_WINDOW_SIZE.toLong()
+                -initialWindowSize.toLong()
             )
         )
 
@@ -199,7 +201,18 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
             )
         )
         frame = readFrameOrThrow()
-        assertThat(frame.data).isEqualTo("1984")
+        assertThat(frame.data).isEqualTo("19")
+
+        ech.writeInbound(
+            YamuxFrame(
+                streamId.toMuxId(),
+                YamuxType.WINDOW_UPDATE,
+                YamuxFlags.ACK,
+                10000
+            )
+        )
+        frame = readFrameOrThrow()
+        assertThat(frame.data).isEqualTo("84")
     }
 
     @Test
@@ -212,7 +225,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
                 muxId,
                 YamuxType.WINDOW_UPDATE,
                 YamuxFlags.ACK,
-                -INITIAL_WINDOW_SIZE.toLong()
+                -initialWindowSize.toLong()
             )
         )
 
@@ -243,13 +256,13 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
         val createMessage: (String) -> ByteBuf =
             { it.toByteArray().toByteBuf(allocateBuf()) }
 
-        val sendWindowUpdate: (Long) -> Unit = {
+        val sendWindowUpdate: (Int) -> Unit = {
             ech.writeInbound(
                 YamuxFrame(
                     streamId.toMuxId(),
                     YamuxType.WINDOW_UPDATE,
                     YamuxFlags.ACK,
-                    it
+                    it.toLong()
                 )
             )
         }
@@ -257,7 +270,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
         // approximately every 5 messages window size will be depleted
         val messagesToSend = 500
         val customWindowSize = 14
-        sendWindowUpdate(-INITIAL_WINDOW_SIZE.toLong() + customWindowSize)
+        sendWindowUpdate(-initialWindowSize + customWindowSize)
 
         val range = 1..messagesToSend
 
@@ -269,23 +282,23 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
 
         for (i in range) {
             if (i in windowUpdatesIndices) {
-                sendWindowUpdate(customWindowSize.toLong())
+                sendWindowUpdate(customWindowSize)
             }
             handler.ctx.writeAndFlush(createMessage(i.toString()))
         }
 
-        // verify the order of messages
-        for (i in range) {
-            val frame = readYamuxFrame()
-            assertThat(frame).overridingErrorMessage(
-                "Expected to send %s messages but it sent only %s",
-                messagesToSend,
-                messagesToSend - i
-            ).isNotNull()
-            assertThat(frame!!.data).isNotNull()
-            val data = String(frame.data!!.readAllBytesAndRelease())
-            assertThat(data).isEqualTo(i.toString())
+        val receivedData = generateSequence {
+            readYamuxFrame()
         }
+            .map {
+                assertThat(it.data).isNotNull()
+                String(it.data!!.readAllBytesAndRelease())
+            }
+            .joinToString(separator = "")
+
+        val expectedData = range.joinToString(separator = "")
+
+        assertThat(receivedData).isEqualTo(expectedData)
     }
 
     @Test
@@ -343,6 +356,55 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
             openStreamRemote(incorrectId)
         }
         assertThat(ech.isOpen).isFalse()
+    }
+
+    @Test
+    fun `negative sendWindowSize should be correctly handled`() {
+        val handler = openStreamLocal()
+        val muxId = readFrameOrThrow().streamId.toMuxId()
+
+        val msg = "42".repeat(initialWindowSize + 1).fromHex().toByteBuf(allocateBuf())
+        // writing a message which is larger than sendWindowSize
+        handler.ctx.writeAndFlush(msg)
+
+        // sendWindowSize is 0 now
+
+        // remote party wants to reduce the window by 10
+        ech.writeInbound(
+            YamuxFrame(
+                muxId,
+                YamuxType.WINDOW_UPDATE,
+                YamuxFlags.ACK,
+                -10
+            )
+        )
+
+        // sendWindowSize is -10 now
+
+        val msgPart1 = readYamuxFrameOrThrow()
+        assertThat(msgPart1.length).isEqualTo(256L)
+        assertThat(msgPart1.data!!.readableBytes()).isEqualTo(256)
+        msgPart1.data!!.release()
+
+        val msgPart2 = readYamuxFrameOrThrow()
+        assertThat(msgPart2.length.toInt()).isEqualTo(initialWindowSize - 256)
+        assertThat(msgPart2.data!!.readableBytes()).isEqualTo(initialWindowSize - 256)
+        msgPart2.data!!.release()
+
+        // ACKing message receive
+        ech.writeInbound(
+            YamuxFrame(
+                muxId,
+                YamuxType.WINDOW_UPDATE,
+                YamuxFlags.ACK,
+                initialWindowSize.toLong()
+            )
+        )
+
+        val msgPart3 = readYamuxFrameOrThrow()
+        assertThat(msgPart3.length).isEqualTo(1L)
+        assertThat(msgPart3.data!!.readableBytes()).isEqualTo(1)
+        msgPart3.data!!.release()
     }
 
     companion object {
