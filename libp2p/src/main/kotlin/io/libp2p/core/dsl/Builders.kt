@@ -23,6 +23,7 @@ import io.libp2p.core.security.SecureChannel
 import io.libp2p.core.transport.Transport
 import io.libp2p.etc.types.lazyVar
 import io.libp2p.etc.types.toProtobuf
+import io.libp2p.etc.util.netty.LoggingHandlerShort
 import io.libp2p.host.HostImpl
 import io.libp2p.host.MemoryAddressBook
 import io.libp2p.network.NetworkImpl
@@ -272,6 +273,10 @@ class DebugHandlerBuilder<TChannel : P2PChannel>(var name: String) {
 
     fun addLogger(level: LogLevel, loggerName: String = name) {
         addNettyHandler(LoggingHandler(loggerName, level))
+    }
+
+    fun addCompactLogger(level: LogLevel, loggerName: String = name) {
+        addNettyHandler(LoggingHandlerShort(loggerName, level))
     }
 }
 
