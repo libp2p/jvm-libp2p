@@ -29,7 +29,7 @@ class ByteBufQueue {
             }
                 ?.let { buf ->
                     val remainingBytes = maxLength - size
-                    buf.readSlice(remainingBytes).retain()
+                    buf.readRetainedSlice(remainingBytes)
                 }
 
         val allBuffers = wholeBuffers + listOfNotNull(partialBufferSlice)
