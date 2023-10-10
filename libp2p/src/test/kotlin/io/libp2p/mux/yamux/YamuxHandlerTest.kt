@@ -434,7 +434,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
             YamuxFrame(
                 muxId,
                 YamuxType.WINDOW_UPDATE,
-                YamuxFlags.ACK,
+                YamuxFlag.ACK.asSet,
                 initialWindowSize.toLong()
             )
         )
@@ -445,7 +445,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
         msgPart3.data!!.release()
 
         val closeFrame = readYamuxFrameOrThrow()
-        assertThat(closeFrame.flags).isEqualTo(YamuxFlags.FIN)
+        assertThat(closeFrame.flags).containsExactly(YamuxFlag.FIN)
         assertThat(closeFrame.length).isEqualTo(0L)
         assertThat(closeFrame.data).isNull()
     }
