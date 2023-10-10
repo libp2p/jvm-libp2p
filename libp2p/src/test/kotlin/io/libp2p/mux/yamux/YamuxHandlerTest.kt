@@ -261,7 +261,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
                 YamuxFrame(
                     streamId.toMuxId(),
                     YamuxType.WINDOW_UPDATE,
-                    YamuxFlags.ACK,
+                    YamuxFlag.ACK.asSet,
                     it.toLong()
                 )
             )
@@ -374,7 +374,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
             YamuxFrame(
                 muxId,
                 YamuxType.WINDOW_UPDATE,
-                YamuxFlags.ACK,
+                YamuxFlag.ACK.asSet,
                 -10
             )
         )
@@ -396,7 +396,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
             YamuxFrame(
                 muxId,
                 YamuxType.WINDOW_UPDATE,
-                YamuxFlags.ACK,
+                YamuxFlag.ACK.asSet,
                 initialWindowSize.toLong()
             )
         )

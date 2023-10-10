@@ -53,6 +53,7 @@ open class YamuxHandler(
             when (msg.type) {
                 YamuxType.DATA -> handleDataRead(msg)
                 YamuxType.WINDOW_UPDATE -> handleWindowUpdate(msg)
+                else -> { /* ignore */ }
             }
         }
 

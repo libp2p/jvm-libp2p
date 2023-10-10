@@ -25,7 +25,7 @@ class YamuxFrameCodec(
      */
     override fun encode(ctx: ChannelHandlerContext, msg: YamuxFrame, out: ByteBuf) {
         out.writeByte(0) // version
-        out.writeByte(msg.type)
+        out.writeByte(msg.type.intValue)
         out.writeShort(msg.flags.toInt())
         out.writeInt(msg.id.id.toInt())
         out.writeInt(msg.data?.readableBytes() ?: msg.length.toInt())
@@ -47,15 +47,16 @@ class YamuxFrameCodec(
             val readerIndex = msg.readerIndex()
             msg.readByte(); // version always 0
             val type = msg.readUnsignedByte()
+            val yamuxType = YamuxType.fromInt(type.toInt())
             val flags = msg.readUnsignedShort()
             val streamId = msg.readUnsignedInt()
             val length = msg.readUnsignedInt()
             val yamuxId = YamuxId(ctx.channel().id(), streamId)
             val yamuxFlags = YamuxFlag.fromInt(flags)
-            if (type.toInt() != YamuxType.DATA) {
+            if (yamuxType != YamuxType.DATA) {
                 val yamuxFrame = YamuxFrame(
                     yamuxId,
-                    type.toInt(),
+                    yamuxType,
                     yamuxFlags,
                     length
                 )
@@ -76,7 +77,7 @@ class YamuxFrameCodec(
             data.retain() // MessageToMessageCodec releases original buffer, but it needs to be relayed
             val yamuxFrame = YamuxFrame(
                 yamuxId,
-                type.toInt(),
+                yamuxType,
                 yamuxFlags,
                 length,
                 data

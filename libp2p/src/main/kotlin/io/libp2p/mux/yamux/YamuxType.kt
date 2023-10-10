@@ -1,11 +1,20 @@
 package io.libp2p.mux.yamux
 
+import io.libp2p.mux.InvalidFrameMuxerException
+
 /**
  * Contains all the permissible values for types in the <code>yamux</code> protocol.
  */
-object YamuxType {
-    const val DATA = 0
-    const val WINDOW_UPDATE = 1
-    const val PING = 2
-    const val GO_AWAY = 3
+enum class YamuxType(val intValue: Int) {
+    DATA(0),
+    WINDOW_UPDATE(1),
+    PING(2),
+    GO_AWAY(3);
+
+    companion object {
+        private val intToTypeCache = values().associateBy { it.intValue }
+
+        fun fromInt(intValue: Int): YamuxType =
+            intToTypeCache[intValue] ?: throw InvalidFrameMuxerException("Invalid Yamux type value: $intValue")
+    }
 }
