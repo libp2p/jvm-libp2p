@@ -79,7 +79,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
 
             when {
                 YamuxFlag.FIN in yamuxFrame.flags -> readFrameQueue += AbstractTestMuxFrame(yamuxFrame.id.id, Close)
-                YamuxFlag.RST in yamuxFrame.flags  -> readFrameQueue += AbstractTestMuxFrame(yamuxFrame.id.id, Reset)
+                YamuxFlag.RST in yamuxFrame.flags -> readFrameQueue += AbstractTestMuxFrame(yamuxFrame.id.id, Reset)
             }
         }
 

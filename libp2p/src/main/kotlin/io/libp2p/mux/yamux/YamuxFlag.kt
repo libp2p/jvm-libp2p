@@ -17,7 +17,7 @@ enum class YamuxFlag(val intFlag: Int) {
         val NONE = emptySet<YamuxFlag>()
 
         private val validFlagCombinations = mapOf(
-            0 to emptySet(),
+            0 to NONE,
             SYN.intFlag to SYN.asSet,
             ACK.intFlag to ACK.asSet,
             FIN.intFlag to FIN.asSet,
@@ -28,7 +28,7 @@ enum class YamuxFlag(val intFlag: Int) {
             validFlagCombinations[flags] ?: throw InvalidFrameMuxerException("Invalid Yamux flags value: $flags")
 
         fun Set<YamuxFlag>.toInt() = this
-            .fold(0) { acc, flag -> acc or flag.intFlag}
+            .fold(0) { acc, flag -> acc or flag.intFlag }
             .also { require(it in validFlagCombinations) { "Invalid Yamux flags combination: $this" } }
     }
 }
