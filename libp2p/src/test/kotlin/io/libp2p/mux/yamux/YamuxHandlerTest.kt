@@ -450,6 +450,49 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
         assertThat(closeFrame.data).isNull()
     }
 
+    @Test
+    fun `local close for writing should flush buffered data and send close frame on writeWindow update`() {
+        val handler = openStreamLocal()
+        val muxId = readFrameOrThrow().streamId.toMuxId()
+
+        val msg = "42".repeat(initialWindowSize + 1).fromHex().toByteBuf(allocateBuf())
+        // writing a message which is larger than sendWindowSize
+        handler.ctx.writeAndFlush(msg)
+
+        val msgPart1 = readYamuxFrameOrThrow()
+        assertThat(msgPart1.length).isEqualTo(256L)
+        assertThat(msgPart1.data!!.readableBytes()).isEqualTo(256)
+        msgPart1.data!!.release()
+
+        val msgPart2 = readYamuxFrameOrThrow()
+        assertThat(msgPart2.length.toInt()).isEqualTo(initialWindowSize - 256)
+        assertThat(msgPart2.data!!.readableBytes()).isEqualTo(initialWindowSize - 256)
+        msgPart2.data!!.release()
+
+        // locally close for writing while some outbound data is still buffered
+        handler.ctx.disconnect()
+
+        // ACKing message receive
+        ech.writeInbound(
+            YamuxFrame(
+                muxId,
+                YamuxType.WINDOW_UPDATE,
+                YamuxFlags.ACK,
+                initialWindowSize.toLong()
+            )
+        )
+
+        val msgPart3 = readYamuxFrameOrThrow()
+        assertThat(msgPart3.length).isEqualTo(1L)
+        assertThat(msgPart3.data!!.readableBytes()).isEqualTo(1)
+        msgPart3.data!!.release()
+
+        val closeFrame = readYamuxFrameOrThrow()
+        assertThat(closeFrame.flags).isEqualTo(YamuxFlags.FIN)
+        assertThat(closeFrame.length).isEqualTo(0L)
+        assertThat(closeFrame.data).isNull()
+    }
+
     companion object {
         private fun YamuxStreamIdGenerator.toIterator() = iterator {
             while (true) {
