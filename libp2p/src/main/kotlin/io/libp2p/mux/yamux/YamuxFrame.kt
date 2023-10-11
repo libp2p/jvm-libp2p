@@ -8,7 +8,7 @@ import io.netty.buffer.Unpooled
 /**
  * Contains the fields that comprise a yamux frame.
  * @param id the ID of the stream.
- * @param flag the flag for this frame.
+ * @param flags the flags for this frame.
  * @param length the length field for this frame.
  * @param data the data segment.
  */
@@ -17,6 +17,7 @@ class YamuxFrame(val id: MuxId, val type: YamuxType, val flags: Set<YamuxFlag>, 
 
     override fun toString(): String {
         val dataString = if (data == null) "" else ", len=${data.readableBytes()}, $data"
-        return "YamuxFrame(id=$id, type=$type, flag=$flags, length=$length$dataString)"
+        val flagsString = flags.joinToString("+")
+        return "YamuxFrame(id=$id, type=$type, flags=$flagsString, length=$length$dataString)"
     }
 }
