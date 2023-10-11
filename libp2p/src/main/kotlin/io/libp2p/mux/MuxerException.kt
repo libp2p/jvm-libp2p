@@ -13,3 +13,4 @@ class UnknownStreamIdMuxerException(muxId: MuxId) : ReadMuxerException("Stream w
 class InvalidFrameMuxerException(message: String) : ReadMuxerException(message, null)
 
 class WriteBufferOverflowMuxerException(message: String) : WriteMuxerException(message, null)
+class ClosedForWritingMuxerException(muxId: MuxId) : WriteMuxerException("Couldn't write, stream was closed for writing: $muxId", null)
