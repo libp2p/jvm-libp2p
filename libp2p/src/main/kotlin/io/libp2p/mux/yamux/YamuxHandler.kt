@@ -13,7 +13,6 @@ import io.libp2p.etc.util.netty.mux.MuxId
 import io.libp2p.mux.*
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
-import org.slf4j.LoggerFactory
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
@@ -21,11 +20,9 @@ import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.max
 import kotlin.properties.Delegates
 
-const val ALLOWED_ACK_BACKLOG = 256
+const val ACK_BACKLOG_ALLOWANCE = 256
 const val INITIAL_WINDOW_SIZE = 256 * 1024
 const val DEFAULT_MAX_BUFFERED_CONNECTION_WRITES = 10 * 1024 * 1024 // 10 MiB
-
-private val log = LoggerFactory.getLogger(YamuxHandler::class.java)
 
 open class YamuxHandler(
     override val multistreamProtocol: MultistreamProtocol,
@@ -220,17 +217,9 @@ open class YamuxHandler(
     }
 
     override fun onLocalOpen(child: MuxChannel<ByteBuf>) {
-        val streamHandler = createYamuxStreamHandler(child.id)
-        if (totalUnacknowledgedStreams() >= ALLOWED_ACK_BACKLOG) {
-            log.debug(
-                "ACK backlog of more than {} streams is not allowed. Will disconnect {}",
-                ALLOWED_ACK_BACKLOG,
-                child.id
-            )
-            onLocalClose(child)
-            return
+        if (totalUnacknowledgedStreams() < ACK_BACKLOG_ALLOWANCE) {
+            createYamuxStreamHandler(child.id).onLocalOpen()
         }
-        streamHandler.onLocalOpen()
     }
 
     private fun onRemoteYamuxOpen(id: MuxId) {

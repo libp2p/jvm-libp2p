@@ -450,6 +450,26 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
         assertThat(closeFrame.data).isNull()
     }
 
+    @Test
+    fun `does not send SYN flag for a new stream if ACK backlog is full`() {
+        for (i in 1..ACK_BACKLOG_ALLOWANCE) {
+            openStreamLocal()
+        }
+        // no SYN flag should be sent for this stream
+        openStreamLocal()
+
+        var synFlagFrames = 0
+        do {
+            val frame = readYamuxFrame()
+            frame?.let {
+                assertThat(it.flags).isEqualTo(YamuxFlag.SYN.asSet)
+                synFlagFrames += 1
+            }
+        } while (frame != null)
+
+        assertThat(synFlagFrames).isEqualTo(ACK_BACKLOG_ALLOWANCE)
+    }
+
     companion object {
         private fun YamuxStreamIdGenerator.toIterator() = iterator {
             while (true) {
