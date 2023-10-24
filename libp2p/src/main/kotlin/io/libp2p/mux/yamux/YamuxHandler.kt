@@ -10,21 +10,22 @@ import io.libp2p.etc.types.writeOnce
 import io.libp2p.etc.util.netty.ByteBufQueue
 import io.libp2p.etc.util.netty.mux.MuxChannel
 import io.libp2p.etc.util.netty.mux.MuxId
-import io.libp2p.mux.ClosedForWritingMuxerException
-import io.libp2p.mux.InvalidFrameMuxerException
-import io.libp2p.mux.MuxHandler
-import io.libp2p.mux.UnknownStreamIdMuxerException
-import io.libp2p.mux.WriteBufferOverflowMuxerException
+import io.libp2p.mux.*
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
+import org.slf4j.LoggerFactory
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.max
 import kotlin.properties.Delegates
 
+const val ALLOWED_ACK_BACKLOG = 256
 const val INITIAL_WINDOW_SIZE = 256 * 1024
 const val DEFAULT_MAX_BUFFERED_CONNECTION_WRITES = 10 * 1024 * 1024 // 10 MiB
+
+private val log = LoggerFactory.getLogger(YamuxHandler::class.java)
 
 open class YamuxHandler(
     override val multistreamProtocol: MultistreamProtocol,
@@ -39,6 +40,7 @@ open class YamuxHandler(
     private inner class YamuxStreamHandler(
         val id: MuxId
     ) {
+        val acknowledged = AtomicBoolean(false)
         val sendWindowSize = AtomicInteger(initialWindowSize)
         val receiveWindowSize = AtomicInteger(initialWindowSize)
         val sendBuffer = ByteBufQueue()
@@ -53,7 +55,9 @@ open class YamuxHandler(
             when (msg.type) {
                 YamuxType.DATA -> handleDataRead(msg)
                 YamuxType.WINDOW_UPDATE -> handleWindowUpdate(msg)
-                else -> { /* ignore */ }
+                else -> {
+                    /* ignore */
+                }
             }
         }
 
@@ -84,9 +88,11 @@ open class YamuxHandler(
             when {
                 YamuxFlag.SYN in msg.flags -> {
                     // ACK the new stream
+                    acknowledged.set(true)
                     writeAndFlushFrame(YamuxFrame(msg.id, YamuxType.WINDOW_UPDATE, YamuxFlag.ACK.asSet, 0))
                 }
 
+                YamuxFlag.ACK in msg.flags -> acknowledged.set(true)
                 YamuxFlag.FIN in msg.flags -> onRemoteDisconnect(msg.id)
                 YamuxFlag.RST in msg.flags -> onRemoteClose(msg.id)
             }
@@ -214,7 +220,17 @@ open class YamuxHandler(
     }
 
     override fun onLocalOpen(child: MuxChannel<ByteBuf>) {
-        createYamuxStreamHandler(child.id).onLocalOpen()
+        val streamHandler = createYamuxStreamHandler(child.id)
+        if (totalUnacknowledgedStreams() >= ALLOWED_ACK_BACKLOG) {
+            log.debug(
+                "ACK backlog of more than {} streams is not allowed. Will disconnect {}",
+                ALLOWED_ACK_BACKLOG,
+                child.id
+            )
+            onLocalClose(child)
+            return
+        }
+        streamHandler.onLocalOpen()
     }
 
     private fun onRemoteYamuxOpen(id: MuxId) {
@@ -240,10 +256,6 @@ open class YamuxHandler(
         streamHandlers.remove(child.id)?.dispose()
     }
 
-    private fun calculateTotalBufferedWrites(): Int {
-        return streamHandlers.values.sumOf { it.sendBuffer.readableBytes() }
-    }
-
     private fun handlePing(msg: YamuxFrame) {
         if (msg.id.id != YamuxId.SESSION_STREAM_ID) {
             throw InvalidFrameMuxerException("Invalid StreamId for Ping frame type: ${msg.id}")
@@ -265,6 +277,14 @@ open class YamuxHandler(
             throw InvalidFrameMuxerException("Invalid StreamId for GoAway frame type: ${msg.id}")
         }
         goAwayPromise.complete(msg.length)
+    }
+
+    private fun calculateTotalBufferedWrites(): Int {
+        return streamHandlers.values.sumOf { it.sendBuffer.readableBytes() }
+    }
+
+    private fun totalUnacknowledgedStreams(): Int {
+        return streamHandlers.values.count { !it.acknowledged.get() }
     }
 
     override fun generateNextId() =
