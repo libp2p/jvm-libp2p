@@ -9,6 +9,7 @@ import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.etc.CONNECTION
 import io.libp2p.etc.STREAM
 import io.libp2p.etc.types.forward
+import io.libp2p.etc.types.forwardExceptionTo
 import io.libp2p.etc.util.netty.mux.AbstractMuxHandler
 import io.libp2p.etc.util.netty.mux.MuxChannel
 import io.libp2p.etc.util.netty.mux.MuxChannelInitializer
@@ -51,11 +52,7 @@ abstract class MuxHandler(
             streamHandler.handleStream(createStream(it)).forward(controller)
         }
             .thenApply { it.attr(STREAM).get() }
-            .whenComplete { _, t ->
-                if (t != null) {
-                    controller.completeExceptionally(t)
-                }
-            }
+            .forwardExceptionTo(controller)
         return StreamPromise(stream, controller)
     }
 
