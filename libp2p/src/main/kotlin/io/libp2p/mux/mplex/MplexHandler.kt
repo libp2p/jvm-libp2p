@@ -57,4 +57,7 @@ open class MplexHandler(
     }
 
     override fun onChildClosed(child: MuxChannel<ByteBuf>) {}
+
+    override fun checkCanOpenNewStream() {
+    }
 }

@@ -49,7 +49,13 @@ abstract class MuxHandler(
         val controller = CompletableFuture<T>()
         val stream = newStream {
             streamHandler.handleStream(createStream(it)).forward(controller)
-        }.thenApply { it.attr(STREAM).get() }
+        }
+            .thenApply { it.attr(STREAM).get() }
+            .whenComplete { _, t ->
+                if (t != null) {
+                    controller.completeExceptionally(t)
+                }
+            }
         return StreamPromise(stream, controller)
     }
 

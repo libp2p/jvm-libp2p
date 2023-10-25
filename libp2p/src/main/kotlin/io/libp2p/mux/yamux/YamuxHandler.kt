@@ -20,9 +20,10 @@ import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.max
 import kotlin.properties.Delegates
 
-const val ACK_BACKLOG_ALLOWANCE = 256
-const val INITIAL_WINDOW_SIZE = 256 * 1024
 const val DEFAULT_MAX_BUFFERED_CONNECTION_WRITES = 10 * 1024 * 1024 // 10 MiB
+const val DEFAULT_ACK_BACKLOG_LIMIT = 256
+
+const val INITIAL_WINDOW_SIZE = 256 * 1024
 
 open class YamuxHandler(
     override val multistreamProtocol: MultistreamProtocol,
@@ -31,6 +32,7 @@ open class YamuxHandler(
     inboundStreamHandler: StreamHandler<*>,
     private val connectionInitiator: Boolean,
     private val maxBufferedConnectionWrites: Int,
+    private val ackBacklogLimit: Int,
     private val initialWindowSize: Int = INITIAL_WINDOW_SIZE
 ) : MuxHandler(ready, inboundStreamHandler) {
 
@@ -217,9 +219,7 @@ open class YamuxHandler(
     }
 
     override fun onLocalOpen(child: MuxChannel<ByteBuf>) {
-        if (totalUnacknowledgedStreams() < ACK_BACKLOG_ALLOWANCE) {
-            createYamuxStreamHandler(child.id).onLocalOpen()
-        }
+        createYamuxStreamHandler(child.id).onLocalOpen()
     }
 
     private fun onRemoteYamuxOpen(id: MuxId) {
@@ -243,6 +243,13 @@ open class YamuxHandler(
 
     override fun onChildClosed(child: MuxChannel<ByteBuf>) {
         streamHandlers.remove(child.id)?.dispose()
+    }
+
+    override fun checkCanOpenNewStream() {
+        val totalUnacknowledgedStreams = streamHandlers.values.count { !it.acknowledged.get() }
+        if (totalUnacknowledgedStreams >= ackBacklogLimit) {
+            throw AckBacklogLimitExceededMuxerException("The ACK backlog limit of $ackBacklogLimit streams has been reached. Will not open new stream.")
+        }
     }
 
     private fun handlePing(msg: YamuxFrame) {
@@ -270,10 +277,6 @@ open class YamuxHandler(
 
     private fun calculateTotalBufferedWrites(): Int {
         return streamHandlers.values.sumOf { it.sendBuffer.readableBytes() }
-    }
-
-    private fun totalUnacknowledgedStreams(): Int {
-        return streamHandlers.values.count { !it.acknowledged.get() }
     }
 
     override fun generateNextId() =

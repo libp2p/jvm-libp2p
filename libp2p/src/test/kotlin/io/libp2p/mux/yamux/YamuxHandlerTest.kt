@@ -5,6 +5,7 @@ import io.libp2p.core.StreamHandler
 import io.libp2p.core.multistream.MultistreamProtocolV1
 import io.libp2p.etc.types.fromHex
 import io.libp2p.etc.types.toHex
+import io.libp2p.mux.AckBacklogLimitExceededMuxerException
 import io.libp2p.mux.MuxHandler
 import io.libp2p.mux.MuxHandlerAbstractTest
 import io.libp2p.mux.MuxHandlerAbstractTest.AbstractTestMuxFrame.Flag.*
@@ -12,13 +13,16 @@ import io.libp2p.tools.readAllBytesAndRelease
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 
 class YamuxHandlerTest : MuxHandlerAbstractTest() {
 
     override val maxFrameDataLength = 256
     private val maxBufferedConnectionWrites = 512
+    private val ackBacklogLimit = 42
     private val initialWindowSize = 300
     override val localMuxIdGenerator = YamuxStreamIdGenerator(isLocalConnectionInitiator).toIterator()
     override val remoteMuxIdGenerator = YamuxStreamIdGenerator(!isLocalConnectionInitiator).toIterator()
@@ -34,6 +38,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
             streamHandler,
             true,
             maxBufferedConnectionWrites,
+            ackBacklogLimit,
             initialWindowSize
         ) {
             // MuxHandler consumes the exception. Override this behaviour for testing
@@ -451,13 +456,17 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
     }
 
     @Test
-    fun `does not send SYN flag for a new stream if ACK backlog is full`() {
-        for (i in 1..ACK_BACKLOG_ALLOWANCE) {
+    fun `does not create new stream if ACK backlog limit is reached`() {
+        for (i in 1..ackBacklogLimit) {
             openStreamLocal()
         }
-        // no SYN flag should be sent for this stream
-        openStreamLocal()
+        // opening new stream should fail
+        assertThatThrownBy {
+            openStreamLocal()
+        }.cause()
+            .isInstanceOf(AckBacklogLimitExceededMuxerException::class.java)
 
+        // expected number of SYN frames have been sent
         var synFlagFrames = 0
         do {
             val frame = readYamuxFrame()
@@ -467,7 +476,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
             }
         } while (frame != null)
 
-        assertThat(synFlagFrames).isEqualTo(ACK_BACKLOG_ALLOWANCE)
+        assertThat(synFlagFrames).isEqualTo(ackBacklogLimit)
     }
 
     companion object {
