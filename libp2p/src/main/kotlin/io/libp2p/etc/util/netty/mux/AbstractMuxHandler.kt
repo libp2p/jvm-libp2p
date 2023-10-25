@@ -129,7 +129,6 @@ abstract class AbstractMuxHandler<TData>() :
     protected abstract fun onLocalClose(child: MuxChannel<TData>)
     protected abstract fun onLocalDisconnect(child: MuxChannel<TData>)
     protected abstract fun onChildClosed(child: MuxChannel<TData>)
-    protected abstract fun checkCanOpenNewStream()
 
     private fun createChild(
         id: MuxId,
@@ -138,7 +137,7 @@ abstract class AbstractMuxHandler<TData>() :
     ): MuxChannel<TData> {
         val child = MuxChannel(this, id, initializer, initiator)
         streamMap[id] = child
-        ctx!!.channel().eventLoop().register(child)
+        ctx!!.channel().eventLoop().register(child).sync()
         return child
     }
 
@@ -149,7 +148,6 @@ abstract class AbstractMuxHandler<TData>() :
     fun newStream(outboundInitializer: MuxChannelInitializer<TData>): CompletableFuture<MuxChannel<TData>> {
         try {
             checkClosed() // if already closed then event loop is already down and async task may never execute
-            checkCanOpenNewStream() // this method will throw an exception if a new stream cannot be opened
             return activeFuture.thenApplyAsync(
                 {
                     checkClosed() // close may happen after above check and before this point

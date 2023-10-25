@@ -219,12 +219,20 @@ open class YamuxHandler(
     }
 
     override fun onLocalOpen(child: MuxChannel<ByteBuf>) {
+        verifyAckBacklogLimitNotReached(child.id)
         createYamuxStreamHandler(child.id).onLocalOpen()
     }
 
     private fun onRemoteYamuxOpen(id: MuxId) {
         createYamuxStreamHandler(id).onRemoteOpen()
         onRemoteOpen(id)
+    }
+
+    private fun verifyAckBacklogLimitNotReached(id: MuxId) {
+        val totalUnacknowledgedStreams = streamHandlers.values.count { !it.acknowledged.get() }
+        if (totalUnacknowledgedStreams >= ackBacklogLimit) {
+            throw AckBacklogLimitExceededMuxerException("The ACK backlog limit of $ackBacklogLimit streams has been reached. Will not open new stream: $id")
+        }
     }
 
     private fun createYamuxStreamHandler(id: MuxId): YamuxStreamHandler {
@@ -243,13 +251,6 @@ open class YamuxHandler(
 
     override fun onChildClosed(child: MuxChannel<ByteBuf>) {
         streamHandlers.remove(child.id)?.dispose()
-    }
-
-    override fun checkCanOpenNewStream() {
-        val totalUnacknowledgedStreams = streamHandlers.values.count { !it.acknowledged.get() }
-        if (totalUnacknowledgedStreams >= ackBacklogLimit) {
-            throw AckBacklogLimitExceededMuxerException("The ACK backlog limit of $ackBacklogLimit streams has been reached. Will not open new stream.")
-        }
     }
 
     private fun handlePing(msg: YamuxFrame) {
