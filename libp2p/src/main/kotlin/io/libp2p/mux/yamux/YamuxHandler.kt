@@ -37,7 +37,8 @@ open class YamuxHandler(
 ) : MuxHandler(ready, inboundStreamHandler) {
 
     private inner class YamuxStreamHandler(
-        val id: MuxId
+        val id: MuxId,
+        val outbound: Boolean
     ) {
         val acknowledged = AtomicBoolean(false)
         val sendWindowSize = AtomicInteger(initialWindowSize)
@@ -65,7 +66,7 @@ open class YamuxHandler(
             if (size == 0) {
                 return
             }
-
+            acknowledgeInboundStreamIfNeeded()
             val newWindow = receiveWindowSize.addAndGet(-size)
             // send a window update frame once half of the window is depleted
             if (newWindow < initialWindowSize / 2) {
@@ -87,13 +88,23 @@ open class YamuxHandler(
             when {
                 YamuxFlag.SYN in msg.flags -> {
                     // ACK the new stream
-                    acknowledged.set(true)
                     writeAndFlushFrame(YamuxFrame(msg.id, YamuxType.WINDOW_UPDATE, YamuxFlag.ACK.asSet, 0))
                 }
 
-                YamuxFlag.ACK in msg.flags -> acknowledged.set(true)
+                YamuxFlag.ACK in msg.flags -> {
+                    if (outbound) {
+                        acknowledged.set(true)
+                    }
+                }
+
                 YamuxFlag.FIN in msg.flags -> onRemoteDisconnect(msg.id)
                 YamuxFlag.RST in msg.flags -> onRemoteClose(msg.id)
+            }
+        }
+
+        private fun acknowledgeInboundStreamIfNeeded() {
+            if (!outbound) {
+                acknowledged.compareAndSet(false, true)
             }
         }
 
@@ -127,6 +138,7 @@ open class YamuxHandler(
             if (closedForWriting) {
                 throw ClosedForWritingMuxerException(id)
             }
+            acknowledgeInboundStreamIfNeeded()
             fillBuffer(data)
             drainBufferAndMaybeClose()
         }
@@ -219,24 +231,26 @@ open class YamuxHandler(
     }
 
     override fun onLocalOpen(child: MuxChannel<ByteBuf>) {
-        verifyAckBacklogLimitNotReached(child.id)
-        createYamuxStreamHandler(child.id).onLocalOpen()
+        verifyAckBacklogLimitNotReached(child.id, true)
+        createYamuxStreamHandler(child.id, true).onLocalOpen()
     }
 
     private fun onRemoteYamuxOpen(id: MuxId) {
-        createYamuxStreamHandler(id).onRemoteOpen()
+        verifyAckBacklogLimitNotReached(id, false)
+        createYamuxStreamHandler(id, false).onRemoteOpen()
         onRemoteOpen(id)
     }
 
-    private fun verifyAckBacklogLimitNotReached(id: MuxId) {
-        val totalUnacknowledgedStreams = streamHandlers.values.count { !it.acknowledged.get() }
+    private fun verifyAckBacklogLimitNotReached(id: MuxId, outbound: Boolean) {
+        val totalUnacknowledgedStreams =
+            streamHandlers.values.count { it.outbound == outbound && !it.acknowledged.get() }
         if (totalUnacknowledgedStreams >= ackBacklogLimit) {
             throw AckBacklogLimitExceededMuxerException("The ACK backlog limit of $ackBacklogLimit streams has been reached. Will not open new stream: $id")
         }
     }
 
-    private fun createYamuxStreamHandler(id: MuxId): YamuxStreamHandler {
-        val streamHandler = YamuxStreamHandler(id)
+    private fun createYamuxStreamHandler(id: MuxId, outbound: Boolean): YamuxStreamHandler {
+        val streamHandler = YamuxStreamHandler(id, outbound)
         streamHandlers[id] = streamHandler
         return streamHandler
     }

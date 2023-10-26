@@ -13,9 +13,11 @@ import io.libp2p.tools.readAllBytesAndRelease
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
 import org.assertj.core.api.Assertions.assertThat
-import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 
 class YamuxHandlerTest : MuxHandlerAbstractTest() {
 
@@ -454,28 +456,37 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
         assertThat(closeFrame.data).isNull()
     }
 
-    @Test
-    fun `does not create new stream if ACK backlog limit is reached`() {
+    @ParameterizedTest
+    @ValueSource(booleans = [true, false])
+    fun `does not create new stream if ACK backlog limit is reached`(outbound: Boolean) {
+        val openStream: () -> Unit = {
+            if (outbound) {
+                openStreamLocal()
+            } else {
+                openStreamRemote()
+            }
+        }
         for (i in 1..ackBacklogLimit) {
-            openStreamLocal()
+            openStream()
         }
         // opening new stream should fail
-        assertThatThrownBy {
-            openStreamLocal()
-        }.cause()
-            .isInstanceOf(AckBacklogLimitExceededMuxerException::class.java)
+        val exception = assertThrows<Exception> { openStream() }
 
-        // expected number of SYN frames have been sent
-        var synFlagFrames = 0
-        do {
-            val frame = readYamuxFrame()
-            frame?.let {
-                assertThat(it.flags).isEqualTo(YamuxFlag.SYN.asSet)
-                synFlagFrames += 1
-            }
-        } while (frame != null)
-
-        assertThat(synFlagFrames).isEqualTo(ackBacklogLimit)
+        if (outbound) {
+            assertThat(exception).hasCauseInstanceOf(AckBacklogLimitExceededMuxerException::class.java)
+            // expected number of SYN frames have been sent
+            var synFlagFrames = 0
+            do {
+                val frame = readYamuxFrame()
+                frame?.let {
+                    assertThat(it.flags).isEqualTo(YamuxFlag.SYN.asSet)
+                    synFlagFrames += 1
+                }
+            } while (frame != null)
+            assertThat(synFlagFrames).isEqualTo(ackBacklogLimit)
+        } else {
+            assertThat(exception).isInstanceOf(AckBacklogLimitExceededMuxerException::class.java)
+        }
     }
 
     companion object {
