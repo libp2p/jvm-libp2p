@@ -10,21 +10,20 @@ import io.libp2p.etc.types.writeOnce
 import io.libp2p.etc.util.netty.ByteBufQueue
 import io.libp2p.etc.util.netty.mux.MuxChannel
 import io.libp2p.etc.util.netty.mux.MuxId
-import io.libp2p.mux.ClosedForWritingMuxerException
-import io.libp2p.mux.InvalidFrameMuxerException
-import io.libp2p.mux.MuxHandler
-import io.libp2p.mux.UnknownStreamIdMuxerException
-import io.libp2p.mux.WriteBufferOverflowMuxerException
+import io.libp2p.mux.*
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.max
 import kotlin.properties.Delegates
 
-const val INITIAL_WINDOW_SIZE = 256 * 1024
 const val DEFAULT_MAX_BUFFERED_CONNECTION_WRITES = 10 * 1024 * 1024 // 10 MiB
+const val DEFAULT_ACK_BACKLOG_LIMIT = 256
+
+const val INITIAL_WINDOW_SIZE = 256 * 1024
 
 open class YamuxHandler(
     override val multistreamProtocol: MultistreamProtocol,
@@ -33,12 +32,15 @@ open class YamuxHandler(
     inboundStreamHandler: StreamHandler<*>,
     private val connectionInitiator: Boolean,
     private val maxBufferedConnectionWrites: Int,
+    private val ackBacklogLimit: Int,
     private val initialWindowSize: Int = INITIAL_WINDOW_SIZE
 ) : MuxHandler(ready, inboundStreamHandler) {
 
     private inner class YamuxStreamHandler(
-        val id: MuxId
+        val id: MuxId,
+        val outbound: Boolean
     ) {
+        val acknowledged = AtomicBoolean(false)
         val sendWindowSize = AtomicInteger(initialWindowSize)
         val receiveWindowSize = AtomicInteger(initialWindowSize)
         val sendBuffer = ByteBufQueue()
@@ -53,7 +55,9 @@ open class YamuxHandler(
             when (msg.type) {
                 YamuxType.DATA -> handleDataRead(msg)
                 YamuxType.WINDOW_UPDATE -> handleWindowUpdate(msg)
-                else -> { /* ignore */ }
+                else -> {
+                    /* ignore */
+                }
             }
         }
 
@@ -62,7 +66,7 @@ open class YamuxHandler(
             if (size == 0) {
                 return
             }
-
+            acknowledgeInboundStreamIfNeeded()
             val newWindow = receiveWindowSize.addAndGet(-size)
             // send a window update frame once half of the window is depleted
             if (newWindow < initialWindowSize / 2) {
@@ -87,8 +91,24 @@ open class YamuxHandler(
                     writeAndFlushFrame(YamuxFrame(msg.id, YamuxType.WINDOW_UPDATE, YamuxFlag.ACK.asSet, 0))
                 }
 
+                YamuxFlag.ACK in msg.flags -> {
+                    acknowledgeOutboundStreamIfNeeded()
+                }
+
                 YamuxFlag.FIN in msg.flags -> onRemoteDisconnect(msg.id)
                 YamuxFlag.RST in msg.flags -> onRemoteClose(msg.id)
+            }
+        }
+
+        private fun acknowledgeInboundStreamIfNeeded() {
+            if (!outbound) {
+                acknowledged.set(true)
+            }
+        }
+
+        private fun acknowledgeOutboundStreamIfNeeded() {
+            if (outbound) {
+                acknowledged.set(true)
             }
         }
 
@@ -122,6 +142,7 @@ open class YamuxHandler(
             if (closedForWriting) {
                 throw ClosedForWritingMuxerException(id)
             }
+            acknowledgeInboundStreamIfNeeded()
             fillBuffer(data)
             drainBufferAndMaybeClose()
         }
@@ -214,16 +235,26 @@ open class YamuxHandler(
     }
 
     override fun onLocalOpen(child: MuxChannel<ByteBuf>) {
-        createYamuxStreamHandler(child.id).onLocalOpen()
+        verifyAckBacklogLimitNotReached(child.id, true)
+        createYamuxStreamHandler(child.id, true).onLocalOpen()
     }
 
     private fun onRemoteYamuxOpen(id: MuxId) {
-        createYamuxStreamHandler(id).onRemoteOpen()
+        verifyAckBacklogLimitNotReached(id, false)
+        createYamuxStreamHandler(id, false).onRemoteOpen()
         onRemoteOpen(id)
     }
 
-    private fun createYamuxStreamHandler(id: MuxId): YamuxStreamHandler {
-        val streamHandler = YamuxStreamHandler(id)
+    private fun verifyAckBacklogLimitNotReached(id: MuxId, outbound: Boolean) {
+        val totalUnacknowledgedStreams =
+            streamHandlers.values.count { it.outbound == outbound && !it.acknowledged.get() }
+        if (totalUnacknowledgedStreams >= ackBacklogLimit) {
+            throw AckBacklogLimitExceededMuxerException("The ACK backlog limit of $ackBacklogLimit streams has been reached. Will not open new stream: $id")
+        }
+    }
+
+    private fun createYamuxStreamHandler(id: MuxId, outbound: Boolean): YamuxStreamHandler {
+        val streamHandler = YamuxStreamHandler(id, outbound)
         streamHandlers[id] = streamHandler
         return streamHandler
     }
@@ -238,10 +269,6 @@ open class YamuxHandler(
 
     override fun onChildClosed(child: MuxChannel<ByteBuf>) {
         streamHandlers.remove(child.id)?.dispose()
-    }
-
-    private fun calculateTotalBufferedWrites(): Int {
-        return streamHandlers.values.sumOf { it.sendBuffer.readableBytes() }
     }
 
     private fun handlePing(msg: YamuxFrame) {
@@ -265,6 +292,10 @@ open class YamuxHandler(
             throw InvalidFrameMuxerException("Invalid StreamId for GoAway frame type: ${msg.id}")
         }
         goAwayPromise.complete(msg.length)
+    }
+
+    private fun calculateTotalBufferedWrites(): Int {
+        return streamHandlers.values.sumOf { it.sendBuffer.readableBytes() }
     }
 
     override fun generateNextId() =

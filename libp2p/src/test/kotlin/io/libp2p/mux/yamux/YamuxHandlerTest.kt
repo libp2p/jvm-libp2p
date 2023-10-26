@@ -5,6 +5,7 @@ import io.libp2p.core.StreamHandler
 import io.libp2p.core.multistream.MultistreamProtocolV1
 import io.libp2p.etc.types.fromHex
 import io.libp2p.etc.types.toHex
+import io.libp2p.mux.AckBacklogLimitExceededMuxerException
 import io.libp2p.mux.MuxHandler
 import io.libp2p.mux.MuxHandlerAbstractTest
 import io.libp2p.mux.MuxHandlerAbstractTest.AbstractTestMuxFrame.Flag.*
@@ -14,11 +15,15 @@ import io.netty.channel.ChannelHandlerContext
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 
 class YamuxHandlerTest : MuxHandlerAbstractTest() {
 
     override val maxFrameDataLength = 256
     private val maxBufferedConnectionWrites = 512
+    private val ackBacklogLimit = 42
     private val initialWindowSize = 300
     override val localMuxIdGenerator = YamuxStreamIdGenerator(isLocalConnectionInitiator).toIterator()
     override val remoteMuxIdGenerator = YamuxStreamIdGenerator(!isLocalConnectionInitiator).toIterator()
@@ -34,6 +39,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
             streamHandler,
             true,
             maxBufferedConnectionWrites,
+            ackBacklogLimit,
             initialWindowSize
         ) {
             // MuxHandler consumes the exception. Override this behaviour for testing
@@ -448,6 +454,39 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
         assertThat(closeFrame.flags).containsExactly(YamuxFlag.FIN)
         assertThat(closeFrame.length).isEqualTo(0L)
         assertThat(closeFrame.data).isNull()
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = [true, false])
+    fun `does not create new stream if ACK backlog limit is reached`(outbound: Boolean) {
+        val openStream: () -> Unit = {
+            if (outbound) {
+                openStreamLocal()
+            } else {
+                openStreamRemote()
+            }
+        }
+        for (i in 1..ackBacklogLimit) {
+            openStream()
+        }
+        // opening new stream should fail
+        val exception = assertThrows<Exception> { openStream() }
+
+        if (outbound) {
+            assertThat(exception).hasCauseInstanceOf(AckBacklogLimitExceededMuxerException::class.java)
+            // expected number of SYN frames have been sent
+            var synFlagFrames = 0
+            do {
+                val frame = readYamuxFrame()
+                frame?.let {
+                    assertThat(it.flags).isEqualTo(YamuxFlag.SYN.asSet)
+                    synFlagFrames += 1
+                }
+            } while (frame != null)
+            assertThat(synFlagFrames).isEqualTo(ackBacklogLimit)
+        } else {
+            assertThat(exception).isInstanceOf(AckBacklogLimitExceededMuxerException::class.java)
+        }
     }
 
     companion object {
