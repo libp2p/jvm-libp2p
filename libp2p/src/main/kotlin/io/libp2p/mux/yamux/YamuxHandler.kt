@@ -260,7 +260,7 @@ open class YamuxHandler(
     }
 
     override fun onLocalDisconnect(child: MuxChannel<ByteBuf>) {
-        getStreamHandlerOrThrow(child.id).onLocalDisconnect()
+        streamHandlers[child.id]?.onLocalDisconnect()
     }
 
     override fun onLocalClose(child: MuxChannel<ByteBuf>) {
