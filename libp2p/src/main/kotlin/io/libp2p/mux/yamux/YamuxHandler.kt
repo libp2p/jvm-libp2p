@@ -92,9 +92,7 @@ open class YamuxHandler(
                 }
 
                 YamuxFlag.ACK in msg.flags -> {
-                    if (outbound) {
-                        acknowledged.set(true)
-                    }
+                    acknowledgeOutboundStreamIfNeeded()
                 }
 
                 YamuxFlag.FIN in msg.flags -> onRemoteDisconnect(msg.id)
@@ -104,6 +102,12 @@ open class YamuxHandler(
 
         private fun acknowledgeInboundStreamIfNeeded() {
             if (!outbound) {
+                acknowledged.set(true)
+            }
+        }
+
+        private fun acknowledgeOutboundStreamIfNeeded() {
+            if (outbound) {
                 acknowledged.set(true)
             }
         }
