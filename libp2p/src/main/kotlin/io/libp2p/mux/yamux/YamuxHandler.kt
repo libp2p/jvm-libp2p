@@ -104,7 +104,7 @@ open class YamuxHandler(
 
         private fun acknowledgeInboundStreamIfNeeded() {
             if (!outbound) {
-                acknowledged.compareAndSet(false, true)
+                acknowledged.set(true)
             }
         }
 
