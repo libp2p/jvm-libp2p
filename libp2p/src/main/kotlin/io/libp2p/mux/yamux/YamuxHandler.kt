@@ -177,8 +177,6 @@ open class YamuxHandler(
      */
     val goAwayPromise = CompletableFuture<Long>()
 
-    private fun getStreamHandlerOrThrow(id: MuxId): YamuxStreamHandler = getStreamHandlerOrReleaseAndThrow(id, null)
-
     private fun getStreamHandlerOrReleaseAndThrow(id: MuxId, msgToRelease: ByteBuf?): YamuxStreamHandler =
         streamHandlers[id] ?: run {
             if (msgToRelease != null) {
