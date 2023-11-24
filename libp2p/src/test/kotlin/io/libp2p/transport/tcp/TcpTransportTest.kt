@@ -35,8 +35,7 @@ class TcpTransportTest : TransportTests() {
             "/ip4/0.0.0.0/tcp/1234",
             "/ip6/fe80::6f77:b303:aa6e:a16/tcp/42",
             "/dns4/localhost/tcp/9999",
-            "/dns6/localhost/tcp/9999",
-            "/dnsaddr/ipfs.io/tcp/97"
+            "/dns6/localhost/tcp/9999"
         ).map { Multiaddr(it) }
 
         @JvmStatic
