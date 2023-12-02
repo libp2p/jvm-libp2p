@@ -5,87 +5,56 @@ package io.libp2p.protocol.circuit.pb;
 
 public final class Circuit {
   private Circuit() {}
-  public static void registerAllExtensions(
-      com.google.protobuf.ExtensionRegistryLite registry) {
+
+  public static void registerAllExtensions(com.google.protobuf.ExtensionRegistryLite registry) {}
+
+  public static void registerAllExtensions(com.google.protobuf.ExtensionRegistry registry) {
+    registerAllExtensions((com.google.protobuf.ExtensionRegistryLite) registry);
   }
 
-  public static void registerAllExtensions(
-      com.google.protobuf.ExtensionRegistry registry) {
-    registerAllExtensions(
-        (com.google.protobuf.ExtensionRegistryLite) registry);
-  }
-  /**
-   * Protobuf enum {@code io.libp2p.protocol.circuit.pb.Status}
-   */
-  public enum Status
-      implements com.google.protobuf.ProtocolMessageEnum {
-    /**
-     * <code>OK = 100;</code>
-     */
+  /** Protobuf enum {@code io.libp2p.protocol.circuit.pb.Status} */
+  public enum Status implements com.google.protobuf.ProtocolMessageEnum {
+    /** <code>OK = 100;</code> */
     OK(100),
-    /**
-     * <code>RESERVATION_REFUSED = 200;</code>
-     */
+    /** <code>RESERVATION_REFUSED = 200;</code> */
     RESERVATION_REFUSED(200),
-    /**
-     * <code>RESOURCE_LIMIT_EXCEEDED = 201;</code>
-     */
+    /** <code>RESOURCE_LIMIT_EXCEEDED = 201;</code> */
     RESOURCE_LIMIT_EXCEEDED(201),
-    /**
-     * <code>PERMISSION_DENIED = 202;</code>
-     */
+    /** <code>PERMISSION_DENIED = 202;</code> */
     PERMISSION_DENIED(202),
-    /**
-     * <code>CONNECTION_FAILED = 203;</code>
-     */
+    /** <code>CONNECTION_FAILED = 203;</code> */
     CONNECTION_FAILED(203),
-    /**
-     * <code>NO_RESERVATION = 204;</code>
-     */
+    /** <code>NO_RESERVATION = 204;</code> */
     NO_RESERVATION(204),
-    /**
-     * <code>MALFORMED_MESSAGE = 400;</code>
-     */
+    /** <code>MALFORMED_MESSAGE = 400;</code> */
     MALFORMED_MESSAGE(400),
-    /**
-     * <code>UNEXPECTED_MESSAGE = 401;</code>
-     */
+    /** <code>UNEXPECTED_MESSAGE = 401;</code> */
     UNEXPECTED_MESSAGE(401),
     ;
 
-    /**
-     * <code>OK = 100;</code>
-     */
+    /** <code>OK = 100;</code> */
     public static final int OK_VALUE = 100;
-    /**
-     * <code>RESERVATION_REFUSED = 200;</code>
-     */
-    public static final int RESERVATION_REFUSED_VALUE = 200;
-    /**
-     * <code>RESOURCE_LIMIT_EXCEEDED = 201;</code>
-     */
-    public static final int RESOURCE_LIMIT_EXCEEDED_VALUE = 201;
-    /**
-     * <code>PERMISSION_DENIED = 202;</code>
-     */
-    public static final int PERMISSION_DENIED_VALUE = 202;
-    /**
-     * <code>CONNECTION_FAILED = 203;</code>
-     */
-    public static final int CONNECTION_FAILED_VALUE = 203;
-    /**
-     * <code>NO_RESERVATION = 204;</code>
-     */
-    public static final int NO_RESERVATION_VALUE = 204;
-    /**
-     * <code>MALFORMED_MESSAGE = 400;</code>
-     */
-    public static final int MALFORMED_MESSAGE_VALUE = 400;
-    /**
-     * <code>UNEXPECTED_MESSAGE = 401;</code>
-     */
-    public static final int UNEXPECTED_MESSAGE_VALUE = 401;
 
+    /** <code>RESERVATION_REFUSED = 200;</code> */
+    public static final int RESERVATION_REFUSED_VALUE = 200;
+
+    /** <code>RESOURCE_LIMIT_EXCEEDED = 201;</code> */
+    public static final int RESOURCE_LIMIT_EXCEEDED_VALUE = 201;
+
+    /** <code>PERMISSION_DENIED = 202;</code> */
+    public static final int PERMISSION_DENIED_VALUE = 202;
+
+    /** <code>CONNECTION_FAILED = 203;</code> */
+    public static final int CONNECTION_FAILED_VALUE = 203;
+
+    /** <code>NO_RESERVATION = 204;</code> */
+    public static final int NO_RESERVATION_VALUE = 204;
+
+    /** <code>MALFORMED_MESSAGE = 400;</code> */
+    public static final int MALFORMED_MESSAGE_VALUE = 400;
+
+    /** <code>UNEXPECTED_MESSAGE = 401;</code> */
+    public static final int UNEXPECTED_MESSAGE_VALUE = 401;
 
     public final int getNumber() {
       return value;
@@ -101,50 +70,55 @@ public final class Circuit {
 
     public static Status forNumber(int value) {
       switch (value) {
-        case 100: return OK;
-        case 200: return RESERVATION_REFUSED;
-        case 201: return RESOURCE_LIMIT_EXCEEDED;
-        case 202: return PERMISSION_DENIED;
-        case 203: return CONNECTION_FAILED;
-        case 204: return NO_RESERVATION;
-        case 400: return MALFORMED_MESSAGE;
-        case 401: return UNEXPECTED_MESSAGE;
-        default: return null;
+        case 100:
+          return OK;
+        case 200:
+          return RESERVATION_REFUSED;
+        case 201:
+          return RESOURCE_LIMIT_EXCEEDED;
+        case 202:
+          return PERMISSION_DENIED;
+        case 203:
+          return CONNECTION_FAILED;
+        case 204:
+          return NO_RESERVATION;
+        case 400:
+          return MALFORMED_MESSAGE;
+        case 401:
+          return UNEXPECTED_MESSAGE;
+        default:
+          return null;
       }
     }
 
-    public static com.google.protobuf.Internal.EnumLiteMap<Status>
-        internalGetValueMap() {
+    public static com.google.protobuf.Internal.EnumLiteMap<Status> internalGetValueMap() {
       return internalValueMap;
     }
-    private static final com.google.protobuf.Internal.EnumLiteMap<
-        Status> internalValueMap =
-          new com.google.protobuf.Internal.EnumLiteMap<Status>() {
-            public Status findValueByNumber(int number) {
-              return Status.forNumber(number);
-            }
-          };
 
-    public final com.google.protobuf.Descriptors.EnumValueDescriptor
-        getValueDescriptor() {
+    private static final com.google.protobuf.Internal.EnumLiteMap<Status> internalValueMap =
+        new com.google.protobuf.Internal.EnumLiteMap<Status>() {
+          public Status findValueByNumber(int number) {
+            return Status.forNumber(number);
+          }
+        };
+
+    public final com.google.protobuf.Descriptors.EnumValueDescriptor getValueDescriptor() {
       return getDescriptor().getValues().get(ordinal());
     }
-    public final com.google.protobuf.Descriptors.EnumDescriptor
-        getDescriptorForType() {
+
+    public final com.google.protobuf.Descriptors.EnumDescriptor getDescriptorForType() {
       return getDescriptor();
     }
-    public static final com.google.protobuf.Descriptors.EnumDescriptor
-        getDescriptor() {
+
+    public static final com.google.protobuf.Descriptors.EnumDescriptor getDescriptor() {
       return io.libp2p.protocol.circuit.pb.Circuit.getDescriptor().getEnumTypes().get(0);
     }
 
     private static final Status[] VALUES = values();
 
-    public static Status valueOf(
-        com.google.protobuf.Descriptors.EnumValueDescriptor desc) {
+    public static Status valueOf(com.google.protobuf.Descriptors.EnumValueDescriptor desc) {
       if (desc.getType() != getDescriptor()) {
-        throw new java.lang.IllegalArgumentException(
-          "EnumValueDescriptor is not for this type.");
+        throw new java.lang.IllegalArgumentException("EnumValueDescriptor is not for this type.");
       }
       return VALUES[desc.getIndex()];
     }
@@ -158,89 +132,73 @@ public final class Circuit {
     // @@protoc_insertion_point(enum_scope:io.libp2p.protocol.circuit.pb.Status)
   }
 
-  public interface HopMessageOrBuilder extends
+  public interface HopMessageOrBuilder
+      extends
       // @@protoc_insertion_point(interface_extends:io.libp2p.protocol.circuit.pb.HopMessage)
       com.google.protobuf.MessageOrBuilder {
 
-    /**
-     * <code>required .io.libp2p.protocol.circuit.pb.HopMessage.Type type = 1;</code>
-     */
+    /** <code>required .io.libp2p.protocol.circuit.pb.HopMessage.Type type = 1;</code> */
     boolean hasType();
-    /**
-     * <code>required .io.libp2p.protocol.circuit.pb.HopMessage.Type type = 1;</code>
-     */
+
+    /** <code>required .io.libp2p.protocol.circuit.pb.HopMessage.Type type = 1;</code> */
     io.libp2p.protocol.circuit.pb.Circuit.HopMessage.Type getType();
 
-    /**
-     * <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code>
-     */
+    /** <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code> */
     boolean hasPeer();
-    /**
-     * <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code>
-     */
+
+    /** <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code> */
     io.libp2p.protocol.circuit.pb.Circuit.Peer getPeer();
-    /**
-     * <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code>
-     */
+
+    /** <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code> */
     io.libp2p.protocol.circuit.pb.Circuit.PeerOrBuilder getPeerOrBuilder();
 
-    /**
-     * <code>optional .io.libp2p.protocol.circuit.pb.Reservation reservation = 3;</code>
-     */
+    /** <code>optional .io.libp2p.protocol.circuit.pb.Reservation reservation = 3;</code> */
     boolean hasReservation();
-    /**
-     * <code>optional .io.libp2p.protocol.circuit.pb.Reservation reservation = 3;</code>
-     */
+
+    /** <code>optional .io.libp2p.protocol.circuit.pb.Reservation reservation = 3;</code> */
     io.libp2p.protocol.circuit.pb.Circuit.Reservation getReservation();
-    /**
-     * <code>optional .io.libp2p.protocol.circuit.pb.Reservation reservation = 3;</code>
-     */
+
+    /** <code>optional .io.libp2p.protocol.circuit.pb.Reservation reservation = 3;</code> */
     io.libp2p.protocol.circuit.pb.Circuit.ReservationOrBuilder getReservationOrBuilder();
 
-    /**
-     * <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 4;</code>
-     */
+    /** <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 4;</code> */
     boolean hasLimit();
-    /**
-     * <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 4;</code>
-     */
+
+    /** <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 4;</code> */
     io.libp2p.protocol.circuit.pb.Circuit.Limit getLimit();
-    /**
-     * <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 4;</code>
-     */
+
+    /** <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 4;</code> */
     io.libp2p.protocol.circuit.pb.Circuit.LimitOrBuilder getLimitOrBuilder();
 
-    /**
-     * <code>optional .io.libp2p.protocol.circuit.pb.Status status = 5;</code>
-     */
+    /** <code>optional .io.libp2p.protocol.circuit.pb.Status status = 5;</code> */
     boolean hasStatus();
-    /**
-     * <code>optional .io.libp2p.protocol.circuit.pb.Status status = 5;</code>
-     */
+
+    /** <code>optional .io.libp2p.protocol.circuit.pb.Status status = 5;</code> */
     io.libp2p.protocol.circuit.pb.Circuit.Status getStatus();
   }
-  /**
-   * Protobuf type {@code io.libp2p.protocol.circuit.pb.HopMessage}
-   */
-  public  static final class HopMessage extends
-      com.google.protobuf.GeneratedMessageV3 implements
+
+  /** Protobuf type {@code io.libp2p.protocol.circuit.pb.HopMessage} */
+  public static final class HopMessage extends com.google.protobuf.GeneratedMessageV3
+      implements
       // @@protoc_insertion_point(message_implements:io.libp2p.protocol.circuit.pb.HopMessage)
       HopMessageOrBuilder {
-  private static final long serialVersionUID = 0L;
+    private static final long serialVersionUID = 0L;
+
     // Use HopMessage.newBuilder() to construct.
     private HopMessage(com.google.protobuf.GeneratedMessageV3.Builder<?> builder) {
       super(builder);
     }
+
     private HopMessage() {
       type_ = 0;
       status_ = 100;
     }
 
     @java.lang.Override
-    public final com.google.protobuf.UnknownFieldSet
-    getUnknownFields() {
+    public final com.google.protobuf.UnknownFieldSet getUnknownFields() {
       return this.unknownFields;
     }
+
     private HopMessage(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
@@ -260,133 +218,135 @@ public final class Circuit {
             case 0:
               done = true;
               break;
-            case 8: {
-              int rawValue = input.readEnum();
+            case 8:
+              {
+                int rawValue = input.readEnum();
                 @SuppressWarnings("deprecation")
-              io.libp2p.protocol.circuit.pb.Circuit.HopMessage.Type value = io.libp2p.protocol.circuit.pb.Circuit.HopMessage.Type.valueOf(rawValue);
-              if (value == null) {
-                unknownFields.mergeVarintField(1, rawValue);
-              } else {
-                bitField0_ |= 0x00000001;
-                type_ = rawValue;
+                io.libp2p.protocol.circuit.pb.Circuit.HopMessage.Type value =
+                    io.libp2p.protocol.circuit.pb.Circuit.HopMessage.Type.valueOf(rawValue);
+                if (value == null) {
+                  unknownFields.mergeVarintField(1, rawValue);
+                } else {
+                  bitField0_ |= 0x00000001;
+                  type_ = rawValue;
+                }
+                break;
               }
-              break;
-            }
-            case 18: {
-              io.libp2p.protocol.circuit.pb.Circuit.Peer.Builder subBuilder = null;
-              if (((bitField0_ & 0x00000002) == 0x00000002)) {
-                subBuilder = peer_.toBuilder();
+            case 18:
+              {
+                io.libp2p.protocol.circuit.pb.Circuit.Peer.Builder subBuilder = null;
+                if (((bitField0_ & 0x00000002) == 0x00000002)) {
+                  subBuilder = peer_.toBuilder();
+                }
+                peer_ =
+                    input.readMessage(
+                        io.libp2p.protocol.circuit.pb.Circuit.Peer.PARSER, extensionRegistry);
+                if (subBuilder != null) {
+                  subBuilder.mergeFrom(peer_);
+                  peer_ = subBuilder.buildPartial();
+                }
+                bitField0_ |= 0x00000002;
+                break;
               }
-              peer_ = input.readMessage(io.libp2p.protocol.circuit.pb.Circuit.Peer.PARSER, extensionRegistry);
-              if (subBuilder != null) {
-                subBuilder.mergeFrom(peer_);
-                peer_ = subBuilder.buildPartial();
+            case 26:
+              {
+                io.libp2p.protocol.circuit.pb.Circuit.Reservation.Builder subBuilder = null;
+                if (((bitField0_ & 0x00000004) == 0x00000004)) {
+                  subBuilder = reservation_.toBuilder();
+                }
+                reservation_ =
+                    input.readMessage(
+                        io.libp2p.protocol.circuit.pb.Circuit.Reservation.PARSER,
+                        extensionRegistry);
+                if (subBuilder != null) {
+                  subBuilder.mergeFrom(reservation_);
+                  reservation_ = subBuilder.buildPartial();
+                }
+                bitField0_ |= 0x00000004;
+                break;
               }
-              bitField0_ |= 0x00000002;
-              break;
-            }
-            case 26: {
-              io.libp2p.protocol.circuit.pb.Circuit.Reservation.Builder subBuilder = null;
-              if (((bitField0_ & 0x00000004) == 0x00000004)) {
-                subBuilder = reservation_.toBuilder();
+            case 34:
+              {
+                io.libp2p.protocol.circuit.pb.Circuit.Limit.Builder subBuilder = null;
+                if (((bitField0_ & 0x00000008) == 0x00000008)) {
+                  subBuilder = limit_.toBuilder();
+                }
+                limit_ =
+                    input.readMessage(
+                        io.libp2p.protocol.circuit.pb.Circuit.Limit.PARSER, extensionRegistry);
+                if (subBuilder != null) {
+                  subBuilder.mergeFrom(limit_);
+                  limit_ = subBuilder.buildPartial();
+                }
+                bitField0_ |= 0x00000008;
+                break;
               }
-              reservation_ = input.readMessage(io.libp2p.protocol.circuit.pb.Circuit.Reservation.PARSER, extensionRegistry);
-              if (subBuilder != null) {
-                subBuilder.mergeFrom(reservation_);
-                reservation_ = subBuilder.buildPartial();
-              }
-              bitField0_ |= 0x00000004;
-              break;
-            }
-            case 34: {
-              io.libp2p.protocol.circuit.pb.Circuit.Limit.Builder subBuilder = null;
-              if (((bitField0_ & 0x00000008) == 0x00000008)) {
-                subBuilder = limit_.toBuilder();
-              }
-              limit_ = input.readMessage(io.libp2p.protocol.circuit.pb.Circuit.Limit.PARSER, extensionRegistry);
-              if (subBuilder != null) {
-                subBuilder.mergeFrom(limit_);
-                limit_ = subBuilder.buildPartial();
-              }
-              bitField0_ |= 0x00000008;
-              break;
-            }
-            case 40: {
-              int rawValue = input.readEnum();
+            case 40:
+              {
+                int rawValue = input.readEnum();
                 @SuppressWarnings("deprecation")
-              io.libp2p.protocol.circuit.pb.Circuit.Status value = io.libp2p.protocol.circuit.pb.Circuit.Status.valueOf(rawValue);
-              if (value == null) {
-                unknownFields.mergeVarintField(5, rawValue);
-              } else {
-                bitField0_ |= 0x00000010;
-                status_ = rawValue;
+                io.libp2p.protocol.circuit.pb.Circuit.Status value =
+                    io.libp2p.protocol.circuit.pb.Circuit.Status.valueOf(rawValue);
+                if (value == null) {
+                  unknownFields.mergeVarintField(5, rawValue);
+                } else {
+                  bitField0_ |= 0x00000010;
+                  status_ = rawValue;
+                }
+                break;
               }
-              break;
-            }
-            default: {
-              if (!parseUnknownField(
-                  input, unknownFields, extensionRegistry, tag)) {
-                done = true;
+            default:
+              {
+                if (!parseUnknownField(input, unknownFields, extensionRegistry, tag)) {
+                  done = true;
+                }
+                break;
               }
-              break;
-            }
           }
         }
       } catch (com.google.protobuf.InvalidProtocolBufferException e) {
         throw e.setUnfinishedMessage(this);
       } catch (java.io.IOException e) {
-        throw new com.google.protobuf.InvalidProtocolBufferException(
-            e).setUnfinishedMessage(this);
+        throw new com.google.protobuf.InvalidProtocolBufferException(e).setUnfinishedMessage(this);
       } finally {
         this.unknownFields = unknownFields.build();
         makeExtensionsImmutable();
       }
     }
-    public static final com.google.protobuf.Descriptors.Descriptor
-        getDescriptor() {
-      return io.libp2p.protocol.circuit.pb.Circuit.internal_static_io_libp2p_protocol_circuit_pb_HopMessage_descriptor;
+
+    public static final com.google.protobuf.Descriptors.Descriptor getDescriptor() {
+      return io.libp2p.protocol.circuit.pb.Circuit
+          .internal_static_io_libp2p_protocol_circuit_pb_HopMessage_descriptor;
     }
 
     @java.lang.Override
     protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
         internalGetFieldAccessorTable() {
-      return io.libp2p.protocol.circuit.pb.Circuit.internal_static_io_libp2p_protocol_circuit_pb_HopMessage_fieldAccessorTable
+      return io.libp2p.protocol.circuit.pb.Circuit
+          .internal_static_io_libp2p_protocol_circuit_pb_HopMessage_fieldAccessorTable
           .ensureFieldAccessorsInitialized(
-              io.libp2p.protocol.circuit.pb.Circuit.HopMessage.class, io.libp2p.protocol.circuit.pb.Circuit.HopMessage.Builder.class);
+              io.libp2p.protocol.circuit.pb.Circuit.HopMessage.class,
+              io.libp2p.protocol.circuit.pb.Circuit.HopMessage.Builder.class);
     }
 
-    /**
-     * Protobuf enum {@code io.libp2p.protocol.circuit.pb.HopMessage.Type}
-     */
-    public enum Type
-        implements com.google.protobuf.ProtocolMessageEnum {
-      /**
-       * <code>RESERVE = 0;</code>
-       */
+    /** Protobuf enum {@code io.libp2p.protocol.circuit.pb.HopMessage.Type} */
+    public enum Type implements com.google.protobuf.ProtocolMessageEnum {
+      /** <code>RESERVE = 0;</code> */
       RESERVE(0),
-      /**
-       * <code>CONNECT = 1;</code>
-       */
+      /** <code>CONNECT = 1;</code> */
       CONNECT(1),
-      /**
-       * <code>STATUS = 2;</code>
-       */
+      /** <code>STATUS = 2;</code> */
       STATUS(2),
       ;
 
-      /**
-       * <code>RESERVE = 0;</code>
-       */
+      /** <code>RESERVE = 0;</code> */
       public static final int RESERVE_VALUE = 0;
-      /**
-       * <code>CONNECT = 1;</code>
-       */
-      public static final int CONNECT_VALUE = 1;
-      /**
-       * <code>STATUS = 2;</code>
-       */
-      public static final int STATUS_VALUE = 2;
 
+      /** <code>CONNECT = 1;</code> */
+      public static final int CONNECT_VALUE = 1;
+
+      /** <code>STATUS = 2;</code> */
+      public static final int STATUS_VALUE = 2;
 
       public final int getNumber() {
         return value;
@@ -402,45 +362,47 @@ public final class Circuit {
 
       public static Type forNumber(int value) {
         switch (value) {
-          case 0: return RESERVE;
-          case 1: return CONNECT;
-          case 2: return STATUS;
-          default: return null;
+          case 0:
+            return RESERVE;
+          case 1:
+            return CONNECT;
+          case 2:
+            return STATUS;
+          default:
+            return null;
         }
       }
 
-      public static com.google.protobuf.Internal.EnumLiteMap<Type>
-          internalGetValueMap() {
+      public static com.google.protobuf.Internal.EnumLiteMap<Type> internalGetValueMap() {
         return internalValueMap;
       }
-      private static final com.google.protobuf.Internal.EnumLiteMap<
-          Type> internalValueMap =
-            new com.google.protobuf.Internal.EnumLiteMap<Type>() {
-              public Type findValueByNumber(int number) {
-                return Type.forNumber(number);
-              }
-            };
 
-      public final com.google.protobuf.Descriptors.EnumValueDescriptor
-          getValueDescriptor() {
+      private static final com.google.protobuf.Internal.EnumLiteMap<Type> internalValueMap =
+          new com.google.protobuf.Internal.EnumLiteMap<Type>() {
+            public Type findValueByNumber(int number) {
+              return Type.forNumber(number);
+            }
+          };
+
+      public final com.google.protobuf.Descriptors.EnumValueDescriptor getValueDescriptor() {
         return getDescriptor().getValues().get(ordinal());
       }
-      public final com.google.protobuf.Descriptors.EnumDescriptor
-          getDescriptorForType() {
+
+      public final com.google.protobuf.Descriptors.EnumDescriptor getDescriptorForType() {
         return getDescriptor();
       }
-      public static final com.google.protobuf.Descriptors.EnumDescriptor
-          getDescriptor() {
-        return io.libp2p.protocol.circuit.pb.Circuit.HopMessage.getDescriptor().getEnumTypes().get(0);
+
+      public static final com.google.protobuf.Descriptors.EnumDescriptor getDescriptor() {
+        return io.libp2p.protocol.circuit.pb.Circuit.HopMessage.getDescriptor()
+            .getEnumTypes()
+            .get(0);
       }
 
       private static final Type[] VALUES = values();
 
-      public static Type valueOf(
-          com.google.protobuf.Descriptors.EnumValueDescriptor desc) {
+      public static Type valueOf(com.google.protobuf.Descriptors.EnumValueDescriptor desc) {
         if (desc.getType() != getDescriptor()) {
-          throw new java.lang.IllegalArgumentException(
-            "EnumValueDescriptor is not for this type.");
+          throw new java.lang.IllegalArgumentException("EnumValueDescriptor is not for this type.");
         }
         return VALUES[desc.getIndex()];
       }
@@ -457,102 +419,106 @@ public final class Circuit {
     private int bitField0_;
     public static final int TYPE_FIELD_NUMBER = 1;
     private int type_;
-    /**
-     * <code>required .io.libp2p.protocol.circuit.pb.HopMessage.Type type = 1;</code>
-     */
+
+    /** <code>required .io.libp2p.protocol.circuit.pb.HopMessage.Type type = 1;</code> */
     public boolean hasType() {
       return ((bitField0_ & 0x00000001) == 0x00000001);
     }
-    /**
-     * <code>required .io.libp2p.protocol.circuit.pb.HopMessage.Type type = 1;</code>
-     */
+
+    /** <code>required .io.libp2p.protocol.circuit.pb.HopMessage.Type type = 1;</code> */
     public io.libp2p.protocol.circuit.pb.Circuit.HopMessage.Type getType() {
       @SuppressWarnings("deprecation")
-      io.libp2p.protocol.circuit.pb.Circuit.HopMessage.Type result = io.libp2p.protocol.circuit.pb.Circuit.HopMessage.Type.valueOf(type_);
-      return result == null ? io.libp2p.protocol.circuit.pb.Circuit.HopMessage.Type.RESERVE : result;
+      io.libp2p.protocol.circuit.pb.Circuit.HopMessage.Type result =
+          io.libp2p.protocol.circuit.pb.Circuit.HopMessage.Type.valueOf(type_);
+      return result == null
+          ? io.libp2p.protocol.circuit.pb.Circuit.HopMessage.Type.RESERVE
+          : result;
     }
 
     public static final int PEER_FIELD_NUMBER = 2;
     private io.libp2p.protocol.circuit.pb.Circuit.Peer peer_;
-    /**
-     * <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code>
-     */
+
+    /** <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code> */
     public boolean hasPeer() {
       return ((bitField0_ & 0x00000002) == 0x00000002);
     }
-    /**
-     * <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code>
-     */
+
+    /** <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code> */
     public io.libp2p.protocol.circuit.pb.Circuit.Peer getPeer() {
-      return peer_ == null ? io.libp2p.protocol.circuit.pb.Circuit.Peer.getDefaultInstance() : peer_;
+      return peer_ == null
+          ? io.libp2p.protocol.circuit.pb.Circuit.Peer.getDefaultInstance()
+          : peer_;
     }
-    /**
-     * <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code>
-     */
+
+    /** <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code> */
     public io.libp2p.protocol.circuit.pb.Circuit.PeerOrBuilder getPeerOrBuilder() {
-      return peer_ == null ? io.libp2p.protocol.circuit.pb.Circuit.Peer.getDefaultInstance() : peer_;
+      return peer_ == null
+          ? io.libp2p.protocol.circuit.pb.Circuit.Peer.getDefaultInstance()
+          : peer_;
     }
 
     public static final int RESERVATION_FIELD_NUMBER = 3;
     private io.libp2p.protocol.circuit.pb.Circuit.Reservation reservation_;
-    /**
-     * <code>optional .io.libp2p.protocol.circuit.pb.Reservation reservation = 3;</code>
-     */
+
+    /** <code>optional .io.libp2p.protocol.circuit.pb.Reservation reservation = 3;</code> */
     public boolean hasReservation() {
       return ((bitField0_ & 0x00000004) == 0x00000004);
     }
-    /**
-     * <code>optional .io.libp2p.protocol.circuit.pb.Reservation reservation = 3;</code>
-     */
+
+    /** <code>optional .io.libp2p.protocol.circuit.pb.Reservation reservation = 3;</code> */
     public io.libp2p.protocol.circuit.pb.Circuit.Reservation getReservation() {
-      return reservation_ == null ? io.libp2p.protocol.circuit.pb.Circuit.Reservation.getDefaultInstance() : reservation_;
+      return reservation_ == null
+          ? io.libp2p.protocol.circuit.pb.Circuit.Reservation.getDefaultInstance()
+          : reservation_;
     }
-    /**
-     * <code>optional .io.libp2p.protocol.circuit.pb.Reservation reservation = 3;</code>
-     */
+
+    /** <code>optional .io.libp2p.protocol.circuit.pb.Reservation reservation = 3;</code> */
     public io.libp2p.protocol.circuit.pb.Circuit.ReservationOrBuilder getReservationOrBuilder() {
-      return reservation_ == null ? io.libp2p.protocol.circuit.pb.Circuit.Reservation.getDefaultInstance() : reservation_;
+      return reservation_ == null
+          ? io.libp2p.protocol.circuit.pb.Circuit.Reservation.getDefaultInstance()
+          : reservation_;
     }
 
     public static final int LIMIT_FIELD_NUMBER = 4;
     private io.libp2p.protocol.circuit.pb.Circuit.Limit limit_;
-    /**
-     * <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 4;</code>
-     */
+
+    /** <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 4;</code> */
     public boolean hasLimit() {
       return ((bitField0_ & 0x00000008) == 0x00000008);
     }
-    /**
-     * <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 4;</code>
-     */
+
+    /** <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 4;</code> */
     public io.libp2p.protocol.circuit.pb.Circuit.Limit getLimit() {
-      return limit_ == null ? io.libp2p.protocol.circuit.pb.Circuit.Limit.getDefaultInstance() : limit_;
+      return limit_ == null
+          ? io.libp2p.protocol.circuit.pb.Circuit.Limit.getDefaultInstance()
+          : limit_;
     }
-    /**
-     * <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 4;</code>
-     */
+
+    /** <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 4;</code> */
     public io.libp2p.protocol.circuit.pb.Circuit.LimitOrBuilder getLimitOrBuilder() {
-      return limit_ == null ? io.libp2p.protocol.circuit.pb.Circuit.Limit.getDefaultInstance() : limit_;
+      return limit_ == null
+          ? io.libp2p.protocol.circuit.pb.Circuit.Limit.getDefaultInstance()
+          : limit_;
     }
 
     public static final int STATUS_FIELD_NUMBER = 5;
     private int status_;
-    /**
-     * <code>optional .io.libp2p.protocol.circuit.pb.Status status = 5;</code>
-     */
+
+    /** <code>optional .io.libp2p.protocol.circuit.pb.Status status = 5;</code> */
     public boolean hasStatus() {
       return ((bitField0_ & 0x00000010) == 0x00000010);
     }
-    /**
-     * <code>optional .io.libp2p.protocol.circuit.pb.Status status = 5;</code>
-     */
+
+    /** <code>optional .io.libp2p.protocol.circuit.pb.Status status = 5;</code> */
     public io.libp2p.protocol.circuit.pb.Circuit.Status getStatus() {
       @SuppressWarnings("deprecation")
-      io.libp2p.protocol.circuit.pb.Circuit.Status result = io.libp2p.protocol.circuit.pb.Circuit.Status.valueOf(status_);
+      io.libp2p.protocol.circuit.pb.Circuit.Status result =
+          io.libp2p.protocol.circuit.pb.Circuit.Status.valueOf(status_);
       return result == null ? io.libp2p.protocol.circuit.pb.Circuit.Status.OK : result;
     }
 
     private byte memoizedIsInitialized = -1;
+
     @java.lang.Override
     public final boolean isInitialized() {
       byte isInitialized = memoizedIsInitialized;
@@ -580,8 +546,7 @@ public final class Circuit {
     }
 
     @java.lang.Override
-    public void writeTo(com.google.protobuf.CodedOutputStream output)
-                        throws java.io.IOException {
+    public void writeTo(com.google.protobuf.CodedOutputStream output) throws java.io.IOException {
       if (((bitField0_ & 0x00000001) == 0x00000001)) {
         output.writeEnum(1, type_);
       }
@@ -607,24 +572,19 @@ public final class Circuit {
 
       size = 0;
       if (((bitField0_ & 0x00000001) == 0x00000001)) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeEnumSize(1, type_);
+        size += com.google.protobuf.CodedOutputStream.computeEnumSize(1, type_);
       }
       if (((bitField0_ & 0x00000002) == 0x00000002)) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeMessageSize(2, getPeer());
+        size += com.google.protobuf.CodedOutputStream.computeMessageSize(2, getPeer());
       }
       if (((bitField0_ & 0x00000004) == 0x00000004)) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeMessageSize(3, getReservation());
+        size += com.google.protobuf.CodedOutputStream.computeMessageSize(3, getReservation());
       }
       if (((bitField0_ & 0x00000008) == 0x00000008)) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeMessageSize(4, getLimit());
+        size += com.google.protobuf.CodedOutputStream.computeMessageSize(4, getLimit());
       }
       if (((bitField0_ & 0x00000010) == 0x00000010)) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeEnumSize(5, status_);
+        size += com.google.protobuf.CodedOutputStream.computeEnumSize(5, status_);
       }
       size += unknownFields.getSerializedSize();
       memoizedSize = size;
@@ -634,12 +594,13 @@ public final class Circuit {
     @java.lang.Override
     public boolean equals(final java.lang.Object obj) {
       if (obj == this) {
-       return true;
+        return true;
       }
       if (!(obj instanceof io.libp2p.protocol.circuit.pb.Circuit.HopMessage)) {
         return super.equals(obj);
       }
-      io.libp2p.protocol.circuit.pb.Circuit.HopMessage other = (io.libp2p.protocol.circuit.pb.Circuit.HopMessage) obj;
+      io.libp2p.protocol.circuit.pb.Circuit.HopMessage other =
+          (io.libp2p.protocol.circuit.pb.Circuit.HopMessage) obj;
 
       boolean result = true;
       result = result && (hasType() == other.hasType());
@@ -648,18 +609,15 @@ public final class Circuit {
       }
       result = result && (hasPeer() == other.hasPeer());
       if (hasPeer()) {
-        result = result && getPeer()
-            .equals(other.getPeer());
+        result = result && getPeer().equals(other.getPeer());
       }
       result = result && (hasReservation() == other.hasReservation());
       if (hasReservation()) {
-        result = result && getReservation()
-            .equals(other.getReservation());
+        result = result && getReservation().equals(other.getReservation());
       }
       result = result && (hasLimit() == other.hasLimit());
       if (hasLimit()) {
-        result = result && getLimit()
-            .equals(other.getLimit());
+        result = result && getLimit().equals(other.getLimit());
       }
       result = result && (hasStatus() == other.hasStatus());
       if (hasStatus()) {
@@ -702,87 +660,93 @@ public final class Circuit {
     }
 
     public static io.libp2p.protocol.circuit.pb.Circuit.HopMessage parseFrom(
-        java.nio.ByteBuffer data)
-        throws com.google.protobuf.InvalidProtocolBufferException {
+        java.nio.ByteBuffer data) throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data);
     }
+
     public static io.libp2p.protocol.circuit.pb.Circuit.HopMessage parseFrom(
-        java.nio.ByteBuffer data,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        java.nio.ByteBuffer data, com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data, extensionRegistry);
     }
+
     public static io.libp2p.protocol.circuit.pb.Circuit.HopMessage parseFrom(
         com.google.protobuf.ByteString data)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data);
     }
+
     public static io.libp2p.protocol.circuit.pb.Circuit.HopMessage parseFrom(
         com.google.protobuf.ByteString data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data, extensionRegistry);
     }
+
     public static io.libp2p.protocol.circuit.pb.Circuit.HopMessage parseFrom(byte[] data)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data);
     }
+
     public static io.libp2p.protocol.circuit.pb.Circuit.HopMessage parseFrom(
-        byte[] data,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        byte[] data, com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data, extensionRegistry);
     }
-    public static io.libp2p.protocol.circuit.pb.Circuit.HopMessage parseFrom(java.io.InputStream input)
-        throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseWithIOException(PARSER, input);
-    }
+
     public static io.libp2p.protocol.circuit.pb.Circuit.HopMessage parseFrom(
-        java.io.InputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseWithIOException(PARSER, input, extensionRegistry);
+        java.io.InputStream input) throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessageV3.parseWithIOException(PARSER, input);
     }
-    public static io.libp2p.protocol.circuit.pb.Circuit.HopMessage parseDelimitedFrom(java.io.InputStream input)
+
+    public static io.libp2p.protocol.circuit.pb.Circuit.HopMessage parseFrom(
+        java.io.InputStream input, com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseDelimitedWithIOException(PARSER, input);
+      return com.google.protobuf.GeneratedMessageV3.parseWithIOException(
+          PARSER, input, extensionRegistry);
     }
+
     public static io.libp2p.protocol.circuit.pb.Circuit.HopMessage parseDelimitedFrom(
-        java.io.InputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseDelimitedWithIOException(PARSER, input, extensionRegistry);
+        java.io.InputStream input) throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessageV3.parseDelimitedWithIOException(PARSER, input);
     }
+
+    public static io.libp2p.protocol.circuit.pb.Circuit.HopMessage parseDelimitedFrom(
+        java.io.InputStream input, com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessageV3.parseDelimitedWithIOException(
+          PARSER, input, extensionRegistry);
+    }
+
     public static io.libp2p.protocol.circuit.pb.Circuit.HopMessage parseFrom(
-        com.google.protobuf.CodedInputStream input)
-        throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseWithIOException(PARSER, input);
+        com.google.protobuf.CodedInputStream input) throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessageV3.parseWithIOException(PARSER, input);
     }
+
     public static io.libp2p.protocol.circuit.pb.Circuit.HopMessage parseFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseWithIOException(PARSER, input, extensionRegistry);
+      return com.google.protobuf.GeneratedMessageV3.parseWithIOException(
+          PARSER, input, extensionRegistry);
     }
 
     @java.lang.Override
-    public Builder newBuilderForType() { return newBuilder(); }
+    public Builder newBuilderForType() {
+      return newBuilder();
+    }
+
     public static Builder newBuilder() {
       return DEFAULT_INSTANCE.toBuilder();
     }
+
     public static Builder newBuilder(io.libp2p.protocol.circuit.pb.Circuit.HopMessage prototype) {
       return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
     }
+
     @java.lang.Override
     public Builder toBuilder() {
-      return this == DEFAULT_INSTANCE
-          ? new Builder() : new Builder().mergeFrom(this);
+      return this == DEFAULT_INSTANCE ? new Builder() : new Builder().mergeFrom(this);
     }
 
     @java.lang.Override
@@ -791,24 +755,26 @@ public final class Circuit {
       Builder builder = new Builder(parent);
       return builder;
     }
-    /**
-     * Protobuf type {@code io.libp2p.protocol.circuit.pb.HopMessage}
-     */
-    public static final class Builder extends
-        com.google.protobuf.GeneratedMessageV3.Builder<Builder> implements
+
+    /** Protobuf type {@code io.libp2p.protocol.circuit.pb.HopMessage} */
+    public static final class Builder
+        extends com.google.protobuf.GeneratedMessageV3.Builder<Builder>
+        implements
         // @@protoc_insertion_point(builder_implements:io.libp2p.protocol.circuit.pb.HopMessage)
         io.libp2p.protocol.circuit.pb.Circuit.HopMessageOrBuilder {
-      public static final com.google.protobuf.Descriptors.Descriptor
-          getDescriptor() {
-        return io.libp2p.protocol.circuit.pb.Circuit.internal_static_io_libp2p_protocol_circuit_pb_HopMessage_descriptor;
+      public static final com.google.protobuf.Descriptors.Descriptor getDescriptor() {
+        return io.libp2p.protocol.circuit.pb.Circuit
+            .internal_static_io_libp2p_protocol_circuit_pb_HopMessage_descriptor;
       }
 
       @java.lang.Override
       protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
           internalGetFieldAccessorTable() {
-        return io.libp2p.protocol.circuit.pb.Circuit.internal_static_io_libp2p_protocol_circuit_pb_HopMessage_fieldAccessorTable
+        return io.libp2p.protocol.circuit.pb.Circuit
+            .internal_static_io_libp2p_protocol_circuit_pb_HopMessage_fieldAccessorTable
             .ensureFieldAccessorsInitialized(
-                io.libp2p.protocol.circuit.pb.Circuit.HopMessage.class, io.libp2p.protocol.circuit.pb.Circuit.HopMessage.Builder.class);
+                io.libp2p.protocol.circuit.pb.Circuit.HopMessage.class,
+                io.libp2p.protocol.circuit.pb.Circuit.HopMessage.Builder.class);
       }
 
       // Construct using io.libp2p.protocol.circuit.pb.Circuit.HopMessage.newBuilder()
@@ -816,19 +782,19 @@ public final class Circuit {
         maybeForceBuilderInitialization();
       }
 
-      private Builder(
-          com.google.protobuf.GeneratedMessageV3.BuilderParent parent) {
+      private Builder(com.google.protobuf.GeneratedMessageV3.BuilderParent parent) {
         super(parent);
         maybeForceBuilderInitialization();
       }
+
       private void maybeForceBuilderInitialization() {
-        if (com.google.protobuf.GeneratedMessageV3
-                .alwaysUseFieldBuilders) {
+        if (com.google.protobuf.GeneratedMessageV3.alwaysUseFieldBuilders) {
           getPeerFieldBuilder();
           getReservationFieldBuilder();
           getLimitFieldBuilder();
         }
       }
+
       @java.lang.Override
       public Builder clear() {
         super.clear();
@@ -858,9 +824,9 @@ public final class Circuit {
       }
 
       @java.lang.Override
-      public com.google.protobuf.Descriptors.Descriptor
-          getDescriptorForType() {
-        return io.libp2p.protocol.circuit.pb.Circuit.internal_static_io_libp2p_protocol_circuit_pb_HopMessage_descriptor;
+      public com.google.protobuf.Descriptors.Descriptor getDescriptorForType() {
+        return io.libp2p.protocol.circuit.pb.Circuit
+            .internal_static_io_libp2p_protocol_circuit_pb_HopMessage_descriptor;
       }
 
       @java.lang.Override
@@ -879,7 +845,8 @@ public final class Circuit {
 
       @java.lang.Override
       public io.libp2p.protocol.circuit.pb.Circuit.HopMessage buildPartial() {
-        io.libp2p.protocol.circuit.pb.Circuit.HopMessage result = new io.libp2p.protocol.circuit.pb.Circuit.HopMessage(this);
+        io.libp2p.protocol.circuit.pb.Circuit.HopMessage result =
+            new io.libp2p.protocol.circuit.pb.Circuit.HopMessage(this);
         int from_bitField0_ = bitField0_;
         int to_bitField0_ = 0;
         if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
@@ -923,38 +890,41 @@ public final class Circuit {
       public Builder clone() {
         return (Builder) super.clone();
       }
+
       @java.lang.Override
       public Builder setField(
-          com.google.protobuf.Descriptors.FieldDescriptor field,
-          java.lang.Object value) {
+          com.google.protobuf.Descriptors.FieldDescriptor field, java.lang.Object value) {
         return (Builder) super.setField(field, value);
       }
+
       @java.lang.Override
-      public Builder clearField(
-          com.google.protobuf.Descriptors.FieldDescriptor field) {
+      public Builder clearField(com.google.protobuf.Descriptors.FieldDescriptor field) {
         return (Builder) super.clearField(field);
       }
+
       @java.lang.Override
-      public Builder clearOneof(
-          com.google.protobuf.Descriptors.OneofDescriptor oneof) {
+      public Builder clearOneof(com.google.protobuf.Descriptors.OneofDescriptor oneof) {
         return (Builder) super.clearOneof(oneof);
       }
+
       @java.lang.Override
       public Builder setRepeatedField(
           com.google.protobuf.Descriptors.FieldDescriptor field,
-          int index, java.lang.Object value) {
+          int index,
+          java.lang.Object value) {
         return (Builder) super.setRepeatedField(field, index, value);
       }
+
       @java.lang.Override
       public Builder addRepeatedField(
-          com.google.protobuf.Descriptors.FieldDescriptor field,
-          java.lang.Object value) {
+          com.google.protobuf.Descriptors.FieldDescriptor field, java.lang.Object value) {
         return (Builder) super.addRepeatedField(field, value);
       }
+
       @java.lang.Override
       public Builder mergeFrom(com.google.protobuf.Message other) {
         if (other instanceof io.libp2p.protocol.circuit.pb.Circuit.HopMessage) {
-          return mergeFrom((io.libp2p.protocol.circuit.pb.Circuit.HopMessage)other);
+          return mergeFrom((io.libp2p.protocol.circuit.pb.Circuit.HopMessage) other);
         } else {
           super.mergeFrom(other);
           return this;
@@ -962,7 +932,8 @@ public final class Circuit {
       }
 
       public Builder mergeFrom(io.libp2p.protocol.circuit.pb.Circuit.HopMessage other) {
-        if (other == io.libp2p.protocol.circuit.pb.Circuit.HopMessage.getDefaultInstance()) return this;
+        if (other == io.libp2p.protocol.circuit.pb.Circuit.HopMessage.getDefaultInstance())
+          return this;
         if (other.hasType()) {
           setType(other.getType());
         }
@@ -1010,7 +981,8 @@ public final class Circuit {
         try {
           parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
         } catch (com.google.protobuf.InvalidProtocolBufferException e) {
-          parsedMessage = (io.libp2p.protocol.circuit.pb.Circuit.HopMessage) e.getUnfinishedMessage();
+          parsedMessage =
+              (io.libp2p.protocol.circuit.pb.Circuit.HopMessage) e.getUnfinishedMessage();
           throw e.unwrapIOException();
         } finally {
           if (parsedMessage != null) {
@@ -1019,26 +991,27 @@ public final class Circuit {
         }
         return this;
       }
+
       private int bitField0_;
 
       private int type_ = 0;
-      /**
-       * <code>required .io.libp2p.protocol.circuit.pb.HopMessage.Type type = 1;</code>
-       */
+
+      /** <code>required .io.libp2p.protocol.circuit.pb.HopMessage.Type type = 1;</code> */
       public boolean hasType() {
         return ((bitField0_ & 0x00000001) == 0x00000001);
       }
-      /**
-       * <code>required .io.libp2p.protocol.circuit.pb.HopMessage.Type type = 1;</code>
-       */
+
+      /** <code>required .io.libp2p.protocol.circuit.pb.HopMessage.Type type = 1;</code> */
       public io.libp2p.protocol.circuit.pb.Circuit.HopMessage.Type getType() {
         @SuppressWarnings("deprecation")
-        io.libp2p.protocol.circuit.pb.Circuit.HopMessage.Type result = io.libp2p.protocol.circuit.pb.Circuit.HopMessage.Type.valueOf(type_);
-        return result == null ? io.libp2p.protocol.circuit.pb.Circuit.HopMessage.Type.RESERVE : result;
+        io.libp2p.protocol.circuit.pb.Circuit.HopMessage.Type result =
+            io.libp2p.protocol.circuit.pb.Circuit.HopMessage.Type.valueOf(type_);
+        return result == null
+            ? io.libp2p.protocol.circuit.pb.Circuit.HopMessage.Type.RESERVE
+            : result;
       }
-      /**
-       * <code>required .io.libp2p.protocol.circuit.pb.HopMessage.Type type = 1;</code>
-       */
+
+      /** <code>required .io.libp2p.protocol.circuit.pb.HopMessage.Type type = 1;</code> */
       public Builder setType(io.libp2p.protocol.circuit.pb.Circuit.HopMessage.Type value) {
         if (value == null) {
           throw new NullPointerException();
@@ -1048,9 +1021,8 @@ public final class Circuit {
         onChanged();
         return this;
       }
-      /**
-       * <code>required .io.libp2p.protocol.circuit.pb.HopMessage.Type type = 1;</code>
-       */
+
+      /** <code>required .io.libp2p.protocol.circuit.pb.HopMessage.Type type = 1;</code> */
       public Builder clearType() {
         bitField0_ = (bitField0_ & ~0x00000001);
         type_ = 0;
@@ -1060,26 +1032,28 @@ public final class Circuit {
 
       private io.libp2p.protocol.circuit.pb.Circuit.Peer peer_ = null;
       private com.google.protobuf.SingleFieldBuilderV3<
-          io.libp2p.protocol.circuit.pb.Circuit.Peer, io.libp2p.protocol.circuit.pb.Circuit.Peer.Builder, io.libp2p.protocol.circuit.pb.Circuit.PeerOrBuilder> peerBuilder_;
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code>
-       */
+              io.libp2p.protocol.circuit.pb.Circuit.Peer,
+              io.libp2p.protocol.circuit.pb.Circuit.Peer.Builder,
+              io.libp2p.protocol.circuit.pb.Circuit.PeerOrBuilder>
+          peerBuilder_;
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code> */
       public boolean hasPeer() {
         return ((bitField0_ & 0x00000002) == 0x00000002);
       }
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code>
-       */
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code> */
       public io.libp2p.protocol.circuit.pb.Circuit.Peer getPeer() {
         if (peerBuilder_ == null) {
-          return peer_ == null ? io.libp2p.protocol.circuit.pb.Circuit.Peer.getDefaultInstance() : peer_;
+          return peer_ == null
+              ? io.libp2p.protocol.circuit.pb.Circuit.Peer.getDefaultInstance()
+              : peer_;
         } else {
           return peerBuilder_.getMessage();
         }
       }
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code>
-       */
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code> */
       public Builder setPeer(io.libp2p.protocol.circuit.pb.Circuit.Peer value) {
         if (peerBuilder_ == null) {
           if (value == null) {
@@ -1093,11 +1067,9 @@ public final class Circuit {
         bitField0_ |= 0x00000002;
         return this;
       }
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code>
-       */
-      public Builder setPeer(
-          io.libp2p.protocol.circuit.pb.Circuit.Peer.Builder builderForValue) {
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code> */
+      public Builder setPeer(io.libp2p.protocol.circuit.pb.Circuit.Peer.Builder builderForValue) {
         if (peerBuilder_ == null) {
           peer_ = builderForValue.build();
           onChanged();
@@ -1107,16 +1079,17 @@ public final class Circuit {
         bitField0_ |= 0x00000002;
         return this;
       }
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code>
-       */
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code> */
       public Builder mergePeer(io.libp2p.protocol.circuit.pb.Circuit.Peer value) {
         if (peerBuilder_ == null) {
-          if (((bitField0_ & 0x00000002) == 0x00000002) &&
-              peer_ != null &&
-              peer_ != io.libp2p.protocol.circuit.pb.Circuit.Peer.getDefaultInstance()) {
+          if (((bitField0_ & 0x00000002) == 0x00000002)
+              && peer_ != null
+              && peer_ != io.libp2p.protocol.circuit.pb.Circuit.Peer.getDefaultInstance()) {
             peer_ =
-              io.libp2p.protocol.circuit.pb.Circuit.Peer.newBuilder(peer_).mergeFrom(value).buildPartial();
+                io.libp2p.protocol.circuit.pb.Circuit.Peer.newBuilder(peer_)
+                    .mergeFrom(value)
+                    .buildPartial();
           } else {
             peer_ = value;
           }
@@ -1127,9 +1100,8 @@ public final class Circuit {
         bitField0_ |= 0x00000002;
         return this;
       }
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code>
-       */
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code> */
       public Builder clearPeer() {
         if (peerBuilder_ == null) {
           peer_ = null;
@@ -1140,37 +1112,38 @@ public final class Circuit {
         bitField0_ = (bitField0_ & ~0x00000002);
         return this;
       }
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code>
-       */
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code> */
       public io.libp2p.protocol.circuit.pb.Circuit.Peer.Builder getPeerBuilder() {
         bitField0_ |= 0x00000002;
         onChanged();
         return getPeerFieldBuilder().getBuilder();
       }
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code>
-       */
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code> */
       public io.libp2p.protocol.circuit.pb.Circuit.PeerOrBuilder getPeerOrBuilder() {
         if (peerBuilder_ != null) {
           return peerBuilder_.getMessageOrBuilder();
         } else {
-          return peer_ == null ?
-              io.libp2p.protocol.circuit.pb.Circuit.Peer.getDefaultInstance() : peer_;
+          return peer_ == null
+              ? io.libp2p.protocol.circuit.pb.Circuit.Peer.getDefaultInstance()
+              : peer_;
         }
       }
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code>
-       */
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code> */
       private com.google.protobuf.SingleFieldBuilderV3<
-          io.libp2p.protocol.circuit.pb.Circuit.Peer, io.libp2p.protocol.circuit.pb.Circuit.Peer.Builder, io.libp2p.protocol.circuit.pb.Circuit.PeerOrBuilder> 
+              io.libp2p.protocol.circuit.pb.Circuit.Peer,
+              io.libp2p.protocol.circuit.pb.Circuit.Peer.Builder,
+              io.libp2p.protocol.circuit.pb.Circuit.PeerOrBuilder>
           getPeerFieldBuilder() {
         if (peerBuilder_ == null) {
-          peerBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
-              io.libp2p.protocol.circuit.pb.Circuit.Peer, io.libp2p.protocol.circuit.pb.Circuit.Peer.Builder, io.libp2p.protocol.circuit.pb.Circuit.PeerOrBuilder>(
-                  getPeer(),
-                  getParentForChildren(),
-                  isClean());
+          peerBuilder_ =
+              new com.google.protobuf.SingleFieldBuilderV3<
+                  io.libp2p.protocol.circuit.pb.Circuit.Peer,
+                  io.libp2p.protocol.circuit.pb.Circuit.Peer.Builder,
+                  io.libp2p.protocol.circuit.pb.Circuit.PeerOrBuilder>(
+                  getPeer(), getParentForChildren(), isClean());
           peer_ = null;
         }
         return peerBuilder_;
@@ -1178,26 +1151,28 @@ public final class Circuit {
 
       private io.libp2p.protocol.circuit.pb.Circuit.Reservation reservation_ = null;
       private com.google.protobuf.SingleFieldBuilderV3<
-          io.libp2p.protocol.circuit.pb.Circuit.Reservation, io.libp2p.protocol.circuit.pb.Circuit.Reservation.Builder, io.libp2p.protocol.circuit.pb.Circuit.ReservationOrBuilder> reservationBuilder_;
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Reservation reservation = 3;</code>
-       */
+              io.libp2p.protocol.circuit.pb.Circuit.Reservation,
+              io.libp2p.protocol.circuit.pb.Circuit.Reservation.Builder,
+              io.libp2p.protocol.circuit.pb.Circuit.ReservationOrBuilder>
+          reservationBuilder_;
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Reservation reservation = 3;</code> */
       public boolean hasReservation() {
         return ((bitField0_ & 0x00000004) == 0x00000004);
       }
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Reservation reservation = 3;</code>
-       */
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Reservation reservation = 3;</code> */
       public io.libp2p.protocol.circuit.pb.Circuit.Reservation getReservation() {
         if (reservationBuilder_ == null) {
-          return reservation_ == null ? io.libp2p.protocol.circuit.pb.Circuit.Reservation.getDefaultInstance() : reservation_;
+          return reservation_ == null
+              ? io.libp2p.protocol.circuit.pb.Circuit.Reservation.getDefaultInstance()
+              : reservation_;
         } else {
           return reservationBuilder_.getMessage();
         }
       }
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Reservation reservation = 3;</code>
-       */
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Reservation reservation = 3;</code> */
       public Builder setReservation(io.libp2p.protocol.circuit.pb.Circuit.Reservation value) {
         if (reservationBuilder_ == null) {
           if (value == null) {
@@ -1211,9 +1186,8 @@ public final class Circuit {
         bitField0_ |= 0x00000004;
         return this;
       }
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Reservation reservation = 3;</code>
-       */
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Reservation reservation = 3;</code> */
       public Builder setReservation(
           io.libp2p.protocol.circuit.pb.Circuit.Reservation.Builder builderForValue) {
         if (reservationBuilder_ == null) {
@@ -1225,16 +1199,18 @@ public final class Circuit {
         bitField0_ |= 0x00000004;
         return this;
       }
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Reservation reservation = 3;</code>
-       */
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Reservation reservation = 3;</code> */
       public Builder mergeReservation(io.libp2p.protocol.circuit.pb.Circuit.Reservation value) {
         if (reservationBuilder_ == null) {
-          if (((bitField0_ & 0x00000004) == 0x00000004) &&
-              reservation_ != null &&
-              reservation_ != io.libp2p.protocol.circuit.pb.Circuit.Reservation.getDefaultInstance()) {
+          if (((bitField0_ & 0x00000004) == 0x00000004)
+              && reservation_ != null
+              && reservation_
+                  != io.libp2p.protocol.circuit.pb.Circuit.Reservation.getDefaultInstance()) {
             reservation_ =
-              io.libp2p.protocol.circuit.pb.Circuit.Reservation.newBuilder(reservation_).mergeFrom(value).buildPartial();
+                io.libp2p.protocol.circuit.pb.Circuit.Reservation.newBuilder(reservation_)
+                    .mergeFrom(value)
+                    .buildPartial();
           } else {
             reservation_ = value;
           }
@@ -1245,9 +1221,8 @@ public final class Circuit {
         bitField0_ |= 0x00000004;
         return this;
       }
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Reservation reservation = 3;</code>
-       */
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Reservation reservation = 3;</code> */
       public Builder clearReservation() {
         if (reservationBuilder_ == null) {
           reservation_ = null;
@@ -1258,37 +1233,38 @@ public final class Circuit {
         bitField0_ = (bitField0_ & ~0x00000004);
         return this;
       }
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Reservation reservation = 3;</code>
-       */
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Reservation reservation = 3;</code> */
       public io.libp2p.protocol.circuit.pb.Circuit.Reservation.Builder getReservationBuilder() {
         bitField0_ |= 0x00000004;
         onChanged();
         return getReservationFieldBuilder().getBuilder();
       }
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Reservation reservation = 3;</code>
-       */
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Reservation reservation = 3;</code> */
       public io.libp2p.protocol.circuit.pb.Circuit.ReservationOrBuilder getReservationOrBuilder() {
         if (reservationBuilder_ != null) {
           return reservationBuilder_.getMessageOrBuilder();
         } else {
-          return reservation_ == null ?
-              io.libp2p.protocol.circuit.pb.Circuit.Reservation.getDefaultInstance() : reservation_;
+          return reservation_ == null
+              ? io.libp2p.protocol.circuit.pb.Circuit.Reservation.getDefaultInstance()
+              : reservation_;
         }
       }
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Reservation reservation = 3;</code>
-       */
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Reservation reservation = 3;</code> */
       private com.google.protobuf.SingleFieldBuilderV3<
-          io.libp2p.protocol.circuit.pb.Circuit.Reservation, io.libp2p.protocol.circuit.pb.Circuit.Reservation.Builder, io.libp2p.protocol.circuit.pb.Circuit.ReservationOrBuilder> 
+              io.libp2p.protocol.circuit.pb.Circuit.Reservation,
+              io.libp2p.protocol.circuit.pb.Circuit.Reservation.Builder,
+              io.libp2p.protocol.circuit.pb.Circuit.ReservationOrBuilder>
           getReservationFieldBuilder() {
         if (reservationBuilder_ == null) {
-          reservationBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
-              io.libp2p.protocol.circuit.pb.Circuit.Reservation, io.libp2p.protocol.circuit.pb.Circuit.Reservation.Builder, io.libp2p.protocol.circuit.pb.Circuit.ReservationOrBuilder>(
-                  getReservation(),
-                  getParentForChildren(),
-                  isClean());
+          reservationBuilder_ =
+              new com.google.protobuf.SingleFieldBuilderV3<
+                  io.libp2p.protocol.circuit.pb.Circuit.Reservation,
+                  io.libp2p.protocol.circuit.pb.Circuit.Reservation.Builder,
+                  io.libp2p.protocol.circuit.pb.Circuit.ReservationOrBuilder>(
+                  getReservation(), getParentForChildren(), isClean());
           reservation_ = null;
         }
         return reservationBuilder_;
@@ -1296,26 +1272,28 @@ public final class Circuit {
 
       private io.libp2p.protocol.circuit.pb.Circuit.Limit limit_ = null;
       private com.google.protobuf.SingleFieldBuilderV3<
-          io.libp2p.protocol.circuit.pb.Circuit.Limit, io.libp2p.protocol.circuit.pb.Circuit.Limit.Builder, io.libp2p.protocol.circuit.pb.Circuit.LimitOrBuilder> limitBuilder_;
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 4;</code>
-       */
+              io.libp2p.protocol.circuit.pb.Circuit.Limit,
+              io.libp2p.protocol.circuit.pb.Circuit.Limit.Builder,
+              io.libp2p.protocol.circuit.pb.Circuit.LimitOrBuilder>
+          limitBuilder_;
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 4;</code> */
       public boolean hasLimit() {
         return ((bitField0_ & 0x00000008) == 0x00000008);
       }
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 4;</code>
-       */
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 4;</code> */
       public io.libp2p.protocol.circuit.pb.Circuit.Limit getLimit() {
         if (limitBuilder_ == null) {
-          return limit_ == null ? io.libp2p.protocol.circuit.pb.Circuit.Limit.getDefaultInstance() : limit_;
+          return limit_ == null
+              ? io.libp2p.protocol.circuit.pb.Circuit.Limit.getDefaultInstance()
+              : limit_;
         } else {
           return limitBuilder_.getMessage();
         }
       }
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 4;</code>
-       */
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 4;</code> */
       public Builder setLimit(io.libp2p.protocol.circuit.pb.Circuit.Limit value) {
         if (limitBuilder_ == null) {
           if (value == null) {
@@ -1329,11 +1307,9 @@ public final class Circuit {
         bitField0_ |= 0x00000008;
         return this;
       }
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 4;</code>
-       */
-      public Builder setLimit(
-          io.libp2p.protocol.circuit.pb.Circuit.Limit.Builder builderForValue) {
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 4;</code> */
+      public Builder setLimit(io.libp2p.protocol.circuit.pb.Circuit.Limit.Builder builderForValue) {
         if (limitBuilder_ == null) {
           limit_ = builderForValue.build();
           onChanged();
@@ -1343,16 +1319,17 @@ public final class Circuit {
         bitField0_ |= 0x00000008;
         return this;
       }
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 4;</code>
-       */
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 4;</code> */
       public Builder mergeLimit(io.libp2p.protocol.circuit.pb.Circuit.Limit value) {
         if (limitBuilder_ == null) {
-          if (((bitField0_ & 0x00000008) == 0x00000008) &&
-              limit_ != null &&
-              limit_ != io.libp2p.protocol.circuit.pb.Circuit.Limit.getDefaultInstance()) {
+          if (((bitField0_ & 0x00000008) == 0x00000008)
+              && limit_ != null
+              && limit_ != io.libp2p.protocol.circuit.pb.Circuit.Limit.getDefaultInstance()) {
             limit_ =
-              io.libp2p.protocol.circuit.pb.Circuit.Limit.newBuilder(limit_).mergeFrom(value).buildPartial();
+                io.libp2p.protocol.circuit.pb.Circuit.Limit.newBuilder(limit_)
+                    .mergeFrom(value)
+                    .buildPartial();
           } else {
             limit_ = value;
           }
@@ -1363,9 +1340,8 @@ public final class Circuit {
         bitField0_ |= 0x00000008;
         return this;
       }
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 4;</code>
-       */
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 4;</code> */
       public Builder clearLimit() {
         if (limitBuilder_ == null) {
           limit_ = null;
@@ -1376,60 +1352,59 @@ public final class Circuit {
         bitField0_ = (bitField0_ & ~0x00000008);
         return this;
       }
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 4;</code>
-       */
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 4;</code> */
       public io.libp2p.protocol.circuit.pb.Circuit.Limit.Builder getLimitBuilder() {
         bitField0_ |= 0x00000008;
         onChanged();
         return getLimitFieldBuilder().getBuilder();
       }
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 4;</code>
-       */
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 4;</code> */
       public io.libp2p.protocol.circuit.pb.Circuit.LimitOrBuilder getLimitOrBuilder() {
         if (limitBuilder_ != null) {
           return limitBuilder_.getMessageOrBuilder();
         } else {
-          return limit_ == null ?
-              io.libp2p.protocol.circuit.pb.Circuit.Limit.getDefaultInstance() : limit_;
+          return limit_ == null
+              ? io.libp2p.protocol.circuit.pb.Circuit.Limit.getDefaultInstance()
+              : limit_;
         }
       }
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 4;</code>
-       */
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 4;</code> */
       private com.google.protobuf.SingleFieldBuilderV3<
-          io.libp2p.protocol.circuit.pb.Circuit.Limit, io.libp2p.protocol.circuit.pb.Circuit.Limit.Builder, io.libp2p.protocol.circuit.pb.Circuit.LimitOrBuilder> 
+              io.libp2p.protocol.circuit.pb.Circuit.Limit,
+              io.libp2p.protocol.circuit.pb.Circuit.Limit.Builder,
+              io.libp2p.protocol.circuit.pb.Circuit.LimitOrBuilder>
           getLimitFieldBuilder() {
         if (limitBuilder_ == null) {
-          limitBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
-              io.libp2p.protocol.circuit.pb.Circuit.Limit, io.libp2p.protocol.circuit.pb.Circuit.Limit.Builder, io.libp2p.protocol.circuit.pb.Circuit.LimitOrBuilder>(
-                  getLimit(),
-                  getParentForChildren(),
-                  isClean());
+          limitBuilder_ =
+              new com.google.protobuf.SingleFieldBuilderV3<
+                  io.libp2p.protocol.circuit.pb.Circuit.Limit,
+                  io.libp2p.protocol.circuit.pb.Circuit.Limit.Builder,
+                  io.libp2p.protocol.circuit.pb.Circuit.LimitOrBuilder>(
+                  getLimit(), getParentForChildren(), isClean());
           limit_ = null;
         }
         return limitBuilder_;
       }
 
       private int status_ = 100;
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Status status = 5;</code>
-       */
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Status status = 5;</code> */
       public boolean hasStatus() {
         return ((bitField0_ & 0x00000010) == 0x00000010);
       }
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Status status = 5;</code>
-       */
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Status status = 5;</code> */
       public io.libp2p.protocol.circuit.pb.Circuit.Status getStatus() {
         @SuppressWarnings("deprecation")
-        io.libp2p.protocol.circuit.pb.Circuit.Status result = io.libp2p.protocol.circuit.pb.Circuit.Status.valueOf(status_);
+        io.libp2p.protocol.circuit.pb.Circuit.Status result =
+            io.libp2p.protocol.circuit.pb.Circuit.Status.valueOf(status_);
         return result == null ? io.libp2p.protocol.circuit.pb.Circuit.Status.OK : result;
       }
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Status status = 5;</code>
-       */
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Status status = 5;</code> */
       public Builder setStatus(io.libp2p.protocol.circuit.pb.Circuit.Status value) {
         if (value == null) {
           throw new NullPointerException();
@@ -1439,15 +1414,15 @@ public final class Circuit {
         onChanged();
         return this;
       }
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Status status = 5;</code>
-       */
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Status status = 5;</code> */
       public Builder clearStatus() {
         bitField0_ = (bitField0_ & ~0x00000010);
         status_ = 100;
         onChanged();
         return this;
       }
+
       @java.lang.Override
       public final Builder setUnknownFields(
           final com.google.protobuf.UnknownFieldSet unknownFields) {
@@ -1460,12 +1435,12 @@ public final class Circuit {
         return super.mergeUnknownFields(unknownFields);
       }
 
-
       // @@protoc_insertion_point(builder_scope:io.libp2p.protocol.circuit.pb.HopMessage)
     }
 
     // @@protoc_insertion_point(class_scope:io.libp2p.protocol.circuit.pb.HopMessage)
     private static final io.libp2p.protocol.circuit.pb.Circuit.HopMessage DEFAULT_INSTANCE;
+
     static {
       DEFAULT_INSTANCE = new io.libp2p.protocol.circuit.pb.Circuit.HopMessage();
     }
@@ -1474,16 +1449,17 @@ public final class Circuit {
       return DEFAULT_INSTANCE;
     }
 
-    @java.lang.Deprecated public static final com.google.protobuf.Parser<HopMessage>
-        PARSER = new com.google.protobuf.AbstractParser<HopMessage>() {
-      @java.lang.Override
-      public HopMessage parsePartialFrom(
-          com.google.protobuf.CodedInputStream input,
-          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-          throws com.google.protobuf.InvalidProtocolBufferException {
-        return new HopMessage(input, extensionRegistry);
-      }
-    };
+    @java.lang.Deprecated
+    public static final com.google.protobuf.Parser<HopMessage> PARSER =
+        new com.google.protobuf.AbstractParser<HopMessage>() {
+          @java.lang.Override
+          public HopMessage parsePartialFrom(
+              com.google.protobuf.CodedInputStream input,
+              com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+              throws com.google.protobuf.InvalidProtocolBufferException {
+            return new HopMessage(input, extensionRegistry);
+          }
+        };
 
     public static com.google.protobuf.Parser<HopMessage> parser() {
       return PARSER;
@@ -1498,79 +1474,66 @@ public final class Circuit {
     public io.libp2p.protocol.circuit.pb.Circuit.HopMessage getDefaultInstanceForType() {
       return DEFAULT_INSTANCE;
     }
-
   }
 
-  public interface StopMessageOrBuilder extends
+  public interface StopMessageOrBuilder
+      extends
       // @@protoc_insertion_point(interface_extends:io.libp2p.protocol.circuit.pb.StopMessage)
       com.google.protobuf.MessageOrBuilder {
 
-    /**
-     * <code>required .io.libp2p.protocol.circuit.pb.StopMessage.Type type = 1;</code>
-     */
+    /** <code>required .io.libp2p.protocol.circuit.pb.StopMessage.Type type = 1;</code> */
     boolean hasType();
-    /**
-     * <code>required .io.libp2p.protocol.circuit.pb.StopMessage.Type type = 1;</code>
-     */
+
+    /** <code>required .io.libp2p.protocol.circuit.pb.StopMessage.Type type = 1;</code> */
     io.libp2p.protocol.circuit.pb.Circuit.StopMessage.Type getType();
 
-    /**
-     * <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code>
-     */
+    /** <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code> */
     boolean hasPeer();
-    /**
-     * <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code>
-     */
+
+    /** <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code> */
     io.libp2p.protocol.circuit.pb.Circuit.Peer getPeer();
-    /**
-     * <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code>
-     */
+
+    /** <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code> */
     io.libp2p.protocol.circuit.pb.Circuit.PeerOrBuilder getPeerOrBuilder();
 
-    /**
-     * <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 3;</code>
-     */
+    /** <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 3;</code> */
     boolean hasLimit();
-    /**
-     * <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 3;</code>
-     */
+
+    /** <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 3;</code> */
     io.libp2p.protocol.circuit.pb.Circuit.Limit getLimit();
-    /**
-     * <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 3;</code>
-     */
+
+    /** <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 3;</code> */
     io.libp2p.protocol.circuit.pb.Circuit.LimitOrBuilder getLimitOrBuilder();
 
-    /**
-     * <code>optional .io.libp2p.protocol.circuit.pb.Status status = 4;</code>
-     */
+    /** <code>optional .io.libp2p.protocol.circuit.pb.Status status = 4;</code> */
     boolean hasStatus();
-    /**
-     * <code>optional .io.libp2p.protocol.circuit.pb.Status status = 4;</code>
-     */
+
+    /** <code>optional .io.libp2p.protocol.circuit.pb.Status status = 4;</code> */
     io.libp2p.protocol.circuit.pb.Circuit.Status getStatus();
   }
-  /**
-   * Protobuf type {@code io.libp2p.protocol.circuit.pb.StopMessage}
-   */
-  public  static final class StopMessage extends
-      com.google.protobuf.GeneratedMessageV3 implements
+
+  /** Protobuf type {@code io.libp2p.protocol.circuit.pb.StopMessage} */
+  public static final class StopMessage extends com.google.protobuf.GeneratedMessageV3
+      implements
       // @@protoc_insertion_point(message_implements:io.libp2p.protocol.circuit.pb.StopMessage)
       StopMessageOrBuilder {
-  private static final long serialVersionUID = 0L;
+    private static final long serialVersionUID = 0L;
+
     // Use StopMessage.newBuilder() to construct.
     private StopMessage(com.google.protobuf.GeneratedMessageV3.Builder<?> builder) {
       super(builder);
     }
+
     private StopMessage() {
       type_ = 0;
       status_ = 100;
     }
 
     @java.lang.Override
-    public final com.google.protobuf.UnknownFieldSet
-    getUnknownFields() {
+    public final com.google.protobuf.UnknownFieldSet getUnknownFields() {
       return this.unknownFields;
     }
+
     private StopMessage(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
@@ -1590,112 +1553,113 @@ public final class Circuit {
             case 0:
               done = true;
               break;
-            case 8: {
-              int rawValue = input.readEnum();
+            case 8:
+              {
+                int rawValue = input.readEnum();
                 @SuppressWarnings("deprecation")
-              io.libp2p.protocol.circuit.pb.Circuit.StopMessage.Type value = io.libp2p.protocol.circuit.pb.Circuit.StopMessage.Type.valueOf(rawValue);
-              if (value == null) {
-                unknownFields.mergeVarintField(1, rawValue);
-              } else {
-                bitField0_ |= 0x00000001;
-                type_ = rawValue;
+                io.libp2p.protocol.circuit.pb.Circuit.StopMessage.Type value =
+                    io.libp2p.protocol.circuit.pb.Circuit.StopMessage.Type.valueOf(rawValue);
+                if (value == null) {
+                  unknownFields.mergeVarintField(1, rawValue);
+                } else {
+                  bitField0_ |= 0x00000001;
+                  type_ = rawValue;
+                }
+                break;
               }
-              break;
-            }
-            case 18: {
-              io.libp2p.protocol.circuit.pb.Circuit.Peer.Builder subBuilder = null;
-              if (((bitField0_ & 0x00000002) == 0x00000002)) {
-                subBuilder = peer_.toBuilder();
+            case 18:
+              {
+                io.libp2p.protocol.circuit.pb.Circuit.Peer.Builder subBuilder = null;
+                if (((bitField0_ & 0x00000002) == 0x00000002)) {
+                  subBuilder = peer_.toBuilder();
+                }
+                peer_ =
+                    input.readMessage(
+                        io.libp2p.protocol.circuit.pb.Circuit.Peer.PARSER, extensionRegistry);
+                if (subBuilder != null) {
+                  subBuilder.mergeFrom(peer_);
+                  peer_ = subBuilder.buildPartial();
+                }
+                bitField0_ |= 0x00000002;
+                break;
               }
-              peer_ = input.readMessage(io.libp2p.protocol.circuit.pb.Circuit.Peer.PARSER, extensionRegistry);
-              if (subBuilder != null) {
-                subBuilder.mergeFrom(peer_);
-                peer_ = subBuilder.buildPartial();
+            case 26:
+              {
+                io.libp2p.protocol.circuit.pb.Circuit.Limit.Builder subBuilder = null;
+                if (((bitField0_ & 0x00000004) == 0x00000004)) {
+                  subBuilder = limit_.toBuilder();
+                }
+                limit_ =
+                    input.readMessage(
+                        io.libp2p.protocol.circuit.pb.Circuit.Limit.PARSER, extensionRegistry);
+                if (subBuilder != null) {
+                  subBuilder.mergeFrom(limit_);
+                  limit_ = subBuilder.buildPartial();
+                }
+                bitField0_ |= 0x00000004;
+                break;
               }
-              bitField0_ |= 0x00000002;
-              break;
-            }
-            case 26: {
-              io.libp2p.protocol.circuit.pb.Circuit.Limit.Builder subBuilder = null;
-              if (((bitField0_ & 0x00000004) == 0x00000004)) {
-                subBuilder = limit_.toBuilder();
-              }
-              limit_ = input.readMessage(io.libp2p.protocol.circuit.pb.Circuit.Limit.PARSER, extensionRegistry);
-              if (subBuilder != null) {
-                subBuilder.mergeFrom(limit_);
-                limit_ = subBuilder.buildPartial();
-              }
-              bitField0_ |= 0x00000004;
-              break;
-            }
-            case 32: {
-              int rawValue = input.readEnum();
+            case 32:
+              {
+                int rawValue = input.readEnum();
                 @SuppressWarnings("deprecation")
-              io.libp2p.protocol.circuit.pb.Circuit.Status value = io.libp2p.protocol.circuit.pb.Circuit.Status.valueOf(rawValue);
-              if (value == null) {
-                unknownFields.mergeVarintField(4, rawValue);
-              } else {
-                bitField0_ |= 0x00000008;
-                status_ = rawValue;
+                io.libp2p.protocol.circuit.pb.Circuit.Status value =
+                    io.libp2p.protocol.circuit.pb.Circuit.Status.valueOf(rawValue);
+                if (value == null) {
+                  unknownFields.mergeVarintField(4, rawValue);
+                } else {
+                  bitField0_ |= 0x00000008;
+                  status_ = rawValue;
+                }
+                break;
               }
-              break;
-            }
-            default: {
-              if (!parseUnknownField(
-                  input, unknownFields, extensionRegistry, tag)) {
-                done = true;
+            default:
+              {
+                if (!parseUnknownField(input, unknownFields, extensionRegistry, tag)) {
+                  done = true;
+                }
+                break;
               }
-              break;
-            }
           }
         }
       } catch (com.google.protobuf.InvalidProtocolBufferException e) {
         throw e.setUnfinishedMessage(this);
       } catch (java.io.IOException e) {
-        throw new com.google.protobuf.InvalidProtocolBufferException(
-            e).setUnfinishedMessage(this);
+        throw new com.google.protobuf.InvalidProtocolBufferException(e).setUnfinishedMessage(this);
       } finally {
         this.unknownFields = unknownFields.build();
         makeExtensionsImmutable();
       }
     }
-    public static final com.google.protobuf.Descriptors.Descriptor
-        getDescriptor() {
-      return io.libp2p.protocol.circuit.pb.Circuit.internal_static_io_libp2p_protocol_circuit_pb_StopMessage_descriptor;
+
+    public static final com.google.protobuf.Descriptors.Descriptor getDescriptor() {
+      return io.libp2p.protocol.circuit.pb.Circuit
+          .internal_static_io_libp2p_protocol_circuit_pb_StopMessage_descriptor;
     }
 
     @java.lang.Override
     protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
         internalGetFieldAccessorTable() {
-      return io.libp2p.protocol.circuit.pb.Circuit.internal_static_io_libp2p_protocol_circuit_pb_StopMessage_fieldAccessorTable
+      return io.libp2p.protocol.circuit.pb.Circuit
+          .internal_static_io_libp2p_protocol_circuit_pb_StopMessage_fieldAccessorTable
           .ensureFieldAccessorsInitialized(
-              io.libp2p.protocol.circuit.pb.Circuit.StopMessage.class, io.libp2p.protocol.circuit.pb.Circuit.StopMessage.Builder.class);
+              io.libp2p.protocol.circuit.pb.Circuit.StopMessage.class,
+              io.libp2p.protocol.circuit.pb.Circuit.StopMessage.Builder.class);
     }
 
-    /**
-     * Protobuf enum {@code io.libp2p.protocol.circuit.pb.StopMessage.Type}
-     */
-    public enum Type
-        implements com.google.protobuf.ProtocolMessageEnum {
-      /**
-       * <code>CONNECT = 0;</code>
-       */
+    /** Protobuf enum {@code io.libp2p.protocol.circuit.pb.StopMessage.Type} */
+    public enum Type implements com.google.protobuf.ProtocolMessageEnum {
+      /** <code>CONNECT = 0;</code> */
       CONNECT(0),
-      /**
-       * <code>STATUS = 1;</code>
-       */
+      /** <code>STATUS = 1;</code> */
       STATUS(1),
       ;
 
-      /**
-       * <code>CONNECT = 0;</code>
-       */
+      /** <code>CONNECT = 0;</code> */
       public static final int CONNECT_VALUE = 0;
-      /**
-       * <code>STATUS = 1;</code>
-       */
-      public static final int STATUS_VALUE = 1;
 
+      /** <code>STATUS = 1;</code> */
+      public static final int STATUS_VALUE = 1;
 
       public final int getNumber() {
         return value;
@@ -1711,44 +1675,45 @@ public final class Circuit {
 
       public static Type forNumber(int value) {
         switch (value) {
-          case 0: return CONNECT;
-          case 1: return STATUS;
-          default: return null;
+          case 0:
+            return CONNECT;
+          case 1:
+            return STATUS;
+          default:
+            return null;
         }
       }
 
-      public static com.google.protobuf.Internal.EnumLiteMap<Type>
-          internalGetValueMap() {
+      public static com.google.protobuf.Internal.EnumLiteMap<Type> internalGetValueMap() {
         return internalValueMap;
       }
-      private static final com.google.protobuf.Internal.EnumLiteMap<
-          Type> internalValueMap =
-            new com.google.protobuf.Internal.EnumLiteMap<Type>() {
-              public Type findValueByNumber(int number) {
-                return Type.forNumber(number);
-              }
-            };
 
-      public final com.google.protobuf.Descriptors.EnumValueDescriptor
-          getValueDescriptor() {
+      private static final com.google.protobuf.Internal.EnumLiteMap<Type> internalValueMap =
+          new com.google.protobuf.Internal.EnumLiteMap<Type>() {
+            public Type findValueByNumber(int number) {
+              return Type.forNumber(number);
+            }
+          };
+
+      public final com.google.protobuf.Descriptors.EnumValueDescriptor getValueDescriptor() {
         return getDescriptor().getValues().get(ordinal());
       }
-      public final com.google.protobuf.Descriptors.EnumDescriptor
-          getDescriptorForType() {
+
+      public final com.google.protobuf.Descriptors.EnumDescriptor getDescriptorForType() {
         return getDescriptor();
       }
-      public static final com.google.protobuf.Descriptors.EnumDescriptor
-          getDescriptor() {
-        return io.libp2p.protocol.circuit.pb.Circuit.StopMessage.getDescriptor().getEnumTypes().get(0);
+
+      public static final com.google.protobuf.Descriptors.EnumDescriptor getDescriptor() {
+        return io.libp2p.protocol.circuit.pb.Circuit.StopMessage.getDescriptor()
+            .getEnumTypes()
+            .get(0);
       }
 
       private static final Type[] VALUES = values();
 
-      public static Type valueOf(
-          com.google.protobuf.Descriptors.EnumValueDescriptor desc) {
+      public static Type valueOf(com.google.protobuf.Descriptors.EnumValueDescriptor desc) {
         if (desc.getType() != getDescriptor()) {
-          throw new java.lang.IllegalArgumentException(
-            "EnumValueDescriptor is not for this type.");
+          throw new java.lang.IllegalArgumentException("EnumValueDescriptor is not for this type.");
         }
         return VALUES[desc.getIndex()];
       }
@@ -1765,81 +1730,84 @@ public final class Circuit {
     private int bitField0_;
     public static final int TYPE_FIELD_NUMBER = 1;
     private int type_;
-    /**
-     * <code>required .io.libp2p.protocol.circuit.pb.StopMessage.Type type = 1;</code>
-     */
+
+    /** <code>required .io.libp2p.protocol.circuit.pb.StopMessage.Type type = 1;</code> */
     public boolean hasType() {
       return ((bitField0_ & 0x00000001) == 0x00000001);
     }
-    /**
-     * <code>required .io.libp2p.protocol.circuit.pb.StopMessage.Type type = 1;</code>
-     */
+
+    /** <code>required .io.libp2p.protocol.circuit.pb.StopMessage.Type type = 1;</code> */
     public io.libp2p.protocol.circuit.pb.Circuit.StopMessage.Type getType() {
       @SuppressWarnings("deprecation")
-      io.libp2p.protocol.circuit.pb.Circuit.StopMessage.Type result = io.libp2p.protocol.circuit.pb.Circuit.StopMessage.Type.valueOf(type_);
-      return result == null ? io.libp2p.protocol.circuit.pb.Circuit.StopMessage.Type.CONNECT : result;
+      io.libp2p.protocol.circuit.pb.Circuit.StopMessage.Type result =
+          io.libp2p.protocol.circuit.pb.Circuit.StopMessage.Type.valueOf(type_);
+      return result == null
+          ? io.libp2p.protocol.circuit.pb.Circuit.StopMessage.Type.CONNECT
+          : result;
     }
 
     public static final int PEER_FIELD_NUMBER = 2;
     private io.libp2p.protocol.circuit.pb.Circuit.Peer peer_;
-    /**
-     * <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code>
-     */
+
+    /** <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code> */
     public boolean hasPeer() {
       return ((bitField0_ & 0x00000002) == 0x00000002);
     }
-    /**
-     * <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code>
-     */
+
+    /** <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code> */
     public io.libp2p.protocol.circuit.pb.Circuit.Peer getPeer() {
-      return peer_ == null ? io.libp2p.protocol.circuit.pb.Circuit.Peer.getDefaultInstance() : peer_;
+      return peer_ == null
+          ? io.libp2p.protocol.circuit.pb.Circuit.Peer.getDefaultInstance()
+          : peer_;
     }
-    /**
-     * <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code>
-     */
+
+    /** <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code> */
     public io.libp2p.protocol.circuit.pb.Circuit.PeerOrBuilder getPeerOrBuilder() {
-      return peer_ == null ? io.libp2p.protocol.circuit.pb.Circuit.Peer.getDefaultInstance() : peer_;
+      return peer_ == null
+          ? io.libp2p.protocol.circuit.pb.Circuit.Peer.getDefaultInstance()
+          : peer_;
     }
 
     public static final int LIMIT_FIELD_NUMBER = 3;
     private io.libp2p.protocol.circuit.pb.Circuit.Limit limit_;
-    /**
-     * <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 3;</code>
-     */
+
+    /** <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 3;</code> */
     public boolean hasLimit() {
       return ((bitField0_ & 0x00000004) == 0x00000004);
     }
-    /**
-     * <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 3;</code>
-     */
+
+    /** <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 3;</code> */
     public io.libp2p.protocol.circuit.pb.Circuit.Limit getLimit() {
-      return limit_ == null ? io.libp2p.protocol.circuit.pb.Circuit.Limit.getDefaultInstance() : limit_;
+      return limit_ == null
+          ? io.libp2p.protocol.circuit.pb.Circuit.Limit.getDefaultInstance()
+          : limit_;
     }
-    /**
-     * <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 3;</code>
-     */
+
+    /** <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 3;</code> */
     public io.libp2p.protocol.circuit.pb.Circuit.LimitOrBuilder getLimitOrBuilder() {
-      return limit_ == null ? io.libp2p.protocol.circuit.pb.Circuit.Limit.getDefaultInstance() : limit_;
+      return limit_ == null
+          ? io.libp2p.protocol.circuit.pb.Circuit.Limit.getDefaultInstance()
+          : limit_;
     }
 
     public static final int STATUS_FIELD_NUMBER = 4;
     private int status_;
-    /**
-     * <code>optional .io.libp2p.protocol.circuit.pb.Status status = 4;</code>
-     */
+
+    /** <code>optional .io.libp2p.protocol.circuit.pb.Status status = 4;</code> */
     public boolean hasStatus() {
       return ((bitField0_ & 0x00000008) == 0x00000008);
     }
-    /**
-     * <code>optional .io.libp2p.protocol.circuit.pb.Status status = 4;</code>
-     */
+
+    /** <code>optional .io.libp2p.protocol.circuit.pb.Status status = 4;</code> */
     public io.libp2p.protocol.circuit.pb.Circuit.Status getStatus() {
       @SuppressWarnings("deprecation")
-      io.libp2p.protocol.circuit.pb.Circuit.Status result = io.libp2p.protocol.circuit.pb.Circuit.Status.valueOf(status_);
+      io.libp2p.protocol.circuit.pb.Circuit.Status result =
+          io.libp2p.protocol.circuit.pb.Circuit.Status.valueOf(status_);
       return result == null ? io.libp2p.protocol.circuit.pb.Circuit.Status.OK : result;
     }
 
     private byte memoizedIsInitialized = -1;
+
     @java.lang.Override
     public final boolean isInitialized() {
       byte isInitialized = memoizedIsInitialized;
@@ -1861,8 +1829,7 @@ public final class Circuit {
     }
 
     @java.lang.Override
-    public void writeTo(com.google.protobuf.CodedOutputStream output)
-                        throws java.io.IOException {
+    public void writeTo(com.google.protobuf.CodedOutputStream output) throws java.io.IOException {
       if (((bitField0_ & 0x00000001) == 0x00000001)) {
         output.writeEnum(1, type_);
       }
@@ -1885,20 +1852,16 @@ public final class Circuit {
 
       size = 0;
       if (((bitField0_ & 0x00000001) == 0x00000001)) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeEnumSize(1, type_);
+        size += com.google.protobuf.CodedOutputStream.computeEnumSize(1, type_);
       }
       if (((bitField0_ & 0x00000002) == 0x00000002)) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeMessageSize(2, getPeer());
+        size += com.google.protobuf.CodedOutputStream.computeMessageSize(2, getPeer());
       }
       if (((bitField0_ & 0x00000004) == 0x00000004)) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeMessageSize(3, getLimit());
+        size += com.google.protobuf.CodedOutputStream.computeMessageSize(3, getLimit());
       }
       if (((bitField0_ & 0x00000008) == 0x00000008)) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeEnumSize(4, status_);
+        size += com.google.protobuf.CodedOutputStream.computeEnumSize(4, status_);
       }
       size += unknownFields.getSerializedSize();
       memoizedSize = size;
@@ -1908,12 +1871,13 @@ public final class Circuit {
     @java.lang.Override
     public boolean equals(final java.lang.Object obj) {
       if (obj == this) {
-       return true;
+        return true;
       }
       if (!(obj instanceof io.libp2p.protocol.circuit.pb.Circuit.StopMessage)) {
         return super.equals(obj);
       }
-      io.libp2p.protocol.circuit.pb.Circuit.StopMessage other = (io.libp2p.protocol.circuit.pb.Circuit.StopMessage) obj;
+      io.libp2p.protocol.circuit.pb.Circuit.StopMessage other =
+          (io.libp2p.protocol.circuit.pb.Circuit.StopMessage) obj;
 
       boolean result = true;
       result = result && (hasType() == other.hasType());
@@ -1922,13 +1886,11 @@ public final class Circuit {
       }
       result = result && (hasPeer() == other.hasPeer());
       if (hasPeer()) {
-        result = result && getPeer()
-            .equals(other.getPeer());
+        result = result && getPeer().equals(other.getPeer());
       }
       result = result && (hasLimit() == other.hasLimit());
       if (hasLimit()) {
-        result = result && getLimit()
-            .equals(other.getLimit());
+        result = result && getLimit().equals(other.getLimit());
       }
       result = result && (hasStatus() == other.hasStatus());
       if (hasStatus()) {
@@ -1967,87 +1929,93 @@ public final class Circuit {
     }
 
     public static io.libp2p.protocol.circuit.pb.Circuit.StopMessage parseFrom(
-        java.nio.ByteBuffer data)
-        throws com.google.protobuf.InvalidProtocolBufferException {
+        java.nio.ByteBuffer data) throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data);
     }
+
     public static io.libp2p.protocol.circuit.pb.Circuit.StopMessage parseFrom(
-        java.nio.ByteBuffer data,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        java.nio.ByteBuffer data, com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data, extensionRegistry);
     }
+
     public static io.libp2p.protocol.circuit.pb.Circuit.StopMessage parseFrom(
         com.google.protobuf.ByteString data)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data);
     }
+
     public static io.libp2p.protocol.circuit.pb.Circuit.StopMessage parseFrom(
         com.google.protobuf.ByteString data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data, extensionRegistry);
     }
+
     public static io.libp2p.protocol.circuit.pb.Circuit.StopMessage parseFrom(byte[] data)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data);
     }
+
     public static io.libp2p.protocol.circuit.pb.Circuit.StopMessage parseFrom(
-        byte[] data,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        byte[] data, com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data, extensionRegistry);
     }
-    public static io.libp2p.protocol.circuit.pb.Circuit.StopMessage parseFrom(java.io.InputStream input)
-        throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseWithIOException(PARSER, input);
-    }
+
     public static io.libp2p.protocol.circuit.pb.Circuit.StopMessage parseFrom(
-        java.io.InputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseWithIOException(PARSER, input, extensionRegistry);
+        java.io.InputStream input) throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessageV3.parseWithIOException(PARSER, input);
     }
-    public static io.libp2p.protocol.circuit.pb.Circuit.StopMessage parseDelimitedFrom(java.io.InputStream input)
+
+    public static io.libp2p.protocol.circuit.pb.Circuit.StopMessage parseFrom(
+        java.io.InputStream input, com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseDelimitedWithIOException(PARSER, input);
+      return com.google.protobuf.GeneratedMessageV3.parseWithIOException(
+          PARSER, input, extensionRegistry);
     }
+
     public static io.libp2p.protocol.circuit.pb.Circuit.StopMessage parseDelimitedFrom(
-        java.io.InputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseDelimitedWithIOException(PARSER, input, extensionRegistry);
+        java.io.InputStream input) throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessageV3.parseDelimitedWithIOException(PARSER, input);
     }
+
+    public static io.libp2p.protocol.circuit.pb.Circuit.StopMessage parseDelimitedFrom(
+        java.io.InputStream input, com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessageV3.parseDelimitedWithIOException(
+          PARSER, input, extensionRegistry);
+    }
+
     public static io.libp2p.protocol.circuit.pb.Circuit.StopMessage parseFrom(
-        com.google.protobuf.CodedInputStream input)
-        throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseWithIOException(PARSER, input);
+        com.google.protobuf.CodedInputStream input) throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessageV3.parseWithIOException(PARSER, input);
     }
+
     public static io.libp2p.protocol.circuit.pb.Circuit.StopMessage parseFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseWithIOException(PARSER, input, extensionRegistry);
+      return com.google.protobuf.GeneratedMessageV3.parseWithIOException(
+          PARSER, input, extensionRegistry);
     }
 
     @java.lang.Override
-    public Builder newBuilderForType() { return newBuilder(); }
+    public Builder newBuilderForType() {
+      return newBuilder();
+    }
+
     public static Builder newBuilder() {
       return DEFAULT_INSTANCE.toBuilder();
     }
+
     public static Builder newBuilder(io.libp2p.protocol.circuit.pb.Circuit.StopMessage prototype) {
       return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
     }
+
     @java.lang.Override
     public Builder toBuilder() {
-      return this == DEFAULT_INSTANCE
-          ? new Builder() : new Builder().mergeFrom(this);
+      return this == DEFAULT_INSTANCE ? new Builder() : new Builder().mergeFrom(this);
     }
 
     @java.lang.Override
@@ -2056,24 +2024,26 @@ public final class Circuit {
       Builder builder = new Builder(parent);
       return builder;
     }
-    /**
-     * Protobuf type {@code io.libp2p.protocol.circuit.pb.StopMessage}
-     */
-    public static final class Builder extends
-        com.google.protobuf.GeneratedMessageV3.Builder<Builder> implements
+
+    /** Protobuf type {@code io.libp2p.protocol.circuit.pb.StopMessage} */
+    public static final class Builder
+        extends com.google.protobuf.GeneratedMessageV3.Builder<Builder>
+        implements
         // @@protoc_insertion_point(builder_implements:io.libp2p.protocol.circuit.pb.StopMessage)
         io.libp2p.protocol.circuit.pb.Circuit.StopMessageOrBuilder {
-      public static final com.google.protobuf.Descriptors.Descriptor
-          getDescriptor() {
-        return io.libp2p.protocol.circuit.pb.Circuit.internal_static_io_libp2p_protocol_circuit_pb_StopMessage_descriptor;
+      public static final com.google.protobuf.Descriptors.Descriptor getDescriptor() {
+        return io.libp2p.protocol.circuit.pb.Circuit
+            .internal_static_io_libp2p_protocol_circuit_pb_StopMessage_descriptor;
       }
 
       @java.lang.Override
       protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
           internalGetFieldAccessorTable() {
-        return io.libp2p.protocol.circuit.pb.Circuit.internal_static_io_libp2p_protocol_circuit_pb_StopMessage_fieldAccessorTable
+        return io.libp2p.protocol.circuit.pb.Circuit
+            .internal_static_io_libp2p_protocol_circuit_pb_StopMessage_fieldAccessorTable
             .ensureFieldAccessorsInitialized(
-                io.libp2p.protocol.circuit.pb.Circuit.StopMessage.class, io.libp2p.protocol.circuit.pb.Circuit.StopMessage.Builder.class);
+                io.libp2p.protocol.circuit.pb.Circuit.StopMessage.class,
+                io.libp2p.protocol.circuit.pb.Circuit.StopMessage.Builder.class);
       }
 
       // Construct using io.libp2p.protocol.circuit.pb.Circuit.StopMessage.newBuilder()
@@ -2081,18 +2051,18 @@ public final class Circuit {
         maybeForceBuilderInitialization();
       }
 
-      private Builder(
-          com.google.protobuf.GeneratedMessageV3.BuilderParent parent) {
+      private Builder(com.google.protobuf.GeneratedMessageV3.BuilderParent parent) {
         super(parent);
         maybeForceBuilderInitialization();
       }
+
       private void maybeForceBuilderInitialization() {
-        if (com.google.protobuf.GeneratedMessageV3
-                .alwaysUseFieldBuilders) {
+        if (com.google.protobuf.GeneratedMessageV3.alwaysUseFieldBuilders) {
           getPeerFieldBuilder();
           getLimitFieldBuilder();
         }
       }
+
       @java.lang.Override
       public Builder clear() {
         super.clear();
@@ -2116,9 +2086,9 @@ public final class Circuit {
       }
 
       @java.lang.Override
-      public com.google.protobuf.Descriptors.Descriptor
-          getDescriptorForType() {
-        return io.libp2p.protocol.circuit.pb.Circuit.internal_static_io_libp2p_protocol_circuit_pb_StopMessage_descriptor;
+      public com.google.protobuf.Descriptors.Descriptor getDescriptorForType() {
+        return io.libp2p.protocol.circuit.pb.Circuit
+            .internal_static_io_libp2p_protocol_circuit_pb_StopMessage_descriptor;
       }
 
       @java.lang.Override
@@ -2137,7 +2107,8 @@ public final class Circuit {
 
       @java.lang.Override
       public io.libp2p.protocol.circuit.pb.Circuit.StopMessage buildPartial() {
-        io.libp2p.protocol.circuit.pb.Circuit.StopMessage result = new io.libp2p.protocol.circuit.pb.Circuit.StopMessage(this);
+        io.libp2p.protocol.circuit.pb.Circuit.StopMessage result =
+            new io.libp2p.protocol.circuit.pb.Circuit.StopMessage(this);
         int from_bitField0_ = bitField0_;
         int to_bitField0_ = 0;
         if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
@@ -2173,38 +2144,41 @@ public final class Circuit {
       public Builder clone() {
         return (Builder) super.clone();
       }
+
       @java.lang.Override
       public Builder setField(
-          com.google.protobuf.Descriptors.FieldDescriptor field,
-          java.lang.Object value) {
+          com.google.protobuf.Descriptors.FieldDescriptor field, java.lang.Object value) {
         return (Builder) super.setField(field, value);
       }
+
       @java.lang.Override
-      public Builder clearField(
-          com.google.protobuf.Descriptors.FieldDescriptor field) {
+      public Builder clearField(com.google.protobuf.Descriptors.FieldDescriptor field) {
         return (Builder) super.clearField(field);
       }
+
       @java.lang.Override
-      public Builder clearOneof(
-          com.google.protobuf.Descriptors.OneofDescriptor oneof) {
+      public Builder clearOneof(com.google.protobuf.Descriptors.OneofDescriptor oneof) {
         return (Builder) super.clearOneof(oneof);
       }
+
       @java.lang.Override
       public Builder setRepeatedField(
           com.google.protobuf.Descriptors.FieldDescriptor field,
-          int index, java.lang.Object value) {
+          int index,
+          java.lang.Object value) {
         return (Builder) super.setRepeatedField(field, index, value);
       }
+
       @java.lang.Override
       public Builder addRepeatedField(
-          com.google.protobuf.Descriptors.FieldDescriptor field,
-          java.lang.Object value) {
+          com.google.protobuf.Descriptors.FieldDescriptor field, java.lang.Object value) {
         return (Builder) super.addRepeatedField(field, value);
       }
+
       @java.lang.Override
       public Builder mergeFrom(com.google.protobuf.Message other) {
         if (other instanceof io.libp2p.protocol.circuit.pb.Circuit.StopMessage) {
-          return mergeFrom((io.libp2p.protocol.circuit.pb.Circuit.StopMessage)other);
+          return mergeFrom((io.libp2p.protocol.circuit.pb.Circuit.StopMessage) other);
         } else {
           super.mergeFrom(other);
           return this;
@@ -2212,7 +2186,8 @@ public final class Circuit {
       }
 
       public Builder mergeFrom(io.libp2p.protocol.circuit.pb.Circuit.StopMessage other) {
-        if (other == io.libp2p.protocol.circuit.pb.Circuit.StopMessage.getDefaultInstance()) return this;
+        if (other == io.libp2p.protocol.circuit.pb.Circuit.StopMessage.getDefaultInstance())
+          return this;
         if (other.hasType()) {
           setType(other.getType());
         }
@@ -2252,7 +2227,8 @@ public final class Circuit {
         try {
           parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
         } catch (com.google.protobuf.InvalidProtocolBufferException e) {
-          parsedMessage = (io.libp2p.protocol.circuit.pb.Circuit.StopMessage) e.getUnfinishedMessage();
+          parsedMessage =
+              (io.libp2p.protocol.circuit.pb.Circuit.StopMessage) e.getUnfinishedMessage();
           throw e.unwrapIOException();
         } finally {
           if (parsedMessage != null) {
@@ -2261,26 +2237,27 @@ public final class Circuit {
         }
         return this;
       }
+
       private int bitField0_;
 
       private int type_ = 0;
-      /**
-       * <code>required .io.libp2p.protocol.circuit.pb.StopMessage.Type type = 1;</code>
-       */
+
+      /** <code>required .io.libp2p.protocol.circuit.pb.StopMessage.Type type = 1;</code> */
       public boolean hasType() {
         return ((bitField0_ & 0x00000001) == 0x00000001);
       }
-      /**
-       * <code>required .io.libp2p.protocol.circuit.pb.StopMessage.Type type = 1;</code>
-       */
+
+      /** <code>required .io.libp2p.protocol.circuit.pb.StopMessage.Type type = 1;</code> */
       public io.libp2p.protocol.circuit.pb.Circuit.StopMessage.Type getType() {
         @SuppressWarnings("deprecation")
-        io.libp2p.protocol.circuit.pb.Circuit.StopMessage.Type result = io.libp2p.protocol.circuit.pb.Circuit.StopMessage.Type.valueOf(type_);
-        return result == null ? io.libp2p.protocol.circuit.pb.Circuit.StopMessage.Type.CONNECT : result;
+        io.libp2p.protocol.circuit.pb.Circuit.StopMessage.Type result =
+            io.libp2p.protocol.circuit.pb.Circuit.StopMessage.Type.valueOf(type_);
+        return result == null
+            ? io.libp2p.protocol.circuit.pb.Circuit.StopMessage.Type.CONNECT
+            : result;
       }
-      /**
-       * <code>required .io.libp2p.protocol.circuit.pb.StopMessage.Type type = 1;</code>
-       */
+
+      /** <code>required .io.libp2p.protocol.circuit.pb.StopMessage.Type type = 1;</code> */
       public Builder setType(io.libp2p.protocol.circuit.pb.Circuit.StopMessage.Type value) {
         if (value == null) {
           throw new NullPointerException();
@@ -2290,9 +2267,8 @@ public final class Circuit {
         onChanged();
         return this;
       }
-      /**
-       * <code>required .io.libp2p.protocol.circuit.pb.StopMessage.Type type = 1;</code>
-       */
+
+      /** <code>required .io.libp2p.protocol.circuit.pb.StopMessage.Type type = 1;</code> */
       public Builder clearType() {
         bitField0_ = (bitField0_ & ~0x00000001);
         type_ = 0;
@@ -2302,26 +2278,28 @@ public final class Circuit {
 
       private io.libp2p.protocol.circuit.pb.Circuit.Peer peer_ = null;
       private com.google.protobuf.SingleFieldBuilderV3<
-          io.libp2p.protocol.circuit.pb.Circuit.Peer, io.libp2p.protocol.circuit.pb.Circuit.Peer.Builder, io.libp2p.protocol.circuit.pb.Circuit.PeerOrBuilder> peerBuilder_;
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code>
-       */
+              io.libp2p.protocol.circuit.pb.Circuit.Peer,
+              io.libp2p.protocol.circuit.pb.Circuit.Peer.Builder,
+              io.libp2p.protocol.circuit.pb.Circuit.PeerOrBuilder>
+          peerBuilder_;
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code> */
       public boolean hasPeer() {
         return ((bitField0_ & 0x00000002) == 0x00000002);
       }
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code>
-       */
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code> */
       public io.libp2p.protocol.circuit.pb.Circuit.Peer getPeer() {
         if (peerBuilder_ == null) {
-          return peer_ == null ? io.libp2p.protocol.circuit.pb.Circuit.Peer.getDefaultInstance() : peer_;
+          return peer_ == null
+              ? io.libp2p.protocol.circuit.pb.Circuit.Peer.getDefaultInstance()
+              : peer_;
         } else {
           return peerBuilder_.getMessage();
         }
       }
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code>
-       */
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code> */
       public Builder setPeer(io.libp2p.protocol.circuit.pb.Circuit.Peer value) {
         if (peerBuilder_ == null) {
           if (value == null) {
@@ -2335,11 +2313,9 @@ public final class Circuit {
         bitField0_ |= 0x00000002;
         return this;
       }
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code>
-       */
-      public Builder setPeer(
-          io.libp2p.protocol.circuit.pb.Circuit.Peer.Builder builderForValue) {
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code> */
+      public Builder setPeer(io.libp2p.protocol.circuit.pb.Circuit.Peer.Builder builderForValue) {
         if (peerBuilder_ == null) {
           peer_ = builderForValue.build();
           onChanged();
@@ -2349,16 +2325,17 @@ public final class Circuit {
         bitField0_ |= 0x00000002;
         return this;
       }
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code>
-       */
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code> */
       public Builder mergePeer(io.libp2p.protocol.circuit.pb.Circuit.Peer value) {
         if (peerBuilder_ == null) {
-          if (((bitField0_ & 0x00000002) == 0x00000002) &&
-              peer_ != null &&
-              peer_ != io.libp2p.protocol.circuit.pb.Circuit.Peer.getDefaultInstance()) {
+          if (((bitField0_ & 0x00000002) == 0x00000002)
+              && peer_ != null
+              && peer_ != io.libp2p.protocol.circuit.pb.Circuit.Peer.getDefaultInstance()) {
             peer_ =
-              io.libp2p.protocol.circuit.pb.Circuit.Peer.newBuilder(peer_).mergeFrom(value).buildPartial();
+                io.libp2p.protocol.circuit.pb.Circuit.Peer.newBuilder(peer_)
+                    .mergeFrom(value)
+                    .buildPartial();
           } else {
             peer_ = value;
           }
@@ -2369,9 +2346,8 @@ public final class Circuit {
         bitField0_ |= 0x00000002;
         return this;
       }
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code>
-       */
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code> */
       public Builder clearPeer() {
         if (peerBuilder_ == null) {
           peer_ = null;
@@ -2382,37 +2358,38 @@ public final class Circuit {
         bitField0_ = (bitField0_ & ~0x00000002);
         return this;
       }
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code>
-       */
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code> */
       public io.libp2p.protocol.circuit.pb.Circuit.Peer.Builder getPeerBuilder() {
         bitField0_ |= 0x00000002;
         onChanged();
         return getPeerFieldBuilder().getBuilder();
       }
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code>
-       */
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code> */
       public io.libp2p.protocol.circuit.pb.Circuit.PeerOrBuilder getPeerOrBuilder() {
         if (peerBuilder_ != null) {
           return peerBuilder_.getMessageOrBuilder();
         } else {
-          return peer_ == null ?
-              io.libp2p.protocol.circuit.pb.Circuit.Peer.getDefaultInstance() : peer_;
+          return peer_ == null
+              ? io.libp2p.protocol.circuit.pb.Circuit.Peer.getDefaultInstance()
+              : peer_;
         }
       }
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code>
-       */
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Peer peer = 2;</code> */
       private com.google.protobuf.SingleFieldBuilderV3<
-          io.libp2p.protocol.circuit.pb.Circuit.Peer, io.libp2p.protocol.circuit.pb.Circuit.Peer.Builder, io.libp2p.protocol.circuit.pb.Circuit.PeerOrBuilder> 
+              io.libp2p.protocol.circuit.pb.Circuit.Peer,
+              io.libp2p.protocol.circuit.pb.Circuit.Peer.Builder,
+              io.libp2p.protocol.circuit.pb.Circuit.PeerOrBuilder>
           getPeerFieldBuilder() {
         if (peerBuilder_ == null) {
-          peerBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
-              io.libp2p.protocol.circuit.pb.Circuit.Peer, io.libp2p.protocol.circuit.pb.Circuit.Peer.Builder, io.libp2p.protocol.circuit.pb.Circuit.PeerOrBuilder>(
-                  getPeer(),
-                  getParentForChildren(),
-                  isClean());
+          peerBuilder_ =
+              new com.google.protobuf.SingleFieldBuilderV3<
+                  io.libp2p.protocol.circuit.pb.Circuit.Peer,
+                  io.libp2p.protocol.circuit.pb.Circuit.Peer.Builder,
+                  io.libp2p.protocol.circuit.pb.Circuit.PeerOrBuilder>(
+                  getPeer(), getParentForChildren(), isClean());
           peer_ = null;
         }
         return peerBuilder_;
@@ -2420,26 +2397,28 @@ public final class Circuit {
 
       private io.libp2p.protocol.circuit.pb.Circuit.Limit limit_ = null;
       private com.google.protobuf.SingleFieldBuilderV3<
-          io.libp2p.protocol.circuit.pb.Circuit.Limit, io.libp2p.protocol.circuit.pb.Circuit.Limit.Builder, io.libp2p.protocol.circuit.pb.Circuit.LimitOrBuilder> limitBuilder_;
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 3;</code>
-       */
+              io.libp2p.protocol.circuit.pb.Circuit.Limit,
+              io.libp2p.protocol.circuit.pb.Circuit.Limit.Builder,
+              io.libp2p.protocol.circuit.pb.Circuit.LimitOrBuilder>
+          limitBuilder_;
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 3;</code> */
       public boolean hasLimit() {
         return ((bitField0_ & 0x00000004) == 0x00000004);
       }
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 3;</code>
-       */
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 3;</code> */
       public io.libp2p.protocol.circuit.pb.Circuit.Limit getLimit() {
         if (limitBuilder_ == null) {
-          return limit_ == null ? io.libp2p.protocol.circuit.pb.Circuit.Limit.getDefaultInstance() : limit_;
+          return limit_ == null
+              ? io.libp2p.protocol.circuit.pb.Circuit.Limit.getDefaultInstance()
+              : limit_;
         } else {
           return limitBuilder_.getMessage();
         }
       }
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 3;</code>
-       */
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 3;</code> */
       public Builder setLimit(io.libp2p.protocol.circuit.pb.Circuit.Limit value) {
         if (limitBuilder_ == null) {
           if (value == null) {
@@ -2453,11 +2432,9 @@ public final class Circuit {
         bitField0_ |= 0x00000004;
         return this;
       }
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 3;</code>
-       */
-      public Builder setLimit(
-          io.libp2p.protocol.circuit.pb.Circuit.Limit.Builder builderForValue) {
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 3;</code> */
+      public Builder setLimit(io.libp2p.protocol.circuit.pb.Circuit.Limit.Builder builderForValue) {
         if (limitBuilder_ == null) {
           limit_ = builderForValue.build();
           onChanged();
@@ -2467,16 +2444,17 @@ public final class Circuit {
         bitField0_ |= 0x00000004;
         return this;
       }
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 3;</code>
-       */
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 3;</code> */
       public Builder mergeLimit(io.libp2p.protocol.circuit.pb.Circuit.Limit value) {
         if (limitBuilder_ == null) {
-          if (((bitField0_ & 0x00000004) == 0x00000004) &&
-              limit_ != null &&
-              limit_ != io.libp2p.protocol.circuit.pb.Circuit.Limit.getDefaultInstance()) {
+          if (((bitField0_ & 0x00000004) == 0x00000004)
+              && limit_ != null
+              && limit_ != io.libp2p.protocol.circuit.pb.Circuit.Limit.getDefaultInstance()) {
             limit_ =
-              io.libp2p.protocol.circuit.pb.Circuit.Limit.newBuilder(limit_).mergeFrom(value).buildPartial();
+                io.libp2p.protocol.circuit.pb.Circuit.Limit.newBuilder(limit_)
+                    .mergeFrom(value)
+                    .buildPartial();
           } else {
             limit_ = value;
           }
@@ -2487,9 +2465,8 @@ public final class Circuit {
         bitField0_ |= 0x00000004;
         return this;
       }
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 3;</code>
-       */
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 3;</code> */
       public Builder clearLimit() {
         if (limitBuilder_ == null) {
           limit_ = null;
@@ -2500,60 +2477,59 @@ public final class Circuit {
         bitField0_ = (bitField0_ & ~0x00000004);
         return this;
       }
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 3;</code>
-       */
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 3;</code> */
       public io.libp2p.protocol.circuit.pb.Circuit.Limit.Builder getLimitBuilder() {
         bitField0_ |= 0x00000004;
         onChanged();
         return getLimitFieldBuilder().getBuilder();
       }
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 3;</code>
-       */
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 3;</code> */
       public io.libp2p.protocol.circuit.pb.Circuit.LimitOrBuilder getLimitOrBuilder() {
         if (limitBuilder_ != null) {
           return limitBuilder_.getMessageOrBuilder();
         } else {
-          return limit_ == null ?
-              io.libp2p.protocol.circuit.pb.Circuit.Limit.getDefaultInstance() : limit_;
+          return limit_ == null
+              ? io.libp2p.protocol.circuit.pb.Circuit.Limit.getDefaultInstance()
+              : limit_;
         }
       }
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 3;</code>
-       */
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Limit limit = 3;</code> */
       private com.google.protobuf.SingleFieldBuilderV3<
-          io.libp2p.protocol.circuit.pb.Circuit.Limit, io.libp2p.protocol.circuit.pb.Circuit.Limit.Builder, io.libp2p.protocol.circuit.pb.Circuit.LimitOrBuilder> 
+              io.libp2p.protocol.circuit.pb.Circuit.Limit,
+              io.libp2p.protocol.circuit.pb.Circuit.Limit.Builder,
+              io.libp2p.protocol.circuit.pb.Circuit.LimitOrBuilder>
           getLimitFieldBuilder() {
         if (limitBuilder_ == null) {
-          limitBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
-              io.libp2p.protocol.circuit.pb.Circuit.Limit, io.libp2p.protocol.circuit.pb.Circuit.Limit.Builder, io.libp2p.protocol.circuit.pb.Circuit.LimitOrBuilder>(
-                  getLimit(),
-                  getParentForChildren(),
-                  isClean());
+          limitBuilder_ =
+              new com.google.protobuf.SingleFieldBuilderV3<
+                  io.libp2p.protocol.circuit.pb.Circuit.Limit,
+                  io.libp2p.protocol.circuit.pb.Circuit.Limit.Builder,
+                  io.libp2p.protocol.circuit.pb.Circuit.LimitOrBuilder>(
+                  getLimit(), getParentForChildren(), isClean());
           limit_ = null;
         }
         return limitBuilder_;
       }
 
       private int status_ = 100;
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Status status = 4;</code>
-       */
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Status status = 4;</code> */
       public boolean hasStatus() {
         return ((bitField0_ & 0x00000008) == 0x00000008);
       }
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Status status = 4;</code>
-       */
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Status status = 4;</code> */
       public io.libp2p.protocol.circuit.pb.Circuit.Status getStatus() {
         @SuppressWarnings("deprecation")
-        io.libp2p.protocol.circuit.pb.Circuit.Status result = io.libp2p.protocol.circuit.pb.Circuit.Status.valueOf(status_);
+        io.libp2p.protocol.circuit.pb.Circuit.Status result =
+            io.libp2p.protocol.circuit.pb.Circuit.Status.valueOf(status_);
         return result == null ? io.libp2p.protocol.circuit.pb.Circuit.Status.OK : result;
       }
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Status status = 4;</code>
-       */
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Status status = 4;</code> */
       public Builder setStatus(io.libp2p.protocol.circuit.pb.Circuit.Status value) {
         if (value == null) {
           throw new NullPointerException();
@@ -2563,15 +2539,15 @@ public final class Circuit {
         onChanged();
         return this;
       }
-      /**
-       * <code>optional .io.libp2p.protocol.circuit.pb.Status status = 4;</code>
-       */
+
+      /** <code>optional .io.libp2p.protocol.circuit.pb.Status status = 4;</code> */
       public Builder clearStatus() {
         bitField0_ = (bitField0_ & ~0x00000008);
         status_ = 100;
         onChanged();
         return this;
       }
+
       @java.lang.Override
       public final Builder setUnknownFields(
           final com.google.protobuf.UnknownFieldSet unknownFields) {
@@ -2584,12 +2560,12 @@ public final class Circuit {
         return super.mergeUnknownFields(unknownFields);
       }
 
-
       // @@protoc_insertion_point(builder_scope:io.libp2p.protocol.circuit.pb.StopMessage)
     }
 
     // @@protoc_insertion_point(class_scope:io.libp2p.protocol.circuit.pb.StopMessage)
     private static final io.libp2p.protocol.circuit.pb.Circuit.StopMessage DEFAULT_INSTANCE;
+
     static {
       DEFAULT_INSTANCE = new io.libp2p.protocol.circuit.pb.Circuit.StopMessage();
     }
@@ -2598,16 +2574,17 @@ public final class Circuit {
       return DEFAULT_INSTANCE;
     }
 
-    @java.lang.Deprecated public static final com.google.protobuf.Parser<StopMessage>
-        PARSER = new com.google.protobuf.AbstractParser<StopMessage>() {
-      @java.lang.Override
-      public StopMessage parsePartialFrom(
-          com.google.protobuf.CodedInputStream input,
-          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-          throws com.google.protobuf.InvalidProtocolBufferException {
-        return new StopMessage(input, extensionRegistry);
-      }
-    };
+    @java.lang.Deprecated
+    public static final com.google.protobuf.Parser<StopMessage> PARSER =
+        new com.google.protobuf.AbstractParser<StopMessage>() {
+          @java.lang.Override
+          public StopMessage parsePartialFrom(
+              com.google.protobuf.CodedInputStream input,
+              com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+              throws com.google.protobuf.InvalidProtocolBufferException {
+            return new StopMessage(input, extensionRegistry);
+          }
+        };
 
     public static com.google.protobuf.Parser<StopMessage> parser() {
       return PARSER;
@@ -2622,57 +2599,51 @@ public final class Circuit {
     public io.libp2p.protocol.circuit.pb.Circuit.StopMessage getDefaultInstanceForType() {
       return DEFAULT_INSTANCE;
     }
-
   }
 
-  public interface PeerOrBuilder extends
+  public interface PeerOrBuilder
+      extends
       // @@protoc_insertion_point(interface_extends:io.libp2p.protocol.circuit.pb.Peer)
       com.google.protobuf.MessageOrBuilder {
 
-    /**
-     * <code>required bytes id = 1;</code>
-     */
+    /** <code>required bytes id = 1;</code> */
     boolean hasId();
-    /**
-     * <code>required bytes id = 1;</code>
-     */
+
+    /** <code>required bytes id = 1;</code> */
     com.google.protobuf.ByteString getId();
 
-    /**
-     * <code>repeated bytes addrs = 2;</code>
-     */
+    /** <code>repeated bytes addrs = 2;</code> */
     java.util.List<com.google.protobuf.ByteString> getAddrsList();
-    /**
-     * <code>repeated bytes addrs = 2;</code>
-     */
+
+    /** <code>repeated bytes addrs = 2;</code> */
     int getAddrsCount();
-    /**
-     * <code>repeated bytes addrs = 2;</code>
-     */
+
+    /** <code>repeated bytes addrs = 2;</code> */
     com.google.protobuf.ByteString getAddrs(int index);
   }
-  /**
-   * Protobuf type {@code io.libp2p.protocol.circuit.pb.Peer}
-   */
-  public  static final class Peer extends
-      com.google.protobuf.GeneratedMessageV3 implements
+
+  /** Protobuf type {@code io.libp2p.protocol.circuit.pb.Peer} */
+  public static final class Peer extends com.google.protobuf.GeneratedMessageV3
+      implements
       // @@protoc_insertion_point(message_implements:io.libp2p.protocol.circuit.pb.Peer)
       PeerOrBuilder {
-  private static final long serialVersionUID = 0L;
+    private static final long serialVersionUID = 0L;
+
     // Use Peer.newBuilder() to construct.
     private Peer(com.google.protobuf.GeneratedMessageV3.Builder<?> builder) {
       super(builder);
     }
+
     private Peer() {
       id_ = com.google.protobuf.ByteString.EMPTY;
       addrs_ = java.util.Collections.emptyList();
     }
 
     @java.lang.Override
-    public final com.google.protobuf.UnknownFieldSet
-    getUnknownFields() {
+    public final com.google.protobuf.UnknownFieldSet getUnknownFields() {
       return this.unknownFields;
     }
+
     private Peer(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
@@ -2692,33 +2663,34 @@ public final class Circuit {
             case 0:
               done = true;
               break;
-            case 10: {
-              bitField0_ |= 0x00000001;
-              id_ = input.readBytes();
-              break;
-            }
-            case 18: {
-              if (!((mutable_bitField0_ & 0x00000002) == 0x00000002)) {
-                addrs_ = new java.util.ArrayList<com.google.protobuf.ByteString>();
-                mutable_bitField0_ |= 0x00000002;
+            case 10:
+              {
+                bitField0_ |= 0x00000001;
+                id_ = input.readBytes();
+                break;
               }
-              addrs_.add(input.readBytes());
-              break;
-            }
-            default: {
-              if (!parseUnknownField(
-                  input, unknownFields, extensionRegistry, tag)) {
-                done = true;
+            case 18:
+              {
+                if (!((mutable_bitField0_ & 0x00000002) == 0x00000002)) {
+                  addrs_ = new java.util.ArrayList<com.google.protobuf.ByteString>();
+                  mutable_bitField0_ |= 0x00000002;
+                }
+                addrs_.add(input.readBytes());
+                break;
               }
-              break;
-            }
+            default:
+              {
+                if (!parseUnknownField(input, unknownFields, extensionRegistry, tag)) {
+                  done = true;
+                }
+                break;
+              }
           }
         }
       } catch (com.google.protobuf.InvalidProtocolBufferException e) {
         throw e.setUnfinishedMessage(this);
       } catch (java.io.IOException e) {
-        throw new com.google.protobuf.InvalidProtocolBufferException(
-            e).setUnfinishedMessage(this);
+        throw new com.google.protobuf.InvalidProtocolBufferException(e).setUnfinishedMessage(this);
       } finally {
         if (((mutable_bitField0_ & 0x00000002) == 0x00000002)) {
           addrs_ = java.util.Collections.unmodifiableList(addrs_);
@@ -2727,58 +2699,56 @@ public final class Circuit {
         makeExtensionsImmutable();
       }
     }
-    public static final com.google.protobuf.Descriptors.Descriptor
-        getDescriptor() {
-      return io.libp2p.protocol.circuit.pb.Circuit.internal_static_io_libp2p_protocol_circuit_pb_Peer_descriptor;
+
+    public static final com.google.protobuf.Descriptors.Descriptor getDescriptor() {
+      return io.libp2p.protocol.circuit.pb.Circuit
+          .internal_static_io_libp2p_protocol_circuit_pb_Peer_descriptor;
     }
 
     @java.lang.Override
     protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
         internalGetFieldAccessorTable() {
-      return io.libp2p.protocol.circuit.pb.Circuit.internal_static_io_libp2p_protocol_circuit_pb_Peer_fieldAccessorTable
+      return io.libp2p.protocol.circuit.pb.Circuit
+          .internal_static_io_libp2p_protocol_circuit_pb_Peer_fieldAccessorTable
           .ensureFieldAccessorsInitialized(
-              io.libp2p.protocol.circuit.pb.Circuit.Peer.class, io.libp2p.protocol.circuit.pb.Circuit.Peer.Builder.class);
+              io.libp2p.protocol.circuit.pb.Circuit.Peer.class,
+              io.libp2p.protocol.circuit.pb.Circuit.Peer.Builder.class);
     }
 
     private int bitField0_;
     public static final int ID_FIELD_NUMBER = 1;
     private com.google.protobuf.ByteString id_;
-    /**
-     * <code>required bytes id = 1;</code>
-     */
+
+    /** <code>required bytes id = 1;</code> */
     public boolean hasId() {
       return ((bitField0_ & 0x00000001) == 0x00000001);
     }
-    /**
-     * <code>required bytes id = 1;</code>
-     */
+
+    /** <code>required bytes id = 1;</code> */
     public com.google.protobuf.ByteString getId() {
       return id_;
     }
 
     public static final int ADDRS_FIELD_NUMBER = 2;
     private java.util.List<com.google.protobuf.ByteString> addrs_;
-    /**
-     * <code>repeated bytes addrs = 2;</code>
-     */
-    public java.util.List<com.google.protobuf.ByteString>
-        getAddrsList() {
+
+    /** <code>repeated bytes addrs = 2;</code> */
+    public java.util.List<com.google.protobuf.ByteString> getAddrsList() {
       return addrs_;
     }
-    /**
-     * <code>repeated bytes addrs = 2;</code>
-     */
+
+    /** <code>repeated bytes addrs = 2;</code> */
     public int getAddrsCount() {
       return addrs_.size();
     }
-    /**
-     * <code>repeated bytes addrs = 2;</code>
-     */
+
+    /** <code>repeated bytes addrs = 2;</code> */
     public com.google.protobuf.ByteString getAddrs(int index) {
       return addrs_.get(index);
     }
 
     private byte memoizedIsInitialized = -1;
+
     @java.lang.Override
     public final boolean isInitialized() {
       byte isInitialized = memoizedIsInitialized;
@@ -2794,8 +2764,7 @@ public final class Circuit {
     }
 
     @java.lang.Override
-    public void writeTo(com.google.protobuf.CodedOutputStream output)
-                        throws java.io.IOException {
+    public void writeTo(com.google.protobuf.CodedOutputStream output) throws java.io.IOException {
       if (((bitField0_ & 0x00000001) == 0x00000001)) {
         output.writeBytes(1, id_);
       }
@@ -2812,14 +2781,12 @@ public final class Circuit {
 
       size = 0;
       if (((bitField0_ & 0x00000001) == 0x00000001)) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeBytesSize(1, id_);
+        size += com.google.protobuf.CodedOutputStream.computeBytesSize(1, id_);
       }
       {
         int dataSize = 0;
         for (int i = 0; i < addrs_.size(); i++) {
-          dataSize += com.google.protobuf.CodedOutputStream
-            .computeBytesSizeNoTag(addrs_.get(i));
+          dataSize += com.google.protobuf.CodedOutputStream.computeBytesSizeNoTag(addrs_.get(i));
         }
         size += dataSize;
         size += 1 * getAddrsList().size();
@@ -2832,21 +2799,20 @@ public final class Circuit {
     @java.lang.Override
     public boolean equals(final java.lang.Object obj) {
       if (obj == this) {
-       return true;
+        return true;
       }
       if (!(obj instanceof io.libp2p.protocol.circuit.pb.Circuit.Peer)) {
         return super.equals(obj);
       }
-      io.libp2p.protocol.circuit.pb.Circuit.Peer other = (io.libp2p.protocol.circuit.pb.Circuit.Peer) obj;
+      io.libp2p.protocol.circuit.pb.Circuit.Peer other =
+          (io.libp2p.protocol.circuit.pb.Circuit.Peer) obj;
 
       boolean result = true;
       result = result && (hasId() == other.hasId());
       if (hasId()) {
-        result = result && getId()
-            .equals(other.getId());
+        result = result && getId().equals(other.getId());
       }
-      result = result && getAddrsList()
-          .equals(other.getAddrsList());
+      result = result && getAddrsList().equals(other.getAddrsList());
       result = result && unknownFields.equals(other.unknownFields);
       return result;
     }
@@ -2871,88 +2837,94 @@ public final class Circuit {
       return hash;
     }
 
-    public static io.libp2p.protocol.circuit.pb.Circuit.Peer parseFrom(
-        java.nio.ByteBuffer data)
+    public static io.libp2p.protocol.circuit.pb.Circuit.Peer parseFrom(java.nio.ByteBuffer data)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data);
     }
+
     public static io.libp2p.protocol.circuit.pb.Circuit.Peer parseFrom(
-        java.nio.ByteBuffer data,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        java.nio.ByteBuffer data, com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data, extensionRegistry);
     }
+
     public static io.libp2p.protocol.circuit.pb.Circuit.Peer parseFrom(
         com.google.protobuf.ByteString data)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data);
     }
+
     public static io.libp2p.protocol.circuit.pb.Circuit.Peer parseFrom(
         com.google.protobuf.ByteString data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data, extensionRegistry);
     }
+
     public static io.libp2p.protocol.circuit.pb.Circuit.Peer parseFrom(byte[] data)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data);
     }
+
     public static io.libp2p.protocol.circuit.pb.Circuit.Peer parseFrom(
-        byte[] data,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        byte[] data, com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data, extensionRegistry);
     }
+
     public static io.libp2p.protocol.circuit.pb.Circuit.Peer parseFrom(java.io.InputStream input)
         throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseWithIOException(PARSER, input);
+      return com.google.protobuf.GeneratedMessageV3.parseWithIOException(PARSER, input);
     }
+
     public static io.libp2p.protocol.circuit.pb.Circuit.Peer parseFrom(
-        java.io.InputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        java.io.InputStream input, com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseWithIOException(PARSER, input, extensionRegistry);
+      return com.google.protobuf.GeneratedMessageV3.parseWithIOException(
+          PARSER, input, extensionRegistry);
     }
-    public static io.libp2p.protocol.circuit.pb.Circuit.Peer parseDelimitedFrom(java.io.InputStream input)
-        throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseDelimitedWithIOException(PARSER, input);
-    }
+
     public static io.libp2p.protocol.circuit.pb.Circuit.Peer parseDelimitedFrom(
-        java.io.InputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseDelimitedWithIOException(PARSER, input, extensionRegistry);
+        java.io.InputStream input) throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessageV3.parseDelimitedWithIOException(PARSER, input);
     }
+
+    public static io.libp2p.protocol.circuit.pb.Circuit.Peer parseDelimitedFrom(
+        java.io.InputStream input, com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessageV3.parseDelimitedWithIOException(
+          PARSER, input, extensionRegistry);
+    }
+
     public static io.libp2p.protocol.circuit.pb.Circuit.Peer parseFrom(
-        com.google.protobuf.CodedInputStream input)
-        throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseWithIOException(PARSER, input);
+        com.google.protobuf.CodedInputStream input) throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessageV3.parseWithIOException(PARSER, input);
     }
+
     public static io.libp2p.protocol.circuit.pb.Circuit.Peer parseFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseWithIOException(PARSER, input, extensionRegistry);
+      return com.google.protobuf.GeneratedMessageV3.parseWithIOException(
+          PARSER, input, extensionRegistry);
     }
 
     @java.lang.Override
-    public Builder newBuilderForType() { return newBuilder(); }
+    public Builder newBuilderForType() {
+      return newBuilder();
+    }
+
     public static Builder newBuilder() {
       return DEFAULT_INSTANCE.toBuilder();
     }
+
     public static Builder newBuilder(io.libp2p.protocol.circuit.pb.Circuit.Peer prototype) {
       return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
     }
+
     @java.lang.Override
     public Builder toBuilder() {
-      return this == DEFAULT_INSTANCE
-          ? new Builder() : new Builder().mergeFrom(this);
+      return this == DEFAULT_INSTANCE ? new Builder() : new Builder().mergeFrom(this);
     }
 
     @java.lang.Override
@@ -2961,24 +2933,26 @@ public final class Circuit {
       Builder builder = new Builder(parent);
       return builder;
     }
-    /**
-     * Protobuf type {@code io.libp2p.protocol.circuit.pb.Peer}
-     */
-    public static final class Builder extends
-        com.google.protobuf.GeneratedMessageV3.Builder<Builder> implements
+
+    /** Protobuf type {@code io.libp2p.protocol.circuit.pb.Peer} */
+    public static final class Builder
+        extends com.google.protobuf.GeneratedMessageV3.Builder<Builder>
+        implements
         // @@protoc_insertion_point(builder_implements:io.libp2p.protocol.circuit.pb.Peer)
         io.libp2p.protocol.circuit.pb.Circuit.PeerOrBuilder {
-      public static final com.google.protobuf.Descriptors.Descriptor
-          getDescriptor() {
-        return io.libp2p.protocol.circuit.pb.Circuit.internal_static_io_libp2p_protocol_circuit_pb_Peer_descriptor;
+      public static final com.google.protobuf.Descriptors.Descriptor getDescriptor() {
+        return io.libp2p.protocol.circuit.pb.Circuit
+            .internal_static_io_libp2p_protocol_circuit_pb_Peer_descriptor;
       }
 
       @java.lang.Override
       protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
           internalGetFieldAccessorTable() {
-        return io.libp2p.protocol.circuit.pb.Circuit.internal_static_io_libp2p_protocol_circuit_pb_Peer_fieldAccessorTable
+        return io.libp2p.protocol.circuit.pb.Circuit
+            .internal_static_io_libp2p_protocol_circuit_pb_Peer_fieldAccessorTable
             .ensureFieldAccessorsInitialized(
-                io.libp2p.protocol.circuit.pb.Circuit.Peer.class, io.libp2p.protocol.circuit.pb.Circuit.Peer.Builder.class);
+                io.libp2p.protocol.circuit.pb.Circuit.Peer.class,
+                io.libp2p.protocol.circuit.pb.Circuit.Peer.Builder.class);
       }
 
       // Construct using io.libp2p.protocol.circuit.pb.Circuit.Peer.newBuilder()
@@ -2986,16 +2960,15 @@ public final class Circuit {
         maybeForceBuilderInitialization();
       }
 
-      private Builder(
-          com.google.protobuf.GeneratedMessageV3.BuilderParent parent) {
+      private Builder(com.google.protobuf.GeneratedMessageV3.BuilderParent parent) {
         super(parent);
         maybeForceBuilderInitialization();
       }
+
       private void maybeForceBuilderInitialization() {
-        if (com.google.protobuf.GeneratedMessageV3
-                .alwaysUseFieldBuilders) {
-        }
+        if (com.google.protobuf.GeneratedMessageV3.alwaysUseFieldBuilders) {}
       }
+
       @java.lang.Override
       public Builder clear() {
         super.clear();
@@ -3007,9 +2980,9 @@ public final class Circuit {
       }
 
       @java.lang.Override
-      public com.google.protobuf.Descriptors.Descriptor
-          getDescriptorForType() {
-        return io.libp2p.protocol.circuit.pb.Circuit.internal_static_io_libp2p_protocol_circuit_pb_Peer_descriptor;
+      public com.google.protobuf.Descriptors.Descriptor getDescriptorForType() {
+        return io.libp2p.protocol.circuit.pb.Circuit
+            .internal_static_io_libp2p_protocol_circuit_pb_Peer_descriptor;
       }
 
       @java.lang.Override
@@ -3028,7 +3001,8 @@ public final class Circuit {
 
       @java.lang.Override
       public io.libp2p.protocol.circuit.pb.Circuit.Peer buildPartial() {
-        io.libp2p.protocol.circuit.pb.Circuit.Peer result = new io.libp2p.protocol.circuit.pb.Circuit.Peer(this);
+        io.libp2p.protocol.circuit.pb.Circuit.Peer result =
+            new io.libp2p.protocol.circuit.pb.Circuit.Peer(this);
         int from_bitField0_ = bitField0_;
         int to_bitField0_ = 0;
         if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
@@ -3049,38 +3023,41 @@ public final class Circuit {
       public Builder clone() {
         return (Builder) super.clone();
       }
+
       @java.lang.Override
       public Builder setField(
-          com.google.protobuf.Descriptors.FieldDescriptor field,
-          java.lang.Object value) {
+          com.google.protobuf.Descriptors.FieldDescriptor field, java.lang.Object value) {
         return (Builder) super.setField(field, value);
       }
+
       @java.lang.Override
-      public Builder clearField(
-          com.google.protobuf.Descriptors.FieldDescriptor field) {
+      public Builder clearField(com.google.protobuf.Descriptors.FieldDescriptor field) {
         return (Builder) super.clearField(field);
       }
+
       @java.lang.Override
-      public Builder clearOneof(
-          com.google.protobuf.Descriptors.OneofDescriptor oneof) {
+      public Builder clearOneof(com.google.protobuf.Descriptors.OneofDescriptor oneof) {
         return (Builder) super.clearOneof(oneof);
       }
+
       @java.lang.Override
       public Builder setRepeatedField(
           com.google.protobuf.Descriptors.FieldDescriptor field,
-          int index, java.lang.Object value) {
+          int index,
+          java.lang.Object value) {
         return (Builder) super.setRepeatedField(field, index, value);
       }
+
       @java.lang.Override
       public Builder addRepeatedField(
-          com.google.protobuf.Descriptors.FieldDescriptor field,
-          java.lang.Object value) {
+          com.google.protobuf.Descriptors.FieldDescriptor field, java.lang.Object value) {
         return (Builder) super.addRepeatedField(field, value);
       }
+
       @java.lang.Override
       public Builder mergeFrom(com.google.protobuf.Message other) {
         if (other instanceof io.libp2p.protocol.circuit.pb.Circuit.Peer) {
-          return mergeFrom((io.libp2p.protocol.circuit.pb.Circuit.Peer)other);
+          return mergeFrom((io.libp2p.protocol.circuit.pb.Circuit.Peer) other);
         } else {
           super.mergeFrom(other);
           return this;
@@ -3133,36 +3110,33 @@ public final class Circuit {
         }
         return this;
       }
+
       private int bitField0_;
 
       private com.google.protobuf.ByteString id_ = com.google.protobuf.ByteString.EMPTY;
-      /**
-       * <code>required bytes id = 1;</code>
-       */
+
+      /** <code>required bytes id = 1;</code> */
       public boolean hasId() {
         return ((bitField0_ & 0x00000001) == 0x00000001);
       }
-      /**
-       * <code>required bytes id = 1;</code>
-       */
+
+      /** <code>required bytes id = 1;</code> */
       public com.google.protobuf.ByteString getId() {
         return id_;
       }
-      /**
-       * <code>required bytes id = 1;</code>
-       */
+
+      /** <code>required bytes id = 1;</code> */
       public Builder setId(com.google.protobuf.ByteString value) {
         if (value == null) {
-    throw new NullPointerException();
-  }
-  bitField0_ |= 0x00000001;
+          throw new NullPointerException();
+        }
+        bitField0_ |= 0x00000001;
         id_ = value;
         onChanged();
         return this;
       }
-      /**
-       * <code>required bytes id = 1;</code>
-       */
+
+      /** <code>required bytes id = 1;</code> */
       public Builder clearId() {
         bitField0_ = (bitField0_ & ~0x00000001);
         id_ = getDefaultInstance().getId();
@@ -3170,77 +3144,70 @@ public final class Circuit {
         return this;
       }
 
-      private java.util.List<com.google.protobuf.ByteString> addrs_ = java.util.Collections.emptyList();
+      private java.util.List<com.google.protobuf.ByteString> addrs_ =
+          java.util.Collections.emptyList();
+
       private void ensureAddrsIsMutable() {
         if (!((bitField0_ & 0x00000002) == 0x00000002)) {
           addrs_ = new java.util.ArrayList<com.google.protobuf.ByteString>(addrs_);
           bitField0_ |= 0x00000002;
-         }
+        }
       }
-      /**
-       * <code>repeated bytes addrs = 2;</code>
-       */
-      public java.util.List<com.google.protobuf.ByteString>
-          getAddrsList() {
+
+      /** <code>repeated bytes addrs = 2;</code> */
+      public java.util.List<com.google.protobuf.ByteString> getAddrsList() {
         return java.util.Collections.unmodifiableList(addrs_);
       }
-      /**
-       * <code>repeated bytes addrs = 2;</code>
-       */
+
+      /** <code>repeated bytes addrs = 2;</code> */
       public int getAddrsCount() {
         return addrs_.size();
       }
-      /**
-       * <code>repeated bytes addrs = 2;</code>
-       */
+
+      /** <code>repeated bytes addrs = 2;</code> */
       public com.google.protobuf.ByteString getAddrs(int index) {
         return addrs_.get(index);
       }
-      /**
-       * <code>repeated bytes addrs = 2;</code>
-       */
-      public Builder setAddrs(
-          int index, com.google.protobuf.ByteString value) {
+
+      /** <code>repeated bytes addrs = 2;</code> */
+      public Builder setAddrs(int index, com.google.protobuf.ByteString value) {
         if (value == null) {
-    throw new NullPointerException();
-  }
-  ensureAddrsIsMutable();
+          throw new NullPointerException();
+        }
+        ensureAddrsIsMutable();
         addrs_.set(index, value);
         onChanged();
         return this;
       }
-      /**
-       * <code>repeated bytes addrs = 2;</code>
-       */
+
+      /** <code>repeated bytes addrs = 2;</code> */
       public Builder addAddrs(com.google.protobuf.ByteString value) {
         if (value == null) {
-    throw new NullPointerException();
-  }
-  ensureAddrsIsMutable();
+          throw new NullPointerException();
+        }
+        ensureAddrsIsMutable();
         addrs_.add(value);
         onChanged();
         return this;
       }
-      /**
-       * <code>repeated bytes addrs = 2;</code>
-       */
+
+      /** <code>repeated bytes addrs = 2;</code> */
       public Builder addAllAddrs(
           java.lang.Iterable<? extends com.google.protobuf.ByteString> values) {
         ensureAddrsIsMutable();
-        com.google.protobuf.AbstractMessageLite.Builder.addAll(
-            values, addrs_);
+        com.google.protobuf.AbstractMessageLite.Builder.addAll(values, addrs_);
         onChanged();
         return this;
       }
-      /**
-       * <code>repeated bytes addrs = 2;</code>
-       */
+
+      /** <code>repeated bytes addrs = 2;</code> */
       public Builder clearAddrs() {
         addrs_ = java.util.Collections.emptyList();
         bitField0_ = (bitField0_ & ~0x00000002);
         onChanged();
         return this;
       }
+
       @java.lang.Override
       public final Builder setUnknownFields(
           final com.google.protobuf.UnknownFieldSet unknownFields) {
@@ -3253,12 +3220,12 @@ public final class Circuit {
         return super.mergeUnknownFields(unknownFields);
       }
 
-
       // @@protoc_insertion_point(builder_scope:io.libp2p.protocol.circuit.pb.Peer)
     }
 
     // @@protoc_insertion_point(class_scope:io.libp2p.protocol.circuit.pb.Peer)
     private static final io.libp2p.protocol.circuit.pb.Circuit.Peer DEFAULT_INSTANCE;
+
     static {
       DEFAULT_INSTANCE = new io.libp2p.protocol.circuit.pb.Circuit.Peer();
     }
@@ -3267,16 +3234,17 @@ public final class Circuit {
       return DEFAULT_INSTANCE;
     }
 
-    @java.lang.Deprecated public static final com.google.protobuf.Parser<Peer>
-        PARSER = new com.google.protobuf.AbstractParser<Peer>() {
-      @java.lang.Override
-      public Peer parsePartialFrom(
-          com.google.protobuf.CodedInputStream input,
-          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-          throws com.google.protobuf.InvalidProtocolBufferException {
-        return new Peer(input, extensionRegistry);
-      }
-    };
+    @java.lang.Deprecated
+    public static final com.google.protobuf.Parser<Peer> PARSER =
+        new com.google.protobuf.AbstractParser<Peer>() {
+          @java.lang.Override
+          public Peer parsePartialFrom(
+              com.google.protobuf.CodedInputStream input,
+              com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+              throws com.google.protobuf.InvalidProtocolBufferException {
+            return new Peer(input, extensionRegistry);
+          }
+        };
 
     public static com.google.protobuf.Parser<Peer> parser() {
       return PARSER;
@@ -3291,14 +3259,16 @@ public final class Circuit {
     public io.libp2p.protocol.circuit.pb.Circuit.Peer getDefaultInstanceForType() {
       return DEFAULT_INSTANCE;
     }
-
   }
 
-  public interface ReservationOrBuilder extends
+  public interface ReservationOrBuilder
+      extends
       // @@protoc_insertion_point(interface_extends:io.libp2p.protocol.circuit.pb.Reservation)
       com.google.protobuf.MessageOrBuilder {
 
     /**
+     *
+     *
      * <pre>
      * Unix expiration time (UTC)
      * </pre>
@@ -3306,7 +3276,10 @@ public final class Circuit {
      * <code>required uint64 expire = 1;</code>
      */
     boolean hasExpire();
+
     /**
+     *
+     *
      * <pre>
      * Unix expiration time (UTC)
      * </pre>
@@ -3316,6 +3289,8 @@ public final class Circuit {
     long getExpire();
 
     /**
+     *
+     *
      * <pre>
      * relay addrs for reserving peer
      * </pre>
@@ -3323,7 +3298,10 @@ public final class Circuit {
      * <code>repeated bytes addrs = 2;</code>
      */
     java.util.List<com.google.protobuf.ByteString> getAddrsList();
+
     /**
+     *
+     *
      * <pre>
      * relay addrs for reserving peer
      * </pre>
@@ -3331,7 +3309,10 @@ public final class Circuit {
      * <code>repeated bytes addrs = 2;</code>
      */
     int getAddrsCount();
+
     /**
+     *
+     *
      * <pre>
      * relay addrs for reserving peer
      * </pre>
@@ -3341,6 +3322,8 @@ public final class Circuit {
     com.google.protobuf.ByteString getAddrs(int index);
 
     /**
+     *
+     *
      * <pre>
      * reservation voucher
      * </pre>
@@ -3348,7 +3331,10 @@ public final class Circuit {
      * <code>optional bytes voucher = 3;</code>
      */
     boolean hasVoucher();
+
     /**
+     *
+     *
      * <pre>
      * reservation voucher
      * </pre>
@@ -3357,18 +3343,19 @@ public final class Circuit {
      */
     com.google.protobuf.ByteString getVoucher();
   }
-  /**
-   * Protobuf type {@code io.libp2p.protocol.circuit.pb.Reservation}
-   */
-  public  static final class Reservation extends
-      com.google.protobuf.GeneratedMessageV3 implements
+
+  /** Protobuf type {@code io.libp2p.protocol.circuit.pb.Reservation} */
+  public static final class Reservation extends com.google.protobuf.GeneratedMessageV3
+      implements
       // @@protoc_insertion_point(message_implements:io.libp2p.protocol.circuit.pb.Reservation)
       ReservationOrBuilder {
-  private static final long serialVersionUID = 0L;
+    private static final long serialVersionUID = 0L;
+
     // Use Reservation.newBuilder() to construct.
     private Reservation(com.google.protobuf.GeneratedMessageV3.Builder<?> builder) {
       super(builder);
     }
+
     private Reservation() {
       expire_ = 0L;
       addrs_ = java.util.Collections.emptyList();
@@ -3376,10 +3363,10 @@ public final class Circuit {
     }
 
     @java.lang.Override
-    public final com.google.protobuf.UnknownFieldSet
-    getUnknownFields() {
+    public final com.google.protobuf.UnknownFieldSet getUnknownFields() {
       return this.unknownFields;
     }
+
     private Reservation(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
@@ -3399,38 +3386,40 @@ public final class Circuit {
             case 0:
               done = true;
               break;
-            case 8: {
-              bitField0_ |= 0x00000001;
-              expire_ = input.readUInt64();
-              break;
-            }
-            case 18: {
-              if (!((mutable_bitField0_ & 0x00000002) == 0x00000002)) {
-                addrs_ = new java.util.ArrayList<com.google.protobuf.ByteString>();
-                mutable_bitField0_ |= 0x00000002;
+            case 8:
+              {
+                bitField0_ |= 0x00000001;
+                expire_ = input.readUInt64();
+                break;
               }
-              addrs_.add(input.readBytes());
-              break;
-            }
-            case 26: {
-              bitField0_ |= 0x00000002;
-              voucher_ = input.readBytes();
-              break;
-            }
-            default: {
-              if (!parseUnknownField(
-                  input, unknownFields, extensionRegistry, tag)) {
-                done = true;
+            case 18:
+              {
+                if (!((mutable_bitField0_ & 0x00000002) == 0x00000002)) {
+                  addrs_ = new java.util.ArrayList<com.google.protobuf.ByteString>();
+                  mutable_bitField0_ |= 0x00000002;
+                }
+                addrs_.add(input.readBytes());
+                break;
               }
-              break;
-            }
+            case 26:
+              {
+                bitField0_ |= 0x00000002;
+                voucher_ = input.readBytes();
+                break;
+              }
+            default:
+              {
+                if (!parseUnknownField(input, unknownFields, extensionRegistry, tag)) {
+                  done = true;
+                }
+                break;
+              }
           }
         }
       } catch (com.google.protobuf.InvalidProtocolBufferException e) {
         throw e.setUnfinishedMessage(this);
       } catch (java.io.IOException e) {
-        throw new com.google.protobuf.InvalidProtocolBufferException(
-            e).setUnfinishedMessage(this);
+        throw new com.google.protobuf.InvalidProtocolBufferException(e).setUnfinishedMessage(this);
       } finally {
         if (((mutable_bitField0_ & 0x00000002) == 0x00000002)) {
           addrs_ = java.util.Collections.unmodifiableList(addrs_);
@@ -3439,23 +3428,29 @@ public final class Circuit {
         makeExtensionsImmutable();
       }
     }
-    public static final com.google.protobuf.Descriptors.Descriptor
-        getDescriptor() {
-      return io.libp2p.protocol.circuit.pb.Circuit.internal_static_io_libp2p_protocol_circuit_pb_Reservation_descriptor;
+
+    public static final com.google.protobuf.Descriptors.Descriptor getDescriptor() {
+      return io.libp2p.protocol.circuit.pb.Circuit
+          .internal_static_io_libp2p_protocol_circuit_pb_Reservation_descriptor;
     }
 
     @java.lang.Override
     protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
         internalGetFieldAccessorTable() {
-      return io.libp2p.protocol.circuit.pb.Circuit.internal_static_io_libp2p_protocol_circuit_pb_Reservation_fieldAccessorTable
+      return io.libp2p.protocol.circuit.pb.Circuit
+          .internal_static_io_libp2p_protocol_circuit_pb_Reservation_fieldAccessorTable
           .ensureFieldAccessorsInitialized(
-              io.libp2p.protocol.circuit.pb.Circuit.Reservation.class, io.libp2p.protocol.circuit.pb.Circuit.Reservation.Builder.class);
+              io.libp2p.protocol.circuit.pb.Circuit.Reservation.class,
+              io.libp2p.protocol.circuit.pb.Circuit.Reservation.Builder.class);
     }
 
     private int bitField0_;
     public static final int EXPIRE_FIELD_NUMBER = 1;
     private long expire_;
+
     /**
+     *
+     *
      * <pre>
      * Unix expiration time (UTC)
      * </pre>
@@ -3465,7 +3460,10 @@ public final class Circuit {
     public boolean hasExpire() {
       return ((bitField0_ & 0x00000001) == 0x00000001);
     }
+
     /**
+     *
+     *
      * <pre>
      * Unix expiration time (UTC)
      * </pre>
@@ -3478,18 +3476,23 @@ public final class Circuit {
 
     public static final int ADDRS_FIELD_NUMBER = 2;
     private java.util.List<com.google.protobuf.ByteString> addrs_;
+
     /**
+     *
+     *
      * <pre>
      * relay addrs for reserving peer
      * </pre>
      *
      * <code>repeated bytes addrs = 2;</code>
      */
-    public java.util.List<com.google.protobuf.ByteString>
-        getAddrsList() {
+    public java.util.List<com.google.protobuf.ByteString> getAddrsList() {
       return addrs_;
     }
+
     /**
+     *
+     *
      * <pre>
      * relay addrs for reserving peer
      * </pre>
@@ -3499,7 +3502,10 @@ public final class Circuit {
     public int getAddrsCount() {
       return addrs_.size();
     }
+
     /**
+     *
+     *
      * <pre>
      * relay addrs for reserving peer
      * </pre>
@@ -3512,7 +3518,10 @@ public final class Circuit {
 
     public static final int VOUCHER_FIELD_NUMBER = 3;
     private com.google.protobuf.ByteString voucher_;
+
     /**
+     *
+     *
      * <pre>
      * reservation voucher
      * </pre>
@@ -3522,7 +3531,10 @@ public final class Circuit {
     public boolean hasVoucher() {
       return ((bitField0_ & 0x00000002) == 0x00000002);
     }
+
     /**
+     *
+     *
      * <pre>
      * reservation voucher
      * </pre>
@@ -3534,6 +3546,7 @@ public final class Circuit {
     }
 
     private byte memoizedIsInitialized = -1;
+
     @java.lang.Override
     public final boolean isInitialized() {
       byte isInitialized = memoizedIsInitialized;
@@ -3549,8 +3562,7 @@ public final class Circuit {
     }
 
     @java.lang.Override
-    public void writeTo(com.google.protobuf.CodedOutputStream output)
-                        throws java.io.IOException {
+    public void writeTo(com.google.protobuf.CodedOutputStream output) throws java.io.IOException {
       if (((bitField0_ & 0x00000001) == 0x00000001)) {
         output.writeUInt64(1, expire_);
       }
@@ -3570,21 +3582,18 @@ public final class Circuit {
 
       size = 0;
       if (((bitField0_ & 0x00000001) == 0x00000001)) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeUInt64Size(1, expire_);
+        size += com.google.protobuf.CodedOutputStream.computeUInt64Size(1, expire_);
       }
       {
         int dataSize = 0;
         for (int i = 0; i < addrs_.size(); i++) {
-          dataSize += com.google.protobuf.CodedOutputStream
-            .computeBytesSizeNoTag(addrs_.get(i));
+          dataSize += com.google.protobuf.CodedOutputStream.computeBytesSizeNoTag(addrs_.get(i));
         }
         size += dataSize;
         size += 1 * getAddrsList().size();
       }
       if (((bitField0_ & 0x00000002) == 0x00000002)) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeBytesSize(3, voucher_);
+        size += com.google.protobuf.CodedOutputStream.computeBytesSize(3, voucher_);
       }
       size += unknownFields.getSerializedSize();
       memoizedSize = size;
@@ -3594,25 +3603,23 @@ public final class Circuit {
     @java.lang.Override
     public boolean equals(final java.lang.Object obj) {
       if (obj == this) {
-       return true;
+        return true;
       }
       if (!(obj instanceof io.libp2p.protocol.circuit.pb.Circuit.Reservation)) {
         return super.equals(obj);
       }
-      io.libp2p.protocol.circuit.pb.Circuit.Reservation other = (io.libp2p.protocol.circuit.pb.Circuit.Reservation) obj;
+      io.libp2p.protocol.circuit.pb.Circuit.Reservation other =
+          (io.libp2p.protocol.circuit.pb.Circuit.Reservation) obj;
 
       boolean result = true;
       result = result && (hasExpire() == other.hasExpire());
       if (hasExpire()) {
-        result = result && (getExpire()
-            == other.getExpire());
+        result = result && (getExpire() == other.getExpire());
       }
-      result = result && getAddrsList()
-          .equals(other.getAddrsList());
+      result = result && getAddrsList().equals(other.getAddrsList());
       result = result && (hasVoucher() == other.hasVoucher());
       if (hasVoucher()) {
-        result = result && getVoucher()
-            .equals(other.getVoucher());
+        result = result && getVoucher().equals(other.getVoucher());
       }
       result = result && unknownFields.equals(other.unknownFields);
       return result;
@@ -3627,8 +3634,7 @@ public final class Circuit {
       hash = (19 * hash) + getDescriptor().hashCode();
       if (hasExpire()) {
         hash = (37 * hash) + EXPIRE_FIELD_NUMBER;
-        hash = (53 * hash) + com.google.protobuf.Internal.hashLong(
-            getExpire());
+        hash = (53 * hash) + com.google.protobuf.Internal.hashLong(getExpire());
       }
       if (getAddrsCount() > 0) {
         hash = (37 * hash) + ADDRS_FIELD_NUMBER;
@@ -3644,87 +3650,93 @@ public final class Circuit {
     }
 
     public static io.libp2p.protocol.circuit.pb.Circuit.Reservation parseFrom(
-        java.nio.ByteBuffer data)
-        throws com.google.protobuf.InvalidProtocolBufferException {
+        java.nio.ByteBuffer data) throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data);
     }
+
     public static io.libp2p.protocol.circuit.pb.Circuit.Reservation parseFrom(
-        java.nio.ByteBuffer data,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        java.nio.ByteBuffer data, com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data, extensionRegistry);
     }
+
     public static io.libp2p.protocol.circuit.pb.Circuit.Reservation parseFrom(
         com.google.protobuf.ByteString data)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data);
     }
+
     public static io.libp2p.protocol.circuit.pb.Circuit.Reservation parseFrom(
         com.google.protobuf.ByteString data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data, extensionRegistry);
     }
+
     public static io.libp2p.protocol.circuit.pb.Circuit.Reservation parseFrom(byte[] data)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data);
     }
+
     public static io.libp2p.protocol.circuit.pb.Circuit.Reservation parseFrom(
-        byte[] data,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        byte[] data, com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data, extensionRegistry);
     }
-    public static io.libp2p.protocol.circuit.pb.Circuit.Reservation parseFrom(java.io.InputStream input)
-        throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseWithIOException(PARSER, input);
-    }
+
     public static io.libp2p.protocol.circuit.pb.Circuit.Reservation parseFrom(
-        java.io.InputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseWithIOException(PARSER, input, extensionRegistry);
+        java.io.InputStream input) throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessageV3.parseWithIOException(PARSER, input);
     }
-    public static io.libp2p.protocol.circuit.pb.Circuit.Reservation parseDelimitedFrom(java.io.InputStream input)
+
+    public static io.libp2p.protocol.circuit.pb.Circuit.Reservation parseFrom(
+        java.io.InputStream input, com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseDelimitedWithIOException(PARSER, input);
+      return com.google.protobuf.GeneratedMessageV3.parseWithIOException(
+          PARSER, input, extensionRegistry);
     }
+
     public static io.libp2p.protocol.circuit.pb.Circuit.Reservation parseDelimitedFrom(
-        java.io.InputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseDelimitedWithIOException(PARSER, input, extensionRegistry);
+        java.io.InputStream input) throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessageV3.parseDelimitedWithIOException(PARSER, input);
     }
+
+    public static io.libp2p.protocol.circuit.pb.Circuit.Reservation parseDelimitedFrom(
+        java.io.InputStream input, com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessageV3.parseDelimitedWithIOException(
+          PARSER, input, extensionRegistry);
+    }
+
     public static io.libp2p.protocol.circuit.pb.Circuit.Reservation parseFrom(
-        com.google.protobuf.CodedInputStream input)
-        throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseWithIOException(PARSER, input);
+        com.google.protobuf.CodedInputStream input) throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessageV3.parseWithIOException(PARSER, input);
     }
+
     public static io.libp2p.protocol.circuit.pb.Circuit.Reservation parseFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseWithIOException(PARSER, input, extensionRegistry);
+      return com.google.protobuf.GeneratedMessageV3.parseWithIOException(
+          PARSER, input, extensionRegistry);
     }
 
     @java.lang.Override
-    public Builder newBuilderForType() { return newBuilder(); }
+    public Builder newBuilderForType() {
+      return newBuilder();
+    }
+
     public static Builder newBuilder() {
       return DEFAULT_INSTANCE.toBuilder();
     }
+
     public static Builder newBuilder(io.libp2p.protocol.circuit.pb.Circuit.Reservation prototype) {
       return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
     }
+
     @java.lang.Override
     public Builder toBuilder() {
-      return this == DEFAULT_INSTANCE
-          ? new Builder() : new Builder().mergeFrom(this);
+      return this == DEFAULT_INSTANCE ? new Builder() : new Builder().mergeFrom(this);
     }
 
     @java.lang.Override
@@ -3733,24 +3745,26 @@ public final class Circuit {
       Builder builder = new Builder(parent);
       return builder;
     }
-    /**
-     * Protobuf type {@code io.libp2p.protocol.circuit.pb.Reservation}
-     */
-    public static final class Builder extends
-        com.google.protobuf.GeneratedMessageV3.Builder<Builder> implements
+
+    /** Protobuf type {@code io.libp2p.protocol.circuit.pb.Reservation} */
+    public static final class Builder
+        extends com.google.protobuf.GeneratedMessageV3.Builder<Builder>
+        implements
         // @@protoc_insertion_point(builder_implements:io.libp2p.protocol.circuit.pb.Reservation)
         io.libp2p.protocol.circuit.pb.Circuit.ReservationOrBuilder {
-      public static final com.google.protobuf.Descriptors.Descriptor
-          getDescriptor() {
-        return io.libp2p.protocol.circuit.pb.Circuit.internal_static_io_libp2p_protocol_circuit_pb_Reservation_descriptor;
+      public static final com.google.protobuf.Descriptors.Descriptor getDescriptor() {
+        return io.libp2p.protocol.circuit.pb.Circuit
+            .internal_static_io_libp2p_protocol_circuit_pb_Reservation_descriptor;
       }
 
       @java.lang.Override
       protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
           internalGetFieldAccessorTable() {
-        return io.libp2p.protocol.circuit.pb.Circuit.internal_static_io_libp2p_protocol_circuit_pb_Reservation_fieldAccessorTable
+        return io.libp2p.protocol.circuit.pb.Circuit
+            .internal_static_io_libp2p_protocol_circuit_pb_Reservation_fieldAccessorTable
             .ensureFieldAccessorsInitialized(
-                io.libp2p.protocol.circuit.pb.Circuit.Reservation.class, io.libp2p.protocol.circuit.pb.Circuit.Reservation.Builder.class);
+                io.libp2p.protocol.circuit.pb.Circuit.Reservation.class,
+                io.libp2p.protocol.circuit.pb.Circuit.Reservation.Builder.class);
       }
 
       // Construct using io.libp2p.protocol.circuit.pb.Circuit.Reservation.newBuilder()
@@ -3758,16 +3772,15 @@ public final class Circuit {
         maybeForceBuilderInitialization();
       }
 
-      private Builder(
-          com.google.protobuf.GeneratedMessageV3.BuilderParent parent) {
+      private Builder(com.google.protobuf.GeneratedMessageV3.BuilderParent parent) {
         super(parent);
         maybeForceBuilderInitialization();
       }
+
       private void maybeForceBuilderInitialization() {
-        if (com.google.protobuf.GeneratedMessageV3
-                .alwaysUseFieldBuilders) {
-        }
+        if (com.google.protobuf.GeneratedMessageV3.alwaysUseFieldBuilders) {}
       }
+
       @java.lang.Override
       public Builder clear() {
         super.clear();
@@ -3781,9 +3794,9 @@ public final class Circuit {
       }
 
       @java.lang.Override
-      public com.google.protobuf.Descriptors.Descriptor
-          getDescriptorForType() {
-        return io.libp2p.protocol.circuit.pb.Circuit.internal_static_io_libp2p_protocol_circuit_pb_Reservation_descriptor;
+      public com.google.protobuf.Descriptors.Descriptor getDescriptorForType() {
+        return io.libp2p.protocol.circuit.pb.Circuit
+            .internal_static_io_libp2p_protocol_circuit_pb_Reservation_descriptor;
       }
 
       @java.lang.Override
@@ -3802,7 +3815,8 @@ public final class Circuit {
 
       @java.lang.Override
       public io.libp2p.protocol.circuit.pb.Circuit.Reservation buildPartial() {
-        io.libp2p.protocol.circuit.pb.Circuit.Reservation result = new io.libp2p.protocol.circuit.pb.Circuit.Reservation(this);
+        io.libp2p.protocol.circuit.pb.Circuit.Reservation result =
+            new io.libp2p.protocol.circuit.pb.Circuit.Reservation(this);
         int from_bitField0_ = bitField0_;
         int to_bitField0_ = 0;
         if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
@@ -3827,38 +3841,41 @@ public final class Circuit {
       public Builder clone() {
         return (Builder) super.clone();
       }
+
       @java.lang.Override
       public Builder setField(
-          com.google.protobuf.Descriptors.FieldDescriptor field,
-          java.lang.Object value) {
+          com.google.protobuf.Descriptors.FieldDescriptor field, java.lang.Object value) {
         return (Builder) super.setField(field, value);
       }
+
       @java.lang.Override
-      public Builder clearField(
-          com.google.protobuf.Descriptors.FieldDescriptor field) {
+      public Builder clearField(com.google.protobuf.Descriptors.FieldDescriptor field) {
         return (Builder) super.clearField(field);
       }
+
       @java.lang.Override
-      public Builder clearOneof(
-          com.google.protobuf.Descriptors.OneofDescriptor oneof) {
+      public Builder clearOneof(com.google.protobuf.Descriptors.OneofDescriptor oneof) {
         return (Builder) super.clearOneof(oneof);
       }
+
       @java.lang.Override
       public Builder setRepeatedField(
           com.google.protobuf.Descriptors.FieldDescriptor field,
-          int index, java.lang.Object value) {
+          int index,
+          java.lang.Object value) {
         return (Builder) super.setRepeatedField(field, index, value);
       }
+
       @java.lang.Override
       public Builder addRepeatedField(
-          com.google.protobuf.Descriptors.FieldDescriptor field,
-          java.lang.Object value) {
+          com.google.protobuf.Descriptors.FieldDescriptor field, java.lang.Object value) {
         return (Builder) super.addRepeatedField(field, value);
       }
+
       @java.lang.Override
       public Builder mergeFrom(com.google.protobuf.Message other) {
         if (other instanceof io.libp2p.protocol.circuit.pb.Circuit.Reservation) {
-          return mergeFrom((io.libp2p.protocol.circuit.pb.Circuit.Reservation)other);
+          return mergeFrom((io.libp2p.protocol.circuit.pb.Circuit.Reservation) other);
         } else {
           super.mergeFrom(other);
           return this;
@@ -3866,7 +3883,8 @@ public final class Circuit {
       }
 
       public Builder mergeFrom(io.libp2p.protocol.circuit.pb.Circuit.Reservation other) {
-        if (other == io.libp2p.protocol.circuit.pb.Circuit.Reservation.getDefaultInstance()) return this;
+        if (other == io.libp2p.protocol.circuit.pb.Circuit.Reservation.getDefaultInstance())
+          return this;
         if (other.hasExpire()) {
           setExpire(other.getExpire());
         }
@@ -3905,7 +3923,8 @@ public final class Circuit {
         try {
           parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
         } catch (com.google.protobuf.InvalidProtocolBufferException e) {
-          parsedMessage = (io.libp2p.protocol.circuit.pb.Circuit.Reservation) e.getUnfinishedMessage();
+          parsedMessage =
+              (io.libp2p.protocol.circuit.pb.Circuit.Reservation) e.getUnfinishedMessage();
           throw e.unwrapIOException();
         } finally {
           if (parsedMessage != null) {
@@ -3914,10 +3933,14 @@ public final class Circuit {
         }
         return this;
       }
+
       private int bitField0_;
 
-      private long expire_ ;
+      private long expire_;
+
       /**
+       *
+       *
        * <pre>
        * Unix expiration time (UTC)
        * </pre>
@@ -3927,7 +3950,10 @@ public final class Circuit {
       public boolean hasExpire() {
         return ((bitField0_ & 0x00000001) == 0x00000001);
       }
+
       /**
+       *
+       *
        * <pre>
        * Unix expiration time (UTC)
        * </pre>
@@ -3937,7 +3963,10 @@ public final class Circuit {
       public long getExpire() {
         return expire_;
       }
+
       /**
+       *
+       *
        * <pre>
        * Unix expiration time (UTC)
        * </pre>
@@ -3950,7 +3979,10 @@ public final class Circuit {
         onChanged();
         return this;
       }
+
       /**
+       *
+       *
        * <pre>
        * Unix expiration time (UTC)
        * </pre>
@@ -3964,25 +3996,32 @@ public final class Circuit {
         return this;
       }
 
-      private java.util.List<com.google.protobuf.ByteString> addrs_ = java.util.Collections.emptyList();
+      private java.util.List<com.google.protobuf.ByteString> addrs_ =
+          java.util.Collections.emptyList();
+
       private void ensureAddrsIsMutable() {
         if (!((bitField0_ & 0x00000002) == 0x00000002)) {
           addrs_ = new java.util.ArrayList<com.google.protobuf.ByteString>(addrs_);
           bitField0_ |= 0x00000002;
-         }
+        }
       }
+
       /**
+       *
+       *
        * <pre>
        * relay addrs for reserving peer
        * </pre>
        *
        * <code>repeated bytes addrs = 2;</code>
        */
-      public java.util.List<com.google.protobuf.ByteString>
-          getAddrsList() {
+      public java.util.List<com.google.protobuf.ByteString> getAddrsList() {
         return java.util.Collections.unmodifiableList(addrs_);
       }
+
       /**
+       *
+       *
        * <pre>
        * relay addrs for reserving peer
        * </pre>
@@ -3992,7 +4031,10 @@ public final class Circuit {
       public int getAddrsCount() {
         return addrs_.size();
       }
+
       /**
+       *
+       *
        * <pre>
        * relay addrs for reserving peer
        * </pre>
@@ -4002,24 +4044,29 @@ public final class Circuit {
       public com.google.protobuf.ByteString getAddrs(int index) {
         return addrs_.get(index);
       }
+
       /**
+       *
+       *
        * <pre>
        * relay addrs for reserving peer
        * </pre>
        *
        * <code>repeated bytes addrs = 2;</code>
        */
-      public Builder setAddrs(
-          int index, com.google.protobuf.ByteString value) {
+      public Builder setAddrs(int index, com.google.protobuf.ByteString value) {
         if (value == null) {
-    throw new NullPointerException();
-  }
-  ensureAddrsIsMutable();
+          throw new NullPointerException();
+        }
+        ensureAddrsIsMutable();
         addrs_.set(index, value);
         onChanged();
         return this;
       }
+
       /**
+       *
+       *
        * <pre>
        * relay addrs for reserving peer
        * </pre>
@@ -4028,14 +4075,17 @@ public final class Circuit {
        */
       public Builder addAddrs(com.google.protobuf.ByteString value) {
         if (value == null) {
-    throw new NullPointerException();
-  }
-  ensureAddrsIsMutable();
+          throw new NullPointerException();
+        }
+        ensureAddrsIsMutable();
         addrs_.add(value);
         onChanged();
         return this;
       }
+
       /**
+       *
+       *
        * <pre>
        * relay addrs for reserving peer
        * </pre>
@@ -4045,12 +4095,14 @@ public final class Circuit {
       public Builder addAllAddrs(
           java.lang.Iterable<? extends com.google.protobuf.ByteString> values) {
         ensureAddrsIsMutable();
-        com.google.protobuf.AbstractMessageLite.Builder.addAll(
-            values, addrs_);
+        com.google.protobuf.AbstractMessageLite.Builder.addAll(values, addrs_);
         onChanged();
         return this;
       }
+
       /**
+       *
+       *
        * <pre>
        * relay addrs for reserving peer
        * </pre>
@@ -4065,7 +4117,10 @@ public final class Circuit {
       }
 
       private com.google.protobuf.ByteString voucher_ = com.google.protobuf.ByteString.EMPTY;
+
       /**
+       *
+       *
        * <pre>
        * reservation voucher
        * </pre>
@@ -4075,7 +4130,10 @@ public final class Circuit {
       public boolean hasVoucher() {
         return ((bitField0_ & 0x00000004) == 0x00000004);
       }
+
       /**
+       *
+       *
        * <pre>
        * reservation voucher
        * </pre>
@@ -4085,7 +4143,10 @@ public final class Circuit {
       public com.google.protobuf.ByteString getVoucher() {
         return voucher_;
       }
+
       /**
+       *
+       *
        * <pre>
        * reservation voucher
        * </pre>
@@ -4094,14 +4155,17 @@ public final class Circuit {
        */
       public Builder setVoucher(com.google.protobuf.ByteString value) {
         if (value == null) {
-    throw new NullPointerException();
-  }
-  bitField0_ |= 0x00000004;
+          throw new NullPointerException();
+        }
+        bitField0_ |= 0x00000004;
         voucher_ = value;
         onChanged();
         return this;
       }
+
       /**
+       *
+       *
        * <pre>
        * reservation voucher
        * </pre>
@@ -4114,6 +4178,7 @@ public final class Circuit {
         onChanged();
         return this;
       }
+
       @java.lang.Override
       public final Builder setUnknownFields(
           final com.google.protobuf.UnknownFieldSet unknownFields) {
@@ -4126,12 +4191,12 @@ public final class Circuit {
         return super.mergeUnknownFields(unknownFields);
       }
 
-
       // @@protoc_insertion_point(builder_scope:io.libp2p.protocol.circuit.pb.Reservation)
     }
 
     // @@protoc_insertion_point(class_scope:io.libp2p.protocol.circuit.pb.Reservation)
     private static final io.libp2p.protocol.circuit.pb.Circuit.Reservation DEFAULT_INSTANCE;
+
     static {
       DEFAULT_INSTANCE = new io.libp2p.protocol.circuit.pb.Circuit.Reservation();
     }
@@ -4140,16 +4205,17 @@ public final class Circuit {
       return DEFAULT_INSTANCE;
     }
 
-    @java.lang.Deprecated public static final com.google.protobuf.Parser<Reservation>
-        PARSER = new com.google.protobuf.AbstractParser<Reservation>() {
-      @java.lang.Override
-      public Reservation parsePartialFrom(
-          com.google.protobuf.CodedInputStream input,
-          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-          throws com.google.protobuf.InvalidProtocolBufferException {
-        return new Reservation(input, extensionRegistry);
-      }
-    };
+    @java.lang.Deprecated
+    public static final com.google.protobuf.Parser<Reservation> PARSER =
+        new com.google.protobuf.AbstractParser<Reservation>() {
+          @java.lang.Override
+          public Reservation parsePartialFrom(
+              com.google.protobuf.CodedInputStream input,
+              com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+              throws com.google.protobuf.InvalidProtocolBufferException {
+            return new Reservation(input, extensionRegistry);
+          }
+        };
 
     public static com.google.protobuf.Parser<Reservation> parser() {
       return PARSER;
@@ -4164,14 +4230,16 @@ public final class Circuit {
     public io.libp2p.protocol.circuit.pb.Circuit.Reservation getDefaultInstanceForType() {
       return DEFAULT_INSTANCE;
     }
-
   }
 
-  public interface LimitOrBuilder extends
+  public interface LimitOrBuilder
+      extends
       // @@protoc_insertion_point(interface_extends:io.libp2p.protocol.circuit.pb.Limit)
       com.google.protobuf.MessageOrBuilder {
 
     /**
+     *
+     *
      * <pre>
      * seconds
      * </pre>
@@ -4179,7 +4247,10 @@ public final class Circuit {
      * <code>optional uint32 duration = 1;</code>
      */
     boolean hasDuration();
+
     /**
+     *
+     *
      * <pre>
      * seconds
      * </pre>
@@ -4189,6 +4260,8 @@ public final class Circuit {
     int getDuration();
 
     /**
+     *
+     *
      * <pre>
      * bytes
      * </pre>
@@ -4196,7 +4269,10 @@ public final class Circuit {
      * <code>optional uint64 data = 2;</code>
      */
     boolean hasData();
+
     /**
+     *
+     *
      * <pre>
      * bytes
      * </pre>
@@ -4205,28 +4281,29 @@ public final class Circuit {
      */
     long getData();
   }
-  /**
-   * Protobuf type {@code io.libp2p.protocol.circuit.pb.Limit}
-   */
-  public  static final class Limit extends
-      com.google.protobuf.GeneratedMessageV3 implements
+
+  /** Protobuf type {@code io.libp2p.protocol.circuit.pb.Limit} */
+  public static final class Limit extends com.google.protobuf.GeneratedMessageV3
+      implements
       // @@protoc_insertion_point(message_implements:io.libp2p.protocol.circuit.pb.Limit)
       LimitOrBuilder {
-  private static final long serialVersionUID = 0L;
+    private static final long serialVersionUID = 0L;
+
     // Use Limit.newBuilder() to construct.
     private Limit(com.google.protobuf.GeneratedMessageV3.Builder<?> builder) {
       super(builder);
     }
+
     private Limit() {
       duration_ = 0;
       data_ = 0L;
     }
 
     @java.lang.Override
-    public final com.google.protobuf.UnknownFieldSet
-    getUnknownFields() {
+    public final com.google.protobuf.UnknownFieldSet getUnknownFields() {
       return this.unknownFields;
     }
+
     private Limit(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
@@ -4246,52 +4323,59 @@ public final class Circuit {
             case 0:
               done = true;
               break;
-            case 8: {
-              bitField0_ |= 0x00000001;
-              duration_ = input.readUInt32();
-              break;
-            }
-            case 16: {
-              bitField0_ |= 0x00000002;
-              data_ = input.readUInt64();
-              break;
-            }
-            default: {
-              if (!parseUnknownField(
-                  input, unknownFields, extensionRegistry, tag)) {
-                done = true;
+            case 8:
+              {
+                bitField0_ |= 0x00000001;
+                duration_ = input.readUInt32();
+                break;
               }
-              break;
-            }
+            case 16:
+              {
+                bitField0_ |= 0x00000002;
+                data_ = input.readUInt64();
+                break;
+              }
+            default:
+              {
+                if (!parseUnknownField(input, unknownFields, extensionRegistry, tag)) {
+                  done = true;
+                }
+                break;
+              }
           }
         }
       } catch (com.google.protobuf.InvalidProtocolBufferException e) {
         throw e.setUnfinishedMessage(this);
       } catch (java.io.IOException e) {
-        throw new com.google.protobuf.InvalidProtocolBufferException(
-            e).setUnfinishedMessage(this);
+        throw new com.google.protobuf.InvalidProtocolBufferException(e).setUnfinishedMessage(this);
       } finally {
         this.unknownFields = unknownFields.build();
         makeExtensionsImmutable();
       }
     }
-    public static final com.google.protobuf.Descriptors.Descriptor
-        getDescriptor() {
-      return io.libp2p.protocol.circuit.pb.Circuit.internal_static_io_libp2p_protocol_circuit_pb_Limit_descriptor;
+
+    public static final com.google.protobuf.Descriptors.Descriptor getDescriptor() {
+      return io.libp2p.protocol.circuit.pb.Circuit
+          .internal_static_io_libp2p_protocol_circuit_pb_Limit_descriptor;
     }
 
     @java.lang.Override
     protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
         internalGetFieldAccessorTable() {
-      return io.libp2p.protocol.circuit.pb.Circuit.internal_static_io_libp2p_protocol_circuit_pb_Limit_fieldAccessorTable
+      return io.libp2p.protocol.circuit.pb.Circuit
+          .internal_static_io_libp2p_protocol_circuit_pb_Limit_fieldAccessorTable
           .ensureFieldAccessorsInitialized(
-              io.libp2p.protocol.circuit.pb.Circuit.Limit.class, io.libp2p.protocol.circuit.pb.Circuit.Limit.Builder.class);
+              io.libp2p.protocol.circuit.pb.Circuit.Limit.class,
+              io.libp2p.protocol.circuit.pb.Circuit.Limit.Builder.class);
     }
 
     private int bitField0_;
     public static final int DURATION_FIELD_NUMBER = 1;
     private int duration_;
+
     /**
+     *
+     *
      * <pre>
      * seconds
      * </pre>
@@ -4301,7 +4385,10 @@ public final class Circuit {
     public boolean hasDuration() {
       return ((bitField0_ & 0x00000001) == 0x00000001);
     }
+
     /**
+     *
+     *
      * <pre>
      * seconds
      * </pre>
@@ -4314,7 +4401,10 @@ public final class Circuit {
 
     public static final int DATA_FIELD_NUMBER = 2;
     private long data_;
+
     /**
+     *
+     *
      * <pre>
      * bytes
      * </pre>
@@ -4324,7 +4414,10 @@ public final class Circuit {
     public boolean hasData() {
       return ((bitField0_ & 0x00000002) == 0x00000002);
     }
+
     /**
+     *
+     *
      * <pre>
      * bytes
      * </pre>
@@ -4336,6 +4429,7 @@ public final class Circuit {
     }
 
     private byte memoizedIsInitialized = -1;
+
     @java.lang.Override
     public final boolean isInitialized() {
       byte isInitialized = memoizedIsInitialized;
@@ -4347,8 +4441,7 @@ public final class Circuit {
     }
 
     @java.lang.Override
-    public void writeTo(com.google.protobuf.CodedOutputStream output)
-                        throws java.io.IOException {
+    public void writeTo(com.google.protobuf.CodedOutputStream output) throws java.io.IOException {
       if (((bitField0_ & 0x00000001) == 0x00000001)) {
         output.writeUInt32(1, duration_);
       }
@@ -4365,12 +4458,10 @@ public final class Circuit {
 
       size = 0;
       if (((bitField0_ & 0x00000001) == 0x00000001)) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeUInt32Size(1, duration_);
+        size += com.google.protobuf.CodedOutputStream.computeUInt32Size(1, duration_);
       }
       if (((bitField0_ & 0x00000002) == 0x00000002)) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeUInt64Size(2, data_);
+        size += com.google.protobuf.CodedOutputStream.computeUInt64Size(2, data_);
       }
       size += unknownFields.getSerializedSize();
       memoizedSize = size;
@@ -4380,23 +4471,22 @@ public final class Circuit {
     @java.lang.Override
     public boolean equals(final java.lang.Object obj) {
       if (obj == this) {
-       return true;
+        return true;
       }
       if (!(obj instanceof io.libp2p.protocol.circuit.pb.Circuit.Limit)) {
         return super.equals(obj);
       }
-      io.libp2p.protocol.circuit.pb.Circuit.Limit other = (io.libp2p.protocol.circuit.pb.Circuit.Limit) obj;
+      io.libp2p.protocol.circuit.pb.Circuit.Limit other =
+          (io.libp2p.protocol.circuit.pb.Circuit.Limit) obj;
 
       boolean result = true;
       result = result && (hasDuration() == other.hasDuration());
       if (hasDuration()) {
-        result = result && (getDuration()
-            == other.getDuration());
+        result = result && (getDuration() == other.getDuration());
       }
       result = result && (hasData() == other.hasData());
       if (hasData()) {
-        result = result && (getData()
-            == other.getData());
+        result = result && (getData() == other.getData());
       }
       result = result && unknownFields.equals(other.unknownFields);
       return result;
@@ -4415,96 +4505,101 @@ public final class Circuit {
       }
       if (hasData()) {
         hash = (37 * hash) + DATA_FIELD_NUMBER;
-        hash = (53 * hash) + com.google.protobuf.Internal.hashLong(
-            getData());
+        hash = (53 * hash) + com.google.protobuf.Internal.hashLong(getData());
       }
       hash = (29 * hash) + unknownFields.hashCode();
       memoizedHashCode = hash;
       return hash;
     }
 
-    public static io.libp2p.protocol.circuit.pb.Circuit.Limit parseFrom(
-        java.nio.ByteBuffer data)
+    public static io.libp2p.protocol.circuit.pb.Circuit.Limit parseFrom(java.nio.ByteBuffer data)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data);
     }
+
     public static io.libp2p.protocol.circuit.pb.Circuit.Limit parseFrom(
-        java.nio.ByteBuffer data,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        java.nio.ByteBuffer data, com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data, extensionRegistry);
     }
+
     public static io.libp2p.protocol.circuit.pb.Circuit.Limit parseFrom(
         com.google.protobuf.ByteString data)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data);
     }
+
     public static io.libp2p.protocol.circuit.pb.Circuit.Limit parseFrom(
         com.google.protobuf.ByteString data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data, extensionRegistry);
     }
+
     public static io.libp2p.protocol.circuit.pb.Circuit.Limit parseFrom(byte[] data)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data);
     }
+
     public static io.libp2p.protocol.circuit.pb.Circuit.Limit parseFrom(
-        byte[] data,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        byte[] data, com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data, extensionRegistry);
     }
+
     public static io.libp2p.protocol.circuit.pb.Circuit.Limit parseFrom(java.io.InputStream input)
         throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseWithIOException(PARSER, input);
+      return com.google.protobuf.GeneratedMessageV3.parseWithIOException(PARSER, input);
     }
+
     public static io.libp2p.protocol.circuit.pb.Circuit.Limit parseFrom(
-        java.io.InputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        java.io.InputStream input, com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseWithIOException(PARSER, input, extensionRegistry);
+      return com.google.protobuf.GeneratedMessageV3.parseWithIOException(
+          PARSER, input, extensionRegistry);
     }
-    public static io.libp2p.protocol.circuit.pb.Circuit.Limit parseDelimitedFrom(java.io.InputStream input)
-        throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseDelimitedWithIOException(PARSER, input);
-    }
+
     public static io.libp2p.protocol.circuit.pb.Circuit.Limit parseDelimitedFrom(
-        java.io.InputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseDelimitedWithIOException(PARSER, input, extensionRegistry);
+        java.io.InputStream input) throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessageV3.parseDelimitedWithIOException(PARSER, input);
     }
+
+    public static io.libp2p.protocol.circuit.pb.Circuit.Limit parseDelimitedFrom(
+        java.io.InputStream input, com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessageV3.parseDelimitedWithIOException(
+          PARSER, input, extensionRegistry);
+    }
+
     public static io.libp2p.protocol.circuit.pb.Circuit.Limit parseFrom(
-        com.google.protobuf.CodedInputStream input)
-        throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseWithIOException(PARSER, input);
+        com.google.protobuf.CodedInputStream input) throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessageV3.parseWithIOException(PARSER, input);
     }
+
     public static io.libp2p.protocol.circuit.pb.Circuit.Limit parseFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseWithIOException(PARSER, input, extensionRegistry);
+      return com.google.protobuf.GeneratedMessageV3.parseWithIOException(
+          PARSER, input, extensionRegistry);
     }
 
     @java.lang.Override
-    public Builder newBuilderForType() { return newBuilder(); }
+    public Builder newBuilderForType() {
+      return newBuilder();
+    }
+
     public static Builder newBuilder() {
       return DEFAULT_INSTANCE.toBuilder();
     }
+
     public static Builder newBuilder(io.libp2p.protocol.circuit.pb.Circuit.Limit prototype) {
       return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
     }
+
     @java.lang.Override
     public Builder toBuilder() {
-      return this == DEFAULT_INSTANCE
-          ? new Builder() : new Builder().mergeFrom(this);
+      return this == DEFAULT_INSTANCE ? new Builder() : new Builder().mergeFrom(this);
     }
 
     @java.lang.Override
@@ -4513,24 +4608,26 @@ public final class Circuit {
       Builder builder = new Builder(parent);
       return builder;
     }
-    /**
-     * Protobuf type {@code io.libp2p.protocol.circuit.pb.Limit}
-     */
-    public static final class Builder extends
-        com.google.protobuf.GeneratedMessageV3.Builder<Builder> implements
+
+    /** Protobuf type {@code io.libp2p.protocol.circuit.pb.Limit} */
+    public static final class Builder
+        extends com.google.protobuf.GeneratedMessageV3.Builder<Builder>
+        implements
         // @@protoc_insertion_point(builder_implements:io.libp2p.protocol.circuit.pb.Limit)
         io.libp2p.protocol.circuit.pb.Circuit.LimitOrBuilder {
-      public static final com.google.protobuf.Descriptors.Descriptor
-          getDescriptor() {
-        return io.libp2p.protocol.circuit.pb.Circuit.internal_static_io_libp2p_protocol_circuit_pb_Limit_descriptor;
+      public static final com.google.protobuf.Descriptors.Descriptor getDescriptor() {
+        return io.libp2p.protocol.circuit.pb.Circuit
+            .internal_static_io_libp2p_protocol_circuit_pb_Limit_descriptor;
       }
 
       @java.lang.Override
       protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
           internalGetFieldAccessorTable() {
-        return io.libp2p.protocol.circuit.pb.Circuit.internal_static_io_libp2p_protocol_circuit_pb_Limit_fieldAccessorTable
+        return io.libp2p.protocol.circuit.pb.Circuit
+            .internal_static_io_libp2p_protocol_circuit_pb_Limit_fieldAccessorTable
             .ensureFieldAccessorsInitialized(
-                io.libp2p.protocol.circuit.pb.Circuit.Limit.class, io.libp2p.protocol.circuit.pb.Circuit.Limit.Builder.class);
+                io.libp2p.protocol.circuit.pb.Circuit.Limit.class,
+                io.libp2p.protocol.circuit.pb.Circuit.Limit.Builder.class);
       }
 
       // Construct using io.libp2p.protocol.circuit.pb.Circuit.Limit.newBuilder()
@@ -4538,16 +4635,15 @@ public final class Circuit {
         maybeForceBuilderInitialization();
       }
 
-      private Builder(
-          com.google.protobuf.GeneratedMessageV3.BuilderParent parent) {
+      private Builder(com.google.protobuf.GeneratedMessageV3.BuilderParent parent) {
         super(parent);
         maybeForceBuilderInitialization();
       }
+
       private void maybeForceBuilderInitialization() {
-        if (com.google.protobuf.GeneratedMessageV3
-                .alwaysUseFieldBuilders) {
-        }
+        if (com.google.protobuf.GeneratedMessageV3.alwaysUseFieldBuilders) {}
       }
+
       @java.lang.Override
       public Builder clear() {
         super.clear();
@@ -4559,9 +4655,9 @@ public final class Circuit {
       }
 
       @java.lang.Override
-      public com.google.protobuf.Descriptors.Descriptor
-          getDescriptorForType() {
-        return io.libp2p.protocol.circuit.pb.Circuit.internal_static_io_libp2p_protocol_circuit_pb_Limit_descriptor;
+      public com.google.protobuf.Descriptors.Descriptor getDescriptorForType() {
+        return io.libp2p.protocol.circuit.pb.Circuit
+            .internal_static_io_libp2p_protocol_circuit_pb_Limit_descriptor;
       }
 
       @java.lang.Override
@@ -4580,7 +4676,8 @@ public final class Circuit {
 
       @java.lang.Override
       public io.libp2p.protocol.circuit.pb.Circuit.Limit buildPartial() {
-        io.libp2p.protocol.circuit.pb.Circuit.Limit result = new io.libp2p.protocol.circuit.pb.Circuit.Limit(this);
+        io.libp2p.protocol.circuit.pb.Circuit.Limit result =
+            new io.libp2p.protocol.circuit.pb.Circuit.Limit(this);
         int from_bitField0_ = bitField0_;
         int to_bitField0_ = 0;
         if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
@@ -4600,38 +4697,41 @@ public final class Circuit {
       public Builder clone() {
         return (Builder) super.clone();
       }
+
       @java.lang.Override
       public Builder setField(
-          com.google.protobuf.Descriptors.FieldDescriptor field,
-          java.lang.Object value) {
+          com.google.protobuf.Descriptors.FieldDescriptor field, java.lang.Object value) {
         return (Builder) super.setField(field, value);
       }
+
       @java.lang.Override
-      public Builder clearField(
-          com.google.protobuf.Descriptors.FieldDescriptor field) {
+      public Builder clearField(com.google.protobuf.Descriptors.FieldDescriptor field) {
         return (Builder) super.clearField(field);
       }
+
       @java.lang.Override
-      public Builder clearOneof(
-          com.google.protobuf.Descriptors.OneofDescriptor oneof) {
+      public Builder clearOneof(com.google.protobuf.Descriptors.OneofDescriptor oneof) {
         return (Builder) super.clearOneof(oneof);
       }
+
       @java.lang.Override
       public Builder setRepeatedField(
           com.google.protobuf.Descriptors.FieldDescriptor field,
-          int index, java.lang.Object value) {
+          int index,
+          java.lang.Object value) {
         return (Builder) super.setRepeatedField(field, index, value);
       }
+
       @java.lang.Override
       public Builder addRepeatedField(
-          com.google.protobuf.Descriptors.FieldDescriptor field,
-          java.lang.Object value) {
+          com.google.protobuf.Descriptors.FieldDescriptor field, java.lang.Object value) {
         return (Builder) super.addRepeatedField(field, value);
       }
+
       @java.lang.Override
       public Builder mergeFrom(com.google.protobuf.Message other) {
         if (other instanceof io.libp2p.protocol.circuit.pb.Circuit.Limit) {
-          return mergeFrom((io.libp2p.protocol.circuit.pb.Circuit.Limit)other);
+          return mergeFrom((io.libp2p.protocol.circuit.pb.Circuit.Limit) other);
         } else {
           super.mergeFrom(other);
           return this;
@@ -4674,10 +4774,14 @@ public final class Circuit {
         }
         return this;
       }
+
       private int bitField0_;
 
-      private int duration_ ;
+      private int duration_;
+
       /**
+       *
+       *
        * <pre>
        * seconds
        * </pre>
@@ -4687,7 +4791,10 @@ public final class Circuit {
       public boolean hasDuration() {
         return ((bitField0_ & 0x00000001) == 0x00000001);
       }
+
       /**
+       *
+       *
        * <pre>
        * seconds
        * </pre>
@@ -4697,7 +4804,10 @@ public final class Circuit {
       public int getDuration() {
         return duration_;
       }
+
       /**
+       *
+       *
        * <pre>
        * seconds
        * </pre>
@@ -4710,7 +4820,10 @@ public final class Circuit {
         onChanged();
         return this;
       }
+
       /**
+       *
+       *
        * <pre>
        * seconds
        * </pre>
@@ -4724,8 +4837,11 @@ public final class Circuit {
         return this;
       }
 
-      private long data_ ;
+      private long data_;
+
       /**
+       *
+       *
        * <pre>
        * bytes
        * </pre>
@@ -4735,7 +4851,10 @@ public final class Circuit {
       public boolean hasData() {
         return ((bitField0_ & 0x00000002) == 0x00000002);
       }
+
       /**
+       *
+       *
        * <pre>
        * bytes
        * </pre>
@@ -4745,7 +4864,10 @@ public final class Circuit {
       public long getData() {
         return data_;
       }
+
       /**
+       *
+       *
        * <pre>
        * bytes
        * </pre>
@@ -4758,7 +4880,10 @@ public final class Circuit {
         onChanged();
         return this;
       }
+
       /**
+       *
+       *
        * <pre>
        * bytes
        * </pre>
@@ -4771,6 +4896,7 @@ public final class Circuit {
         onChanged();
         return this;
       }
+
       @java.lang.Override
       public final Builder setUnknownFields(
           final com.google.protobuf.UnknownFieldSet unknownFields) {
@@ -4783,12 +4909,12 @@ public final class Circuit {
         return super.mergeUnknownFields(unknownFields);
       }
 
-
       // @@protoc_insertion_point(builder_scope:io.libp2p.protocol.circuit.pb.Limit)
     }
 
     // @@protoc_insertion_point(class_scope:io.libp2p.protocol.circuit.pb.Limit)
     private static final io.libp2p.protocol.circuit.pb.Circuit.Limit DEFAULT_INSTANCE;
+
     static {
       DEFAULT_INSTANCE = new io.libp2p.protocol.circuit.pb.Circuit.Limit();
     }
@@ -4797,16 +4923,17 @@ public final class Circuit {
       return DEFAULT_INSTANCE;
     }
 
-    @java.lang.Deprecated public static final com.google.protobuf.Parser<Limit>
-        PARSER = new com.google.protobuf.AbstractParser<Limit>() {
-      @java.lang.Override
-      public Limit parsePartialFrom(
-          com.google.protobuf.CodedInputStream input,
-          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-          throws com.google.protobuf.InvalidProtocolBufferException {
-        return new Limit(input, extensionRegistry);
-      }
-    };
+    @java.lang.Deprecated
+    public static final com.google.protobuf.Parser<Limit> PARSER =
+        new com.google.protobuf.AbstractParser<Limit>() {
+          @java.lang.Override
+          public Limit parsePartialFrom(
+              com.google.protobuf.CodedInputStream input,
+              com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+              throws com.google.protobuf.InvalidProtocolBufferException {
+            return new Limit(input, extensionRegistry);
+          }
+        };
 
     public static com.google.protobuf.Parser<Limit> parser() {
       return PARSER;
@@ -4821,112 +4948,114 @@ public final class Circuit {
     public io.libp2p.protocol.circuit.pb.Circuit.Limit getDefaultInstanceForType() {
       return DEFAULT_INSTANCE;
     }
-
   }
 
   private static final com.google.protobuf.Descriptors.Descriptor
-    internal_static_io_libp2p_protocol_circuit_pb_HopMessage_descriptor;
-  private static final 
-    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
+      internal_static_io_libp2p_protocol_circuit_pb_HopMessage_descriptor;
+  private static final com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_io_libp2p_protocol_circuit_pb_HopMessage_fieldAccessorTable;
   private static final com.google.protobuf.Descriptors.Descriptor
-    internal_static_io_libp2p_protocol_circuit_pb_StopMessage_descriptor;
-  private static final 
-    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
+      internal_static_io_libp2p_protocol_circuit_pb_StopMessage_descriptor;
+  private static final com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_io_libp2p_protocol_circuit_pb_StopMessage_fieldAccessorTable;
   private static final com.google.protobuf.Descriptors.Descriptor
-    internal_static_io_libp2p_protocol_circuit_pb_Peer_descriptor;
-  private static final 
-    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
+      internal_static_io_libp2p_protocol_circuit_pb_Peer_descriptor;
+  private static final com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_io_libp2p_protocol_circuit_pb_Peer_fieldAccessorTable;
   private static final com.google.protobuf.Descriptors.Descriptor
-    internal_static_io_libp2p_protocol_circuit_pb_Reservation_descriptor;
-  private static final 
-    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
+      internal_static_io_libp2p_protocol_circuit_pb_Reservation_descriptor;
+  private static final com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_io_libp2p_protocol_circuit_pb_Reservation_fieldAccessorTable;
   private static final com.google.protobuf.Descriptors.Descriptor
-    internal_static_io_libp2p_protocol_circuit_pb_Limit_descriptor;
-  private static final 
-    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
+      internal_static_io_libp2p_protocol_circuit_pb_Limit_descriptor;
+  private static final com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_io_libp2p_protocol_circuit_pb_Limit_fieldAccessorTable;
 
-  public static com.google.protobuf.Descriptors.FileDescriptor
-      getDescriptor() {
+  public static com.google.protobuf.Descriptors.FileDescriptor getDescriptor() {
     return descriptor;
   }
-  private static  com.google.protobuf.Descriptors.FileDescriptor
-      descriptor;
+
+  private static com.google.protobuf.Descriptors.FileDescriptor descriptor;
+
   static {
     java.lang.String[] descriptorData = {
-      "\n\rcircuit.proto\022\037io.libp2p.protocol.ci" +
-      "rcuit.pb\"\342\002\n\nHopMessage\022>\n\004type\030\001 \002(\01620." +
-      "io.libp2p.protocol.circuit.pb.HopMessa" +
-      "ge.Type\0223\n\004peer\030\002 \001(\0132%.io.libp2p.prot" +
-      "ocol.circuit.pb.Peer\022A\n\013reservation\030\003 \001(" +
-      "\0132,.io.libp2p.protocol.circuit.pb.Rese" +
-      "rvation\0225\n\005limit\030\004 \001(\0132&.io.libp2p.pro" +
-      "tocol.circuit.pb.Limit\0227\n\006status\030\005 \001(\0162\'" +
-      ".io.libp2p.protocol.circuit.pb.Status\"" +
-      ",\n\004Type\022\013\n\007RESERVE\020\000\022\013\n\007CONNECT\020\001\022\n\n\006STA" +
-      "TUS\020\002\"\224\002\n\013StopMessage\022?\n\004type\030\001 \002(\01621.or" +
-      "g.peergos.protocol.circuit.pb.StopMessag" +
-      "e.Type\0223\n\004peer\030\002 \001(\0132%.io.libp2p.proto" +
-      "col.circuit.pb.Peer\0225\n\005limit\030\003 \001(\0132&.org" +
-      ".peergos.protocol.circuit.pb.Limit\0227\n\006st" +
-      "atus\030\004 \001(\0162\'.io.libp2p.protocol.circui" +
-      "t.pb.Status\"\037\n\004Type\022\013\n\007CONNECT\020\000\022\n\n\006STAT" +
-      "US\020\001\"!\n\004Peer\022\n\n\002id\030\001 \002(\014\022\r\n\005addrs\030\002 \003(\014\"" +
-      "=\n\013Reservation\022\016\n\006expire\030\001 \002(\004\022\r\n\005addrs\030" +
-      "\002 \003(\014\022\017\n\007voucher\030\003 \001(\014\"\'\n\005Limit\022\020\n\010durat" +
-      "ion\030\001 \001(\r\022\014\n\004data\030\002 \001(\004*\276\001\n\006Status\022\006\n\002OK" +
-      "\020d\022\030\n\023RESERVATION_REFUSED\020\310\001\022\034\n\027RESOURCE" +
-      "_LIMIT_EXCEEDED\020\311\001\022\026\n\021PERMISSION_DENIED\020" +
-      "\312\001\022\026\n\021CONNECTION_FAILED\020\313\001\022\023\n\016NO_RESERVA" +
-      "TION\020\314\001\022\026\n\021MALFORMED_MESSAGE\020\220\003\022\027\n\022UNEXP" +
-      "ECTED_MESSAGE\020\221\003"
+      "\n\rcircuit.proto\022\037io.libp2p.protocol.ci"
+          + "rcuit.pb\"\342\002\n\nHopMessage\022>\n\004type\030\001 \002(\01620."
+          + "io.libp2p.protocol.circuit.pb.HopMessa"
+          + "ge.Type\0223\n\004peer\030\002 \001(\0132%.io.libp2p.prot"
+          + "ocol.circuit.pb.Peer\022A\n\013reservation\030\003 \001("
+          + "\0132,.io.libp2p.protocol.circuit.pb.Rese"
+          + "rvation\0225\n\005limit\030\004 \001(\0132&.io.libp2p.pro"
+          + "tocol.circuit.pb.Limit\0227\n\006status\030\005 \001(\0162\'"
+          + ".io.libp2p.protocol.circuit.pb.Status\""
+          + ",\n\004Type\022\013\n\007RESERVE\020\000\022\013\n\007CONNECT\020\001\022\n\n\006STA"
+          + "TUS\020\002\"\224\002\n\013StopMessage\022?\n\004type\030\001 \002(\01621.or"
+          + "g.peergos.protocol.circuit.pb.StopMessag"
+          + "e.Type\0223\n\004peer\030\002 \001(\0132%.io.libp2p.proto"
+          + "col.circuit.pb.Peer\0225\n\005limit\030\003 \001(\0132&.org"
+          + ".peergos.protocol.circuit.pb.Limit\0227\n\006st"
+          + "atus\030\004 \001(\0162\'.io.libp2p.protocol.circui"
+          + "t.pb.Status\"\037\n\004Type\022\013\n\007CONNECT\020\000\022\n\n\006STAT"
+          + "US\020\001\"!\n\004Peer\022\n\n\002id\030\001 \002(\014\022\r\n\005addrs\030\002 \003(\014\""
+          + "=\n\013Reservation\022\016\n\006expire\030\001 \002(\004\022\r\n\005addrs\030"
+          + "\002 \003(\014\022\017\n\007voucher\030\003 \001(\014\"\'\n\005Limit\022\020\n\010durat"
+          + "ion\030\001 \001(\r\022\014\n\004data\030\002 \001(\004*\276\001\n\006Status\022\006\n\002OK"
+          + "\020d\022\030\n\023RESERVATION_REFUSED\020\310\001\022\034\n\027RESOURCE"
+          + "_LIMIT_EXCEEDED\020\311\001\022\026\n\021PERMISSION_DENIED\020"
+          + "\312\001\022\026\n\021CONNECTION_FAILED\020\313\001\022\023\n\016NO_RESERVA"
+          + "TION\020\314\001\022\026\n\021MALFORMED_MESSAGE\020\220\003\022\027\n\022UNEXP"
+          + "ECTED_MESSAGE\020\221\003"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
-        new com.google.protobuf.Descriptors.FileDescriptor.    InternalDescriptorAssigner() {
+        new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
           public com.google.protobuf.ExtensionRegistry assignDescriptors(
               com.google.protobuf.Descriptors.FileDescriptor root) {
             descriptor = root;
             return null;
           }
         };
-    com.google.protobuf.Descriptors.FileDescriptor
-      .internalBuildGeneratedFileFrom(descriptorData,
-        new com.google.protobuf.Descriptors.FileDescriptor[] {
-        }, assigner);
+    com.google.protobuf.Descriptors.FileDescriptor.internalBuildGeneratedFileFrom(
+        descriptorData, new com.google.protobuf.Descriptors.FileDescriptor[] {}, assigner);
     internal_static_io_libp2p_protocol_circuit_pb_HopMessage_descriptor =
-      getDescriptor().getMessageTypes().get(0);
-    internal_static_io_libp2p_protocol_circuit_pb_HopMessage_fieldAccessorTable = new
-      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
-        internal_static_io_libp2p_protocol_circuit_pb_HopMessage_descriptor,
-        new java.lang.String[] { "Type", "Peer", "Reservation", "Limit", "Status", });
+        getDescriptor().getMessageTypes().get(0);
+    internal_static_io_libp2p_protocol_circuit_pb_HopMessage_fieldAccessorTable =
+        new com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
+            internal_static_io_libp2p_protocol_circuit_pb_HopMessage_descriptor,
+            new java.lang.String[] {
+              "Type", "Peer", "Reservation", "Limit", "Status",
+            });
     internal_static_io_libp2p_protocol_circuit_pb_StopMessage_descriptor =
-      getDescriptor().getMessageTypes().get(1);
-    internal_static_io_libp2p_protocol_circuit_pb_StopMessage_fieldAccessorTable = new
-      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
-        internal_static_io_libp2p_protocol_circuit_pb_StopMessage_descriptor,
-        new java.lang.String[] { "Type", "Peer", "Limit", "Status", });
+        getDescriptor().getMessageTypes().get(1);
+    internal_static_io_libp2p_protocol_circuit_pb_StopMessage_fieldAccessorTable =
+        new com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
+            internal_static_io_libp2p_protocol_circuit_pb_StopMessage_descriptor,
+            new java.lang.String[] {
+              "Type", "Peer", "Limit", "Status",
+            });
     internal_static_io_libp2p_protocol_circuit_pb_Peer_descriptor =
-      getDescriptor().getMessageTypes().get(2);
-    internal_static_io_libp2p_protocol_circuit_pb_Peer_fieldAccessorTable = new
-      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
-        internal_static_io_libp2p_protocol_circuit_pb_Peer_descriptor,
-        new java.lang.String[] { "Id", "Addrs", });
+        getDescriptor().getMessageTypes().get(2);
+    internal_static_io_libp2p_protocol_circuit_pb_Peer_fieldAccessorTable =
+        new com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
+            internal_static_io_libp2p_protocol_circuit_pb_Peer_descriptor,
+            new java.lang.String[] {
+              "Id", "Addrs",
+            });
     internal_static_io_libp2p_protocol_circuit_pb_Reservation_descriptor =
-      getDescriptor().getMessageTypes().get(3);
-    internal_static_io_libp2p_protocol_circuit_pb_Reservation_fieldAccessorTable = new
-      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
-        internal_static_io_libp2p_protocol_circuit_pb_Reservation_descriptor,
-        new java.lang.String[] { "Expire", "Addrs", "Voucher", });
+        getDescriptor().getMessageTypes().get(3);
+    internal_static_io_libp2p_protocol_circuit_pb_Reservation_fieldAccessorTable =
+        new com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
+            internal_static_io_libp2p_protocol_circuit_pb_Reservation_descriptor,
+            new java.lang.String[] {
+              "Expire", "Addrs", "Voucher",
+            });
     internal_static_io_libp2p_protocol_circuit_pb_Limit_descriptor =
-      getDescriptor().getMessageTypes().get(4);
-    internal_static_io_libp2p_protocol_circuit_pb_Limit_fieldAccessorTable = new
-      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
-        internal_static_io_libp2p_protocol_circuit_pb_Limit_descriptor,
-        new java.lang.String[] { "Duration", "Data", });
+        getDescriptor().getMessageTypes().get(4);
+    internal_static_io_libp2p_protocol_circuit_pb_Limit_fieldAccessorTable =
+        new com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
+            internal_static_io_libp2p_protocol_circuit_pb_Limit_descriptor,
+            new java.lang.String[] {
+              "Duration", "Data",
+            });
   }
 
   // @@protoc_insertion_point(outer_class_scope)

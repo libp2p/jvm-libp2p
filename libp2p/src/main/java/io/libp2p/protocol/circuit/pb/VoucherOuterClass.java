@@ -5,58 +5,49 @@ package io.libp2p.protocol.circuit.pb;
 
 public final class VoucherOuterClass {
   private VoucherOuterClass() {}
-  public static void registerAllExtensions(
-      com.google.protobuf.ExtensionRegistryLite registry) {
+
+  public static void registerAllExtensions(com.google.protobuf.ExtensionRegistryLite registry) {}
+
+  public static void registerAllExtensions(com.google.protobuf.ExtensionRegistry registry) {
+    registerAllExtensions((com.google.protobuf.ExtensionRegistryLite) registry);
   }
 
-  public static void registerAllExtensions(
-      com.google.protobuf.ExtensionRegistry registry) {
-    registerAllExtensions(
-        (com.google.protobuf.ExtensionRegistryLite) registry);
-  }
-  public interface VoucherOrBuilder extends
+  public interface VoucherOrBuilder
+      extends
       // @@protoc_insertion_point(interface_extends:io.libp2p.protocol.circuit.pb.Voucher)
       com.google.protobuf.MessageOrBuilder {
 
-    /**
-     * <code>required bytes relay = 1;</code>
-     */
+    /** <code>required bytes relay = 1;</code> */
     boolean hasRelay();
-    /**
-     * <code>required bytes relay = 1;</code>
-     */
+
+    /** <code>required bytes relay = 1;</code> */
     com.google.protobuf.ByteString getRelay();
 
-    /**
-     * <code>required bytes peer = 2;</code>
-     */
+    /** <code>required bytes peer = 2;</code> */
     boolean hasPeer();
-    /**
-     * <code>required bytes peer = 2;</code>
-     */
+
+    /** <code>required bytes peer = 2;</code> */
     com.google.protobuf.ByteString getPeer();
 
-    /**
-     * <code>required uint64 expiration = 3;</code>
-     */
+    /** <code>required uint64 expiration = 3;</code> */
     boolean hasExpiration();
-    /**
-     * <code>required uint64 expiration = 3;</code>
-     */
+
+    /** <code>required uint64 expiration = 3;</code> */
     long getExpiration();
   }
-  /**
-   * Protobuf type {@code io.libp2p.protocol.circuit.pb.Voucher}
-   */
-  public  static final class Voucher extends
-      com.google.protobuf.GeneratedMessageV3 implements
+
+  /** Protobuf type {@code io.libp2p.protocol.circuit.pb.Voucher} */
+  public static final class Voucher extends com.google.protobuf.GeneratedMessageV3
+      implements
       // @@protoc_insertion_point(message_implements:io.libp2p.protocol.circuit.pb.Voucher)
       VoucherOrBuilder {
-  private static final long serialVersionUID = 0L;
+    private static final long serialVersionUID = 0L;
+
     // Use Voucher.newBuilder() to construct.
     private Voucher(com.google.protobuf.GeneratedMessageV3.Builder<?> builder) {
       super(builder);
     }
+
     private Voucher() {
       relay_ = com.google.protobuf.ByteString.EMPTY;
       peer_ = com.google.protobuf.ByteString.EMPTY;
@@ -64,10 +55,10 @@ public final class VoucherOuterClass {
     }
 
     @java.lang.Override
-    public final com.google.protobuf.UnknownFieldSet
-    getUnknownFields() {
+    public final com.google.protobuf.UnknownFieldSet getUnknownFields() {
       return this.unknownFields;
     }
+
     private Voucher(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
@@ -87,100 +78,100 @@ public final class VoucherOuterClass {
             case 0:
               done = true;
               break;
-            case 10: {
-              bitField0_ |= 0x00000001;
-              relay_ = input.readBytes();
-              break;
-            }
-            case 18: {
-              bitField0_ |= 0x00000002;
-              peer_ = input.readBytes();
-              break;
-            }
-            case 24: {
-              bitField0_ |= 0x00000004;
-              expiration_ = input.readUInt64();
-              break;
-            }
-            default: {
-              if (!parseUnknownField(
-                  input, unknownFields, extensionRegistry, tag)) {
-                done = true;
+            case 10:
+              {
+                bitField0_ |= 0x00000001;
+                relay_ = input.readBytes();
+                break;
               }
-              break;
-            }
+            case 18:
+              {
+                bitField0_ |= 0x00000002;
+                peer_ = input.readBytes();
+                break;
+              }
+            case 24:
+              {
+                bitField0_ |= 0x00000004;
+                expiration_ = input.readUInt64();
+                break;
+              }
+            default:
+              {
+                if (!parseUnknownField(input, unknownFields, extensionRegistry, tag)) {
+                  done = true;
+                }
+                break;
+              }
           }
         }
       } catch (com.google.protobuf.InvalidProtocolBufferException e) {
         throw e.setUnfinishedMessage(this);
       } catch (java.io.IOException e) {
-        throw new com.google.protobuf.InvalidProtocolBufferException(
-            e).setUnfinishedMessage(this);
+        throw new com.google.protobuf.InvalidProtocolBufferException(e).setUnfinishedMessage(this);
       } finally {
         this.unknownFields = unknownFields.build();
         makeExtensionsImmutable();
       }
     }
-    public static final com.google.protobuf.Descriptors.Descriptor
-        getDescriptor() {
-      return io.libp2p.protocol.circuit.pb.VoucherOuterClass.internal_static_io_libp2p_protocol_circuit_pb_Voucher_descriptor;
+
+    public static final com.google.protobuf.Descriptors.Descriptor getDescriptor() {
+      return io.libp2p.protocol.circuit.pb.VoucherOuterClass
+          .internal_static_io_libp2p_protocol_circuit_pb_Voucher_descriptor;
     }
 
     @java.lang.Override
     protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
         internalGetFieldAccessorTable() {
-      return io.libp2p.protocol.circuit.pb.VoucherOuterClass.internal_static_io_libp2p_protocol_circuit_pb_Voucher_fieldAccessorTable
+      return io.libp2p.protocol.circuit.pb.VoucherOuterClass
+          .internal_static_io_libp2p_protocol_circuit_pb_Voucher_fieldAccessorTable
           .ensureFieldAccessorsInitialized(
-              io.libp2p.protocol.circuit.pb.VoucherOuterClass.Voucher.class, io.libp2p.protocol.circuit.pb.VoucherOuterClass.Voucher.Builder.class);
+              io.libp2p.protocol.circuit.pb.VoucherOuterClass.Voucher.class,
+              io.libp2p.protocol.circuit.pb.VoucherOuterClass.Voucher.Builder.class);
     }
 
     private int bitField0_;
     public static final int RELAY_FIELD_NUMBER = 1;
     private com.google.protobuf.ByteString relay_;
-    /**
-     * <code>required bytes relay = 1;</code>
-     */
+
+    /** <code>required bytes relay = 1;</code> */
     public boolean hasRelay() {
       return ((bitField0_ & 0x00000001) == 0x00000001);
     }
-    /**
-     * <code>required bytes relay = 1;</code>
-     */
+
+    /** <code>required bytes relay = 1;</code> */
     public com.google.protobuf.ByteString getRelay() {
       return relay_;
     }
 
     public static final int PEER_FIELD_NUMBER = 2;
     private com.google.protobuf.ByteString peer_;
-    /**
-     * <code>required bytes peer = 2;</code>
-     */
+
+    /** <code>required bytes peer = 2;</code> */
     public boolean hasPeer() {
       return ((bitField0_ & 0x00000002) == 0x00000002);
     }
-    /**
-     * <code>required bytes peer = 2;</code>
-     */
+
+    /** <code>required bytes peer = 2;</code> */
     public com.google.protobuf.ByteString getPeer() {
       return peer_;
     }
 
     public static final int EXPIRATION_FIELD_NUMBER = 3;
     private long expiration_;
-    /**
-     * <code>required uint64 expiration = 3;</code>
-     */
+
+    /** <code>required uint64 expiration = 3;</code> */
     public boolean hasExpiration() {
       return ((bitField0_ & 0x00000004) == 0x00000004);
     }
-    /**
-     * <code>required uint64 expiration = 3;</code>
-     */
+
+    /** <code>required uint64 expiration = 3;</code> */
     public long getExpiration() {
       return expiration_;
     }
 
     private byte memoizedIsInitialized = -1;
+
     @java.lang.Override
     public final boolean isInitialized() {
       byte isInitialized = memoizedIsInitialized;
@@ -204,8 +195,7 @@ public final class VoucherOuterClass {
     }
 
     @java.lang.Override
-    public void writeTo(com.google.protobuf.CodedOutputStream output)
-                        throws java.io.IOException {
+    public void writeTo(com.google.protobuf.CodedOutputStream output) throws java.io.IOException {
       if (((bitField0_ & 0x00000001) == 0x00000001)) {
         output.writeBytes(1, relay_);
       }
@@ -225,16 +215,13 @@ public final class VoucherOuterClass {
 
       size = 0;
       if (((bitField0_ & 0x00000001) == 0x00000001)) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeBytesSize(1, relay_);
+        size += com.google.protobuf.CodedOutputStream.computeBytesSize(1, relay_);
       }
       if (((bitField0_ & 0x00000002) == 0x00000002)) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeBytesSize(2, peer_);
+        size += com.google.protobuf.CodedOutputStream.computeBytesSize(2, peer_);
       }
       if (((bitField0_ & 0x00000004) == 0x00000004)) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeUInt64Size(3, expiration_);
+        size += com.google.protobuf.CodedOutputStream.computeUInt64Size(3, expiration_);
       }
       size += unknownFields.getSerializedSize();
       memoizedSize = size;
@@ -244,28 +231,26 @@ public final class VoucherOuterClass {
     @java.lang.Override
     public boolean equals(final java.lang.Object obj) {
       if (obj == this) {
-       return true;
+        return true;
       }
       if (!(obj instanceof io.libp2p.protocol.circuit.pb.VoucherOuterClass.Voucher)) {
         return super.equals(obj);
       }
-      io.libp2p.protocol.circuit.pb.VoucherOuterClass.Voucher other = (io.libp2p.protocol.circuit.pb.VoucherOuterClass.Voucher) obj;
+      io.libp2p.protocol.circuit.pb.VoucherOuterClass.Voucher other =
+          (io.libp2p.protocol.circuit.pb.VoucherOuterClass.Voucher) obj;
 
       boolean result = true;
       result = result && (hasRelay() == other.hasRelay());
       if (hasRelay()) {
-        result = result && getRelay()
-            .equals(other.getRelay());
+        result = result && getRelay().equals(other.getRelay());
       }
       result = result && (hasPeer() == other.hasPeer());
       if (hasPeer()) {
-        result = result && getPeer()
-            .equals(other.getPeer());
+        result = result && getPeer().equals(other.getPeer());
       }
       result = result && (hasExpiration() == other.hasExpiration());
       if (hasExpiration()) {
-        result = result && (getExpiration()
-            == other.getExpiration());
+        result = result && (getExpiration() == other.getExpiration());
       }
       result = result && unknownFields.equals(other.unknownFields);
       return result;
@@ -288,8 +273,7 @@ public final class VoucherOuterClass {
       }
       if (hasExpiration()) {
         hash = (37 * hash) + EXPIRATION_FIELD_NUMBER;
-        hash = (53 * hash) + com.google.protobuf.Internal.hashLong(
-            getExpiration());
+        hash = (53 * hash) + com.google.protobuf.Internal.hashLong(getExpiration());
       }
       hash = (29 * hash) + unknownFields.hashCode();
       memoizedHashCode = hash;
@@ -297,87 +281,94 @@ public final class VoucherOuterClass {
     }
 
     public static io.libp2p.protocol.circuit.pb.VoucherOuterClass.Voucher parseFrom(
-        java.nio.ByteBuffer data)
-        throws com.google.protobuf.InvalidProtocolBufferException {
+        java.nio.ByteBuffer data) throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data);
     }
+
     public static io.libp2p.protocol.circuit.pb.VoucherOuterClass.Voucher parseFrom(
-        java.nio.ByteBuffer data,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        java.nio.ByteBuffer data, com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data, extensionRegistry);
     }
+
     public static io.libp2p.protocol.circuit.pb.VoucherOuterClass.Voucher parseFrom(
         com.google.protobuf.ByteString data)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data);
     }
+
     public static io.libp2p.protocol.circuit.pb.VoucherOuterClass.Voucher parseFrom(
         com.google.protobuf.ByteString data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data, extensionRegistry);
     }
+
     public static io.libp2p.protocol.circuit.pb.VoucherOuterClass.Voucher parseFrom(byte[] data)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data);
     }
+
     public static io.libp2p.protocol.circuit.pb.VoucherOuterClass.Voucher parseFrom(
-        byte[] data,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        byte[] data, com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data, extensionRegistry);
     }
-    public static io.libp2p.protocol.circuit.pb.VoucherOuterClass.Voucher parseFrom(java.io.InputStream input)
-        throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseWithIOException(PARSER, input);
-    }
+
     public static io.libp2p.protocol.circuit.pb.VoucherOuterClass.Voucher parseFrom(
-        java.io.InputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseWithIOException(PARSER, input, extensionRegistry);
+        java.io.InputStream input) throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessageV3.parseWithIOException(PARSER, input);
     }
-    public static io.libp2p.protocol.circuit.pb.VoucherOuterClass.Voucher parseDelimitedFrom(java.io.InputStream input)
+
+    public static io.libp2p.protocol.circuit.pb.VoucherOuterClass.Voucher parseFrom(
+        java.io.InputStream input, com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseDelimitedWithIOException(PARSER, input);
+      return com.google.protobuf.GeneratedMessageV3.parseWithIOException(
+          PARSER, input, extensionRegistry);
     }
+
     public static io.libp2p.protocol.circuit.pb.VoucherOuterClass.Voucher parseDelimitedFrom(
-        java.io.InputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseDelimitedWithIOException(PARSER, input, extensionRegistry);
+        java.io.InputStream input) throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessageV3.parseDelimitedWithIOException(PARSER, input);
     }
+
+    public static io.libp2p.protocol.circuit.pb.VoucherOuterClass.Voucher parseDelimitedFrom(
+        java.io.InputStream input, com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessageV3.parseDelimitedWithIOException(
+          PARSER, input, extensionRegistry);
+    }
+
     public static io.libp2p.protocol.circuit.pb.VoucherOuterClass.Voucher parseFrom(
-        com.google.protobuf.CodedInputStream input)
-        throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseWithIOException(PARSER, input);
+        com.google.protobuf.CodedInputStream input) throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessageV3.parseWithIOException(PARSER, input);
     }
+
     public static io.libp2p.protocol.circuit.pb.VoucherOuterClass.Voucher parseFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseWithIOException(PARSER, input, extensionRegistry);
+      return com.google.protobuf.GeneratedMessageV3.parseWithIOException(
+          PARSER, input, extensionRegistry);
     }
 
     @java.lang.Override
-    public Builder newBuilderForType() { return newBuilder(); }
+    public Builder newBuilderForType() {
+      return newBuilder();
+    }
+
     public static Builder newBuilder() {
       return DEFAULT_INSTANCE.toBuilder();
     }
-    public static Builder newBuilder(io.libp2p.protocol.circuit.pb.VoucherOuterClass.Voucher prototype) {
+
+    public static Builder newBuilder(
+        io.libp2p.protocol.circuit.pb.VoucherOuterClass.Voucher prototype) {
       return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
     }
+
     @java.lang.Override
     public Builder toBuilder() {
-      return this == DEFAULT_INSTANCE
-          ? new Builder() : new Builder().mergeFrom(this);
+      return this == DEFAULT_INSTANCE ? new Builder() : new Builder().mergeFrom(this);
     }
 
     @java.lang.Override
@@ -386,24 +377,26 @@ public final class VoucherOuterClass {
       Builder builder = new Builder(parent);
       return builder;
     }
-    /**
-     * Protobuf type {@code io.libp2p.protocol.circuit.pb.Voucher}
-     */
-    public static final class Builder extends
-        com.google.protobuf.GeneratedMessageV3.Builder<Builder> implements
+
+    /** Protobuf type {@code io.libp2p.protocol.circuit.pb.Voucher} */
+    public static final class Builder
+        extends com.google.protobuf.GeneratedMessageV3.Builder<Builder>
+        implements
         // @@protoc_insertion_point(builder_implements:io.libp2p.protocol.circuit.pb.Voucher)
         io.libp2p.protocol.circuit.pb.VoucherOuterClass.VoucherOrBuilder {
-      public static final com.google.protobuf.Descriptors.Descriptor
-          getDescriptor() {
-        return io.libp2p.protocol.circuit.pb.VoucherOuterClass.internal_static_io_libp2p_protocol_circuit_pb_Voucher_descriptor;
+      public static final com.google.protobuf.Descriptors.Descriptor getDescriptor() {
+        return io.libp2p.protocol.circuit.pb.VoucherOuterClass
+            .internal_static_io_libp2p_protocol_circuit_pb_Voucher_descriptor;
       }
 
       @java.lang.Override
       protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
           internalGetFieldAccessorTable() {
-        return io.libp2p.protocol.circuit.pb.VoucherOuterClass.internal_static_io_libp2p_protocol_circuit_pb_Voucher_fieldAccessorTable
+        return io.libp2p.protocol.circuit.pb.VoucherOuterClass
+            .internal_static_io_libp2p_protocol_circuit_pb_Voucher_fieldAccessorTable
             .ensureFieldAccessorsInitialized(
-                io.libp2p.protocol.circuit.pb.VoucherOuterClass.Voucher.class, io.libp2p.protocol.circuit.pb.VoucherOuterClass.Voucher.Builder.class);
+                io.libp2p.protocol.circuit.pb.VoucherOuterClass.Voucher.class,
+                io.libp2p.protocol.circuit.pb.VoucherOuterClass.Voucher.Builder.class);
       }
 
       // Construct using io.libp2p.protocol.circuit.pb.VoucherOuterClass.Voucher.newBuilder()
@@ -411,16 +404,15 @@ public final class VoucherOuterClass {
         maybeForceBuilderInitialization();
       }
 
-      private Builder(
-          com.google.protobuf.GeneratedMessageV3.BuilderParent parent) {
+      private Builder(com.google.protobuf.GeneratedMessageV3.BuilderParent parent) {
         super(parent);
         maybeForceBuilderInitialization();
       }
+
       private void maybeForceBuilderInitialization() {
-        if (com.google.protobuf.GeneratedMessageV3
-                .alwaysUseFieldBuilders) {
-        }
+        if (com.google.protobuf.GeneratedMessageV3.alwaysUseFieldBuilders) {}
       }
+
       @java.lang.Override
       public Builder clear() {
         super.clear();
@@ -434,9 +426,9 @@ public final class VoucherOuterClass {
       }
 
       @java.lang.Override
-      public com.google.protobuf.Descriptors.Descriptor
-          getDescriptorForType() {
-        return io.libp2p.protocol.circuit.pb.VoucherOuterClass.internal_static_io_libp2p_protocol_circuit_pb_Voucher_descriptor;
+      public com.google.protobuf.Descriptors.Descriptor getDescriptorForType() {
+        return io.libp2p.protocol.circuit.pb.VoucherOuterClass
+            .internal_static_io_libp2p_protocol_circuit_pb_Voucher_descriptor;
       }
 
       @java.lang.Override
@@ -455,7 +447,8 @@ public final class VoucherOuterClass {
 
       @java.lang.Override
       public io.libp2p.protocol.circuit.pb.VoucherOuterClass.Voucher buildPartial() {
-        io.libp2p.protocol.circuit.pb.VoucherOuterClass.Voucher result = new io.libp2p.protocol.circuit.pb.VoucherOuterClass.Voucher(this);
+        io.libp2p.protocol.circuit.pb.VoucherOuterClass.Voucher result =
+            new io.libp2p.protocol.circuit.pb.VoucherOuterClass.Voucher(this);
         int from_bitField0_ = bitField0_;
         int to_bitField0_ = 0;
         if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
@@ -479,38 +472,41 @@ public final class VoucherOuterClass {
       public Builder clone() {
         return (Builder) super.clone();
       }
+
       @java.lang.Override
       public Builder setField(
-          com.google.protobuf.Descriptors.FieldDescriptor field,
-          java.lang.Object value) {
+          com.google.protobuf.Descriptors.FieldDescriptor field, java.lang.Object value) {
         return (Builder) super.setField(field, value);
       }
+
       @java.lang.Override
-      public Builder clearField(
-          com.google.protobuf.Descriptors.FieldDescriptor field) {
+      public Builder clearField(com.google.protobuf.Descriptors.FieldDescriptor field) {
         return (Builder) super.clearField(field);
       }
+
       @java.lang.Override
-      public Builder clearOneof(
-          com.google.protobuf.Descriptors.OneofDescriptor oneof) {
+      public Builder clearOneof(com.google.protobuf.Descriptors.OneofDescriptor oneof) {
         return (Builder) super.clearOneof(oneof);
       }
+
       @java.lang.Override
       public Builder setRepeatedField(
           com.google.protobuf.Descriptors.FieldDescriptor field,
-          int index, java.lang.Object value) {
+          int index,
+          java.lang.Object value) {
         return (Builder) super.setRepeatedField(field, index, value);
       }
+
       @java.lang.Override
       public Builder addRepeatedField(
-          com.google.protobuf.Descriptors.FieldDescriptor field,
-          java.lang.Object value) {
+          com.google.protobuf.Descriptors.FieldDescriptor field, java.lang.Object value) {
         return (Builder) super.addRepeatedField(field, value);
       }
+
       @java.lang.Override
       public Builder mergeFrom(com.google.protobuf.Message other) {
         if (other instanceof io.libp2p.protocol.circuit.pb.VoucherOuterClass.Voucher) {
-          return mergeFrom((io.libp2p.protocol.circuit.pb.VoucherOuterClass.Voucher)other);
+          return mergeFrom((io.libp2p.protocol.circuit.pb.VoucherOuterClass.Voucher) other);
         } else {
           super.mergeFrom(other);
           return this;
@@ -518,7 +514,8 @@ public final class VoucherOuterClass {
       }
 
       public Builder mergeFrom(io.libp2p.protocol.circuit.pb.VoucherOuterClass.Voucher other) {
-        if (other == io.libp2p.protocol.circuit.pb.VoucherOuterClass.Voucher.getDefaultInstance()) return this;
+        if (other == io.libp2p.protocol.circuit.pb.VoucherOuterClass.Voucher.getDefaultInstance())
+          return this;
         if (other.hasRelay()) {
           setRelay(other.getRelay());
         }
@@ -556,7 +553,8 @@ public final class VoucherOuterClass {
         try {
           parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
         } catch (com.google.protobuf.InvalidProtocolBufferException e) {
-          parsedMessage = (io.libp2p.protocol.circuit.pb.VoucherOuterClass.Voucher) e.getUnfinishedMessage();
+          parsedMessage =
+              (io.libp2p.protocol.circuit.pb.VoucherOuterClass.Voucher) e.getUnfinishedMessage();
           throw e.unwrapIOException();
         } finally {
           if (parsedMessage != null) {
@@ -565,36 +563,33 @@ public final class VoucherOuterClass {
         }
         return this;
       }
+
       private int bitField0_;
 
       private com.google.protobuf.ByteString relay_ = com.google.protobuf.ByteString.EMPTY;
-      /**
-       * <code>required bytes relay = 1;</code>
-       */
+
+      /** <code>required bytes relay = 1;</code> */
       public boolean hasRelay() {
         return ((bitField0_ & 0x00000001) == 0x00000001);
       }
-      /**
-       * <code>required bytes relay = 1;</code>
-       */
+
+      /** <code>required bytes relay = 1;</code> */
       public com.google.protobuf.ByteString getRelay() {
         return relay_;
       }
-      /**
-       * <code>required bytes relay = 1;</code>
-       */
+
+      /** <code>required bytes relay = 1;</code> */
       public Builder setRelay(com.google.protobuf.ByteString value) {
         if (value == null) {
-    throw new NullPointerException();
-  }
-  bitField0_ |= 0x00000001;
+          throw new NullPointerException();
+        }
+        bitField0_ |= 0x00000001;
         relay_ = value;
         onChanged();
         return this;
       }
-      /**
-       * <code>required bytes relay = 1;</code>
-       */
+
+      /** <code>required bytes relay = 1;</code> */
       public Builder clearRelay() {
         bitField0_ = (bitField0_ & ~0x00000001);
         relay_ = getDefaultInstance().getRelay();
@@ -603,33 +598,29 @@ public final class VoucherOuterClass {
       }
 
       private com.google.protobuf.ByteString peer_ = com.google.protobuf.ByteString.EMPTY;
-      /**
-       * <code>required bytes peer = 2;</code>
-       */
+
+      /** <code>required bytes peer = 2;</code> */
       public boolean hasPeer() {
         return ((bitField0_ & 0x00000002) == 0x00000002);
       }
-      /**
-       * <code>required bytes peer = 2;</code>
-       */
+
+      /** <code>required bytes peer = 2;</code> */
       public com.google.protobuf.ByteString getPeer() {
         return peer_;
       }
-      /**
-       * <code>required bytes peer = 2;</code>
-       */
+
+      /** <code>required bytes peer = 2;</code> */
       public Builder setPeer(com.google.protobuf.ByteString value) {
         if (value == null) {
-    throw new NullPointerException();
-  }
-  bitField0_ |= 0x00000002;
+          throw new NullPointerException();
+        }
+        bitField0_ |= 0x00000002;
         peer_ = value;
         onChanged();
         return this;
       }
-      /**
-       * <code>required bytes peer = 2;</code>
-       */
+
+      /** <code>required bytes peer = 2;</code> */
       public Builder clearPeer() {
         bitField0_ = (bitField0_ & ~0x00000002);
         peer_ = getDefaultInstance().getPeer();
@@ -637,37 +628,34 @@ public final class VoucherOuterClass {
         return this;
       }
 
-      private long expiration_ ;
-      /**
-       * <code>required uint64 expiration = 3;</code>
-       */
+      private long expiration_;
+
+      /** <code>required uint64 expiration = 3;</code> */
       public boolean hasExpiration() {
         return ((bitField0_ & 0x00000004) == 0x00000004);
       }
-      /**
-       * <code>required uint64 expiration = 3;</code>
-       */
+
+      /** <code>required uint64 expiration = 3;</code> */
       public long getExpiration() {
         return expiration_;
       }
-      /**
-       * <code>required uint64 expiration = 3;</code>
-       */
+
+      /** <code>required uint64 expiration = 3;</code> */
       public Builder setExpiration(long value) {
         bitField0_ |= 0x00000004;
         expiration_ = value;
         onChanged();
         return this;
       }
-      /**
-       * <code>required uint64 expiration = 3;</code>
-       */
+
+      /** <code>required uint64 expiration = 3;</code> */
       public Builder clearExpiration() {
         bitField0_ = (bitField0_ & ~0x00000004);
         expiration_ = 0L;
         onChanged();
         return this;
       }
+
       @java.lang.Override
       public final Builder setUnknownFields(
           final com.google.protobuf.UnknownFieldSet unknownFields) {
@@ -680,12 +668,12 @@ public final class VoucherOuterClass {
         return super.mergeUnknownFields(unknownFields);
       }
 
-
       // @@protoc_insertion_point(builder_scope:io.libp2p.protocol.circuit.pb.Voucher)
     }
 
     // @@protoc_insertion_point(class_scope:io.libp2p.protocol.circuit.pb.Voucher)
     private static final io.libp2p.protocol.circuit.pb.VoucherOuterClass.Voucher DEFAULT_INSTANCE;
+
     static {
       DEFAULT_INSTANCE = new io.libp2p.protocol.circuit.pb.VoucherOuterClass.Voucher();
     }
@@ -694,16 +682,17 @@ public final class VoucherOuterClass {
       return DEFAULT_INSTANCE;
     }
 
-    @java.lang.Deprecated public static final com.google.protobuf.Parser<Voucher>
-        PARSER = new com.google.protobuf.AbstractParser<Voucher>() {
-      @java.lang.Override
-      public Voucher parsePartialFrom(
-          com.google.protobuf.CodedInputStream input,
-          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-          throws com.google.protobuf.InvalidProtocolBufferException {
-        return new Voucher(input, extensionRegistry);
-      }
-    };
+    @java.lang.Deprecated
+    public static final com.google.protobuf.Parser<Voucher> PARSER =
+        new com.google.protobuf.AbstractParser<Voucher>() {
+          @java.lang.Override
+          public Voucher parsePartialFrom(
+              com.google.protobuf.CodedInputStream input,
+              com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+              throws com.google.protobuf.InvalidProtocolBufferException {
+            return new Voucher(input, extensionRegistry);
+          }
+        };
 
     public static com.google.protobuf.Parser<Voucher> parser() {
       return PARSER;
@@ -718,45 +707,43 @@ public final class VoucherOuterClass {
     public io.libp2p.protocol.circuit.pb.VoucherOuterClass.Voucher getDefaultInstanceForType() {
       return DEFAULT_INSTANCE;
     }
-
   }
 
   private static final com.google.protobuf.Descriptors.Descriptor
-    internal_static_io_libp2p_protocol_circuit_pb_Voucher_descriptor;
-  private static final 
-    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
+      internal_static_io_libp2p_protocol_circuit_pb_Voucher_descriptor;
+  private static final com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_io_libp2p_protocol_circuit_pb_Voucher_fieldAccessorTable;
 
-  public static com.google.protobuf.Descriptors.FileDescriptor
-      getDescriptor() {
+  public static com.google.protobuf.Descriptors.FileDescriptor getDescriptor() {
     return descriptor;
   }
-  private static  com.google.protobuf.Descriptors.FileDescriptor
-      descriptor;
+
+  private static com.google.protobuf.Descriptors.FileDescriptor descriptor;
+
   static {
     java.lang.String[] descriptorData = {
-      "\n\rvoucher.proto\022\037io.libp2p.protocol.ci" +
-      "rcuit.pb\":\n\007Voucher\022\r\n\005relay\030\001 \002(\014\022\014\n\004pe" +
-      "er\030\002 \002(\014\022\022\n\nexpiration\030\003 \002(\004"
+      "\n\rvoucher.proto\022\037io.libp2p.protocol.ci"
+          + "rcuit.pb\":\n\007Voucher\022\r\n\005relay\030\001 \002(\014\022\014\n\004pe"
+          + "er\030\002 \002(\014\022\022\n\nexpiration\030\003 \002(\004"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
-        new com.google.protobuf.Descriptors.FileDescriptor.    InternalDescriptorAssigner() {
+        new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
           public com.google.protobuf.ExtensionRegistry assignDescriptors(
               com.google.protobuf.Descriptors.FileDescriptor root) {
             descriptor = root;
             return null;
           }
         };
-    com.google.protobuf.Descriptors.FileDescriptor
-      .internalBuildGeneratedFileFrom(descriptorData,
-        new com.google.protobuf.Descriptors.FileDescriptor[] {
-        }, assigner);
+    com.google.protobuf.Descriptors.FileDescriptor.internalBuildGeneratedFileFrom(
+        descriptorData, new com.google.protobuf.Descriptors.FileDescriptor[] {}, assigner);
     internal_static_io_libp2p_protocol_circuit_pb_Voucher_descriptor =
-      getDescriptor().getMessageTypes().get(0);
-    internal_static_io_libp2p_protocol_circuit_pb_Voucher_fieldAccessorTable = new
-      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
-        internal_static_io_libp2p_protocol_circuit_pb_Voucher_descriptor,
-        new java.lang.String[] { "Relay", "Peer", "Expiration", });
+        getDescriptor().getMessageTypes().get(0);
+    internal_static_io_libp2p_protocol_circuit_pb_Voucher_fieldAccessorTable =
+        new com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
+            internal_static_io_libp2p_protocol_circuit_pb_Voucher_descriptor,
+            new java.lang.String[] {
+              "Relay", "Peer", "Expiration",
+            });
   }
 
   // @@protoc_insertion_point(outer_class_scope)

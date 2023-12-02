@@ -5,56 +5,37 @@ package io.libp2p.protocol.circuit.crypto.pb;
 
 public final class Crypto {
   private Crypto() {}
-  public static void registerAllExtensions(
-      com.google.protobuf.ExtensionRegistryLite registry) {
+
+  public static void registerAllExtensions(com.google.protobuf.ExtensionRegistryLite registry) {}
+
+  public static void registerAllExtensions(com.google.protobuf.ExtensionRegistry registry) {
+    registerAllExtensions((com.google.protobuf.ExtensionRegistryLite) registry);
   }
 
-  public static void registerAllExtensions(
-      com.google.protobuf.ExtensionRegistry registry) {
-    registerAllExtensions(
-        (com.google.protobuf.ExtensionRegistryLite) registry);
-  }
-  /**
-   * Protobuf enum {@code io.libp2p.protocol.circuit.crypto.pb.KeyType}
-   */
-  public enum KeyType
-      implements com.google.protobuf.ProtocolMessageEnum {
-    /**
-     * <code>RSA = 0;</code>
-     */
+  /** Protobuf enum {@code io.libp2p.protocol.circuit.crypto.pb.KeyType} */
+  public enum KeyType implements com.google.protobuf.ProtocolMessageEnum {
+    /** <code>RSA = 0;</code> */
     RSA(0),
-    /**
-     * <code>Ed25519 = 1;</code>
-     */
+    /** <code>Ed25519 = 1;</code> */
     Ed25519(1),
-    /**
-     * <code>Secp256k1 = 2;</code>
-     */
+    /** <code>Secp256k1 = 2;</code> */
     Secp256k1(2),
-    /**
-     * <code>ECDSA = 3;</code>
-     */
+    /** <code>ECDSA = 3;</code> */
     ECDSA(3),
     UNRECOGNIZED(-1),
     ;
 
-    /**
-     * <code>RSA = 0;</code>
-     */
+    /** <code>RSA = 0;</code> */
     public static final int RSA_VALUE = 0;
-    /**
-     * <code>Ed25519 = 1;</code>
-     */
-    public static final int Ed25519_VALUE = 1;
-    /**
-     * <code>Secp256k1 = 2;</code>
-     */
-    public static final int Secp256k1_VALUE = 2;
-    /**
-     * <code>ECDSA = 3;</code>
-     */
-    public static final int ECDSA_VALUE = 3;
 
+    /** <code>Ed25519 = 1;</code> */
+    public static final int Ed25519_VALUE = 1;
+
+    /** <code>Secp256k1 = 2;</code> */
+    public static final int Secp256k1_VALUE = 2;
+
+    /** <code>ECDSA = 3;</code> */
+    public static final int ECDSA_VALUE = 3;
 
     public final int getNumber() {
       if (this == UNRECOGNIZED) {
@@ -74,46 +55,47 @@ public final class Crypto {
 
     public static KeyType forNumber(int value) {
       switch (value) {
-        case 0: return RSA;
-        case 1: return Ed25519;
-        case 2: return Secp256k1;
-        case 3: return ECDSA;
-        default: return null;
+        case 0:
+          return RSA;
+        case 1:
+          return Ed25519;
+        case 2:
+          return Secp256k1;
+        case 3:
+          return ECDSA;
+        default:
+          return null;
       }
     }
 
-    public static com.google.protobuf.Internal.EnumLiteMap<KeyType>
-        internalGetValueMap() {
+    public static com.google.protobuf.Internal.EnumLiteMap<KeyType> internalGetValueMap() {
       return internalValueMap;
     }
-    private static final com.google.protobuf.Internal.EnumLiteMap<
-        KeyType> internalValueMap =
-          new com.google.protobuf.Internal.EnumLiteMap<KeyType>() {
-            public KeyType findValueByNumber(int number) {
-              return KeyType.forNumber(number);
-            }
-          };
 
-    public final com.google.protobuf.Descriptors.EnumValueDescriptor
-        getValueDescriptor() {
+    private static final com.google.protobuf.Internal.EnumLiteMap<KeyType> internalValueMap =
+        new com.google.protobuf.Internal.EnumLiteMap<KeyType>() {
+          public KeyType findValueByNumber(int number) {
+            return KeyType.forNumber(number);
+          }
+        };
+
+    public final com.google.protobuf.Descriptors.EnumValueDescriptor getValueDescriptor() {
       return getDescriptor().getValues().get(ordinal());
     }
-    public final com.google.protobuf.Descriptors.EnumDescriptor
-        getDescriptorForType() {
+
+    public final com.google.protobuf.Descriptors.EnumDescriptor getDescriptorForType() {
       return getDescriptor();
     }
-    public static final com.google.protobuf.Descriptors.EnumDescriptor
-        getDescriptor() {
+
+    public static final com.google.protobuf.Descriptors.EnumDescriptor getDescriptor() {
       return io.libp2p.protocol.circuit.crypto.pb.Crypto.getDescriptor().getEnumTypes().get(0);
     }
 
     private static final KeyType[] VALUES = values();
 
-    public static KeyType valueOf(
-        com.google.protobuf.Descriptors.EnumValueDescriptor desc) {
+    public static KeyType valueOf(com.google.protobuf.Descriptors.EnumValueDescriptor desc) {
       if (desc.getType() != getDescriptor()) {
-        throw new java.lang.IllegalArgumentException(
-          "EnumValueDescriptor is not for this type.");
+        throw new java.lang.IllegalArgumentException("EnumValueDescriptor is not for this type.");
       }
       if (desc.getIndex() == -1) {
         return UNRECOGNIZED;
@@ -130,46 +112,43 @@ public final class Crypto {
     // @@protoc_insertion_point(enum_scope:io.libp2p.protocol.circuit.crypto.pb.KeyType)
   }
 
-  public interface PublicKeyOrBuilder extends
+  public interface PublicKeyOrBuilder
+      extends
       // @@protoc_insertion_point(interface_extends:io.libp2p.protocol.circuit.crypto.pb.PublicKey)
       com.google.protobuf.MessageOrBuilder {
 
-    /**
-     * <code>.io.libp2p.protocol.circuit.crypto.pb.KeyType Type = 1;</code>
-     */
+    /** <code>.io.libp2p.protocol.circuit.crypto.pb.KeyType Type = 1;</code> */
     int getTypeValue();
-    /**
-     * <code>.io.libp2p.protocol.circuit.crypto.pb.KeyType Type = 1;</code>
-     */
+
+    /** <code>.io.libp2p.protocol.circuit.crypto.pb.KeyType Type = 1;</code> */
     io.libp2p.protocol.circuit.crypto.pb.Crypto.KeyType getType();
 
-    /**
-     * <code>bytes Data = 2;</code>
-     */
+    /** <code>bytes Data = 2;</code> */
     com.google.protobuf.ByteString getData();
   }
-  /**
-   * Protobuf type {@code io.libp2p.protocol.circuit.crypto.pb.PublicKey}
-   */
-  public  static final class PublicKey extends
-      com.google.protobuf.GeneratedMessageV3 implements
+
+  /** Protobuf type {@code io.libp2p.protocol.circuit.crypto.pb.PublicKey} */
+  public static final class PublicKey extends com.google.protobuf.GeneratedMessageV3
+      implements
       // @@protoc_insertion_point(message_implements:io.libp2p.protocol.circuit.crypto.pb.PublicKey)
       PublicKeyOrBuilder {
-  private static final long serialVersionUID = 0L;
+    private static final long serialVersionUID = 0L;
+
     // Use PublicKey.newBuilder() to construct.
     private PublicKey(com.google.protobuf.GeneratedMessageV3.Builder<?> builder) {
       super(builder);
     }
+
     private PublicKey() {
       type_ = 0;
       data_ = com.google.protobuf.ByteString.EMPTY;
     }
 
     @java.lang.Override
-    public final com.google.protobuf.UnknownFieldSet
-    getUnknownFields() {
+    public final com.google.protobuf.UnknownFieldSet getUnknownFields() {
       return this.unknownFields;
     }
+
     private PublicKey(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
@@ -189,76 +168,80 @@ public final class Crypto {
             case 0:
               done = true;
               break;
-            case 8: {
-              int rawValue = input.readEnum();
+            case 8:
+              {
+                int rawValue = input.readEnum();
 
-              type_ = rawValue;
-              break;
-            }
-            case 18: {
-
-              data_ = input.readBytes();
-              break;
-            }
-            default: {
-              if (!parseUnknownFieldProto3(
-                  input, unknownFields, extensionRegistry, tag)) {
-                done = true;
+                type_ = rawValue;
+                break;
               }
-              break;
-            }
+            case 18:
+              {
+                data_ = input.readBytes();
+                break;
+              }
+            default:
+              {
+                if (!parseUnknownFieldProto3(input, unknownFields, extensionRegistry, tag)) {
+                  done = true;
+                }
+                break;
+              }
           }
         }
       } catch (com.google.protobuf.InvalidProtocolBufferException e) {
         throw e.setUnfinishedMessage(this);
       } catch (java.io.IOException e) {
-        throw new com.google.protobuf.InvalidProtocolBufferException(
-            e).setUnfinishedMessage(this);
+        throw new com.google.protobuf.InvalidProtocolBufferException(e).setUnfinishedMessage(this);
       } finally {
         this.unknownFields = unknownFields.build();
         makeExtensionsImmutable();
       }
     }
-    public static final com.google.protobuf.Descriptors.Descriptor
-        getDescriptor() {
-      return io.libp2p.protocol.circuit.crypto.pb.Crypto.internal_static_org_peergos_protocol_crypto_pb_PublicKey_descriptor;
+
+    public static final com.google.protobuf.Descriptors.Descriptor getDescriptor() {
+      return io.libp2p.protocol.circuit.crypto.pb.Crypto
+          .internal_static_org_peergos_protocol_crypto_pb_PublicKey_descriptor;
     }
 
     @java.lang.Override
     protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
         internalGetFieldAccessorTable() {
-      return io.libp2p.protocol.circuit.crypto.pb.Crypto.internal_static_org_peergos_protocol_crypto_pb_PublicKey_fieldAccessorTable
+      return io.libp2p.protocol.circuit.crypto.pb.Crypto
+          .internal_static_org_peergos_protocol_crypto_pb_PublicKey_fieldAccessorTable
           .ensureFieldAccessorsInitialized(
-              io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey.class, io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey.Builder.class);
+              io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey.class,
+              io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey.Builder.class);
     }
 
     public static final int TYPE_FIELD_NUMBER = 1;
     private int type_;
-    /**
-     * <code>.io.libp2p.protocol.circuit.crypto.pb.KeyType Type = 1;</code>
-     */
+
+    /** <code>.io.libp2p.protocol.circuit.crypto.pb.KeyType Type = 1;</code> */
     public int getTypeValue() {
       return type_;
     }
-    /**
-     * <code>.io.libp2p.protocol.circuit.crypto.pb.KeyType Type = 1;</code>
-     */
+
+    /** <code>.io.libp2p.protocol.circuit.crypto.pb.KeyType Type = 1;</code> */
     public io.libp2p.protocol.circuit.crypto.pb.Crypto.KeyType getType() {
       @SuppressWarnings("deprecation")
-      io.libp2p.protocol.circuit.crypto.pb.Crypto.KeyType result = io.libp2p.protocol.circuit.crypto.pb.Crypto.KeyType.valueOf(type_);
-      return result == null ? io.libp2p.protocol.circuit.crypto.pb.Crypto.KeyType.UNRECOGNIZED : result;
+      io.libp2p.protocol.circuit.crypto.pb.Crypto.KeyType result =
+          io.libp2p.protocol.circuit.crypto.pb.Crypto.KeyType.valueOf(type_);
+      return result == null
+          ? io.libp2p.protocol.circuit.crypto.pb.Crypto.KeyType.UNRECOGNIZED
+          : result;
     }
 
     public static final int DATA_FIELD_NUMBER = 2;
     private com.google.protobuf.ByteString data_;
-    /**
-     * <code>bytes Data = 2;</code>
-     */
+
+    /** <code>bytes Data = 2;</code> */
     public com.google.protobuf.ByteString getData() {
       return data_;
     }
 
     private byte memoizedIsInitialized = -1;
+
     @java.lang.Override
     public final boolean isInitialized() {
       byte isInitialized = memoizedIsInitialized;
@@ -270,8 +253,7 @@ public final class Crypto {
     }
 
     @java.lang.Override
-    public void writeTo(com.google.protobuf.CodedOutputStream output)
-                        throws java.io.IOException {
+    public void writeTo(com.google.protobuf.CodedOutputStream output) throws java.io.IOException {
       if (type_ != io.libp2p.protocol.circuit.crypto.pb.Crypto.KeyType.RSA.getNumber()) {
         output.writeEnum(1, type_);
       }
@@ -288,12 +270,10 @@ public final class Crypto {
 
       size = 0;
       if (type_ != io.libp2p.protocol.circuit.crypto.pb.Crypto.KeyType.RSA.getNumber()) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeEnumSize(1, type_);
+        size += com.google.protobuf.CodedOutputStream.computeEnumSize(1, type_);
       }
       if (!data_.isEmpty()) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeBytesSize(2, data_);
+        size += com.google.protobuf.CodedOutputStream.computeBytesSize(2, data_);
       }
       size += unknownFields.getSerializedSize();
       memoizedSize = size;
@@ -303,17 +283,17 @@ public final class Crypto {
     @java.lang.Override
     public boolean equals(final java.lang.Object obj) {
       if (obj == this) {
-       return true;
+        return true;
       }
       if (!(obj instanceof io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey)) {
         return super.equals(obj);
       }
-      io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey other = (io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey) obj;
+      io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey other =
+          (io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey) obj;
 
       boolean result = true;
       result = result && type_ == other.type_;
-      result = result && getData()
-          .equals(other.getData());
+      result = result && getData().equals(other.getData());
       result = result && unknownFields.equals(other.unknownFields);
       return result;
     }
@@ -335,87 +315,94 @@ public final class Crypto {
     }
 
     public static io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey parseFrom(
-        java.nio.ByteBuffer data)
-        throws com.google.protobuf.InvalidProtocolBufferException {
+        java.nio.ByteBuffer data) throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data);
     }
+
     public static io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey parseFrom(
-        java.nio.ByteBuffer data,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        java.nio.ByteBuffer data, com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data, extensionRegistry);
     }
+
     public static io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey parseFrom(
         com.google.protobuf.ByteString data)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data);
     }
+
     public static io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey parseFrom(
         com.google.protobuf.ByteString data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data, extensionRegistry);
     }
+
     public static io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey parseFrom(byte[] data)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data);
     }
+
     public static io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey parseFrom(
-        byte[] data,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        byte[] data, com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data, extensionRegistry);
     }
-    public static io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey parseFrom(java.io.InputStream input)
-        throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseWithIOException(PARSER, input);
-    }
+
     public static io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey parseFrom(
-        java.io.InputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseWithIOException(PARSER, input, extensionRegistry);
+        java.io.InputStream input) throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessageV3.parseWithIOException(PARSER, input);
     }
-    public static io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey parseDelimitedFrom(java.io.InputStream input)
+
+    public static io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey parseFrom(
+        java.io.InputStream input, com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseDelimitedWithIOException(PARSER, input);
+      return com.google.protobuf.GeneratedMessageV3.parseWithIOException(
+          PARSER, input, extensionRegistry);
     }
+
     public static io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey parseDelimitedFrom(
-        java.io.InputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseDelimitedWithIOException(PARSER, input, extensionRegistry);
+        java.io.InputStream input) throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessageV3.parseDelimitedWithIOException(PARSER, input);
     }
+
+    public static io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey parseDelimitedFrom(
+        java.io.InputStream input, com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessageV3.parseDelimitedWithIOException(
+          PARSER, input, extensionRegistry);
+    }
+
     public static io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey parseFrom(
-        com.google.protobuf.CodedInputStream input)
-        throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseWithIOException(PARSER, input);
+        com.google.protobuf.CodedInputStream input) throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessageV3.parseWithIOException(PARSER, input);
     }
+
     public static io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey parseFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseWithIOException(PARSER, input, extensionRegistry);
+      return com.google.protobuf.GeneratedMessageV3.parseWithIOException(
+          PARSER, input, extensionRegistry);
     }
 
     @java.lang.Override
-    public Builder newBuilderForType() { return newBuilder(); }
+    public Builder newBuilderForType() {
+      return newBuilder();
+    }
+
     public static Builder newBuilder() {
       return DEFAULT_INSTANCE.toBuilder();
     }
-    public static Builder newBuilder(io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey prototype) {
+
+    public static Builder newBuilder(
+        io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey prototype) {
       return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
     }
+
     @java.lang.Override
     public Builder toBuilder() {
-      return this == DEFAULT_INSTANCE
-          ? new Builder() : new Builder().mergeFrom(this);
+      return this == DEFAULT_INSTANCE ? new Builder() : new Builder().mergeFrom(this);
     }
 
     @java.lang.Override
@@ -424,24 +411,26 @@ public final class Crypto {
       Builder builder = new Builder(parent);
       return builder;
     }
-    /**
-     * Protobuf type {@code io.libp2p.protocol.circuit.crypto.pb.PublicKey}
-     */
-    public static final class Builder extends
-        com.google.protobuf.GeneratedMessageV3.Builder<Builder> implements
+
+    /** Protobuf type {@code io.libp2p.protocol.circuit.crypto.pb.PublicKey} */
+    public static final class Builder
+        extends com.google.protobuf.GeneratedMessageV3.Builder<Builder>
+        implements
         // @@protoc_insertion_point(builder_implements:io.libp2p.protocol.circuit.crypto.pb.PublicKey)
         io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKeyOrBuilder {
-      public static final com.google.protobuf.Descriptors.Descriptor
-          getDescriptor() {
-        return io.libp2p.protocol.circuit.crypto.pb.Crypto.internal_static_org_peergos_protocol_crypto_pb_PublicKey_descriptor;
+      public static final com.google.protobuf.Descriptors.Descriptor getDescriptor() {
+        return io.libp2p.protocol.circuit.crypto.pb.Crypto
+            .internal_static_org_peergos_protocol_crypto_pb_PublicKey_descriptor;
       }
 
       @java.lang.Override
       protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
           internalGetFieldAccessorTable() {
-        return io.libp2p.protocol.circuit.crypto.pb.Crypto.internal_static_org_peergos_protocol_crypto_pb_PublicKey_fieldAccessorTable
+        return io.libp2p.protocol.circuit.crypto.pb.Crypto
+            .internal_static_org_peergos_protocol_crypto_pb_PublicKey_fieldAccessorTable
             .ensureFieldAccessorsInitialized(
-                io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey.class, io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey.Builder.class);
+                io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey.class,
+                io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey.Builder.class);
       }
 
       // Construct using io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey.newBuilder()
@@ -449,16 +438,15 @@ public final class Crypto {
         maybeForceBuilderInitialization();
       }
 
-      private Builder(
-          com.google.protobuf.GeneratedMessageV3.BuilderParent parent) {
+      private Builder(com.google.protobuf.GeneratedMessageV3.BuilderParent parent) {
         super(parent);
         maybeForceBuilderInitialization();
       }
+
       private void maybeForceBuilderInitialization() {
-        if (com.google.protobuf.GeneratedMessageV3
-                .alwaysUseFieldBuilders) {
-        }
+        if (com.google.protobuf.GeneratedMessageV3.alwaysUseFieldBuilders) {}
       }
+
       @java.lang.Override
       public Builder clear() {
         super.clear();
@@ -470,9 +458,9 @@ public final class Crypto {
       }
 
       @java.lang.Override
-      public com.google.protobuf.Descriptors.Descriptor
-          getDescriptorForType() {
-        return io.libp2p.protocol.circuit.crypto.pb.Crypto.internal_static_org_peergos_protocol_crypto_pb_PublicKey_descriptor;
+      public com.google.protobuf.Descriptors.Descriptor getDescriptorForType() {
+        return io.libp2p.protocol.circuit.crypto.pb.Crypto
+            .internal_static_org_peergos_protocol_crypto_pb_PublicKey_descriptor;
       }
 
       @java.lang.Override
@@ -491,7 +479,8 @@ public final class Crypto {
 
       @java.lang.Override
       public io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey buildPartial() {
-        io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey result = new io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey(this);
+        io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey result =
+            new io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey(this);
         result.type_ = type_;
         result.data_ = data_;
         onBuilt();
@@ -502,38 +491,41 @@ public final class Crypto {
       public Builder clone() {
         return (Builder) super.clone();
       }
+
       @java.lang.Override
       public Builder setField(
-          com.google.protobuf.Descriptors.FieldDescriptor field,
-          java.lang.Object value) {
+          com.google.protobuf.Descriptors.FieldDescriptor field, java.lang.Object value) {
         return (Builder) super.setField(field, value);
       }
+
       @java.lang.Override
-      public Builder clearField(
-          com.google.protobuf.Descriptors.FieldDescriptor field) {
+      public Builder clearField(com.google.protobuf.Descriptors.FieldDescriptor field) {
         return (Builder) super.clearField(field);
       }
+
       @java.lang.Override
-      public Builder clearOneof(
-          com.google.protobuf.Descriptors.OneofDescriptor oneof) {
+      public Builder clearOneof(com.google.protobuf.Descriptors.OneofDescriptor oneof) {
         return (Builder) super.clearOneof(oneof);
       }
+
       @java.lang.Override
       public Builder setRepeatedField(
           com.google.protobuf.Descriptors.FieldDescriptor field,
-          int index, java.lang.Object value) {
+          int index,
+          java.lang.Object value) {
         return (Builder) super.setRepeatedField(field, index, value);
       }
+
       @java.lang.Override
       public Builder addRepeatedField(
-          com.google.protobuf.Descriptors.FieldDescriptor field,
-          java.lang.Object value) {
+          com.google.protobuf.Descriptors.FieldDescriptor field, java.lang.Object value) {
         return (Builder) super.addRepeatedField(field, value);
       }
+
       @java.lang.Override
       public Builder mergeFrom(com.google.protobuf.Message other) {
         if (other instanceof io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey) {
-          return mergeFrom((io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey)other);
+          return mergeFrom((io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey) other);
         } else {
           super.mergeFrom(other);
           return this;
@@ -541,7 +533,8 @@ public final class Crypto {
       }
 
       public Builder mergeFrom(io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey other) {
-        if (other == io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey.getDefaultInstance()) return this;
+        if (other == io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey.getDefaultInstance())
+          return this;
         if (other.type_ != 0) {
           setTypeValue(other.getTypeValue());
         }
@@ -567,7 +560,8 @@ public final class Crypto {
         try {
           parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
         } catch (com.google.protobuf.InvalidProtocolBufferException e) {
-          parsedMessage = (io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey) e.getUnfinishedMessage();
+          parsedMessage =
+              (io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey) e.getUnfinishedMessage();
           throw e.unwrapIOException();
         } finally {
           if (parsedMessage != null) {
@@ -578,78 +572,74 @@ public final class Crypto {
       }
 
       private int type_ = 0;
-      /**
-       * <code>.io.libp2p.protocol.circuit.crypto.pb.KeyType Type = 1;</code>
-       */
+
+      /** <code>.io.libp2p.protocol.circuit.crypto.pb.KeyType Type = 1;</code> */
       public int getTypeValue() {
         return type_;
       }
-      /**
-       * <code>.io.libp2p.protocol.circuit.crypto.pb.KeyType Type = 1;</code>
-       */
+
+      /** <code>.io.libp2p.protocol.circuit.crypto.pb.KeyType Type = 1;</code> */
       public Builder setTypeValue(int value) {
         type_ = value;
         onChanged();
         return this;
       }
-      /**
-       * <code>.io.libp2p.protocol.circuit.crypto.pb.KeyType Type = 1;</code>
-       */
+
+      /** <code>.io.libp2p.protocol.circuit.crypto.pb.KeyType Type = 1;</code> */
       public io.libp2p.protocol.circuit.crypto.pb.Crypto.KeyType getType() {
         @SuppressWarnings("deprecation")
-        io.libp2p.protocol.circuit.crypto.pb.Crypto.KeyType result = io.libp2p.protocol.circuit.crypto.pb.Crypto.KeyType.valueOf(type_);
-        return result == null ? io.libp2p.protocol.circuit.crypto.pb.Crypto.KeyType.UNRECOGNIZED : result;
+        io.libp2p.protocol.circuit.crypto.pb.Crypto.KeyType result =
+            io.libp2p.protocol.circuit.crypto.pb.Crypto.KeyType.valueOf(type_);
+        return result == null
+            ? io.libp2p.protocol.circuit.crypto.pb.Crypto.KeyType.UNRECOGNIZED
+            : result;
       }
-      /**
-       * <code>.io.libp2p.protocol.circuit.crypto.pb.KeyType Type = 1;</code>
-       */
+
+      /** <code>.io.libp2p.protocol.circuit.crypto.pb.KeyType Type = 1;</code> */
       public Builder setType(io.libp2p.protocol.circuit.crypto.pb.Crypto.KeyType value) {
         if (value == null) {
           throw new NullPointerException();
         }
-        
+
         type_ = value.getNumber();
         onChanged();
         return this;
       }
-      /**
-       * <code>.io.libp2p.protocol.circuit.crypto.pb.KeyType Type = 1;</code>
-       */
+
+      /** <code>.io.libp2p.protocol.circuit.crypto.pb.KeyType Type = 1;</code> */
       public Builder clearType() {
-        
+
         type_ = 0;
         onChanged();
         return this;
       }
 
       private com.google.protobuf.ByteString data_ = com.google.protobuf.ByteString.EMPTY;
-      /**
-       * <code>bytes Data = 2;</code>
-       */
+
+      /** <code>bytes Data = 2;</code> */
       public com.google.protobuf.ByteString getData() {
         return data_;
       }
-      /**
-       * <code>bytes Data = 2;</code>
-       */
+
+      /** <code>bytes Data = 2;</code> */
       public Builder setData(com.google.protobuf.ByteString value) {
         if (value == null) {
-    throw new NullPointerException();
-  }
-  
+          throw new NullPointerException();
+        }
+
         data_ = value;
         onChanged();
         return this;
       }
-      /**
-       * <code>bytes Data = 2;</code>
-       */
+
+      /** <code>bytes Data = 2;</code> */
       public Builder clearData() {
-        
+
         data_ = getDefaultInstance().getData();
         onChanged();
         return this;
       }
+
       @java.lang.Override
       public final Builder setUnknownFields(
           final com.google.protobuf.UnknownFieldSet unknownFields) {
@@ -662,12 +652,12 @@ public final class Crypto {
         return super.mergeUnknownFields(unknownFields);
       }
 
-
       // @@protoc_insertion_point(builder_scope:io.libp2p.protocol.circuit.crypto.pb.PublicKey)
     }
 
     // @@protoc_insertion_point(class_scope:io.libp2p.protocol.circuit.crypto.pb.PublicKey)
     private static final io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey DEFAULT_INSTANCE;
+
     static {
       DEFAULT_INSTANCE = new io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey();
     }
@@ -676,16 +666,16 @@ public final class Crypto {
       return DEFAULT_INSTANCE;
     }
 
-    private static final com.google.protobuf.Parser<PublicKey>
-        PARSER = new com.google.protobuf.AbstractParser<PublicKey>() {
-      @java.lang.Override
-      public PublicKey parsePartialFrom(
-          com.google.protobuf.CodedInputStream input,
-          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-          throws com.google.protobuf.InvalidProtocolBufferException {
-        return new PublicKey(input, extensionRegistry);
-      }
-    };
+    private static final com.google.protobuf.Parser<PublicKey> PARSER =
+        new com.google.protobuf.AbstractParser<PublicKey>() {
+          @java.lang.Override
+          public PublicKey parsePartialFrom(
+              com.google.protobuf.CodedInputStream input,
+              com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+              throws com.google.protobuf.InvalidProtocolBufferException {
+            return new PublicKey(input, extensionRegistry);
+          }
+        };
 
     public static com.google.protobuf.Parser<PublicKey> parser() {
       return PARSER;
@@ -700,49 +690,45 @@ public final class Crypto {
     public io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey getDefaultInstanceForType() {
       return DEFAULT_INSTANCE;
     }
-
   }
 
-  public interface PrivateKeyOrBuilder extends
+  public interface PrivateKeyOrBuilder
+      extends
       // @@protoc_insertion_point(interface_extends:io.libp2p.protocol.circuit.crypto.pb.PrivateKey)
       com.google.protobuf.MessageOrBuilder {
 
-    /**
-     * <code>.io.libp2p.protocol.circuit.crypto.pb.KeyType Type = 1;</code>
-     */
+    /** <code>.io.libp2p.protocol.circuit.crypto.pb.KeyType Type = 1;</code> */
     int getTypeValue();
-    /**
-     * <code>.io.libp2p.protocol.circuit.crypto.pb.KeyType Type = 1;</code>
-     */
+
+    /** <code>.io.libp2p.protocol.circuit.crypto.pb.KeyType Type = 1;</code> */
     io.libp2p.protocol.circuit.crypto.pb.Crypto.KeyType getType();
 
-    /**
-     * <code>bytes Data = 2;</code>
-     */
+    /** <code>bytes Data = 2;</code> */
     com.google.protobuf.ByteString getData();
   }
-  /**
-   * Protobuf type {@code io.libp2p.protocol.circuit.crypto.pb.PrivateKey}
-   */
-  public  static final class PrivateKey extends
-      com.google.protobuf.GeneratedMessageV3 implements
+
+  /** Protobuf type {@code io.libp2p.protocol.circuit.crypto.pb.PrivateKey} */
+  public static final class PrivateKey extends com.google.protobuf.GeneratedMessageV3
+      implements
       // @@protoc_insertion_point(message_implements:io.libp2p.protocol.circuit.crypto.pb.PrivateKey)
       PrivateKeyOrBuilder {
-  private static final long serialVersionUID = 0L;
+    private static final long serialVersionUID = 0L;
+
     // Use PrivateKey.newBuilder() to construct.
     private PrivateKey(com.google.protobuf.GeneratedMessageV3.Builder<?> builder) {
       super(builder);
     }
+
     private PrivateKey() {
       type_ = 0;
       data_ = com.google.protobuf.ByteString.EMPTY;
     }
 
     @java.lang.Override
-    public final com.google.protobuf.UnknownFieldSet
-    getUnknownFields() {
+    public final com.google.protobuf.UnknownFieldSet getUnknownFields() {
       return this.unknownFields;
     }
+
     private PrivateKey(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
@@ -762,76 +748,80 @@ public final class Crypto {
             case 0:
               done = true;
               break;
-            case 8: {
-              int rawValue = input.readEnum();
+            case 8:
+              {
+                int rawValue = input.readEnum();
 
-              type_ = rawValue;
-              break;
-            }
-            case 18: {
-
-              data_ = input.readBytes();
-              break;
-            }
-            default: {
-              if (!parseUnknownFieldProto3(
-                  input, unknownFields, extensionRegistry, tag)) {
-                done = true;
+                type_ = rawValue;
+                break;
               }
-              break;
-            }
+            case 18:
+              {
+                data_ = input.readBytes();
+                break;
+              }
+            default:
+              {
+                if (!parseUnknownFieldProto3(input, unknownFields, extensionRegistry, tag)) {
+                  done = true;
+                }
+                break;
+              }
           }
         }
       } catch (com.google.protobuf.InvalidProtocolBufferException e) {
         throw e.setUnfinishedMessage(this);
       } catch (java.io.IOException e) {
-        throw new com.google.protobuf.InvalidProtocolBufferException(
-            e).setUnfinishedMessage(this);
+        throw new com.google.protobuf.InvalidProtocolBufferException(e).setUnfinishedMessage(this);
       } finally {
         this.unknownFields = unknownFields.build();
         makeExtensionsImmutable();
       }
     }
-    public static final com.google.protobuf.Descriptors.Descriptor
-        getDescriptor() {
-      return io.libp2p.protocol.circuit.crypto.pb.Crypto.internal_static_org_peergos_protocol_crypto_pb_PrivateKey_descriptor;
+
+    public static final com.google.protobuf.Descriptors.Descriptor getDescriptor() {
+      return io.libp2p.protocol.circuit.crypto.pb.Crypto
+          .internal_static_org_peergos_protocol_crypto_pb_PrivateKey_descriptor;
     }
 
     @java.lang.Override
     protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
         internalGetFieldAccessorTable() {
-      return io.libp2p.protocol.circuit.crypto.pb.Crypto.internal_static_org_peergos_protocol_crypto_pb_PrivateKey_fieldAccessorTable
+      return io.libp2p.protocol.circuit.crypto.pb.Crypto
+          .internal_static_org_peergos_protocol_crypto_pb_PrivateKey_fieldAccessorTable
           .ensureFieldAccessorsInitialized(
-              io.libp2p.protocol.circuit.crypto.pb.Crypto.PrivateKey.class, io.libp2p.protocol.circuit.crypto.pb.Crypto.PrivateKey.Builder.class);
+              io.libp2p.protocol.circuit.crypto.pb.Crypto.PrivateKey.class,
+              io.libp2p.protocol.circuit.crypto.pb.Crypto.PrivateKey.Builder.class);
     }
 
     public static final int TYPE_FIELD_NUMBER = 1;
     private int type_;
-    /**
-     * <code>.io.libp2p.protocol.circuit.crypto.pb.KeyType Type = 1;</code>
-     */
+
+    /** <code>.io.libp2p.protocol.circuit.crypto.pb.KeyType Type = 1;</code> */
     public int getTypeValue() {
       return type_;
     }
-    /**
-     * <code>.io.libp2p.protocol.circuit.crypto.pb.KeyType Type = 1;</code>
-     */
+
+    /** <code>.io.libp2p.protocol.circuit.crypto.pb.KeyType Type = 1;</code> */
     public io.libp2p.protocol.circuit.crypto.pb.Crypto.KeyType getType() {
       @SuppressWarnings("deprecation")
-      io.libp2p.protocol.circuit.crypto.pb.Crypto.KeyType result = io.libp2p.protocol.circuit.crypto.pb.Crypto.KeyType.valueOf(type_);
-      return result == null ? io.libp2p.protocol.circuit.crypto.pb.Crypto.KeyType.UNRECOGNIZED : result;
+      io.libp2p.protocol.circuit.crypto.pb.Crypto.KeyType result =
+          io.libp2p.protocol.circuit.crypto.pb.Crypto.KeyType.valueOf(type_);
+      return result == null
+          ? io.libp2p.protocol.circuit.crypto.pb.Crypto.KeyType.UNRECOGNIZED
+          : result;
     }
 
     public static final int DATA_FIELD_NUMBER = 2;
     private com.google.protobuf.ByteString data_;
-    /**
-     * <code>bytes Data = 2;</code>
-     */
+
+    /** <code>bytes Data = 2;</code> */
     public com.google.protobuf.ByteString getData() {
       return data_;
     }
 
     private byte memoizedIsInitialized = -1;
+
     @java.lang.Override
     public final boolean isInitialized() {
       byte isInitialized = memoizedIsInitialized;
@@ -843,8 +833,7 @@ public final class Crypto {
     }
 
     @java.lang.Override
-    public void writeTo(com.google.protobuf.CodedOutputStream output)
-                        throws java.io.IOException {
+    public void writeTo(com.google.protobuf.CodedOutputStream output) throws java.io.IOException {
       if (type_ != io.libp2p.protocol.circuit.crypto.pb.Crypto.KeyType.RSA.getNumber()) {
         output.writeEnum(1, type_);
       }
@@ -861,12 +850,10 @@ public final class Crypto {
 
       size = 0;
       if (type_ != io.libp2p.protocol.circuit.crypto.pb.Crypto.KeyType.RSA.getNumber()) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeEnumSize(1, type_);
+        size += com.google.protobuf.CodedOutputStream.computeEnumSize(1, type_);
       }
       if (!data_.isEmpty()) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeBytesSize(2, data_);
+        size += com.google.protobuf.CodedOutputStream.computeBytesSize(2, data_);
       }
       size += unknownFields.getSerializedSize();
       memoizedSize = size;
@@ -876,17 +863,17 @@ public final class Crypto {
     @java.lang.Override
     public boolean equals(final java.lang.Object obj) {
       if (obj == this) {
-       return true;
+        return true;
       }
       if (!(obj instanceof io.libp2p.protocol.circuit.crypto.pb.Crypto.PrivateKey)) {
         return super.equals(obj);
       }
-      io.libp2p.protocol.circuit.crypto.pb.Crypto.PrivateKey other = (io.libp2p.protocol.circuit.crypto.pb.Crypto.PrivateKey) obj;
+      io.libp2p.protocol.circuit.crypto.pb.Crypto.PrivateKey other =
+          (io.libp2p.protocol.circuit.crypto.pb.Crypto.PrivateKey) obj;
 
       boolean result = true;
       result = result && type_ == other.type_;
-      result = result && getData()
-          .equals(other.getData());
+      result = result && getData().equals(other.getData());
       result = result && unknownFields.equals(other.unknownFields);
       return result;
     }
@@ -908,87 +895,94 @@ public final class Crypto {
     }
 
     public static io.libp2p.protocol.circuit.crypto.pb.Crypto.PrivateKey parseFrom(
-        java.nio.ByteBuffer data)
-        throws com.google.protobuf.InvalidProtocolBufferException {
+        java.nio.ByteBuffer data) throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data);
     }
+
     public static io.libp2p.protocol.circuit.crypto.pb.Crypto.PrivateKey parseFrom(
-        java.nio.ByteBuffer data,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        java.nio.ByteBuffer data, com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data, extensionRegistry);
     }
+
     public static io.libp2p.protocol.circuit.crypto.pb.Crypto.PrivateKey parseFrom(
         com.google.protobuf.ByteString data)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data);
     }
+
     public static io.libp2p.protocol.circuit.crypto.pb.Crypto.PrivateKey parseFrom(
         com.google.protobuf.ByteString data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data, extensionRegistry);
     }
+
     public static io.libp2p.protocol.circuit.crypto.pb.Crypto.PrivateKey parseFrom(byte[] data)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data);
     }
+
     public static io.libp2p.protocol.circuit.crypto.pb.Crypto.PrivateKey parseFrom(
-        byte[] data,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        byte[] data, com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data, extensionRegistry);
     }
-    public static io.libp2p.protocol.circuit.crypto.pb.Crypto.PrivateKey parseFrom(java.io.InputStream input)
-        throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseWithIOException(PARSER, input);
-    }
+
     public static io.libp2p.protocol.circuit.crypto.pb.Crypto.PrivateKey parseFrom(
-        java.io.InputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseWithIOException(PARSER, input, extensionRegistry);
+        java.io.InputStream input) throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessageV3.parseWithIOException(PARSER, input);
     }
-    public static io.libp2p.protocol.circuit.crypto.pb.Crypto.PrivateKey parseDelimitedFrom(java.io.InputStream input)
+
+    public static io.libp2p.protocol.circuit.crypto.pb.Crypto.PrivateKey parseFrom(
+        java.io.InputStream input, com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseDelimitedWithIOException(PARSER, input);
+      return com.google.protobuf.GeneratedMessageV3.parseWithIOException(
+          PARSER, input, extensionRegistry);
     }
+
     public static io.libp2p.protocol.circuit.crypto.pb.Crypto.PrivateKey parseDelimitedFrom(
-        java.io.InputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseDelimitedWithIOException(PARSER, input, extensionRegistry);
+        java.io.InputStream input) throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessageV3.parseDelimitedWithIOException(PARSER, input);
     }
+
+    public static io.libp2p.protocol.circuit.crypto.pb.Crypto.PrivateKey parseDelimitedFrom(
+        java.io.InputStream input, com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessageV3.parseDelimitedWithIOException(
+          PARSER, input, extensionRegistry);
+    }
+
     public static io.libp2p.protocol.circuit.crypto.pb.Crypto.PrivateKey parseFrom(
-        com.google.protobuf.CodedInputStream input)
-        throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseWithIOException(PARSER, input);
+        com.google.protobuf.CodedInputStream input) throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessageV3.parseWithIOException(PARSER, input);
     }
+
     public static io.libp2p.protocol.circuit.crypto.pb.Crypto.PrivateKey parseFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseWithIOException(PARSER, input, extensionRegistry);
+      return com.google.protobuf.GeneratedMessageV3.parseWithIOException(
+          PARSER, input, extensionRegistry);
     }
 
     @java.lang.Override
-    public Builder newBuilderForType() { return newBuilder(); }
+    public Builder newBuilderForType() {
+      return newBuilder();
+    }
+
     public static Builder newBuilder() {
       return DEFAULT_INSTANCE.toBuilder();
     }
-    public static Builder newBuilder(io.libp2p.protocol.circuit.crypto.pb.Crypto.PrivateKey prototype) {
+
+    public static Builder newBuilder(
+        io.libp2p.protocol.circuit.crypto.pb.Crypto.PrivateKey prototype) {
       return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
     }
+
     @java.lang.Override
     public Builder toBuilder() {
-      return this == DEFAULT_INSTANCE
-          ? new Builder() : new Builder().mergeFrom(this);
+      return this == DEFAULT_INSTANCE ? new Builder() : new Builder().mergeFrom(this);
     }
 
     @java.lang.Override
@@ -997,24 +991,26 @@ public final class Crypto {
       Builder builder = new Builder(parent);
       return builder;
     }
-    /**
-     * Protobuf type {@code io.libp2p.protocol.circuit.crypto.pb.PrivateKey}
-     */
-    public static final class Builder extends
-        com.google.protobuf.GeneratedMessageV3.Builder<Builder> implements
+
+    /** Protobuf type {@code io.libp2p.protocol.circuit.crypto.pb.PrivateKey} */
+    public static final class Builder
+        extends com.google.protobuf.GeneratedMessageV3.Builder<Builder>
+        implements
         // @@protoc_insertion_point(builder_implements:io.libp2p.protocol.circuit.crypto.pb.PrivateKey)
         io.libp2p.protocol.circuit.crypto.pb.Crypto.PrivateKeyOrBuilder {
-      public static final com.google.protobuf.Descriptors.Descriptor
-          getDescriptor() {
-        return io.libp2p.protocol.circuit.crypto.pb.Crypto.internal_static_org_peergos_protocol_crypto_pb_PrivateKey_descriptor;
+      public static final com.google.protobuf.Descriptors.Descriptor getDescriptor() {
+        return io.libp2p.protocol.circuit.crypto.pb.Crypto
+            .internal_static_org_peergos_protocol_crypto_pb_PrivateKey_descriptor;
       }
 
       @java.lang.Override
       protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
           internalGetFieldAccessorTable() {
-        return io.libp2p.protocol.circuit.crypto.pb.Crypto.internal_static_org_peergos_protocol_crypto_pb_PrivateKey_fieldAccessorTable
+        return io.libp2p.protocol.circuit.crypto.pb.Crypto
+            .internal_static_org_peergos_protocol_crypto_pb_PrivateKey_fieldAccessorTable
             .ensureFieldAccessorsInitialized(
-                io.libp2p.protocol.circuit.crypto.pb.Crypto.PrivateKey.class, io.libp2p.protocol.circuit.crypto.pb.Crypto.PrivateKey.Builder.class);
+                io.libp2p.protocol.circuit.crypto.pb.Crypto.PrivateKey.class,
+                io.libp2p.protocol.circuit.crypto.pb.Crypto.PrivateKey.Builder.class);
       }
 
       // Construct using io.libp2p.protocol.circuit.crypto.pb.Crypto.PrivateKey.newBuilder()
@@ -1022,16 +1018,15 @@ public final class Crypto {
         maybeForceBuilderInitialization();
       }
 
-      private Builder(
-          com.google.protobuf.GeneratedMessageV3.BuilderParent parent) {
+      private Builder(com.google.protobuf.GeneratedMessageV3.BuilderParent parent) {
         super(parent);
         maybeForceBuilderInitialization();
       }
+
       private void maybeForceBuilderInitialization() {
-        if (com.google.protobuf.GeneratedMessageV3
-                .alwaysUseFieldBuilders) {
-        }
+        if (com.google.protobuf.GeneratedMessageV3.alwaysUseFieldBuilders) {}
       }
+
       @java.lang.Override
       public Builder clear() {
         super.clear();
@@ -1043,9 +1038,9 @@ public final class Crypto {
       }
 
       @java.lang.Override
-      public com.google.protobuf.Descriptors.Descriptor
-          getDescriptorForType() {
-        return io.libp2p.protocol.circuit.crypto.pb.Crypto.internal_static_org_peergos_protocol_crypto_pb_PrivateKey_descriptor;
+      public com.google.protobuf.Descriptors.Descriptor getDescriptorForType() {
+        return io.libp2p.protocol.circuit.crypto.pb.Crypto
+            .internal_static_org_peergos_protocol_crypto_pb_PrivateKey_descriptor;
       }
 
       @java.lang.Override
@@ -1064,7 +1059,8 @@ public final class Crypto {
 
       @java.lang.Override
       public io.libp2p.protocol.circuit.crypto.pb.Crypto.PrivateKey buildPartial() {
-        io.libp2p.protocol.circuit.crypto.pb.Crypto.PrivateKey result = new io.libp2p.protocol.circuit.crypto.pb.Crypto.PrivateKey(this);
+        io.libp2p.protocol.circuit.crypto.pb.Crypto.PrivateKey result =
+            new io.libp2p.protocol.circuit.crypto.pb.Crypto.PrivateKey(this);
         result.type_ = type_;
         result.data_ = data_;
         onBuilt();
@@ -1075,38 +1071,41 @@ public final class Crypto {
       public Builder clone() {
         return (Builder) super.clone();
       }
+
       @java.lang.Override
       public Builder setField(
-          com.google.protobuf.Descriptors.FieldDescriptor field,
-          java.lang.Object value) {
+          com.google.protobuf.Descriptors.FieldDescriptor field, java.lang.Object value) {
         return (Builder) super.setField(field, value);
       }
+
       @java.lang.Override
-      public Builder clearField(
-          com.google.protobuf.Descriptors.FieldDescriptor field) {
+      public Builder clearField(com.google.protobuf.Descriptors.FieldDescriptor field) {
         return (Builder) super.clearField(field);
       }
+
       @java.lang.Override
-      public Builder clearOneof(
-          com.google.protobuf.Descriptors.OneofDescriptor oneof) {
+      public Builder clearOneof(com.google.protobuf.Descriptors.OneofDescriptor oneof) {
         return (Builder) super.clearOneof(oneof);
       }
+
       @java.lang.Override
       public Builder setRepeatedField(
           com.google.protobuf.Descriptors.FieldDescriptor field,
-          int index, java.lang.Object value) {
+          int index,
+          java.lang.Object value) {
         return (Builder) super.setRepeatedField(field, index, value);
       }
+
       @java.lang.Override
       public Builder addRepeatedField(
-          com.google.protobuf.Descriptors.FieldDescriptor field,
-          java.lang.Object value) {
+          com.google.protobuf.Descriptors.FieldDescriptor field, java.lang.Object value) {
         return (Builder) super.addRepeatedField(field, value);
       }
+
       @java.lang.Override
       public Builder mergeFrom(com.google.protobuf.Message other) {
         if (other instanceof io.libp2p.protocol.circuit.crypto.pb.Crypto.PrivateKey) {
-          return mergeFrom((io.libp2p.protocol.circuit.crypto.pb.Crypto.PrivateKey)other);
+          return mergeFrom((io.libp2p.protocol.circuit.crypto.pb.Crypto.PrivateKey) other);
         } else {
           super.mergeFrom(other);
           return this;
@@ -1114,7 +1113,8 @@ public final class Crypto {
       }
 
       public Builder mergeFrom(io.libp2p.protocol.circuit.crypto.pb.Crypto.PrivateKey other) {
-        if (other == io.libp2p.protocol.circuit.crypto.pb.Crypto.PrivateKey.getDefaultInstance()) return this;
+        if (other == io.libp2p.protocol.circuit.crypto.pb.Crypto.PrivateKey.getDefaultInstance())
+          return this;
         if (other.type_ != 0) {
           setTypeValue(other.getTypeValue());
         }
@@ -1140,7 +1140,8 @@ public final class Crypto {
         try {
           parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
         } catch (com.google.protobuf.InvalidProtocolBufferException e) {
-          parsedMessage = (io.libp2p.protocol.circuit.crypto.pb.Crypto.PrivateKey) e.getUnfinishedMessage();
+          parsedMessage =
+              (io.libp2p.protocol.circuit.crypto.pb.Crypto.PrivateKey) e.getUnfinishedMessage();
           throw e.unwrapIOException();
         } finally {
           if (parsedMessage != null) {
@@ -1151,78 +1152,74 @@ public final class Crypto {
       }
 
       private int type_ = 0;
-      /**
-       * <code>.io.libp2p.protocol.circuit.crypto.pb.KeyType Type = 1;</code>
-       */
+
+      /** <code>.io.libp2p.protocol.circuit.crypto.pb.KeyType Type = 1;</code> */
       public int getTypeValue() {
         return type_;
       }
-      /**
-       * <code>.io.libp2p.protocol.circuit.crypto.pb.KeyType Type = 1;</code>
-       */
+
+      /** <code>.io.libp2p.protocol.circuit.crypto.pb.KeyType Type = 1;</code> */
       public Builder setTypeValue(int value) {
         type_ = value;
         onChanged();
         return this;
       }
-      /**
-       * <code>.io.libp2p.protocol.circuit.crypto.pb.KeyType Type = 1;</code>
-       */
+
+      /** <code>.io.libp2p.protocol.circuit.crypto.pb.KeyType Type = 1;</code> */
       public io.libp2p.protocol.circuit.crypto.pb.Crypto.KeyType getType() {
         @SuppressWarnings("deprecation")
-        io.libp2p.protocol.circuit.crypto.pb.Crypto.KeyType result = io.libp2p.protocol.circuit.crypto.pb.Crypto.KeyType.valueOf(type_);
-        return result == null ? io.libp2p.protocol.circuit.crypto.pb.Crypto.KeyType.UNRECOGNIZED : result;
+        io.libp2p.protocol.circuit.crypto.pb.Crypto.KeyType result =
+            io.libp2p.protocol.circuit.crypto.pb.Crypto.KeyType.valueOf(type_);
+        return result == null
+            ? io.libp2p.protocol.circuit.crypto.pb.Crypto.KeyType.UNRECOGNIZED
+            : result;
       }
-      /**
-       * <code>.io.libp2p.protocol.circuit.crypto.pb.KeyType Type = 1;</code>
-       */
+
+      /** <code>.io.libp2p.protocol.circuit.crypto.pb.KeyType Type = 1;</code> */
       public Builder setType(io.libp2p.protocol.circuit.crypto.pb.Crypto.KeyType value) {
         if (value == null) {
           throw new NullPointerException();
         }
-        
+
         type_ = value.getNumber();
         onChanged();
         return this;
       }
-      /**
-       * <code>.io.libp2p.protocol.circuit.crypto.pb.KeyType Type = 1;</code>
-       */
+
+      /** <code>.io.libp2p.protocol.circuit.crypto.pb.KeyType Type = 1;</code> */
       public Builder clearType() {
-        
+
         type_ = 0;
         onChanged();
         return this;
       }
 
       private com.google.protobuf.ByteString data_ = com.google.protobuf.ByteString.EMPTY;
-      /**
-       * <code>bytes Data = 2;</code>
-       */
+
+      /** <code>bytes Data = 2;</code> */
       public com.google.protobuf.ByteString getData() {
         return data_;
       }
-      /**
-       * <code>bytes Data = 2;</code>
-       */
+
+      /** <code>bytes Data = 2;</code> */
       public Builder setData(com.google.protobuf.ByteString value) {
         if (value == null) {
-    throw new NullPointerException();
-  }
-  
+          throw new NullPointerException();
+        }
+
         data_ = value;
         onChanged();
         return this;
       }
-      /**
-       * <code>bytes Data = 2;</code>
-       */
+
+      /** <code>bytes Data = 2;</code> */
       public Builder clearData() {
-        
+
         data_ = getDefaultInstance().getData();
         onChanged();
         return this;
       }
+
       @java.lang.Override
       public final Builder setUnknownFields(
           final com.google.protobuf.UnknownFieldSet unknownFields) {
@@ -1235,12 +1232,12 @@ public final class Crypto {
         return super.mergeUnknownFields(unknownFields);
       }
 
-
       // @@protoc_insertion_point(builder_scope:io.libp2p.protocol.circuit.crypto.pb.PrivateKey)
     }
 
     // @@protoc_insertion_point(class_scope:io.libp2p.protocol.circuit.crypto.pb.PrivateKey)
     private static final io.libp2p.protocol.circuit.crypto.pb.Crypto.PrivateKey DEFAULT_INSTANCE;
+
     static {
       DEFAULT_INSTANCE = new io.libp2p.protocol.circuit.crypto.pb.Crypto.PrivateKey();
     }
@@ -1249,16 +1246,16 @@ public final class Crypto {
       return DEFAULT_INSTANCE;
     }
 
-    private static final com.google.protobuf.Parser<PrivateKey>
-        PARSER = new com.google.protobuf.AbstractParser<PrivateKey>() {
-      @java.lang.Override
-      public PrivateKey parsePartialFrom(
-          com.google.protobuf.CodedInputStream input,
-          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-          throws com.google.protobuf.InvalidProtocolBufferException {
-        return new PrivateKey(input, extensionRegistry);
-      }
-    };
+    private static final com.google.protobuf.Parser<PrivateKey> PARSER =
+        new com.google.protobuf.AbstractParser<PrivateKey>() {
+          @java.lang.Override
+          public PrivateKey parsePartialFrom(
+              com.google.protobuf.CodedInputStream input,
+              com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+              throws com.google.protobuf.InvalidProtocolBufferException {
+            return new PrivateKey(input, extensionRegistry);
+          }
+        };
 
     public static com.google.protobuf.Parser<PrivateKey> parser() {
       return PARSER;
@@ -1273,14 +1270,16 @@ public final class Crypto {
     public io.libp2p.protocol.circuit.crypto.pb.Crypto.PrivateKey getDefaultInstanceForType() {
       return DEFAULT_INSTANCE;
     }
-
   }
 
-  public interface EnvelopeOrBuilder extends
+  public interface EnvelopeOrBuilder
+      extends
       // @@protoc_insertion_point(interface_extends:io.libp2p.protocol.circuit.crypto.pb.Envelope)
       com.google.protobuf.MessageOrBuilder {
 
     /**
+     *
+     *
      * <pre>
      * public_key is the public key of the keypair the enclosed payload was
      * signed with.
@@ -1289,7 +1288,10 @@ public final class Crypto {
      * <code>.io.libp2p.protocol.circuit.crypto.pb.PublicKey public_key = 1;</code>
      */
     boolean hasPublicKey();
+
     /**
+     *
+     *
      * <pre>
      * public_key is the public key of the keypair the enclosed payload was
      * signed with.
@@ -1298,7 +1300,10 @@ public final class Crypto {
      * <code>.io.libp2p.protocol.circuit.crypto.pb.PublicKey public_key = 1;</code>
      */
     io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey getPublicKey();
+
     /**
+     *
+     *
      * <pre>
      * public_key is the public key of the keypair the enclosed payload was
      * signed with.
@@ -1309,6 +1314,8 @@ public final class Crypto {
     io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKeyOrBuilder getPublicKeyOrBuilder();
 
     /**
+     *
+     *
      * <pre>
      * payload_type encodes the type of payload, so that it can be deserialized
      * deterministically.
@@ -1319,6 +1326,8 @@ public final class Crypto {
     com.google.protobuf.ByteString getPayloadType();
 
     /**
+     *
+     *
      * <pre>
      * payload is the actual payload carried inside this envelope.
      * </pre>
@@ -1328,6 +1337,8 @@ public final class Crypto {
     com.google.protobuf.ByteString getPayload();
 
     /**
+     *
+     *
      * <pre>
      * signature is the signature produced by the private key corresponding to
      * the enclosed public key, over the payload, prefixing a domain string for
@@ -1338,7 +1349,10 @@ public final class Crypto {
      */
     com.google.protobuf.ByteString getSignature();
   }
+
   /**
+   *
+   *
    * <pre>
    * Envelope encloses a signed payload produced by a peer, along with the public
    * key of the keypair it was signed with so that it can be statelessly validated
@@ -1350,15 +1364,17 @@ public final class Crypto {
    *
    * Protobuf type {@code io.libp2p.protocol.circuit.crypto.pb.Envelope}
    */
-  public  static final class Envelope extends
-      com.google.protobuf.GeneratedMessageV3 implements
+  public static final class Envelope extends com.google.protobuf.GeneratedMessageV3
+      implements
       // @@protoc_insertion_point(message_implements:io.libp2p.protocol.circuit.crypto.pb.Envelope)
       EnvelopeOrBuilder {
-  private static final long serialVersionUID = 0L;
+    private static final long serialVersionUID = 0L;
+
     // Use Envelope.newBuilder() to construct.
     private Envelope(com.google.protobuf.GeneratedMessageV3.Builder<?> builder) {
       super(builder);
     }
+
     private Envelope() {
       payloadType_ = com.google.protobuf.ByteString.EMPTY;
       payload_ = com.google.protobuf.ByteString.EMPTY;
@@ -1366,10 +1382,10 @@ public final class Crypto {
     }
 
     @java.lang.Override
-    public final com.google.protobuf.UnknownFieldSet
-    getUnknownFields() {
+    public final com.google.protobuf.UnknownFieldSet getUnknownFields() {
       return this.unknownFields;
     }
+
     private Envelope(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
@@ -1389,69 +1405,78 @@ public final class Crypto {
             case 0:
               done = true;
               break;
-            case 10: {
-              io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey.Builder subBuilder = null;
-              if (publicKey_ != null) {
-                subBuilder = publicKey_.toBuilder();
+            case 10:
+              {
+                io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey.Builder subBuilder = null;
+                if (publicKey_ != null) {
+                  subBuilder = publicKey_.toBuilder();
+                }
+                publicKey_ =
+                    input.readMessage(
+                        io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey.parser(),
+                        extensionRegistry);
+                if (subBuilder != null) {
+                  subBuilder.mergeFrom(publicKey_);
+                  publicKey_ = subBuilder.buildPartial();
+                }
+
+                break;
               }
-              publicKey_ = input.readMessage(io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey.parser(), extensionRegistry);
-              if (subBuilder != null) {
-                subBuilder.mergeFrom(publicKey_);
-                publicKey_ = subBuilder.buildPartial();
+            case 18:
+              {
+                payloadType_ = input.readBytes();
+                break;
               }
-
-              break;
-            }
-            case 18: {
-
-              payloadType_ = input.readBytes();
-              break;
-            }
-            case 26: {
-
-              payload_ = input.readBytes();
-              break;
-            }
-            case 42: {
-
-              signature_ = input.readBytes();
-              break;
-            }
-            default: {
-              if (!parseUnknownFieldProto3(
-                  input, unknownFields, extensionRegistry, tag)) {
-                done = true;
+            case 26:
+              {
+                payload_ = input.readBytes();
+                break;
               }
-              break;
-            }
+            case 42:
+              {
+                signature_ = input.readBytes();
+                break;
+              }
+            default:
+              {
+                if (!parseUnknownFieldProto3(input, unknownFields, extensionRegistry, tag)) {
+                  done = true;
+                }
+                break;
+              }
           }
         }
       } catch (com.google.protobuf.InvalidProtocolBufferException e) {
         throw e.setUnfinishedMessage(this);
       } catch (java.io.IOException e) {
-        throw new com.google.protobuf.InvalidProtocolBufferException(
-            e).setUnfinishedMessage(this);
+        throw new com.google.protobuf.InvalidProtocolBufferException(e).setUnfinishedMessage(this);
       } finally {
         this.unknownFields = unknownFields.build();
         makeExtensionsImmutable();
       }
     }
-    public static final com.google.protobuf.Descriptors.Descriptor
-        getDescriptor() {
-      return io.libp2p.protocol.circuit.crypto.pb.Crypto.internal_static_org_peergos_protocol_crypto_pb_Envelope_descriptor;
+
+    public static final com.google.protobuf.Descriptors.Descriptor getDescriptor() {
+      return io.libp2p.protocol.circuit.crypto.pb.Crypto
+          .internal_static_org_peergos_protocol_crypto_pb_Envelope_descriptor;
     }
 
     @java.lang.Override
     protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
         internalGetFieldAccessorTable() {
-      return io.libp2p.protocol.circuit.crypto.pb.Crypto.internal_static_org_peergos_protocol_crypto_pb_Envelope_fieldAccessorTable
+      return io.libp2p.protocol.circuit.crypto.pb.Crypto
+          .internal_static_org_peergos_protocol_crypto_pb_Envelope_fieldAccessorTable
           .ensureFieldAccessorsInitialized(
-              io.libp2p.protocol.circuit.crypto.pb.Crypto.Envelope.class, io.libp2p.protocol.circuit.crypto.pb.Crypto.Envelope.Builder.class);
+              io.libp2p.protocol.circuit.crypto.pb.Crypto.Envelope.class,
+              io.libp2p.protocol.circuit.crypto.pb.Crypto.Envelope.Builder.class);
     }
 
     public static final int PUBLIC_KEY_FIELD_NUMBER = 1;
     private io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey publicKey_;
+
     /**
+     *
+     *
      * <pre>
      * public_key is the public key of the keypair the enclosed payload was
      * signed with.
@@ -1462,7 +1487,10 @@ public final class Crypto {
     public boolean hasPublicKey() {
       return publicKey_ != null;
     }
+
     /**
+     *
+     *
      * <pre>
      * public_key is the public key of the keypair the enclosed payload was
      * signed with.
@@ -1471,9 +1499,14 @@ public final class Crypto {
      * <code>.io.libp2p.protocol.circuit.crypto.pb.PublicKey public_key = 1;</code>
      */
     public io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey getPublicKey() {
-      return publicKey_ == null ? io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey.getDefaultInstance() : publicKey_;
+      return publicKey_ == null
+          ? io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey.getDefaultInstance()
+          : publicKey_;
     }
+
     /**
+     *
+     *
      * <pre>
      * public_key is the public key of the keypair the enclosed payload was
      * signed with.
@@ -1487,7 +1520,10 @@ public final class Crypto {
 
     public static final int PAYLOAD_TYPE_FIELD_NUMBER = 2;
     private com.google.protobuf.ByteString payloadType_;
+
     /**
+     *
+     *
      * <pre>
      * payload_type encodes the type of payload, so that it can be deserialized
      * deterministically.
@@ -1501,7 +1537,10 @@ public final class Crypto {
 
     public static final int PAYLOAD_FIELD_NUMBER = 3;
     private com.google.protobuf.ByteString payload_;
+
     /**
+     *
+     *
      * <pre>
      * payload is the actual payload carried inside this envelope.
      * </pre>
@@ -1514,7 +1553,10 @@ public final class Crypto {
 
     public static final int SIGNATURE_FIELD_NUMBER = 5;
     private com.google.protobuf.ByteString signature_;
+
     /**
+     *
+     *
      * <pre>
      * signature is the signature produced by the private key corresponding to
      * the enclosed public key, over the payload, prefixing a domain string for
@@ -1528,6 +1570,7 @@ public final class Crypto {
     }
 
     private byte memoizedIsInitialized = -1;
+
     @java.lang.Override
     public final boolean isInitialized() {
       byte isInitialized = memoizedIsInitialized;
@@ -1539,8 +1582,7 @@ public final class Crypto {
     }
 
     @java.lang.Override
-    public void writeTo(com.google.protobuf.CodedOutputStream output)
-                        throws java.io.IOException {
+    public void writeTo(com.google.protobuf.CodedOutputStream output) throws java.io.IOException {
       if (publicKey_ != null) {
         output.writeMessage(1, getPublicKey());
       }
@@ -1563,20 +1605,16 @@ public final class Crypto {
 
       size = 0;
       if (publicKey_ != null) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeMessageSize(1, getPublicKey());
+        size += com.google.protobuf.CodedOutputStream.computeMessageSize(1, getPublicKey());
       }
       if (!payloadType_.isEmpty()) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeBytesSize(2, payloadType_);
+        size += com.google.protobuf.CodedOutputStream.computeBytesSize(2, payloadType_);
       }
       if (!payload_.isEmpty()) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeBytesSize(3, payload_);
+        size += com.google.protobuf.CodedOutputStream.computeBytesSize(3, payload_);
       }
       if (!signature_.isEmpty()) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeBytesSize(5, signature_);
+        size += com.google.protobuf.CodedOutputStream.computeBytesSize(5, signature_);
       }
       size += unknownFields.getSerializedSize();
       memoizedSize = size;
@@ -1586,25 +1624,22 @@ public final class Crypto {
     @java.lang.Override
     public boolean equals(final java.lang.Object obj) {
       if (obj == this) {
-       return true;
+        return true;
       }
       if (!(obj instanceof io.libp2p.protocol.circuit.crypto.pb.Crypto.Envelope)) {
         return super.equals(obj);
       }
-      io.libp2p.protocol.circuit.crypto.pb.Crypto.Envelope other = (io.libp2p.protocol.circuit.crypto.pb.Crypto.Envelope) obj;
+      io.libp2p.protocol.circuit.crypto.pb.Crypto.Envelope other =
+          (io.libp2p.protocol.circuit.crypto.pb.Crypto.Envelope) obj;
 
       boolean result = true;
       result = result && (hasPublicKey() == other.hasPublicKey());
       if (hasPublicKey()) {
-        result = result && getPublicKey()
-            .equals(other.getPublicKey());
+        result = result && getPublicKey().equals(other.getPublicKey());
       }
-      result = result && getPayloadType()
-          .equals(other.getPayloadType());
-      result = result && getPayload()
-          .equals(other.getPayload());
-      result = result && getSignature()
-          .equals(other.getSignature());
+      result = result && getPayloadType().equals(other.getPayloadType());
+      result = result && getPayload().equals(other.getPayload());
+      result = result && getSignature().equals(other.getSignature());
       result = result && unknownFields.equals(other.unknownFields);
       return result;
     }
@@ -1632,87 +1667,94 @@ public final class Crypto {
     }
 
     public static io.libp2p.protocol.circuit.crypto.pb.Crypto.Envelope parseFrom(
-        java.nio.ByteBuffer data)
-        throws com.google.protobuf.InvalidProtocolBufferException {
+        java.nio.ByteBuffer data) throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data);
     }
+
     public static io.libp2p.protocol.circuit.crypto.pb.Crypto.Envelope parseFrom(
-        java.nio.ByteBuffer data,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        java.nio.ByteBuffer data, com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data, extensionRegistry);
     }
+
     public static io.libp2p.protocol.circuit.crypto.pb.Crypto.Envelope parseFrom(
         com.google.protobuf.ByteString data)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data);
     }
+
     public static io.libp2p.protocol.circuit.crypto.pb.Crypto.Envelope parseFrom(
         com.google.protobuf.ByteString data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data, extensionRegistry);
     }
+
     public static io.libp2p.protocol.circuit.crypto.pb.Crypto.Envelope parseFrom(byte[] data)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data);
     }
+
     public static io.libp2p.protocol.circuit.crypto.pb.Crypto.Envelope parseFrom(
-        byte[] data,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        byte[] data, com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data, extensionRegistry);
     }
-    public static io.libp2p.protocol.circuit.crypto.pb.Crypto.Envelope parseFrom(java.io.InputStream input)
-        throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseWithIOException(PARSER, input);
-    }
+
     public static io.libp2p.protocol.circuit.crypto.pb.Crypto.Envelope parseFrom(
-        java.io.InputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseWithIOException(PARSER, input, extensionRegistry);
+        java.io.InputStream input) throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessageV3.parseWithIOException(PARSER, input);
     }
-    public static io.libp2p.protocol.circuit.crypto.pb.Crypto.Envelope parseDelimitedFrom(java.io.InputStream input)
+
+    public static io.libp2p.protocol.circuit.crypto.pb.Crypto.Envelope parseFrom(
+        java.io.InputStream input, com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseDelimitedWithIOException(PARSER, input);
+      return com.google.protobuf.GeneratedMessageV3.parseWithIOException(
+          PARSER, input, extensionRegistry);
     }
+
     public static io.libp2p.protocol.circuit.crypto.pb.Crypto.Envelope parseDelimitedFrom(
-        java.io.InputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseDelimitedWithIOException(PARSER, input, extensionRegistry);
+        java.io.InputStream input) throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessageV3.parseDelimitedWithIOException(PARSER, input);
     }
+
+    public static io.libp2p.protocol.circuit.crypto.pb.Crypto.Envelope parseDelimitedFrom(
+        java.io.InputStream input, com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessageV3.parseDelimitedWithIOException(
+          PARSER, input, extensionRegistry);
+    }
+
     public static io.libp2p.protocol.circuit.crypto.pb.Crypto.Envelope parseFrom(
-        com.google.protobuf.CodedInputStream input)
-        throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseWithIOException(PARSER, input);
+        com.google.protobuf.CodedInputStream input) throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessageV3.parseWithIOException(PARSER, input);
     }
+
     public static io.libp2p.protocol.circuit.crypto.pb.Crypto.Envelope parseFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessageV3
-          .parseWithIOException(PARSER, input, extensionRegistry);
+      return com.google.protobuf.GeneratedMessageV3.parseWithIOException(
+          PARSER, input, extensionRegistry);
     }
 
     @java.lang.Override
-    public Builder newBuilderForType() { return newBuilder(); }
+    public Builder newBuilderForType() {
+      return newBuilder();
+    }
+
     public static Builder newBuilder() {
       return DEFAULT_INSTANCE.toBuilder();
     }
-    public static Builder newBuilder(io.libp2p.protocol.circuit.crypto.pb.Crypto.Envelope prototype) {
+
+    public static Builder newBuilder(
+        io.libp2p.protocol.circuit.crypto.pb.Crypto.Envelope prototype) {
       return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
     }
+
     @java.lang.Override
     public Builder toBuilder() {
-      return this == DEFAULT_INSTANCE
-          ? new Builder() : new Builder().mergeFrom(this);
+      return this == DEFAULT_INSTANCE ? new Builder() : new Builder().mergeFrom(this);
     }
 
     @java.lang.Override
@@ -1721,7 +1763,10 @@ public final class Crypto {
       Builder builder = new Builder(parent);
       return builder;
     }
+
     /**
+     *
+     *
      * <pre>
      * Envelope encloses a signed payload produced by a peer, along with the public
      * key of the keypair it was signed with so that it can be statelessly validated
@@ -1733,21 +1778,24 @@ public final class Crypto {
      *
      * Protobuf type {@code io.libp2p.protocol.circuit.crypto.pb.Envelope}
      */
-    public static final class Builder extends
-        com.google.protobuf.GeneratedMessageV3.Builder<Builder> implements
+    public static final class Builder
+        extends com.google.protobuf.GeneratedMessageV3.Builder<Builder>
+        implements
         // @@protoc_insertion_point(builder_implements:io.libp2p.protocol.circuit.crypto.pb.Envelope)
         io.libp2p.protocol.circuit.crypto.pb.Crypto.EnvelopeOrBuilder {
-      public static final com.google.protobuf.Descriptors.Descriptor
-          getDescriptor() {
-        return io.libp2p.protocol.circuit.crypto.pb.Crypto.internal_static_org_peergos_protocol_crypto_pb_Envelope_descriptor;
+      public static final com.google.protobuf.Descriptors.Descriptor getDescriptor() {
+        return io.libp2p.protocol.circuit.crypto.pb.Crypto
+            .internal_static_org_peergos_protocol_crypto_pb_Envelope_descriptor;
       }
 
       @java.lang.Override
       protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
           internalGetFieldAccessorTable() {
-        return io.libp2p.protocol.circuit.crypto.pb.Crypto.internal_static_org_peergos_protocol_crypto_pb_Envelope_fieldAccessorTable
+        return io.libp2p.protocol.circuit.crypto.pb.Crypto
+            .internal_static_org_peergos_protocol_crypto_pb_Envelope_fieldAccessorTable
             .ensureFieldAccessorsInitialized(
-                io.libp2p.protocol.circuit.crypto.pb.Crypto.Envelope.class, io.libp2p.protocol.circuit.crypto.pb.Crypto.Envelope.Builder.class);
+                io.libp2p.protocol.circuit.crypto.pb.Crypto.Envelope.class,
+                io.libp2p.protocol.circuit.crypto.pb.Crypto.Envelope.Builder.class);
       }
 
       // Construct using io.libp2p.protocol.circuit.crypto.pb.Crypto.Envelope.newBuilder()
@@ -1755,16 +1803,15 @@ public final class Crypto {
         maybeForceBuilderInitialization();
       }
 
-      private Builder(
-          com.google.protobuf.GeneratedMessageV3.BuilderParent parent) {
+      private Builder(com.google.protobuf.GeneratedMessageV3.BuilderParent parent) {
         super(parent);
         maybeForceBuilderInitialization();
       }
+
       private void maybeForceBuilderInitialization() {
-        if (com.google.protobuf.GeneratedMessageV3
-                .alwaysUseFieldBuilders) {
-        }
+        if (com.google.protobuf.GeneratedMessageV3.alwaysUseFieldBuilders) {}
       }
+
       @java.lang.Override
       public Builder clear() {
         super.clear();
@@ -1784,9 +1831,9 @@ public final class Crypto {
       }
 
       @java.lang.Override
-      public com.google.protobuf.Descriptors.Descriptor
-          getDescriptorForType() {
-        return io.libp2p.protocol.circuit.crypto.pb.Crypto.internal_static_org_peergos_protocol_crypto_pb_Envelope_descriptor;
+      public com.google.protobuf.Descriptors.Descriptor getDescriptorForType() {
+        return io.libp2p.protocol.circuit.crypto.pb.Crypto
+            .internal_static_org_peergos_protocol_crypto_pb_Envelope_descriptor;
       }
 
       @java.lang.Override
@@ -1805,7 +1852,8 @@ public final class Crypto {
 
       @java.lang.Override
       public io.libp2p.protocol.circuit.crypto.pb.Crypto.Envelope buildPartial() {
-        io.libp2p.protocol.circuit.crypto.pb.Crypto.Envelope result = new io.libp2p.protocol.circuit.crypto.pb.Crypto.Envelope(this);
+        io.libp2p.protocol.circuit.crypto.pb.Crypto.Envelope result =
+            new io.libp2p.protocol.circuit.crypto.pb.Crypto.Envelope(this);
         if (publicKeyBuilder_ == null) {
           result.publicKey_ = publicKey_;
         } else {
@@ -1822,38 +1870,41 @@ public final class Crypto {
       public Builder clone() {
         return (Builder) super.clone();
       }
+
       @java.lang.Override
       public Builder setField(
-          com.google.protobuf.Descriptors.FieldDescriptor field,
-          java.lang.Object value) {
+          com.google.protobuf.Descriptors.FieldDescriptor field, java.lang.Object value) {
         return (Builder) super.setField(field, value);
       }
+
       @java.lang.Override
-      public Builder clearField(
-          com.google.protobuf.Descriptors.FieldDescriptor field) {
+      public Builder clearField(com.google.protobuf.Descriptors.FieldDescriptor field) {
         return (Builder) super.clearField(field);
       }
+
       @java.lang.Override
-      public Builder clearOneof(
-          com.google.protobuf.Descriptors.OneofDescriptor oneof) {
+      public Builder clearOneof(com.google.protobuf.Descriptors.OneofDescriptor oneof) {
         return (Builder) super.clearOneof(oneof);
       }
+
       @java.lang.Override
       public Builder setRepeatedField(
           com.google.protobuf.Descriptors.FieldDescriptor field,
-          int index, java.lang.Object value) {
+          int index,
+          java.lang.Object value) {
         return (Builder) super.setRepeatedField(field, index, value);
       }
+
       @java.lang.Override
       public Builder addRepeatedField(
-          com.google.protobuf.Descriptors.FieldDescriptor field,
-          java.lang.Object value) {
+          com.google.protobuf.Descriptors.FieldDescriptor field, java.lang.Object value) {
         return (Builder) super.addRepeatedField(field, value);
       }
+
       @java.lang.Override
       public Builder mergeFrom(com.google.protobuf.Message other) {
         if (other instanceof io.libp2p.protocol.circuit.crypto.pb.Crypto.Envelope) {
-          return mergeFrom((io.libp2p.protocol.circuit.crypto.pb.Crypto.Envelope)other);
+          return mergeFrom((io.libp2p.protocol.circuit.crypto.pb.Crypto.Envelope) other);
         } else {
           super.mergeFrom(other);
           return this;
@@ -1861,7 +1912,8 @@ public final class Crypto {
       }
 
       public Builder mergeFrom(io.libp2p.protocol.circuit.crypto.pb.Crypto.Envelope other) {
-        if (other == io.libp2p.protocol.circuit.crypto.pb.Crypto.Envelope.getDefaultInstance()) return this;
+        if (other == io.libp2p.protocol.circuit.crypto.pb.Crypto.Envelope.getDefaultInstance())
+          return this;
         if (other.hasPublicKey()) {
           mergePublicKey(other.getPublicKey());
         }
@@ -1893,7 +1945,8 @@ public final class Crypto {
         try {
           parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
         } catch (com.google.protobuf.InvalidProtocolBufferException e) {
-          parsedMessage = (io.libp2p.protocol.circuit.crypto.pb.Crypto.Envelope) e.getUnfinishedMessage();
+          parsedMessage =
+              (io.libp2p.protocol.circuit.crypto.pb.Crypto.Envelope) e.getUnfinishedMessage();
           throw e.unwrapIOException();
         } finally {
           if (parsedMessage != null) {
@@ -1905,8 +1958,14 @@ public final class Crypto {
 
       private io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey publicKey_ = null;
       private com.google.protobuf.SingleFieldBuilderV3<
-          io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey, io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey.Builder, io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKeyOrBuilder> publicKeyBuilder_;
+              io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey,
+              io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey.Builder,
+              io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKeyOrBuilder>
+          publicKeyBuilder_;
+
       /**
+       *
+       *
        * <pre>
        * public_key is the public key of the keypair the enclosed payload was
        * signed with.
@@ -1917,7 +1976,10 @@ public final class Crypto {
       public boolean hasPublicKey() {
         return publicKeyBuilder_ != null || publicKey_ != null;
       }
+
       /**
+       *
+       *
        * <pre>
        * public_key is the public key of the keypair the enclosed payload was
        * signed with.
@@ -1927,12 +1989,17 @@ public final class Crypto {
        */
       public io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey getPublicKey() {
         if (publicKeyBuilder_ == null) {
-          return publicKey_ == null ? io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey.getDefaultInstance() : publicKey_;
+          return publicKey_ == null
+              ? io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey.getDefaultInstance()
+              : publicKey_;
         } else {
           return publicKeyBuilder_.getMessage();
         }
       }
+
       /**
+       *
+       *
        * <pre>
        * public_key is the public key of the keypair the enclosed payload was
        * signed with.
@@ -1953,7 +2020,10 @@ public final class Crypto {
 
         return this;
       }
+
       /**
+       *
+       *
        * <pre>
        * public_key is the public key of the keypair the enclosed payload was
        * signed with.
@@ -1972,7 +2042,10 @@ public final class Crypto {
 
         return this;
       }
+
       /**
+       *
+       *
        * <pre>
        * public_key is the public key of the keypair the enclosed payload was
        * signed with.
@@ -1984,7 +2057,9 @@ public final class Crypto {
         if (publicKeyBuilder_ == null) {
           if (publicKey_ != null) {
             publicKey_ =
-              io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey.newBuilder(publicKey_).mergeFrom(value).buildPartial();
+                io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey.newBuilder(publicKey_)
+                    .mergeFrom(value)
+                    .buildPartial();
           } else {
             publicKey_ = value;
           }
@@ -1995,7 +2070,10 @@ public final class Crypto {
 
         return this;
       }
+
       /**
+       *
+       *
        * <pre>
        * public_key is the public key of the keypair the enclosed payload was
        * signed with.
@@ -2014,7 +2092,10 @@ public final class Crypto {
 
         return this;
       }
+
       /**
+       *
+       *
        * <pre>
        * public_key is the public key of the keypair the enclosed payload was
        * signed with.
@@ -2023,11 +2104,14 @@ public final class Crypto {
        * <code>.io.libp2p.protocol.circuit.crypto.pb.PublicKey public_key = 1;</code>
        */
       public io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey.Builder getPublicKeyBuilder() {
-        
+
         onChanged();
         return getPublicKeyFieldBuilder().getBuilder();
       }
+
       /**
+       *
+       *
        * <pre>
        * public_key is the public key of the keypair the enclosed payload was
        * signed with.
@@ -2035,15 +2119,20 @@ public final class Crypto {
        *
        * <code>.io.libp2p.protocol.circuit.crypto.pb.PublicKey public_key = 1;</code>
        */
-      public io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKeyOrBuilder getPublicKeyOrBuilder() {
+      public io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKeyOrBuilder
+          getPublicKeyOrBuilder() {
         if (publicKeyBuilder_ != null) {
           return publicKeyBuilder_.getMessageOrBuilder();
         } else {
-          return publicKey_ == null ?
-              io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey.getDefaultInstance() : publicKey_;
+          return publicKey_ == null
+              ? io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey.getDefaultInstance()
+              : publicKey_;
         }
       }
+
       /**
+       *
+       *
        * <pre>
        * public_key is the public key of the keypair the enclosed payload was
        * signed with.
@@ -2052,21 +2141,27 @@ public final class Crypto {
        * <code>.io.libp2p.protocol.circuit.crypto.pb.PublicKey public_key = 1;</code>
        */
       private com.google.protobuf.SingleFieldBuilderV3<
-          io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey, io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey.Builder, io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKeyOrBuilder> 
+              io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey,
+              io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey.Builder,
+              io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKeyOrBuilder>
           getPublicKeyFieldBuilder() {
         if (publicKeyBuilder_ == null) {
-          publicKeyBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
-              io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey, io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey.Builder, io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKeyOrBuilder>(
-                  getPublicKey(),
-                  getParentForChildren(),
-                  isClean());
+          publicKeyBuilder_ =
+              new com.google.protobuf.SingleFieldBuilderV3<
+                  io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey,
+                  io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKey.Builder,
+                  io.libp2p.protocol.circuit.crypto.pb.Crypto.PublicKeyOrBuilder>(
+                  getPublicKey(), getParentForChildren(), isClean());
           publicKey_ = null;
         }
         return publicKeyBuilder_;
       }
 
       private com.google.protobuf.ByteString payloadType_ = com.google.protobuf.ByteString.EMPTY;
+
       /**
+       *
+       *
        * <pre>
        * payload_type encodes the type of payload, so that it can be deserialized
        * deterministically.
@@ -2077,7 +2172,10 @@ public final class Crypto {
       public com.google.protobuf.ByteString getPayloadType() {
         return payloadType_;
       }
+
       /**
+       *
+       *
        * <pre>
        * payload_type encodes the type of payload, so that it can be deserialized
        * deterministically.
@@ -2087,14 +2185,17 @@ public final class Crypto {
        */
       public Builder setPayloadType(com.google.protobuf.ByteString value) {
         if (value == null) {
-    throw new NullPointerException();
-  }
-  
+          throw new NullPointerException();
+        }
+
         payloadType_ = value;
         onChanged();
         return this;
       }
+
       /**
+       *
+       *
        * <pre>
        * payload_type encodes the type of payload, so that it can be deserialized
        * deterministically.
@@ -2103,14 +2204,17 @@ public final class Crypto {
        * <code>bytes payload_type = 2;</code>
        */
       public Builder clearPayloadType() {
-        
+
         payloadType_ = getDefaultInstance().getPayloadType();
         onChanged();
         return this;
       }
 
       private com.google.protobuf.ByteString payload_ = com.google.protobuf.ByteString.EMPTY;
+
       /**
+       *
+       *
        * <pre>
        * payload is the actual payload carried inside this envelope.
        * </pre>
@@ -2120,7 +2224,10 @@ public final class Crypto {
       public com.google.protobuf.ByteString getPayload() {
         return payload_;
       }
+
       /**
+       *
+       *
        * <pre>
        * payload is the actual payload carried inside this envelope.
        * </pre>
@@ -2129,14 +2236,17 @@ public final class Crypto {
        */
       public Builder setPayload(com.google.protobuf.ByteString value) {
         if (value == null) {
-    throw new NullPointerException();
-  }
-  
+          throw new NullPointerException();
+        }
+
         payload_ = value;
         onChanged();
         return this;
       }
+
       /**
+       *
+       *
        * <pre>
        * payload is the actual payload carried inside this envelope.
        * </pre>
@@ -2144,14 +2254,17 @@ public final class Crypto {
        * <code>bytes payload = 3;</code>
        */
       public Builder clearPayload() {
-        
+
         payload_ = getDefaultInstance().getPayload();
         onChanged();
         return this;
       }
 
       private com.google.protobuf.ByteString signature_ = com.google.protobuf.ByteString.EMPTY;
+
       /**
+       *
+       *
        * <pre>
        * signature is the signature produced by the private key corresponding to
        * the enclosed public key, over the payload, prefixing a domain string for
@@ -2163,7 +2276,10 @@ public final class Crypto {
       public com.google.protobuf.ByteString getSignature() {
         return signature_;
       }
+
       /**
+       *
+       *
        * <pre>
        * signature is the signature produced by the private key corresponding to
        * the enclosed public key, over the payload, prefixing a domain string for
@@ -2174,14 +2290,17 @@ public final class Crypto {
        */
       public Builder setSignature(com.google.protobuf.ByteString value) {
         if (value == null) {
-    throw new NullPointerException();
-  }
-  
+          throw new NullPointerException();
+        }
+
         signature_ = value;
         onChanged();
         return this;
       }
+
       /**
+       *
+       *
        * <pre>
        * signature is the signature produced by the private key corresponding to
        * the enclosed public key, over the payload, prefixing a domain string for
@@ -2191,11 +2310,12 @@ public final class Crypto {
        * <code>bytes signature = 5;</code>
        */
       public Builder clearSignature() {
-        
+
         signature_ = getDefaultInstance().getSignature();
         onChanged();
         return this;
       }
+
       @java.lang.Override
       public final Builder setUnknownFields(
           final com.google.protobuf.UnknownFieldSet unknownFields) {
@@ -2208,12 +2328,12 @@ public final class Crypto {
         return super.mergeUnknownFields(unknownFields);
       }
 
-
       // @@protoc_insertion_point(builder_scope:io.libp2p.protocol.circuit.crypto.pb.Envelope)
     }
 
     // @@protoc_insertion_point(class_scope:io.libp2p.protocol.circuit.crypto.pb.Envelope)
     private static final io.libp2p.protocol.circuit.crypto.pb.Crypto.Envelope DEFAULT_INSTANCE;
+
     static {
       DEFAULT_INSTANCE = new io.libp2p.protocol.circuit.crypto.pb.Crypto.Envelope();
     }
@@ -2222,16 +2342,16 @@ public final class Crypto {
       return DEFAULT_INSTANCE;
     }
 
-    private static final com.google.protobuf.Parser<Envelope>
-        PARSER = new com.google.protobuf.AbstractParser<Envelope>() {
-      @java.lang.Override
-      public Envelope parsePartialFrom(
-          com.google.protobuf.CodedInputStream input,
-          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-          throws com.google.protobuf.InvalidProtocolBufferException {
-        return new Envelope(input, extensionRegistry);
-      }
-    };
+    private static final com.google.protobuf.Parser<Envelope> PARSER =
+        new com.google.protobuf.AbstractParser<Envelope>() {
+          @java.lang.Override
+          public Envelope parsePartialFrom(
+              com.google.protobuf.CodedInputStream input,
+              com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+              throws com.google.protobuf.InvalidProtocolBufferException {
+            return new Envelope(input, extensionRegistry);
+          }
+        };
 
     public static com.google.protobuf.Parser<Envelope> parser() {
       return PARSER;
@@ -2246,75 +2366,75 @@ public final class Crypto {
     public io.libp2p.protocol.circuit.crypto.pb.Crypto.Envelope getDefaultInstanceForType() {
       return DEFAULT_INSTANCE;
     }
-
   }
 
   private static final com.google.protobuf.Descriptors.Descriptor
-    internal_static_org_peergos_protocol_crypto_pb_PublicKey_descriptor;
-  private static final 
-    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
+      internal_static_org_peergos_protocol_crypto_pb_PublicKey_descriptor;
+  private static final com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_org_peergos_protocol_crypto_pb_PublicKey_fieldAccessorTable;
   private static final com.google.protobuf.Descriptors.Descriptor
-    internal_static_org_peergos_protocol_crypto_pb_PrivateKey_descriptor;
-  private static final 
-    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
+      internal_static_org_peergos_protocol_crypto_pb_PrivateKey_descriptor;
+  private static final com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_org_peergos_protocol_crypto_pb_PrivateKey_fieldAccessorTable;
   private static final com.google.protobuf.Descriptors.Descriptor
-    internal_static_org_peergos_protocol_crypto_pb_Envelope_descriptor;
-  private static final 
-    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
+      internal_static_org_peergos_protocol_crypto_pb_Envelope_descriptor;
+  private static final com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_org_peergos_protocol_crypto_pb_Envelope_fieldAccessorTable;
 
-  public static com.google.protobuf.Descriptors.FileDescriptor
-      getDescriptor() {
+  public static com.google.protobuf.Descriptors.FileDescriptor getDescriptor() {
     return descriptor;
   }
-  private static  com.google.protobuf.Descriptors.FileDescriptor
-      descriptor;
+
+  private static com.google.protobuf.Descriptors.FileDescriptor descriptor;
+
   static {
     java.lang.String[] descriptorData = {
-      "\n\014crypto.proto\022\036io.libp2p.protocol.circuit.cry" +
-      "pto.pb\"P\n\tPublicKey\0225\n\004Type\030\001 \001(\0162\'.org." +
-      "peergos.protocol.crypto.pb.KeyType\022\014\n\004Da" +
-      "ta\030\002 \001(\014\"Q\n\nPrivateKey\0225\n\004Type\030\001 \001(\0162\'.o" +
-      "rg.peergos.protocol.crypto.pb.KeyType\022\014\n" +
-      "\004Data\030\002 \001(\014\"\203\001\n\010Envelope\022=\n\npublic_key\030\001" +
-      " \001(\0132).io.libp2p.protocol.circuit.crypto.pb.Pu" +
-      "blicKey\022\024\n\014payload_type\030\002 \001(\014\022\017\n\007payload" +
-      "\030\003 \001(\014\022\021\n\tsignature\030\005 \001(\014*9\n\007KeyType\022\007\n\003" +
-      "RSA\020\000\022\013\n\007Ed25519\020\001\022\r\n\tSecp256k1\020\002\022\t\n\005ECD" +
-      "SA\020\003b\006proto3"
+      "\n\014crypto.proto\022\036io.libp2p.protocol.circuit.cry"
+          + "pto.pb\"P\n\tPublicKey\0225\n\004Type\030\001 \001(\0162\'.org."
+          + "peergos.protocol.crypto.pb.KeyType\022\014\n\004Da"
+          + "ta\030\002 \001(\014\"Q\n\nPrivateKey\0225\n\004Type\030\001 \001(\0162\'.o"
+          + "rg.peergos.protocol.crypto.pb.KeyType\022\014\n"
+          + "\004Data\030\002 \001(\014\"\203\001\n\010Envelope\022=\n\npublic_key\030\001"
+          + " \001(\0132).io.libp2p.protocol.circuit.crypto.pb.Pu"
+          + "blicKey\022\024\n\014payload_type\030\002 \001(\014\022\017\n\007payload"
+          + "\030\003 \001(\014\022\021\n\tsignature\030\005 \001(\014*9\n\007KeyType\022\007\n\003"
+          + "RSA\020\000\022\013\n\007Ed25519\020\001\022\r\n\tSecp256k1\020\002\022\t\n\005ECD"
+          + "SA\020\003b\006proto3"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
-        new com.google.protobuf.Descriptors.FileDescriptor.    InternalDescriptorAssigner() {
+        new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
           public com.google.protobuf.ExtensionRegistry assignDescriptors(
               com.google.protobuf.Descriptors.FileDescriptor root) {
             descriptor = root;
             return null;
           }
         };
-    com.google.protobuf.Descriptors.FileDescriptor
-      .internalBuildGeneratedFileFrom(descriptorData,
-        new com.google.protobuf.Descriptors.FileDescriptor[] {
-        }, assigner);
+    com.google.protobuf.Descriptors.FileDescriptor.internalBuildGeneratedFileFrom(
+        descriptorData, new com.google.protobuf.Descriptors.FileDescriptor[] {}, assigner);
     internal_static_org_peergos_protocol_crypto_pb_PublicKey_descriptor =
-      getDescriptor().getMessageTypes().get(0);
-    internal_static_org_peergos_protocol_crypto_pb_PublicKey_fieldAccessorTable = new
-      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
-        internal_static_org_peergos_protocol_crypto_pb_PublicKey_descriptor,
-        new java.lang.String[] { "Type", "Data", });
+        getDescriptor().getMessageTypes().get(0);
+    internal_static_org_peergos_protocol_crypto_pb_PublicKey_fieldAccessorTable =
+        new com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
+            internal_static_org_peergos_protocol_crypto_pb_PublicKey_descriptor,
+            new java.lang.String[] {
+              "Type", "Data",
+            });
     internal_static_org_peergos_protocol_crypto_pb_PrivateKey_descriptor =
-      getDescriptor().getMessageTypes().get(1);
-    internal_static_org_peergos_protocol_crypto_pb_PrivateKey_fieldAccessorTable = new
-      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
-        internal_static_org_peergos_protocol_crypto_pb_PrivateKey_descriptor,
-        new java.lang.String[] { "Type", "Data", });
+        getDescriptor().getMessageTypes().get(1);
+    internal_static_org_peergos_protocol_crypto_pb_PrivateKey_fieldAccessorTable =
+        new com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
+            internal_static_org_peergos_protocol_crypto_pb_PrivateKey_descriptor,
+            new java.lang.String[] {
+              "Type", "Data",
+            });
     internal_static_org_peergos_protocol_crypto_pb_Envelope_descriptor =
-      getDescriptor().getMessageTypes().get(2);
-    internal_static_org_peergos_protocol_crypto_pb_Envelope_fieldAccessorTable = new
-      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
-        internal_static_org_peergos_protocol_crypto_pb_Envelope_descriptor,
-        new java.lang.String[] { "PublicKey", "PayloadType", "Payload", "Signature", });
+        getDescriptor().getMessageTypes().get(2);
+    internal_static_org_peergos_protocol_crypto_pb_Envelope_fieldAccessorTable =
+        new com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
+            internal_static_org_peergos_protocol_crypto_pb_Envelope_descriptor,
+            new java.lang.String[] {
+              "PublicKey", "PayloadType", "Payload", "Signature",
+            });
   }
 
   // @@protoc_insertion_point(outer_class_scope)
