@@ -8,7 +8,6 @@ import io.libp2p.protocol.*;
 import io.libp2p.protocol.circuit.*;
 import io.libp2p.security.noise.*;
 import io.libp2p.transport.tcp.*;
-
 import java.util.*;
 import java.util.concurrent.*;
 import org.junit.jupiter.api.*;
@@ -19,19 +18,24 @@ public class RelayTestJava {
     PrivKey priv = b.getIdentity().random().getFactory().invoke();
     b.getIdentity().setFactory(() -> priv);
     PeerId us = PeerId.fromPubKey(priv.publicKey());
-    CircuitHopProtocol.RelayManager relayManager = CircuitHopProtocol.RelayManager.limitTo(priv, us, 5);
+    CircuitHopProtocol.RelayManager relayManager =
+        CircuitHopProtocol.RelayManager.limitTo(priv, us, 5);
     CircuitStopProtocol.Binding stop = new CircuitStopProtocol.Binding(new CircuitStopProtocol());
     CircuitHopProtocol.Binding hop = new CircuitHopProtocol.Binding(relayManager, stop);
     b.getProtocols().add(hop);
     b.getProtocols().add(stop);
     b.getTransports().add(u -> new RelayTransport(hop, stop, u, h -> relays));
   }
+
   @Test
   void ping() throws Exception {
     String localListenAddress = "/ip4/127.0.0.1/tcp/40002";
 
-    Multiaddr relayAddr = new Multiaddr("/ip4/23.95.209.108/tcp/4001/p2p/12D3KooWMjxFAyMR2STsgr8Qoxhg27K64uuBL7UZ8gDkdjEnEeya");
-    RelayTransport.CandidateRelay relay = new RelayTransport.CandidateRelay(relayAddr.getPeerId(), List.of(relayAddr));
+    Multiaddr relayAddr =
+        new Multiaddr(
+            "/ip4/23.95.209.108/tcp/4001/p2p/12D3KooWMjxFAyMR2STsgr8Qoxhg27K64uuBL7UZ8gDkdjEnEeya");
+    RelayTransport.CandidateRelay relay =
+        new RelayTransport.CandidateRelay(relayAddr.getPeerId(), List.of(relayAddr));
     List<RelayTransport.CandidateRelay> relays = List.of(relay);
 
     Host clientHost =
@@ -42,14 +46,12 @@ public class RelayTestJava {
             .muxer(StreamMuxerProtocol::getYamux)
             .protocol(new Ping())
             .build();
-    clientHost.getNetwork()
-            .getTransports()
-            .stream()
-            .filter(t -> t instanceof RelayTransport)
-            .map(t -> (RelayTransport)t)
-            .findFirst()
-            .get()
-            .setHost(clientHost);
+    clientHost.getNetwork().getTransports().stream()
+        .filter(t -> t instanceof RelayTransport)
+        .map(t -> (RelayTransport) t)
+        .findFirst()
+        .get()
+        .setHost(clientHost);
 
     Host serverHost =
         new HostBuilder()
@@ -61,14 +63,12 @@ public class RelayTestJava {
             .listen(localListenAddress)
             .listen(relayAddr + "/p2p-circuit")
             .build();
-    serverHost.getNetwork()
-            .getTransports()
-            .stream()
-            .filter(t -> t instanceof RelayTransport)
-            .map(t -> (RelayTransport)t)
-            .findFirst()
-            .get()
-            .setHost(serverHost);
+    serverHost.getNetwork().getTransports().stream()
+        .filter(t -> t instanceof RelayTransport)
+        .map(t -> (RelayTransport) t)
+        .findFirst()
+        .get()
+        .setHost(serverHost);
 
     CompletableFuture<Void> clientStarted = clientHost.start();
     CompletableFuture<Void> serverStarted = serverHost.start();
@@ -77,7 +77,9 @@ public class RelayTestJava {
     serverStarted.get(5, TimeUnit.SECONDS);
     System.out.println("Server started");
 
-    Multiaddr toDial = relayAddr.concatenated(new Multiaddr("/p2p-circuit/p2p/" + serverHost.getPeerId().toBase58()));
+    Multiaddr toDial =
+        relayAddr.concatenated(
+            new Multiaddr("/p2p-circuit/p2p/" + serverHost.getPeerId().toBase58()));
     System.out.println("Dialling " + toDial + " from " + clientHost.getPeerId());
     StreamPromise<PingController> ping =
         clientHost

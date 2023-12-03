@@ -204,7 +204,8 @@ public class RelayTransport implements Transport, HostConsumer {
         new ChannelInitializer<>() {
           @Override
           protected void initChannel(Channel channel) throws Exception {
-            System.out.println("Upgrade "+(isInitiator ? "outgoing" : "incoming")+" relay to " + remote);
+            System.out.println(
+                "Upgrade " + (isInitiator ? "outgoing" : "incoming") + " relay to " + remote);
             channel.attr(AttributesKt.getREMOTE_PEER_ID()).set(remote);
             upgrader
                 .establishSecureChannel(conn)
@@ -300,10 +301,8 @@ public class RelayTransport implements Transport, HostConsumer {
       @Nullable ChannelVisitor<P2PChannel> channelVisitor) {
     List<MultiaddrComponent> components = relayAddr.getComponents();
     Multiaddr withoutCircuit = new Multiaddr(components.subList(0, components.size() - 1));
-    CircuitHopProtocol.HopController ctr = hop.dial(us, withoutCircuit)
-            .getController().join();
-    return ctr.reserve()
-            .thenApply(res -> null);
+    CircuitHopProtocol.HopController ctr = hop.dial(us, withoutCircuit).getController().join();
+    return ctr.reserve().thenApply(res -> null);
   }
 
   @NotNull

@@ -61,10 +61,11 @@ data class Multiaddr(val components: List<MultiaddrComponent>) {
      * @throws IllegalArgumentException if existing component value doesn't match [value]
      */
     private fun withComponentImpl(protocol: Protocol, value: ByteArray?): Multiaddr {
-        val existingComponent = if (has(Protocol.P2PCIRCUIT))
-            split { it == Protocol.P2PCIRCUIT } .get(1).getFirstComponent(protocol)
-        else
+        val existingComponent = if (has(Protocol.P2PCIRCUIT)) {
+            split { it == Protocol.P2PCIRCUIT }.get(1).getFirstComponent(protocol)
+        } else {
             getFirstComponent(protocol)
+        }
         val newComponent = MultiaddrComponent(protocol, value)
         return if (existingComponent != null) {
             if (!existingComponent.value.contentEquals(value)) {
