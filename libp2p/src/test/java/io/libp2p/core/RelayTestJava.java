@@ -77,10 +77,12 @@ public class RelayTestJava {
     serverStarted.get(5, TimeUnit.SECONDS);
     System.out.println("Server started");
 
+    Multiaddr toDial = relayAddr.concatenated(new Multiaddr("/p2p-circuit/p2p/" + serverHost.getPeerId().toBase58()));
+    System.out.println("Dialling " + toDial + " from " + clientHost.getPeerId());
     StreamPromise<PingController> ping =
         clientHost
             .getNetwork()
-            .connect(serverHost.getPeerId(), relayAddr.concatenated(new Multiaddr("/p2p-circuit/p2p/" + serverHost.getPeerId().toBase58())))
+            .connect(serverHost.getPeerId(), toDial)
             .thenApply(it -> it.muxerSession().createStream(new Ping()))
             .get(5, TimeUnit.SECONDS);
 

@@ -204,7 +204,7 @@ public class RelayTransport implements Transport, HostConsumer {
         new ChannelInitializer<>() {
           @Override
           protected void initChannel(Channel channel) throws Exception {
-            System.out.println("Upgrade outgoing relay to " + remote);
+            System.out.println("Upgrade "+(isInitiator ? "outgoing" : "incoming")+" relay to " + remote);
             channel.attr(AttributesKt.getREMOTE_PEER_ID()).set(remote);
             upgrader
                 .establishSecureChannel(conn)
