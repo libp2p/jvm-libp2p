@@ -295,10 +295,15 @@ public class RelayTransport implements Transport, HostConsumer {
   @NotNull
   @Override
   public CompletableFuture<Unit> listen(
-      @NotNull Multiaddr multiaddr,
+      @NotNull Multiaddr relayAddr,
       @NotNull ConnectionHandler connectionHandler,
       @Nullable ChannelVisitor<P2PChannel> channelVisitor) {
-    throw new IllegalStateException("Invalid operation on RelayTransport!");
+    List<MultiaddrComponent> components = relayAddr.getComponents();
+    Multiaddr withoutCircuit = new Multiaddr(components.subList(0, components.size() - 1));
+    CircuitHopProtocol.HopController ctr = hop.dial(us, withoutCircuit)
+            .getController().join();
+    return ctr.reserve()
+            .thenApply(res -> null);
   }
 
   @NotNull
