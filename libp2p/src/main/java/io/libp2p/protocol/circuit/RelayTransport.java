@@ -43,6 +43,7 @@ public class RelayTransport implements Transport, HostConsumer {
   @Override
   public void setHost(Host us) {
     this.us = us;
+    hop.setHost(us);
   }
 
   public static class CandidateRelay {
@@ -207,6 +208,7 @@ public class RelayTransport implements Transport, HostConsumer {
             System.out.println(
                 "Upgrade " + (isInitiator ? "outgoing" : "incoming") + " relay to " + remote);
             channel.attr(AttributesKt.getREMOTE_PEER_ID()).set(remote);
+            channel.attr(AttributesKt.getCONNECTION()).set(conn);
             upgrader
                 .establishSecureChannel(conn)
                 .thenCompose(
@@ -230,6 +232,8 @@ public class RelayTransport implements Transport, HostConsumer {
                       res.completeExceptionally(t);
                       return null;
                     });
+            System.out.println("Fire active");
+            channel.pipeline().fireChannelActive();
           }
         });
     return res;
