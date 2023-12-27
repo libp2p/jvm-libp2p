@@ -33,7 +33,7 @@ public class RelayTestJava {
 
     Multiaddr relayAddr =
         new Multiaddr(
-            "/ip4/23.95.209.108/tcp/4001/p2p/12D3KooWMjxFAyMR2STsgr8Qoxhg27K64uuBL7UZ8gDkdjEnEeya");
+            "/ip4/136.244.97.135/tcp/4001/p2p/12D3KooWFQSZe27Fk3KwEBn23vEnLEknKnhPWDF7n2nZ3sutaYJ9");
     RelayTransport.CandidateRelay relay =
         new RelayTransport.CandidateRelay(relayAddr.getPeerId(), List.of(relayAddr));
     List<RelayTransport.CandidateRelay> relays = List.of(relay);
