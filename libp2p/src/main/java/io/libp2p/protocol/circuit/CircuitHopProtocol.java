@@ -95,19 +95,21 @@ public class CircuitHopProtocol extends ProtobufProtocolHandler<CircuitHopProtoc
     public final int durationSeconds;
     public final long maxBytes;
     public final byte[] voucher;
+    public final Multiaddr[] addrs;
 
-    public Reservation(LocalDateTime expiry, int durationSeconds, long maxBytes, byte[] voucher) {
+    public Reservation(LocalDateTime expiry, int durationSeconds, long maxBytes, byte[] voucher, Multiaddr[] addrs) {
       this.expiry = expiry;
       this.durationSeconds = durationSeconds;
       this.maxBytes = maxBytes;
       this.voucher = voucher;
+      this.addrs = addrs;
     }
   }
 
   public interface RelayManager {
     boolean hasReservation(PeerId source);
 
-    Optional<Reservation> createReservation(PeerId requestor);
+    Optional<Reservation> createReservation(PeerId requestor, Multiaddr addr);
 
     Optional<Reservation> allowConnection(PeerId target, PeerId initiator);
 
@@ -121,12 +123,12 @@ public class CircuitHopProtocol extends ProtobufProtocolHandler<CircuitHopProtoc
         }
 
         @Override
-        public synchronized Optional<Reservation> createReservation(PeerId requestor) {
+        public synchronized Optional<Reservation> createReservation(PeerId requestor, Multiaddr addr) {
           if (reservations.size() >= concurrent) return Optional.empty();
           LocalDateTime now = LocalDateTime.now();
           LocalDateTime expiry = now.plusHours(1);
           byte[] voucher = createVoucher(priv, relayPeerId, requestor, now);
-          Reservation resv = new Reservation(expiry, 120, 4096, voucher);
+          Reservation resv = new Reservation(expiry, 120, 4096, voucher, new Multiaddr[]{addr});
           reservations.put(requestor, resv);
           return Optional.of(resv);
         }
@@ -149,10 +151,11 @@ public class CircuitHopProtocol extends ProtobufProtocolHandler<CircuitHopProtoc
                 if (msg.getStatus() == Circuit.Status.OK) {
                   long expiry = msg.getReservation().getExpire();
                   return new Reservation(
-                      LocalDateTime.ofEpochSecond(expiry, 0, ZoneOffset.UTC),
-                      msg.getLimit().getDuration(),
-                      msg.getLimit().getData(),
-                      msg.getReservation().getVoucher().toByteArray());
+                          LocalDateTime.ofEpochSecond(expiry, 0, ZoneOffset.UTC),
+                          msg.getLimit().getDuration(),
+                          msg.getLimit().getData(),
+                          msg.getReservation().getVoucher().toByteArray(),
+                          null);
                 }
                 throw new IllegalStateException(msg.getStatus().name());
               });
@@ -224,7 +227,7 @@ public class CircuitHopProtocol extends ProtobufProtocolHandler<CircuitHopProtoc
         case RESERVE:
           {
             PeerId requestor = stream.remotePeerId();
-            Optional<Reservation> reservation = manager.createReservation(requestor);
+            Optional<Reservation> reservation = manager.createReservation(requestor, stream.getConnection().remoteAddress());
             if (reservation.isEmpty()
                 || new Multiaddr(stream.getConnection().remoteAddress().toString())
                     .has(Protocol.P2PCIRCUIT)) {
@@ -266,7 +269,7 @@ public class CircuitHopProtocol extends ProtobufProtocolHandler<CircuitHopProtoc
                           .dial(
                               us,
                               target,
-                              addressBook.getAddrs(target).join().toArray(new Multiaddr[0]))
+                              resv.addrs)
                           .getController()
                           .orTimeout(15, TimeUnit.SECONDS)
                           .join();
