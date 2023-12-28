@@ -374,11 +374,7 @@ public class CircuitHopProtocol extends ProtobufProtocolHandler<CircuitHopProtoc
   @Override
   protected CompletableFuture<HopController> onStartResponder(@NotNull Stream stream) {
     if (us == null) throw new IllegalStateException("null Host for us!");
-    Supplier<List<Multiaddr>> ourpublicAddresses =
-        () ->
-            us.getAddressBook().get(us.getPeerId()).join().stream()
-                .map(a -> new Multiaddr(a.toString()))
-                .collect(Collectors.toList());
+    Supplier<List<Multiaddr>> ourpublicAddresses = () -> us.listenAddresses();
     Receiver dialer = new Receiver(us, manager, ourpublicAddresses, stop, us.getAddressBook());
     stream.pushHandler(dialer);
     return CompletableFuture.completedFuture(dialer);
