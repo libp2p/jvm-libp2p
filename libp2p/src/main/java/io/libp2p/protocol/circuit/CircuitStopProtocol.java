@@ -8,6 +8,7 @@ import io.libp2p.protocol.circuit.pb.*;
 import java.util.concurrent.*;
 
 import io.netty.channel.*;
+import io.netty.handler.codec.protobuf.*;
 import org.jetbrains.annotations.*;
 
 public class CircuitStopProtocol
@@ -77,6 +78,10 @@ public class CircuitStopProtocol
     @Override
     protected void initChannel(@NotNull Channel ch) throws Exception {
       System.out.println("Removed Stop handler");
+      ch.pipeline().remove(ProtobufDecoder.class);
+      ch.pipeline().remove(ProtobufEncoder.class);
+      ch.pipeline().remove(ProtobufVarint32FrameDecoder.class);
+      ch.pipeline().remove(ProtobufVarint32LengthFieldPrepender.class);
       ch.pipeline().remove(RECEIVER_HANDLER_NAME);
       ch.pipeline().remove(STREAM_CLEARER_NAME);
     }

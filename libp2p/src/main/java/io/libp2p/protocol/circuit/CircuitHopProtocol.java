@@ -21,6 +21,8 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.*;
 import java.util.stream.*;
+
+import io.netty.handler.codec.protobuf.*;
 import org.jetbrains.annotations.*;
 
 public class CircuitHopProtocol extends ProtobufProtocolHandler<CircuitHopProtocol.HopController> {
@@ -173,6 +175,11 @@ public class CircuitHopProtocol extends ProtobufProtocolHandler<CircuitHopProtoc
     protected void initChannel(@NotNull Channel ch) throws Exception {
       System.out.println("Removed Hop handler");
       ch.pipeline().remove(INITIATOR_HANDLER_NAME);
+      // also remove associated protobuf handlers
+      ch.pipeline().remove(ProtobufDecoder.class);
+      ch.pipeline().remove(ProtobufEncoder.class);
+      ch.pipeline().remove(ProtobufVarint32FrameDecoder.class);
+      ch.pipeline().remove(ProtobufVarint32LengthFieldPrepender.class);
       ch.pipeline().remove(STREAM_CLEARER_NAME);
     }
   }
