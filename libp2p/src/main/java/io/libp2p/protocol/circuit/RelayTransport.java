@@ -205,8 +205,6 @@ public class RelayTransport implements Transport, HostConsumer {
         new ChannelInitializer<>() {
           @Override
           protected void initChannel(Channel channel) throws Exception {
-            System.out.println(
-                "Upgrade " + (isInitiator ? "outgoing" : "incoming") + " relay to " + remote);
             channel.attr(AttributesKt.getREMOTE_PEER_ID()).set(remote);
             channel.attr(AttributesKt.getCONNECTION()).set(conn);
             upgrader
@@ -232,7 +230,6 @@ public class RelayTransport implements Transport, HostConsumer {
                       res.completeExceptionally(t);
                       return null;
                     });
-            System.out.println("Fire active");
             channel.pipeline().fireChannelActive();
           }
         });

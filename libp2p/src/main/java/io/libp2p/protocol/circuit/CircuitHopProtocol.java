@@ -173,7 +173,6 @@ public class CircuitHopProtocol extends ProtobufProtocolHandler<CircuitHopProtoc
 
     @Override
     protected void initChannel(@NotNull Channel ch) throws Exception {
-      System.out.println("Removed Hop handler");
       ch.pipeline().remove(HOP_HANDLER_NAME);
       // also remove associated protobuf handlers
       ch.pipeline().remove(ProtobufDecoder.class);

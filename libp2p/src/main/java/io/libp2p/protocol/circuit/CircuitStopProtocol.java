@@ -77,7 +77,6 @@ public class CircuitStopProtocol
 
     @Override
     protected void initChannel(@NotNull Channel ch) throws Exception {
-      System.out.println("Removed Stop handler");
       ch.pipeline().remove(ProtobufDecoder.class);
       ch.pipeline().remove(ProtobufEncoder.class);
       ch.pipeline().remove(ProtobufVarint32FrameDecoder.class);
@@ -112,7 +111,6 @@ public class CircuitStopProtocol
         stream.pushHandler(STOP_REMOVER_NAME, new StopRemover());
 
         // now upgrade connection with security and muxer protocol
-        System.out.println("Upgrading relayed incoming connection..");
         ConnectionHandler connHandler = null; // TODO
         RelayTransport.upgradeStream(
             stream, false, transport.upgrader, transport, remote, connHandler);
