@@ -372,7 +372,6 @@ public class CircuitHopProtocol extends ProtobufProtocolHandler<CircuitHopProtoc
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
       if (msg instanceof ByteBuf) {
         target.writeAndFlush(msg);
-        ((ByteBuf) msg).release();
       }
     }
   }
