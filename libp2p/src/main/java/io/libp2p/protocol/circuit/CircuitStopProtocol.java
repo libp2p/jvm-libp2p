@@ -14,8 +14,8 @@ import org.jetbrains.annotations.*;
 public class CircuitStopProtocol
     extends ProtobufProtocolHandler<CircuitStopProtocol.StopController> {
 
-  private static final String RECEIVER_HANDLER_NAME = "STOP_RECEIVER";
-  private static final String STREAM_CLEARER_NAME = "STREAM_CLEARER";
+  private static final String STOP_HANDLER_NAME = "STOP_HANDLER";
+  public static final String STOP_REMOVER_NAME = "STOP_REMOVER";
 
   public static class Binding extends StrictProtocolBinding<CircuitStopProtocol.StopController> {
     private final CircuitStopProtocol stop;
@@ -73,7 +73,7 @@ public class CircuitStopProtocol
     }
   }
 
-  public static class ReceiverUpgrader extends ChannelInitializer {
+  public static class StopRemover extends ChannelInitializer {
 
     @Override
     protected void initChannel(@NotNull Channel ch) throws Exception {
@@ -82,8 +82,8 @@ public class CircuitStopProtocol
       ch.pipeline().remove(ProtobufEncoder.class);
       ch.pipeline().remove(ProtobufVarint32FrameDecoder.class);
       ch.pipeline().remove(ProtobufVarint32LengthFieldPrepender.class);
-      ch.pipeline().remove(RECEIVER_HANDLER_NAME);
-      ch.pipeline().remove(STREAM_CLEARER_NAME);
+      ch.pipeline().remove(STOP_HANDLER_NAME);
+      ch.pipeline().remove(STOP_REMOVER_NAME);
     }
   }
 
@@ -109,7 +109,7 @@ public class CircuitStopProtocol
                 .setStatus(Circuit.Status.OK)
                 .build());
         // remove STOP handler from stream before upgrading
-        stream.pushHandler(STREAM_CLEARER_NAME, new ReceiverUpgrader());
+        stream.pushHandler(STOP_REMOVER_NAME, new StopRemover());
 
         // now upgrade connection with security and muxer protocol
         System.out.println("Upgrading relayed incoming connection..");
@@ -145,7 +145,7 @@ public class CircuitStopProtocol
   @Override
   protected CompletableFuture<StopController> onStartInitiator(@NotNull Stream stream) {
     Sender replyPropagator = new Sender(stream);
-    stream.pushHandler(replyPropagator);
+    stream.pushHandler(STOP_HANDLER_NAME, new ProtocolMessageHandlerAdapter<>(stream, replyPropagator));
     return CompletableFuture.completedFuture(replyPropagator);
   }
 
@@ -153,7 +153,7 @@ public class CircuitStopProtocol
   @Override
   protected CompletableFuture<StopController> onStartResponder(@NotNull Stream stream) {
     Receiver acceptor = new Receiver(stream, transport);
-    stream.pushHandler(RECEIVER_HANDLER_NAME, new ProtocolMessageHandlerAdapter<>(stream, acceptor));
+    stream.pushHandler(STOP_HANDLER_NAME, new ProtocolMessageHandlerAdapter<>(stream, acceptor));
     return CompletableFuture.completedFuture(acceptor);
   }
 }

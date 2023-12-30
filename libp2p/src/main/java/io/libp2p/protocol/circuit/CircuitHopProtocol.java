@@ -27,7 +27,7 @@ import org.jetbrains.annotations.*;
 
 public class CircuitHopProtocol extends ProtobufProtocolHandler<CircuitHopProtocol.HopController> {
 
-  private static final String INITIATOR_HANDLER_NAME = "HOP_INITIATOR";
+  private static final String HOP_HANDLER_NAME = "HOP_HANDLER";
   private static final String STREAM_CLEARER_NAME = "STREAM_CLEARER";
 
   public static class Binding extends StrictProtocolBinding<HopController> implements HostConsumer {
@@ -169,12 +169,12 @@ public class CircuitHopProtocol extends ProtobufProtocolHandler<CircuitHopProtoc
     CompletableFuture<Stream> connect(PeerId target);
   }
 
-  public static class SenderUpgrader extends ChannelInitializer {
+  public static class HopRemover extends ChannelInitializer {
 
     @Override
     protected void initChannel(@NotNull Channel ch) throws Exception {
       System.out.println("Removed Hop handler");
-      ch.pipeline().remove(INITIATOR_HANDLER_NAME);
+      ch.pipeline().remove(HOP_HANDLER_NAME);
       // also remove associated protobuf handlers
       ch.pipeline().remove(ProtobufDecoder.class);
       ch.pipeline().remove(ProtobufEncoder.class);
@@ -216,7 +216,7 @@ public class CircuitHopProtocol extends ProtobufProtocolHandler<CircuitHopProtoc
                 if (msg.getType() == Circuit.HopMessage.Type.STATUS
                     && msg.getStatus() == Circuit.Status.OK){
                   // remove handler for HOP to return bare stream
-                  stream.pushHandler(STREAM_CLEARER_NAME, new SenderUpgrader());
+                  stream.pushHandler(STREAM_CLEARER_NAME, new HopRemover());
                   return stream;
                 }
                 throw new IllegalStateException("Circuit dial returned " + msg.getStatus().name());
@@ -306,6 +306,10 @@ public class CircuitHopProtocol extends ProtobufProtocolHandler<CircuitHopProtoc
                             .setStatus(Circuit.Status.OK));
                     Stream toTarget = stop.getStream();
                     Stream fromRequestor = stream;
+                    // remove hop and stop handlers from streams before proxying
+                    fromRequestor.pushHandler(STREAM_CLEARER_NAME, new HopRemover());
+                    toTarget.pushHandler(CircuitStopProtocol.STOP_REMOVER_NAME, new CircuitStopProtocol.StopRemover());
+
                     // connect these streams with time + bytes enforcement
                     fromRequestor.pushHandler(new InboundTrafficLimitHandler(resv.maxBytes));
                     fromRequestor.pushHandler(
@@ -393,7 +397,7 @@ public class CircuitHopProtocol extends ProtobufProtocolHandler<CircuitHopProtoc
   @Override
   protected CompletableFuture<HopController> onStartInitiator(@NotNull Stream stream) {
     Sender replyPropagator = new Sender(stream);
-    stream.pushHandler(INITIATOR_HANDLER_NAME, new ProtocolMessageHandlerAdapter<>(stream, replyPropagator));
+    stream.pushHandler(HOP_HANDLER_NAME, new ProtocolMessageHandlerAdapter<>(stream, replyPropagator));
     return CompletableFuture.completedFuture(replyPropagator);
   }
 
@@ -403,7 +407,7 @@ public class CircuitHopProtocol extends ProtobufProtocolHandler<CircuitHopProtoc
     if (us == null) throw new IllegalStateException("null Host for us!");
     Supplier<List<Multiaddr>> ourpublicAddresses = () -> us.listenAddresses();
     Receiver dialer = new Receiver(us, manager, ourpublicAddresses, stop, us.getAddressBook());
-    stream.pushHandler(dialer);
+    stream.pushHandler(HOP_HANDLER_NAME, new ProtocolMessageHandlerAdapter<>(stream, dialer));
     return CompletableFuture.completedFuture(dialer);
   }
 }
