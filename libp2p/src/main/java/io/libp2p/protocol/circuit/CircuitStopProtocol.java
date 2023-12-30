@@ -6,10 +6,15 @@ import io.libp2p.core.multistream.*;
 import io.libp2p.protocol.*;
 import io.libp2p.protocol.circuit.pb.*;
 import java.util.concurrent.*;
+
+import io.netty.channel.*;
 import org.jetbrains.annotations.*;
 
 public class CircuitStopProtocol
     extends ProtobufProtocolHandler<CircuitStopProtocol.StopController> {
+
+  private static final String RECEIVER_HANDLER_NAME = "STOP_RECEIVER";
+  private static final String STREAM_CLEARER_NAME = "STREAM_CLEARER";
 
   public static class Binding extends StrictProtocolBinding<CircuitStopProtocol.StopController> {
     private final CircuitStopProtocol stop;
@@ -67,6 +72,16 @@ public class CircuitStopProtocol
     }
   }
 
+  public static class ReceiverUpgrader extends ChannelInitializer {
+
+    @Override
+    protected void initChannel(@NotNull Channel ch) throws Exception {
+      System.out.println("Removed Stop handler");
+      ch.pipeline().remove(RECEIVER_HANDLER_NAME);
+      ch.pipeline().remove(STREAM_CLEARER_NAME);
+    }
+  }
+
   public static class Receiver
       implements ProtocolMessageHandler<Circuit.StopMessage>, StopController {
     private final Stream stream;
@@ -88,6 +103,9 @@ public class CircuitStopProtocol
                 .setType(Circuit.StopMessage.Type.STATUS)
                 .setStatus(Circuit.Status.OK)
                 .build());
+        // remove STOP handler from stream before upgrading
+        stream.pushHandler(STREAM_CLEARER_NAME, new ReceiverUpgrader());
+
         // now upgrade connection with security and muxer protocol
         System.out.println("Upgrading relayed incoming connection..");
         ConnectionHandler connHandler = null; // TODO
@@ -130,7 +148,7 @@ public class CircuitStopProtocol
   @Override
   protected CompletableFuture<StopController> onStartResponder(@NotNull Stream stream) {
     Receiver acceptor = new Receiver(stream, transport);
-    stream.pushHandler(acceptor);
+    stream.pushHandler(RECEIVER_HANDLER_NAME, new ProtocolMessageHandlerAdapter<>(stream, acceptor));
     return CompletableFuture.completedFuture(acceptor);
   }
 }

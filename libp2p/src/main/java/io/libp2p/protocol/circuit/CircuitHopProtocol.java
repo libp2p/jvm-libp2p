@@ -25,6 +25,9 @@ import org.jetbrains.annotations.*;
 
 public class CircuitHopProtocol extends ProtobufProtocolHandler<CircuitHopProtocol.HopController> {
 
+  private static final String INITIATOR_HANDLER_NAME = "HOP_INITIATOR";
+  private static final String STREAM_CLEARER_NAME = "STREAM_CLEARER";
+
   public static class Binding extends StrictProtocolBinding<HopController> implements HostConsumer {
     private final CircuitHopProtocol hop;
 
@@ -164,6 +167,16 @@ public class CircuitHopProtocol extends ProtobufProtocolHandler<CircuitHopProtoc
     CompletableFuture<Stream> connect(PeerId target);
   }
 
+  public static class SenderUpgrader extends ChannelInitializer {
+
+    @Override
+    protected void initChannel(@NotNull Channel ch) throws Exception {
+      System.out.println("Removed Hop handler");
+      ch.pipeline().remove(INITIATOR_HANDLER_NAME);
+      ch.pipeline().remove(STREAM_CLEARER_NAME);
+    }
+  }
+
   public static class Sender implements ProtocolMessageHandler<Circuit.HopMessage>, HopController {
     private final Stream stream;
     private final LinkedBlockingDeque<CompletableFuture<Circuit.HopMessage>> queue =
@@ -194,7 +207,11 @@ public class CircuitHopProtocol extends ProtobufProtocolHandler<CircuitHopProtoc
           .thenApply(
               msg -> {
                 if (msg.getType() == Circuit.HopMessage.Type.STATUS
-                    && msg.getStatus() == Circuit.Status.OK) return stream;
+                    && msg.getStatus() == Circuit.Status.OK){
+                  // remove handler for HOP to return bare stream
+                  stream.pushHandler(STREAM_CLEARER_NAME, new SenderUpgrader());
+                  return stream;
+                }
                 throw new IllegalStateException("Circuit dial returned " + msg.getStatus().name());
               });
     }
@@ -369,7 +386,7 @@ public class CircuitHopProtocol extends ProtobufProtocolHandler<CircuitHopProtoc
   @Override
   protected CompletableFuture<HopController> onStartInitiator(@NotNull Stream stream) {
     Sender replyPropagator = new Sender(stream);
-    stream.pushHandler(replyPropagator);
+    stream.pushHandler(INITIATOR_HANDLER_NAME, new ProtocolMessageHandlerAdapter<>(stream, replyPropagator));
     return CompletableFuture.completedFuture(replyPropagator);
   }
 
