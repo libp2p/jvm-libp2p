@@ -32,60 +32,60 @@ public class RelayTestJava {
     String localListenAddress = "/ip4/127.0.0.1/tcp/40002";
 
     Host relayHost =
-            new HostBuilder()
-                    .builderModifier(b -> enableRelay(b, Collections.emptyList()))
-                    .transport(TcpTransport::new)
-                    .secureChannel(NoiseXXSecureChannel::new)
-                    .muxer(StreamMuxerProtocol::getYamux)
-                    .listen("/ip4/127.0.0.1/tcp/0")
-                    .protocol(new Ping())
-                    .build();
+        new HostBuilder()
+            .builderModifier(b -> enableRelay(b, Collections.emptyList()))
+            .transport(TcpTransport::new)
+            .secureChannel(NoiseXXSecureChannel::new)
+            .muxer(StreamMuxerProtocol::getYamux)
+            .listen("/ip4/127.0.0.1/tcp/0")
+            .protocol(new Ping())
+            .build();
     relayHost.getNetwork().getTransports().stream()
-            .filter(t -> t instanceof RelayTransport)
-            .map(t -> (RelayTransport) t)
-            .findFirst()
-            .get()
-            .setHost(relayHost);
+        .filter(t -> t instanceof RelayTransport)
+        .map(t -> (RelayTransport) t)
+        .findFirst()
+        .get()
+        .setHost(relayHost);
     CompletableFuture<Void> relayStarted = relayHost.start();
     relayStarted.get(5, TimeUnit.SECONDS);
 
     List<Multiaddr> relayAddrs = relayHost.listenAddresses();
     Multiaddr relayAddr = relayAddrs.get(0);
     RelayTransport.CandidateRelay relay =
-            new RelayTransport.CandidateRelay(relayHost.getPeerId(), relayAddrs);
+        new RelayTransport.CandidateRelay(relayHost.getPeerId(), relayAddrs);
     List<RelayTransport.CandidateRelay> relays = List.of(relay);
 
     Host clientHost =
-            new HostBuilder()
-                    .builderModifier(b -> enableRelay(b, relays))
-                    .transport(TcpTransport::new)
-                    .secureChannel(NoiseXXSecureChannel::new)
-                    .muxer(StreamMuxerProtocol::getYamux)
-                    .protocol(new Ping())
-                    .build();
+        new HostBuilder()
+            .builderModifier(b -> enableRelay(b, relays))
+            .transport(TcpTransport::new)
+            .secureChannel(NoiseXXSecureChannel::new)
+            .muxer(StreamMuxerProtocol::getYamux)
+            .protocol(new Ping())
+            .build();
     clientHost.getNetwork().getTransports().stream()
-            .filter(t -> t instanceof RelayTransport)
-            .map(t -> (RelayTransport) t)
-            .findFirst()
-            .get()
-            .setHost(clientHost);
+        .filter(t -> t instanceof RelayTransport)
+        .map(t -> (RelayTransport) t)
+        .findFirst()
+        .get()
+        .setHost(clientHost);
 
     Host serverHost =
-            new HostBuilder()
-                    .builderModifier(b -> enableRelay(b, relays))
-                    .transport(TcpTransport::new)
-                    .secureChannel(NoiseXXSecureChannel::new)
-                    .muxer(StreamMuxerProtocol::getYamux)
-                    .protocol(new Ping())
-                    .listen(localListenAddress)
-                    .listen(relayAddr + "/p2p-circuit")
-                    .build();
+        new HostBuilder()
+            .builderModifier(b -> enableRelay(b, relays))
+            .transport(TcpTransport::new)
+            .secureChannel(NoiseXXSecureChannel::new)
+            .muxer(StreamMuxerProtocol::getYamux)
+            .protocol(new Ping())
+            .listen(localListenAddress)
+            .listen(relayAddr + "/p2p-circuit")
+            .build();
     serverHost.getNetwork().getTransports().stream()
-            .filter(t -> t instanceof RelayTransport)
-            .map(t -> (RelayTransport) t)
-            .findFirst()
-            .get()
-            .setHost(serverHost);
+        .filter(t -> t instanceof RelayTransport)
+        .map(t -> (RelayTransport) t)
+        .findFirst()
+        .get()
+        .setHost(serverHost);
 
     CompletableFuture<Void> clientStarted = clientHost.start();
     CompletableFuture<Void> serverStarted = serverHost.start();
@@ -95,15 +95,15 @@ public class RelayTestJava {
     System.out.println("Server started");
 
     Multiaddr toDial =
-            relayAddr.concatenated(
-                    new Multiaddr("/p2p-circuit/p2p/" + serverHost.getPeerId().toBase58()));
+        relayAddr.concatenated(
+            new Multiaddr("/p2p-circuit/p2p/" + serverHost.getPeerId().toBase58()));
     System.out.println("Dialling " + toDial + " from " + clientHost.getPeerId());
     StreamPromise<PingController> ping =
-            clientHost
-                    .getNetwork()
-                    .connect(serverHost.getPeerId(), toDial)
-                    .thenApply(it -> it.muxerSession().createStream(new Ping()))
-                    .get(5, TimeUnit.SECONDS);
+        clientHost
+            .getNetwork()
+            .connect(serverHost.getPeerId(), toDial)
+            .thenApply(it -> it.muxerSession().createStream(new Ping()))
+            .get(5, TimeUnit.SECONDS);
 
     Stream pingStream = ping.getStream().get(5, TimeUnit.SECONDS);
     System.out.println("Ping stream created");
@@ -118,7 +118,7 @@ public class RelayTestJava {
     System.out.println("Ping stream closed");
 
     Assertions.assertThrows(
-            ExecutionException.class, () -> pingCtr.ping().get(5, TimeUnit.SECONDS));
+        ExecutionException.class, () -> pingCtr.ping().get(5, TimeUnit.SECONDS));
 
     clientHost.stop().get(5, TimeUnit.SECONDS);
     System.out.println("Client stopped");

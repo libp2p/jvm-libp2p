@@ -5,10 +5,9 @@ import io.libp2p.core.*;
 import io.libp2p.core.multistream.*;
 import io.libp2p.protocol.*;
 import io.libp2p.protocol.circuit.pb.*;
-import java.util.concurrent.*;
-
 import io.netty.channel.*;
 import io.netty.handler.codec.protobuf.*;
+import java.util.concurrent.*;
 import org.jetbrains.annotations.*;
 
 public class CircuitStopProtocol
@@ -143,7 +142,8 @@ public class CircuitStopProtocol
   @Override
   protected CompletableFuture<StopController> onStartInitiator(@NotNull Stream stream) {
     Sender replyPropagator = new Sender(stream);
-    stream.pushHandler(STOP_HANDLER_NAME, new ProtocolMessageHandlerAdapter<>(stream, replyPropagator));
+    stream.pushHandler(
+        STOP_HANDLER_NAME, new ProtocolMessageHandlerAdapter<>(stream, replyPropagator));
     return CompletableFuture.completedFuture(replyPropagator);
   }
 

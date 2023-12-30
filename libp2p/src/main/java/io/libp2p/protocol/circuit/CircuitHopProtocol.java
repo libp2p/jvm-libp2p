@@ -12,6 +12,7 @@ import io.libp2p.protocol.circuit.crypto.pb.*;
 import io.libp2p.protocol.circuit.pb.*;
 import io.netty.buffer.*;
 import io.netty.channel.*;
+import io.netty.handler.codec.protobuf.*;
 import java.io.*;
 import java.nio.charset.*;
 import java.time.*;
@@ -21,8 +22,6 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.*;
 import java.util.stream.*;
-
-import io.netty.handler.codec.protobuf.*;
 import org.jetbrains.annotations.*;
 
 public class CircuitHopProtocol extends ProtobufProtocolHandler<CircuitHopProtocol.HopController> {
@@ -102,7 +101,12 @@ public class CircuitHopProtocol extends ProtobufProtocolHandler<CircuitHopProtoc
     public final byte[] voucher;
     public final Multiaddr[] addrs;
 
-    public Reservation(LocalDateTime expiry, int durationSeconds, long maxBytes, byte[] voucher, Multiaddr[] addrs) {
+    public Reservation(
+        LocalDateTime expiry,
+        int durationSeconds,
+        long maxBytes,
+        byte[] voucher,
+        Multiaddr[] addrs) {
       this.expiry = expiry;
       this.durationSeconds = durationSeconds;
       this.maxBytes = maxBytes;
@@ -128,12 +132,13 @@ public class CircuitHopProtocol extends ProtobufProtocolHandler<CircuitHopProtoc
         }
 
         @Override
-        public synchronized Optional<Reservation> createReservation(PeerId requestor, Multiaddr addr) {
+        public synchronized Optional<Reservation> createReservation(
+            PeerId requestor, Multiaddr addr) {
           if (reservations.size() >= concurrent) return Optional.empty();
           LocalDateTime now = LocalDateTime.now();
           LocalDateTime expiry = now.plusHours(1);
           byte[] voucher = createVoucher(priv, relayPeerId, requestor, now);
-          Reservation resv = new Reservation(expiry, 120, 4096, voucher, new Multiaddr[]{addr});
+          Reservation resv = new Reservation(expiry, 120, 4096, voucher, new Multiaddr[] {addr});
           reservations.put(requestor, resv);
           return Optional.of(resv);
         }
@@ -156,11 +161,11 @@ public class CircuitHopProtocol extends ProtobufProtocolHandler<CircuitHopProtoc
                 if (msg.getStatus() == Circuit.Status.OK) {
                   long expiry = msg.getReservation().getExpire();
                   return new Reservation(
-                          LocalDateTime.ofEpochSecond(expiry, 0, ZoneOffset.UTC),
-                          msg.getLimit().getDuration(),
-                          msg.getLimit().getData(),
-                          msg.getReservation().getVoucher().toByteArray(),
-                          null);
+                      LocalDateTime.ofEpochSecond(expiry, 0, ZoneOffset.UTC),
+                      msg.getLimit().getDuration(),
+                      msg.getLimit().getData(),
+                      msg.getReservation().getVoucher().toByteArray(),
+                      null);
                 }
                 throw new IllegalStateException(msg.getStatus().name());
               });
@@ -213,7 +218,7 @@ public class CircuitHopProtocol extends ProtobufProtocolHandler<CircuitHopProtoc
           .thenApply(
               msg -> {
                 if (msg.getType() == Circuit.HopMessage.Type.STATUS
-                    && msg.getStatus() == Circuit.Status.OK){
+                    && msg.getStatus() == Circuit.Status.OK) {
                   // remove handler for HOP to return bare stream
                   stream.pushHandler(STREAM_CLEARER_NAME, new HopRemover());
                   return stream;
@@ -250,7 +255,8 @@ public class CircuitHopProtocol extends ProtobufProtocolHandler<CircuitHopProtoc
         case RESERVE:
           {
             PeerId requestor = stream.remotePeerId();
-            Optional<Reservation> reservation = manager.createReservation(requestor, stream.getConnection().remoteAddress());
+            Optional<Reservation> reservation =
+                manager.createReservation(requestor, stream.getConnection().remoteAddress());
             if (reservation.isEmpty()
                 || new Multiaddr(stream.getConnection().remoteAddress().toString())
                     .has(Protocol.P2PCIRCUIT)) {
@@ -289,10 +295,7 @@ public class CircuitHopProtocol extends ProtobufProtocolHandler<CircuitHopProtoc
                 try {
                   CircuitStopProtocol.StopController stop =
                       this.stop
-                          .dial(
-                              us,
-                              target,
-                              resv.addrs)
+                          .dial(us, target, resv.addrs)
                           .getController()
                           .orTimeout(15, TimeUnit.SECONDS)
                           .join();
@@ -307,7 +310,9 @@ public class CircuitHopProtocol extends ProtobufProtocolHandler<CircuitHopProtoc
                     Stream fromRequestor = stream;
                     // remove hop and stop handlers from streams before proxying
                     fromRequestor.pushHandler(STREAM_CLEARER_NAME, new HopRemover());
-                    toTarget.pushHandler(CircuitStopProtocol.STOP_REMOVER_NAME, new CircuitStopProtocol.StopRemover());
+                    toTarget.pushHandler(
+                        CircuitStopProtocol.STOP_REMOVER_NAME,
+                        new CircuitStopProtocol.StopRemover());
 
                     // connect these streams with time + bytes enforcement
                     fromRequestor.pushHandler(new InboundTrafficLimitHandler(resv.maxBytes));
@@ -395,7 +400,8 @@ public class CircuitHopProtocol extends ProtobufProtocolHandler<CircuitHopProtoc
   @Override
   protected CompletableFuture<HopController> onStartInitiator(@NotNull Stream stream) {
     Sender replyPropagator = new Sender(stream);
-    stream.pushHandler(HOP_HANDLER_NAME, new ProtocolMessageHandlerAdapter<>(stream, replyPropagator));
+    stream.pushHandler(
+        HOP_HANDLER_NAME, new ProtocolMessageHandlerAdapter<>(stream, replyPropagator));
     return CompletableFuture.completedFuture(replyPropagator);
   }
 
