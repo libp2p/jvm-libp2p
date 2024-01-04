@@ -24,7 +24,9 @@ public class RelayTestJava {
     CircuitHopProtocol.Binding hop = new CircuitHopProtocol.Binding(relayManager, stop);
     b.getProtocols().add(hop);
     b.getProtocols().add(stop);
-    b.getTransports().add(u -> new RelayTransport(hop, stop, u, h -> relays));
+    b.getTransports()
+        .add(
+            u -> new RelayTransport(hop, stop, u, h -> relays, new ScheduledThreadPoolExecutor(1)));
   }
 
   @Test

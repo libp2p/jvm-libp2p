@@ -27,7 +27,7 @@ List of components in the Libp2p spec and their JVM implementation status
 | **Protocol Select**      | [multistream](https://github.com/multiformats/multistream-select)                               |  :green_apple:   |
 | **Stream Multiplexing**  | [yamux](https://github.com/libp2p/specs/blob/master/yamux/README.md)                            |     :lemon:      |
 |                          | [mplex](https://github.com/libp2p/specs/blob/master/mplex/README.md)                            |  :green_apple:   |
-| **NAT Traversal**        | [circuit-relay-v2](https://github.com/libp2p/specs/blob/master/relay/circuit-v2.md)             |                  |
+| **NAT Traversal**        | [circuit-relay-v2](https://github.com/libp2p/specs/blob/master/relay/circuit-v2.md)             |     :lemon:      |
 |                          | [autonat](https://github.com/libp2p/specs/tree/master/autonat)                                  |                  |
 |                          | [hole-punching](https://github.com/libp2p/specs/blob/master/connections/hole-punching.md)       |                  |
 | **Discovery**            | [bootstrap](https://github.com/libp2p/specs/blob/master/kad-dht/README.md#bootstrap-process)    |                  |

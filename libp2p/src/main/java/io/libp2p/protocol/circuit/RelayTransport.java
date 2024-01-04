@@ -27,17 +27,20 @@ public class RelayTransport implements Transport, HostConsumer {
   private final CircuitStopProtocol.Binding stop;
   public final ConnectionUpgrader upgrader;
   private final AtomicInteger relayCount;
+  private final ScheduledExecutorService runner;
 
   public RelayTransport(
       CircuitHopProtocol.Binding hop,
       CircuitStopProtocol.Binding stop,
       ConnectionUpgrader upgrader,
-      Function<Host, List<CandidateRelay>> candidateRelays) {
+      Function<Host, List<CandidateRelay>> candidateRelays,
+      ScheduledExecutorService runner) {
     this.hop = hop;
     this.stop = stop;
     this.upgrader = upgrader;
     this.candidateRelays = candidateRelays;
     this.relayCount = new AtomicInteger(0);
+    this.runner = runner;
   }
 
   @Override
@@ -245,18 +248,7 @@ public class RelayTransport implements Transport, HostConsumer {
   public void initialize() {
     stop.setTransport(this);
     // find relays and connect and reserve
-    new Thread(
-            () -> {
-              while (true) {
-                ensureEnoughCurrentRelays();
-                try {
-                  Thread.sleep(2 * 60_000);
-                } catch (InterruptedException e) {
-                }
-              }
-            },
-            "RelayManager")
-        .start();
+    runner.scheduleAtFixedRate(this::ensureEnoughCurrentRelays, 2 * 60, 0, TimeUnit.SECONDS);
   }
 
   public void ensureEnoughCurrentRelays() {
