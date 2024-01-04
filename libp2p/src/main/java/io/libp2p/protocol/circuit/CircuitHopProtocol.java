@@ -1,6 +1,7 @@
 package io.libp2p.protocol.circuit;
 
 import com.google.protobuf.*;
+import crypto.pb.*;
 import io.libp2p.core.*;
 import io.libp2p.core.Stream;
 import io.libp2p.core.crypto.*;
@@ -8,7 +9,6 @@ import io.libp2p.core.multiformats.*;
 import io.libp2p.core.multistream.*;
 import io.libp2p.etc.util.netty.*;
 import io.libp2p.protocol.*;
-import crypto.pb.*;
 import io.libp2p.protocol.circuit.pb.*;
 import io.netty.buffer.*;
 import io.netty.channel.*;
