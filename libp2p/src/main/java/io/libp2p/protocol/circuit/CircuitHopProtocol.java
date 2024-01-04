@@ -1,7 +1,6 @@
 package io.libp2p.protocol.circuit;
 
 import com.google.protobuf.*;
-import crypto.pb.*;
 import io.libp2p.core.*;
 import io.libp2p.core.Stream;
 import io.libp2p.core.crypto.*;
@@ -9,6 +8,7 @@ import io.libp2p.core.multiformats.*;
 import io.libp2p.core.multistream.*;
 import io.libp2p.etc.util.netty.*;
 import io.libp2p.protocol.*;
+import io.libp2p.protocol.circuit.crypto.pb.*;
 import io.libp2p.protocol.circuit.pb.*;
 import io.netty.buffer.*;
 import io.netty.channel.*;
@@ -82,11 +82,11 @@ public class CircuitHopProtocol extends ProtobufProtocolHandler<CircuitHopProtoc
     } catch (IOException e) {
     }
     byte[] signature = priv.sign(toSign.toByteArray());
-    return Crypto.Envelope.newBuilder()
+    return EnvelopeOuterClass.Envelope.newBuilder()
         .setPayloadType(ByteString.copyFrom(typeMulticodec))
         .setPayload(ByteString.copyFrom(payload))
         .setPublicKey(
-            Crypto.PublicKey.newBuilder()
+            EnvelopeOuterClass.PublicKey.newBuilder()
                 .setTypeValue(priv.publicKey().getKeyType().getNumber())
                 .setData(ByteString.copyFrom(priv.publicKey().raw())))
         .setSignature(ByteString.copyFrom(signature))
