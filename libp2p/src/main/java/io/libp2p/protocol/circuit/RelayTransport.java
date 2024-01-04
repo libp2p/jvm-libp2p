@@ -248,7 +248,7 @@ public class RelayTransport implements Transport, HostConsumer {
   public void initialize() {
     stop.setTransport(this);
     // find relays and connect and reserve
-    runner.scheduleAtFixedRate(this::ensureEnoughCurrentRelays, 2 * 60, 0, TimeUnit.SECONDS);
+    runner.scheduleAtFixedRate(this::ensureEnoughCurrentRelays, 0, 2 * 60, TimeUnit.SECONDS);
   }
 
   public void ensureEnoughCurrentRelays() {

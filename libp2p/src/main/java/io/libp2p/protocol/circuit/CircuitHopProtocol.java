@@ -8,7 +8,7 @@ import io.libp2p.core.multiformats.*;
 import io.libp2p.core.multistream.*;
 import io.libp2p.etc.util.netty.*;
 import io.libp2p.protocol.*;
-import io.libp2p.protocol.circuit.crypto.pb.*;
+import crypto.pb.*;
 import io.libp2p.protocol.circuit.pb.*;
 import io.netty.buffer.*;
 import io.netty.channel.*;
