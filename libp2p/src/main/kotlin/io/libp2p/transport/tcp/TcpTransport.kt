@@ -5,6 +5,7 @@ import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multiformats.Protocol.DNSADDR
 import io.libp2p.core.multiformats.Protocol.IP4
 import io.libp2p.core.multiformats.Protocol.IP6
+import io.libp2p.core.multiformats.Protocol.P2PCIRCUIT
 import io.libp2p.core.multiformats.Protocol.TCP
 import io.libp2p.core.multiformats.Protocol.WS
 import io.libp2p.transport.ConnectionUpgrader
@@ -29,7 +30,8 @@ open class TcpTransport(
         handlesHost(addr) &&
             addr.has(TCP) &&
             !addr.has(WS) &&
-            !addr.has(DNSADDR)
+            !addr.has(DNSADDR) &&
+            !addr.has(P2PCIRCUIT)
 
     override fun serverTransportBuilder(
         connectionBuilder: ConnectionBuilder,
