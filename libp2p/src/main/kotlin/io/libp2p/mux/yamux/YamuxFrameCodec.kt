@@ -1,6 +1,7 @@
 package io.libp2p.mux.yamux
 
 import io.libp2p.core.ProtocolViolationException
+import io.libp2p.mux.yamux.YamuxFlag.Companion.toInt
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 import io.netty.channel.ChannelHandlerContext
@@ -24,8 +25,8 @@ class YamuxFrameCodec(
      */
     override fun encode(ctx: ChannelHandlerContext, msg: YamuxFrame, out: ByteBuf) {
         out.writeByte(0) // version
-        out.writeByte(msg.type)
-        out.writeShort(msg.flags)
+        out.writeByte(msg.type.intValue)
+        out.writeShort(msg.flags.toInt())
         out.writeInt(msg.id.id.toInt())
         out.writeInt(msg.data?.readableBytes() ?: msg.length.toInt())
         out.writeBytes(msg.data ?: Unpooled.EMPTY_BUFFER)
@@ -46,15 +47,17 @@ class YamuxFrameCodec(
             val readerIndex = msg.readerIndex()
             msg.readByte(); // version always 0
             val type = msg.readUnsignedByte()
+            val yamuxType = YamuxType.fromInt(type.toInt())
             val flags = msg.readUnsignedShort()
             val streamId = msg.readUnsignedInt()
             val length = msg.readUnsignedInt()
             val yamuxId = YamuxId(ctx.channel().id(), streamId)
-            if (type.toInt() != YamuxType.DATA) {
+            val yamuxFlags = YamuxFlag.fromInt(flags)
+            if (yamuxType != YamuxType.DATA) {
                 val yamuxFrame = YamuxFrame(
                     yamuxId,
-                    type.toInt(),
-                    flags,
+                    yamuxType,
+                    yamuxFlags,
                     length
                 )
                 out.add(yamuxFrame)
@@ -74,8 +77,8 @@ class YamuxFrameCodec(
             data.retain() // MessageToMessageCodec releases original buffer, but it needs to be relayed
             val yamuxFrame = YamuxFrame(
                 yamuxId,
-                type.toInt(),
-                flags,
+                yamuxType,
+                yamuxFlags,
                 length,
                 data
             )

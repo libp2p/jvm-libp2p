@@ -1,5 +1,6 @@
 package io.libp2p.etc.types
 
+import kotlin.properties.Delegates
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
 
@@ -90,5 +91,20 @@ data class CappedValueDelegate<C : Comparable<C>>(
         if (oldValue != value) {
             updateListener(value)
         }
+    }
+}
+
+fun <T : Any> Delegates.writeOnce(initialValue: T): ReadWriteProperty<Any?, T> = object : ReadWriteProperty<Any?, T> {
+    private var value: T = initialValue
+    private var wasSet = false
+
+    public override fun getValue(thisRef: Any?, property: KProperty<*>): T {
+        return value
+    }
+
+    public override fun setValue(thisRef: Any?, property: KProperty<*>, value: T) {
+        if (wasSet) throw IllegalStateException("Property ${property.name} cannot be set more than once.")
+        this.value = value
+        wasSet = true
     }
 }

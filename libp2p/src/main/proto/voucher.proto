@@ -1,0 +1,9 @@
+syntax = "proto2";
+
+package io.libp2p.protocol.circuit.pb;
+
+message Voucher {
+  required bytes relay = 1;
+  required bytes peer = 2;
+  required uint64 expiration = 3;
+}

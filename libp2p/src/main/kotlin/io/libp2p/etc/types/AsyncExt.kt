@@ -19,6 +19,14 @@ fun <C> CompletableFuture<C>.bind(result: CompletableFuture<out C>) {
 
 fun <C> CompletableFuture<C>.forward(forwardTo: CompletableFuture<in C>) = forwardTo.bind(this)
 
+fun <C, R> CompletableFuture<C>.forwardException(forwardTo: CompletableFuture<R>): CompletableFuture<C> {
+    return whenComplete { _, t ->
+        if (t != null) {
+            forwardTo.completeExceptionally(t)
+        }
+    }
+}
+
 /**
  * The same as [CompletableFuture.get] but unwraps [ExecutionException]
  */

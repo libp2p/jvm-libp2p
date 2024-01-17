@@ -3,6 +3,7 @@
 package io.libp2p.pubsub.gossip
 
 import com.google.common.util.concurrent.AtomicDouble
+import com.google.protobuf.ByteString
 import io.libp2p.core.PeerId
 import io.libp2p.core.pubsub.MessageApi
 import io.libp2p.core.pubsub.RESULT_IGNORE
@@ -102,7 +103,7 @@ class GossipV1_1Tests {
     class TwoRoutersTest(
         val coreParams: GossipParams = GossipParams(),
         val scoreParams: GossipScoreParams = GossipScoreParams(),
-        mockRouterFactory: DeterministicFuzzRouterFactory = createMockFuzzRouterFactory()
+        val mockRouterFactory: DeterministicFuzzRouterFactory = createMockFuzzRouterFactory()
     ) {
         val fuzz = DeterministicFuzz()
         val gossipRouterBuilderFactory = { GossipRouterBuilder(params = coreParams, scoreParams = scoreParams) }
@@ -1139,5 +1140,76 @@ class GossipV1_1Tests {
             .flatMap { it.messageIDsList }
         assertEquals(5, iWandIds1.size)
         assertEquals(5, iWandIds1.distinct().size)
+    }
+
+    @Test
+    fun testMaxPeersSentInPruneMsg() {
+        val test = TwoRoutersTest()
+
+        val topic = "topic1"
+        test.mockRouter.subscribe(topic)
+        test.gossipRouter.subscribe(topic)
+
+        for (i in 0..20) {
+            val router = test.fuzz.createTestRouter(test.mockRouterFactory)
+            (router.router as MockRouter).subscribe(topic)
+            test.router1.connectSemiDuplex(router, null, LogLevel.ERROR)
+        }
+
+        // 2 heartbeats - the topic should be GRAFTed
+        test.fuzz.timeController.addTime(2.seconds)
+        test.mockRouter.waitForMessage { it.hasControl() && it.control.graftCount > 0 }
+
+        test.gossipRouter.unsubscribe(topic)
+        test.fuzz.timeController.addTime(2.seconds)
+        assertEquals(
+            1,
+            test.mockRouter.inboundMessages.count {
+                it.hasControl() && it.control.pruneCount == 1 &&
+                    it.control.getPrune(0).peersCount == test.gossipRouter.params.maxPeersSentInPruneMsg
+            }
+        )
+    }
+
+    @Test
+    fun testMaxPeersAcceptedInPruneMsg() {
+        val test = TwoRoutersTest()
+        val topic = "topic1"
+
+        test.mockRouter.subscribe(topic)
+        test.gossipRouter.subscribe(topic)
+
+        // 2 heartbeats - the topic should be GRAFTed
+        test.fuzz.timeController.addTime(2.seconds)
+
+        fun createPruneMessage(peersCount: Int): Rpc.RPC {
+            val peerInfos = List(peersCount) {
+                Rpc.PeerInfo.newBuilder()
+                    .setPeerID(PeerId.random().bytes.toProtobuf())
+                    .setSignedPeerRecord(ByteString.EMPTY)
+                    .build()
+            }
+            return Rpc.RPC.newBuilder().setControl(
+                Rpc.ControlMessage.newBuilder().addPrune(
+                    Rpc.ControlPrune.newBuilder()
+                        .setTopicID(topic)
+                        .addAllPeers(peerInfos)
+                )
+            ).build()
+        }
+
+        test.mockRouter.sendToSingle(
+            createPruneMessage(test.gossipRouter.params.maxPeersAcceptedInPruneMsg + 1)
+        )
+
+        // prune message should be dropped because too many peers
+        assertEquals(1, test.gossipRouter.mesh[topic]!!.size)
+
+        test.mockRouter.sendToSingle(
+            createPruneMessage(test.gossipRouter.params.maxPeersAcceptedInPruneMsg)
+        )
+
+        // prune message should now be processed
+        assertEquals(0, test.gossipRouter.mesh[topic]!!.size)
     }
 }
