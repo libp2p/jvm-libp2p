@@ -22,6 +22,7 @@ include ':tools:schedulers'
 include ':tools:simulator'
 include ':examples:chatter'
 include ':examples:cli-chatter'
+include 'examples:gossippubsubdiscovery'
 include ':examples:pinger'
 
 def getAndroidSdkDir() {
@@ -47,6 +48,3 @@ if (getAndroidSdkDir() != null) {
     println "    To include Android submodules define a valid SDK location with an ANDROID_HOME environment variable "
     println "    or by setting the sdk.dir path in your project's local properties file local.properties."
 }
-include 'examples:gossippubsubdiscovery'
-findProject(':examples:gossippubsubdiscovery')?.name = 'gossippubsubdiscovery'
-

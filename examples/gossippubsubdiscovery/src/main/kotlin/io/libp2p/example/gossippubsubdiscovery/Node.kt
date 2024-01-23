@@ -66,6 +66,7 @@ class Node {
         chatConnection.closeFuture().thenAccept {
             peers.remove(info.peerId)
             knownNodes.remove(info.peerId)
+            println("Disconnected from peer ${info.peerId}")
         }
         println("Connected to new peer ${info.peerId}")
         peers.add(info.peerId)
