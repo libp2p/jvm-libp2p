@@ -73,7 +73,9 @@ class Node {
 
     private fun connectChat(info: PeerInfo): Stream {
         try {
-            return gossip.dial(host, info.peerId, info.addresses[0]).stream.get()
+            val stream = gossip.dial(host, info.peerId, info.addresses[0]).stream.get()
+            gossip.subscribe(Subscriber { println(it) }, Topic("HelloWorld"))
+            return stream
         } catch (e: Exception) {
             e.printStackTrace()
             throw e

@@ -17,7 +17,8 @@ class MDnsDiscoveryTest {
 
         override fun listenAddresses(): List<Multiaddr> {
             return listOf(
-                Multiaddr("/ip4/127.0.0.1/tcp/4000")
+                Multiaddr("/ip4/127.0.0.1/tcp/4000"),
+                Multiaddr("/ip6/::1/tcp/5555")
             )
         }
     }
