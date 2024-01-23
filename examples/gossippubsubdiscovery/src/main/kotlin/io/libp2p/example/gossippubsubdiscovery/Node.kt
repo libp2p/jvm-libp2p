@@ -13,6 +13,8 @@ import io.libp2p.pubsub.gossip.Gossip
 import java.net.Inet4Address
 import java.net.InetAddress
 import java.net.NetworkInterface
+import java.nio.charset.StandardCharsets
+import java.nio.charset.StandardCharsets.UTF_8
 
 class Node {
     private val knownNodes = mutableSetOf<PeerId>()
@@ -44,10 +46,6 @@ class Node {
         peerFinder.start()
     } // init
 
-    fun subscribe(topic: String) {
-        gossip.subscribe(Subscriber { println(it) }, Topic(topic))
-    } //subscribe
-
     fun createPublisher(): PubsubPublisherApi {
         return gossip.createPublisher(host.privKey)
     } //createPublisher
@@ -75,7 +73,7 @@ class Node {
     private fun connectChat(info: PeerInfo): Stream {
         try {
             val stream = gossip.dial(host, info.peerId, info.addresses[0]).stream.get()
-            gossip.subscribe(Subscriber { println(it) }, Topic("HelloWorld"))
+            gossip.subscribe(Subscriber { println(it.originalMessage.protobufMessage.data.toByteArray().toString(UTF_8)) }, Topic("HelloWorld"))
             return stream
         } catch (e: Exception) {
             e.printStackTrace()

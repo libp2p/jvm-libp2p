@@ -11,6 +11,5 @@ fun main() {
     println()
     println()
 
-    node.subscribe("HelloWorld")
     Thread.sleep(100000)
 }
