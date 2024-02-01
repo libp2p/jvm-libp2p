@@ -15,8 +15,6 @@ public class AutonatTestJava {
 
   @Test
   void autonatDial() throws Exception {
-    String localListenAddress = "/ip4/127.0.0.1/tcp/40002";
-
     Host clientHost =
         new HostBuilder()
             .transport(TcpTransport::new)
@@ -34,7 +32,7 @@ public class AutonatTestJava {
             .muxer(StreamMuxerProtocol::getYamux)
             .protocol(new Ping())
             .protocol(new AutonatProtocol.Binding())
-            .listen(localListenAddress)
+            .listen("/ip4/127.0.0.1/tcp/0")
             .build();
 
     CompletableFuture<Void> clientStarted = clientHost.start();

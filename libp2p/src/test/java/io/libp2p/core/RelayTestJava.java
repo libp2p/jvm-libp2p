@@ -31,8 +31,6 @@ public class RelayTestJava {
 
   @Test
   void pingOverLocalRelay() throws Exception {
-    String localListenAddress = "/ip4/127.0.0.1/tcp/40002";
-
     Host relayHost =
         new HostBuilder()
             .builderModifier(b -> enableRelay(b, Collections.emptyList()))
@@ -79,7 +77,7 @@ public class RelayTestJava {
             .secureChannel(NoiseXXSecureChannel::new)
             .muxer(StreamMuxerProtocol::getYamux)
             .protocol(new Ping())
-            .listen(localListenAddress)
+            .listen("/ip4/127.0.0.1/tcp/0")
             .listen(relayAddr + "/p2p-circuit")
             .build();
     serverHost.getNetwork().getTransports().stream()
@@ -130,8 +128,6 @@ public class RelayTestJava {
 
   @Test
   void relayStreamsAreLimited() throws Exception {
-    String localListenAddress = "/ip4/127.0.0.1/tcp/40002";
-
     Host relayHost =
         new HostBuilder()
             .builderModifier(b -> enableRelay(b, Collections.emptyList()))
@@ -181,7 +177,7 @@ public class RelayTestJava {
             .secureChannel(NoiseXXSecureChannel::new)
             .muxer(StreamMuxerProtocol::getYamux)
             .protocol(new Blob(blobSize))
-            .listen(localListenAddress)
+            .listen("/ip4/127.0.0.1/tcp/0")
             .listen(relayAddr + "/p2p-circuit")
             .build();
     serverHost.getNetwork().getTransports().stream()
