@@ -24,7 +24,6 @@ dependencies {
 
     implementation("org.bouncycastle:bcprov-jdk18on")
     implementation("org.bouncycastle:bcpkix-jdk18on")
-    implementation("org.bouncycastle:bctls-jdk18on")
 
     testImplementation(project(":tools:schedulers"))
 

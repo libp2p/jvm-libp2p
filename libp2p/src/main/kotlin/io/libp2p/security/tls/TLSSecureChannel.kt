@@ -35,18 +35,16 @@ import org.bouncycastle.cert.X509CertificateHolder
 import org.bouncycastle.cert.X509v3CertificateBuilder
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter
 import org.bouncycastle.crypto.params.Ed25519PublicKeyParameters
-import org.bouncycastle.jcajce.interfaces.EdDSAPublicKey
-import org.bouncycastle.jsse.provider.BouncyCastleJsseProvider
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder
 import java.math.BigInteger
 import java.security.KeyFactory
 import java.security.PrivateKey
 import java.security.PublicKey
-import java.security.Security
 import java.security.cert.Certificate
 import java.security.cert.CertificateException
 import java.security.cert.X509Certificate
 import java.security.interfaces.ECPublicKey
+import java.security.interfaces.EdECPublicKey
 import java.security.spec.*
 import java.time.Instant
 import java.util.*
@@ -54,6 +52,7 @@ import java.util.concurrent.CompletableFuture
 import java.util.logging.Level
 import java.util.logging.Logger
 import javax.net.ssl.X509TrustManager
+import kotlin.experimental.or
 
 private val log = Logger.getLogger(TlsSecureChannel::class.java.name)
 
@@ -68,12 +67,6 @@ class TlsSecureChannel(private val localKey: PrivKey, private val muxers: List<S
 
     companion object {
         const val announce = "/tls/1.0.0"
-        init {
-            Security.insertProviderAt(Libp2pCrypto.provider, 1)
-            Security.insertProviderAt(BouncyCastleJsseProvider(), 2)
-            Security.setProperty("ssl.KeyManagerFactory.algorithm", "PKIX")
-            Security.setProperty("ssl.TrustManagerFactory.algorithm", "PKIX")
-        }
 
         @JvmStatic
         fun ECDSA(localKey: PrivKey, muxerIds: List<StreamMuxer>): TlsSecureChannel {
@@ -119,7 +112,7 @@ fun buildTlsHandler(
         .ciphers(listOf("TLS_AES_128_GCM_SHA256", "TLS_AES_256_GCM_SHA384", "TLS_CHACHA20_POLY1305_SHA256"))
         .clientAuth(ClientAuth.REQUIRE)
         .trustManager(Libp2pTrustManager(expectedRemotePeer))
-        .sslContextProvider(BouncyCastleJsseProvider())
+//        .sslContextProvider(BouncyCastleJsseProvider())
         .applicationProtocolConfig(
             ApplicationProtocolConfig(
                 ApplicationProtocolConfig.Protocol.ALPN,
@@ -272,8 +265,16 @@ fun getAsn1EncodedPublicKey(pub: PubKey): ByteArray {
 
 fun getPubKey(pub: PublicKey): PubKey {
     if (pub.algorithm.equals("EdDSA") || pub.algorithm.equals("Ed25519")) {
-        val raw = (pub as EdDSAPublicKey).pointEncoding
-        return Ed25519PublicKey(Ed25519PublicKeyParameters(raw))
+        // It seems batshit that we have to do this, but haven't found an equivalent library call
+        val point = (pub as EdECPublicKey).point
+        var pk = point.y.toByteArray().reversedArray()
+        if (pk.size == 31) {
+            pk = pk.plus(0)
+        }
+        if (point.isXOdd) {
+            pk[31] = pk[31].or(0x80.toByte())
+        }
+        return Ed25519PublicKey(Ed25519PublicKeyParameters(pk))
     }
     if (pub.algorithm.equals("EC")) {
         return EcdsaPublicKey(pub as ECPublicKey)
