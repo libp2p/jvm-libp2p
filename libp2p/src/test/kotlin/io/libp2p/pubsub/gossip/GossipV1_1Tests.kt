@@ -422,7 +422,7 @@ class GossipV1_1Tests {
     fun testAppValidatorScore() {
         val test = TwoRoutersTest()
         val validator = AtomicReference<CompletableFuture<ValidationResult>>(RESULT_VALID)
-        test.gossipRouter.initHandler { validator.get() }
+        test.gossipRouter.initHandler { _, _ -> validator.get() }
 
         test.mockRouter.subscribe("topic1")
         test.gossipRouter.subscribe("topic1")
@@ -860,7 +860,7 @@ class GossipV1_1Tests {
     fun testValidatorIgnoreResult() {
         val test = ManyRoutersTest(mockRouterCount = 2)
         val validator = AtomicReference<CompletableFuture<ValidationResult>>(RESULT_VALID)
-        test.gossipRouter.initHandler { validator.get() }
+        test.gossipRouter.initHandler { _, _ -> validator.get() }
         test.connectAll()
         test.gossipRouter.subscribe("topic1")
         test.routers.forEach { it.router.subscribe("topic1") }

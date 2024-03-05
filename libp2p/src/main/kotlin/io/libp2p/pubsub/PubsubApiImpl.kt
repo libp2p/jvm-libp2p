@@ -62,7 +62,7 @@ open class PubsubApiImpl(val router: PubsubRouter) : PubsubApi {
     }
 
     init {
-        router.initHandler { onNewMessage(it) }
+        router.initHandler { peerId, msg -> onNewMessage(peerId, msg) }
     }
 
     val subscriptions: MutableMap<Topic, MutableList<SubscriptionImpl>> = mutableMapOf()
@@ -74,11 +74,11 @@ open class PubsubApiImpl(val router: PubsubRouter) : PubsubApi {
         }
     }
 
-    private fun onNewMessage(msg: PubsubMessage): CompletableFuture<ValidationResult> {
+    private fun onNewMessage(peerId: PeerId, msg: PubsubMessage): CompletableFuture<ValidationResult> {
         val validationFuts = synchronized(this) {
             msg.topics.mapNotNull { subscriptions[Topic(it)] }.flatten().distinct()
         }.map {
-            it.receiver.apply(rpc2Msg(msg))
+            it.receiver.apply(rpc2Msg(peerId, msg))
         }
         return validationFuts.thenApplyAll {
             if (it.isEmpty()) {
@@ -89,7 +89,7 @@ open class PubsubApiImpl(val router: PubsubRouter) : PubsubApi {
         }
     }
 
-    private fun rpc2Msg(msg: PubsubMessage) = MessageImpl(msg)
+    private fun rpc2Msg(peerId: PeerId, msg: PubsubMessage) = MessageImpl(peerId, msg)
 
     override fun subscribe(receiver: Validator, vararg topics: Topic): PubsubSubscription {
         val subscription = SubscriptionImpl(topics, receiver)
@@ -138,7 +138,7 @@ open class PubsubApiImpl(val router: PubsubRouter) : PubsubApi {
         PublisherImpl(privKey, seqIdGenerator)
 }
 
-class MessageImpl(override val originalMessage: PubsubMessage) : MessageApi {
+class MessageImpl(override val propagator: PeerId, override val originalMessage: PubsubMessage) : MessageApi {
     private val msg = originalMessage.protobufMessage
     override val data = msg.data.toByteArray().toByteBuf()
     override val from = if (msg.hasFrom()) msg.from.toByteArray() else null

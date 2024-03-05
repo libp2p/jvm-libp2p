@@ -40,8 +40,8 @@ class TestRouter(
 
     val inboundMessages = LinkedBlockingQueue<PubsubMessage>()
     var handlerValidationResult = RESULT_VALID
-    val routerHandler: (PubsubMessage) -> CompletableFuture<ValidationResult> = {
-        inboundMessages += it
+    val routerHandler: (PeerId, PubsubMessage) -> CompletableFuture<ValidationResult> = { _, msg ->
+        inboundMessages += msg
         handlerValidationResult
     }
 

@@ -53,8 +53,8 @@ public class GossipApiTest {
 
     BlockingQueue<PubsubMessage> messages = new LinkedBlockingQueue<>();
     router.initHandler(
-        m -> {
-          messages.add(m);
+        (__, msg) -> {
+          messages.add(msg);
           return CompletableFuture.completedFuture(ValidationResult.Valid);
         });
 

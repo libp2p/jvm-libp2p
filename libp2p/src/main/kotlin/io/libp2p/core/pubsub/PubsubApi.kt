@@ -167,6 +167,11 @@ interface PubsubApi : PubsubSubscriberApi {
  */
 interface MessageApi {
 
+    /**
+     * The identity of the peer who has propagated this message
+     */
+    val propagator: PeerId
+
     val originalMessage: PubsubMessage
 
     /**

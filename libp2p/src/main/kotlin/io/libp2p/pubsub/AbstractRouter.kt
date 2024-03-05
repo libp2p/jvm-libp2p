@@ -23,7 +23,7 @@ import java.util.function.Consumer
 // 1 MB default max message size
 const val DEFAULT_MAX_PUBSUB_MESSAGE_SIZE = 1 shl 20
 
-typealias PubsubMessageHandler = (PubsubMessage) -> CompletableFuture<ValidationResult>
+typealias PubsubMessageHandler = (PeerId, PubsubMessage) -> CompletableFuture<ValidationResult>
 
 open class DefaultPubsubMessage(override val protobufMessage: Rpc.Message) : AbstractPubsubMessage() {
     override val messageId: MessageId = protobufMessage.from.toWBytes() + protobufMessage.seqno.toWBytes()
@@ -44,7 +44,8 @@ abstract class AbstractRouter(
     protected val messageValidator: PubsubRouterMessageValidator
 ) : P2PServiceSemiDuplex(executor), PubsubRouter, PubsubRouterDebug {
 
-    protected var msgHandler: PubsubMessageHandler = { throw IllegalStateException("Message handler is not initialized for PubsubRouter") }
+    protected var msgHandler: PubsubMessageHandler =
+        { _, _ -> throw IllegalStateException("Message handler is not initialized for PubsubRouter") }
 
     protected open val peersTopics = mutableMultiBiMap<PeerHandler, Topic>()
     protected open val subscribedTopics = linkedSetOf<Topic>()
@@ -216,7 +217,7 @@ abstract class AbstractRouter(
             }
         }
 
-        val validFuts = msgValid.map { it to msgHandler(it) }
+        val validFuts = msgValid.map { it to msgHandler(peer.peerId, it) }
         val doneUndone = validFuts.groupBy { it.second.isDone }
         val done = doneUndone.getOrDefault(true, emptyList())
         val undone = doneUndone.getOrDefault(false, emptyList())
@@ -331,7 +332,7 @@ abstract class AbstractRouter(
         return peer.writeAndFlush(msg)
     }
 
-    override fun initHandler(handler: (PubsubMessage) -> CompletableFuture<ValidationResult>) {
+    override fun initHandler(handler: (PeerId, PubsubMessage) -> CompletableFuture<ValidationResult>) {
         msgHandler = handler
     }
 }

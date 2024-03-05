@@ -77,7 +77,7 @@ interface PubsubMessageRouter {
      * All the messages received by the router are forwarded to the [handler] independently
      * of any client subscriptions. Is it up to the client API to sort out subscriptions
      */
-    fun initHandler(handler: (PubsubMessage) -> CompletableFuture<ValidationResult>)
+    fun initHandler(handler: (PeerId, PubsubMessage) -> CompletableFuture<ValidationResult>)
 
     /**
      * Notifies the router that a client wants to receive messages on the following topics
