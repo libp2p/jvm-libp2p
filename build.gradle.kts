@@ -18,7 +18,7 @@ plugins {
     id("io.gitlab.arturbosch.detekt").version("1.22.0")
     id("java")
     id("maven-publish")
-    id("org.jetbrains.dokka").version("1.9.0")
+    id("org.jetbrains.dokka").version("1.9.20")
     id("com.diffplug.spotless").version("6.21.0")
     id("java-test-fixtures")
     id("io.spring.dependency-management").version("1.1.3")
