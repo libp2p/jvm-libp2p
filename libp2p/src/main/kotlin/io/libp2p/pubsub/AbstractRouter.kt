@@ -323,7 +323,11 @@ abstract class AbstractRouter(
 
     override fun getPeerTopics(): CompletableFuture<Map<PeerId, Set<Topic>>> {
         return submitOnEventThread {
-            peersTopics.asFirstToSecondMap().mapKeys { it.key.peerId }
+            peersTopics.asFirstToSecondMap()
+                .map { (key, value) ->
+                    key.peerId to value.toSet()
+                }
+                .toMap()
         }
     }
 
