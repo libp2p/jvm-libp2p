@@ -317,7 +317,7 @@ open class GossipRouter(
     }
 
     private fun handleIHave(msg: Rpc.ControlIHave, peer: PeerHandler) {
-        // we ignore IHAVE for unknown topics
+        // we ignore IHAVE gossip for unknown topics
         if (msg.hasTopicID() && !mesh.containsKey(msg.topicID)) {
             return
         }

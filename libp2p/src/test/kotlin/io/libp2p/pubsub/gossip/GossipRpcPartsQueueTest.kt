@@ -1,8 +1,10 @@
 package io.libp2p.pubsub.gossip
 
 import io.libp2p.core.PeerId
+import io.libp2p.etc.types.WBytes
 import io.libp2p.etc.types.toProtobuf
 import io.libp2p.etc.types.toWBytes
+import io.libp2p.pubsub.Topic
 import io.libp2p.pubsub.gossip.builders.GossipParamsBuilder
 import io.libp2p.pubsub.gossip.builders.GossipRouterBuilder
 import org.assertj.core.api.Assertions.assertThat
@@ -258,5 +260,18 @@ class GossipRpcPartsQueueTest {
         }
         assertThat(msgs).hasSize(3)
         assertThat(msgs.merge()).isEqualTo(single)
+    }
+
+    @Test
+    fun `check that resulting IHAVE sets the topic ID`() {
+        val topic: Topic = "topic1"
+        val partsQueue = TestGossipQueue(gossipParamsWithLimits)
+        partsQueue.addIHave(WBytes(ByteArray(10)), topic)
+        val res = partsQueue.takeMerged().first()
+        assertThat(res.control.ihaveList[0].topicID).isEqualTo(topic)
+
+        val serialized = res.toByteArray()
+        val desrializedRpc = Rpc.RPC.parseFrom(serialized)
+        assertThat(desrializedRpc.control.ihaveList[0].topicID).isEqualTo(topic)
     }
 }
