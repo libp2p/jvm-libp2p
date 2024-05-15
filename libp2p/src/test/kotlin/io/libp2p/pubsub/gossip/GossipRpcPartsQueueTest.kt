@@ -49,7 +49,7 @@ class GossipRpcPartsQueueTest {
                 queue.addPublish(createRpcMessage("topic-$it", "data"))
             }
             (1..iHaves).forEach {
-                queue.addIHave(byteArrayOf(it.toByte()).toWBytes())
+                queue.addIHave(byteArrayOf(it.toByte()).toWBytes(), "topic-$it")
             }
             (1..iWants).forEach {
                 queue.addIWant(byteArrayOf(it.toByte()).toWBytes())
