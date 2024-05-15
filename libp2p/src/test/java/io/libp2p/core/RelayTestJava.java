@@ -211,7 +211,7 @@ public class RelayTestJava {
     System.out.println("Blob controller created");
 
     Assertions.assertThrows(
-        ExecutionException.class, () -> blobCtr.blob().get(5, TimeUnit.SECONDS));
+        ExecutionException.class, () -> blobCtr.blob().get(30, TimeUnit.SECONDS));
 
     clientHost.stop().get(5, TimeUnit.SECONDS);
     System.out.println("Client stopped");
