@@ -271,7 +271,7 @@ class GossipRpcPartsQueueTest {
         assertThat(res.control.ihaveList[0].topicID).isEqualTo(topic)
 
         val serialized = res.toByteArray()
-        val desrializedRpc = Rpc.RPC.parseFrom(serialized)
-        assertThat(desrializedRpc.control.ihaveList[0].topicID).isEqualTo(topic)
+        val deserializedRpc = Rpc.RPC.parseFrom(serialized)
+        assertThat(deserializedRpc.control.ihaveList[0].topicID).isEqualTo(topic)
     }
 }
