@@ -76,7 +76,14 @@ class MDnsDiscovery(
         val address = host.listenAddresses().find {
             it.has(Protocol.IP4)
         }
-        val str = address?.getFirstComponent(Protocol.TCP)?.stringValue!!
+        val ipv6OnlyAddress = if (address == null) {
+            host.listenAddresses().find {
+                it.has(Protocol.IP6)
+            }
+        } else {
+            address
+        }
+        val str = ipv6OnlyAddress?.getFirstComponent(Protocol.TCP)?.stringValue!!
         return Integer.parseInt(str)
     }
 
