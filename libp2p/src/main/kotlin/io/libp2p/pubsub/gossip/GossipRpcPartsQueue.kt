@@ -42,8 +42,8 @@ open class DefaultGossipRpcPartsQueue(
             val ctrlBuilder = builder.controlBuilder
             val iHaveBuilder = ctrlBuilder.ihaveBuilderList
                 .find { it.topicID == topic }
-                ?: ctrlBuilder.addIhaveBuilder()
-            iHaveBuilder.setTopicID(topic)
+                ?: ctrlBuilder.addIhaveBuilder().setTopicID(topic)
+
             iHaveBuilder.addMessageIDs(messageId.toProtobuf())
         }
     }
