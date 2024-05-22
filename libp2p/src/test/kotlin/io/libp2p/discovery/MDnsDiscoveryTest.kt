@@ -24,6 +24,18 @@ class MDnsDiscoveryTest {
         }
     }
 
+    val hostIpv6 = object : NullHost() {
+        override val peerId: PeerId = PeerId.fromPubKey(
+            generateEcdsaKeyPair().second
+        )
+
+        override fun listenAddresses(): List<Multiaddr> {
+            return listOf(
+                Multiaddr("/ip6/::/tcp/4001")
+            )
+        }
+    }
+
     val otherHost = object : NullHost() {
         override val peerId: PeerId = PeerId.fromPubKey(
             generateEcdsaKeyPair().second
@@ -41,6 +53,15 @@ class MDnsDiscoveryTest {
     @Test
     fun `start and stop discovery`() {
         val discoverer = MDnsDiscovery(host, testServiceTag)
+
+        discoverer.start().get(1, TimeUnit.SECONDS)
+        TimeUnit.MILLISECONDS.sleep(100)
+        discoverer.stop().get(1, TimeUnit.SECONDS)
+    }
+
+    @Test
+    fun `start and stop discovery ipv6`() {
+        val discoverer = MDnsDiscovery(hostIpv6, testServiceTag)
 
         discoverer.start().get(1, TimeUnit.SECONDS)
         TimeUnit.MILLISECONDS.sleep(100)

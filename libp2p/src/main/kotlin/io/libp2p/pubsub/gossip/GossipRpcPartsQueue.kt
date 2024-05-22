@@ -10,8 +10,8 @@ import pubsub.pb.Rpc
 
 interface GossipRpcPartsQueue : RpcPartsQueue {
 
-    fun addIHave(messageId: MessageId)
-    fun addIHaves(messageIds: Collection<MessageId>) = messageIds.forEach { addIHave(it) }
+    fun addIHave(messageId: MessageId, topic: Topic)
+    fun addIHaves(messageIds: Collection<MessageId>, topic: Topic) = messageIds.forEach { addIHave(it, topic) }
     fun addIWant(messageId: MessageId)
     fun addIWants(messageIds: Collection<MessageId>) = messageIds.forEach { addIWant(it) }
 
@@ -37,14 +37,13 @@ open class DefaultGossipRpcPartsQueue(
     private val params: GossipParams
 ) : DefaultRpcPartsQueue(), GossipRpcPartsQueue {
 
-    protected data class IHavePart(val messageId: MessageId) : AbstractPart {
+    protected data class IHavePart(val messageId: MessageId, val topic: Topic) : AbstractPart {
         override fun appendToBuilder(builder: Rpc.RPC.Builder) {
             val ctrlBuilder = builder.controlBuilder
-            val iHaveBuilder = if (ctrlBuilder.ihaveBuilderList.isEmpty()) {
-                ctrlBuilder.addIhaveBuilder()
-            } else {
-                ctrlBuilder.getIhaveBuilder(0)
-            }
+            val iHaveBuilder = ctrlBuilder.ihaveBuilderList
+                .find { it.topicID == topic }
+                ?: ctrlBuilder.addIhaveBuilder().setTopicID(topic)
+
             iHaveBuilder.addMessageIDs(messageId.toProtobuf())
         }
     }
@@ -82,8 +81,8 @@ open class DefaultGossipRpcPartsQueue(
         }
     }
 
-    override fun addIHave(messageId: MessageId) {
-        addPart(IHavePart(messageId))
+    override fun addIHave(messageId: MessageId, topic: Topic) {
+        addPart(IHavePart(messageId, topic))
     }
 
     override fun addIWant(messageId: MessageId) {

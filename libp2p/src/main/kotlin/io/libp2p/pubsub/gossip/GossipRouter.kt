@@ -317,6 +317,10 @@ open class GossipRouter(
     }
 
     private fun handleIHave(msg: Rpc.ControlIHave, peer: PeerHandler) {
+        // we ignore IHAVE gossip for unknown topics
+        if (msg.hasTopicID() && !mesh.containsKey(msg.topicID)) {
+            return
+        }
         val peerScore = score.score(peer.peerId)
         // we ignore IHAVE gossip from any peer whose score is below the gossip threshold
         if (peerScore < scoreParams.gossipThreshold) return
@@ -544,7 +548,7 @@ open class GossipRouter(
 
         peers.shuffled(random)
             .take(max((params.gossipFactor * peers.size).toInt(), params.DLazy))
-            .forEach { enqueueIhave(it, shuffledMessageIds) }
+            .forEach { enqueueIhave(it, shuffledMessageIds, topic) }
     }
 
     private fun graft(peer: PeerHandler, topic: Topic) {
@@ -587,8 +591,8 @@ open class GossipRouter(
     private fun enqueueIwant(peer: PeerHandler, messageIds: List<MessageId>) =
         pendingRpcParts.getQueue(peer).addIWants(messageIds)
 
-    private fun enqueueIhave(peer: PeerHandler, messageIds: List<MessageId>) =
-        pendingRpcParts.getQueue(peer).addIHaves(messageIds)
+    private fun enqueueIhave(peer: PeerHandler, messageIds: List<MessageId>, topic: Topic) =
+        pendingRpcParts.getQueue(peer).addIHaves(messageIds, topic)
 
     data class AcceptRequestsWhitelistEntry(val whitelistedTill: Long, val messagesAccepted: Int = 0) {
         fun incrementMessageCount() = AcceptRequestsWhitelistEntry(whitelistedTill, messagesAccepted + 1)
