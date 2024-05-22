@@ -3,6 +3,7 @@ package io.libp2p.pubsub.gossip
 import io.libp2p.core.PeerId
 import io.libp2p.etc.types.toProtobuf
 import io.libp2p.etc.types.toWBytes
+import io.libp2p.pubsub.Topic
 import io.libp2p.pubsub.gossip.builders.GossipParamsBuilder
 import io.libp2p.pubsub.gossip.builders.GossipRouterBuilder
 import org.assertj.core.api.Assertions.assertThat
@@ -49,7 +50,7 @@ class GossipRpcPartsQueueTest {
                 queue.addPublish(createRpcMessage("topic-$it", "data"))
             }
             (1..iHaves).forEach {
-                queue.addIHave(byteArrayOf(it.toByte()).toWBytes())
+                queue.addIHave(byteArrayOf(it.toByte()).toWBytes(), "topic-$it")
             }
             (1..iWants).forEach {
                 queue.addIWant(byteArrayOf(it.toByte()).toWBytes())
@@ -258,5 +259,51 @@ class GossipRpcPartsQueueTest {
         }
         assertThat(msgs).hasSize(3)
         assertThat(msgs.merge()).isEqualTo(single)
+    }
+
+    @Test
+    fun `check that resulting IHAVE sets the topic ID`() {
+        val topic1: Topic = "topic1"
+        val messageId1 = "1111".toWBytes()
+        val topic2: Topic = "topic2"
+        val messageId2 = "2222".toWBytes()
+        val partsQueue = TestGossipQueue(gossipParamsWithLimits)
+        partsQueue.addIHave(messageId1, topic1)
+        partsQueue.addIHave(messageId2, topic2)
+        val res = partsQueue.takeMerged().first()
+
+        val serialized = res.toByteArray()
+        val deserializedRpc = Rpc.RPC.parseFrom(serialized)
+        assertThat(deserializedRpc.control.ihaveList).containsExactlyInAnyOrder(
+            Rpc.ControlIHave.newBuilder().setTopicID(topic1).addMessageIDs(messageId1.toProtobuf()).build(),
+            Rpc.ControlIHave.newBuilder().setTopicID(topic2).addMessageIDs(messageId2.toProtobuf()).build(),
+        )
+    }
+
+    @Test
+    fun `check that resulting IHAVE correctly groups topics`() {
+        val partsQueue = TestGossipQueue(gossipParamsWithLimits)
+
+        partsQueue.addIHave("1111".toWBytes(), "topic1")
+        partsQueue.addIHave("2222".toWBytes(), "topic2")
+        partsQueue.addIHave("3333".toWBytes(), "topic1")
+
+        val res = partsQueue.takeMerged().first()
+
+        val serialized = res.toByteArray()
+        val deserializedRpc = Rpc.RPC.parseFrom(serialized)
+        assertThat(deserializedRpc.control.ihaveList).containsExactlyInAnyOrder(
+            Rpc.ControlIHave.newBuilder()
+                .setTopicID("topic1")
+                .addAllMessageIDs(
+                    listOf(
+                        "1111".toWBytes().toProtobuf(),
+                        "3333".toWBytes().toProtobuf()
+                    )
+                ).build(),
+            Rpc.ControlIHave.newBuilder()
+                .setTopicID("topic2")
+                .addMessageIDs("2222".toWBytes().toProtobuf()).build(),
+        )
     }
 }

@@ -1,6 +1,7 @@
 package io.libp2p.tools.protobuf
 
 import io.libp2p.etc.types.toProtobuf
+import io.libp2p.pubsub.Topic
 import pubsub.pb.Rpc
 import kotlin.random.Random
 
@@ -28,9 +29,9 @@ class RpcBuilder {
         }
     }
 
-    fun addIHaves(iHaveCount: Int, messageIdCount: Int) {
+    fun addIHaves(iHaveCount: Int, messageIdCount: Int, topic: Topic) {
         for (i in 0 until iHaveCount) {
-            val iHaveBuilder = Rpc.ControlIHave.newBuilder()
+            val iHaveBuilder = Rpc.ControlIHave.newBuilder().setTopicID(topic)
             for (j in 0 until messageIdCount) {
                 iHaveBuilder.addMessageIDs(Random.nextBytes(6).toProtobuf())
             }
