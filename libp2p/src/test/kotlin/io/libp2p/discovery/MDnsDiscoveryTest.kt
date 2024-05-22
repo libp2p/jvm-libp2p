@@ -91,6 +91,28 @@ class MDnsDiscoveryTest {
     }
 
     @Test
+    fun `start discovery and listen for self ipv6`() {
+        var peerInfo: PeerInfo? = null
+        val discoverer = MDnsDiscovery(hostIpv6, testServiceTag)
+
+        discoverer.newPeerFoundListeners += {
+            peerInfo = it
+        }
+
+        discoverer.start().get(1, TimeUnit.SECONDS)
+        for (i in 0..50) {
+            if (peerInfo != null) {
+                break
+            }
+            TimeUnit.MILLISECONDS.sleep(100)
+        }
+        discoverer.stop().get(5, TimeUnit.SECONDS)
+
+        assertEquals(hostIpv6.peerId, peerInfo?.peerId)
+        assertEquals(hostIpv6.listenAddresses().size, peerInfo?.addresses?.size)
+    }
+
+    @Test
     fun `start discovery and listen for other`() {
         var peerInfo: PeerInfo? = null
         val other = MDnsDiscovery(otherHost, testServiceTag)
