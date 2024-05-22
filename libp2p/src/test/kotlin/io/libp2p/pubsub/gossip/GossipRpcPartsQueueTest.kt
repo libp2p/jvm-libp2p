@@ -1,7 +1,6 @@
 package io.libp2p.pubsub.gossip
 
 import io.libp2p.core.PeerId
-import io.libp2p.etc.types.WBytes
 import io.libp2p.etc.types.toProtobuf
 import io.libp2p.etc.types.toWBytes
 import io.libp2p.pubsub.Topic
@@ -264,14 +263,47 @@ class GossipRpcPartsQueueTest {
 
     @Test
     fun `check that resulting IHAVE sets the topic ID`() {
-        val topic: Topic = "topic1"
+        val topic1: Topic = "topic1"
+        val messageId1 = "1111".toWBytes()
+        val topic2: Topic = "topic2"
+        val messageId2 = "2222".toWBytes()
         val partsQueue = TestGossipQueue(gossipParamsWithLimits)
-        partsQueue.addIHave(WBytes(ByteArray(10)), topic)
+        partsQueue.addIHave(messageId1, topic1)
+        partsQueue.addIHave(messageId2, topic2)
         val res = partsQueue.takeMerged().first()
-        assertThat(res.control.ihaveList[0].topicID).isEqualTo(topic)
 
         val serialized = res.toByteArray()
         val deserializedRpc = Rpc.RPC.parseFrom(serialized)
-        assertThat(deserializedRpc.control.ihaveList[0].topicID).isEqualTo(topic)
+        assertThat(deserializedRpc.control.ihaveList).containsExactlyInAnyOrder(
+            Rpc.ControlIHave.newBuilder().setTopicID(topic1).addMessageIDs(messageId1.toProtobuf()).build(),
+            Rpc.ControlIHave.newBuilder().setTopicID(topic2).addMessageIDs(messageId2.toProtobuf()).build(),
+        )
+    }
+
+    @Test
+    fun `check that resulting IHAVE correctly groups topics`() {
+        val partsQueue = TestGossipQueue(gossipParamsWithLimits)
+
+        partsQueue.addIHave("1111".toWBytes(), "topic1")
+        partsQueue.addIHave("2222".toWBytes(), "topic2")
+        partsQueue.addIHave("3333".toWBytes(), "topic1")
+
+        val res = partsQueue.takeMerged().first()
+
+        val serialized = res.toByteArray()
+        val deserializedRpc = Rpc.RPC.parseFrom(serialized)
+        assertThat(deserializedRpc.control.ihaveList).containsExactlyInAnyOrder(
+            Rpc.ControlIHave.newBuilder()
+                .setTopicID("topic1")
+                .addAllMessageIDs(
+                    listOf(
+                        "1111".toWBytes().toProtobuf(),
+                        "3333".toWBytes().toProtobuf()
+                    )
+                ).build(),
+            Rpc.ControlIHave.newBuilder()
+                .setTopicID("topic2")
+                .addMessageIDs("2222".toWBytes().toProtobuf()).build(),
+        )
     }
 }

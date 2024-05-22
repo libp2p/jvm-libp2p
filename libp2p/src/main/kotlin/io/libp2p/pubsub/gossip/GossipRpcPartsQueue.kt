@@ -40,11 +40,9 @@ open class DefaultGossipRpcPartsQueue(
     protected data class IHavePart(val messageId: MessageId, val topic: Topic) : AbstractPart {
         override fun appendToBuilder(builder: Rpc.RPC.Builder) {
             val ctrlBuilder = builder.controlBuilder
-            val iHaveBuilder = if (ctrlBuilder.ihaveBuilderList.isEmpty()) {
-                ctrlBuilder.addIhaveBuilder()
-            } else {
-                ctrlBuilder.getIhaveBuilder(0)
-            }
+            val iHaveBuilder = ctrlBuilder.ihaveBuilderList
+                .find { it.topicID == topic }
+                ?: ctrlBuilder.addIhaveBuilder()
             iHaveBuilder.setTopicID(topic)
             iHaveBuilder.addMessageIDs(messageId.toProtobuf())
         }
