@@ -6,6 +6,7 @@ import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.crypto.keys.generateEcdsaKeyPair
 import io.libp2p.tools.NullHost
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.util.concurrent.TimeUnit
 
@@ -88,6 +89,28 @@ class MDnsDiscoveryTest {
 
         assertEquals(host.peerId, peerInfo?.peerId)
         assertEquals(host.listenAddresses().size, peerInfo?.addresses?.size)
+    }
+
+    @Test
+    fun `start discovery and listen for self ipv6`() {
+        var peerInfo: PeerInfo? = null
+        val discoverer = MDnsDiscovery(hostIpv6, testServiceTag)
+
+        discoverer.newPeerFoundListeners += {
+            peerInfo = it
+        }
+
+        discoverer.start().get(1, TimeUnit.SECONDS)
+        for (i in 0..50) {
+            if (peerInfo != null) {
+                break
+            }
+            TimeUnit.MILLISECONDS.sleep(100)
+        }
+        discoverer.stop().get(5, TimeUnit.SECONDS)
+
+        assertEquals(hostIpv6.peerId, peerInfo?.peerId)
+        assertTrue(hostIpv6.listenAddresses().size <= peerInfo?.addresses?.size!!)
     }
 
     @Test
