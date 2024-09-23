@@ -72,6 +72,8 @@ class GossipParamsBuilder {
 
     private var connectCallback: Function2<PeerId, ByteArray, Unit>? = null
 
+    private var maxIDontWantMessages: Int? = null
+
     init {
         val source = GossipParams()
         this.D = source.D
@@ -100,6 +102,7 @@ class GossipParamsBuilder {
         this.maxPruneMessages = source.maxPruneMessages
         this.gossipRetransmission = source.gossipRetransmission
         this.connectCallback = source.connectCallback
+        this.maxIDontWantMessages = source.maxIDontWantMessages
     }
 
     fun D(value: Int): GossipParamsBuilder = apply { D = value }
@@ -172,6 +175,8 @@ class GossipParamsBuilder {
         connectCallback = value
     }
 
+    fun maxIDontWantMessages(value: Int): GossipParamsBuilder = apply { maxIDontWantMessages = value }
+
     fun build(): GossipParams {
         calculateMissing()
         checkRequiredFields()
@@ -206,7 +211,8 @@ class GossipParamsBuilder {
             pruneBackoff = pruneBackoff!!,
             maxPruneMessages = maxPruneMessages,
             gossipRetransmission = gossipRetransmission!!,
-            connectCallback = connectCallback!!
+            connectCallback = connectCallback!!,
+            maxIDontWantMessages = maxIDontWantMessages!!
         )
     }
 
@@ -244,5 +250,6 @@ class GossipParamsBuilder {
         check(iWantFollowupTime != null, { "iWantFollowupTime must not be null" })
         check(gossipRetransmission != null, { "gossipRetransmission must not be null" })
         check(connectCallback != null, { "connectCallback must not be null" })
+        check(maxIDontWantMessages != null, { "maxIDontWantMessages must not be null" })
     }
 }

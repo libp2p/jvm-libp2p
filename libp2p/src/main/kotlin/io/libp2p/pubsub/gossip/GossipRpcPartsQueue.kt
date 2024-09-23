@@ -14,6 +14,8 @@ interface GossipRpcPartsQueue : RpcPartsQueue {
     fun addIHaves(messageIds: Collection<MessageId>, topic: Topic) = messageIds.forEach { addIHave(it, topic) }
     fun addIWant(messageId: MessageId)
     fun addIWants(messageIds: Collection<MessageId>) = messageIds.forEach { addIWant(it) }
+    fun addIDontWant(messageId: MessageId)
+    fun addIDontWants(messageIds: Collection<MessageId>) = messageIds.forEach { addIDontWant(it) }
 
     fun addGraft(topic: Topic)
 
@@ -60,6 +62,18 @@ open class DefaultGossipRpcPartsQueue(
         }
     }
 
+    protected data class IDontWantPart(val messageId: MessageId) : AbstractPart {
+        override fun appendToBuilder(builder: Rpc.RPC.Builder) {
+            val ctrlBuilder = builder.controlBuilder
+            val iDontWantBuilder = if (ctrlBuilder.idontwantBuilderList.isEmpty()) {
+                ctrlBuilder.addIdontwantBuilder()
+            } else {
+                ctrlBuilder.getIdontwantBuilder(0)
+            }
+            iDontWantBuilder.addMessageIDs(messageId.toProtobuf())
+        }
+    }
+
     protected data class GraftPart(val topic: Topic) : AbstractPart {
         override fun appendToBuilder(builder: Rpc.RPC.Builder) {
             builder.controlBuilder.addGraftBuilder().setTopicID(topic)
@@ -87,6 +101,10 @@ open class DefaultGossipRpcPartsQueue(
 
     override fun addIWant(messageId: MessageId) {
         addPart(IWantPart(messageId))
+    }
+
+    override fun addIDontWant(messageId: MessageId) {
+        addPart(IDontWantPart(messageId))
     }
 
     override fun addGraft(topic: Topic) {

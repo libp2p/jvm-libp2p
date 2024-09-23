@@ -46,7 +46,6 @@ import kotlin.collections.reversed
 import kotlin.collections.set
 import kotlin.collections.shuffled
 import kotlin.collections.sortedBy
-import kotlin.collections.sum
 import kotlin.collections.take
 import kotlin.collections.toMutableSet
 import kotlin.math.max
@@ -56,6 +55,7 @@ const val MaxBackoffEntries = 10 * 1024
 const val MaxIAskedEntries = 256
 const val MaxPeerIHaveEntries = 256
 const val MaxIWantRequestsEntries = 10 * 1024
+const val MaxPeerIDontWantEntries = 256
 
 typealias CurrentTimeSupplier = () -> Long
 
@@ -122,6 +122,7 @@ open class GossipRouter(
     private val iAsked = createLRUMap<PeerHandler, AtomicInteger>(MaxIAskedEntries)
     private val peerIHave = createLRUMap<PeerHandler, AtomicInteger>(MaxPeerIHaveEntries)
     private val iWantRequests = createLRUMap<Pair<PeerHandler, MessageId>, Long>(MaxIWantRequestsEntries)
+    private val peerIDontWant = createLRUMap<PeerHandler, Pair<AtomicInteger, MutableSet<MessageId>>>(MaxPeerIDontWantEntries)
     private val heartbeatTask by lazy {
         executor.scheduleWithFixedDelay(
             ::catchingHeartbeat,
@@ -166,6 +167,7 @@ open class GossipRouter(
     }
 
     override fun notifyUnseenMessage(peer: PeerHandler, msg: PubsubMessage) {
+        iDontWant(peer, listOf(msg.messageId))
         eventBroadcaster.notifyUnseenMessage(peer.peerId, msg)
         notifyAnyMessage(peer, msg)
     }
@@ -250,8 +252,8 @@ open class GossipRouter(
     }
 
     override fun validateMessageListLimits(msg: Rpc.RPCOrBuilder): Boolean {
-        val iWantMessageIdCount = msg.control?.iwantList?.map { w -> w.messageIDsCount }?.sum() ?: 0
-        val iHaveMessageIdCount = msg.control?.ihaveList?.map { w -> w.messageIDsCount }?.sum() ?: 0
+        val iWantMessageIdCount = msg.control?.iwantList?.sumOf { w -> w.messageIDsCount } ?: 0
+        val iHaveMessageIdCount = msg.control?.ihaveList?.sumOf { w -> w.messageIDsCount } ?: 0
 
         return params.maxPublishedMessages?.let { msg.publishCount <= it } ?: true &&
             params.maxTopicsPerPublishedMessage?.let { msg.publishList.none { m -> m.topicIDsCount > it } } ?: true &&
@@ -269,6 +271,7 @@ open class GossipRouter(
             is Rpc.ControlPrune -> handlePrune(controlMsg, receivedFrom)
             is Rpc.ControlIHave -> handleIHave(controlMsg, receivedFrom)
             is Rpc.ControlIWant -> handleIWant(controlMsg, receivedFrom)
+            is Rpc.ControlIDontWant -> handleIDontWant(controlMsg, receivedFrom)
         }
     }
 
@@ -300,7 +303,7 @@ open class GossipRouter(
         mesh[topic]?.remove(peer)?.also {
             notifyPruned(peer, topic)
         }
-        if (this.protocol == PubsubProtocol.Gossip_V_1_1) {
+        if (this.protocol.supportsBackoffAndPX()) {
             if (msg.hasBackoff()) {
                 setBackOff(peer, topic, msg.backoff.seconds.toMillis())
             } else {
@@ -352,6 +355,18 @@ open class GossipRouter(
             .forEach { submitPublishMessage(peer, it) }
     }
 
+    private fun handleIDontWant(msg: Rpc.ControlIDontWant, peer: PeerHandler) {
+        val peerScore = score.score(peer.peerId)
+        if (peerScore < scoreParams.gossipThreshold) return
+        val messageCountAndMessageIds = peerIDontWant.computeIfAbsent(peer) { Pair(AtomicInteger(0), mutableSetOf()) }
+        if (messageCountAndMessageIds.first.incrementAndGet() > params.maxIDontWantMessages) {
+            // peer has advertised too many times within this heartbeat interval, ignoring
+            return
+        }
+        // maintain dont_send_message_ids set.
+        messageCountAndMessageIds.second.addAll(msg.messageIDsList.map { it.toWBytes() })
+    }
+
     private fun processPrunePeers(peersList: List<Rpc.PeerInfo>) {
         peersList.shuffled(random).take(params.maxPeersAcceptedInPruneMsg)
             .map { PeerId(it.peerID.toByteArray()) to it.signedPeerRecord.toByteArray() }
@@ -361,7 +376,7 @@ open class GossipRouter(
 
     override fun processControl(ctrl: Rpc.ControlMessage, receivedFrom: PeerHandler) {
         ctrl.run {
-            (graftList + pruneList + ihaveList + iwantList)
+            (graftList + pruneList + ihaveList + iwantList + idontwantList)
         }.forEach { processControlMessage(it, receivedFrom) }
     }
 
@@ -373,6 +388,7 @@ open class GossipRouter(
                 .distinct()
                 .plus(getDirectPeers())
                 .filter { it != receivedFrom }
+                .filter { peerIDontWant[it]?.second?.contains(pubMsg.messageId) == false }
                 .forEach { submitPublishMessage(it, pubMsg) }
             mCache += pubMsg
         }
@@ -398,7 +414,7 @@ open class GossipRouter(
                     }
                     .flatten()
             }
-        val list = peers.map { submitPublishMessage(it, msg) }
+        val list = peers.filter { peerIDontWant[it]?.second?.contains(msg.messageId) == false }.map { submitPublishMessage(it, msg) }
 
         mCache += msg
         flushAllPending()
@@ -458,6 +474,8 @@ open class GossipRouter(
             (time < staleIWantTime)
                 .whenTrue { notifyIWantTimeout(key.first, key.second) }
         }
+
+        peerIDontWant.clear()
 
         try {
             mesh.entries.forEach { (topic, peers) ->
@@ -572,9 +590,14 @@ open class GossipRouter(
         enqueueIwant(peer, messageIds)
     }
 
+    private fun iDontWant(peer: PeerHandler, messageIds: List<MessageId>) {
+        if (messageIds.isEmpty()) return
+        enqueueIdontwant(peer, messageIds)
+    }
+
     private fun enqueuePrune(peer: PeerHandler, topic: Topic) {
         val peerQueue = pendingRpcParts.getQueue(peer)
-        if (peer.getPeerProtocol() == PubsubProtocol.Gossip_V_1_1 && this.protocol == PubsubProtocol.Gossip_V_1_1) {
+        if (peer.getPeerProtocol().supportsBackoffAndPX() && this.protocol.supportsBackoffAndPX()) {
             val backoffPeers = (getTopicPeers(topic) - peer)
                 .take(params.maxPeersSentInPruneMsg)
                 .filter { score.score(it.peerId) >= 0 }
@@ -593,6 +616,12 @@ open class GossipRouter(
 
     private fun enqueueIhave(peer: PeerHandler, messageIds: List<MessageId>, topic: Topic) =
         pendingRpcParts.getQueue(peer).addIHaves(messageIds, topic)
+
+    private fun enqueueIdontwant(peer: PeerHandler, messageIds: List<MessageId>) {
+        if (peer.getPeerProtocol().supportsIDontWant()) {
+            pendingRpcParts.getQueue(peer).addIDontWants(messageIds)
+        }
+    }
 
     data class AcceptRequestsWhitelistEntry(val whitelistedTill: Long, val messagesAccepted: Int = 0) {
         fun incrementMessageCount() = AcceptRequestsWhitelistEntry(whitelistedTill, messagesAccepted + 1)

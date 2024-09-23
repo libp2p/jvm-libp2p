@@ -17,8 +17,6 @@ import java.util.Collections.singletonList
 import java.util.Optional
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ScheduledExecutorService
-import java.util.function.BiConsumer
-import java.util.function.Consumer
 
 // 1 MB default max message size
 const val DEFAULT_MAX_PUBSUB_MESSAGE_SIZE = 1 shl 20
@@ -223,7 +221,7 @@ abstract class AbstractRouter(
 
         validFuts.forEach { (msg, validationFut) ->
             validationFut.thenAcceptAsync(
-                Consumer { res ->
+                { res ->
                     seenMessages[msg] = Optional.of(res)
                     if (res == ValidationResult.Invalid) notifyUnseenInvalidMessage(peer, msg)
                 },
@@ -247,7 +245,7 @@ abstract class AbstractRouter(
         // broadcast others on completion
         undone.forEach {
             it.second.whenCompleteAsync(
-                BiConsumer { res, err ->
+                { res, err ->
                     when {
                         err != null -> logger.warn("Exception while handling message from peer $peer: ${it.first}", err)
                         res == ValidationResult.Invalid -> logger.debug("Invalid pubsub message from peer $peer: ${it.first}")
