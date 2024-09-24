@@ -618,9 +618,7 @@ open class GossipRouter(
         // we need to send IDONTWANT messages to mesh peers immediately in order for them to have an effect
         msg.topics.forEach { topic ->
             val meshPeers = mesh[topic] ?: return
-            meshPeers
-                .filter { it.getPeerProtocol().supportsIDontWant() }
-                .forEach { peer -> sendIdontwant(peer, msg.messageId) }
+            meshPeers.forEach { peer -> sendIdontwant(peer, msg.messageId) }
         }
     }
 
@@ -647,6 +645,9 @@ open class GossipRouter(
         pendingRpcParts.getQueue(peer).addIHaves(messageIds, topic)
 
     private fun sendIdontwant(peer: PeerHandler, messageId: MessageId) {
+        if (!peer.getPeerProtocol().supportsIDontWant()) {
+            return
+        }
         val iDontWant = Rpc.RPC.newBuilder().setControl(
             Rpc.ControlMessage.newBuilder().addIdontwant(
                 Rpc.ControlIDontWant.newBuilder()
