@@ -364,9 +364,8 @@ open class GossipRouter(
             // peer has advertised too many times within this heartbeat interval, ignoring
             return
         }
-        // maintain dont_send_message_ids and arrival time.
-        val time = currentTimeSupplier()
-        iDontWantCacheEntry.messageIds.addAll(msg.messageIDsList.map { MessageIdAndTime(it.toWBytes(), time) })
+        val timeReceived = currentTimeSupplier()
+        iDontWantCacheEntry.messageIds.addAll(msg.messageIDsList.map { MessageIdAndTimeReceived(it.toWBytes(), timeReceived) })
     }
 
     private fun processPrunePeers(peersList: List<Rpc.PeerInfo>) {
@@ -481,8 +480,8 @@ open class GossipRouter(
         peerIDontWant.entries.removeIf { (_, cacheEntry) ->
             // reset on heartbeat
             cacheEntry.heartbeatMessagesCount.set(0)
-            cacheEntry.messageIds.removeIf { messageIdAndTime -> messageIdAndTime.time < staleIDontWantTime }
-            // remove entry for peer if no IDONTWANT messages are in cache
+            cacheEntry.messageIds.removeIf { entry -> entry.timeReceived < staleIDontWantTime }
+            // remove entry for peer if no IDONTWANT message ids are left in the cache
             cacheEntry.messageIds.isEmpty()
         }
 
@@ -657,8 +656,8 @@ open class GossipRouter(
 
     data class IDontWantCacheEntry(
         val heartbeatMessagesCount: AtomicInteger = AtomicInteger(0),
-        val messageIds: MutableSet<MessageIdAndTime> = mutableSetOf()
+        val messageIds: MutableSet<MessageIdAndTimeReceived> = mutableSetOf()
     )
 
-    data class MessageIdAndTime(val messageId: MessageId, val time: Long)
+    data class MessageIdAndTimeReceived(val messageId: MessageId, val timeReceived: Long)
 }
