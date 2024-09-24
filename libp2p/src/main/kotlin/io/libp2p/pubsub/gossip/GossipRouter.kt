@@ -167,7 +167,7 @@ open class GossipRouter(
     }
 
     override fun notifyUnseenMessage(peer: PeerHandler, msg: PubsubMessage) {
-        iDontWant(peer, msg)
+        iDontWant(msg)
         eventBroadcaster.notifyUnseenMessage(peer.peerId, msg)
         notifyAnyMessage(peer, msg)
     }
@@ -601,15 +601,18 @@ open class GossipRouter(
         enqueueIwant(peer, messageIds)
     }
 
-    private fun iDontWant(peer: PeerHandler, msg: PubsubMessage) {
-        if (!peer.getPeerProtocol().supportsIDontWant() || !this.protocol.supportsIDontWant()) {
+    private fun iDontWant(msg: PubsubMessage) {
+        if (!this.protocol.supportsIDontWant()) {
             return
         }
         if (msg.protobufMessage.serializedSize < params.iDOntWantMinMessageSizeThreshold) {
             return
         }
-        // we need to flush IDONTWANT messages in order for them to have an effect
-        sendIdontwant(peer, msg.messageId)
+        // we need to IDONTWANT messages to mesh peers immediately in order for them to have an effect
+        msg.topics.forEach { topic ->
+            val peers = mesh[topic] ?: return
+            peers.forEach { peer -> sendIdontwant(peer, msg.messageId) }
+        }
     }
 
     private fun enqueuePrune(peer: PeerHandler, topic: Topic) {
@@ -635,10 +638,13 @@ open class GossipRouter(
         pendingRpcParts.getQueue(peer).addIHaves(messageIds, topic)
 
     private fun sendIdontwant(peer: PeerHandler, messageId: MessageId) {
-        val msgBuilder = Rpc.RPC.newBuilder()
-        msgBuilder.controlBuilder.addIdontwantBuilder()
-            .addMessageIDs(messageId.toProtobuf())
-        send(peer, msgBuilder.build())
+        val iDontWant = Rpc.RPC.newBuilder().setControl(
+            Rpc.ControlMessage.newBuilder().addIdontwant(
+                Rpc.ControlIDontWant.newBuilder()
+                    .addMessageIDs(messageId.toProtobuf())
+            )
+        ).build()
+        send(peer, iDontWant)
     }
 
     data class AcceptRequestsWhitelistEntry(val whitelistedTill: Long, val messagesAccepted: Int = 0) {
