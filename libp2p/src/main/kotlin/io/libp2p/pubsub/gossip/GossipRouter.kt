@@ -48,6 +48,7 @@ import kotlin.collections.shuffled
 import kotlin.collections.sortedBy
 import kotlin.collections.take
 import kotlin.collections.toMutableSet
+import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 
@@ -361,12 +362,16 @@ open class GossipRouter(
         if (peerScore < scoreParams.gossipThreshold) return
         val iDontWantCacheEntry = peerIDontWant.computeIfAbsent(peer) { IDontWantCacheEntry() }
         iDontWantCacheEntry.heartbeatMessageIdsCount += msg.messageIDsCount
-        if (iDontWantCacheEntry.heartbeatMessageIdsCount > params.maxIDontWantMessageIds) {
-            // peer has already advertised too many message ids, ignoring
-            return
+        val remainingMessageIds = params.maxIDontWantMessageIds - iDontWantCacheEntry.heartbeatMessageIdsCount
+        val messageIds = if (remainingMessageIds < 0) {
+            // gone over the limit, but cache as much as possible
+            msg.messageIDsList.take(abs(remainingMessageIds))
+        } else {
+            // cache all
+            msg.messageIDsList
         }
         val timeReceived = currentTimeSupplier()
-        iDontWantCacheEntry.messageIds.addAll(msg.messageIDsList.map { MessageIdAndTimeReceived(it.toWBytes(), timeReceived) })
+        iDontWantCacheEntry.messageIds.addAll(messageIds.map { MessageIdAndTimeReceived(it.toWBytes(), timeReceived) })
     }
 
     private fun processPrunePeers(peersList: List<Rpc.PeerInfo>) {
