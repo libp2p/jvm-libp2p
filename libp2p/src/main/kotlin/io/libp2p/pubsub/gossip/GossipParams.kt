@@ -239,10 +239,10 @@ data class GossipParams(
     val maxIDontWantMessages: Int = maxIHaveLength * maxIHaveMessages,
 
     /**
-     * [iDOntWantMinMessageSizeThreshold] controls the minimum size (in bytes) that an incoming message needs to be so that an IDONTWANT message is sent to mesh peers.
+     * [iDontWantMinMessageSizeThreshold] controls the minimum size (in bytes) that an incoming message needs to be so that an IDONTWANT message is sent to mesh peers.
      * The default is 16 KB.
      */
-    val iDOntWantMinMessageSizeThreshold: Int = 16000,
+    val iDontWantMinMessageSizeThreshold: Int = 16000,
 
     /**
      * [iDontWantTTL] Expiry time for cache of received IDONTWANT messages for peers

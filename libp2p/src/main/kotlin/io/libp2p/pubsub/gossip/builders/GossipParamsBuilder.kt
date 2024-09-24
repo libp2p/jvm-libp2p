@@ -74,7 +74,7 @@ class GossipParamsBuilder {
 
     private var maxIDontWantMessages: Int? = null
 
-    private var iDOntWantMinMessageSizeThreshold: Int? = null
+    private var iDontWantMinMessageSizeThreshold: Int? = null
 
     private var iDontWantTTL: Duration? = null
 
@@ -107,7 +107,7 @@ class GossipParamsBuilder {
         this.gossipRetransmission = source.gossipRetransmission
         this.connectCallback = source.connectCallback
         this.maxIDontWantMessages = source.maxIDontWantMessages
-        this.iDOntWantMinMessageSizeThreshold = source.iDOntWantMinMessageSizeThreshold
+        this.iDontWantMinMessageSizeThreshold = source.iDontWantMinMessageSizeThreshold
         this.iDontWantTTL = source.iDontWantTTL
     }
 
@@ -183,7 +183,7 @@ class GossipParamsBuilder {
 
     fun maxIDontWantMessages(value: Int): GossipParamsBuilder = apply { maxIDontWantMessages = value }
 
-    fun iDOntWantMinMessageSizeThreshold(value: Int): GossipParamsBuilder = apply { iDOntWantMinMessageSizeThreshold = value }
+    fun iDontWantMinMessageSizeThreshold(value: Int): GossipParamsBuilder = apply { iDontWantMinMessageSizeThreshold = value }
 
     fun iDontWantTTL(value: Duration): GossipParamsBuilder = apply { iDontWantTTL = value }
 
@@ -223,7 +223,7 @@ class GossipParamsBuilder {
             gossipRetransmission = gossipRetransmission!!,
             connectCallback = connectCallback!!,
             maxIDontWantMessages = maxIDontWantMessages!!,
-            iDOntWantMinMessageSizeThreshold = iDOntWantMinMessageSizeThreshold!!,
+            iDontWantMinMessageSizeThreshold = iDontWantMinMessageSizeThreshold!!,
             iDontWantTTL = iDontWantTTL!!
         )
     }
