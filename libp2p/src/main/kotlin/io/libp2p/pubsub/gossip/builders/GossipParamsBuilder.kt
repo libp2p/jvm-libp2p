@@ -72,7 +72,7 @@ class GossipParamsBuilder {
 
     private var connectCallback: Function2<PeerId, ByteArray, Unit>? = null
 
-    private var maxIDontWantMessages: Int? = null
+    private var maxIDontWantMessageIds: Int? = null
 
     private var iDontWantMinMessageSizeThreshold: Int? = null
 
@@ -106,7 +106,7 @@ class GossipParamsBuilder {
         this.maxPruneMessages = source.maxPruneMessages
         this.gossipRetransmission = source.gossipRetransmission
         this.connectCallback = source.connectCallback
-        this.maxIDontWantMessages = source.maxIDontWantMessages
+        this.maxIDontWantMessageIds = source.maxIDontWantMessageIds
         this.iDontWantMinMessageSizeThreshold = source.iDontWantMinMessageSizeThreshold
         this.iDontWantTTL = source.iDontWantTTL
     }
@@ -181,7 +181,7 @@ class GossipParamsBuilder {
         connectCallback = value
     }
 
-    fun maxIDontWantMessages(value: Int): GossipParamsBuilder = apply { maxIDontWantMessages = value }
+    fun maxIDontWantMessageIds(value: Int): GossipParamsBuilder = apply { maxIDontWantMessageIds = value }
 
     fun iDontWantMinMessageSizeThreshold(value: Int): GossipParamsBuilder = apply { iDontWantMinMessageSizeThreshold = value }
 
@@ -222,7 +222,7 @@ class GossipParamsBuilder {
             maxPruneMessages = maxPruneMessages,
             gossipRetransmission = gossipRetransmission!!,
             connectCallback = connectCallback!!,
-            maxIDontWantMessages = maxIDontWantMessages!!,
+            maxIDontWantMessageIds = maxIDontWantMessageIds!!,
             iDontWantMinMessageSizeThreshold = iDontWantMinMessageSizeThreshold!!,
             iDontWantTTL = iDontWantTTL!!
         )
@@ -262,6 +262,8 @@ class GossipParamsBuilder {
         check(iWantFollowupTime != null, { "iWantFollowupTime must not be null" })
         check(gossipRetransmission != null, { "gossipRetransmission must not be null" })
         check(connectCallback != null, { "connectCallback must not be null" })
-        check(maxIDontWantMessages != null, { "maxIDontWantMessages must not be null" })
+        check(maxIDontWantMessageIds != null, { "maxIDontWantMessageIds must not be null" })
+        check(iDontWantMinMessageSizeThreshold != null, { "iDontWantMinMessageSizeThreshold must not be null" })
+        check(iDontWantTTL != null, { "iDontWantTTL must not be null" })
     }
 }

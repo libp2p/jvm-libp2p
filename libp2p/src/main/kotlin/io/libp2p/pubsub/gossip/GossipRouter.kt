@@ -167,7 +167,7 @@ open class GossipRouter(
     }
 
     override fun notifyUnseenMessage(peer: PeerHandler, msg: PubsubMessage) {
-        iDontWant(msg)
+        iDontWant(msg, peer)
         eventBroadcaster.notifyUnseenMessage(peer.peerId, msg)
         notifyAnyMessage(peer, msg)
     }
@@ -360,8 +360,9 @@ open class GossipRouter(
         val peerScore = score.score(peer.peerId)
         if (peerScore < scoreParams.gossipThreshold) return
         val iDontWantCacheEntry = peerIDontWant.computeIfAbsent(peer) { IDontWantCacheEntry() }
-        if (iDontWantCacheEntry.heartbeatMessagesCount++ > params.maxIDontWantMessages) {
-            // peer has advertised too many times within this heartbeat interval, ignoring
+        iDontWantCacheEntry.heartbeatMessageIdsCount += msg.messageIDsCount
+        if (iDontWantCacheEntry.heartbeatMessageIdsCount > params.maxIDontWantMessageIds) {
+            // peer has already advertised too many message ids, ignoring
             return
         }
         val timeReceived = currentTimeSupplier()
@@ -388,7 +389,7 @@ open class GossipRouter(
                 .flatten()
                 .distinct()
                 .plus(getDirectPeers())
-                .filter { it != receivedFrom }
+                .minus(receivedFrom)
                 .filterNot { peerDoesNotWantMessage(it, pubMsg.messageId) }
                 .forEach { submitPublishMessage(it, pubMsg) }
             mCache += pubMsg
@@ -418,7 +419,6 @@ open class GossipRouter(
         val list = peers
             .filterNot { peerDoesNotWantMessage(it, msg.messageId) }
             .map {
-                // IDONTWANT is useful when original message is recovered locally and is reseeded to the topic
                 sendIdontwant(it, msg.messageId)
                 submitPublishMessage(it, msg)
             }
@@ -485,7 +485,7 @@ open class GossipRouter(
         val staleIDontWantTime = this.currentTimeSupplier() - params.iDontWantTTL.toMillis()
         peerIDontWant.entries.removeIf { (_, cacheEntry) ->
             // reset on heartbeat
-            cacheEntry.heartbeatMessagesCount = 0
+            cacheEntry.heartbeatMessageIdsCount = 0
             cacheEntry.messageIds.removeIf { entry -> entry.timeReceived < staleIDontWantTime }
             // remove entry for peer if no IDONTWANT message ids are left in the cache
             cacheEntry.messageIds.isEmpty()
@@ -608,7 +608,7 @@ open class GossipRouter(
         enqueueIwant(peer, messageIds)
     }
 
-    private fun iDontWant(msg: PubsubMessage) {
+    private fun iDontWant(msg: PubsubMessage, receivedFrom: PeerHandler) {
         if (!this.protocol.supportsIDontWant()) {
             return
         }
@@ -618,7 +618,7 @@ open class GossipRouter(
         // we need to send IDONTWANT messages to mesh peers immediately in order for them to have an effect
         msg.topics.forEach { topic ->
             val meshPeers = mesh[topic] ?: return
-            meshPeers.forEach { peer -> sendIdontwant(peer, msg.messageId) }
+            (meshPeers - receivedFrom).forEach { peer -> sendIdontwant(peer, msg.messageId) }
         }
     }
 
@@ -662,7 +662,7 @@ open class GossipRouter(
     }
 
     data class IDontWantCacheEntry(
-        var heartbeatMessagesCount: Int = 0,
+        var heartbeatMessageIdsCount: Int = 0,
         val messageIds: MutableSet<MessageIdAndTimeReceived> = mutableSetOf()
     )
 

@@ -234,9 +234,9 @@ data class GossipParams(
     val connectCallback: (PeerId, ByteArray) -> Unit = { _: PeerId, _: ByteArray -> },
 
     /**
-     * [maxIDontWantMessages] is the maximum number of IDONTWANT messages per heartbeat per peer
+     * [maxIDontWantMessageIds] is the maximum number of IDONTWANT message ids allowed per heartbeat per peer
      */
-    val maxIDontWantMessages: Int = maxIHaveLength * maxIHaveMessages,
+    val maxIDontWantMessageIds: Int = maxIHaveLength * maxIHaveMessages,
 
     /**
      * [iDontWantMinMessageSizeThreshold] controls the minimum size (in bytes) that an incoming message needs to be so that an IDONTWANT message is sent to mesh peers.
