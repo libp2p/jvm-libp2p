@@ -74,6 +74,10 @@ class GossipParamsBuilder {
 
     private var maxIDontWantMessages: Int? = null
 
+    private var iDOntWantMinMessageSizeThreshold: Int? = null
+
+    private var iDontWantTTL: Duration? = null
+
     init {
         val source = GossipParams()
         this.D = source.D
@@ -103,6 +107,8 @@ class GossipParamsBuilder {
         this.gossipRetransmission = source.gossipRetransmission
         this.connectCallback = source.connectCallback
         this.maxIDontWantMessages = source.maxIDontWantMessages
+        this.iDOntWantMinMessageSizeThreshold = source.iDOntWantMinMessageSizeThreshold
+        this.iDontWantTTL = source.iDontWantTTL
     }
 
     fun D(value: Int): GossipParamsBuilder = apply { D = value }
@@ -177,6 +183,10 @@ class GossipParamsBuilder {
 
     fun maxIDontWantMessages(value: Int): GossipParamsBuilder = apply { maxIDontWantMessages = value }
 
+    fun iDOntWantMinMessageSizeThreshold(value: Int): GossipParamsBuilder = apply { iDOntWantMinMessageSizeThreshold = value }
+
+    fun iDontWantTTL(value: Duration): GossipParamsBuilder = apply { iDontWantTTL = value }
+
     fun build(): GossipParams {
         calculateMissing()
         checkRequiredFields()
@@ -212,7 +222,9 @@ class GossipParamsBuilder {
             maxPruneMessages = maxPruneMessages,
             gossipRetransmission = gossipRetransmission!!,
             connectCallback = connectCallback!!,
-            maxIDontWantMessages = maxIDontWantMessages!!
+            maxIDontWantMessages = maxIDontWantMessages!!,
+            iDOntWantMinMessageSizeThreshold = iDOntWantMinMessageSizeThreshold!!,
+            iDontWantTTL = iDontWantTTL!!
         )
     }
 

@@ -122,7 +122,7 @@ open class GossipRouter(
     private val iAsked = createLRUMap<PeerHandler, AtomicInteger>(MaxIAskedEntries)
     private val peerIHave = createLRUMap<PeerHandler, AtomicInteger>(MaxPeerIHaveEntries)
     private val iWantRequests = createLRUMap<Pair<PeerHandler, MessageId>, Long>(MaxIWantRequestsEntries)
-    private val peerIDontWant = createLRUMap<PeerHandler, Pair<AtomicInteger, MutableSet<MessageId>>>(MaxPeerIDontWantEntries)
+    private val peerIDontWant = createLRUMap<PeerHandler, IDontWantCacheEntry>(MaxPeerIDontWantEntries)
     private val heartbeatTask by lazy {
         executor.scheduleWithFixedDelay(
             ::catchingHeartbeat,
@@ -167,7 +167,7 @@ open class GossipRouter(
     }
 
     override fun notifyUnseenMessage(peer: PeerHandler, msg: PubsubMessage) {
-        iDontWant(peer, listOf(msg.messageId))
+        iDontWant(peer, msg)
         eventBroadcaster.notifyUnseenMessage(peer.peerId, msg)
         notifyAnyMessage(peer, msg)
     }
@@ -358,13 +358,13 @@ open class GossipRouter(
     private fun handleIDontWant(msg: Rpc.ControlIDontWant, peer: PeerHandler) {
         val peerScore = score.score(peer.peerId)
         if (peerScore < scoreParams.gossipThreshold) return
-        val messageCountAndMessageIds = peerIDontWant.computeIfAbsent(peer) { Pair(AtomicInteger(0), mutableSetOf()) }
-        if (messageCountAndMessageIds.first.incrementAndGet() > params.maxIDontWantMessages) {
+        val iDontWantCacheEntry = peerIDontWant.computeIfAbsent(peer) { IDontWantCacheEntry() }
+        if (iDontWantCacheEntry.heartbeatMessagesCount.incrementAndGet() >= params.maxIDontWantMessages) {
             // peer has advertised too many times within this heartbeat interval, ignoring
             return
         }
-        // maintain dont_send_message_ids set.
-        messageCountAndMessageIds.second.addAll(msg.messageIDsList.map { it.toWBytes() })
+        // maintain dont_send_message_ids and arrival time.
+        iDontWantCacheEntry.messageIdsAndTime.add(MessageIdsAndTime(msg.messageIDsList.map { it.toWBytes() }.toSet(), currentTimeSupplier()))
     }
 
     private fun processPrunePeers(peersList: List<Rpc.PeerInfo>) {
@@ -388,7 +388,7 @@ open class GossipRouter(
                 .distinct()
                 .plus(getDirectPeers())
                 .filter { it != receivedFrom }
-                .filter { peerIDontWant[it]?.second?.contains(pubMsg.messageId) == false }
+                .filterNot { peerDoesNotWantMessage(it, pubMsg.messageId) }
                 .forEach { submitPublishMessage(it, pubMsg) }
             mCache += pubMsg
         }
@@ -414,7 +414,7 @@ open class GossipRouter(
                     }
                     .flatten()
             }
-        val list = peers.filter { peerIDontWant[it]?.second?.contains(msg.messageId) == false }.map { submitPublishMessage(it, msg) }
+        val list = peers.filterNot { peerDoesNotWantMessage(it, msg.messageId) }.map { submitPublishMessage(it, msg) }
 
         mCache += msg
         flushAllPending()
@@ -475,7 +475,14 @@ open class GossipRouter(
                 .whenTrue { notifyIWantTimeout(key.first, key.second) }
         }
 
-        peerIDontWant.clear()
+        val staleIDontWantTime = this.currentTimeSupplier() - params.iDontWantTTL.toMillis()
+        peerIDontWant.entries.removeIf { (_, cacheEntry) ->
+            // reset on heartbeat
+            cacheEntry.heartbeatMessagesCount.set(0)
+            cacheEntry.messageIdsAndTime.removeIf { mIdsAndTime -> mIdsAndTime.time < staleIDontWantTime }
+            // remove entry for peer if no IDONTWANT messages are in cache
+            cacheEntry.messageIdsAndTime.isEmpty()
+        }
 
         try {
             mesh.entries.forEach { (topic, peers) ->
@@ -583,6 +590,10 @@ open class GossipRouter(
         }
     }
 
+    private fun peerDoesNotWantMessage(peer: PeerHandler, messageId: MessageId): Boolean {
+        return peerIDontWant[peer]?.messageIdsAndTime?.map { it.messageIds }?.flatten()?.contains(messageId) == true
+    }
+
     private fun iWant(peer: PeerHandler, messageIds: List<MessageId>) {
         if (messageIds.isEmpty()) return
         messageIds[random.nextInt(messageIds.size)]
@@ -590,9 +601,15 @@ open class GossipRouter(
         enqueueIwant(peer, messageIds)
     }
 
-    private fun iDontWant(peer: PeerHandler, messageIds: List<MessageId>) {
-        if (messageIds.isEmpty()) return
-        enqueueIdontwant(peer, messageIds)
+    private fun iDontWant(peer: PeerHandler, msg: PubsubMessage) {
+        if (!peer.getPeerProtocol().supportsIDontWant() || !this.protocol.supportsIDontWant()) {
+            return
+        }
+        if (msg.protobufMessage.serializedSize < params.iDOntWantMinMessageSizeThreshold) {
+            return
+        }
+        // we need to flush IDONTWANT messages in order for them to have an effect
+        sendIdontwant(peer, msg.messageId)
     }
 
     private fun enqueuePrune(peer: PeerHandler, topic: Topic) {
@@ -617,13 +634,18 @@ open class GossipRouter(
     private fun enqueueIhave(peer: PeerHandler, messageIds: List<MessageId>, topic: Topic) =
         pendingRpcParts.getQueue(peer).addIHaves(messageIds, topic)
 
-    private fun enqueueIdontwant(peer: PeerHandler, messageIds: List<MessageId>) {
-        if (peer.getPeerProtocol().supportsIDontWant()) {
-            pendingRpcParts.getQueue(peer).addIDontWants(messageIds)
-        }
+    private fun sendIdontwant(peer: PeerHandler, messageId: MessageId) {
+        val msgBuilder = Rpc.RPC.newBuilder()
+        msgBuilder.controlBuilder.addIdontwantBuilder()
+            .addMessageIDs(messageId.toProtobuf())
+        send(peer, msgBuilder.build())
     }
 
     data class AcceptRequestsWhitelistEntry(val whitelistedTill: Long, val messagesAccepted: Int = 0) {
         fun incrementMessageCount() = AcceptRequestsWhitelistEntry(whitelistedTill, messagesAccepted + 1)
     }
+
+    data class IDontWantCacheEntry(val heartbeatMessagesCount: AtomicInteger = AtomicInteger(0), val messageIdsAndTime: MutableSet<MessageIdsAndTime> = mutableSetOf())
+
+    data class MessageIdsAndTime(val messageIds: Set<MessageId>, val time: Long)
 }
