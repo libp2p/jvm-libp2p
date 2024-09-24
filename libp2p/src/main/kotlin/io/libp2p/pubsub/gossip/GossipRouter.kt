@@ -356,6 +356,7 @@ open class GossipRouter(
     }
 
     private fun handleIDontWant(msg: Rpc.ControlIDontWant, peer: PeerHandler) {
+        if (!this.protocol.supportsIDontWant()) return
         val peerScore = score.score(peer.peerId)
         if (peerScore < scoreParams.gossipThreshold) return
         val iDontWantCacheEntry = peerIDontWant.computeIfAbsent(peer) { IDontWantCacheEntry() }
@@ -364,7 +365,8 @@ open class GossipRouter(
             return
         }
         // maintain dont_send_message_ids and arrival time.
-        iDontWantCacheEntry.messageIdsAndTime.add(MessageIdsAndTime(msg.messageIDsList.map { it.toWBytes() }.toSet(), currentTimeSupplier()))
+        val time = currentTimeSupplier()
+        iDontWantCacheEntry.messageIds.addAll(msg.messageIDsList.map { MessageIdAndTime(it.toWBytes(), time) })
     }
 
     private fun processPrunePeers(peersList: List<Rpc.PeerInfo>) {
@@ -479,9 +481,9 @@ open class GossipRouter(
         peerIDontWant.entries.removeIf { (_, cacheEntry) ->
             // reset on heartbeat
             cacheEntry.heartbeatMessagesCount.set(0)
-            cacheEntry.messageIdsAndTime.removeIf { mIdsAndTime -> mIdsAndTime.time < staleIDontWantTime }
+            cacheEntry.messageIds.removeIf { messageIdAndTime -> messageIdAndTime.time < staleIDontWantTime }
             // remove entry for peer if no IDONTWANT messages are in cache
-            cacheEntry.messageIdsAndTime.isEmpty()
+            cacheEntry.messageIds.isEmpty()
         }
 
         try {
@@ -591,7 +593,7 @@ open class GossipRouter(
     }
 
     private fun peerDoesNotWantMessage(peer: PeerHandler, messageId: MessageId): Boolean {
-        return peerIDontWant[peer]?.messageIdsAndTime?.map { it.messageIds }?.flatten()?.contains(messageId) == true
+        return peerIDontWant[peer]?.messageIds?.any { it.messageId == messageId } == true
     }
 
     private fun iWant(peer: PeerHandler, messageIds: List<MessageId>) {
@@ -608,10 +610,12 @@ open class GossipRouter(
         if (msg.protobufMessage.serializedSize < params.iDOntWantMinMessageSizeThreshold) {
             return
         }
-        // we need to IDONTWANT messages to mesh peers immediately in order for them to have an effect
+        // we need to send IDONTWANT messages to mesh peers immediately in order for them to have an effect
         msg.topics.forEach { topic ->
-            val peers = mesh[topic] ?: return
-            peers.forEach { peer -> sendIdontwant(peer, msg.messageId) }
+            val meshPeers = mesh[topic] ?: return
+            meshPeers
+                .filter { it.getPeerProtocol().supportsIDontWant() }
+                .forEach { peer -> sendIdontwant(peer, msg.messageId) }
         }
     }
 
@@ -651,7 +655,10 @@ open class GossipRouter(
         fun incrementMessageCount() = AcceptRequestsWhitelistEntry(whitelistedTill, messagesAccepted + 1)
     }
 
-    data class IDontWantCacheEntry(val heartbeatMessagesCount: AtomicInteger = AtomicInteger(0), val messageIdsAndTime: MutableSet<MessageIdsAndTime> = mutableSetOf())
+    data class IDontWantCacheEntry(
+        val heartbeatMessagesCount: AtomicInteger = AtomicInteger(0),
+        val messageIds: MutableSet<MessageIdAndTime> = mutableSetOf()
+    )
 
-    data class MessageIdsAndTime(val messageIds: Set<MessageId>, val time: Long)
+    data class MessageIdAndTime(val messageId: MessageId, val time: Long)
 }
