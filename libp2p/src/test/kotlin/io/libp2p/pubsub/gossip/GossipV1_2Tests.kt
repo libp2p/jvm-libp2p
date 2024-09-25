@@ -26,19 +26,9 @@ class GossipV1_2Tests : GossipTestsBase() {
 
     @Test
     fun iDontWantIsBroadcastToMeshPeers() {
-        val test = ManyRoutersTest(
-            protocol = PubsubProtocol.Gossip_V_1_2,
-            params = GossipParams(iDontWantMinMessageSizeThreshold = 5),
-            mockRouterCount = 3
+        val test = startSingleTopicNetwork(
+            params = GossipParams(iDontWantMinMessageSizeThreshold = 5), mockRouterCount = 3
         )
-
-        test.connectAll()
-
-        test.gossipRouter.subscribe("topic1")
-        test.mockRouters.forEach { it.subscribe("topic1") }
-
-        // 2 heartbeats - the topic should be GRAFTed
-        test.fuzz.timeController.addTime(2.seconds)
 
         val publisher = test.mockRouters[0]
         val gossipers = listOf(test.mockRouters[1], test.mockRouters[2])
@@ -51,9 +41,8 @@ class GossipV1_2Tests : GossipTestsBase() {
 
         test.fuzz.timeController.addTime(100.millis)
 
-        val iDontWants = gossipers.flatMap { it.inboundMessages }
-            .filter { it.hasControl() }
-            .flatMap { it.control.idontwantList }
+        val iDontWants =
+            gossipers.flatMap { it.inboundMessages }.filter { it.hasControl() }.flatMap { it.control.idontwantList }
 
         // both gossipers should have received IDONTWANT from the GossipRouter
         assertTrue(iDontWants.size == 2)
@@ -65,19 +54,9 @@ class GossipV1_2Tests : GossipTestsBase() {
 
     @Test
     fun messageIsNotBroadcastIfPeerHasSentIDONTWANT() {
-        val test = ManyRoutersTest(
-            protocol = PubsubProtocol.Gossip_V_1_2,
-            params = GossipParams(iDontWantMinMessageSizeThreshold = 5),
-            mockRouterCount = 2
+        val test = startSingleTopicNetwork(
+            params = GossipParams(iDontWantMinMessageSizeThreshold = 5), mockRouterCount = 2
         )
-
-        test.connectAll()
-
-        test.gossipRouter.subscribe("topic1")
-        test.mockRouters.forEach { it.subscribe("topic1") }
-
-        // 2 heartbeats - the topic should be GRAFTed
-        test.fuzz.timeController.addTime(2.seconds)
 
         val publisher = test.mockRouters[0]
         val iDontWantPeer = test.mockRouters[1]
@@ -88,8 +67,7 @@ class GossipV1_2Tests : GossipTestsBase() {
         iDontWantPeer.sendToSingle(
             Rpc.RPC.newBuilder().setControl(
                 Rpc.ControlMessage.newBuilder().addIdontwant(
-                    Rpc.ControlIDontWant.newBuilder()
-                        .addMessageIDs(msg.messageId.toProtobuf())
+                    Rpc.ControlIDontWant.newBuilder().addMessageIDs(msg.messageId.toProtobuf())
                 )
             ).build()
         )
@@ -106,5 +84,81 @@ class GossipV1_2Tests : GossipTestsBase() {
 
         // message shouldn't have been received
         assertThat(receivedMessages).isEmpty()
+    }
+
+    @Test
+    fun iDontWantIsNotSentIfSizeIsLessThanTheMinimumConfigured() {
+        val test = startSingleTopicNetwork(
+            params = GossipParams(iDontWantMinMessageSizeThreshold = 5), mockRouterCount = 3
+        )
+
+        val publisher = test.mockRouters[0]
+        val gossipers = listOf(test.mockRouters[1], test.mockRouters[2])
+
+        // 4 bytes and minimum is 5, so IDONTWANT shouldn't be sent
+        val msg = newMessage("topic1", 0L, "Hell".toByteArray())
+
+        publisher.sendToSingle(
+            Rpc.RPC.newBuilder().addPublish(msg.protobufMessage).build()
+        )
+
+        test.fuzz.timeController.addTime(100.millis)
+
+        val iDontWants =
+            gossipers.flatMap { it.inboundMessages }.filter { it.hasControl() }.flatMap { it.control.idontwantList }
+
+        assertThat(iDontWants).isEmpty()
+    }
+
+    @Test
+    fun testIDontWantTTL() {
+        val test = startSingleTopicNetwork(
+            // set TTL to 700ms
+            params = GossipParams(iDontWantMinMessageSizeThreshold = 5, iDontWantTTL = 700.millis), mockRouterCount = 2
+        )
+
+        val publisher = test.mockRouters[0]
+        val iDontWantPeer = test.mockRouters[1]
+
+        val msg = newMessage("topic1", 0L, "Hello".toByteArray())
+
+        // sending IDONTWANT
+        iDontWantPeer.sendToSingle(
+            Rpc.RPC.newBuilder().setControl(
+                Rpc.ControlMessage.newBuilder().addIdontwant(
+                    Rpc.ControlIDontWant.newBuilder().addMessageIDs(msg.messageId.toProtobuf())
+                )
+            ).build()
+        )
+
+        // 1 heartbeat - the IDONTWANT should have expired
+        test.fuzz.timeController.addTime(1.seconds)
+
+        publisher.sendToSingle(
+            Rpc.RPC.newBuilder().addPublish(msg.protobufMessage).build()
+        )
+
+        test.fuzz.timeController.addTime(100.millis)
+
+        val receivedMessages = iDontWantPeer.inboundMessages.flatMap { it.publishList }
+
+        // message shouldn't have been received
+        assertThat(receivedMessages).containsExactly(msg.protobufMessage)
+    }
+
+    private fun startSingleTopicNetwork(params: GossipParams, mockRouterCount: Int): ManyRoutersTest {
+        val test = ManyRoutersTest(
+            protocol = PubsubProtocol.Gossip_V_1_2, params = params, mockRouterCount = mockRouterCount
+        )
+
+        test.connectAll()
+
+        test.gossipRouter.subscribe("topic1")
+        test.mockRouters.forEach { it.subscribe("topic1") }
+
+        // 2 heartbeats - the topic should be GRAFTed
+        test.fuzz.timeController.addTime(2.seconds)
+
+        return test
     }
 }
