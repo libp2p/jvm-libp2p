@@ -27,7 +27,8 @@ class GossipV1_2Tests : GossipTestsBase() {
     @Test
     fun iDontWantIsBroadcastToMeshPeers() {
         val test = startSingleTopicNetwork(
-            params = GossipParams(iDontWantMinMessageSizeThreshold = 5), mockRouterCount = 3
+            params = GossipParams(iDontWantMinMessageSizeThreshold = 5),
+            mockRouterCount = 3
         )
 
         val publisher = test.mockRouters[0]
@@ -55,7 +56,8 @@ class GossipV1_2Tests : GossipTestsBase() {
     @Test
     fun messageIsNotBroadcastIfPeerHasSentIDONTWANT() {
         val test = startSingleTopicNetwork(
-            params = GossipParams(iDontWantMinMessageSizeThreshold = 5), mockRouterCount = 2
+            params = GossipParams(iDontWantMinMessageSizeThreshold = 5),
+            mockRouterCount = 2
         )
 
         val publisher = test.mockRouters[0]
@@ -89,7 +91,8 @@ class GossipV1_2Tests : GossipTestsBase() {
     @Test
     fun iDontWantIsNotSentIfSizeIsLessThanTheMinimumConfigured() {
         val test = startSingleTopicNetwork(
-            params = GossipParams(iDontWantMinMessageSizeThreshold = 5), mockRouterCount = 3
+            params = GossipParams(iDontWantMinMessageSizeThreshold = 5),
+            mockRouterCount = 3
         )
 
         val publisher = test.mockRouters[0]
@@ -114,7 +117,8 @@ class GossipV1_2Tests : GossipTestsBase() {
     fun testIDontWantTTL() {
         val test = startSingleTopicNetwork(
             // set TTL to 700ms
-            params = GossipParams(iDontWantMinMessageSizeThreshold = 5, iDontWantTTL = 700.millis), mockRouterCount = 2
+            params = GossipParams(iDontWantMinMessageSizeThreshold = 5, iDontWantTTL = 700.millis),
+            mockRouterCount = 2
         )
 
         val publisher = test.mockRouters[0]
@@ -148,7 +152,9 @@ class GossipV1_2Tests : GossipTestsBase() {
 
     private fun startSingleTopicNetwork(params: GossipParams, mockRouterCount: Int): ManyRoutersTest {
         val test = ManyRoutersTest(
-            protocol = PubsubProtocol.Gossip_V_1_2, params = params, mockRouterCount = mockRouterCount
+            protocol = PubsubProtocol.Gossip_V_1_2,
+            params = params,
+            mockRouterCount = mockRouterCount
         )
 
         test.connectAll()
