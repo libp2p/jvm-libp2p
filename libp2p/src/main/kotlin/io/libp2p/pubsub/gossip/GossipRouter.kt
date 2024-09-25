@@ -418,8 +418,12 @@ open class GossipRouter(
         val list = peers
             .filterNot { peerDoesNotWantMessage(it, msg.messageId) }
             .map {
-                sendIdontwant(it, msg.messageId)
-                submitPublishMessage(it, msg)
+                if (this.protocol.supportsIDontWant() &&
+                    msg.protobufMessage.serializedSize >= params.iDontWantMinMessageSizeThreshold
+                ) {
+                    sendIdontwant(it, msg.messageId)
+                }
+                return submitPublishMessage(it, msg)
             }
 
         mCache += msg
@@ -608,16 +612,14 @@ open class GossipRouter(
     }
 
     private fun iDontWant(msg: PubsubMessage, receivedFrom: PeerHandler) {
-        if (!this.protocol.supportsIDontWant()) {
-            return
-        }
-        if (msg.protobufMessage.serializedSize < params.iDontWantMinMessageSizeThreshold) {
-            return
-        }
+        if (!this.protocol.supportsIDontWant()) return
+        if (msg.protobufMessage.serializedSize < params.iDontWantMinMessageSizeThreshold) return
         // we need to send IDONTWANT messages to mesh peers immediately in order for them to have an effect
         msg.topics.forEach { topic ->
             val meshPeers = mesh[topic] ?: return
-            (meshPeers - receivedFrom).forEach { peer -> sendIdontwant(peer, msg.messageId) }
+            (meshPeers - receivedFrom)
+                .shuffled(random)
+                .forEach { peer -> sendIdontwant(peer, msg.messageId) }
         }
     }
 

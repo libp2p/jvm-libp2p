@@ -20,17 +20,17 @@ class SimpleSimulationIntegrationTest {
 
         val messagesResult = simpleSim.simulation.gossipMessageCollector.gatherResult()
 
-        assertThat(messagesResult.getTotalMessageCount()).isEqualTo(783)
-        assertThat(messagesResult.getTotalTraffic()).isEqualTo(6647421L)
+        assertThat(messagesResult.getTotalMessageCount()).isEqualTo(781)
+        assertThat(messagesResult.getTotalTraffic()).isEqualTo(6579571L)
 
         val deliveryStats = simpleSim.simulation.gatherPubDeliveryStats()
         val deliveryAggrStats = StatsFactory.DEFAULT.createStats(deliveryStats.deliveryDelays)
 
-        assertThat(deliveryAggrStats.getCount()).isEqualTo(99)
+        assertThat(deliveryAggrStats.getCount()).isEqualTo(100)
         val stats = deliveryAggrStats.getDescriptiveStatistics()
-        assertThat(stats.min).isEqualTo(59.0)
-        assertThat(stats.getPercentile(50.0).smartRound()).isEqualTo(323.0)
-        assertThat(stats.max).isEqualTo(524.0)
+        assertThat(stats.min).isEqualTo(53.0)
+        assertThat(stats.getPercentile(50.0).smartRound()).isEqualTo(416.0)
+        assertThat(stats.max).isEqualTo(584.0)
     }
 
     @Test
@@ -43,16 +43,16 @@ class SimpleSimulationIntegrationTest {
 
         val messagesResult = simpleSim.simulation.gossipMessageCollector.gatherResult()
 
-        assertThat(messagesResult.getTotalMessageCount()).isEqualTo(1563)
-        assertThat(messagesResult.getTotalTraffic()).isEqualTo(33108921)
+        assertThat(messagesResult.getTotalMessageCount()).isEqualTo(1553)
+        assertThat(messagesResult.getTotalTraffic()).isEqualTo(32769671)
 
         val deliveryStats = simpleSim.simulation.gatherPubDeliveryStats()
         val deliveryAggrStats = StatsFactory.DEFAULT.createStats(deliveryStats.deliveryDelays)
 
-        assertThat(deliveryAggrStats.getCount()).isEqualTo(495)
+        assertThat(deliveryAggrStats.getCount()).isEqualTo(500)
         val stats = deliveryAggrStats.getDescriptiveStatistics()
-        assertThat(stats.min).isEqualTo(59.0)
-        assertThat(stats.getPercentile(50.0).smartRound()).isEqualTo(323.0)
-        assertThat(stats.max).isEqualTo(524.0)
+        assertThat(stats.min).isEqualTo(53.0)
+        assertThat(stats.getPercentile(50.0).smartRound()).isEqualTo(383.0)
+        assertThat(stats.max).isEqualTo(647.0)
     }
 }
