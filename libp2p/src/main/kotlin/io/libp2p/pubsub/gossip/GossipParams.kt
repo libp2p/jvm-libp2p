@@ -231,7 +231,24 @@ data class GossipParams(
      * callback to notify outer system to which peers Gossip wants to be connected
      * The second parameter is a signed peer record: https://github.com/libp2p/specs/pull/217
      */
-    val connectCallback: (PeerId, ByteArray) -> Unit = { _: PeerId, _: ByteArray -> }
+    val connectCallback: (PeerId, ByteArray) -> Unit = { _: PeerId, _: ByteArray -> },
+
+    /**
+     * [maxIDontWantMessageIds] is the maximum number of IDONTWANT message ids allowed per heartbeat per peer
+     */
+    val maxIDontWantMessageIds: Int = maxIHaveLength * maxIHaveMessages,
+
+    /**
+     * [iDontWantMinMessageSizeThreshold] controls the minimum size (in bytes) that an incoming message needs to be so that an IDONTWANT message is sent to mesh peers.
+     * The default is 16 KB.
+     */
+    val iDontWantMinMessageSizeThreshold: Int = 16000,
+
+    /**
+     * [iDontWantTTL] Expiry time for cache of received IDONTWANT messages for peers
+     */
+    val iDontWantTTL: Duration = 3.seconds
+
 ) {
     init {
         check(D >= 0, "D should be >= 0")

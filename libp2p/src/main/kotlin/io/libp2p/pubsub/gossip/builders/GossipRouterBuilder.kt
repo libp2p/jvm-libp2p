@@ -16,7 +16,7 @@ typealias GossipScoreFactory =
 open class GossipRouterBuilder(
 
     var name: String = "GossipRouter",
-    var protocol: PubsubProtocol = PubsubProtocol.Gossip_V_1_1,
+    var protocol: PubsubProtocol = PubsubProtocol.Gossip_V_1_2,
 
     var params: GossipParams = GossipParams(),
     var scoreParams: GossipScoreParams = GossipScoreParams(),

@@ -72,6 +72,12 @@ class GossipParamsBuilder {
 
     private var connectCallback: Function2<PeerId, ByteArray, Unit>? = null
 
+    private var maxIDontWantMessageIds: Int? = null
+
+    private var iDontWantMinMessageSizeThreshold: Int? = null
+
+    private var iDontWantTTL: Duration? = null
+
     init {
         val source = GossipParams()
         this.D = source.D
@@ -100,6 +106,9 @@ class GossipParamsBuilder {
         this.maxPruneMessages = source.maxPruneMessages
         this.gossipRetransmission = source.gossipRetransmission
         this.connectCallback = source.connectCallback
+        this.maxIDontWantMessageIds = source.maxIDontWantMessageIds
+        this.iDontWantMinMessageSizeThreshold = source.iDontWantMinMessageSizeThreshold
+        this.iDontWantTTL = source.iDontWantTTL
     }
 
     fun D(value: Int): GossipParamsBuilder = apply { D = value }
@@ -172,6 +181,12 @@ class GossipParamsBuilder {
         connectCallback = value
     }
 
+    fun maxIDontWantMessageIds(value: Int): GossipParamsBuilder = apply { maxIDontWantMessageIds = value }
+
+    fun iDontWantMinMessageSizeThreshold(value: Int): GossipParamsBuilder = apply { iDontWantMinMessageSizeThreshold = value }
+
+    fun iDontWantTTL(value: Duration): GossipParamsBuilder = apply { iDontWantTTL = value }
+
     fun build(): GossipParams {
         calculateMissing()
         checkRequiredFields()
@@ -206,7 +221,10 @@ class GossipParamsBuilder {
             pruneBackoff = pruneBackoff!!,
             maxPruneMessages = maxPruneMessages,
             gossipRetransmission = gossipRetransmission!!,
-            connectCallback = connectCallback!!
+            connectCallback = connectCallback!!,
+            maxIDontWantMessageIds = maxIDontWantMessageIds!!,
+            iDontWantMinMessageSizeThreshold = iDontWantMinMessageSizeThreshold!!,
+            iDontWantTTL = iDontWantTTL!!
         )
     }
 
@@ -244,5 +262,8 @@ class GossipParamsBuilder {
         check(iWantFollowupTime != null, { "iWantFollowupTime must not be null" })
         check(gossipRetransmission != null, { "gossipRetransmission must not be null" })
         check(connectCallback != null, { "connectCallback must not be null" })
+        check(maxIDontWantMessageIds != null, { "maxIDontWantMessageIds must not be null" })
+        check(iDontWantMinMessageSizeThreshold != null, { "iDontWantMinMessageSizeThreshold must not be null" })
+        check(iDontWantTTL != null, { "iDontWantTTL must not be null" })
     }
 }
