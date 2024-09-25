@@ -391,7 +391,6 @@ open class GossipRouter(
                 .plus(getDirectPeers())
                 .minus(receivedFrom)
                 .filterNot { peerDoesNotWantMessage(it, pubMsg.messageId) }
-                .toList()
                 .forEach { submitPublishMessage(it, pubMsg) }
             mCache += pubMsg
         }
