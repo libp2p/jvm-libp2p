@@ -351,8 +351,7 @@ open class GossipRouter(
         msg.messageIDsList
             .mapNotNull { mCache.getMessageForPeer(peer.peerId, it.toWBytes()) }
             .filter { it.sentCount < params.gossipRetransmission }
-            .map { it.msg }
-            .forEach { submitPublishMessage(peer, it) }
+            .forEach { submitPublishMessage(peer, it.msg) }
     }
 
     private fun handleIDontWant(msg: Rpc.ControlIDontWant, peer: PeerHandler) {
@@ -365,7 +364,9 @@ open class GossipRouter(
             return
         }
         val timeReceived = currentTimeSupplier()
-        iDontWantCacheEntry.messageIds.addAll(msg.messageIDsList.map { MessageIdAndTimeReceived(it.toWBytes(), timeReceived) })
+        msg.messageIDsList
+            .map { it.toWBytes() }
+            .associateWithTo(iDontWantCacheEntry.messageIdsAndTimeReceived) { timeReceived }
     }
 
     private fun processPrunePeers(peersList: List<Rpc.PeerInfo>) {
@@ -384,12 +385,14 @@ open class GossipRouter(
     override fun broadcastInbound(msgs: List<PubsubMessage>, receivedFrom: PeerHandler) {
         msgs.forEach { pubMsg ->
             pubMsg.topics
+                .asSequence()
                 .mapNotNull { mesh[it] }
                 .flatten()
                 .distinct()
                 .plus(getDirectPeers())
                 .minus(receivedFrom)
                 .filterNot { peerDoesNotWantMessage(it, pubMsg.messageId) }
+                .toList()
                 .forEach { submitPublishMessage(it, pubMsg) }
             mCache += pubMsg
         }
@@ -407,7 +410,7 @@ open class GossipRouter(
                     .plus(getDirectPeers())
             } else {
                 msg.topics
-                    .mapNotNull { topic ->
+                    .map { topic ->
                         mesh[topic] ?: fanout[topic] ?: getTopicPeers(topic).shuffled(random).take(params.D)
                             .also {
                                 if (it.isNotEmpty()) fanout[topic] = it.toMutableSet()
@@ -482,9 +485,9 @@ open class GossipRouter(
         peerIDontWant.entries.removeIf { (_, cacheEntry) ->
             // reset on heartbeat
             cacheEntry.heartbeatMessageIdsCount = 0
-            cacheEntry.messageIds.removeIf { entry -> entry.timeReceived < staleIDontWantTime }
+            cacheEntry.messageIdsAndTimeReceived.values.removeIf { timeReceived -> timeReceived < staleIDontWantTime }
             // remove entry for peer if no IDONTWANT message ids are left in the cache
-            cacheEntry.messageIds.isEmpty()
+            cacheEntry.messageIdsAndTimeReceived.isEmpty()
         }
 
         try {
@@ -594,7 +597,7 @@ open class GossipRouter(
     }
 
     private fun peerDoesNotWantMessage(peer: PeerHandler, messageId: MessageId): Boolean {
-        return peerIDontWant[peer]?.messageIds?.map { it.messageId }?.contains(messageId) == true
+        return peerIDontWant[peer]?.messageIdsAndTimeReceived?.contains(messageId) == true
     }
 
     private fun iWant(peer: PeerHandler, messageIds: List<MessageId>) {
@@ -657,8 +660,6 @@ open class GossipRouter(
 
     data class IDontWantCacheEntry(
         var heartbeatMessageIdsCount: Int = 0,
-        val messageIds: MutableSet<MessageIdAndTimeReceived> = mutableSetOf()
+        val messageIdsAndTimeReceived: MutableMap<MessageId, Long> = mutableMapOf()
     )
-
-    data class MessageIdAndTimeReceived(val messageId: MessageId, val timeReceived: Long)
 }
