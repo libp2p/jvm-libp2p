@@ -23,7 +23,6 @@ import kotlin.collections.any
 import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.count
-import kotlin.collections.distinct
 import kotlin.collections.drop
 import kotlin.collections.filter
 import kotlin.collections.filterNot
@@ -420,14 +419,7 @@ open class GossipRouter(
             }
         val list = peers
             .filterNot { peerDoesNotWantMessage(it, msg.messageId) }
-            .map {
-                if (this.protocol.supportsIDontWant() &&
-                    msg.protobufMessage.serializedSize >= params.iDontWantMinMessageSizeThreshold
-                ) {
-                    sendIdontwant(it, msg.messageId)
-                }
-                submitPublishMessage(it, msg)
-            }
+            .map { submitPublishMessage(it, msg) }
 
         mCache += msg
         flushAllPending()
@@ -620,9 +612,7 @@ open class GossipRouter(
         // we need to send IDONTWANT messages to mesh peers immediately in order for them to have an effect
         msg.topics.forEach { topic ->
             val meshPeers = mesh[topic] ?: return
-            (meshPeers - receivedFrom)
-                .shuffled(random)
-                .forEach { peer -> sendIdontwant(peer, msg.messageId) }
+            (meshPeers - receivedFrom).forEach { peer -> sendIdontwant(peer, msg.messageId) }
         }
     }
 
