@@ -3,7 +3,6 @@ package io.libp2p.simulate.delay
 import io.libp2p.simulate.Bandwidth
 import io.libp2p.tools.schedulers.ControlledExecutorServiceImpl
 import io.libp2p.tools.schedulers.TimeControllerImpl
-import org.assertj.core.api.Assertions
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
@@ -14,11 +13,9 @@ class ChannelMessageDelayerTest {
     val timeController = TimeControllerImpl()
     val executor = ControlledExecutorServiceImpl(timeController)
 
-
     private val Int.bytesPerSecond get() = Bandwidth(this.toLong())
     private fun Bandwidth.simpleDelayer() = SimpleBandwidthTracker(this, executor)
     private fun Int.millisLatencyDelayer() = TimeDelayer(executor) { this.milliseconds }
-
 
     @Test
     fun `slow outbound bandwidth prevails`() {
@@ -69,7 +66,6 @@ class ChannelMessageDelayerTest {
                     1000.bytesPerSecond.simpleDelayer()
                 )
             }
-
 
         val delay1 = delayer.delay(1000).thenApply { timeController.time }
         val delay2 = delayer.delay(10).thenApply { timeController.time }
