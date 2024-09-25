@@ -420,7 +420,14 @@ open class GossipRouter(
             }
         val list = peers
             .filterNot { peerDoesNotWantMessage(it, msg.messageId) }
-            .map { submitPublishMessage(it, msg) }
+            .map {
+                if (this.protocol.supportsIDontWant() &&
+                    msg.protobufMessage.serializedSize >= params.iDontWantMinMessageSizeThreshold
+                ) {
+                    sendIdontwant(it, msg.messageId)
+                }
+                submitPublishMessage(it, msg)
+            }
 
         mCache += msg
         flushAllPending()
