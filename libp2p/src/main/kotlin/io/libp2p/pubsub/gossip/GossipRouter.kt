@@ -409,7 +409,7 @@ open class GossipRouter(
                     .plus(getDirectPeers())
             } else {
                 msg.topics
-                    .map { topic ->
+                    .mapNotNull { topic ->
                         mesh[topic] ?: fanout[topic] ?: getTopicPeers(topic).shuffled(random).take(params.D)
                             .also {
                                 if (it.isNotEmpty()) fanout[topic] = it.toMutableSet()
@@ -424,10 +424,10 @@ open class GossipRouter(
         mCache += msg
         flushAllPending()
 
-        if (list.isNotEmpty()) {
-            return anyComplete(list)
+        return if (list.isNotEmpty()) {
+            anyComplete(list)
         } else {
-            return completedExceptionally(
+            completedExceptionally(
                 NoPeersForOutboundMessageException("No peers for message topics ${msg.topics} found")
             )
         }
