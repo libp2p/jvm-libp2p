@@ -30,8 +30,12 @@ open class ConnectionOverNetty(
         ch.attr(CONNECTION).set(this)
     }
 
-    fun setMuxerSession(ms: StreamMuxer.Session) { muxerSession = ms }
-    fun setSecureSession(ss: SecureChannel.Session) { secureSession = ss }
+    fun setMuxerSession(ms: StreamMuxer.Session) {
+        muxerSession = ms
+    }
+    fun setSecureSession(ss: SecureChannel.Session) {
+        secureSession = ss
+    }
 
     override fun muxerSession() = muxerSession
     override fun secureSession() = secureSession

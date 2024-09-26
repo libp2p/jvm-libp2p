@@ -115,7 +115,11 @@ configure(
                     "ktlint_standard_no-wildcard-imports" to "disabled",
                     "ktlint_standard_enum-entry-name-case" to "disabled",
                     "ktlint_standard_trailing-comma-on-call-site" to "disabled",
-                    "ktlint_standard_trailing-comma-on-declaration-site" to "disabled"
+                    "ktlint_standard_trailing-comma-on-declaration-site" to "disabled",
+                    "ktlint_standard_value-parameter-comment" to "disabled",
+                    "ktlint_standard_value-argument-comment" to "disabled",
+                    "ktlint_standard_property-naming" to "disabled",
+                    "ktlint_standard_function-naming" to "disabled"
                 )
             )
         }
