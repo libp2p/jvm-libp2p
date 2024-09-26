@@ -19,7 +19,7 @@ dependencyManagement {
             entry 'junit-jupiter-engine'
             entry 'junit-jupiter-params'
         }
-        dependency "io.mockk:mockk:1.13.12"
+        dependency "io.mockk:mockk:1.13.3"
         dependency "org.assertj:assertj-core:3.26.3"
 
         dependencySet(group: "org.openjdk.jmh", version: "1.37") {
