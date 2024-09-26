@@ -19,11 +19,11 @@ import org.bouncycastle.crypto.macs.HMac
 import org.bouncycastle.crypto.params.KeyParameter
 
 /**
- * ErrRsaKeyTooSmall is returned when trying to generate or parse an RSA key
+ * ERR_RSA_KEY_TOO_SMALL is returned when trying to generate or parse an RSA key
  * that's smaller than 512 bits. Keys need to be larger enough to sign a 256bit
  * hash so this is a reasonable absolute minimum.
  */
-const val ErrRsaKeyTooSmall = "rsa keys must be >= 512 bits to be useful"
+const val ERR_RSA_KEY_TOO_SMALL = "rsa keys must be >= 512 bits to be useful"
 
 const val RSA_ALGORITHM = "RSA"
 const val SHA_ALGORITHM = "SHA-256"

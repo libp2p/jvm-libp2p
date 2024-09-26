@@ -20,7 +20,10 @@ import java.net.SocketAddress
  */
 abstract class AbstractChildChannel(parent: Channel, id: ChannelId?) : AbstractChannel(parent, id) {
     private enum class State {
-        OPEN, ACTIVE, INACTIVE, CLOSED
+        OPEN,
+        ACTIVE,
+        INACTIVE,
+        CLOSED
     }
 
     private val parentCloseFuture = parent.closeFuture()

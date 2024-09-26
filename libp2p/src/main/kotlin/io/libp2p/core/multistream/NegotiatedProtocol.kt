@@ -6,7 +6,7 @@ import java.util.concurrent.CompletableFuture
 /**
  * Represents [ProtocolBinding] with exact protocol version which was agreed on
  */
-open class NegotiatedProtocol<TController, TBinding : ProtocolBinding<TController>> (
+open class NegotiatedProtocol<TController, TBinding : ProtocolBinding<TController>>(
     val binding: TBinding,
     val protocol: ProtocolId
 ) {

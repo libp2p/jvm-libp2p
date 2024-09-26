@@ -22,11 +22,15 @@ fun <TKey, TSrc> Collection<TSrc>.groupByRangesBy(
     where TKey : Number, TKey : Comparable<TKey> =
     groupByRangesBy(keyExtractor, { it }, *ranges)
 
-fun <T, V> Collection<Pair<T, V>>.groupByRanges(vararg ranges: ClosedRange<T>): Map<ClosedRange<T>, List<V>>
+fun <T, V> Collection<Pair<T, V>>.groupByRanges(
+    vararg ranges: ClosedRange<T>
+): Map<ClosedRange<T>, List<V>>
     where T : Number, T : Comparable<T> =
     groupByRangesBy({ it.first }, { it.second }, *ranges)
 
-fun <T> Collection<T>.countByRanges(vararg ranges: ClosedRange<T>): List<Int>
+fun <T> Collection<T>.countByRanges(
+    vararg ranges: ClosedRange<T>
+): List<Int>
     where T : Number, T : Comparable<T> {
     val v = this
         .map { it to it }
@@ -35,7 +39,9 @@ fun <T> Collection<T>.countByRanges(vararg ranges: ClosedRange<T>): List<Int>
     return ranges.map { v[it]?.size ?: 0 }
 }
 
-fun <T> Collection<T>.countByRanges(ranges: List<ClosedRange<T>>): List<Int>
+fun <T> Collection<T>.countByRanges(
+    ranges: List<ClosedRange<T>>
+): List<Int>
     where T : Number, T : Comparable<T> =
     countByRanges(*ranges.toTypedArray())
 

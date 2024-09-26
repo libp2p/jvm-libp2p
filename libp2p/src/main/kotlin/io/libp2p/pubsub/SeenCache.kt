@@ -51,7 +51,9 @@ class SimpleSeenCache<TValue> : SeenCache<TValue> {
     override fun put(msg: PubsubMessage, value: TValue) {
         map[msg.messageId] = value
     }
-    override fun remove(messageId: MessageId) { map -= messageId }
+    override fun remove(messageId: MessageId) {
+        map -= messageId
+    }
 }
 
 class LRUSeenCache<TValue>(val delegate: SeenCache<TValue>, private val maxSize: Int) : SeenCache<TValue> by delegate {

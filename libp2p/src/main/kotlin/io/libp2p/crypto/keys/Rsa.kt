@@ -16,7 +16,7 @@ import crypto.pb.Crypto
 import io.libp2p.core.Libp2pException
 import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.crypto.PubKey
-import io.libp2p.crypto.ErrRsaKeyTooSmall
+import io.libp2p.crypto.ERR_RSA_KEY_TOO_SMALL
 import io.libp2p.crypto.KEY_PKCS8
 import io.libp2p.crypto.Libp2pCrypto
 import io.libp2p.crypto.RSA_ALGORITHM
@@ -100,7 +100,7 @@ class RsaPublicKey(private val k: JavaPublicKey) : PubKey(Crypto.KeyType.RSA) {
 @JvmOverloads
 fun generateRsaKeyPair(bits: Int, random: SecureRandom = SecureRandom()): Pair<PrivKey, PubKey> {
     if (bits < 2048) {
-        throw Libp2pException(ErrRsaKeyTooSmall)
+        throw Libp2pException(ERR_RSA_KEY_TOO_SMALL)
     }
 
     val kp: KeyPair = with(

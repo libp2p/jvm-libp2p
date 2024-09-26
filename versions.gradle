@@ -6,32 +6,32 @@ dependencyManagement {
     dependencies {
 
         dependency "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4"
-        dependency "com.google.guava:guava:32.1.2-jre"
+        dependency "com.google.guava:guava:33.3.1-jre"
 
         dependency "org.slf4j:slf4j-api:2.0.9"
-        dependencySet(group: 'org.apache.logging.log4j', version: '2.20.0') {
+        dependencySet(group: 'org.apache.logging.log4j', version: '2.24.0') {
             entry 'log4j-core'
             entry 'log4j-slf4j2-impl'
         }
 
-        dependencySet(group: 'org.junit.jupiter', version: '5.10.0') {
+        dependencySet(group: 'org.junit.jupiter', version: '5.11.1') {
             entry 'junit-jupiter-api'
             entry 'junit-jupiter-engine'
             entry 'junit-jupiter-params'
         }
         dependency "io.mockk:mockk:1.13.3"
-        dependency "org.assertj:assertj-core:3.24.2"
+        dependency "org.assertj:assertj-core:3.26.3"
 
-        dependencySet(group: "org.openjdk.jmh", version: "1.36") {
+        dependencySet(group: "org.openjdk.jmh", version: "1.37") {
             entry 'jmh-core'
             entry 'jmh-generator-annprocess'
         }
 
-        dependencySet(group: "com.google.protobuf", version: "3.24.3") {
+        dependencySet(group: "com.google.protobuf", version: "3.25.5") {
             entry 'protobuf-java'
             entry 'protoc'
         }
-        dependencySet(group: "io.netty", version: "4.1.108.Final") {
+        dependencySet(group: "io.netty", version: "4.1.113.Final") {
             entry 'netty-common'
             entry 'netty-handler'
             entry 'netty-transport'
@@ -41,7 +41,7 @@ dependencyManagement {
         }
         dependency "com.github.multiformats:java-multibase:v1.1.1"
         dependency "tech.pegasys:noise-java:22.1.0"
-        dependencySet(group: "org.bouncycastle", version: "1.76") {
+        dependencySet(group: "org.bouncycastle", version: "1.78.1") {
             entry 'bcprov-jdk18on'
             entry 'bcpkix-jdk18on'
             entry 'bctls-jdk18on'

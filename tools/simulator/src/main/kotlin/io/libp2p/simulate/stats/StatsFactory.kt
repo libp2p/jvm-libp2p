@@ -17,7 +17,7 @@ interface StatsFactory {
             override fun toString() = "<dummy>"
         }
 
-        var DEFAULT: StatsFactory = object : StatsFactory {
+        val DEFAULT: StatsFactory = object : StatsFactory {
             override fun createStats(name: String) = DescriptiveStatsImpl()
         }
     }

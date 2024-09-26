@@ -2,6 +2,7 @@ package io.libp2p.simulate.stream
 
 import io.libp2p.etc.types.lazyVar
 import io.libp2p.simulate.*
+import io.libp2p.simulate.delay.ChannelMessageDelayer
 import io.libp2p.simulate.delay.SequentialDelayer.Companion.sequential
 import io.libp2p.simulate.util.GeneralSizeEstimator
 import io.netty.channel.Channel
@@ -13,7 +14,6 @@ import io.netty.channel.DefaultChannelPromise
 import io.netty.channel.EventLoop
 import io.netty.channel.embedded.EmbeddedChannel
 import io.netty.util.internal.ObjectUtil
-import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 
@@ -37,29 +37,17 @@ class StreamNettyChannel(
     var currentTime: () -> Long = System::currentTimeMillis
     var msgSizeEstimator = GeneralSizeEstimator
     private var msgDelayer: MessageDelayer by lazyVar {
-        createMessageDelayer(outboundBandwidth, MessageDelayer.NO_DELAYER, inboundBandwidth)
+        createMessageDelayer(MessageDelayer.NO_DELAYER)
             .sequential(executor)
     }
 
     fun setLatency(latency: MessageDelayer) {
-        msgDelayer = createMessageDelayer(outboundBandwidth, latency, inboundBandwidth)
+        msgDelayer = createMessageDelayer(latency)
     }
 
     private fun createMessageDelayer(
-        outboundBandwidthDelayer: BandwidthDelayer,
         connectionLatencyDelayer: MessageDelayer,
-        inboundBandwidthDelayer: BandwidthDelayer,
-    ): MessageDelayer {
-        return MessageDelayer { size ->
-            CompletableFuture.allOf(
-                outboundBandwidthDelayer.delay(size)
-                    .thenCompose { connectionLatencyDelayer.delay(size) },
-                connectionLatencyDelayer.delay(size)
-                    .thenCompose { inboundBandwidthDelayer.delay(size) }
-            ).thenApply { }
-        }
-            .sequential(executor)
-    }
+    ): MessageDelayer = ChannelMessageDelayer(executor, outboundBandwidth, connectionLatencyDelayer, inboundBandwidth)
 
     @Synchronized
     fun connect(other: StreamNettyChannel) {

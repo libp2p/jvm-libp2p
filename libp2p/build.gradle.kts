@@ -1,6 +1,6 @@
 plugins {
     id("com.google.protobuf").version("0.9.4")
-    id("me.champeau.jmh").version("0.7.1")
+    id("me.champeau.jmh").version("0.7.2")
 }
 
 // https://docs.gradle.org/current/userguide/java_testing.html#ex-disable-publishing-of-test-fixtures-variants

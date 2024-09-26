@@ -5,25 +5,9 @@ package io.libp2p.pubsub.gossip
 import com.google.common.util.concurrent.AtomicDouble
 import com.google.protobuf.ByteString
 import io.libp2p.core.PeerId
-import io.libp2p.core.pubsub.MessageApi
-import io.libp2p.core.pubsub.RESULT_IGNORE
-import io.libp2p.core.pubsub.RESULT_INVALID
-import io.libp2p.core.pubsub.RESULT_VALID
-import io.libp2p.core.pubsub.Subscriber
-import io.libp2p.core.pubsub.ValidationResult
-import io.libp2p.core.pubsub.Validator
-import io.libp2p.core.pubsub.createPubsubApi
-import io.libp2p.etc.types.millis
-import io.libp2p.etc.types.minutes
-import io.libp2p.etc.types.seconds
-import io.libp2p.etc.types.times
-import io.libp2p.etc.types.toBytesBigEndian
-import io.libp2p.etc.types.toProtobuf
-import io.libp2p.etc.types.toWBytes
-import io.libp2p.pubsub.*
-import io.libp2p.pubsub.DeterministicFuzz.Companion.createGossipFuzzRouterFactory
-import io.libp2p.pubsub.DeterministicFuzz.Companion.createMockFuzzRouterFactory
-import io.libp2p.pubsub.gossip.builders.GossipRouterBuilder
+import io.libp2p.core.pubsub.*
+import io.libp2p.etc.types.*
+import io.libp2p.pubsub.MockRouter
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 import io.netty.channel.ChannelHandler
@@ -31,10 +15,7 @@ import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelOutboundHandlerAdapter
 import io.netty.channel.ChannelPromise
 import io.netty.handler.logging.LogLevel
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertNotNull
-import org.junit.jupiter.api.Assertions.assertNull
-import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import pubsub.pb.Rpc
 import java.nio.charset.StandardCharsets
@@ -43,52 +24,30 @@ import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
+import kotlin.collections.List
+import kotlin.collections.component1
+import kotlin.collections.component2
+import kotlin.collections.count
+import kotlin.collections.distinct
+import kotlin.collections.filter
+import kotlin.collections.first
+import kotlin.collections.flatMap
+import kotlin.collections.forEach
+import kotlin.collections.getValue
+import kotlin.collections.intersect
+import kotlin.collections.map
+import kotlin.collections.mapValues
+import kotlin.collections.minus
+import kotlin.collections.mutableListOf
+import kotlin.collections.mutableMapOf
+import kotlin.collections.plusAssign
+import kotlin.collections.set
+import kotlin.collections.slice
+import kotlin.collections.take
+import kotlin.collections.toMap
+import kotlin.collections.withDefault
 
-class GossipV1_1Tests {
-
-    private val GossipScore.testPeerScores get() = (this as DefaultGossipScore).peerScores
-
-    private fun newProtoMessage(topic: Topic, seqNo: Long, data: ByteArray) =
-        Rpc.Message.newBuilder()
-            .addTopicIDs(topic)
-            .setSeqno(seqNo.toBytesBigEndian().toProtobuf())
-            .setData(data.toProtobuf())
-            .build()
-    private fun newMessage(topic: Topic, seqNo: Long, data: ByteArray) =
-        DefaultPubsubMessage(newProtoMessage(topic, seqNo, data))
-
-    protected fun getMessageId(msg: Rpc.Message): MessageId = msg.from.toWBytes() + msg.seqno.toWBytes()
-
-    class ManyRoutersTest(
-        val mockRouterCount: Int = 10,
-        val params: GossipParams = GossipParams(),
-        val scoreParams: GossipScoreParams = GossipScoreParams(),
-//            mockRouters: () -> List<MockRouter> = { (0 until mockRouterCount).map { MockRouter() } }
-    ) {
-        val fuzz = DeterministicFuzz()
-        val gossipRouterBuilderFactory = { GossipRouterBuilder(params = params, scoreParams = scoreParams) }
-        val router0 = fuzz.createTestRouter(createGossipFuzzRouterFactory(gossipRouterBuilderFactory))
-        val routers = (0 until mockRouterCount).map { fuzz.createTestRouter(createMockFuzzRouterFactory()) }
-        val connections = mutableListOf<SemiduplexConnection>()
-        val gossipRouter = router0.router as GossipRouter
-        val mockRouters = routers.map { it.router as MockRouter }
-
-        fun connectAll() = connect(routers.indices)
-        fun connect(routerIndexes: IntRange, outbound: Boolean = true): List<SemiduplexConnection> {
-            val list =
-                routers.slice(routerIndexes).map {
-                    if (outbound) {
-                        router0.connectSemiDuplex(it, null, LogLevel.ERROR)
-                    } else {
-                        it.connectSemiDuplex(router0, null, LogLevel.ERROR)
-                    }
-                }
-            connections += list
-            return list
-        }
-
-        fun getMockRouter(peerId: PeerId) = mockRouters[routers.indexOfFirst { it.peerId == peerId }]
-    }
+class GossipV1_1Tests : GossipTestsBase() {
 
     @Test
     fun selfSanityTest() {
@@ -98,21 +57,6 @@ class GossipV1_1Tests {
         val msg = newMessage("topic1", 0L, "Hello".toByteArray())
         test.gossipRouter.publish(msg)
         test.mockRouter.waitForMessage { it.publishCount > 0 }
-    }
-
-    class TwoRoutersTest(
-        val coreParams: GossipParams = GossipParams(),
-        val scoreParams: GossipScoreParams = GossipScoreParams(),
-        val mockRouterFactory: DeterministicFuzzRouterFactory = createMockFuzzRouterFactory()
-    ) {
-        val fuzz = DeterministicFuzz()
-        val gossipRouterBuilderFactory = { GossipRouterBuilder(params = coreParams, scoreParams = scoreParams) }
-        val router1 = fuzz.createTestRouter(createGossipFuzzRouterFactory(gossipRouterBuilderFactory))
-        val router2 = fuzz.createTestRouter(mockRouterFactory)
-        val gossipRouter = router1.router as GossipRouter
-        val mockRouter = router2.router as MockRouter
-
-        val connection = router1.connectSemiDuplex(router2, null, LogLevel.ERROR)
     }
 
     @Test
