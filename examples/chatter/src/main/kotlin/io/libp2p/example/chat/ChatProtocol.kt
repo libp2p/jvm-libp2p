@@ -19,9 +19,9 @@ typealias OnChatMessage = (PeerId, String) -> Unit
 
 class Chat(chatCallback: OnChatMessage) : ChatBinding(ChatProtocol(chatCallback))
 
-const val protocolId: ProtocolId = "/example/chat/0.1.0"
+const val PROTOCOL_ID: ProtocolId = "/example/chat/0.1.0"
 
-open class ChatBinding(echo: ChatProtocol) : StrictProtocolBinding<ChatController>(protocolId, echo)
+open class ChatBinding(echo: ChatProtocol) : StrictProtocolBinding<ChatController>(PROTOCOL_ID, echo)
 
 open class ChatProtocol(
     private val chatCallback: OnChatMessage

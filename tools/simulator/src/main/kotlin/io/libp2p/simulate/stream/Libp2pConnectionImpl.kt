@@ -9,8 +9,7 @@ import io.libp2p.simulate.util.NullTransport
 import io.libp2p.transport.implementation.ConnectionOverNetty
 
 class Libp2pConnectionImpl(
-    val remoteAddr:
-    Multiaddr,
+    val remoteAddr: Multiaddr,
     isInitiator: Boolean,
     localPubkey: PubKey,
     remotePubkey: PubKey,

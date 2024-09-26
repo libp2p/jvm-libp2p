@@ -13,15 +13,15 @@ plugins {
 
     id("org.jetbrains.kotlin.jvm") version kotlinVersion apply false
 
-    id("com.github.ben-manes.versions").version("0.48.0")
+    id("com.github.ben-manes.versions").version("0.51.0")
     id("idea")
     id("io.gitlab.arturbosch.detekt").version("1.22.0")
     id("java")
     id("maven-publish")
     id("org.jetbrains.dokka").version("1.9.20")
-    id("com.diffplug.spotless").version("6.21.0")
+    id("com.diffplug.spotless").version("6.25.0")
     id("java-test-fixtures")
-    id("io.spring.dependency-management").version("1.1.3")
+    id("io.spring.dependency-management").version("1.1.6")
 
     id("org.jetbrains.kotlin.android") version kotlinVersion apply false
     id("com.android.application") version "7.4.2" apply false
@@ -115,7 +115,11 @@ configure(
                     "ktlint_standard_no-wildcard-imports" to "disabled",
                     "ktlint_standard_enum-entry-name-case" to "disabled",
                     "ktlint_standard_trailing-comma-on-call-site" to "disabled",
-                    "ktlint_standard_trailing-comma-on-declaration-site" to "disabled"
+                    "ktlint_standard_trailing-comma-on-declaration-site" to "disabled",
+                    "ktlint_standard_value-parameter-comment" to "disabled",
+                    "ktlint_standard_value-argument-comment" to "disabled",
+                    "ktlint_standard_property-naming" to "disabled",
+                    "ktlint_standard_function-naming" to "disabled"
                 )
             )
         }
