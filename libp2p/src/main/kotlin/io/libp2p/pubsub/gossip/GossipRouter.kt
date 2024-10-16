@@ -420,11 +420,14 @@ open class GossipRouter(
         mCache += msg
 
         return if (peers.isNotEmpty()) {
-            val list = peers
+            val publishedMessages = peers
                 .filterNot { peerDoesNotWantMessage(it, msg.messageId) }
                 .map { submitPublishMessage(it, msg) }
+            if (publishedMessages.isEmpty()) {
+                return CompletableFuture.completedFuture(Unit)
+            }
             flushAllPending()
-            anyComplete(list)
+            anyComplete(publishedMessages)
         } else {
             completedExceptionally(
                 NoPeersForOutboundMessageException("No peers for message topics ${msg.topics} found")
