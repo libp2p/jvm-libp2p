@@ -419,9 +419,10 @@ open class GossipRouter(
         val list = peers
             .map {
                 if (peerDoesNotWantMessage(it, msg.messageId)) {
-                    return CompletableFuture.completedFuture(null)
+                    CompletableFuture.completedFuture(Unit)
+                } else {
+                    submitPublishMessage(it, msg)
                 }
-                return submitPublishMessage(it, msg)
             }
 
         mCache += msg
