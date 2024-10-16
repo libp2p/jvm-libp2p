@@ -417,8 +417,12 @@ open class GossipRouter(
                     .flatten()
             }
         val list = peers
-            .filterNot { peerDoesNotWantMessage(it, msg.messageId) }
-            .map { submitPublishMessage(it, msg) }
+            .map {
+                if (peerDoesNotWantMessage(it, msg.messageId)) {
+                    return CompletableFuture.completedFuture(null)
+                }
+                return submitPublishMessage(it, msg)
+            }
 
         mCache += msg
         flushAllPending()
