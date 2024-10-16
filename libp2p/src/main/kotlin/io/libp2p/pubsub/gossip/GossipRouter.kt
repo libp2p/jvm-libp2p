@@ -416,19 +416,14 @@ open class GossipRouter(
                     }
                     .flatten()
             }
-        val list = peers
-            .map {
-                if (peerDoesNotWantMessage(it, msg.messageId)) {
-                    CompletableFuture.completedFuture(Unit)
-                } else {
-                    submitPublishMessage(it, msg)
-                }
-            }
 
         mCache += msg
-        flushAllPending()
 
-        return if (list.isNotEmpty()) {
+        return if (peers.isNotEmpty()) {
+            val list = peers
+                .filterNot { peerDoesNotWantMessage(it, msg.messageId) }
+                .map { submitPublishMessage(it, msg) }
+            flushAllPending()
             anyComplete(list)
         } else {
             completedExceptionally(
