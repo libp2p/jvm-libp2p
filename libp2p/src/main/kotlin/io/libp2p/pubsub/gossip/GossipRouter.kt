@@ -416,15 +416,20 @@ open class GossipRouter(
                     }
                     .flatten()
             }
-        val list = peers
-            .filterNot { peerDoesNotWantMessage(it, msg.messageId) }
-            .map { submitPublishMessage(it, msg) }
 
         mCache += msg
-        flushAllPending()
 
-        return if (list.isNotEmpty()) {
-            anyComplete(list)
+        return if (peers.isNotEmpty()) {
+            val publishedMessages = peers
+                .filterNot { peerDoesNotWantMessage(it, msg.messageId) }
+                .map { submitPublishMessage(it, msg) }
+            if (publishedMessages.isEmpty()) {
+                // all peers have sent IDONTWANT for this message id
+                CompletableFuture.completedFuture(Unit)
+            } else {
+                flushAllPending()
+                anyComplete(publishedMessages)
+            }
         } else {
             completedExceptionally(
                 NoPeersForOutboundMessageException("No peers for message topics ${msg.topics} found")
@@ -614,7 +619,7 @@ open class GossipRouter(
             .flatten()
             .distinct()
             .minus(receivedFrom)
-            .forEach { peer -> sendIdontwant(peer, msg.messageId) }
+            .forEach { sendIdontwant(it, msg.messageId) }
     }
 
     private fun enqueuePrune(peer: PeerHandler, topic: Topic) {
