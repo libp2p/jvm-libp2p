@@ -408,11 +408,20 @@ open class GossipRouter(
                     .plus(getDirectPeers())
             } else {
                 msg.topics
-                    .mapNotNull { topic ->
-                        mesh[topic] ?: fanout[topic] ?: getTopicPeers(topic).shuffled(random).take(params.D)
-                            .also {
-                                if (it.isNotEmpty()) fanout[topic] = it.toMutableSet()
-                            }
+                    .map { topic ->
+                        val topicMeshPeers = mesh[topic]
+                        if (topicMeshPeers != null) {
+                            // we are subscribed to the topic
+                            val addFromNonMeshCount = max(0, params.D - topicMeshPeers.size)
+                            val nonMeshTopicPeers = (getTopicPeers(topic) - topicMeshPeers)
+                            topicMeshPeers + nonMeshTopicPeers.shuffled(random).take(addFromNonMeshCount)
+                        } else {
+                            // we are not subscribed to the topic
+                            fanout[topic] ?: getTopicPeers(topic).shuffled(random).take(params.D)
+                                .also {
+                                    if (it.isNotEmpty()) fanout[topic] = it.toMutableSet()
+                                }
+                        }
                     }
                     .flatten()
             }
