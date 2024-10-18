@@ -242,7 +242,7 @@ data class GossipParams(
      * [iDontWantMinMessageSizeThreshold] controls the minimum size (in bytes) that an incoming message needs to be so that an IDONTWANT message is sent to mesh peers.
      * The default is 16 KB.
      */
-    val iDontWantMinMessageSizeThreshold: Int = 16000,
+    val iDontWantMinMessageSizeThreshold: Int = 16384,
 
     /**
      * [iDontWantTTL] Expiry time for cache of received IDONTWANT messages for peers
