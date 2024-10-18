@@ -166,7 +166,7 @@ open class GossipRouter(
     }
 
     override fun notifyUnseenMessage(peer: PeerHandler, msg: PubsubMessage) {
-        iDontWant(msg)
+        iDontWant(msg, peer)
         eventBroadcaster.notifyUnseenMessage(peer.peerId, msg)
         notifyAnyMessage(peer, msg)
     }
@@ -611,7 +611,7 @@ open class GossipRouter(
         enqueueIwant(peer, messageIds)
     }
 
-    private fun iDontWant(msg: PubsubMessage) {
+    private fun iDontWant(msg: PubsubMessage, receivedFrom: PeerHandler? = null) {
         if (!this.protocol.supportsIDontWant()) return
         if (msg.protobufMessage.data.size() < params.iDontWantMinMessageSizeThreshold) return
         // we need to send IDONTWANT messages to mesh peers immediately in order for them to have an effect
@@ -619,6 +619,7 @@ open class GossipRouter(
             .mapNotNull { mesh[it] }
             .flatten()
             .distinct()
+            .minus(setOfNotNull(receivedFrom))
             .forEach { sendIdontwant(it, msg.messageId) }
     }
 
