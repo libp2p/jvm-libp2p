@@ -22,6 +22,9 @@ interface PubsubMessage {
     val topics: List<Topic>
         get() = protobufMessage.topicIDsList
 
+    val size: Int
+            get() = protobufMessage.data.size()
+
     fun messageSha256() = sha256(protobufMessage.toByteArray())
 
     override fun equals(other: Any?): Boolean

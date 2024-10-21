@@ -532,7 +532,7 @@ class GossipV1_1Tests : GossipTestsBase() {
     fun testNotFloodPublish() {
         val message = newMessage("topic1", 0L, "Hello-0".toByteArray())
         val appScore = mutableMapOf<PeerId, Double>().withDefault { 0.0 }
-        val coreParams = GossipParams(3, 3, 3, floodPublishMaxMessageSizeThreshold = message.protobufMessage.data.size() - 1)
+        val coreParams = GossipParams(3, 3, 3, floodPublishMaxMessageSizeThreshold = message.size - 1)
         val peerScoreParams = GossipPeerScoreParams(appSpecificScore = { appScore.getValue(it) })
         val scoreParams = GossipScoreParams(peerScoreParams = peerScoreParams)
         val test = ManyRoutersTest(params = coreParams, scoreParams = scoreParams)
@@ -560,7 +560,7 @@ class GossipV1_1Tests : GossipTestsBase() {
     fun testFloodPublish() {
         val message = newMessage("topic1", 0L, "Hello-0".toByteArray())
         val appScore = mutableMapOf<PeerId, Double>().withDefault { 0.0 }
-        val coreParams = GossipParams(3, 3, 3, floodPublishMaxMessageSizeThreshold = message.protobufMessage.data.size())
+        val coreParams = GossipParams(3, 3, 3, floodPublishMaxMessageSizeThreshold = message.size)
         val peerScoreParams = GossipPeerScoreParams(
             appSpecificScore = { appScore.getValue(it) },
             appSpecificWeight = 1.0

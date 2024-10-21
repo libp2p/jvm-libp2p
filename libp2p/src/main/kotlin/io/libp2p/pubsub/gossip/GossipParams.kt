@@ -22,6 +22,10 @@ fun defaultDLazy(D: Int) = D
 fun defaultDScore(D: Int) = D * 2 / 3
 fun defaultDOut(D: Int, DLow: Int) = min(D / 2, max(DLow - 1, 0))
 
+// floodPublishMaxMessageSizeThreshold shortcuts
+const val NEVER_FLOOD_PUBLISH = 0
+const val ALWAYS_FLOOD_PUBLISH = Int.MAX_VALUE
+
 /**
  * Parameters of Gossip 1.1 router
  */
@@ -116,9 +120,12 @@ data class GossipParams(
      * published using flood publishing mode.
      * When a message size is <= [floodPublishMaxMessageSizeThreshold], published messages are forwarded
      * to all peers with score >= to [GossipScoreParams.publishThreshold]
-     * The default is 0 KiB (never flood publish).
+     *
+     * [NEVER_FLOOD_PUBLISH] and [ALWAYS_FLOOD_PUBLISH] can be used as shortcuts.
+     *
+     * The default is [NEVER_FLOOD_PUBLISH] (0 KiB).
      */
-    val floodPublishMaxMessageSizeThreshold: Int = 0,
+    val floodPublishMaxMessageSizeThreshold: Int = NEVER_FLOOD_PUBLISH,
 
     /**
      * [gossipFactor] affects how many peers we will emit gossip to at each heartbeat.

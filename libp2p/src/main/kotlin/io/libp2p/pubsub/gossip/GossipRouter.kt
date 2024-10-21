@@ -400,7 +400,7 @@ open class GossipRouter(
     override fun broadcastOutbound(msg: PubsubMessage): CompletableFuture<Unit> {
         msg.topics.forEach { lastPublished[it] = currentTimeSupplier() }
 
-        val floodPublish = msg.protobufMessage.data.size() <= params.floodPublishMaxMessageSizeThreshold
+        val floodPublish = msg.size <= params.floodPublishMaxMessageSizeThreshold
 
         val peers =
             if (floodPublish) {
@@ -615,7 +615,7 @@ open class GossipRouter(
 
     private fun iDontWant(msg: PubsubMessage, receivedFrom: PeerHandler? = null) {
         if (!this.protocol.supportsIDontWant()) return
-        if (msg.protobufMessage.data.size() < params.iDontWantMinMessageSizeThreshold) return
+        if (msg.size < params.iDontWantMinMessageSizeThreshold) return
         // we need to send IDONTWANT messages to mesh peers immediately in order for them to have an effect
         msg.topics
             .mapNotNull { mesh[it] }
