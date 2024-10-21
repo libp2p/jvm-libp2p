@@ -40,8 +40,6 @@ class GossipParamsBuilder {
 
     private var pruneBackoff: Duration? = null
 
-    private var floodPublish: Boolean? = null
-
     private var gossipFactor: Double? = null
 
     private var opportunisticGraftPeers: Int? = null
@@ -253,7 +251,7 @@ class GossipParamsBuilder {
         check(seenTTL != null, { "seenTTL must not be null" })
         check(maxPeersSentInPruneMsg != null, { "maxPeersSentInPruneMsg must not be null" })
         check(pruneBackoff != null, { "pruneBackoff must not be null" })
-        check(floodPublish != null, { "floodPublish must not be null" })
+        check(floodPublishMaxMessageSizeThreshold != null, { "floodPublishMaxMessageSizeThreshold must not be null" })
         check(gossipFactor != null, { "gossipFactor must not be null" })
         check(opportunisticGraftPeers != null, { "opportunisticGraftPeers must not be null" })
         check(opportunisticGraftTicks != null, { "opportunisticGraftTicks must not be null" })
