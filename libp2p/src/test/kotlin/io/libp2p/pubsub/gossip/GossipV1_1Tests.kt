@@ -1168,6 +1168,46 @@ class GossipV1_1Tests : GossipTestsBase() {
     }
 
     @Test
+    fun `should publish to all mesh peers when mesh exceeds D`() {
+        val gossipParams = GossipParams(D = 6, DHigh = 10)
+        val test = ManyRoutersTest(params = gossipParams, mockRouterCount = gossipParams.DHigh)
+        val topic = "topic1"
+        test.connectAll()
+
+        test.mockRouters.forEach {
+            it.subscribe(topic)
+//            it.sendToSingle(createGraftMessage(topic))
+        }
+        test.gossipRouter.subscribe(topic)
+
+        // 2 heartbeats - the topic should be GRAFTed
+        test.fuzz.timeController.addTime(2.seconds)
+
+        assertTrue((test.gossipRouter.mesh[topic]?.size ?: 0) == gossipParams.D)
+
+        test.mockRouters.forEach {
+            it.sendToSingle(createGraftMessage(topic))
+        }
+
+        test.fuzz.timeController.addTime(2.seconds)
+
+        assertTrue((test.gossipRouter.mesh[topic]?.size ?: 0) == gossipParams.DHigh)
+
+        // remote peer leaves the mesh
+        val message1 = newMessage(topic, 0L, "Hello-0".toByteArray())
+        test.gossipRouter.publish(message1)
+
+        val routerReceivedMessageCount =
+            test.mockRouters.count { mockRouter ->
+                mockRouter.inboundMessages.any { msg ->
+                    msg.publishCount > 0
+                }
+            }
+
+        assertTrue(routerReceivedMessageCount == gossipParams.DHigh)
+    }
+
+    @Test
     fun `publishing should collect at least D peers if mesh is smaller`() {
         val params = GossipParams()
 
@@ -1264,6 +1304,15 @@ class GossipV1_1Tests : GossipTestsBase() {
 
         assertTrue(peersReceivedMessage.size == params.D)
         assertTrue(peersReceivedMessage.containsAll(goodScoredPeers))
+    }
+
+    private fun createGraftMessage(topic: String): Rpc.RPC {
+        return Rpc.RPC.newBuilder().setControl(
+            Rpc.ControlMessage.newBuilder().addGraft(
+                Rpc.ControlGraft.newBuilder()
+                    .setTopicID(topic)
+            )
+        ).build()
     }
 
     private fun createPruneMessage(topic: String, pxPeersCount: Int = 0): Rpc.RPC {

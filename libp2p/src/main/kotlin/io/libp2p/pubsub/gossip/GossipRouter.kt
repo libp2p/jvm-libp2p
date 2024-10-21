@@ -416,17 +416,24 @@ open class GossipRouter(
                         val topicMeshPeers = mesh[topic]
                         if (topicMeshPeers != null) {
                             // we are subscribed to the topic
-                            val nonMeshTopicPeers = getTopicPeers(topic) - topicMeshPeers
-                            val (nonMeshTopicPeersAbovePublishThreshold, nonMeshTopicPeersBelowPublishThreshold) =
-                                nonMeshTopicPeers.partition { score.score(it.peerId) >= scoreParams.publishThreshold }
-                            // this deviates from the original spec but we want at least D peers for publishing
-                            // prioritizing mesh peers, then non-mesh peers with acceptable score,
-                            // and then underscored non-mesh peers as a last resort
-                            (
-                                topicMeshPeers +
-                                    nonMeshTopicPeersAbovePublishThreshold.shuffled(random) +
+                            if (topicMeshPeers.size < params.D) {
+                                // we need extra non-mesh peers for more reliable publishing
+                                val nonMeshTopicPeers = getTopicPeers(topic) - topicMeshPeers
+                                val (nonMeshTopicPeersAbovePublishThreshold, nonMeshTopicPeersBelowPublishThreshold) =
+                                    nonMeshTopicPeers.partition { score.score(it.peerId) >= scoreParams.publishThreshold }
+                                // this deviates from the original spec but we want at least D peers for publishing
+                                // prioritizing mesh peers, then non-mesh peers with acceptable score,
+                                // and then underscored non-mesh peers as a last resort
+                                listOf(
+                                    topicMeshPeers,
+                                    nonMeshTopicPeersAbovePublishThreshold.shuffled(random),
                                     nonMeshTopicPeersBelowPublishThreshold.shuffled(random)
-                                ).take(params.D)
+                                )
+                                    .flatten()
+                                    .take(params.D)
+                            } else {
+                                topicMeshPeers
+                            }
                         } else {
                             // we are not subscribed to the topic
                             fanout[topic] ?: getTopicPeers(topic).shuffled(random).take(params.D)
