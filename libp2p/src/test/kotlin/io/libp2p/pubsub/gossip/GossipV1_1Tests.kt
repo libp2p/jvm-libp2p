@@ -716,7 +716,7 @@ class GossipV1_1Tests : GossipTestsBase() {
     @Test
     fun testOutboundMeshQuotas1() {
         val appScore = mutableMapOf<PeerId, Double>().withDefault { 0.0 }
-        val coreParams = GossipParams(3, 3, 3, DLazy = 3, DOut = 1, floodPublishMaxMessageSizeThreshold = 0)
+        val coreParams = GossipParams(3, 3, 3, DLazy = 3, DOut = 1, floodPublishMaxMessageSizeThreshold = NEVER_FLOOD_PUBLISH)
         val peerScoreParams = GossipPeerScoreParams(appSpecificScore = { appScore.getValue(it) })
         val scoreParams = GossipScoreParams(peerScoreParams = peerScoreParams)
         val test = ManyRoutersTest(params = coreParams, scoreParams = scoreParams)
