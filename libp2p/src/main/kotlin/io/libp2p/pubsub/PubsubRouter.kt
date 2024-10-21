@@ -23,7 +23,7 @@ interface PubsubMessage {
         get() = protobufMessage.topicIDsList
 
     val size: Int
-            get() = protobufMessage.data.size()
+        get() = protobufMessage.data.size()
 
     fun messageSha256() = sha256(protobufMessage.toByteArray())
 
