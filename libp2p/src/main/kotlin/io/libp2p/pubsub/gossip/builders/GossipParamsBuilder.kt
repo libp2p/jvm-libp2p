@@ -90,6 +90,7 @@ class GossipParamsBuilder {
         this.maxPeersSentInPruneMsg = source.maxPeersSentInPruneMsg
         this.maxPeersAcceptedInPruneMsg = source.maxPeersAcceptedInPruneMsg
         this.pruneBackoff = source.pruneBackoff
+        this.floodPublishMaxMessageSizeThreshold = source.floodPublishMaxMessageSizeThreshold
         this.gossipFactor = source.gossipFactor
         this.opportunisticGraftPeers = source.opportunisticGraftPeers
         this.opportunisticGraftTicks = source.opportunisticGraftTicks
