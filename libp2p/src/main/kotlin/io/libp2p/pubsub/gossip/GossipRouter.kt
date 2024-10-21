@@ -413,7 +413,7 @@ open class GossipRouter(
                         if (topicMeshPeers != null) {
                             // we are subscribed to the topic
                             val addFromNonMeshCount = max(0, params.D - topicMeshPeers.size)
-                            val nonMeshTopicPeers = (getTopicPeers(topic) - topicMeshPeers)
+                            val nonMeshTopicPeers = getTopicPeers(topic) - topicMeshPeers
                             topicMeshPeers + nonMeshTopicPeers.shuffled(random).take(addFromNonMeshCount)
                         } else {
                             // we are not subscribed to the topic
