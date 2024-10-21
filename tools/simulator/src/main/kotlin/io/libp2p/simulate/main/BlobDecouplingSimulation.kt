@@ -41,7 +41,7 @@ class BlobDecouplingSimulation(
     val randomSeed: Long = 3L,
     val rnd: Random = Random(randomSeed),
 
-    val floodPublishMaxMessageSizeThreshold: Int = 0,
+    val floodPublishMaxMessageSizeThreshold: Int = 16384,
 
     val sendingPeerBand: Bandwidth = Bandwidth.mbitsPerSec(100),
 
