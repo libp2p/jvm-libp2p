@@ -1206,6 +1206,66 @@ class GossipV1_1Tests : GossipTestsBase() {
         assertTrue(routerReceivedMessageCount >= params.D)
     }
 
+    @Test
+    fun `publishing should collect at least D peers if mesh is smaller and prefer well scored peers`() {
+        val params = GossipParams()
+        val peerAppScores = mutableMapOf<PeerId, Int>()
+        val gossipScoreParams = GossipScoreParams(
+            peerScoreParams = GossipPeerScoreParams(
+                appSpecificScore = {
+                    peerAppScores[it]?.toDouble() ?: 0.0
+                },
+                appSpecificWeight = 1.0
+            )
+        )
+
+        val test = ManyRoutersTest(params = params, scoreParams = gossipScoreParams, mockRouterCount = 10)
+        val topic = "topic1"
+        test.connectAll()
+
+        test.mockRouters.forEach { it.subscribe(topic) }
+        test.gossipRouter.subscribe(topic)
+
+        // 2 heartbeats - the topic should be GRAFTed
+        test.fuzz.timeController.addTime(2.seconds)
+
+        val topicMeshRouters = test.gossipRouter.mesh[topic]!!.toList()
+        assertTrue((topicMeshRouters.size) == params.D)
+
+        // leave just 2 peers in the mesh
+        topicMeshRouters.drop(2)
+            .forEach {
+                test.getMockRouter(it.peerId).sendToSingle(createPruneMessage(topic))
+            }
+        // downscore all peers except 5
+        val goodScoredPeers = topicMeshRouters.take(5).map { it.peerId }.toSet()
+        test.routers
+            .map { it.peerId }
+            .filter { it !in goodScoredPeers }
+            .forEach { peerAppScores[it] = -gossipScoreParams.publishThreshold.toInt() - 1 }
+
+        // for D = 6: 2 peers in the mesh + 3 peers outside of mesh + others are significantly downscored
+        test.fuzz.timeController.addTime(1.seconds)
+
+        assertTrue((test.gossipRouter.mesh[topic]?.size ?: 0) == 2)
+
+        val message1 = newMessage(topic, 0L, "Hello-0".toByteArray())
+        test.gossipRouter.publish(message1)
+
+        // router should take 2 mesh peers, 3 well scored peers and 1 peer scored below publishThreshold
+        val peersReceivedMessage = test.routers
+            .filter {
+                val mockRouter = it.router as MockRouter
+                mockRouter.inboundMessages.any { msg ->
+                    msg.publishCount > 0
+                }
+            }
+            .map { it.peerId }
+
+        assertTrue(peersReceivedMessage.size == params.D)
+        assertTrue(peersReceivedMessage.containsAll(goodScoredPeers))
+    }
+
     private fun createPruneMessage(topic: String, pxPeersCount: Int = 0): Rpc.RPC {
         val peerInfos = List(pxPeersCount) {
             Rpc.PeerInfo.newBuilder()

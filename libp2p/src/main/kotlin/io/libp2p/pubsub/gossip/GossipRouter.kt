@@ -281,6 +281,7 @@ open class GossipRouter(
         when {
             isDirect(peer) ->
                 prune(peer, topic)
+
             isBackOff(peer, topic) -> {
                 notifyRouterMisbehavior(peer, 1)
                 if (isBackOffFlood(peer, topic)) {
@@ -288,10 +289,13 @@ open class GossipRouter(
                 }
                 prune(peer, topic)
             }
+
             score.score(peer.peerId) < 0 ->
                 prune(peer, topic)
+
             meshPeers.size >= params.DHigh && !peer.isOutbound() ->
                 prune(peer, topic)
+
             peer !in meshPeers ->
                 graft(peer, topic)
         }
@@ -412,9 +416,17 @@ open class GossipRouter(
                         val topicMeshPeers = mesh[topic]
                         if (topicMeshPeers != null) {
                             // we are subscribed to the topic
-                            val addFromNonMeshCount = max(0, params.D - topicMeshPeers.size)
                             val nonMeshTopicPeers = getTopicPeers(topic) - topicMeshPeers
-                            topicMeshPeers + nonMeshTopicPeers.shuffled(random).take(addFromNonMeshCount)
+                            val (nonMeshTopicPeersAbovePublishThreshold, nonMeshTopicPeersBelowPublishThreshold) =
+                                nonMeshTopicPeers.partition { score.score(it.peerId) >= scoreParams.publishThreshold }
+                            // this deviates from the original spec but we want at least D peers for publishing
+                            // prioritizing mesh peers, then non-mesh peers with acceptable score,
+                            // and then underscored non-mesh peers as a last resort
+                            (
+                                topicMeshPeers +
+                                    nonMeshTopicPeersAbovePublishThreshold.shuffled(random) +
+                                    nonMeshTopicPeersBelowPublishThreshold.shuffled(random)
+                                ).take(params.D)
                         } else {
                             // we are not subscribed to the topic
                             fanout[topic] ?: getTopicPeers(topic).shuffled(random).take(params.D)
