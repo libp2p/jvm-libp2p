@@ -400,8 +400,10 @@ open class GossipRouter(
     override fun broadcastOutbound(msg: PubsubMessage): CompletableFuture<Unit> {
         msg.topics.forEach { lastPublished[it] = currentTimeSupplier() }
 
+        val floodPublish = msg.protobufMessage.data.size() <= params.floodPublishMaxMessageSizeThreshold
+
         val peers =
-            if (params.floodPublish) {
+            if (floodPublish) {
                 msg.topics
                     .flatMap { getTopicPeers(it) }
                     .filter { score.score(it.peerId) >= scoreParams.publishThreshold }

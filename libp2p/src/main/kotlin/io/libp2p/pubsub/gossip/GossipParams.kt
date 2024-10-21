@@ -112,11 +112,13 @@ data class GossipParams(
     val seenTTL: Duration = 2.minutes,
 
     /**
-     * [floodPublish] is a gossipsub router option that enables flood publishing.
-     * When this is enabled, published messages are forwarded to all peers with score >=
-     * to publishThreshold
+     * [floodPublishMaxMessageSizeThreshold] controls the maximum size (in bytes) a message will be
+     * published using flood publishing mode.
+     * When a message size is <= [floodPublishMaxMessageSizeThreshold], published messages are forwarded
+     * to all peers with score >= to [GossipScoreParams.publishThreshold]
+     * The default is 0 KiB (never flood publish).
      */
-    val floodPublish: Boolean = false,
+    val floodPublishMaxMessageSizeThreshold: Int = 0,
 
     /**
      * [gossipFactor] affects how many peers we will emit gossip to at each heartbeat.
@@ -240,7 +242,7 @@ data class GossipParams(
 
     /**
      * [iDontWantMinMessageSizeThreshold] controls the minimum size (in bytes) that an incoming message needs to be so that an IDONTWANT message is sent to mesh peers.
-     * The default is 16 KB.
+     * The default is 16 KiB.
      */
     val iDontWantMinMessageSizeThreshold: Int = 16384,
 
@@ -260,6 +262,8 @@ data class GossipParams(
         check(DLow <= D, "DLow should be <= D")
         check(DHigh >= D, "DHigh should be >= D")
         check(gossipFactor in 0.0..1.0, "gossipFactor should be in range [0.0, 1.0]")
+        check(floodPublishMaxMessageSizeThreshold >= 0, "floodPublishMaxMessageSizeThreshold should be >= 0")
+        check(iDontWantMinMessageSizeThreshold >= 0, "iDontWantMinMessageSizeThreshold should be >= 0")
     }
 
     companion object {

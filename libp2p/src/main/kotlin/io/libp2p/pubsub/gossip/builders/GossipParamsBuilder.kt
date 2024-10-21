@@ -76,6 +76,8 @@ class GossipParamsBuilder {
 
     private var iDontWantMinMessageSizeThreshold: Int? = null
 
+    private var floodPublishMaxMessageSizeThreshold: Int? = null
+
     private var iDontWantTTL: Duration? = null
 
     init {
@@ -90,7 +92,6 @@ class GossipParamsBuilder {
         this.maxPeersSentInPruneMsg = source.maxPeersSentInPruneMsg
         this.maxPeersAcceptedInPruneMsg = source.maxPeersAcceptedInPruneMsg
         this.pruneBackoff = source.pruneBackoff
-        this.floodPublish = source.floodPublish
         this.gossipFactor = source.gossipFactor
         this.opportunisticGraftPeers = source.opportunisticGraftPeers
         this.opportunisticGraftTicks = source.opportunisticGraftTicks
@@ -141,8 +142,6 @@ class GossipParamsBuilder {
 
     fun pruneBackoff(value: Duration): GossipParamsBuilder = apply { pruneBackoff = value }
 
-    fun floodPublish(value: Boolean): GossipParamsBuilder = apply { floodPublish = value }
-
     fun gossipFactor(value: Double): GossipParamsBuilder = apply { gossipFactor = value }
 
     fun opportunisticGraftPeers(value: Int): GossipParamsBuilder = apply {
@@ -185,6 +184,8 @@ class GossipParamsBuilder {
 
     fun iDontWantMinMessageSizeThreshold(value: Int): GossipParamsBuilder = apply { iDontWantMinMessageSizeThreshold = value }
 
+    fun floodPublishMaxMessageSizeThreshold(value: Int): GossipParamsBuilder = apply { floodPublishMaxMessageSizeThreshold = value }
+
     fun iDontWantTTL(value: Duration): GossipParamsBuilder = apply { iDontWantTTL = value }
 
     fun build(): GossipParams {
@@ -203,7 +204,7 @@ class GossipParamsBuilder {
             gossipHistoryLength = gossipHistoryLength!!,
             heartbeatInterval = heartbeatInterval!!,
             seenTTL = seenTTL!!,
-            floodPublish = floodPublish!!,
+            floodPublishMaxMessageSizeThreshold = floodPublishMaxMessageSizeThreshold!!,
             gossipFactor = gossipFactor!!,
             opportunisticGraftPeers = opportunisticGraftPeers!!,
             opportunisticGraftTicks = opportunisticGraftTicks!!,

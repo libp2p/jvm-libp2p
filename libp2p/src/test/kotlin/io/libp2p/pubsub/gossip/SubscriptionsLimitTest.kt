@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertDoesNotThrow
 
 class SubscriptionsLimitTest : TwoGossipHostTestBase() {
-    override val params = GossipParams(maxSubscriptions = 5, floodPublish = true)
+    override val params = GossipParams(maxSubscriptions = 5, floodPublishMaxMessageSizeThreshold = 0)
 
     @Test
     fun `new peer subscribed to many topics`() {
