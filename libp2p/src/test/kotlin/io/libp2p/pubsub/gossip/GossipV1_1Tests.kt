@@ -530,8 +530,9 @@ class GossipV1_1Tests : GossipTestsBase() {
 
     @Test
     fun testNotFloodPublish() {
+        val message = newMessage("topic1", 0L, "Hello-0".toByteArray())
         val appScore = mutableMapOf<PeerId, Double>().withDefault { 0.0 }
-        val coreParams = GossipParams(3, 3, 3, floodPublish = false)
+        val coreParams = GossipParams(3, 3, 3, floodPublishMaxMessageSizeThreshold = message.protobufMessage.data.size() - 1)
         val peerScoreParams = GossipPeerScoreParams(appSpecificScore = { appScore.getValue(it) })
         val scoreParams = GossipScoreParams(peerScoreParams = peerScoreParams)
         val test = ManyRoutersTest(params = coreParams, scoreParams = scoreParams)
@@ -545,7 +546,7 @@ class GossipV1_1Tests : GossipTestsBase() {
         val topicMesh = test.gossipRouter.mesh["topic1"]!!
         assertTrue(topicMesh.size > 0 && topicMesh.size < test.routers.size)
 
-        test.gossipRouter.publish(newMessage("topic1", 0L, "Hello-0".toByteArray()))
+        test.gossipRouter.publish(message)
 
         test.fuzz.timeController.addTime(50.millis)
 
@@ -557,8 +558,9 @@ class GossipV1_1Tests : GossipTestsBase() {
 
     @Test
     fun testFloodPublish() {
+        val message = newMessage("topic1", 0L, "Hello-0".toByteArray())
         val appScore = mutableMapOf<PeerId, Double>().withDefault { 0.0 }
-        val coreParams = GossipParams(3, 3, 3, floodPublish = true)
+        val coreParams = GossipParams(3, 3, 3, floodPublishMaxMessageSizeThreshold = message.protobufMessage.data.size())
         val peerScoreParams = GossipPeerScoreParams(
             appSpecificScore = { appScore.getValue(it) },
             appSpecificWeight = 1.0
@@ -580,7 +582,7 @@ class GossipV1_1Tests : GossipTestsBase() {
         val topicMesh = test.gossipRouter.mesh["topic1"]!!.map { it.peerId }
         assertTrue(topicMesh.size > 0 && topicMesh.size < test.routers.size)
 
-        test.gossipRouter.publish(newMessage("topic1", 0L, "Hello-0".toByteArray()))
+        test.gossipRouter.publish(message)
 
         test.fuzz.timeController.addTime(50.millis)
 
@@ -650,7 +652,7 @@ class GossipV1_1Tests : GossipTestsBase() {
             3,
             3,
             DLazy = 3,
-            floodPublish = false,
+            floodPublishMaxMessageSizeThreshold = 0,
             gossipFactor = 0.5
         )
         val peerScoreParams = GossipPeerScoreParams(
@@ -714,7 +716,7 @@ class GossipV1_1Tests : GossipTestsBase() {
     @Test
     fun testOutboundMeshQuotas1() {
         val appScore = mutableMapOf<PeerId, Double>().withDefault { 0.0 }
-        val coreParams = GossipParams(3, 3, 3, DLazy = 3, DOut = 1, floodPublish = false)
+        val coreParams = GossipParams(3, 3, 3, DLazy = 3, DOut = 1, floodPublishMaxMessageSizeThreshold = 0)
         val peerScoreParams = GossipPeerScoreParams(appSpecificScore = { appScore.getValue(it) })
         val scoreParams = GossipScoreParams(peerScoreParams = peerScoreParams)
         val test = ManyRoutersTest(params = coreParams, scoreParams = scoreParams)

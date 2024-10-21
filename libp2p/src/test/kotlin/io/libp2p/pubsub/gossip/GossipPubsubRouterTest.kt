@@ -22,7 +22,7 @@ import java.util.concurrent.TimeUnit
 
 class GossipPubsubRouterTest : PubsubRouterTest(
     createGossipFuzzRouterFactory {
-        GossipRouterBuilder(params = GossipParams(3, 3, 100, floodPublish = false))
+        GossipRouterBuilder(params = GossipParams(3, 3, 100, floodPublishMaxMessageSizeThreshold = 0))
     }
 ) {
 
@@ -59,7 +59,7 @@ class GossipPubsubRouterTest : PubsubRouterTest(
         // this is to test ihave/iwant
         fuzz.timeController.addTime(Duration.ofMillis(1))
 
-        val r = { GossipRouterBuilder(params = GossipParams(3, 3, 3, DOut = 0, DLazy = 1000, floodPublish = false)) }
+        val r = { GossipRouterBuilder(params = GossipParams(3, 3, 3, DOut = 0, DLazy = 1000, floodPublishMaxMessageSizeThreshold = 0)) }
         val routerCenter = fuzz.createTestGossipRouter(r)
         allRouters.add(0, routerCenter)
 

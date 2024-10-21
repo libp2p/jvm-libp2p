@@ -20,7 +20,7 @@ val Eth2DefaultGossipParams = GossipParams(
     DLazy = 8,
 
     pruneBackoff = 1.minutes,
-    floodPublish = true,
+    floodPublishMaxMessageSizeThreshold = 0,
     gossipFactor = 0.25,
     DScore = 4,
     DOut = 2,
