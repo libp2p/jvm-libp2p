@@ -23,7 +23,7 @@ const val DEFAULT_MAX_PUBSUB_MESSAGE_SIZE = 1 shl 20
 
 typealias PubsubMessageHandler = (PubsubMessage) -> CompletableFuture<ValidationResult>
 
-class DefaultPubsubMessage(override val protobufMessage: Rpc.Message) : AbstractPubsubMessage() {
+open class DefaultPubsubMessage(override val protobufMessage: Rpc.Message) : AbstractPubsubMessage() {
     override val messageId: MessageId = protobufMessage.from.toWBytes() + protobufMessage.seqno.toWBytes()
 }
 
@@ -104,7 +104,7 @@ abstract class AbstractRouter(
     }
 
     override fun addNewStream(stream: Stream) = addNewStreamWithHandler(stream, null)
-    private fun addNewStreamWithHandler(stream: Stream, handler: ChannelHandler?) {
+    protected fun addNewStreamWithHandler(stream: Stream, handler: ChannelHandler?) {
         initChannelWithHandler(StreamHandler(stream), handler)
     }
 
