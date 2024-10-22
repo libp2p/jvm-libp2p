@@ -1176,7 +1176,6 @@ class GossipV1_1Tests : GossipTestsBase() {
 
         test.mockRouters.forEach {
             it.subscribe(topic)
-//            it.sendToSingle(createGraftMessage(topic))
         }
         test.gossipRouter.subscribe(topic)
 
