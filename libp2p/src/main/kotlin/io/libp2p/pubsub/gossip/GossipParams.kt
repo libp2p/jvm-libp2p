@@ -22,6 +22,10 @@ fun defaultDLazy(D: Int) = D
 fun defaultDScore(D: Int) = D * 2 / 3
 fun defaultDOut(D: Int, DLow: Int) = min(D / 2, max(DLow - 1, 0))
 
+// floodPublishMaxMessageSizeThreshold shortcuts
+const val NEVER_FLOOD_PUBLISH = 0
+const val ALWAYS_FLOOD_PUBLISH = Int.MAX_VALUE
+
 /**
  * Parameters of Gossip 1.1 router
  */
@@ -112,11 +116,16 @@ data class GossipParams(
     val seenTTL: Duration = 2.minutes,
 
     /**
-     * [floodPublish] is a gossipsub router option that enables flood publishing.
-     * When this is enabled, published messages are forwarded to all peers with score >=
-     * to publishThreshold
+     * [floodPublishMaxMessageSizeThreshold] controls the maximum size (in bytes) a message will be
+     * published using flood publishing mode.
+     * When a message size is <= [floodPublishMaxMessageSizeThreshold], published messages are forwarded
+     * to all peers with score >= to [GossipScoreParams.publishThreshold]
+     *
+     * [NEVER_FLOOD_PUBLISH] and [ALWAYS_FLOOD_PUBLISH] can be used as shortcuts.
+     *
+     * The default is [NEVER_FLOOD_PUBLISH] (0 KiB).
      */
-    val floodPublish: Boolean = false,
+    val floodPublishMaxMessageSizeThreshold: Int = NEVER_FLOOD_PUBLISH,
 
     /**
      * [gossipFactor] affects how many peers we will emit gossip to at each heartbeat.
@@ -240,9 +249,9 @@ data class GossipParams(
 
     /**
      * [iDontWantMinMessageSizeThreshold] controls the minimum size (in bytes) that an incoming message needs to be so that an IDONTWANT message is sent to mesh peers.
-     * The default is 16 KB.
+     * The default is 16 KiB.
      */
-    val iDontWantMinMessageSizeThreshold: Int = 16000,
+    val iDontWantMinMessageSizeThreshold: Int = 16384,
 
     /**
      * [iDontWantTTL] Expiry time for cache of received IDONTWANT messages for peers
@@ -260,6 +269,8 @@ data class GossipParams(
         check(DLow <= D, "DLow should be <= D")
         check(DHigh >= D, "DHigh should be >= D")
         check(gossipFactor in 0.0..1.0, "gossipFactor should be in range [0.0, 1.0]")
+        check(floodPublishMaxMessageSizeThreshold >= 0, "floodPublishMaxMessageSizeThreshold should be >= 0")
+        check(iDontWantMinMessageSizeThreshold >= 0, "iDontWantMinMessageSizeThreshold should be >= 0")
     }
 
     companion object {

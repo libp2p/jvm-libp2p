@@ -150,6 +150,27 @@ class GossipV1_2Tests : GossipTestsBase() {
         assertThat(receivedMessages).containsExactly(msg.protobufMessage)
     }
 
+    @Test
+    fun iDontWantIsSentOnPublishing() {
+        val test = startSingleTopicNetwork(
+            params = GossipParams(iDontWantMinMessageSizeThreshold = 5),
+            mockRouterCount = 3
+        )
+
+        test.mockRouters.forEach { it.subscribe("topic1") }
+        val msgToPublish = newMessage("topic1", 0L, "Hello".toByteArray())
+        test.gossipRouter.publish(msgToPublish)
+        test.mockRouters.forEach {
+            // IDONTWANT is received
+            it.waitForMessage { msg ->
+                msg.control.idontwantCount == 1 &&
+                    msg.control.idontwantList.first().messageIDsList.map { mIds -> mIds.toWBytes() }.contains(msgToPublish.messageId)
+            }
+            // msg is received
+            it.waitForMessage { msg -> msg.publishCount > 0 }
+        }
+    }
+
     private fun startSingleTopicNetwork(params: GossipParams, mockRouterCount: Int): ManyRoutersTest {
         val test = ManyRoutersTest(
             protocol = PubsubProtocol.Gossip_V_1_2,

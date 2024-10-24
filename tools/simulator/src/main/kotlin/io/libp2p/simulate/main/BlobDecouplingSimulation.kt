@@ -41,8 +41,6 @@ class BlobDecouplingSimulation(
     val randomSeed: Long = 3L,
     val rnd: Random = Random(randomSeed),
 
-    val floodPublish: Boolean = true,
-
     val sendingPeerBand: Bandwidth = Bandwidth.mbitsPerSec(100),
 
     val peerBands: Iterator<Bandwidth> = iterator {
@@ -83,10 +81,6 @@ class BlobDecouplingSimulation(
     )
 
     val gossipParams = Eth2DefaultGossipParams
-        .copy(
-//            heartbeatInterval = 1.minutes
-            floodPublish = floodPublish
-        )
     val gossipScoreParams = Eth2DefaultScoreParams
     val gossipRouterCtor = { _: Int ->
         SimGossipRouterBuilder().also {
@@ -294,7 +288,6 @@ fun main() {
 //                logger = {},
                 nodeCount = 1000,
                 peerBands = band,
-                floodPublish = false,
 //                randomSeed = 2
             )
 

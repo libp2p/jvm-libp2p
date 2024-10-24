@@ -281,6 +281,7 @@ open class GossipRouter(
         when {
             isDirect(peer) ->
                 prune(peer, topic)
+
             isBackOff(peer, topic) -> {
                 notifyRouterMisbehavior(peer, 1)
                 if (isBackOffFlood(peer, topic)) {
@@ -288,10 +289,13 @@ open class GossipRouter(
                 }
                 prune(peer, topic)
             }
+
             score.score(peer.peerId) < 0 ->
                 prune(peer, topic)
+
             meshPeers.size >= params.DHigh && !peer.isOutbound() ->
                 prune(peer, topic)
+
             peer !in meshPeers ->
                 graft(peer, topic)
         }
@@ -400,31 +404,63 @@ open class GossipRouter(
     override fun broadcastOutbound(msg: PubsubMessage): CompletableFuture<Unit> {
         msg.topics.forEach { lastPublished[it] = currentTimeSupplier() }
 
+        val floodPublish = msg.size <= params.floodPublishMaxMessageSizeThreshold
+
         val peers =
-            if (params.floodPublish) {
+            if (floodPublish) {
                 msg.topics
                     .flatMap { getTopicPeers(it) }
                     .filter { score.score(it.peerId) >= scoreParams.publishThreshold }
                     .plus(getDirectPeers())
             } else {
                 msg.topics
-                    .mapNotNull { topic ->
-                        mesh[topic] ?: fanout[topic] ?: getTopicPeers(topic).shuffled(random).take(params.D)
-                            .also {
-                                if (it.isNotEmpty()) fanout[topic] = it.toMutableSet()
+                    .map { topic ->
+                        val topicMeshPeers = mesh[topic]
+                        if (topicMeshPeers != null) {
+                            // we are subscribed to the topic
+                            if (topicMeshPeers.size < params.D) {
+                                // we need extra non-mesh peers for more reliable publishing
+                                val nonMeshTopicPeers = getTopicPeers(topic) - topicMeshPeers
+                                val (nonMeshTopicPeersAbovePublishThreshold, nonMeshTopicPeersBelowPublishThreshold) =
+                                    nonMeshTopicPeers.partition { score.score(it.peerId) >= scoreParams.publishThreshold }
+                                // this deviates from the original spec but we want at least D peers for publishing
+                                // prioritizing mesh peers, then non-mesh peers with acceptable score,
+                                // and then underscored non-mesh peers as a last resort
+                                listOf(
+                                    topicMeshPeers,
+                                    nonMeshTopicPeersAbovePublishThreshold.shuffled(random),
+                                    nonMeshTopicPeersBelowPublishThreshold.shuffled(random)
+                                )
+                                    .flatten()
+                                    .take(params.D)
+                            } else {
+                                topicMeshPeers
                             }
+                        } else {
+                            // we are not subscribed to the topic
+                            fanout[topic] ?: getTopicPeers(topic).shuffled(random).take(params.D)
+                                .also {
+                                    if (it.isNotEmpty()) fanout[topic] = it.toMutableSet()
+                                }
+                        }
                     }
                     .flatten()
             }
-        val list = peers
-            .filterNot { peerDoesNotWantMessage(it, msg.messageId) }
-            .map { submitPublishMessage(it, msg) }
 
         mCache += msg
-        flushAllPending()
 
-        return if (list.isNotEmpty()) {
-            anyComplete(list)
+        return if (peers.isNotEmpty()) {
+            iDontWant(msg)
+            val publishedMessages = peers
+                .filterNot { peerDoesNotWantMessage(it, msg.messageId) }
+                .map { submitPublishMessage(it, msg) }
+            if (publishedMessages.isEmpty()) {
+                // all peers have sent IDONTWANT for this message id
+                CompletableFuture.completedFuture(Unit)
+            } else {
+                flushAllPending()
+                anyComplete(publishedMessages)
+            }
         } else {
             completedExceptionally(
                 NoPeersForOutboundMessageException("No peers for message topics ${msg.topics} found")
@@ -605,16 +641,16 @@ open class GossipRouter(
         enqueueIwant(peer, messageIds)
     }
 
-    private fun iDontWant(msg: PubsubMessage, receivedFrom: PeerHandler) {
+    private fun iDontWant(msg: PubsubMessage, receivedFrom: PeerHandler? = null) {
         if (!this.protocol.supportsIDontWant()) return
-        if (msg.protobufMessage.data.size() < params.iDontWantMinMessageSizeThreshold) return
+        if (msg.size < params.iDontWantMinMessageSizeThreshold) return
         // we need to send IDONTWANT messages to mesh peers immediately in order for them to have an effect
         msg.topics
             .mapNotNull { mesh[it] }
             .flatten()
             .distinct()
-            .minus(receivedFrom)
-            .forEach { peer -> sendIdontwant(peer, msg.messageId) }
+            .minus(setOfNotNull(receivedFrom))
+            .forEach { sendIdontwant(it, msg.messageId) }
     }
 
     private fun enqueuePrune(peer: PeerHandler, topic: Topic) {
