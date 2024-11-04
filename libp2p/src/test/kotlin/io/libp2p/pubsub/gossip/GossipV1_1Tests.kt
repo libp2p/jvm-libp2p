@@ -1387,8 +1387,8 @@ class GossipV1_1Tests : GossipTestsBase() {
         test.fuzz.timeController.addTime(2.seconds)
 
         // let's down score all direct peers
-        test.routers.slice(1..6).forEach {
-            appScore[it.peerId] = -20.0
+        directPeers.forEach {
+            appScore[it] = -20.0
         }
 
         val topicMeshRouters = test.gossipRouter.mesh["topic1"]!!.toList()
