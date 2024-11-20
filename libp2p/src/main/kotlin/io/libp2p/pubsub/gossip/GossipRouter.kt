@@ -41,7 +41,6 @@ import kotlin.collections.mutableSetOf
 import kotlin.collections.none
 import kotlin.collections.plus
 import kotlin.collections.plusAssign
-import kotlin.collections.reversed
 import kotlin.collections.set
 import kotlin.collections.shuffled
 import kotlin.collections.sortedBy
@@ -564,7 +563,7 @@ open class GossipRouter(
                     val sortedPeers = peers
                         .shuffled(random)
                         .sortedBy { score.score(it.peerId) }
-                        .reversed()
+                        .asReversed()
 
                     val bestDPeers = sortedPeers.take(params.DScore)
                     val restPeers = sortedPeers.drop(params.DScore).shuffled(random)
