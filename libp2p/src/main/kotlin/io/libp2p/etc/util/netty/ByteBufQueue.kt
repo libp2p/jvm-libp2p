@@ -17,7 +17,7 @@ class ByteBufQueue {
             val bufLen = data.first().readableBytes()
             if (size + bufLen > maxLength) break
             size += bufLen
-            wholeBuffers += data.removeAt(data.lastIndex)
+            wholeBuffers += data.removeAt(0)
             if (size == maxLength) break
         }
 
