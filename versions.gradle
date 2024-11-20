@@ -9,12 +9,12 @@ dependencyManagement {
         dependency "com.google.guava:guava:33.3.1-jre"
 
         dependency "org.slf4j:slf4j-api:2.0.9"
-        dependencySet(group: 'org.apache.logging.log4j', version: '2.24.0') {
+        dependencySet(group: 'org.apache.logging.log4j', version: '2.24.1') {
             entry 'log4j-core'
             entry 'log4j-slf4j2-impl'
         }
 
-        dependencySet(group: 'org.junit.jupiter', version: '5.11.1') {
+        dependencySet(group: 'org.junit.jupiter', version: '5.11.3') {
             entry 'junit-jupiter-api'
             entry 'junit-jupiter-engine'
             entry 'junit-jupiter-params'
@@ -31,7 +31,7 @@ dependencyManagement {
             entry 'protobuf-java'
             entry 'protoc'
         }
-        dependencySet(group: "io.netty", version: "4.1.113.Final") {
+        dependencySet(group: "io.netty", version: "4.1.115.Final") {
             entry 'netty-common'
             entry 'netty-handler'
             entry 'netty-transport'

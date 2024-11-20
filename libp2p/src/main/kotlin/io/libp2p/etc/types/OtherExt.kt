@@ -18,7 +18,7 @@ class Deferrable {
     }
 
     fun execute() {
-        actions.reversed().forEach {
+        actions.asReversed().forEach {
             try {
                 it()
             } catch (e: Exception) {

@@ -1,8 +1,7 @@
 import com.diffplug.gradle.spotless.SpotlessExtension
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-import java.net.URL
-
+import java.net.URI
 // To publish the release artifact to CloudSmith repo run the following :
 // ./gradlew publish -PcloudsmithUser=<user> -PcloudsmithApiKey=<api-key>
 
@@ -135,13 +134,13 @@ configure(
     }
 
     tasks.dokkaHtml.configure {
-        outputDirectory.set(buildDir.resolve("dokka"))
+        outputDirectory.set(getLayout().buildDirectory.dir("dokka"))
         dokkaSourceSets {
             configureEach {
                 jdkVersion.set(11)
                 reportUndocumented.set(false)
                 externalDocumentationLink {
-                    url.set(URL("https://netty.io/4.1/api/"))
+                    url.set(URI.create("https://netty.io/4.1/api/").toURL())
                 }
             }
         }
