@@ -41,7 +41,7 @@ dependencyManagement {
         }
         dependency "com.github.multiformats:java-multibase:v1.1.1"
         dependency "tech.pegasys:noise-java:22.1.0"
-        dependencySet(group: "org.bouncycastle", version: "1.79") {
+        dependencySet(group: "org.bouncycastle", version: "1.78.1") {
             entry 'bcprov-jdk18on'
             entry 'bcpkix-jdk18on'
             entry 'bctls-jdk18on'
