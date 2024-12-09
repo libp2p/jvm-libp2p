@@ -36,7 +36,7 @@ configure(
         }
 ) {
     group = "io.libp2p"
-    version = "develop"
+    version = "1.2.1-RELEASE"
 
     apply(plugin = "kotlin")
     apply(plugin = "idea")
