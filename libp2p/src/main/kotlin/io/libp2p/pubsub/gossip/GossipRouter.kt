@@ -41,7 +41,6 @@ import kotlin.collections.mutableSetOf
 import kotlin.collections.none
 import kotlin.collections.plus
 import kotlin.collections.plusAssign
-import kotlin.collections.reversed
 import kotlin.collections.set
 import kotlin.collections.shuffled
 import kotlin.collections.sortedBy
@@ -146,7 +145,9 @@ open class GossipRouter(
         return currentTimeSupplier() < expire - (params.pruneBackoff + params.graftFloodThreshold).toMillis()
     }
 
-    private fun getDirectPeers() = peers.filter(::isDirect)
+    private fun getDirectPeers(topic: Topic): List<PeerHandler> {
+        return getTopicPeers(topic).filter(::isDirect)
+    }
     private fun isDirect(peer: PeerHandler) = scoreParams.peerScoreParams.isDirect(peer.peerId)
     private fun isConnected(peerId: PeerId) = peers.any { it.peerId == peerId }
 
@@ -387,12 +388,18 @@ open class GossipRouter(
 
     override fun broadcastInbound(msgs: List<PubsubMessage>, receivedFrom: PeerHandler) {
         msgs.forEach { pubMsg ->
-            pubMsg.topics
+            val topics = pubMsg.topics
                 .asSequence()
+
+            val peersFromMesh = topics
                 .mapNotNull { mesh[it] }
                 .flatten()
+
+            val peersFromDirectPeers = topics.flatMap { getDirectPeers(it) }
+
+            peersFromDirectPeers
+                .plus(peersFromMesh)
                 .distinct()
-                .plus(getDirectPeers())
                 .minus(receivedFrom)
                 .filterNot { peerDoesNotWantMessage(it, pubMsg.messageId) }
                 .forEach { submitPublishMessage(it, pubMsg) }
@@ -408,43 +415,9 @@ open class GossipRouter(
 
         val peers =
             if (floodPublish) {
-                msg.topics
-                    .flatMap { getTopicPeers(it) }
-                    .filter { score.score(it.peerId) >= scoreParams.publishThreshold }
-                    .plus(getDirectPeers())
+                selectPeersForOutboundBroadcastingInFloodPublish(msg)
             } else {
-                msg.topics
-                    .map { topic ->
-                        val topicMeshPeers = mesh[topic]
-                        if (topicMeshPeers != null) {
-                            // we are subscribed to the topic
-                            if (topicMeshPeers.size < params.D) {
-                                // we need extra non-mesh peers for more reliable publishing
-                                val nonMeshTopicPeers = getTopicPeers(topic) - topicMeshPeers
-                                val (nonMeshTopicPeersAbovePublishThreshold, nonMeshTopicPeersBelowPublishThreshold) =
-                                    nonMeshTopicPeers.partition { score.score(it.peerId) >= scoreParams.publishThreshold }
-                                // this deviates from the original spec but we want at least D peers for publishing
-                                // prioritizing mesh peers, then non-mesh peers with acceptable score,
-                                // and then underscored non-mesh peers as a last resort
-                                listOf(
-                                    topicMeshPeers,
-                                    nonMeshTopicPeersAbovePublishThreshold.shuffled(random),
-                                    nonMeshTopicPeersBelowPublishThreshold.shuffled(random)
-                                )
-                                    .flatten()
-                                    .take(params.D)
-                            } else {
-                                topicMeshPeers
-                            }
-                        } else {
-                            // we are not subscribed to the topic
-                            fanout[topic] ?: getTopicPeers(topic).shuffled(random).take(params.D)
-                                .also {
-                                    if (it.isNotEmpty()) fanout[topic] = it.toMutableSet()
-                                }
-                        }
-                    }
-                    .flatten()
+                selectPeersForOutboundBroadcasting(msg)
             }
 
         mCache += msg
@@ -466,6 +439,53 @@ open class GossipRouter(
                 NoPeersForOutboundMessageException("No peers for message topics ${msg.topics} found")
             )
         }
+    }
+
+    private fun selectPeersForOutboundBroadcastingInFloodPublish(msg: PubsubMessage): List<PeerHandler> {
+        return msg.topics
+            .flatMap { getTopicPeers(it) }
+            .filter { isDirect(it) || score.score(it.peerId) >= scoreParams.publishThreshold }
+    }
+
+    private fun selectPeersForOutboundBroadcasting(msg: PubsubMessage): List<PeerHandler> {
+        val fromMesh = msg.topics
+            .map { topic ->
+                val topicMeshPeers = mesh[topic]
+                if (topicMeshPeers != null) {
+                    // we are subscribed to the topic
+                    if (topicMeshPeers.size < params.D) {
+                        // we need extra non-mesh peers for more reliable publishing
+                        val nonMeshTopicPeers = getTopicPeers(topic) - topicMeshPeers
+                        val (nonMeshTopicPeersAbovePublishThreshold, nonMeshTopicPeersBelowPublishThreshold) =
+                            nonMeshTopicPeers.partition { score.score(it.peerId) >= scoreParams.publishThreshold }
+                        // this deviates from the original spec but we want at least D peers for publishing
+                        // prioritizing mesh peers, then non-mesh peers with acceptable score,
+                        // and then underscored non-mesh peers as a last resort
+                        listOf(
+                            topicMeshPeers,
+                            nonMeshTopicPeersAbovePublishThreshold.shuffled(random),
+                            nonMeshTopicPeersBelowPublishThreshold.shuffled(random)
+                        )
+                            .flatten()
+                            .take(params.D)
+                    } else {
+                        topicMeshPeers
+                    }
+                } else {
+                    // we are not subscribed to the topic
+                    fanout[topic] ?: getTopicPeers(topic).shuffled(random).take(params.D)
+                        .also {
+                            if (it.isNotEmpty()) fanout[topic] = it.toMutableSet()
+                        }
+                }
+            }
+            .flatten()
+
+        val fromDirectPeers = msg.topics.flatMap { getDirectPeers(it) }
+
+        return fromMesh
+            .plus(fromDirectPeers)
+            .distinct()
     }
 
     override fun subscribe(topic: Topic) {
@@ -543,7 +563,7 @@ open class GossipRouter(
                     val sortedPeers = peers
                         .shuffled(random)
                         .sortedBy { score.score(it.peerId) }
-                        .reversed()
+                        .asReversed()
 
                     val bestDPeers = sortedPeers.take(params.DScore)
                     val restPeers = sortedPeers.drop(params.DScore).shuffled(random)

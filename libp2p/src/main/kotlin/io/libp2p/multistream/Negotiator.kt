@@ -106,7 +106,7 @@ object Negotiator {
                     ctx.pipeline().remove(this@GenericHandler)
                     // DelimiterBasedFrameDecoder should be removed last since it
                     // propagates unhandled bytes on removal
-                    prehandlers.reversed().forEach { ctx.pipeline().remove(it) }
+                    prehandlers.asReversed().forEach { ctx.pipeline().remove(it) }
                     // activate a handler for selected protocol
                     ctx.fireChannelActive()
                 }

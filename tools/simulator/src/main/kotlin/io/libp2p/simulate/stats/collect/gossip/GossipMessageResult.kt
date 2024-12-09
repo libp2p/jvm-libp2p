@@ -165,7 +165,7 @@ class GossipMessageResult(
             ret += msg
             curPeer = msg.origMsg.sendingPeer
         }
-        return ret.reversed()
+        return ret.asReversed()
     }
 
     fun findPubMessageFirst(peer: SimPeer, msgId: Long): PubMessageWrapper? =

@@ -91,7 +91,7 @@ class GossipV1_1Tests : GossipTestsBase() {
 
         val api = createPubsubApi(test.gossipRouter)
         val apiMessages = mutableListOf<MessageApi>()
-        api.subscribe(Subscriber { apiMessages += it }, io.libp2p.core.pubsub.Topic("topic2"))
+        api.subscribe(Subscriber { apiMessages += it }, Topic("topic2"))
 
         val msg1 = Rpc.RPC.newBuilder()
             .addPublish(newProtoMessage("topic2", 0L, "Hello-1".toByteArray()))
@@ -131,7 +131,7 @@ class GossipV1_1Tests : GossipTestsBase() {
 
         val api = createPubsubApi(test.gossipRouter)
         val apiMessages = mutableListOf<MessageApi>()
-        api.subscribe(Subscriber { apiMessages += it }, io.libp2p.core.pubsub.Topic("topic1"))
+        api.subscribe(Subscriber { apiMessages += it }, Topic("topic1"))
 
         val msg1 = Rpc.RPC.newBuilder()
             .addPublish(newProtoMessage("topic1", 0L, "Hello-1".toByteArray()))
@@ -653,7 +653,7 @@ class GossipV1_1Tests : GossipTestsBase() {
             3,
             3,
             DLazy = 3,
-            floodPublishMaxMessageSizeThreshold = 0,
+            floodPublishMaxMessageSizeThreshold = NEVER_FLOOD_PUBLISH,
             gossipFactor = 0.5
         )
         val peerScoreParams = GossipPeerScoreParams(
@@ -936,7 +936,7 @@ class GossipV1_1Tests : GossipTestsBase() {
             receivedMessages += it
             validationResult
         }
-        api.subscribe(slowValidator, io.libp2p.core.pubsub.Topic("topic1"))
+        api.subscribe(slowValidator, Topic("topic1"))
         test.mockRouters.forEach { it.subscribe("topic1") }
 
         val gossiper = test.mockRouters[0]
@@ -1305,6 +1305,106 @@ class GossipV1_1Tests : GossipTestsBase() {
 
         assertTrue(peersReceivedMessage.size == params.D)
         assertTrue(peersReceivedMessage.containsAll(goodScoredPeers))
+    }
+
+    @Test
+    fun `should always flood publish to subscribed direct peers`() {
+        val message = newMessage("topic1", 0L, "Hello-0".toByteArray())
+        val appScore = mutableMapOf<PeerId, Double>().withDefault { 0.0 }
+        val directPeers = mutableSetOf<PeerId>()
+        val coreParams = GossipParams(3, 3, 3, floodPublishMaxMessageSizeThreshold = ALWAYS_FLOOD_PUBLISH)
+        val peerScoreParams = GossipPeerScoreParams(
+            appSpecificScore = { appScore.getValue(it) },
+            appSpecificWeight = 1.0,
+            isDirect = { directPeers.contains(it) }
+        )
+        val scoreParams = GossipScoreParams(
+            peerScoreParams = peerScoreParams,
+            graylistThreshold = -15.0,
+            publishThreshold = -10.0,
+        )
+        val test = ManyRoutersTest(mockRouterCount = 10, params = coreParams, scoreParams = scoreParams)
+        test.connectAll()
+
+        test.gossipRouter.subscribe("topic1")
+        test.routers.slice(0..5).forEach {
+            it.router.subscribe("topic1")
+        }
+
+        test.routers.slice(1..6).forEach {
+            directPeers.add(it.peerId)
+        }
+
+        // now only peers from 1 to 5 are direct peers subscribed to the topic
+
+        test.fuzz.timeController.addTime(2.seconds)
+
+        // let's down score all peers
+        test.routers.forEach {
+            appScore[it.peerId] = -20.0
+        }
+        test.gossipRouter.publish(message)
+
+        test.fuzz.timeController.addTime(50.millis)
+
+        val publishedCount = test.mockRouters.flatMap { it.inboundMessages }.count { it.publishCount > 0 }
+
+        // only subscribed direct peers should receive the message
+        assertEquals(5, publishedCount)
+    }
+
+    @Test
+    fun `should always publish to subscribed direct peers`() {
+        val message = newMessage("topic1", 0L, "Hello-0".toByteArray())
+        val appScore = mutableMapOf<PeerId, Double>().withDefault { 0.0 }
+        val directPeers = mutableSetOf<PeerId>()
+        val coreParams = GossipParams(3, 3, 3, floodPublishMaxMessageSizeThreshold = NEVER_FLOOD_PUBLISH)
+        val peerScoreParams = GossipPeerScoreParams(
+            appSpecificScore = { appScore.getValue(it) },
+            appSpecificWeight = 1.0,
+            isDirect = { directPeers.contains(it) }
+        )
+        val scoreParams = GossipScoreParams(
+            peerScoreParams = peerScoreParams,
+            graylistThreshold = -15.0,
+            publishThreshold = -10.0,
+        )
+        val test = ManyRoutersTest(mockRouterCount = 10, params = coreParams, scoreParams = scoreParams)
+        test.connectAll()
+
+        test.gossipRouter.subscribe("topic1")
+
+        test.routers.slice(0..5).forEach {
+            it.router.subscribe("topic1")
+        }
+        test.routers.slice(1..6).forEach {
+            directPeers.add(it.peerId)
+        }
+
+        // now only peers from 1 to 5 are direct peers subscribed to the topic
+        val subscribedDirectPeers = test.routers.slice(1..5).map { it.peerId }
+
+        test.fuzz.timeController.addTime(2.seconds)
+
+        // let's down score all direct peers
+        directPeers.forEach {
+            appScore[it] = -20.0
+        }
+
+        val topicMeshRouters = test.gossipRouter.mesh["topic1"]!!.toList()
+
+        // the mesh is strictly smaller than the number of subscribed direct peers
+        assertTrue(topicMeshRouters.size < subscribedDirectPeers.size)
+
+        val expectedPublishedCount = topicMeshRouters.map { it.peerId }.plus(subscribedDirectPeers).distinct().size
+
+        test.gossipRouter.publish(message)
+
+        test.fuzz.timeController.addTime(50.millis)
+
+        val publishedCount = test.mockRouters.flatMap { it.inboundMessages }.count { it.publishCount > 0 }
+
+        assertEquals(expectedPublishedCount, publishedCount)
     }
 
     private fun createGraftMessage(topic: String): Rpc.RPC {
