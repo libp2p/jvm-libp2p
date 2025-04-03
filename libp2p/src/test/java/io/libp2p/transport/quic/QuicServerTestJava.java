@@ -7,9 +7,17 @@ import io.libp2p.core.StreamPromise;
 import io.libp2p.core.crypto.*;
 import io.libp2p.core.dsl.*;
 import io.libp2p.core.multiformats.*;
+import io.libp2p.core.mux.StreamMuxerProtocol;
 import io.libp2p.protocol.*;
+import io.libp2p.security.noise.NoiseXXSecureChannel;
+import io.libp2p.security.tls.TlsSecureChannel;
+import io.libp2p.transport.tcp.TcpTransport;
 import io.netty.handler.logging.LogLevel;
+
+import java.util.Set;
 import java.util.concurrent.*;
+import java.util.stream.Collectors;
+
 import kotlin.*;
 import org.junit.jupiter.api.*;
 
@@ -69,6 +77,98 @@ public class QuicServerTestJava {
 
     Assertions.assertThrows(
         ExecutionException.class, () -> pingCtr.ping().get(5, TimeUnit.SECONDS));
+
+    clientHost.stop().get(5, TimeUnit.SECONDS);
+    System.out.println("Client stopped");
+    serverHost.stop().get(5, TimeUnit.SECONDS);
+    System.out.println("Server stopped");
+  }
+
+  @Test
+  void tlsAndQuicInSameHostPing() throws Exception {
+    String localQuicListenAddress = "/ip4/127.0.0.1/udp/40002/quic";
+    String localTcpListenAddress = "/ip4/127.0.0.1/tcp/40002";
+
+    Host clientHost =
+            new HostBuilder()
+                    .secureTransport(QuicTransport::Ecdsa)
+                    .transport(TcpTransport::new)
+                    .secureChannel(TlsSecureChannel::ECDSA)
+                    .secureChannel(NoiseXXSecureChannel::new)
+                    .muxer(StreamMuxerProtocol::getYamux)
+                    .build();
+
+    Host serverHost =
+            new HostBuilder()
+                    .secureTransport(QuicTransport::Ecdsa)
+                    .transport(TcpTransport::new)
+                    .secureChannel(TlsSecureChannel::ECDSA)
+                    .secureChannel(NoiseXXSecureChannel::new)
+                    .muxer(StreamMuxerProtocol::getYamux)
+                    .protocol(new Ping())
+                    .listen(localQuicListenAddress, localTcpListenAddress)
+                    .build();
+
+    CompletableFuture<Void> clientStarted = clientHost.start();
+    CompletableFuture<Void> serverStarted = serverHost.start();
+    clientStarted.get(5, TimeUnit.SECONDS);
+    System.out.println("Client started " + clientHost.getPeerId());
+    serverStarted.get(5, TimeUnit.SECONDS);
+    System.out.println("Server started " + serverHost.getPeerId());
+
+    Assertions.assertEquals(0, clientHost.listenAddresses().size());
+    Assertions.assertEquals(2, serverHost.listenAddresses().size());
+    Assertions.assertEquals(
+            Set.of(localTcpListenAddress + "/p2p/" + serverHost.getPeerId(), localQuicListenAddress + "/p2p/" + serverHost.getPeerId()),
+            serverHost.listenAddresses().stream().map(Multiaddr::toString).collect(Collectors.toSet()));
+    System.out.println("Hosts running");
+    Thread.sleep(2_000);
+
+    StreamPromise<PingController> tcpPing =
+            clientHost
+                    .getNetwork()
+                    .connect(serverHost.getPeerId(), new Multiaddr(localTcpListenAddress))
+                    .thenApply(it -> it.muxerSession().createStream(new Ping(500)))
+                    .get(5000, TimeUnit.SECONDS);
+
+    Stream pingStream = tcpPing.getStream().get(5, TimeUnit.SECONDS);
+    System.out.println("Ping stream created");
+    CompletableFuture<PingController> controller = tcpPing.getController();
+    PingController pingCtr = controller.get(5000, TimeUnit.SECONDS);
+    System.out.println("Ping controller created");
+
+    for (int i = 0; i < 1000; i++) {
+      long latency = pingCtr.ping().get(1, TimeUnit.SECONDS);
+      System.out.println("Ping is " + latency);
+    }
+    pingStream.close().get(5, TimeUnit.SECONDS);
+    System.out.println("Ping stream closed");
+
+    Assertions.assertThrows(
+            ExecutionException.class, () -> pingCtr.ping().get(5, TimeUnit.SECONDS));
+
+    StreamPromise<PingController> quicPing =
+            clientHost
+                    .getNetwork()
+                    .connect(serverHost.getPeerId(), new Multiaddr(localQuicListenAddress))
+                    .thenApply(it -> it.muxerSession().createStream(new Ping(500)))
+                    .get(5000, TimeUnit.SECONDS);
+
+    Stream quicPingStream = quicPing.getStream().get(5, TimeUnit.SECONDS);
+    System.out.println("Ping stream created");
+    CompletableFuture<PingController> quicController = quicPing.getController();
+    PingController quicPingCtr = quicController.get(5000, TimeUnit.SECONDS);
+    System.out.println("Ping controller created");
+
+    for (int i = 0; i < 1000; i++) {
+      long latency = quicPingCtr.ping().get(1, TimeUnit.SECONDS);
+      System.out.println("Ping is " + latency);
+    }
+    quicPingStream.close().get(5, TimeUnit.SECONDS);
+    System.out.println("Ping stream closed");
+
+    Assertions.assertThrows(
+            ExecutionException.class, () -> quicPingCtr.ping().get(5, TimeUnit.SECONDS));
 
     clientHost.stop().get(5, TimeUnit.SECONDS);
     System.out.println("Client stopped");
