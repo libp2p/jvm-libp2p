@@ -10,7 +10,6 @@ import io.libp2p.core.multiformats.*;
 import io.libp2p.core.mux.StreamMuxerProtocol;
 import io.libp2p.protocol.*;
 import io.libp2p.security.noise.NoiseXXSecureChannel;
-import io.libp2p.security.tls.TlsSecureChannel;
 import io.libp2p.transport.tcp.TcpTransport;
 import io.netty.handler.logging.LogLevel;
 import java.util.Random;
@@ -97,7 +96,6 @@ public class QuicServerTestJava {
         new HostBuilder()
             .secureTransport(QuicTransport::Ecdsa)
             .transport(TcpTransport::new)
-            .secureChannel(TlsSecureChannel::ECDSA)
             .secureChannel(NoiseXXSecureChannel::new)
             .muxer(StreamMuxerProtocol::getYamux)
             .build();
@@ -106,7 +104,6 @@ public class QuicServerTestJava {
         new HostBuilder()
             .secureTransport(QuicTransport::Ecdsa)
             .transport(TcpTransport::new)
-            .secureChannel(TlsSecureChannel::ECDSA)
             .secureChannel(NoiseXXSecureChannel::new)
             .muxer(StreamMuxerProtocol::getYamux)
             .protocol(new Ping())
