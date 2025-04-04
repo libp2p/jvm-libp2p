@@ -128,9 +128,9 @@ open class Builder {
         if (def == Defaults.None) {
             if (identity.factory == null) throw IllegalStateException("No identity builder")
 
-            if (transports.values.isEmpty()) throw HostConfigurationException("at least one transport is required")
-            if (secureChannels.values.isEmpty()) throw HostConfigurationException("at least one secure channel is required")
-            if (muxers.values.isEmpty()) throw HostConfigurationException("at least one muxer is required")
+            if (secureTransports.isEmpty() && transports.values.isEmpty()) throw HostConfigurationException("at least one transport is required")
+            if (secureTransports.isEmpty() && secureChannels.values.isEmpty()) throw HostConfigurationException("at least one secure channel or secure transport is required")
+            if (secureTransports.isEmpty() && muxers.values.isEmpty()) throw HostConfigurationException("at least one muxer or secure transport is required")
         }
         if (def == Defaults.Standard) {
             if (identity.factory == null) identity.random()
