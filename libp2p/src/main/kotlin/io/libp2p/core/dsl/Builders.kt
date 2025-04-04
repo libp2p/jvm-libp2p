@@ -191,8 +191,12 @@ open class Builder {
 
         val upgrader = ConnectionUpgrader(secureMultistreamProtocol, secureChannels, muxerMultistreamProtocol, muxers)
 
-        val secureTransports = secureTransports.values.map { it(privKey, updatableProtocols) }
-        val transports = transports.values.map { it(upgrader) } + secureTransports
+        val allTransports =
+            listOf(
+                transports.values.map { it(upgrader) },
+                secureTransports.values.map { it(privKey, updatableProtocols) }
+            ).flatten()
+
         val addressBook = addressBook.impl
 
         val connHandlerProtocols = protocols.values.mapNotNull { it as? ConnectionHandler }
@@ -200,7 +204,7 @@ open class Builder {
             connHandlerProtocols +
                 connectionHandlers.values
         )
-        val networkImpl = NetworkImpl(transports, broadcastConnHandler)
+        val networkImpl = NetworkImpl(allTransports, broadcastConnHandler)
 
         return HostImpl(
             privKey,

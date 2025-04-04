@@ -10,15 +10,12 @@ import io.libp2p.core.multiformats.*;
 import io.libp2p.core.mux.StreamMuxerProtocol;
 import io.libp2p.protocol.*;
 import io.libp2p.security.noise.NoiseXXSecureChannel;
-import io.libp2p.security.tls.TlsSecureChannel;
 import io.libp2p.transport.tcp.TcpTransport;
 import io.netty.handler.logging.LogLevel;
-
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.*;
 import java.util.stream.Collectors;
-
 import kotlin.*;
 import org.junit.jupiter.api.*;
 
