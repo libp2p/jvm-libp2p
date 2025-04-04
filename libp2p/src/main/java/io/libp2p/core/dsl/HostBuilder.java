@@ -59,13 +59,18 @@ public class HostBuilder {
 
   @SafeVarargs
   public final HostBuilder secureTransport(
-      BiFunction<PrivKey, List<ProtocolBinding<?>>, Transport>... transports) {
+      BiFunction<PrivKey, List<? extends ProtocolBinding<?>>, Transport>... transports) {
     secureTransports_.addAll(Arrays.asList(transports));
     return this;
   }
 
   public final HostBuilder listen(String... addresses) {
     listenAddresses_.addAll(Arrays.asList(addresses));
+    return this;
+  }
+
+  public HostBuilder keyType(KeyType keyType) {
+    this.keyType = keyType;
     return this;
   }
 
@@ -79,20 +84,9 @@ public class HostBuilder {
     return BuilderJKt.hostJ(
         defaultMode_.asBuilderDefault(),
         b -> {
-          IdentityBuilder identity = b.getIdentity();
-          identity.random(KeyType.ED25519);
-          PrivKey peerId = identity.getFactory().invoke();
-          identity.setFactory(() -> peerId);
+          b.getIdentity().random(keyType);
 
-          secureTransports_.forEach(
-              st ->
-                  b.getSecureTransports()
-                      .add(
-                          p ->
-                              u ->
-                                  st.apply(
-                                      identity.getFactory().invoke(),
-                                      (List<ProtocolBinding<?>>) p)));
+          secureTransports_.forEach(st -> b.getSecureTransports().add(st::apply));
           transports_.forEach(t -> b.getTransports().add(t::apply));
           secureChannels_.forEach(
               sc -> b.getSecureChannels().add((k, m) -> sc.apply(k, (List<StreamMuxer>) m)));
@@ -104,8 +98,9 @@ public class HostBuilder {
   } // build
 
   private DefaultMode defaultMode_;
-  private List<BiFunction<PrivKey, List<ProtocolBinding<?>>, Transport>> secureTransports_ =
-      new ArrayList<>();
+  private KeyType keyType = KeyType.ECDSA;
+  private List<BiFunction<PrivKey, List<? extends ProtocolBinding<?>>, Transport>>
+      secureTransports_ = new ArrayList<>();
 
   private List<Function<ConnectionUpgrader, Transport>> transports_ = new ArrayList<>();
   private List<BiFunction<PrivKey, List<StreamMuxer>, SecureChannel>> secureChannels_ =

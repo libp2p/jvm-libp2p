@@ -31,12 +31,14 @@ public class QuicServerTestJava {
     Host clientHost =
         new HostBuilder()
             //                .secureTransport(QuicTransport::Ed25519)
+            .keyType(KeyType.ED25519)
             .secureTransport(QuicTransport::Ecdsa)
             .build();
 
     Host serverHost =
         new HostBuilder()
             //                .secureTransport(QuicTransport::Ed25519)
+            .keyType(KeyType.ED25519)
             .secureTransport(QuicTransport::Ecdsa)
             .protocol(new Ping())
             .listen(localListenAddress)
@@ -94,6 +96,7 @@ public class QuicServerTestJava {
 
     Host clientHost =
         new HostBuilder()
+            .keyType(KeyType.ED25519)
             .secureTransport(QuicTransport::Ecdsa)
             .transport(TcpTransport::new)
             .secureChannel(NoiseXXSecureChannel::new)
@@ -102,6 +105,7 @@ public class QuicServerTestJava {
 
     Host serverHost =
         new HostBuilder()
+            .keyType(KeyType.ED25519)
             .secureTransport(QuicTransport::Ecdsa)
             .transport(TcpTransport::new)
             .secureChannel(NoiseXXSecureChannel::new)
@@ -186,6 +190,7 @@ public class QuicServerTestJava {
 
     Host clientHost =
         new HostBuilder()
+            .keyType(KeyType.ED25519)
             .secureTransport(QuicTransport::Ecdsa)
             .builderModifier(
                 b -> b.getDebug().getMuxFramesHandler().addCompactLogger(LogLevel.ERROR, "client"))
@@ -193,6 +198,7 @@ public class QuicServerTestJava {
 
     Host serverHost =
         new HostBuilder()
+            .keyType(KeyType.ED25519)
             .secureTransport(QuicTransport::Ecdsa)
             .protocol(new Blob(blobSize))
             .listen(localListenAddress)
@@ -245,10 +251,15 @@ public class QuicServerTestJava {
   void startHostAddPing() throws Exception {
     String localListenAddress = "/ip4/127.0.0.1/udp/" + getPort() + "/quic";
 
-    Host clientHost = new HostBuilder().secureTransport(QuicTransport::Ecdsa).build();
+    Host clientHost =
+        new HostBuilder().keyType(KeyType.ED25519).secureTransport(QuicTransport::Ecdsa).build();
 
     Host serverHost =
-        new HostBuilder().secureTransport(QuicTransport::Ecdsa).listen(localListenAddress).build();
+        new HostBuilder()
+            .keyType(KeyType.ED25519)
+            .secureTransport(QuicTransport::Ecdsa)
+            .listen(localListenAddress)
+            .build();
 
     CompletableFuture<Void> clientStarted = clientHost.start();
     CompletableFuture<Void> serverStarted = serverHost.start();

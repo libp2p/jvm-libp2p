@@ -23,6 +23,7 @@ public class QuicKuboTestJava {
     Host clientHost =
         new HostBuilder()
             //                .secureTransport(QuicTransport::Ed25519)
+            .keyType(KeyType.ED25519)
             .secureTransport(QuicTransport::Ecdsa)
             .build();
 

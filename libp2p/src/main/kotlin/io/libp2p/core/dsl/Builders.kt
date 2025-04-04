@@ -37,7 +37,7 @@ import io.netty.handler.logging.LoggingHandler
 import java.util.concurrent.CopyOnWriteArrayList
 
 typealias TransportCtor = (ConnectionUpgrader) -> Transport
-typealias SecureTransportCtor = (List<ProtocolBinding<Any>>) -> TransportCtor
+typealias SecureTransportCtor = (PrivKey, List<ProtocolBinding<*>>) -> Transport
 typealias SecureChannelCtor = (PrivKey, List<StreamMuxer>) -> SecureChannel
 typealias IdentityFactory = () -> PrivKey
 
@@ -58,8 +58,8 @@ open class Builder {
     protected open val identity = IdentityBuilder()
     protected open val secureChannels = SecureChannelsBuilder()
     protected open val muxers = MuxersBuilder()
-    protected open val secureTransports = SecureTransportsBuilder()
     protected open val transports = TransportsBuilder()
+    protected open val secureTransports = SecureTransportsBuilder()
     protected open val addressBook = AddressBookBuilder()
     protected open val protocols = ProtocolsBuilder()
     protected open val connectionHandlers = ConnectionHandlerBuilder()
@@ -191,9 +191,12 @@ open class Builder {
 
         val upgrader = ConnectionUpgrader(secureMultistreamProtocol, secureChannels, muxerMultistreamProtocol, muxers)
 
-        val secureTransports = secureTransports.values.map { it(updatableProtocols) }
-        transports.addAll(secureTransports)
-        val transports = transports.values.map { it(upgrader) }
+        val allTransports =
+            listOf(
+                transports.values.map { it(upgrader) },
+                secureTransports.values.map { it(privKey, updatableProtocols) }
+            ).flatten()
+
         val addressBook = addressBook.impl
 
         val connHandlerProtocols = protocols.values.mapNotNull { it as? ConnectionHandler }
@@ -201,7 +204,7 @@ open class Builder {
             connHandlerProtocols +
                 connectionHandlers.values
         )
-        val networkImpl = NetworkImpl(transports, broadcastConnHandler)
+        val networkImpl = NetworkImpl(allTransports, broadcastConnHandler)
 
         return HostImpl(
             privKey,
