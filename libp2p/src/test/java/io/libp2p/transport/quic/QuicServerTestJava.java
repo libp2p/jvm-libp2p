@@ -13,6 +13,7 @@ import io.libp2p.security.noise.NoiseXXSecureChannel;
 import io.libp2p.security.tls.TlsSecureChannel;
 import io.libp2p.transport.tcp.TcpTransport;
 import io.netty.handler.logging.LogLevel;
+import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.*;
 import java.util.stream.Collectors;
@@ -20,9 +21,13 @@ import kotlin.*;
 import org.junit.jupiter.api.*;
 
 public class QuicServerTestJava {
+  public static int getPort() {
+    return new Random().nextInt(20_000) + 10_000;
+  }
+
   @Test
   void pingJava() throws Exception {
-    String localListenAddress = "/ip4/127.0.0.1/udp/40002/quic";
+    String localListenAddress = "/ip4/127.0.0.1/udp/" + getPort() + "/quic";
 
     Host clientHost =
         new HostBuilder()
@@ -84,8 +89,9 @@ public class QuicServerTestJava {
 
   @Test
   void tlsAndQuicInSameHostPing() throws Exception {
-    String localQuicListenAddress = "/ip4/127.0.0.1/udp/40002/quic";
-    String localTcpListenAddress = "/ip4/127.0.0.1/tcp/40002";
+    int port = getPort();
+    String localQuicListenAddress = "/ip4/127.0.0.1/udp/" + port + "/quic";
+    String localTcpListenAddress = "/ip4/127.0.0.1/tcp/" + port;
 
     Host clientHost =
         new HostBuilder()
@@ -179,7 +185,7 @@ public class QuicServerTestJava {
   @Test
   void largeBlob() throws Exception {
     int blobSize = 1024 * 1024;
-    String localListenAddress = "/ip4/127.0.0.1/udp/40002/quic";
+    String localListenAddress = "/ip4/127.0.0.1/udp/" + getPort() + "/quic";
 
     Host clientHost =
         new HostBuilder()
@@ -239,8 +245,8 @@ public class QuicServerTestJava {
   }
 
   @Test
-  void addPingAfterHostStart() throws Exception {
-    String localListenAddress = "/ip4/127.0.0.1/udp/40002/quic";
+  void startHostAddPing() throws Exception {
+    String localListenAddress = "/ip4/127.0.0.1/udp/" + getPort() + "/quic";
 
     Host clientHost = new HostBuilder().secureTransport(QuicTransport::Ecdsa).build();
 
