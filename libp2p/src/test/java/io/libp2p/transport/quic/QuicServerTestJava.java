@@ -71,6 +71,9 @@ public class QuicServerTestJava {
     CompletableFuture<PingController> controller = ping.getController();
     PingController pingCtr = controller.get(5000, TimeUnit.SECONDS);
     System.out.println("Ping controller created");
+    pingStream.getConnection().localAddress();
+    Multiaddr remote = pingStream.getConnection().remoteAddress();
+    Assertions.assertEquals(localListenAddress, remote.toString());
 
     for (int i = 0; i < 1000; i++) {
       long latency = pingCtr.ping().get(1, TimeUnit.SECONDS);
