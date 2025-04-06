@@ -36,7 +36,7 @@ public class QuicKuboTestJava {
     StreamPromise<PingController> ping =
         clientHost
             .getNetwork()
-            .connect(peerId, new Multiaddr("/ip4/127.0.0.1/udp/4001/quic"))
+            .connect(peerId, new Multiaddr("/ip4/127.0.0.1/udp/4001/quic-v1"))
             .thenApply(it -> it.muxerSession().createStream(new Ping()))
             .get(5, TimeUnit.SECONDS);
 

@@ -290,7 +290,7 @@ class QuicTransport(
     override fun handles(addr: Multiaddr) =
         handlesHost(addr) &&
             addr.has(UDP) &&
-            addr.has(QUIC) &&
+            addr.has(QUICV1) &&
             !addr.has(WS)
 
     fun quicSslContext(expectedRemotePeerId: PeerId?, trustManager: Libp2pTrustManager): QuicSslContext {
@@ -394,6 +394,6 @@ class QuicTransport(
         return Multiaddr.empty()
             .withComponent(proto, addr.address.hostAddress)
             .withComponent(UDP, addr.port.toString())
-            .withComponent(QUIC)
+            .withComponent(QUICV1)
     }
 }

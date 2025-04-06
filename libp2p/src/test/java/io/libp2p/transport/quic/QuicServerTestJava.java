@@ -10,6 +10,7 @@ import io.libp2p.core.multiformats.*;
 import io.libp2p.core.mux.StreamMuxerProtocol;
 import io.libp2p.protocol.*;
 import io.libp2p.security.noise.NoiseXXSecureChannel;
+import io.libp2p.security.tls.TlsSecureChannel;
 import io.libp2p.transport.tcp.TcpTransport;
 import io.netty.handler.logging.LogLevel;
 import java.util.Random;
@@ -26,7 +27,7 @@ public class QuicServerTestJava {
 
   @Test
   void pingJava() throws Exception {
-    String localListenAddress = "/ip4/127.0.0.1/udp/" + getPort() + "/quic";
+    String localListenAddress = "/ip4/127.0.0.1/udp/" + getPort() + "/quic-v1";
 
     Host clientHost =
         new HostBuilder()
@@ -91,7 +92,7 @@ public class QuicServerTestJava {
   @Test
   void tlsAndQuicInSameHostPing() throws Exception {
     int port = getPort();
-    String localQuicListenAddress = "/ip4/127.0.0.1/udp/" + port + "/quic";
+    String localQuicListenAddress = "/ip4/127.0.0.1/udp/" + port + "/quic-v1";
     String localTcpListenAddress = "/ip4/127.0.0.1/tcp/" + port;
 
     Host clientHost =
@@ -186,7 +187,7 @@ public class QuicServerTestJava {
   @Test
   void largeBlob() throws Exception {
     int blobSize = 1024 * 1024;
-    String localListenAddress = "/ip4/127.0.0.1/udp/" + getPort() + "/quic";
+    String localListenAddress = "/ip4/127.0.0.1/udp/" + getPort() + "/quic-v1";
 
     Host clientHost =
         new HostBuilder()
@@ -249,7 +250,7 @@ public class QuicServerTestJava {
 
   @Test
   void startHostAddPing() throws Exception {
-    String localListenAddress = "/ip4/127.0.0.1/udp/" + getPort() + "/quic";
+    String localListenAddress = "/ip4/127.0.0.1/udp/" + getPort() + "/quic-v1";
 
     Host clientHost =
         new HostBuilder().keyType(KeyType.ED25519).secureTransport(QuicTransport::Ecdsa).build();
