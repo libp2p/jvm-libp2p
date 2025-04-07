@@ -310,7 +310,7 @@ class QuicTransport(
             .option(
                 BoringSSLContextOption.SIGNATURE_ALGORITHMS,
                 arrayOf(
-                    "ed25519",
+//                    "ed25519",
                     "ecdsa_secp256r1_sha256",
                     "rsa_pkcs1_sha256",
                     "rsa_pss_rsae_sha256",
