@@ -35,7 +35,6 @@ import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo
 import org.bouncycastle.cert.X509CertificateHolder
 import org.bouncycastle.cert.X509v3CertificateBuilder
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter
-import org.bouncycastle.cms.jcajce.JcaSimpleSignerInfoVerifierBuilder
 import org.bouncycastle.crypto.params.Ed25519PublicKeyParameters
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder
 import org.bouncycastle.operator.jcajce.JcaContentVerifierProviderBuilder
@@ -318,8 +317,9 @@ fun verifyAndExtractPeerId(chain: Array<Certificate>): PeerId {
         throw IllegalStateException("Invalid signature on TLS certificate extension!")
     }
 
-    if (! bcX509Cert.isSignatureValid(JcaContentVerifierProviderBuilder().build(bcX509Cert)))
+    if (!bcX509Cert.isSignatureValid(JcaContentVerifierProviderBuilder().build(bcX509Cert))) {
         throw IllegalStateException("TLS certificate has invalid signature!")
+    }
     val now = Date()
     if (bcCert.endDate.date.before(now)) {
         throw IllegalStateException("TLS certificate has expired!")
