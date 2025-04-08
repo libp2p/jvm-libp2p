@@ -316,7 +316,7 @@ fun verifyAndExtractPeerId(chain: Array<Certificate>): PeerId {
         throw IllegalStateException("Invalid signature on TLS certificate extension!")
     }
 
-    cert.verify(cert.publicKey)
+    cert.verify(cert.publicKey, Libp2pCrypto.provider)
     val now = Date()
     if (bcCert.endDate.date.before(now)) {
         throw IllegalStateException("TLS certificate has expired!")
