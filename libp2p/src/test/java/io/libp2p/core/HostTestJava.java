@@ -45,7 +45,7 @@ public class HostTestJava {
     Host serverHost =
         new HostBuilder()
             .transport(TcpTransport::new)
-            .secureChannel(TlsSecureChannel::new)
+            .secureChannel(TlsSecureChannel::ECDSA)
             .muxer(StreamMuxerProtocol::getYamux)
             .protocol(new Ping())
             .listen(localListenAddress)
@@ -100,14 +100,14 @@ public class HostTestJava {
     Host clientHost =
         new HostBuilder()
             .transport(TcpTransport::new)
-            .secureChannel((k, m) -> new TlsSecureChannel(k, m, "ECDSA"))
+            .secureChannel(TlsSecureChannel::ECDSA)
             .muxer(StreamMuxerProtocol::getYamux)
             .build();
 
     Host serverHost =
         new HostBuilder()
             .transport(TcpTransport::new)
-            .secureChannel(TlsSecureChannel::new)
+            .secureChannel(TlsSecureChannel::ECDSA)
             .muxer(StreamMuxerProtocol::getYamux)
             .protocol(new Ping(pingSize))
             .listen(localListenAddress)
@@ -227,14 +227,14 @@ public class HostTestJava {
     Host clientHost =
         new HostBuilder()
             .transport(TcpTransport::new)
-            .secureChannel((k, m) -> new TlsSecureChannel(k, m, "ECDSA"))
+            .secureChannel(TlsSecureChannel::ECDSA)
             .muxer(StreamMuxerProtocol::getYamux)
             .build();
 
     Host serverHost =
         new HostBuilder()
             .transport(TcpTransport::new)
-            .secureChannel(TlsSecureChannel::new)
+            .secureChannel(TlsSecureChannel::ECDSA)
             .muxer(StreamMuxerProtocol::getYamux)
             .listen(localListenAddress)
             .build();

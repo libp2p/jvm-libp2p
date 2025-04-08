@@ -105,9 +105,11 @@ fun buildTlsHandler(
     val javaPrivateKey = getJavaKey(connectionKeys.first)
     val sslContext = (
         if (isInitiator) {
-            SslContextBuilder.forClient().keyManager(javaPrivateKey, listOf(buildCert(localKey, connectionKeys.first)))
+            SslContextBuilder.forClient()
+                .keyManager(javaPrivateKey, listOf(buildCert(localKey, connectionKeys.first)))
         } else {
             SslContextBuilder.forServer(javaPrivateKey, listOf(buildCert(localKey, connectionKeys.first)))
+                .keyManager(javaPrivateKey, listOf(buildCert(localKey, connectionKeys.first)))
         }
         )
         .protocols(listOf("TLSv1.3"))
