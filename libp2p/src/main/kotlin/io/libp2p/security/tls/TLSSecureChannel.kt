@@ -25,6 +25,7 @@ import io.netty.handler.ssl.ApplicationProtocolConfig
 import io.netty.handler.ssl.ClientAuth
 import io.netty.handler.ssl.SslContextBuilder
 import io.netty.handler.ssl.SslHandler
+import io.netty.handler.ssl.SslProvider
 import org.bouncycastle.asn1.*
 import org.bouncycastle.asn1.edec.EdECObjectIdentifiers
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo
@@ -40,6 +41,7 @@ import java.math.BigInteger
 import java.security.KeyFactory
 import java.security.PrivateKey
 import java.security.PublicKey
+import java.security.SecureRandom
 import java.security.cert.Certificate
 import java.security.cert.CertificateException
 import java.security.cert.X509Certificate
@@ -112,12 +114,13 @@ fun buildTlsHandler(
         .ciphers(listOf("TLS_AES_128_GCM_SHA256", "TLS_AES_256_GCM_SHA384", "TLS_CHACHA20_POLY1305_SHA256"))
         .clientAuth(ClientAuth.REQUIRE)
         .trustManager(Libp2pTrustManager(expectedRemotePeer))
-//        .sslContextProvider(BouncyCastleJsseProvider())
+        .sslProvider(SslProvider.OPENSSL)
+        .secureRandom(SecureRandom())
         .applicationProtocolConfig(
             ApplicationProtocolConfig(
                 ApplicationProtocolConfig.Protocol.ALPN,
-                ApplicationProtocolConfig.SelectorFailureBehavior.FATAL_ALERT,
-                ApplicationProtocolConfig.SelectedListenerFailureBehavior.FATAL_ALERT,
+                ApplicationProtocolConfig.SelectorFailureBehavior.NO_ADVERTISE,
+                ApplicationProtocolConfig.SelectedListenerFailureBehavior.ACCEPT,
                 muxers.allProtocols + NoEarlyMuxerNegotiationEntry // early muxer negotiation
             )
         )
