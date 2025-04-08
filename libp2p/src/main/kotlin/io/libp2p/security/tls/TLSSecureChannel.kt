@@ -65,7 +65,7 @@ val certificatePrefix = "libp2p-tls-handshake:".encodeToByteArray()
 class TlsSecureChannel(private val localKey: PrivKey, private val muxers: List<StreamMuxer>, private val certAlgorithm: String) :
     SecureChannel {
 
-    constructor(localKey: PrivKey, muxerIds: List<StreamMuxer>) : this(localKey, muxerIds, "Ed25519") {}
+    constructor(localKey: PrivKey, muxerIds: List<StreamMuxer>) : this(localKey, muxerIds, "ECDSA") {}
 
     companion object {
         const val announce = "/tls/1.0.0"
