@@ -2,6 +2,7 @@ package io.libp2p.security.tls
 
 import crypto.pb.Crypto
 import io.libp2p.core.*
+import io.libp2p.core.crypto.KeyType
 import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.crypto.PubKey
 import io.libp2p.core.crypto.unmarshalPublicKey
@@ -36,8 +37,11 @@ import org.bouncycastle.cert.X509CertificateHolder
 import org.bouncycastle.cert.X509v3CertificateBuilder
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter
 import org.bouncycastle.crypto.params.Ed25519PublicKeyParameters
+import org.bouncycastle.operator.ContentVerifierProvider
+import org.bouncycastle.operator.DefaultDigestAlgorithmIdentifierFinder
+import org.bouncycastle.operator.bc.BcECContentVerifierProviderBuilder
+import org.bouncycastle.operator.bc.BcEdDSAContentVerifierProviderBuilder
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder
-import org.bouncycastle.operator.jcajce.JcaContentVerifierProviderBuilder
 import java.math.BigInteger
 import java.security.KeyFactory
 import java.security.PrivateKey
@@ -291,6 +295,13 @@ fun getPubKey(pub: PublicKey): PubKey {
     throw IllegalStateException("Unsupported key type: " + pub.algorithm)
 }
 
+fun getContentVerifier(bcX509Cert: X509CertificateHolder): ContentVerifierProvider {
+    if (bcX509Cert.signatureAlgorithm.equals(AlgorithmIdentifier(ASN1ObjectIdentifier("1.3.101.112")))) {
+        return BcEdDSAContentVerifierProviderBuilder().build(bcX509Cert)
+    }
+    return BcECContentVerifierProviderBuilder(DefaultDigestAlgorithmIdentifierFinder()).build(bcX509Cert)
+}
+
 fun verifyAndExtractPeerId(chain: Array<Certificate>): PeerId {
     if (chain.size != 1) {
         throw java.lang.IllegalStateException("Cert chain must have exactly 1 element!")
@@ -317,7 +328,7 @@ fun verifyAndExtractPeerId(chain: Array<Certificate>): PeerId {
         throw IllegalStateException("Invalid signature on TLS certificate extension!")
     }
 
-    if (!bcX509Cert.isSignatureValid(JcaContentVerifierProviderBuilder().build(bcX509Cert))) {
+    if (!bcX509Cert.isSignatureValid(getContentVerifier(bcX509Cert))) {
         throw IllegalStateException("TLS certificate has invalid signature!")
     }
     val now = Date()
