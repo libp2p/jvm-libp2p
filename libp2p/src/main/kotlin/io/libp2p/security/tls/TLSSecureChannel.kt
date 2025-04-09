@@ -353,7 +353,6 @@ fun getPublicKeyFromCert(chain: Array<Certificate>): PubKey {
         throw java.lang.IllegalStateException("Cert chain must have exactly 1 element!")
     }
     val cert = chain.get(0)
-    println("cert hex: " + cert.encoded.toHex())
     val bcCert = org.bouncycastle.asn1.x509.Certificate
         .getInstance(ASN1Primitive.fromByteArray(cert.getEncoded()))
 
