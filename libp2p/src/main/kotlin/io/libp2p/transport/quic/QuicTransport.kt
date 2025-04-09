@@ -306,21 +306,21 @@ class QuicTransport(
                 QuicSslContextBuilder.forServer(javaPrivateKey, null, cert).clientAuth(ClientAuth.REQUIRE)
             }
             )
-            .option(BoringSSLContextOption.GROUPS, arrayOf("x25519"))
-            .option(
-                BoringSSLContextOption.SIGNATURE_ALGORITHMS,
-                arrayOf(
-//                    "ed25519",
-                    "ecdsa_secp256r1_sha256",
-                    "rsa_pkcs1_sha256",
-                    "rsa_pss_rsae_sha256",
-                    "ecdsa_secp384r1_sha384",
-                    "rsa_pkcs1_sha384",
-                    "rsa_pss_rsae_sha384",
-                    "rsa_pss_rsae_sha512",
-                    "rsa_pkcs1_sha512",
-                )
-            )
+//            .option(BoringSSLContextOption.GROUPS, arrayOf("x25519"))
+//            .option(
+//                BoringSSLContextOption.SIGNATURE_ALGORITHMS,
+//                arrayOf(
+////                    "ed25519",
+//                    "ecdsa_secp256r1_sha256",
+//                    "rsa_pkcs1_sha256",
+//                    "rsa_pss_rsae_sha256",
+//                    "ecdsa_secp384r1_sha384",
+//                    "rsa_pkcs1_sha384",
+//                    "rsa_pss_rsae_sha384",
+//                    "rsa_pss_rsae_sha512",
+//                    "rsa_pkcs1_sha512",
+//                )
+//            )
             .trustManager(trustManager)
             .applicationProtocols("libp2p")
             .build()
