@@ -18,6 +18,7 @@ class CertificatesTest {
         val certBytes = Hex.decode(hex)
         val certHolder = X509CertificateHolder(certBytes)
         val cert = JcaX509CertificateConverter().setProvider(BouncyCastleProvider()).getCertificate(certHolder)
+        getPublicKeyFromCert(arrayOf(cert))
         val peerIdFromCert = verifyAndExtractPeerId(arrayOf(cert))
         val expectedPeerId = PeerId.fromBase58("12D3KooWJRSrypvnpHgc6ZAgyCni4KcSmbV7uGRaMw5LgMKT18fq")
         assertEquals(peerIdFromCert, expectedPeerId)
@@ -29,6 +30,7 @@ class CertificatesTest {
         val certBytes = Hex.decode(hex)
         val certHolder = X509CertificateHolder(certBytes)
         val cert = JcaX509CertificateConverter().setProvider(BouncyCastleProvider()).getCertificate(certHolder)
+        getPublicKeyFromCert(arrayOf(cert))
         val peerIdFromCert = verifyAndExtractPeerId(arrayOf(cert))
         val expectedPeerId = PeerId.fromBase58("QmZcrvr3r4S3QvwFdae3c2EWTfo792Y14UpzCZurhmiWeX")
         assertEquals(peerIdFromCert, expectedPeerId)
@@ -40,8 +42,21 @@ class CertificatesTest {
         val certBytes = Hex.decode(hex)
         val certHolder = X509CertificateHolder(certBytes)
         val cert = JcaX509CertificateConverter().setProvider(BouncyCastleProvider()).getCertificate(certHolder)
+        getPublicKeyFromCert(arrayOf(cert))
         val peerIdFromCert = verifyAndExtractPeerId(arrayOf(cert))
         val expectedPeerId = PeerId.fromBase58("16Uiu2HAm2dSCBFxuge46aEt7U1oejtYuBUZXxASHqmcfVmk4gsbx")
+        assertEquals(peerIdFromCert, expectedPeerId)
+    }
+
+    @Test
+    fun rustCert() {
+        val hex = "3082018230820129a00302010202144d1178a3bb828459ce1e266baa234ed8f0615c06300a06082a8648ce3d04030230003020170d3735303130313030303030305a180f34303936303130313030303030305a30003059301306072a8648ce3d020106082a8648ce3d03010703420004089ff3ab6e4b42cb2252a41aff3b8cb7c6f71f7050f6604ff138219f35652de1f6a006f487cd15d88db31e12dcd3b080cd53aa5869a649a13762b6193029f61ca37f307d307b060a2b0601040183a25a01010101ff046a30680424080112207f249e77411a3fa0c3f6305a8446cd45f9fb73ae2412f230f21943cf15dabc3d044025544b48ff50963b5f26b277906a08ba3f231d2d80f399801f856e21e3d9ec2b84c51f8063eb4ae70e52cd940ff82a5aa29b82f3f82b5fb2ae67a9d5bba75c0b300a06082a8648ce3d0403020347003044022031580479526dd6a38a3cc1e90122ac9437d3633aa63f697165099e3d3c4cb3b70220525a60d13802089a9cbb0752646a2801df74d06d6f7785ff21931dca4e188e16"
+        val certBytes = Hex.decode(hex)
+        val certHolder = X509CertificateHolder(certBytes)
+        val cert = JcaX509CertificateConverter().setProvider(BouncyCastleProvider()).getCertificate(certHolder)
+        getPublicKeyFromCert(arrayOf(cert))
+        val peerIdFromCert = verifyAndExtractPeerId(arrayOf(cert))
+        val expectedPeerId = PeerId.fromBase58("12D3KooWJNgLEeuYt54A58gcnsggjHhVt6YBsrK71QRXTzK9WABn")
         assertEquals(peerIdFromCert, expectedPeerId)
     }
 
@@ -59,6 +74,7 @@ class CertificatesTest {
         val host = generateEd25519KeyPair()
         val conn = generateEd25519KeyPair()
         val cert = buildCert(host.first, conn.first)
+        getPublicKeyFromCert(arrayOf(cert))
         val peerIdFromCert = verifyAndExtractPeerId(arrayOf(cert))
         val expectedPeerId = PeerId.fromPubKey(host.second)
         assertEquals(peerIdFromCert, expectedPeerId)

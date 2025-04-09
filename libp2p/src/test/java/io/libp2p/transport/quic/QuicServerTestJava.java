@@ -10,6 +10,7 @@ import io.libp2p.core.multiformats.*;
 import io.libp2p.core.mux.StreamMuxerProtocol;
 import io.libp2p.protocol.*;
 import io.libp2p.security.noise.NoiseXXSecureChannel;
+import io.libp2p.security.tls.TlsSecureChannel;
 import io.libp2p.transport.tcp.TcpTransport;
 import io.netty.handler.logging.LogLevel;
 import java.util.Random;
@@ -33,6 +34,9 @@ public class QuicServerTestJava {
             //                .secureTransport(QuicTransport::Ed25519)
             .keyType(KeyType.ED25519)
             .secureTransport(QuicTransport::Ecdsa)
+            .transport(TcpTransport::new)
+            .secureChannel(TlsSecureChannel::ECDSA)
+            .muxer(StreamMuxerProtocol::getYamux)
             .build();
 
     Host serverHost =
@@ -40,6 +44,9 @@ public class QuicServerTestJava {
             //                .secureTransport(QuicTransport::Ed25519)
             .keyType(KeyType.ED25519)
             .secureTransport(QuicTransport::Ecdsa)
+            .transport(TcpTransport::new)
+            .secureChannel(TlsSecureChannel::ECDSA)
+            .muxer(StreamMuxerProtocol::getYamux)
             .protocol(new Ping())
             .listen(localListenAddress)
             .build();
@@ -102,6 +109,7 @@ public class QuicServerTestJava {
             .keyType(KeyType.ED25519)
             .secureTransport(QuicTransport::Ecdsa)
             .transport(TcpTransport::new)
+            .secureChannel(TlsSecureChannel::ECDSA)
             .secureChannel(NoiseXXSecureChannel::new)
             .muxer(StreamMuxerProtocol::getYamux)
             .build();
@@ -111,6 +119,7 @@ public class QuicServerTestJava {
             .keyType(KeyType.ED25519)
             .secureTransport(QuicTransport::Ecdsa)
             .transport(TcpTransport::new)
+            .secureChannel(TlsSecureChannel::ECDSA)
             .secureChannel(NoiseXXSecureChannel::new)
             .muxer(StreamMuxerProtocol::getYamux)
             .protocol(new Ping())
