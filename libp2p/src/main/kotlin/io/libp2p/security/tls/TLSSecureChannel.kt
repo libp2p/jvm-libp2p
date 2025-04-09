@@ -18,7 +18,6 @@ import io.libp2p.crypto.keys.Ed25519PublicKey
 import io.libp2p.crypto.keys.generateEcdsaKeyPair
 import io.libp2p.crypto.keys.generateEd25519KeyPair
 import io.libp2p.etc.REMOTE_PEER_ID
-import io.libp2p.etc.types.toHex
 import io.libp2p.security.InvalidRemotePubKey
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
