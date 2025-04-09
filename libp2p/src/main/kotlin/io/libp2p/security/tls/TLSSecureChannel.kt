@@ -38,6 +38,7 @@ import org.bouncycastle.cert.X509CertificateHolder
 import org.bouncycastle.cert.X509v3CertificateBuilder
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter
 import org.bouncycastle.crypto.params.Ed25519PublicKeyParameters
+import org.bouncycastle.jcajce.interfaces.EdDSAPublicKey
 import org.bouncycastle.operator.ContentVerifierProvider
 import org.bouncycastle.operator.DefaultDigestAlgorithmIdentifierFinder
 import org.bouncycastle.operator.bc.BcECContentVerifierProviderBuilder
@@ -51,7 +52,6 @@ import java.security.cert.Certificate
 import java.security.cert.CertificateException
 import java.security.cert.X509Certificate
 import java.security.interfaces.ECPublicKey
-import java.security.interfaces.EdECPublicKey
 import java.security.spec.*
 import java.time.Instant
 import java.util.*
@@ -59,7 +59,6 @@ import java.util.concurrent.CompletableFuture
 import java.util.logging.Level
 import java.util.logging.Logger
 import javax.net.ssl.X509TrustManager
-import kotlin.experimental.or
 
 private val log = Logger.getLogger(TlsSecureChannel::class.java.name)
 
@@ -335,18 +334,10 @@ fun getAlgorithmName(oid: String): String {
 fun getLibp2pKeyFromCert(publicKeyInfo: SubjectPublicKeyInfo): PubKey {
     val spec = X509EncodedKeySpec(publicKeyInfo.encoded)
     val algorithmName = getAlgorithmName(publicKeyInfo.getAlgorithm().getAlgorithm().getId())
-    val pub = KeyFactory.getInstance(algorithmName).generatePublic(spec)
+    val pub = KeyFactory.getInstance(algorithmName, Libp2pCrypto.provider).generatePublic(spec)
     if (pub.algorithm.equals("EdDSA") || pub.algorithm.equals("Ed25519")) {
-        // It seems batshit that we have to do this, but haven't found an equivalent library call
-        val point = (pub as EdECPublicKey).point
-        var pk = point.y.toByteArray().reversedArray()
-        if (pk.size == 31) {
-            pk = pk.plus(0)
-        }
-        if (point.isXOdd) {
-            pk[31] = pk[31].or(0x80.toByte())
-        }
-        return Ed25519PublicKey(Ed25519PublicKeyParameters(pk))
+        val raw = (pub as EdDSAPublicKey).pointEncoding
+        return Ed25519PublicKey(Ed25519PublicKeyParameters(raw))
     }
     if (pub.algorithm.equals("EC")) {
         return EcdsaPublicKey(pub as ECPublicKey)
