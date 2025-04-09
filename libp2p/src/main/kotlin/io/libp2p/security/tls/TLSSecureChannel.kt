@@ -18,6 +18,7 @@ import io.libp2p.crypto.keys.Ed25519PublicKey
 import io.libp2p.crypto.keys.generateEcdsaKeyPair
 import io.libp2p.crypto.keys.generateEd25519KeyPair
 import io.libp2p.etc.REMOTE_PEER_ID
+import io.libp2p.etc.types.toHex
 import io.libp2p.security.InvalidRemotePubKey
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
@@ -346,6 +347,7 @@ fun getPublicKeyFromCert(chain: Array<Certificate>): PubKey {
         throw java.lang.IllegalStateException("Cert chain must have exactly 1 element!")
     }
     val cert = chain.get(0)
+    println("cert hex: " + cert.encoded.toHex())
     return getPubKey(cert.publicKey)
 }
 
