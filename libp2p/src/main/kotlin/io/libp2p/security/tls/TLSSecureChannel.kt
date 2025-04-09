@@ -46,7 +46,6 @@ import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder
 import java.math.BigInteger
 import java.security.KeyFactory
 import java.security.PrivateKey
-import java.security.PublicKey
 import java.security.SecureRandom
 import java.security.cert.Certificate
 import java.security.cert.CertificateException
@@ -274,28 +273,6 @@ fun getAsn1EncodedPublicKey(pub: PubKey): ByteArray {
     throw IllegalArgumentException("Unsupported TLS key type:" + pub.keyType)
 }
 
-fun getPubKey(pub: PublicKey): PubKey {
-    if (pub.algorithm.equals("EdDSA") || pub.algorithm.equals("Ed25519")) {
-        // It seems batshit that we have to do this, but haven't found an equivalent library call
-        val point = (pub as EdECPublicKey).point
-        var pk = point.y.toByteArray().reversedArray()
-        if (pk.size == 31) {
-            pk = pk.plus(0)
-        }
-        if (point.isXOdd) {
-            pk[31] = pk[31].or(0x80.toByte())
-        }
-        return Ed25519PublicKey(Ed25519PublicKeyParameters(pk))
-    }
-    if (pub.algorithm.equals("EC")) {
-        return EcdsaPublicKey(pub as ECPublicKey)
-    }
-    if (pub.algorithm.equals("RSA")) {
-        throw IllegalStateException("Unimplemented RSA public key support for TLS")
-    }
-    throw IllegalStateException("Unsupported key type: " + pub.algorithm)
-}
-
 fun getContentVerifier(bcX509Cert: X509CertificateHolder): ContentVerifierProvider {
     if (bcX509Cert.signatureAlgorithm.equals(AlgorithmIdentifier(ASN1ObjectIdentifier("1.3.101.112")))) {
         return BcEdDSAContentVerifierProviderBuilder().build(bcX509Cert)
@@ -342,13 +319,54 @@ fun verifyAndExtractPeerId(chain: Array<Certificate>): PeerId {
     return PeerId.fromPubKey(pubKey)
 }
 
+fun getAlgorithmName(oid: String): String {
+    if ("1.2.840.113549.1.1.1".equals(oid)) {
+        return "RSA"
+    }
+    if ("1.2.840.10045.2.1".equals(oid)) {
+        return "EC"
+    }
+    if ("1.2.840.10040.4.1".equals(oid)) {
+        return "DSA"
+    }
+    return oid
+}
+
+fun getLibp2pKeyFromCert(publicKeyInfo: SubjectPublicKeyInfo): PubKey {
+    val spec = X509EncodedKeySpec(publicKeyInfo.encoded)
+    val algorithmName = getAlgorithmName(publicKeyInfo.getAlgorithm().getAlgorithm().getId())
+    val pub = KeyFactory.getInstance(algorithmName).generatePublic(spec)
+    if (pub.algorithm.equals("EdDSA") || pub.algorithm.equals("Ed25519")) {
+        // It seems batshit that we have to do this, but haven't found an equivalent library call
+        val point = (pub as EdECPublicKey).point
+        var pk = point.y.toByteArray().reversedArray()
+        if (pk.size == 31) {
+            pk = pk.plus(0)
+        }
+        if (point.isXOdd) {
+            pk[31] = pk[31].or(0x80.toByte())
+        }
+        return Ed25519PublicKey(Ed25519PublicKeyParameters(pk))
+    }
+    if (pub.algorithm.equals("EC")) {
+        return EcdsaPublicKey(pub as ECPublicKey)
+    }
+    if (pub.algorithm.equals("RSA")) {
+        throw IllegalStateException("Unimplemented RSA public key support for TLS")
+    }
+    throw IllegalStateException("Unsupported key type: " + pub.algorithm)
+}
+
 fun getPublicKeyFromCert(chain: Array<Certificate>): PubKey {
     if (chain.size != 1) {
         throw java.lang.IllegalStateException("Cert chain must have exactly 1 element!")
     }
     val cert = chain.get(0)
     println("cert hex: " + cert.encoded.toHex())
-    return getPubKey(cert.publicKey)
+    val bcCert = org.bouncycastle.asn1.x509.Certificate
+        .getInstance(ASN1Primitive.fromByteArray(cert.getEncoded()))
+
+    return getLibp2pKeyFromCert(bcCert.subjectPublicKeyInfo)
 }
 
 /** Build a self signed cert, with an extension containing the host key + sig(cert public key)
