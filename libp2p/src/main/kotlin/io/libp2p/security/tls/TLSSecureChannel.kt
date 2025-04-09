@@ -2,6 +2,7 @@ package io.libp2p.security.tls
 
 import crypto.pb.Crypto
 import io.libp2p.core.*
+import io.libp2p.core.crypto.KeyType
 import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.crypto.PubKey
 import io.libp2p.core.crypto.unmarshalPublicKey
@@ -25,6 +26,7 @@ import io.netty.handler.ssl.ApplicationProtocolConfig
 import io.netty.handler.ssl.ClientAuth
 import io.netty.handler.ssl.SslContextBuilder
 import io.netty.handler.ssl.SslHandler
+import io.netty.handler.ssl.SslProvider
 import org.bouncycastle.asn1.*
 import org.bouncycastle.asn1.edec.EdECObjectIdentifiers
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo
@@ -35,11 +37,16 @@ import org.bouncycastle.cert.X509CertificateHolder
 import org.bouncycastle.cert.X509v3CertificateBuilder
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter
 import org.bouncycastle.crypto.params.Ed25519PublicKeyParameters
+import org.bouncycastle.operator.ContentVerifierProvider
+import org.bouncycastle.operator.DefaultDigestAlgorithmIdentifierFinder
+import org.bouncycastle.operator.bc.BcECContentVerifierProviderBuilder
+import org.bouncycastle.operator.bc.BcEdDSAContentVerifierProviderBuilder
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder
 import java.math.BigInteger
 import java.security.KeyFactory
 import java.security.PrivateKey
 import java.security.PublicKey
+import java.security.SecureRandom
 import java.security.cert.Certificate
 import java.security.cert.CertificateException
 import java.security.cert.X509Certificate
@@ -63,7 +70,7 @@ val certificatePrefix = "libp2p-tls-handshake:".encodeToByteArray()
 class TlsSecureChannel(private val localKey: PrivKey, private val muxers: List<StreamMuxer>, private val certAlgorithm: String) :
     SecureChannel {
 
-    constructor(localKey: PrivKey, muxerIds: List<StreamMuxer>) : this(localKey, muxerIds, "Ed25519") {}
+    constructor(localKey: PrivKey, muxerIds: List<StreamMuxer>) : this(localKey, muxerIds, "ECDSA") {}
 
     companion object {
         const val announce = "/tls/1.0.0"
@@ -103,21 +110,24 @@ fun buildTlsHandler(
     val javaPrivateKey = getJavaKey(connectionKeys.first)
     val sslContext = (
         if (isInitiator) {
-            SslContextBuilder.forClient().keyManager(javaPrivateKey, listOf(buildCert(localKey, connectionKeys.first)))
+            SslContextBuilder.forClient()
+                .keyManager(javaPrivateKey, listOf(buildCert(localKey, connectionKeys.first)))
         } else {
             SslContextBuilder.forServer(javaPrivateKey, listOf(buildCert(localKey, connectionKeys.first)))
+                .keyManager(javaPrivateKey, listOf(buildCert(localKey, connectionKeys.first)))
         }
         )
         .protocols(listOf("TLSv1.3"))
         .ciphers(listOf("TLS_AES_128_GCM_SHA256", "TLS_AES_256_GCM_SHA384", "TLS_CHACHA20_POLY1305_SHA256"))
         .clientAuth(ClientAuth.REQUIRE)
         .trustManager(Libp2pTrustManager(expectedRemotePeer))
-//        .sslContextProvider(BouncyCastleJsseProvider())
+        .sslProvider(SslProvider.OPENSSL)
+        .secureRandom(SecureRandom())
         .applicationProtocolConfig(
             ApplicationProtocolConfig(
                 ApplicationProtocolConfig.Protocol.ALPN,
-                ApplicationProtocolConfig.SelectorFailureBehavior.FATAL_ALERT,
-                ApplicationProtocolConfig.SelectedListenerFailureBehavior.FATAL_ALERT,
+                ApplicationProtocolConfig.SelectorFailureBehavior.NO_ADVERTISE,
+                ApplicationProtocolConfig.SelectedListenerFailureBehavior.ACCEPT,
                 muxers.allProtocols + NoEarlyMuxerNegotiationEntry // early muxer negotiation
             )
         )
@@ -285,6 +295,13 @@ fun getPubKey(pub: PublicKey): PubKey {
     throw IllegalStateException("Unsupported key type: " + pub.algorithm)
 }
 
+fun getContentVerifier(bcX509Cert: X509CertificateHolder): ContentVerifierProvider {
+    if (bcX509Cert.signatureAlgorithm.equals(AlgorithmIdentifier(ASN1ObjectIdentifier("1.3.101.112")))) {
+        return BcEdDSAContentVerifierProviderBuilder().build(bcX509Cert)
+    }
+    return BcECContentVerifierProviderBuilder(DefaultDigestAlgorithmIdentifierFinder()).build(bcX509Cert)
+}
+
 fun verifyAndExtractPeerId(chain: Array<Certificate>): PeerId {
     if (chain.size != 1) {
         throw java.lang.IllegalStateException("Cert chain must have exactly 1 element!")
@@ -311,7 +328,9 @@ fun verifyAndExtractPeerId(chain: Array<Certificate>): PeerId {
         throw IllegalStateException("Invalid signature on TLS certificate extension!")
     }
 
-    cert.verify(cert.publicKey)
+    if (!bcX509Cert.isSignatureValid(getContentVerifier(bcX509Cert))) {
+        throw IllegalStateException("TLS certificate has invalid signature!")
+    }
     val now = Date()
     if (bcCert.endDate.date.before(now)) {
         throw IllegalStateException("TLS certificate has expired!")

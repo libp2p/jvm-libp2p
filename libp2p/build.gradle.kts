@@ -32,6 +32,11 @@ dependencies {
     testImplementation("io.netty.incubator:netty-incubator-codec-native-quic::osx-x86_64")
     testImplementation("io.netty.incubator:netty-incubator-codec-native-quic::osx-aarch_64")
     testImplementation("io.netty.incubator:netty-incubator-codec-native-quic::windows-x86_64")
+    testImplementation("io.netty:netty-tcnative-boringssl-static:2.0.70.Final:linux-x86_64")
+    testImplementation("io.netty:netty-tcnative-boringssl-static:2.0.70.Final:linux-aarch_64")
+    testImplementation("io.netty:netty-tcnative-boringssl-static:2.0.70.Final:osx-x86_64")
+    testImplementation("io.netty:netty-tcnative-boringssl-static:2.0.70.Final:osx-aarch_64")
+    testImplementation("io.netty:netty-tcnative-boringssl-static:2.0.70.Final:windows-x86_64")
 
     testFixturesApi("org.apache.logging.log4j:log4j-core")
     testFixturesImplementation(project(":tools:schedulers"))
