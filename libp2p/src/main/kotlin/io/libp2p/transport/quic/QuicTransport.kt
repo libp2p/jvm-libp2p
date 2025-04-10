@@ -12,15 +12,16 @@ import io.libp2p.core.multistream.MultistreamProtocolV1
 import io.libp2p.core.multistream.ProtocolBinding
 import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.core.security.SecureChannel
-import io.libp2p.core.transport.Transport
 import io.libp2p.crypto.keys.generateEcdsaKeyPair
 import io.libp2p.crypto.keys.generateEd25519KeyPair
 import io.libp2p.etc.CONNECTION
 import io.libp2p.etc.STREAM
 import io.libp2p.etc.types.*
+import io.libp2p.etc.util.MultiaddrUtils
 import io.libp2p.etc.util.netty.nettyInitializer
 import io.libp2p.security.tls.*
 import io.libp2p.transport.implementation.ConnectionOverNetty
+import io.libp2p.transport.implementation.NettyTransport
 import io.libp2p.transport.implementation.StreamOverNetty
 import io.netty.bootstrap.Bootstrap
 import io.netty.buffer.ByteBuf
@@ -42,7 +43,7 @@ class QuicTransport(
     private val localKey: PrivKey,
     private val certAlgorithm: String,
     private val protocols: List<ProtocolBinding<*>>
-) : Transport {
+) : NettyTransport {
 
     private var closed = false
     var connectTimeout = Duration.ofSeconds(15)
@@ -174,7 +175,11 @@ class QuicTransport(
             ?: throw Libp2pException("No listeners on address $addr")
     }
 
-    override fun dial(addr: Multiaddr, connHandler: ConnectionHandler, preHandler: ChannelVisitor<P2PChannel>?): CompletableFuture<Connection> {
+    override fun dial(
+        addr: Multiaddr,
+        connHandler: ConnectionHandler,
+        preHandler: ChannelVisitor<P2PChannel>?
+    ): CompletableFuture<Connection> {
         if (closed) throw Libp2pException("Transport is closed")
 
         val trust = Libp2pTrustManager(Optional.ofNullable(addr.getPeerId()))
@@ -230,7 +235,8 @@ class QuicTransport(
                                 val stream = createStream(ctx!!.channel(), connection, true)
                                 ctx.channel().attr(STREAM).set(stream)
                                 val streamHandler = multi.toStreamHandler()
-                                streamHandler.handleStream(stream).forward(controller).apply { streamFut.complete(stream) }
+                                streamHandler.handleStream(stream).forward(controller)
+                                    .apply { streamFut.complete(stream) }
                             }
                         }
                     )
@@ -287,6 +293,7 @@ class QuicTransport(
             it.protocol in arrayOf(IP4, IP6)
         }?.stringValue ?: throw Libp2pException("Missing IP4/IP6 in multiaddress $addr")
     }
+
     override fun handles(addr: Multiaddr) =
         handlesHost(addr) &&
             addr.has(UDP) &&
@@ -326,7 +333,10 @@ class QuicTransport(
             .build()
     }
 
-    fun serverTransportBuilder(connHandler: ConnectionHandler, preHandler: ChannelVisitor<P2PChannel>?): ChannelHandler {
+    fun serverTransportBuilder(
+        connHandler: ConnectionHandler,
+        preHandler: ChannelVisitor<P2PChannel>?
+    ): ChannelHandler {
         val sslContext = quicSslContext(null, Libp2pTrustManager(Optional.empty()))
         return QuicServerCodecBuilder()
             .sslEngineProvider({ q -> sslContext.newEngine(q.alloc()) })
@@ -385,15 +395,13 @@ class QuicTransport(
         return InetSocketAddress(host, port)
     }
 
-    fun toMultiaddr(addr: InetSocketAddress): Multiaddr {
-        val proto = when (addr.address) {
-            is Inet4Address -> IP4
-            is Inet6Address -> IP6
-            else -> throw InternalErrorException("Unknown address type $addr")
-        }
-        return Multiaddr.empty()
-            .withComponent(proto, addr.address.hostAddress)
-            .withComponent(UDP, addr.port.toString())
+    override fun localAddress(nettyChannel: Channel): Multiaddr =
+        toMultiaddr((nettyChannel as QuicChannel).localSocketAddress()!!)
+
+    override fun remoteAddress(nettyChannel: Channel): Multiaddr =
+        toMultiaddr((nettyChannel as QuicChannel).remoteSocketAddress()!!)
+
+    fun toMultiaddr(addr: SocketAddress): Multiaddr =
+        MultiaddrUtils.inetSocketAddressToUdpMultiaddr(addr as InetSocketAddress)
             .withComponent(QUICV1)
-    }
 }
