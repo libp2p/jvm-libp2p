@@ -31,7 +31,6 @@ public class QuicServerTestJava {
 
     Host clientHost =
         new HostBuilder()
-            //                .secureTransport(QuicTransport::Ed25519)
             .keyType(KeyType.ED25519)
             .secureTransport(QuicTransport::Ecdsa)
             .transport(TcpTransport::new)
@@ -41,7 +40,6 @@ public class QuicServerTestJava {
 
     Host serverHost =
         new HostBuilder()
-            //                .secureTransport(QuicTransport::Ed25519)
             .keyType(KeyType.ED25519)
             .secureTransport(QuicTransport::Ecdsa)
             .transport(TcpTransport::new)
