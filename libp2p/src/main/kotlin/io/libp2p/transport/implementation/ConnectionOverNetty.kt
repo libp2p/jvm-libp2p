@@ -8,7 +8,9 @@ import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.core.security.SecureChannel
 import io.libp2p.core.transport.Transport
 import io.libp2p.etc.CONNECTION
+import io.libp2p.transport.quic.QuicTransport
 import io.netty.channel.Channel
+import io.netty.incubator.codec.quic.QuicChannel
 import java.net.Inet4Address
 import java.net.Inet6Address
 import java.net.InetSocketAddress
@@ -41,13 +43,25 @@ open class ConnectionOverNetty(
     override fun secureSession() = secureSession
     override fun transport() = transport
 
-    override fun localAddress(): Multiaddr =
-        toMultiaddr(nettyChannel.localAddress() as InetSocketAddress)
-    override fun remoteAddress(): Multiaddr =
-        toMultiaddr(nettyChannel.remoteAddress() as InetSocketAddress)
+    override fun localAddress(): Multiaddr {
+        if (nettyChannel is QuicChannel) {
+            return toMultiaddr(nettyChannel.localSocketAddress() as InetSocketAddress)
+        } else {
+            return toMultiaddr(nettyChannel.localAddress() as InetSocketAddress)
+        }
+    }
+    override fun remoteAddress(): Multiaddr {
+        if (nettyChannel is QuicChannel) {
+            return toMultiaddr(nettyChannel.remoteSocketAddress() as InetSocketAddress)
+        } else {
+            return toMultiaddr(nettyChannel.remoteAddress() as InetSocketAddress)
+        }
+    }
 
     private fun toMultiaddr(addr: InetSocketAddress): Multiaddr {
         if (transport is NettyTransport) {
+            return transport.toMultiaddr(addr)
+        } else if (transport is QuicTransport) {
             return transport.toMultiaddr(addr)
         } else {
             return toMultiaddrDefault(addr)

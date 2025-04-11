@@ -37,6 +37,7 @@ import io.netty.handler.logging.LoggingHandler
 import java.util.concurrent.CopyOnWriteArrayList
 
 typealias TransportCtor = (ConnectionUpgrader) -> Transport
+typealias SecureTransportCtor = (PrivKey, List<ProtocolBinding<*>>) -> Transport
 typealias SecureChannelCtor = (PrivKey, List<StreamMuxer>) -> SecureChannel
 typealias IdentityFactory = () -> PrivKey
 
@@ -58,6 +59,7 @@ open class Builder {
     protected open val secureChannels = SecureChannelsBuilder()
     protected open val muxers = MuxersBuilder()
     protected open val transports = TransportsBuilder()
+    protected open val secureTransports = SecureTransportsBuilder()
     protected open val addressBook = AddressBookBuilder()
     protected open val protocols = ProtocolsBuilder()
     protected open val connectionHandlers = ConnectionHandlerBuilder()
@@ -126,9 +128,9 @@ open class Builder {
         if (def == Defaults.None) {
             if (identity.factory == null) throw IllegalStateException("No identity builder")
 
-            if (transports.values.isEmpty()) throw HostConfigurationException("at least one transport is required")
-            if (secureChannels.values.isEmpty()) throw HostConfigurationException("at least one secure channel is required")
-            if (muxers.values.isEmpty()) throw HostConfigurationException("at least one muxer is required")
+            if (secureTransports.isEmpty() && transports.values.isEmpty()) throw HostConfigurationException("at least one transport is required")
+            if (secureTransports.isEmpty() && secureChannels.values.isEmpty()) throw HostConfigurationException("at least one secure channel or secure transport is required")
+            if (secureTransports.isEmpty() && muxers.values.isEmpty()) throw HostConfigurationException("at least one muxer or secure transport is required")
         }
         if (def == Defaults.Standard) {
             if (identity.factory == null) identity.random()
@@ -189,7 +191,12 @@ open class Builder {
 
         val upgrader = ConnectionUpgrader(secureMultistreamProtocol, secureChannels, muxerMultistreamProtocol, muxers)
 
-        val transports = transports.values.map { it(upgrader) }
+        val allTransports =
+            listOf(
+                transports.values.map { it(upgrader) },
+                secureTransports.values.map { it(privKey, updatableProtocols) }
+            ).flatten()
+
         val addressBook = addressBook.impl
 
         val connHandlerProtocols = protocols.values.mapNotNull { it as? ConnectionHandler }
@@ -197,7 +204,7 @@ open class Builder {
             connHandlerProtocols +
                 connectionHandlers.values
         )
-        val networkImpl = NetworkImpl(transports, broadcastConnHandler)
+        val networkImpl = NetworkImpl(allTransports, broadcastConnHandler)
 
         return HostImpl(
             privKey,
@@ -230,6 +237,7 @@ class AddressBookBuilder {
     fun memory(): AddressBookBuilder = apply { impl = MemoryAddressBook() }
 }
 
+class SecureTransportsBuilder : Enumeration<SecureTransportCtor>()
 class TransportsBuilder : Enumeration<TransportCtor>()
 class SecureChannelsBuilder : Enumeration<SecureChannelCtor>()
 class MuxersBuilder : Enumeration<StreamMuxerProtocol>()

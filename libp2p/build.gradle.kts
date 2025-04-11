@@ -14,6 +14,8 @@ dependencies {
     api("io.netty:netty-transport")
     implementation("io.netty:netty-handler")
     implementation("io.netty:netty-codec-http")
+    implementation("io.netty:netty-transport-classes-epoll")
+    implementation("io.netty.incubator:netty-incubator-codec-native-quic")
 
     api("com.google.protobuf:protobuf-java")
 
@@ -22,9 +24,19 @@ dependencies {
 
     implementation("org.bouncycastle:bcprov-jdk18on")
     implementation("org.bouncycastle:bcpkix-jdk18on")
-    implementation("org.bouncycastle:bctls-jdk18on")
 
     testImplementation(project(":tools:schedulers"))
+
+    testImplementation("io.netty.incubator:netty-incubator-codec-native-quic::linux-x86_64")
+    testImplementation("io.netty.incubator:netty-incubator-codec-native-quic::linux-aarch_64")
+    testImplementation("io.netty.incubator:netty-incubator-codec-native-quic::osx-x86_64")
+    testImplementation("io.netty.incubator:netty-incubator-codec-native-quic::osx-aarch_64")
+    testImplementation("io.netty.incubator:netty-incubator-codec-native-quic::windows-x86_64")
+    testImplementation("io.netty:netty-tcnative-boringssl-static:2.0.70.Final:linux-x86_64")
+    testImplementation("io.netty:netty-tcnative-boringssl-static:2.0.70.Final:linux-aarch_64")
+    testImplementation("io.netty:netty-tcnative-boringssl-static:2.0.70.Final:osx-x86_64")
+    testImplementation("io.netty:netty-tcnative-boringssl-static:2.0.70.Final:osx-aarch_64")
+    testImplementation("io.netty:netty-tcnative-boringssl-static:2.0.70.Final:windows-x86_64")
 
     testFixturesApi("org.apache.logging.log4j:log4j-core")
     testFixturesImplementation(project(":tools:schedulers"))

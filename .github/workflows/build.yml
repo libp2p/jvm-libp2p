@@ -12,12 +12,16 @@ jobs:
         with:
           distribution: temurin
           java-version: 11
+      - name: Install and run ipfs
+        run: ./install-run-ipfs.sh
 
       - name: Setup Gradle
         uses: gradle/gradle-build-action@v2
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v2
+        uses: android-actions/setup-android@v3
+        with:
+          cmdline-tools-version: 8512546
 
       - name: Execute Gradle build
         run: ./gradlew -s build dokkaJar
