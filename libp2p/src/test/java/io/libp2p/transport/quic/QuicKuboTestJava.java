@@ -16,7 +16,6 @@ import org.junit.jupiter.api.*;
 
 public class QuicKuboTestJava {
   @Test
-  //    @Disabled
   void pingKubo() throws Exception {
     if (System.getProperty("os.name").toLowerCase().startsWith("windows")) return;
     PeerId peerId = PeerId.fromBase58(getKuboPeerId());
