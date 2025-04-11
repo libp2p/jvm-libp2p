@@ -27,6 +27,9 @@ import java.net.SocketAddress
 import java.time.Duration
 import java.util.concurrent.CompletableFuture
 
+/**
+ * A plain `NettyTransport` without embedded security and muxer
+ */
 abstract class PlainNettyTransport(
     private val upgrader: ConnectionUpgrader
 ) : NettyTransport { // class NettyTransportBase
