@@ -5,10 +5,13 @@ import io.libp2p.core.Connection
 import io.libp2p.core.ConnectionHandler
 import io.libp2p.core.P2PChannel
 import io.libp2p.core.multiformats.Multiaddr
-import io.libp2p.core.transport.Transport
+import io.libp2p.etc.util.MultiaddrUtils
+import io.libp2p.transport.implementation.NettyTransport
+import io.netty.channel.Channel
+import java.net.InetSocketAddress
 import java.util.concurrent.CompletableFuture
 
-class NullTransport : Transport {
+class NullTransport : NettyTransport {
     override val activeConnections: Int
         get() = stub()
     override val activeListeners: Int
@@ -22,13 +25,21 @@ class NullTransport : Transport {
         connHandler: ConnectionHandler,
         preHandler: ChannelVisitor<P2PChannel>?
     ): CompletableFuture<Unit> = stub()
+
     override fun unlisten(addr: Multiaddr): CompletableFuture<Unit> = stub()
     override fun dial(
         addr: Multiaddr,
         connHandler: ConnectionHandler,
         preHandler: ChannelVisitor<P2PChannel>?
     ): CompletableFuture<Connection> = stub()
+
     override fun handles(addr: Multiaddr): Boolean = stub()
+
+    override fun localAddress(nettyChannel: Channel): Multiaddr =
+        MultiaddrUtils.inetSocketAddressToTcpMultiaddr(nettyChannel.localAddress() as InetSocketAddress)
+
+    override fun remoteAddress(nettyChannel: Channel): Multiaddr =
+        MultiaddrUtils.inetSocketAddressToTcpMultiaddr(nettyChannel.remoteAddress() as InetSocketAddress)
 
     private fun stub(): Nothing {
         throw NotImplementedError("Test stub")

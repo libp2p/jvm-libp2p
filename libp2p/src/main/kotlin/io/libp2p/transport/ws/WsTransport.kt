@@ -1,18 +1,15 @@
 package io.libp2p.transport.ws
 
-import io.libp2p.core.InternalErrorException
 import io.libp2p.core.multiformats.Multiaddr
-import io.libp2p.core.multiformats.Protocol.IP4
-import io.libp2p.core.multiformats.Protocol.IP6
 import io.libp2p.core.multiformats.Protocol.TCP
 import io.libp2p.core.multiformats.Protocol.WS
+import io.libp2p.etc.util.MultiaddrUtils
 import io.libp2p.transport.ConnectionUpgrader
 import io.libp2p.transport.implementation.ConnectionBuilder
-import io.libp2p.transport.implementation.NettyTransport
+import io.libp2p.transport.implementation.PlainNettyTransport
 import io.netty.channel.ChannelHandler
-import java.net.Inet4Address
-import java.net.Inet6Address
 import java.net.InetSocketAddress
+import java.net.SocketAddress
 
 /**
  * The WS transport can establish libp2p connections
@@ -20,7 +17,7 @@ import java.net.InetSocketAddress
  */
 class WsTransport(
     upgrader: ConnectionUpgrader
-) : NettyTransport(upgrader) {
+) : PlainNettyTransport(upgrader) {
 
     override fun handles(addr: Multiaddr) =
         handlesHost(addr) &&
@@ -45,15 +42,7 @@ class WsTransport(
         return WebSocketClientInitializer(connectionBuilder, url)
     } // clientTransportBuilder
 
-    override fun toMultiaddr(addr: InetSocketAddress): Multiaddr {
-        val proto = when (addr.address) {
-            is Inet4Address -> IP4
-            is Inet6Address -> IP6
-            else -> throw InternalErrorException("Unknown address type $addr")
-        }
-        return Multiaddr.empty()
-            .withComponent(proto, addr.address.hostAddress)
-            .withComponent(TCP, addr.port.toString())
+    override fun toMultiaddr(addr: SocketAddress): Multiaddr =
+        MultiaddrUtils.inetSocketAddressToTcpMultiaddr(addr as InetSocketAddress)
             .withComponent(WS)
-    } // toMultiaddr
 } // class WsTransport
