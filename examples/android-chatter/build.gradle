@@ -25,6 +25,7 @@ android {
         exclude 'META-INF/io.netty.versions.properties'
         exclude 'META-INF/INDEX.LIST'
         exclude 'META-INF/versions/9/OSGI-INF/MANIFEST.MF'
+        exclude 'META-INF/license/LICENSE.aix-netbsd.txt'
     }
     kotlinOptions {
         jvmTarget = "11"
