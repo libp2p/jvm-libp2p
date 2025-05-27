@@ -26,6 +26,7 @@ android {
         exclude 'META-INF/INDEX.LIST'
         exclude 'META-INF/versions/9/OSGI-INF/MANIFEST.MF'
         exclude 'META-INF/license/LICENSE.aix-netbsd.txt'
+        exclude 'META-INF/native-image/io.netty.incubator/netty-incubator-codec-native-quic/jni-config.json'
         exclude 'META-INF/native-image/io.netty.incubator/netty-incubator-codec-native-quic/reflect-config.json'
         exclude 'META-INF/native-image/io.netty.incubator/netty-incubator-codec-native-quic/resource-config.json'
         exclude 'META-INF/license/LICENSE.boringssl.txt'
