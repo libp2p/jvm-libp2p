@@ -32,6 +32,7 @@ android {
         exclude 'META-INF/license/LICENSE.boringssl.txt'
         exclude 'META-INF/license/LICENSE.mvn-wrapper.txt'
         exclude 'META-INF/license/LICENSE.quiche.txt'
+        exclude 'META-INF/license/LICENSE.tomcat-native.txt'
     }
     kotlinOptions {
         jvmTarget = "11"
