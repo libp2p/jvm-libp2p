@@ -7,7 +7,9 @@ import io.netty.channel.ChannelFuture
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
 import io.netty.channel.ChannelOption
+import io.netty.channel.MultiThreadIoEventLoopGroup
 import io.netty.channel.nio.NioEventLoopGroup
+import io.netty.channel.nio.NioIoHandler
 import io.netty.channel.socket.nio.NioServerSocketChannel
 import io.netty.channel.socket.nio.NioSocketChannel
 import io.netty.handler.logging.LogLevel
@@ -19,7 +21,7 @@ class TCPProxy {
 
     fun start(listenPort: Int, dialHost: String, dialPort: Int): ChannelFuture {
         val future = ServerBootstrap().apply {
-            group(NioEventLoopGroup())
+            group(MultiThreadIoEventLoopGroup(NioIoHandler.newFactory()))
             channel(NioServerSocketChannel::class.java)
             childHandler(
                 nettyInitializer {
@@ -29,7 +31,7 @@ class TCPProxy {
                             serverCtx.channel().pipeline().addFirst(LoggingHandler("server", LogLevel.INFO))
 
                             Bootstrap().apply {
-                                group(NioEventLoopGroup())
+                                group(MultiThreadIoEventLoopGroup(NioIoHandler.newFactory()))
                                 channel(NioSocketChannel::class.java)
                                 option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 5 * 1000)
                                 handler(object : ChannelInboundHandlerAdapter() {
