@@ -19,7 +19,8 @@ import io.netty.bootstrap.ServerBootstrap
 import io.netty.channel.Channel
 import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelOption
-import io.netty.channel.nio.NioEventLoopGroup
+import io.netty.channel.MultiThreadIoEventLoopGroup
+import io.netty.channel.nio.NioIoHandler
 import io.netty.channel.socket.nio.NioServerSocketChannel
 import io.netty.channel.socket.nio.NioSocketChannel
 import java.net.InetSocketAddress
@@ -39,8 +40,12 @@ abstract class PlainNettyTransport(
     private val listeners = mutableMapOf<Multiaddr, Channel>()
     private val channels = mutableListOf<Channel>()
 
-    private var workerGroup by lazyVar { NioEventLoopGroup() }
-    private var bossGroup by lazyVar { NioEventLoopGroup(1) }
+    private var workerGroup by lazyVar {
+        MultiThreadIoEventLoopGroup(NioIoHandler.newFactory())
+    }
+    private var bossGroup by lazyVar {
+        MultiThreadIoEventLoopGroup(1, NioIoHandler.newFactory())
+    }
 
     private var client by lazyVar {
         Bootstrap().apply {

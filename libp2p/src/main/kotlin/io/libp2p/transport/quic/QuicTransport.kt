@@ -32,10 +32,11 @@ import io.netty.buffer.PooledByteBufAllocator
 import io.netty.channel.*
 import io.netty.channel.epoll.Epoll
 import io.netty.channel.epoll.EpollDatagramChannel
-import io.netty.channel.nio.NioEventLoopGroup
+import io.netty.channel.nio.NioIoHandler
 import io.netty.channel.socket.nio.NioDatagramChannel
 import io.netty.handler.codec.quic.*
 import io.netty.handler.ssl.ClientAuth
+import org.slf4j.LoggerFactory
 import java.net.InetSocketAddress
 import java.net.SocketAddress
 import java.time.Duration
@@ -48,7 +49,8 @@ class QuicTransport(
     private val certAlgorithm: String,
     private val protocols: List<ProtocolBinding<*>>
 ) : NettyTransport {
-    private val log = LoggerFactory.getLogger(QuicTransport::class.java)
+
+    private val logger = LoggerFactory.getLogger(QuicTransport::class.java)
 
     private var closed = false
     var connectTimeout = Duration.ofSeconds(15)
@@ -56,8 +58,12 @@ class QuicTransport(
     private val listeners = mutableMapOf<Multiaddr, Channel>()
     private val channels = mutableListOf<Channel>()
 
-    private var workerGroup by lazyVar { NioEventLoopGroup() }
-    private var bossGroup by lazyVar { NioEventLoopGroup(1) }
+    private var workerGroup by lazyVar {
+        MultiThreadIoEventLoopGroup(NioIoHandler.newFactory())
+    }
+    private var bossGroup by lazyVar {
+        MultiThreadIoEventLoopGroup(1, NioIoHandler.newFactory())
+    }
     private var allocator by lazyVar { PooledByteBufAllocator(true) }
     private var multistreamProtocol: MultistreamProtocol = MultistreamProtocolV1
     private var incomingMultistreamProtocol: MultistreamProtocol by lazyVar { multistreamProtocol }
@@ -167,7 +173,7 @@ class QuicTransport(
                         listeners -= addr
                     }
                 }
-                log.info("Quic server listening on {}", addr)
+                logger.info("Quic server listening on $addr")
                 res.complete(null)
             }
         }
