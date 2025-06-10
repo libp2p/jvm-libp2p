@@ -31,13 +31,14 @@ dependencyManagement {
             entry 'protobuf-java'
             entry 'protoc'
         }
-        dependencySet(group: "io.netty", version: "4.1.118.Final") {
+        dependencySet(group: "io.netty", version: "4.2.2.Final") {
             entry 'netty-common'
             entry 'netty-handler'
             entry 'netty-transport'
             entry 'netty-buffer'
             entry 'netty-codec-http'
             entry 'netty-transport-classes-epoll'
+            entry 'netty-codec-native-quic'
         }
         dependency "com.github.multiformats:java-multibase:v1.1.1"
         dependency "tech.pegasys:noise-java:22.1.0"
@@ -46,6 +47,5 @@ dependencyManagement {
             entry 'bcpkix-jdk18on'
             entry 'bctls-jdk18on'
         }
-        dependency "io.netty.incubator:netty-incubator-codec-native-quic:0.0.71.Final"
     }
 }

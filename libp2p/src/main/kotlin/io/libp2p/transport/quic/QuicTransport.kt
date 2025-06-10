@@ -19,7 +19,10 @@ import io.libp2p.etc.STREAM
 import io.libp2p.etc.types.*
 import io.libp2p.etc.util.MultiaddrUtils
 import io.libp2p.etc.util.netty.nettyInitializer
-import io.libp2p.security.tls.*
+import io.libp2p.security.tls.Libp2pTrustManager
+import io.libp2p.security.tls.buildCert
+import io.libp2p.security.tls.getJavaKey
+import io.libp2p.security.tls.getPublicKeyFromCert
 import io.libp2p.transport.implementation.ConnectionOverNetty
 import io.libp2p.transport.implementation.NettyTransport
 import io.libp2p.transport.implementation.StreamOverNetty
@@ -31,10 +34,10 @@ import io.netty.channel.epoll.Epoll
 import io.netty.channel.epoll.EpollDatagramChannel
 import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.nio.NioDatagramChannel
+import io.netty.handler.codec.quic.*
 import io.netty.handler.ssl.ClientAuth
-import io.netty.incubator.codec.quic.*
-import org.slf4j.LoggerFactory
-import java.net.*
+import java.net.InetSocketAddress
+import java.net.SocketAddress
 import java.time.Duration
 import java.util.*
 import java.util.concurrent.CompletableFuture
@@ -208,7 +211,6 @@ class QuicTransport(
             .option(ChannelOption.AUTO_READ, true)
             .option(ChannelOption.ALLOCATOR, allocator)
             .remoteAddress(fromMultiaddr(addr))
-//            .handler(connHandler)
             .streamHandler(object : ChannelInboundHandlerAdapter() {
                 override fun handlerAdded(ctx: ChannelHandlerContext?) {
                     val connection = ctx!!.channel().parent().attr(CONNECTION).get() as Connection
