@@ -14,6 +14,7 @@ dependencies {
     api("io.netty:netty-transport")
     implementation("io.netty:netty-handler")
     implementation("io.netty:netty-codec-http")
+    implementation("io.netty:netty-codec-protobuf")
     implementation("io.netty:netty-transport-classes-epoll")
     implementation("io.netty:netty-codec-native-quic")
     // OS-specific bindings

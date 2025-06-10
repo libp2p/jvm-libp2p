@@ -37,6 +37,7 @@ dependencyManagement {
             entry 'netty-transport'
             entry 'netty-buffer'
             entry 'netty-codec-http'
+            entry 'netty-codec-protobuf'
             entry 'netty-transport-classes-epoll'
             entry 'netty-codec-native-quic'
         }
