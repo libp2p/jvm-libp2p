@@ -19,7 +19,6 @@ import io.libp2p.etc.STREAM
 import io.libp2p.etc.types.*
 import io.libp2p.etc.util.MultiaddrUtils
 import io.libp2p.etc.util.netty.nettyInitializer
-import io.libp2p.security.secio.SecIoCodec
 import io.libp2p.security.tls.*
 import io.libp2p.transport.implementation.ConnectionOverNetty
 import io.libp2p.transport.implementation.NettyTransport
@@ -317,46 +316,49 @@ class QuicTransport(
                     ch.attr(CONNECTION).set(connection)
 
                     // Add a handler to wait for channel activation (handshake completion)
-                    ch.pipeline().addFirst("quic-handshake-waiter", object : ChannelInboundHandlerAdapter() {
-                        override fun channelActive(ctx: ChannelHandlerContext) {
-                            // Now the handshake is complete and remoteCert should be available
-                            val remoteCert = trustManager.remoteCert
-                            if (remoteCert != null) {
-                                val remotePeerId = verifyAndExtractPeerId(arrayOf(remoteCert))
-                                val remotePublicKey = getPublicKeyFromCert(arrayOf(remoteCert))
+                    ch.pipeline().addFirst(
+                        "quic-handshake-waiter",
+                        object : ChannelInboundHandlerAdapter() {
+                            override fun channelActive(ctx: ChannelHandlerContext) {
+                                // Now the handshake is complete and remoteCert should be available
+                                val remoteCert = trustManager.remoteCert
+                                if (remoteCert != null) {
+                                    val remotePeerId = verifyAndExtractPeerId(arrayOf(remoteCert))
+                                    val remotePublicKey = getPublicKeyFromCert(arrayOf(remoteCert))
 
-                                log.info("Handshake completed with remote peer id: {}", remotePeerId)
+                                    log.info("Handshake completed with remote peer id: {}", remotePeerId)
 
-                                connection.setSecureSession(
-                                    SecureChannel.Session(
-                                        PeerId.fromPubKey(localKey.publicKey()),
-                                        remotePeerId,
-                                        remotePublicKey,
-                                        null
+                                    connection.setSecureSession(
+                                        SecureChannel.Session(
+                                            PeerId.fromPubKey(localKey.publicKey()),
+                                            remotePeerId,
+                                            remotePublicKey,
+                                            null
+                                        )
                                     )
-                                )
 
-                                // Remove this handler as it's no longer needed
-                                ctx.pipeline().remove(this)
+                                    // Remove this handler as it's no longer needed
+                                    ctx.pipeline().remove(this)
 
-                                // Now it's safe to call the connection handler
-                                preHandler?.also { it.visit(connection) }
-                                connHandler.handleConnection(connection)
-                            } else {
-                                // This should not happen if channelActive is called after handshake
-                                ctx.close()
-                                throw IllegalStateException("Remote certificate still not available after handshake")
+                                    // Now it's safe to call the connection handler
+                                    preHandler?.also { it.visit(connection) }
+                                    connHandler.handleConnection(connection)
+                                } else {
+                                    // This should not happen if channelActive is called after handshake
+                                    ctx.close()
+                                    throw IllegalStateException("Remote certificate still not available after handshake")
+                                }
+
+                                super.channelActive(ctx)
                             }
 
-                            super.channelActive(ctx)
+                            @Deprecated("Deprecated in Java")
+                            override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
+                                log.error("An error during handshake", cause)
+                                ctx.close()
+                            }
                         }
-
-                        @Deprecated("Deprecated in Java")
-                        override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
-                            log.error("An error during handshake", cause)
-                            ctx.close()
-                        }
-                    })
+                    )
                 }
             })
             .initialMaxData(1024)
@@ -368,7 +370,7 @@ class QuicTransport(
     }
 
     class QuicMuxerSession(
-        val ch : QuicChannel,
+        val ch: QuicChannel,
         val connection: ConnectionOverNetty
     ) : StreamMuxer.Session {
         override fun <T> createStream(protocols: List<ProtocolBinding<T>>): StreamPromise<T> {
