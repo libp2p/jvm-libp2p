@@ -353,6 +353,7 @@ class QuicTransport(
 
                         @Deprecated("Deprecated in Java")
                         override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
+                            log.error("An error during handshake", cause)
                             ctx.close()
                         }
                     })
