@@ -316,13 +316,18 @@ public class CircuitHopProtocol extends ProtobufProtocolHandler<CircuitHopProtoc
 
                     // connect these streams with time + bytes enforcement
                     fromRequestor.pushHandler(new InboundTrafficLimitHandler(resv.maxBytes));
-                    fromRequestor.pushHandler(
-                        new TotalTimeoutHandler(
-                            Duration.of(resv.durationSeconds, ChronoUnit.SECONDS)));
+                    if(resv.durationSeconds > 0){
+                      fromRequestor.pushHandler(
+                              new TotalTimeoutHandler(
+                                      Duration.of(resv.durationSeconds, ChronoUnit.SECONDS)));
+                    }
+
                     toTarget.pushHandler(new InboundTrafficLimitHandler(resv.maxBytes));
-                    toTarget.pushHandler(
-                        new TotalTimeoutHandler(
-                            Duration.of(resv.durationSeconds, ChronoUnit.SECONDS)));
+                    if(resv.durationSeconds > 0){
+                      toTarget.pushHandler(
+                              new TotalTimeoutHandler(
+                                      Duration.of(resv.durationSeconds, ChronoUnit.SECONDS)));
+                    }
                     fromRequestor.pushHandler(new ProxyHandler(toTarget));
                     toTarget.pushHandler(new ProxyHandler(fromRequestor));
                   } else {
