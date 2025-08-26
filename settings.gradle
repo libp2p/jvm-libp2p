@@ -23,6 +23,7 @@ include ':tools:simulator'
 include ':examples:chatter'
 include ':examples:cli-chatter'
 include ':examples:pinger'
+include 'interop-test-client'
 
 def getAndroidSdkDir() {
     def localPropertiesSdkDir = null
