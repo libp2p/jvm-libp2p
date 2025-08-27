@@ -23,11 +23,11 @@ dependencies {
     implementation("io.netty:netty-codec-native-quic::osx-x86_64")
     implementation("io.netty:netty-codec-native-quic::osx-aarch_64")
     implementation("io.netty:netty-codec-native-quic::windows-x86_64")
-    implementation("io.netty:netty-tcnative-boringssl-static:2.0.72.Final:linux-x86_64")
-    implementation("io.netty:netty-tcnative-boringssl-static:2.0.72.Final:linux-aarch_64")
-    implementation("io.netty:netty-tcnative-boringssl-static:2.0.72.Final:osx-x86_64")
-    implementation("io.netty:netty-tcnative-boringssl-static:2.0.72.Final:osx-aarch_64")
-    implementation("io.netty:netty-tcnative-boringssl-static:2.0.72.Final:windows-x86_64")
+    implementation("io.netty:netty-tcnative-boringssl-static::linux-x86_64")
+    implementation("io.netty:netty-tcnative-boringssl-static::linux-aarch_64")
+    implementation("io.netty:netty-tcnative-boringssl-static::osx-x86_64")
+    implementation("io.netty:netty-tcnative-boringssl-static::osx-aarch_64")
+    implementation("io.netty:netty-tcnative-boringssl-static::windows-x86_64")
 
     api("com.google.protobuf:protobuf-java")
 

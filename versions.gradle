@@ -38,9 +38,10 @@ dependencyManagement {
             entry 'netty-buffer'
             entry 'netty-codec-http'
             entry 'netty-codec-protobuf'
-            entry 'netty-transport-classes-epoll'
             entry 'netty-codec-native-quic'
+            entry 'netty-transport-classes-epoll'
         }
+        dependency "io.netty:netty-tcnative-boringssl-static:2.0.72.Final"
         dependency "com.github.multiformats:java-multibase:v1.1.1"
         dependency "tech.pegasys:noise-java:22.1.0"
         dependencySet(group: "org.bouncycastle", version: "1.78.1") {
