@@ -138,10 +138,11 @@ class QuicTransport(
         val everythingThatNeedsToClose = unbindsCompleted.union(channelsClosed)
         val allClosed = CompletableFuture.allOf(*everythingThatNeedsToClose.toTypedArray())
 
-        return allClosed.thenApply {
-            workerGroup.shutdownGracefully()
-            bossGroup.shutdownGracefully()
-            Unit
+        return allClosed.thenCompose {
+            CompletableFuture.allOf(
+                workerGroup.shutdownGracefully().toVoidCompletableFuture(),
+                bossGroup.shutdownGracefully().toVoidCompletableFuture()
+            ).thenApply { }
         }
     }
 
