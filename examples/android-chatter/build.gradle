@@ -35,6 +35,7 @@ android {
         exclude 'META-INF/license/LICENSE.tomcat-native.txt'
         exclude 'META-INF/license/LICENSE.jbzip2.txt'
         exclude 'META-INF/license/LICENSE.webbit.txt'
+        exclude 'META-INF/license/LICENSE.snappy.txt'
     }
     kotlinOptions {
         jvmTarget = "11"
