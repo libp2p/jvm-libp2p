@@ -23,11 +23,11 @@ fun ChannelFuture.toCompletableFuture(): CompletableFuture<Channel> {
 
 fun Future<*>.toVoidCompletableFuture(): CompletableFuture<Unit> {
     val ret = CompletableFuture<Unit>()
-    this.addListener { f ->
-        if (f.isSuccess) {
+    this.addListener {
+        if (it.isSuccess) {
             ret.complete(Unit)
         } else {
-            ret.completeExceptionally(f.cause())
+            ret.completeExceptionally(it.cause())
         }
     }
     return ret
