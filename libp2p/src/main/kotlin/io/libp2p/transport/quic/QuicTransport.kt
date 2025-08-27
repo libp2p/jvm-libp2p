@@ -295,7 +295,7 @@ class QuicTransport(
         val javaPrivateKey = getJavaKey(connectionKeys.first)
         val isClient = expectedRemotePeerId != null
         val cert = buildCert(localKey, connectionKeys.first)
-        logger.info("Building {} keys and cert for peer {}", certAlgorithm, PeerId.fromPubKey(localKey.publicKey()))
+        logger.info("Building {} keys and cert for peer id {}", certAlgorithm, PeerId.fromPubKey(localKey.publicKey()))
         return (
             if (isClient) {
                 QuicSslContextBuilder.forClient().keyManager(javaPrivateKey, null, cert)
