@@ -23,6 +23,7 @@ import io.libp2p.security.tls.Libp2pTrustManager
 import io.libp2p.security.tls.buildCert
 import io.libp2p.security.tls.getJavaKey
 import io.libp2p.security.tls.getPublicKeyFromCert
+import io.libp2p.security.tls.verifyAndExtractPeerId
 import io.libp2p.transport.implementation.ConnectionOverNetty
 import io.libp2p.transport.implementation.NettyTransport
 import io.libp2p.transport.implementation.StreamOverNetty
@@ -173,7 +174,7 @@ class QuicTransport(
                         listeners -= addr
                     }
                 }
-                logger.info("Quic server listening on $addr")
+                logger.info("Quic server listening on {}", addr)
                 res.complete(null)
             }
         }
@@ -293,7 +294,7 @@ class QuicTransport(
         val javaPrivateKey = getJavaKey(connectionKeys.first)
         val isClient = expectedRemotePeerId != null
         val cert = buildCert(localKey, connectionKeys.first)
-        log.info("Building {} keys and cert for peerid {}", certAlgorithm, PeerId.fromPubKey(localKey.publicKey()))
+        logger.info("Building {} keys and cert for peer {}", certAlgorithm, PeerId.fromPubKey(localKey.publicKey()))
         return (
             if (isClient) {
                 QuicSslContextBuilder.forClient().keyManager(javaPrivateKey, null, cert)
@@ -334,7 +335,7 @@ class QuicTransport(
                                     val remotePeerId = verifyAndExtractPeerId(arrayOf(remoteCert))
                                     val remotePublicKey = getPublicKeyFromCert(arrayOf(remoteCert))
 
-                                    log.info("Handshake completed with remote peer id: {}", remotePeerId)
+                                    logger.info("Handshake completed with remote peer id: {}", remotePeerId)
 
                                     connection.setSecureSession(
                                         SecureChannel.Session(
@@ -362,7 +363,7 @@ class QuicTransport(
 
                             @Deprecated("Deprecated in Java")
                             override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
-                                log.error("An error during handshake", cause)
+                                logger.error("An error during handshake", cause)
                                 ctx.close()
                             }
                         }
@@ -382,8 +383,8 @@ class QuicTransport(
         val connection: ConnectionOverNetty
     ) : StreamMuxer.Session {
         override fun <T> createStream(protocols: List<ProtocolBinding<T>>): StreamPromise<T> {
-            var multistreamProtocol: MultistreamProtocol = MultistreamProtocolV1
-            var streamMultistreamProtocol: MultistreamProtocol by lazyVar { multistreamProtocol }
+            val multistreamProtocol: MultistreamProtocol = MultistreamProtocolV1
+            val streamMultistreamProtocol: MultistreamProtocol by lazyVar { multistreamProtocol }
             val multi = streamMultistreamProtocol.createMultistream(protocols)
 
             val controller = CompletableFuture<T>()
