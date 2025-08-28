@@ -29,7 +29,7 @@ android {
             excludes.add("META-INF/native-image/io.netty/netty-codec-native-quic/jni-config.json")
             excludes.add("META-INF/native-image/io.netty/netty-codec-native-quic/reflect-config.json")
             excludes.add("META-INF/native-image/io.netty/netty-codec-native-quic/resource-config.json")
-            excludes.add("META-INF/license/LICENSE*")
+            excludes.add("META-INF/license/*")
         }
 
     }
