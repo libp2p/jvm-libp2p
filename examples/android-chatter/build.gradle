@@ -41,6 +41,7 @@ android {
         exclude 'META-INF/license/LICENSE.base64.txt'
         exclude 'META-INF/license/LICENSE.commons-lang.txt'
         exclude 'META-INF/license/LICENSE.jzlib.txt'
+        exclude 'META-INF/license/LICENSE.jctools.txt'
     }
     kotlinOptions {
         jvmTarget = "11"
