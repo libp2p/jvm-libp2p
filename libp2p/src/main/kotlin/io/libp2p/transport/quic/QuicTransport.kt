@@ -280,9 +280,9 @@ class QuicTransport(
 
     override fun handles(addr: Multiaddr) =
         handlesHost(addr) &&
-                addr.has(UDP) &&
-                addr.has(QUICV1) &&
-                !addr.has(WS)
+            addr.has(UDP) &&
+            addr.has(QUICV1) &&
+            !addr.has(WS)
 
     fun quicSslContext(expectedRemotePeerId: PeerId?, trustManager: Libp2pTrustManager): QuicSslContext {
         val connectionKeys = if (certAlgorithm.equals("ECDSA")) generateEcdsaKeyPair() else generateEd25519KeyPair()
@@ -291,12 +291,12 @@ class QuicTransport(
         val cert = buildCert(localKey, connectionKeys.first)
         logger.info("Building {} keys and cert for peer id {}", certAlgorithm, PeerId.fromPubKey(localKey.publicKey()))
         return (
-                if (isClient) {
-                    QuicSslContextBuilder.forClient().keyManager(javaPrivateKey, null, cert)
-                } else {
-                    QuicSslContextBuilder.forServer(javaPrivateKey, null, cert).clientAuth(ClientAuth.REQUIRE)
-                }
-                )
+            if (isClient) {
+                QuicSslContextBuilder.forClient().keyManager(javaPrivateKey, null, cert)
+            } else {
+                QuicSslContextBuilder.forServer(javaPrivateKey, null, cert).clientAuth(ClientAuth.REQUIRE)
+            }
+            )
             .trustManager(trustManager)
             .applicationProtocols("libp2p")
             .build()
