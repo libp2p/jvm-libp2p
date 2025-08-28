@@ -192,7 +192,7 @@ configure(
     }
 
     detekt {
-        config = files("$rootDir/detekt/config.yml")
+        config.from("$rootDir/detekt/config.yml")
         buildUponDefaultConfig = true
     }
 }
