@@ -85,7 +85,7 @@ class QuicTransport(
         }
 
         @JvmStatic
-        fun Ecdsa(k: PrivKey, p: List<ProtocolBinding<*>>): QuicTransport {
+        fun ECDSA(k: PrivKey, p: List<ProtocolBinding<*>>): QuicTransport {
             return QuicTransport(k, "ECDSA", p)
         }
 

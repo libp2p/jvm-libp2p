@@ -32,7 +32,7 @@ public class QuicServerTestJava {
     Host clientHost =
         new HostBuilder()
             .keyType(KeyType.ED25519)
-            .secureTransport(QuicTransport::Ecdsa)
+            .secureTransport(QuicTransport::ECDSA)
             .transport(TcpTransport::new)
             .secureChannel(TlsSecureChannel::ECDSA)
             .muxer(StreamMuxerProtocol::getYamux)
@@ -41,7 +41,7 @@ public class QuicServerTestJava {
     Host serverHost =
         new HostBuilder()
             .keyType(KeyType.ED25519)
-            .secureTransport(QuicTransport::Ecdsa)
+            .secureTransport(QuicTransport::ECDSA)
             .transport(TcpTransport::new)
             .secureChannel(TlsSecureChannel::ECDSA)
             .muxer(StreamMuxerProtocol::getYamux)
@@ -105,7 +105,7 @@ public class QuicServerTestJava {
     Host clientHost =
         new HostBuilder()
             .keyType(KeyType.ED25519)
-            .secureTransport(QuicTransport::Ecdsa)
+            .secureTransport(QuicTransport::ECDSA)
             .transport(TcpTransport::new)
             .secureChannel(TlsSecureChannel::ECDSA)
             .secureChannel(NoiseXXSecureChannel::new)
@@ -115,7 +115,7 @@ public class QuicServerTestJava {
     Host serverHost =
         new HostBuilder()
             .keyType(KeyType.ED25519)
-            .secureTransport(QuicTransport::Ecdsa)
+            .secureTransport(QuicTransport::ECDSA)
             .transport(TcpTransport::new)
             .secureChannel(TlsSecureChannel::ECDSA)
             .secureChannel(NoiseXXSecureChannel::new)
@@ -201,7 +201,7 @@ public class QuicServerTestJava {
     Host clientHost =
         new HostBuilder()
             .keyType(KeyType.ED25519)
-            .secureTransport(QuicTransport::Ecdsa)
+            .secureTransport(QuicTransport::ECDSA)
             .builderModifier(
                 b -> b.getDebug().getMuxFramesHandler().addCompactLogger(LogLevel.ERROR, "client"))
             .build();
@@ -209,7 +209,7 @@ public class QuicServerTestJava {
     Host serverHost =
         new HostBuilder()
             .keyType(KeyType.ED25519)
-            .secureTransport(QuicTransport::Ecdsa)
+            .secureTransport(QuicTransport::ECDSA)
             .protocol(new Blob(blobSize))
             .listen(localListenAddress)
             .builderModifier(
@@ -262,12 +262,12 @@ public class QuicServerTestJava {
     String localListenAddress = "/ip4/127.0.0.1/udp/" + getPort() + "/quic-v1";
 
     Host clientHost =
-        new HostBuilder().keyType(KeyType.ED25519).secureTransport(QuicTransport::Ecdsa).build();
+        new HostBuilder().keyType(KeyType.ED25519).secureTransport(QuicTransport::ECDSA).build();
 
     Host serverHost =
         new HostBuilder()
             .keyType(KeyType.ED25519)
-            .secureTransport(QuicTransport::Ecdsa)
+            .secureTransport(QuicTransport::ECDSA)
             .listen(localListenAddress)
             .build();
 

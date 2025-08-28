@@ -21,7 +21,7 @@ public class QuicKuboTestJava {
     PeerId peerId = PeerId.fromBase58(getKuboPeerId());
 
     Host clientHost =
-        new HostBuilder().keyType(KeyType.ED25519).secureTransport(QuicTransport::Ecdsa).build();
+        new HostBuilder().keyType(KeyType.ED25519).secureTransport(QuicTransport::ECDSA).build();
 
     CompletableFuture<Void> clientStarted = clientHost.start();
     clientStarted.get(5, TimeUnit.SECONDS);
