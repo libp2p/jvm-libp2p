@@ -22,17 +22,17 @@ android {
         }
     }
     packagingOptions {
-        exclude 'META-INF/io.netty.versions.properties'
-        exclude 'META-INF/INDEX.LIST'
-        exclude 'META-INF/versions/9/OSGI-INF/MANIFEST.MF'
-        exclude 'META-INF/license/LICENSE.aix-netbsd.txt'
-        exclude 'META-INF/native-image/io.netty.incubator/netty-incubator-codec-native-quic/jni-config.json'
-        exclude 'META-INF/native-image/io.netty.incubator/netty-incubator-codec-native-quic/reflect-config.json'
-        exclude 'META-INF/native-image/io.netty.incubator/netty-incubator-codec-native-quic/resource-config.json'
-        exclude 'META-INF/license/LICENSE.boringssl.txt'
-        exclude 'META-INF/license/LICENSE.mvn-wrapper.txt'
-        exclude 'META-INF/license/LICENSE.quiche.txt'
-        exclude 'META-INF/license/LICENSE.tomcat-native.txt'
+        resources {
+            excludes.add("META-INF/io.netty.versions.properties")
+            excludes.add("META-INF/INDEX.LIST")
+            excludes.add("META-INF/versions/9/OSGI-INF/MANIFEST.MF")
+            excludes.add("META-INF/native-image/io.netty/netty-codec-native-quic/jni-config.json")
+            excludes.add("META-INF/native-image/io.netty/netty-codec-native-quic/reflect-config.json")
+            excludes.add("META-INF/native-image/io.netty/netty-codec-native-quic/resource-config.json")
+            excludes.add("META-INF/native-image/io.netty/netty-codec-native-quic/native-image.properties")
+            excludes.add("META-INF/license/*")
+        }
+
     }
     kotlinOptions {
         jvmTarget = "11"

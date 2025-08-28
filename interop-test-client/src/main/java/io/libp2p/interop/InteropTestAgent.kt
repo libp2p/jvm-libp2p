@@ -19,6 +19,7 @@ import io.libp2p.protocol.Identify
 import io.libp2p.protocol.Ping
 import io.libp2p.security.noise.NoiseXXSecureChannel
 import io.libp2p.security.tls.TlsSecureChannel.Companion.ECDSA
+import io.libp2p.transport.quic.QuicTransport
 import io.libp2p.transport.tcp.TcpTransport
 import redis.clients.jedis.Jedis
 import java.util.concurrent.CompletableFuture
@@ -72,7 +73,7 @@ class InteropTestAgent(val params: InteropTestParams) {
     ): Host = hostJ(Builder.Defaults.None, fn = {
         it.identity.factory = { privateKey }
         if (params.transport == "quic-v1") {
-            // TODO add quic support
+            it.secureTransports.add(QuicTransport::ECDSA)
         } else {
             it.transports.add(::TcpTransport)
         }
