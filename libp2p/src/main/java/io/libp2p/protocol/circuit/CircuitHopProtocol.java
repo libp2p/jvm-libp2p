@@ -315,11 +315,15 @@ public class CircuitHopProtocol extends ProtobufProtocolHandler<CircuitHopProtoc
                         new CircuitStopProtocol.StopRemover());
 
                     // connect these streams with time + bytes enforcement
-                    fromRequestor.pushHandler(new InboundTrafficLimitHandler(resv.maxBytes));
+                    if (resv.maxBytes > 0) {
+                      fromRequestor.pushHandler(new InboundTrafficLimitHandler(resv.maxBytes));
+                    }
                     fromRequestor.pushHandler(
                         new TotalTimeoutHandler(
                             Duration.of(resv.durationSeconds, ChronoUnit.SECONDS)));
-                    toTarget.pushHandler(new InboundTrafficLimitHandler(resv.maxBytes));
+                    if (resv.maxBytes > 0) {
+                      toTarget.pushHandler(new InboundTrafficLimitHandler(resv.maxBytes));
+                    }
                     toTarget.pushHandler(
                         new TotalTimeoutHandler(
                             Duration.of(resv.durationSeconds, ChronoUnit.SECONDS)));
