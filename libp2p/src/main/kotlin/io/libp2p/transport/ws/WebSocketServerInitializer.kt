@@ -12,12 +12,12 @@ internal class WebSocketServerInitializer(
     private val connectionBuilder: ChannelHandler
 ) : ChannelInitializer<SocketChannel>() {
 
-    public override fun initChannel(ch: SocketChannel) {
+    override fun initChannel(ch: SocketChannel) {
         val pipeline = ch.pipeline()
 
         pipeline.addLast(HttpServerCodec())
         pipeline.addLast(HttpObjectAggregator(65536))
-        pipeline.addLast(WebSocketServerCompressionHandler())
+        pipeline.addLast(WebSocketServerCompressionHandler(0))
         pipeline.addLast(WebSocketServerProtocolHandler("/", null, true))
         pipeline.addLast(WebSocketServerHandshakeListener(connectionBuilder))
     } // initChannel
