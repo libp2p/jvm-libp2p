@@ -22,27 +22,18 @@ android {
         }
     }
     packagingOptions {
-        exclude 'META-INF/io.netty.versions.properties'
-        exclude 'META-INF/INDEX.LIST'
-        exclude 'META-INF/versions/9/OSGI-INF/MANIFEST.MF'
-        exclude 'META-INF/license/LICENSE.aix-netbsd.txt'
-        exclude 'META-INF/native-image/io.netty/netty-codec-native-quic/jni-config.json'
-        exclude 'META-INF/native-image/io.netty/netty-codec-native-quic/reflect-config.json'
-        exclude 'META-INF/native-image/io.netty/netty-codec-native-quic/resource-config.json'
-        exclude 'META-INF/license/LICENSE.boringssl.txt'
-        exclude 'META-INF/license/LICENSE.mvn-wrapper.txt'
-        exclude 'META-INF/license/LICENSE.quiche.txt'
-        exclude 'META-INF/license/LICENSE.tomcat-native.txt'
-        exclude 'META-INF/license/LICENSE.jbzip2.txt'
-        exclude 'META-INF/license/LICENSE.webbit.txt'
-        exclude 'META-INF/license/LICENSE.snappy.txt'
-        exclude 'META-INF/license/LICENSE.protobuf.txt'
-        exclude 'META-INF/license/LICENSE.nghttp2-hpack.txt'
-        exclude 'META-INF/license/LICENSE.base64.txt'
-        exclude 'META-INF/license/LICENSE.commons-lang.txt'
-        exclude 'META-INF/license/LICENSE.jzlib.txt'
-        exclude 'META-INF/license/LICENSE.jctools.txt'
-        exclude 'META-INF/license/LICENSE.log4j.txt'
+        resources {
+            pickFirsts += setOf("META-INF/license/LICENSE")
+            excludes += setOf(
+                "META-INF/io.netty.versions.properties",
+                "META-INF/INDEX.LIST",
+                "META-INF/versions/9/OSGI-INF/MANIFEST.MF",
+                "META-INF/native-image/io.netty/netty-codec-native-quic/jni-config.json",
+                "META-INF/native-image/io.netty/netty-codec-native-quic/reflect-config.json",
+                "META-INF/native-image/io.netty/netty-codec-native-quic/resource-config.json"
+            )
+        }
+
     }
     kotlinOptions {
         jvmTarget = "11"
