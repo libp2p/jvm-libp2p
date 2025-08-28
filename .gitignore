@@ -190,3 +190,6 @@ $RECYCLE.BIN/
 node_modules
 package-lock.json
 /src/jmh/java/generated/
+
+#Jenv
+.java-version
