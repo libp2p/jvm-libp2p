@@ -4,6 +4,7 @@ import io.netty.channel.Channel
 import io.netty.channel.ChannelFuture
 import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelPipeline
+import io.netty.util.concurrent.Future
 import java.util.concurrent.CompletableFuture
 
 fun ChannelFuture.toVoidCompletableFuture(): CompletableFuture<Unit> = toCompletableFuture().thenApply { }
@@ -13,6 +14,18 @@ fun ChannelFuture.toCompletableFuture(): CompletableFuture<Channel> {
     this.addListener {
         if (it.isSuccess) {
             ret.complete(this.channel())
+        } else {
+            ret.completeExceptionally(it.cause())
+        }
+    }
+    return ret
+}
+
+fun Future<*>.toVoidCompletableFuture(): CompletableFuture<Unit> {
+    val ret = CompletableFuture<Unit>()
+    this.addListener {
+        if (it.isSuccess) {
+            ret.complete(Unit)
         } else {
             ret.completeExceptionally(it.cause())
         }
