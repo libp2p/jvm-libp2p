@@ -314,7 +314,7 @@ public class CircuitHopProtocol extends ProtobufProtocolHandler<CircuitHopProtoc
                         CircuitStopProtocol.STOP_REMOVER_NAME,
                         new CircuitStopProtocol.StopRemover());
 
-                    // connect these streams with time + bytes enforcement                 
+                    // connect these streams with time + bytes enforcement
                     if (resv.maxBytes > 0) {
                       fromRequestor.pushHandler(new InboundTrafficLimitHandler(resv.maxBytes));
                     }

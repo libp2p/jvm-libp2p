@@ -36,7 +36,7 @@ configure(
         }
 ) {
     group = "io.libp2p"
-    version = "1.2.6R-SNAPSHOT"
+    version = "develop"
 
     apply(plugin = "kotlin")
     apply(plugin = "idea")
@@ -163,11 +163,6 @@ configure(
                     username = findProperty("cloudsmithUser") as String?
                     password = findProperty("cloudsmithApiKey") as String?
                 }
-            }
-
-            maven {
-                name = "singlerr"
-                url = uri(project.property("localMvnRepo").toString())
             }
         }
         if (hasProperty("mavenArtifactId")) {
