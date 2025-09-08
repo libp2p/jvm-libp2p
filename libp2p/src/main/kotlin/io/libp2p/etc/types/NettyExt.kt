@@ -21,11 +21,14 @@ fun ChannelFuture.toCompletableFuture(): CompletableFuture<Channel> {
     return ret
 }
 
-fun Future<*>.toVoidCompletableFuture(): CompletableFuture<Unit> {
-    val ret = CompletableFuture<Unit>()
+fun Future<*>.toVoidCompletableFuture(): CompletableFuture<Unit> = toCompletableFuture().thenApply { }
+
+fun <T> Future<T>.toCompletableFuture(): CompletableFuture<T> {
+    val ret = CompletableFuture<T>()
     this.addListener {
         if (it.isSuccess) {
-            ret.complete(Unit)
+            @Suppress("UNCHECKED_CAST")
+            ret.complete(it.get() as T)
         } else {
             ret.completeExceptionally(it.cause())
         }
@@ -45,5 +48,5 @@ fun ChannelPipeline.getHandlerName(handler: ChannelHandler) = (
         ?: throw IllegalArgumentException("Handler $handler not found in pipeline $this")
     )
 
-fun ChannelPipeline.addAfter(handler: ChannelHandler, newHandlerName: String, newHandler: ChannelHandler) =
+fun ChannelPipeline.addAfter(handler: ChannelHandler, newHandlerName: String, newHandler: ChannelHandler): ChannelPipeline =
     addAfter(getHandlerName(handler), newHandlerName, newHandler)

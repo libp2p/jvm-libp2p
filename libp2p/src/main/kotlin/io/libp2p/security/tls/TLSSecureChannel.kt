@@ -104,7 +104,7 @@ fun buildTlsHandler(
     handshakeComplete: CompletableFuture<SecureChannel.Session>,
     ctx: ChannelHandlerContext
 ): SslHandler {
-    val connectionKeys = if (certAlgorithm.equals("ECDSA")) generateEcdsaKeyPair() else generateEd25519KeyPair()
+    val connectionKeys = if (certAlgorithm == "ECDSA") generateEcdsaKeyPair() else generateEd25519KeyPair()
     val javaPrivateKey = getJavaKey(connectionKeys.first)
     val sslContext = (
         if (isInitiator) {
