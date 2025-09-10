@@ -8,7 +8,7 @@ import io.libp2p.etc.types.toVoidCompletableFuture
 import io.netty.channel.Channel
 import java.util.concurrent.CompletableFuture
 
-class StreamOverNetty(
+open class StreamOverNetty(
     ch: Channel,
     override val connection: Connection,
     initiator: Boolean

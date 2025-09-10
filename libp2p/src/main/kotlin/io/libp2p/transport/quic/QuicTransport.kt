@@ -78,8 +78,8 @@ class QuicTransport(
             return QuicTransport(k, "ECDSA", p)
         }
 
-        private fun createStream(channel: Channel, connection: Connection, initiator: Boolean): Stream {
-            val stream = StreamOverNetty(channel, connection, initiator)
+        private fun createStream(channel: QuicStreamChannel, connection: Connection, initiator: Boolean): Stream {
+            val stream = QuicStream(channel, connection, initiator)
             channel.attr(STREAM).set(stream)
             return stream
         }
@@ -384,7 +384,7 @@ class QuicTransport(
             val stream = ch.createStream(
                 QuicStreamType.BIDIRECTIONAL,
                 nettyInitializer {
-                    val stream = createStream(it.channel, connection, true)
+                    val stream = createStream(it.channel as QuicStreamChannel, connection, true)
                     val streamHandler = multi.toStreamHandler()
                     streamHandler.handleStream(stream).forward(controller)
                 }

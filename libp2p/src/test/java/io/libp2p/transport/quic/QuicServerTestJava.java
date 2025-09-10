@@ -97,6 +97,75 @@ public class QuicServerTestJava {
   }
 
   @Test
+  void oneShotPingJava() throws Exception {
+    String localListenAddress = "/ip4/127.0.0.1/udp/" + getPort() + "/quic-v1";
+
+    Host clientHost =
+        new HostBuilder()
+            .keyType(KeyType.ED25519)
+            .secureTransport(QuicTransport::ECDSA)
+            .transport(TcpTransport::new)
+            .secureChannel(TlsSecureChannel::ECDSA)
+            .muxer(StreamMuxerProtocol::getYamux)
+            .build();
+
+    Host serverHost =
+        new HostBuilder()
+            .keyType(KeyType.ED25519)
+            .secureTransport(QuicTransport::ECDSA)
+            .transport(TcpTransport::new)
+            .secureChannel(TlsSecureChannel::ECDSA)
+            .muxer(StreamMuxerProtocol::getYamux)
+            .protocol(new OneShotPing())
+            .listen(localListenAddress)
+            .build();
+
+    CompletableFuture<Void> clientStarted = clientHost.start();
+    CompletableFuture<Void> serverStarted = serverHost.start();
+    clientStarted.get(5, TimeUnit.SECONDS);
+    System.out.println("Client started " + clientHost.getPeerId());
+    serverStarted.get(5, TimeUnit.SECONDS);
+    System.out.println("Server started " + serverHost.getPeerId());
+
+    Assertions.assertEquals(0, clientHost.listenAddresses().size());
+    Assertions.assertEquals(1, serverHost.listenAddresses().size());
+    Assertions.assertEquals(
+        localListenAddress + "/p2p/" + serverHost.getPeerId(),
+        serverHost.listenAddresses().get(0).toString());
+    System.out.println("Hosts running");
+    Thread.sleep(2_000);
+
+    StreamPromise<OneShotPingController> ping =
+        clientHost
+            .getNetwork()
+            .connect(serverHost.getPeerId(), new Multiaddr(localListenAddress))
+            .thenApply(it -> it.muxerSession().createStream(new OneShotPing(500)))
+            .get(5000, TimeUnit.SECONDS);
+
+    Stream pingStream = ping.getStream().get(5, TimeUnit.SECONDS);
+    System.out.println("Ping stream created");
+    CompletableFuture<OneShotPingController> controller = ping.getController();
+    OneShotPingController pingCtr = controller.get(5000, TimeUnit.SECONDS);
+    System.out.println("Ping controller created");
+    pingStream.getConnection().localAddress();
+    Multiaddr remote = pingStream.getConnection().remoteAddress();
+    Assertions.assertEquals(localListenAddress, remote.toString());
+
+    long s = System.currentTimeMillis();
+    pingCtr.ping().get(20, TimeUnit.SECONDS);
+    long l = System.currentTimeMillis() - s;
+    System.out.println("One Shot Ping is Done in " + l + " ms");
+
+    pingStream.close().get(5, TimeUnit.SECONDS);
+    System.out.println("Ping stream closed");
+
+    clientHost.stop().get(5, TimeUnit.SECONDS);
+    System.out.println("Client stopped");
+    serverHost.stop().get(5, TimeUnit.SECONDS);
+    System.out.println("Server stopped");
+  }
+
+  @Test
   void tlsAndQuicInSameHostPing() throws Exception {
     int port = getPort();
     String localQuicListenAddress = "/ip4/127.0.0.1/udp/" + port + "/quic-v1";
