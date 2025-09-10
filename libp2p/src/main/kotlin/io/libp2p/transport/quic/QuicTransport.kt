@@ -26,7 +26,6 @@ import io.libp2p.security.tls.getPublicKeyFromCert
 import io.libp2p.security.tls.verifyAndExtractPeerId
 import io.libp2p.transport.implementation.ConnectionOverNetty
 import io.libp2p.transport.implementation.NettyTransport
-import io.libp2p.transport.implementation.StreamOverNetty
 import io.netty.bootstrap.Bootstrap
 import io.netty.buffer.AdaptiveByteBufAllocator
 import io.netty.buffer.ByteBuf

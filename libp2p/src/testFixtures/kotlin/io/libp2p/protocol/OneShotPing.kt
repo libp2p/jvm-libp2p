@@ -23,7 +23,6 @@ class OneShotPing(pingSize: Int) : OneShotPingBinding(OneShotPingProtocol(pingSi
 open class OneShotPingBinding(ping: OneShotPingProtocol) :
     StrictProtocolBinding<OneShotPingController>("/ipfs/one-shot-ping/1.0.0", ping)
 
-
 open class OneShotPingProtocol(var pingSize: Int) : ProtocolHandler<OneShotPingController>(Long.MAX_VALUE, Long.MAX_VALUE) {
 
     constructor() : this(32)
