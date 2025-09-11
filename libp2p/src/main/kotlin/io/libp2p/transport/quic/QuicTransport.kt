@@ -191,7 +191,6 @@ class QuicTransport(
         val sslContext = quicSslContext(true, trustManager)
         val requestsHandler = QuicClientCodecBuilder()
             .sslEngineProvider { q -> sslContext.newEngine(q.alloc()) }
-            .maxIdleTimeout(15000, TimeUnit.MILLISECONDS)
             .sslTaskExecutor(workerGroup)
             .initialMaxData(1 shl 20)
             .initialMaxStreamsBidirectional(64)
@@ -304,7 +303,6 @@ class QuicTransport(
         val sslContext = quicSslContext(false, trustManager)
         return QuicServerCodecBuilder()
             .sslEngineProvider { q -> sslContext.newEngine(q.alloc()) }
-            .maxIdleTimeout(5000, TimeUnit.MILLISECONDS)
             .sslTaskExecutor(workerGroup)
             .tokenHandler(NoTokenHandler())
             .handler(
