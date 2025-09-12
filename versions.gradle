@@ -6,32 +6,32 @@ dependencyManagement {
     dependencies {
 
         dependency "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4"
-        dependency "com.google.guava:guava:33.3.1-jre"
+        dependency "com.google.guava:guava:33.4.8-jre"
 
         dependency "org.slf4j:slf4j-api:2.0.9"
-        dependencySet(group: 'org.apache.logging.log4j', version: '2.24.1') {
+        dependencySet(group: 'org.apache.logging.log4j', version: '2.25.1') {
             entry 'log4j-core'
             entry 'log4j-slf4j2-impl'
         }
 
-        dependencySet(group: 'org.junit.jupiter', version: '5.11.3') {
+        dependencySet(group: 'org.junit.jupiter', version: '5.13.4') {
             entry 'junit-jupiter-api'
             entry 'junit-jupiter-engine'
             entry 'junit-jupiter-params'
         }
-        dependency "io.mockk:mockk:1.13.3"
-        dependency "org.assertj:assertj-core:3.26.3"
+        dependencySet(group: 'org.junit.platform', version: '1.13.4') {
+            entry 'junit-platform-launcher'
+            entry 'junit-platform-engine'
 
-        dependencySet(group: "org.openjdk.jmh", version: "1.37") {
-            entry 'jmh-core'
-            entry 'jmh-generator-annprocess'
         }
+        dependency "io.mockk:mockk:1.13.3"
+        dependency "org.assertj:assertj-core:3.27.4"
 
-        dependencySet(group: "com.google.protobuf", version: "3.25.5") {
+        dependencySet(group: "com.google.protobuf", version: "3.25.8") {
             entry 'protobuf-java'
             entry 'protoc'
         }
-        dependencySet(group: "io.netty", version: "4.2.5.Final") {
+        dependencySet(group: "io.netty", version: "4.2.6.Final") {
             entry 'netty-common'
             entry 'netty-handler'
             entry 'netty-transport'
@@ -44,7 +44,7 @@ dependencyManagement {
         dependency "io.netty:netty-tcnative-boringssl-static:2.0.73.Final"
         dependency "com.github.multiformats:java-multibase:v1.1.1"
         dependency "tech.pegasys:noise-java:22.1.0"
-        dependencySet(group: "org.bouncycastle", version: "1.78.1") {
+        dependencySet(group: "org.bouncycastle", version: "1.81") {
             entry 'bcprov-jdk18on'
             entry 'bcpkix-jdk18on'
             entry 'bctls-jdk18on'
