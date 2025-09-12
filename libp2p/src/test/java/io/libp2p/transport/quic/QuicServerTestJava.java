@@ -23,7 +23,6 @@ import io.libp2p.security.noise.NoiseXXSecureChannel;
 import io.libp2p.security.tls.TlsSecureChannel;
 import io.libp2p.transport.tcp.TcpTransport;
 import io.netty.handler.logging.LogLevel;
-
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -31,7 +30,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
-
 import kotlin.Pair;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Assertions;
@@ -166,10 +164,7 @@ public class QuicServerTestJava {
     String localListenAddress = "/ip4/127.0.0.1/udp/" + getPort() + "/quic-v1";
 
     Host clientHost =
-        new HostBuilder()
-            .keyType(KeyType.SECP256K1)
-            .secureTransport(QuicTransport::ECDSA)
-            .build();
+        new HostBuilder().keyType(KeyType.SECP256K1).secureTransport(QuicTransport::ECDSA).build();
 
     Host serverHost =
         new HostBuilder()
@@ -182,7 +177,11 @@ public class QuicServerTestJava {
     clientHost.start().get(5, TimeUnit.SECONDS);
     serverHost.start().get(5, TimeUnit.SECONDS);
 
-    Connection connection = clientHost.getNetwork().connect(serverHost.getPeerId(), new Multiaddr(localListenAddress)).get(10, TimeUnit.SECONDS);
+    Connection connection =
+        clientHost
+            .getNetwork()
+            .connect(serverHost.getPeerId(), new Multiaddr(localListenAddress))
+            .get(10, TimeUnit.SECONDS);
 
     try {
       long s = System.currentTimeMillis();
