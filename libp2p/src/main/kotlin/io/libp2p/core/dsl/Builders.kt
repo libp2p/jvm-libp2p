@@ -91,6 +91,11 @@ open class Builder {
     open fun transports(fn: TransportsBuilder.() -> Unit): Builder = apply { fn(transports) }
 
     /**
+     * Manipulates the secure transports for this host.
+     */
+    open fun secureTransports(fn: SecureTransportsBuilder.() -> Unit): Builder = apply { fn(secureTransports) }
+
+    /**
      * [AddressBook] implementation
      */
     fun addressBook(fn: AddressBookBuilder.() -> Unit): Builder = apply { fn(addressBook) }

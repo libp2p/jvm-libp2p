@@ -15,7 +15,7 @@ List of components in the Libp2p spec and their JVM implementation status
 |                          | Component                                                                                       |      Status      |
 |--------------------------|-------------------------------------------------------------------------------------------------|:----------------:|
 | **Transport**            | tcp                                                                                             |  :green_apple:   |
-|                          | [quic](https://github.com/libp2p/specs/tree/master/quic)                                        |     :tomato:     |
+|                          | [quic](https://github.com/libp2p/specs/tree/master/quic)                                        |     :lemon:     |
 |                          | websocket                                                                                       |     :lemon:      |
 |                          | [webtransport](https://github.com/libp2p/specs/tree/master/webtransport)                        |                  |
 |                          | [webrtc-browser-to-server](https://github.com/libp2p/specs/blob/master/webrtc/webrtc-direct.md) |                  |

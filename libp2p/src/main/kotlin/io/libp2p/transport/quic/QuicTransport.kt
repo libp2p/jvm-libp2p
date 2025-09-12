@@ -26,10 +26,9 @@ import io.libp2p.security.tls.getPublicKeyFromCert
 import io.libp2p.security.tls.verifyAndExtractPeerId
 import io.libp2p.transport.implementation.ConnectionOverNetty
 import io.libp2p.transport.implementation.NettyTransport
-import io.libp2p.transport.implementation.StreamOverNetty
 import io.netty.bootstrap.Bootstrap
+import io.netty.buffer.AdaptiveByteBufAllocator
 import io.netty.buffer.ByteBuf
-import io.netty.buffer.PooledByteBufAllocator
 import io.netty.channel.*
 import io.netty.channel.epoll.Epoll
 import io.netty.channel.epoll.EpollDatagramChannel
@@ -43,7 +42,6 @@ import java.net.SocketAddress
 import java.time.Duration
 import java.util.*
 import java.util.concurrent.CompletableFuture
-import java.util.concurrent.TimeUnit
 
 class QuicTransport(
     private val localKey: PrivKey,
@@ -54,7 +52,8 @@ class QuicTransport(
     private val logger = LoggerFactory.getLogger(QuicTransport::class.java)
 
     private var closed = false
-    var connectTimeout = Duration.ofSeconds(15)
+
+    private val connectTimeout = Duration.ofSeconds(15)
 
     private val listeners = mutableMapOf<Multiaddr, Channel>()
     private val channels = mutableListOf<Channel>()
@@ -62,21 +61,9 @@ class QuicTransport(
     private var workerGroup by lazyVar {
         MultiThreadIoEventLoopGroup(NioIoHandler.newFactory())
     }
-    private var allocator by lazyVar { PooledByteBufAllocator(true) }
+    private var allocator by lazyVar { AdaptiveByteBufAllocator(true) }
     private var multistreamProtocol: MultistreamProtocol = MultistreamProtocolV1
     private var incomingMultistreamProtocol: MultistreamProtocol by lazyVar { multistreamProtocol }
-
-    private var client by lazyVar {
-        Bootstrap().group(workerGroup)
-            .channel(
-                if (Epoll.isAvailable()) {
-                    EpollDatagramChannel::class.java
-                } else {
-                    NioDatagramChannel::class.java
-                }
-            )
-            .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, connectTimeout.toMillis().toInt())
-    }
 
     companion object {
         @JvmStatic
@@ -89,11 +76,23 @@ class QuicTransport(
             return QuicTransport(k, "ECDSA", p)
         }
 
-        private fun createStream(channel: Channel, connection: Connection, initiator: Boolean): Stream {
-            val stream = StreamOverNetty(channel, connection, initiator)
+        private fun createStream(channel: QuicStreamChannel, connection: Connection, initiator: Boolean): Stream {
+            val stream = QuicStream(channel, connection, initiator)
             channel.attr(STREAM).set(stream)
             return stream
         }
+    }
+
+    private var client by lazyVar {
+        Bootstrap().group(workerGroup)
+            .channel(
+                if (Epoll.isAvailable()) {
+                    EpollDatagramChannel::class.java
+                } else {
+                    NioDatagramChannel::class.java
+                }
+            )
+            .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, connectTimeout.toMillis().toInt())
     }
 
     private var server by lazyVar {
@@ -149,18 +148,16 @@ class QuicTransport(
 
         val channelHandler = serverTransportBuilder(connHandler, preHandler)
 
-        val bindComplete = server.clone()
+        val listener = server.clone()
             .handler(
-                nettyInitializer { init ->
-                    registerChannel(init.channel)
-                    init.addLastLocal(channelHandler)
+                nettyInitializer {
+                    registerChannel(it.channel)
+                    it.addLastLocal(channelHandler)
                 }
             )
-            .localAddress(fromMultiaddr(addr))
-            .bind()
-            .sync()
 
-        val res = CompletableFuture<Unit>()
+        val bindComplete = listener.bind(fromMultiaddr(addr))
+
         bindComplete.also {
             synchronized(this@QuicTransport) {
                 listeners += addr to it.channel()
@@ -169,12 +166,12 @@ class QuicTransport(
                         listeners -= addr
                     }
                 }
-                logger.info("Quic server listening on {}", addr)
-                res.complete(null)
             }
         }
 
-        return res
+        return bindComplete.toVoidCompletableFuture().thenApply {
+            logger.info("Quic server listening on {}", addr)
+        }
     }
 
     override fun unlisten(addr: Multiaddr): CompletableFuture<Unit> {
@@ -189,63 +186,59 @@ class QuicTransport(
     ): CompletableFuture<Connection> {
         if (closed) throw Libp2pException("Transport is closed")
 
-        val trust = Libp2pTrustManager(Optional.ofNullable(addr.getPeerId()))
-        val sslContext = quicSslContext(addr.getPeerId(), trust)
-        val handler = QuicClientCodecBuilder()
-            .sslEngineProvider({ q -> sslContext.newEngine(q.alloc()) })
-            .maxIdleTimeout(15000, TimeUnit.MILLISECONDS)
+        val trustManager = Libp2pTrustManager(Optional.ofNullable(addr.getPeerId()))
+        val sslContext = quicSslContext(true, trustManager)
+        val requestsHandler = QuicClientCodecBuilder()
+            .sslEngineProvider { q -> sslContext.newEngine(q.alloc()) }
             .sslTaskExecutor(workerGroup)
-            .initialMaxData(1024)
-            .initialMaxStreamsBidirectional(16)
-            .initialMaxStreamDataBidirectionalRemote(1024)
-            .initialMaxStreamDataBidirectionalLocal(1024)
+            .initialMaxData(1 shl 20)
+            .initialMaxStreamsBidirectional(64)
+            .initialMaxStreamDataBidirectionalRemote(1 shl 18)
+            .initialMaxStreamDataBidirectionalLocal(1 shl 18)
             .build()
 
-        val connFuture = QuicChannel.newBootstrap(
-            client.clone()
-                .handler(handler)
-                .localAddress(0)
-                .bind()
-                .sync()
-                .channel()
-        )
-            .streamOption(ChannelOption.ALLOCATOR, allocator)
-            .option(ChannelOption.AUTO_READ, true)
-            .option(ChannelOption.ALLOCATOR, allocator)
-            .remoteAddress(fromMultiaddr(addr))
-            .streamHandler(object : ChannelInboundHandlerAdapter() {
-                override fun handlerAdded(ctx: ChannelHandlerContext?) {
-                    val connection = ctx!!.channel().parent().attr(CONNECTION).get() as Connection
-                    preHandler?.also { it.visit(connection) }
-                    connHandler.handleConnection(connection)
-                }
-            })
-            .connect()
-
-        val res = CompletableFuture<Connection>()
-        connFuture.also {
-            registerChannel(it.get())
-            val connection = ConnectionOverNetty(it.get(), this, true)
-            connection.setMuxerSession(QuicMuxerSession(it.get(), connection))
-            val pubHash = Multihash.of(addr.getPeerId()!!.bytes.toByteBuf())
-            val remotePubKey = if (pubHash.desc.digest == Multihash.Digest.Identity) {
-                unmarshalPublicKey(pubHash.bytes.toByteArray())
-            } else {
-                getPublicKeyFromCert(arrayOf(trust.remoteCert!!))
+        return client.clone()
+            .handler(requestsHandler)
+            .bind(0)
+            .toCompletableFuture()
+            .thenCompose {
+                QuicChannel.newBootstrap(it)
+                    .streamOption(ChannelOption.ALLOCATOR, allocator)
+                    .option(ChannelOption.AUTO_READ, true)
+                    .option(ChannelOption.ALLOCATOR, allocator)
+                    .remoteAddress(fromMultiaddr(addr))
+                    .streamHandler(InboundStreamHandler(multistreamProtocol, protocols))
+                    .connect()
+                    .toCompletableFuture()
             }
-            connection.setSecureSession(
-                SecureChannel.Session(
-                    PeerId.fromPubKey(localKey.publicKey()),
-                    addr.getPeerId()!!,
-                    remotePubKey,
-                    null
+            .thenApply {
+                registerChannel(it)
+                val connection = ConnectionOverNetty(it, this@QuicTransport, true)
+
+                connection.setMuxerSession(QuicMuxerSession(it, connection))
+
+                val pubHash = Multihash.of(addr.getPeerId()!!.bytes.toByteBuf())
+                val remotePubKey = if (pubHash.desc.digest == Multihash.Digest.Identity) {
+                    unmarshalPublicKey(pubHash.bytes.toByteArray())
+                } else {
+                    getPublicKeyFromCert(arrayOf(trustManager.remoteCert!!))
+                }
+                connection.setSecureSession(
+                    SecureChannel.Session(
+                        PeerId.fromPubKey(localKey.publicKey()),
+                        addr.getPeerId()!!,
+                        remotePubKey,
+                        null
+                    )
                 )
-            )
-            preHandler?.also { it.visit(connection) }
-            connHandler.handleConnection(connection)
-            res.complete(connection)
-        }
-        return res
+
+                preHandler?.also { visitor -> visitor.visit(connection) }
+                connHandler.handleConnection(connection)
+
+                it.attr(CONNECTION).set(connection)
+
+                connection
+            }
     }
 
     private fun registerChannel(ch: Channel) {
@@ -264,10 +257,10 @@ class QuicTransport(
         }
     }
 
-    protected fun handlesHost(addr: Multiaddr) =
+    private fun handlesHost(addr: Multiaddr) =
         addr.hasAny(IP4, IP6, DNS4, DNS6, DNSADDR)
 
-    protected fun hostFromMultiaddr(addr: Multiaddr): String {
+    private fun hostFromMultiaddr(addr: Multiaddr): String {
         val resolvedAddresses = MultiaddrDns.resolve(addr)
         if (resolvedAddresses.isEmpty()) {
             throw Libp2pException("Could not resolve $addr to an IP address")
@@ -284,12 +277,11 @@ class QuicTransport(
             addr.has(QUICV1) &&
             !addr.has(WS)
 
-    fun quicSslContext(expectedRemotePeerId: PeerId?, trustManager: Libp2pTrustManager): QuicSslContext {
-        val connectionKeys = if (certAlgorithm.equals("ECDSA")) generateEcdsaKeyPair() else generateEd25519KeyPair()
+    fun quicSslContext(isClient: Boolean, trustManager: Libp2pTrustManager): QuicSslContext {
+        val connectionKeys = if (certAlgorithm == "ECDSA") generateEcdsaKeyPair() else generateEd25519KeyPair()
         val javaPrivateKey = getJavaKey(connectionKeys.first)
-        val isClient = expectedRemotePeerId != null
         val cert = buildCert(localKey, connectionKeys.first)
-        logger.info("Building {} keys and cert for peer id {}", certAlgorithm, PeerId.fromPubKey(localKey.publicKey()))
+        logger.trace("Building {} keys and cert for peer id {}", certAlgorithm, PeerId.fromPubKey(localKey.publicKey()))
         return (
             if (isClient) {
                 QuicSslContextBuilder.forClient().keyManager(javaPrivateKey, null, cert)
@@ -307,20 +299,20 @@ class QuicTransport(
         preHandler: ChannelVisitor<P2PChannel>?
     ): ChannelHandler {
         val trustManager = Libp2pTrustManager(Optional.empty())
-        val sslContext = quicSslContext(null, trustManager)
+        val sslContext = quicSslContext(false, trustManager)
         return QuicServerCodecBuilder()
-            .sslEngineProvider({ q -> sslContext.newEngine(q.alloc()) })
-            .maxIdleTimeout(5000, TimeUnit.MILLISECONDS)
+            .sslEngineProvider { q -> sslContext.newEngine(q.alloc()) }
             .sslTaskExecutor(workerGroup)
             .tokenHandler(NoTokenHandler())
-            .handler(object : ChannelInitializer<Channel>() {
-                override fun initChannel(ch: Channel) {
-                    val connection = ConnectionOverNetty(ch, this@QuicTransport, false)
-                    connection.setMuxerSession(QuicMuxerSession(ch as QuicChannel, connection))
-                    ch.attr(CONNECTION).set(connection)
+            .handler(
+                nettyInitializer {
+                    val connection = ConnectionOverNetty(it.channel, this@QuicTransport, false)
+
+                    connection.setMuxerSession(QuicMuxerSession(it.channel as QuicChannel, connection))
+                    it.channel.attr(CONNECTION).set(connection)
 
                     // Add a handler to wait for channel activation (handshake completion)
-                    ch.pipeline().addFirst(
+                    it.channel.pipeline().addFirst(
                         "quic-handshake-waiter",
                         object : ChannelInboundHandlerAdapter() {
                             override fun channelActive(ctx: ChannelHandlerContext) {
@@ -345,7 +337,7 @@ class QuicTransport(
                                     ctx.pipeline().remove(this)
 
                                     // Now it's safe to call the connection handler
-                                    preHandler?.also { it.visit(connection) }
+                                    preHandler?.also { visitor -> visitor.visit(connection) }
                                     connHandler.handleConnection(connection)
                                 } else {
                                     // This should not happen if channelActive is called after handshake
@@ -364,11 +356,11 @@ class QuicTransport(
                         }
                     )
                 }
-            })
-            .initialMaxData(1024)
-            .initialMaxStreamsBidirectional(16)
-            .initialMaxStreamDataBidirectionalRemote(1024)
-            .initialMaxStreamDataBidirectionalLocal(1024)
+            )
+            .initialMaxData(1 shl 20)
+            .initialMaxStreamsBidirectional(64)
+            .initialMaxStreamDataBidirectionalRemote(1 shl 18)
+            .initialMaxStreamDataBidirectionalLocal(1 shl 18)
             .streamHandler(InboundStreamHandler(incomingMultistreamProtocol, protocols))
             .build()
     }
@@ -377,35 +369,36 @@ class QuicTransport(
         val ch: QuicChannel,
         val connection: ConnectionOverNetty
     ) : StreamMuxer.Session {
+
         override fun <T> createStream(protocols: List<ProtocolBinding<T>>): StreamPromise<T> {
             val multistreamProtocol: MultistreamProtocol = MultistreamProtocolV1
             val streamMultistreamProtocol: MultistreamProtocol by lazyVar { multistreamProtocol }
             val multi = streamMultistreamProtocol.createMultistream(protocols)
 
             val controller = CompletableFuture<T>()
-            val streamFut = CompletableFuture<Stream>()
 
-            ch.createStream(
+            val stream = ch.createStream(
                 QuicStreamType.BIDIRECTIONAL,
-                object : ChannelInboundHandlerAdapter() {
-                    override fun handlerAdded(ctx: ChannelHandlerContext?) {
-                        val stream = createStream(ctx!!.channel(), connection, true)
-                        ctx.channel().attr(STREAM).set(stream)
-                        val streamHandler = multi.toStreamHandler()
-                        streamHandler.handleStream(stream).forward(controller)
-                            .apply { streamFut.complete(stream) }
-                    }
+                nettyInitializer {
+                    val stream = createStream(it.channel as QuicStreamChannel, connection, true)
+                    val streamHandler = multi.toStreamHandler()
+                    streamHandler.handleStream(stream).forward(controller)
                 }
-            )
-            return StreamPromise(streamFut, controller)
+            ).toCompletableFuture()
+                .thenApply {
+                    it.attr(STREAM).get()
+                }
+                .forwardException(controller)
+
+            return StreamPromise(stream, controller)
         }
     }
 
     class InboundStreamHandler(
         val handler: MultistreamProtocol,
         val protocols: List<ProtocolBinding<*>>
-    ) : ChannelInitializer<Channel>() {
-        override fun initChannel(ch: Channel) {
+    ) : ChannelInitializer<QuicStreamChannel>() {
+        override fun initChannel(ch: QuicStreamChannel) {
             val connection = ch.parent().attr(CONNECTION).get()
             val stream = createStream(ch, connection, false)
             val streamHandler = handler.createMultistream(protocols).toStreamHandler()

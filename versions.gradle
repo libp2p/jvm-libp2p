@@ -31,7 +31,7 @@ dependencyManagement {
             entry 'protobuf-java'
             entry 'protoc'
         }
-        dependencySet(group: "io.netty", version: "4.2.4.Final") {
+        dependencySet(group: "io.netty", version: "4.2.5.Final") {
             entry 'netty-common'
             entry 'netty-handler'
             entry 'netty-transport'
@@ -41,7 +41,7 @@ dependencyManagement {
             entry 'netty-codec-native-quic'
             entry 'netty-transport-classes-epoll'
         }
-        dependency "io.netty:netty-tcnative-boringssl-static:2.0.72.Final"
+        dependency "io.netty:netty-tcnative-boringssl-static:2.0.73.Final"
         dependency "com.github.multiformats:java-multibase:v1.1.1"
         dependency "tech.pegasys:noise-java:22.1.0"
         dependencySet(group: "org.bouncycastle", version: "1.78.1") {
