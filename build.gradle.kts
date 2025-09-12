@@ -23,7 +23,7 @@ plugins {
     id("io.spring.dependency-management").version("1.1.7")
 
     id("org.jetbrains.kotlin.android") version kotlinVersion apply false
-    id("com.android.application") version "8.13.0" apply false
+    id("com.android.application") version "7.4.2" apply false
 }
 
 fun Project.getBooleanPropertyOrFalse(propName: String) =
