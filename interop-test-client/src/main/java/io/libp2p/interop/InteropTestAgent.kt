@@ -74,7 +74,7 @@ class InteropTestAgent(val params: InteropTestParams) {
     ): Host = hostJ(Builder.Defaults.None, fn = {
         it.identity.factory = { privateKey }
         if (params.transport == QUIC_V1) {
-            it.secureTransports.add(QuicTransport::Ecdsa)
+            it.secureTransports.add(QuicTransport::ECDSA)
         } else {
             it.transports.add(::TcpTransport)
         }
