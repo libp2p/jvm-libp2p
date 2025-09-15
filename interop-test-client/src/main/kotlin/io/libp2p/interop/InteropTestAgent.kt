@@ -28,6 +28,7 @@ import java.util.stream.Collectors
 import kotlin.random.Random
 import kotlin.system.exitProcess
 
+const val QUIC_V1 = "quic-v1"
 private const val REDIS_KEY_LISTENER_ADDRESS = "listenerAddr"
 
 class InteropTestAgent(val params: InteropTestParams) {
@@ -72,7 +73,7 @@ class InteropTestAgent(val params: InteropTestParams) {
         listenAddresses: ArrayList<String>
     ): Host = hostJ(Builder.Defaults.None, fn = {
         it.identity.factory = { privateKey }
-        if (params.transport == "quic-v1") {
+        if (params.transport == QUIC_V1) {
             it.secureTransports.add(QuicTransport::ECDSA)
         } else {
             it.transports.add(::TcpTransport)
@@ -222,7 +223,6 @@ private fun printDiagnosticsLog(msg: String) {
     System.err.println(msg)
 }
 
-@SuppressWarnings("unused")
 fun main() {
     try {
         val params = InteropTestParams.Builder().fromEnvironmentVariables().build()

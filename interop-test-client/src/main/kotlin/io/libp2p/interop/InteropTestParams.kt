@@ -35,7 +35,9 @@ class InteropTestParams(
         fun build(): InteropTestParams {
             checkNonEmptyParam("transport", transport)
             checkNonEmptyParam("muxer", muxer)
-            checkNonEmptyParam("security", security)
+            if (transport != QUIC_V1) {
+                checkNonEmptyParam("security", security)
+            }
             checkNonEmptyParam("redis_addr", security)
 
             if (ip == null || ip!!.isBlank()) {
