@@ -27,7 +27,7 @@ dependencyManagement {
         dependency "io.mockk:mockk:1.13.3"
         dependency "org.assertj:assertj-core:3.27.4"
 
-        dependencySet(group: "com.google.protobuf", version: "3.25.8") {
+        dependencySet(group: "com.google.protobuf", version: "4.32.1") {
             entry 'protobuf-java'
             entry 'protoc'
         }
