@@ -28,6 +28,7 @@ import java.util.stream.Collectors
 import kotlin.random.Random
 import kotlin.system.exitProcess
 
+const val QUIC_V1 = "quic-v1"
 private const val REDIS_KEY_LISTENER_ADDRESS = "listenerAddr"
 
 class InteropTestAgent(val params: InteropTestParams) {
@@ -59,7 +60,7 @@ class InteropTestAgent(val params: InteropTestParams) {
             .thenCompose { startJedisConnection() }
             .thenCompose { jedis ->
                 if (params.isDialer) {
-                    startDialer(jedis, node)
+                    startDialer(jedis, node, advertisedAddress)
                 } else {
                     startListener(jedis, advertisedAddress)
                 }
@@ -72,7 +73,7 @@ class InteropTestAgent(val params: InteropTestParams) {
         listenAddresses: ArrayList<String>
     ): Host = hostJ(Builder.Defaults.None, fn = {
         it.identity.factory = { privateKey }
-        if (params.transport == "quic-v1") {
+        if (params.transport == QUIC_V1) {
             it.secureTransports.add(QuicTransport::ECDSA)
         } else {
             it.transports.add(::TcpTransport)
@@ -135,9 +136,13 @@ class InteropTestAgent(val params: InteropTestParams) {
     /*
       Start dialer and try to connect with a listener
      */
-    private fun startDialer(jedis: Jedis, node: Host): CompletableFuture<Void> {
+    private fun startDialer(
+        jedis: Jedis,
+        node: Host,
+        advertisedAddress: Multiaddr
+    ): CompletableFuture<Void> {
         return CompletableFuture.supplyAsync {
-            printDiagnosticsLog("Starting dialer")
+            printDiagnosticsLog("Starting dialer with advertisedAddress: $advertisedAddress")
 
             val listenerAddresses =
                 jedis.blpop(params.testTimeoutInSeconds, REDIS_KEY_LISTENER_ADDRESS)
@@ -175,7 +180,7 @@ class InteropTestAgent(val params: InteropTestParams) {
         advertisedAddress: Multiaddr
     ): CompletableFuture<Void> {
         return CompletableFuture.supplyAsync {
-            println("Starting listener with advertisedAddress: $advertisedAddress")
+            printDiagnosticsLog("Starting listener with advertisedAddress: $advertisedAddress")
 
             jedis.rpush(REDIS_KEY_LISTENER_ADDRESS, advertisedAddress.toString())
 
@@ -222,7 +227,6 @@ private fun printDiagnosticsLog(msg: String) {
     System.err.println(msg)
 }
 
-@SuppressWarnings("unused")
 fun main() {
     try {
         val params = InteropTestParams.Builder().fromEnvironmentVariables().build()
