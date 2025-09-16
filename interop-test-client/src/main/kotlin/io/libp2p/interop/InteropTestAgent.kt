@@ -60,7 +60,7 @@ class InteropTestAgent(val params: InteropTestParams) {
             .thenCompose { startJedisConnection() }
             .thenCompose { jedis ->
                 if (params.isDialer) {
-                    startDialer(jedis, node)
+                    startDialer(jedis, node, advertisedAddress)
                 } else {
                     startListener(jedis, advertisedAddress)
                 }
@@ -136,9 +136,13 @@ class InteropTestAgent(val params: InteropTestParams) {
     /*
       Start dialer and try to connect with a listener
      */
-    private fun startDialer(jedis: Jedis, node: Host): CompletableFuture<Void> {
+    private fun startDialer(
+        jedis: Jedis,
+        node: Host,
+        advertisedAddress: Multiaddr
+    ): CompletableFuture<Void> {
         return CompletableFuture.supplyAsync {
-            printDiagnosticsLog("Starting dialer")
+            printDiagnosticsLog("Starting dialer with advertisedAddress: $advertisedAddress")
 
             val listenerAddresses =
                 jedis.blpop(params.testTimeoutInSeconds, REDIS_KEY_LISTENER_ADDRESS)
@@ -176,7 +180,7 @@ class InteropTestAgent(val params: InteropTestParams) {
         advertisedAddress: Multiaddr
     ): CompletableFuture<Void> {
         return CompletableFuture.supplyAsync {
-            println("Starting listener with advertisedAddress: $advertisedAddress")
+            printDiagnosticsLog("Starting listener with advertisedAddress: $advertisedAddress")
 
             jedis.rpush(REDIS_KEY_LISTENER_ADDRESS, advertisedAddress.toString())
 

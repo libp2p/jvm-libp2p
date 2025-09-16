@@ -38,7 +38,7 @@ class InteropTestParams(
             if (transport != QUIC_V1) {
                 checkNonEmptyParam("security", security)
             }
-            checkNonEmptyParam("redis_addr", security)
+            checkNonEmptyParam("redis_addr", redisAddress)
 
             if (ip == null || ip!!.isBlank()) {
                 ip = "0.0.0.0"

@@ -1,5 +1,12 @@
+import org.jetbrains.kotlin.cli.jvm.compiler.findMainClass
+
 plugins {
-    id("java")
+    id("application")
+    id("kotlin")
+}
+
+application {
+    mainClass = "io.libp2p.interop.InteropTestAgentKt"
 }
 
 dependencies {

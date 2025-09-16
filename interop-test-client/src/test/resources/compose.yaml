@@ -24,6 +24,8 @@ services:
     depends_on:
       redis:
         condition: service_started
+      listener:
+        condition: service_started
   redis:
     image: "redis:7-alpine"
     ports:
