@@ -1,32 +1,26 @@
-# Compose file used for testing locally
 services:
-  listener:
-    build: .
-    environment:
-      transport: "tcp"
-      muxer: "mplex"
-      security: "tls"
-      is_dialer: false
-      redis_addr: "redis:6379"
-      test_timeout_seconds: 180
-    depends_on:
-      redis:
-        condition: service_started
   dialer:
     build: .
-    environment:
-      transport: "tcp"
-      muxer: "mplex"
-      security: "tls"
-      is_dialer: true
-      redis_addr: "redis:6379"
-      test_timeout_seconds: 180
     depends_on:
-      redis:
-        condition: service_started
-      listener:
-        condition: service_started
+      - redis
+    environment:
+      transport: tcp
+      is_dialer: true
+      ip: 0.0.0.0
+      muxer: mplex
+      security: tls
+  listener:
+    init: true
+    build: .
+    depends_on:
+      - redis
+    environment:
+      transport: tcp
+      is_dialer: false
+      ip: 0.0.0.0
+      muxer: mplex
+      security: tls
   redis:
-    image: "redis:7-alpine"
-    ports:
-      - "6379:6379"
+    image: redis:7-alpine
+    environment:
+      REDIS_ARGS: --loglevel warning
