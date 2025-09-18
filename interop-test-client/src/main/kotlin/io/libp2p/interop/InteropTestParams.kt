@@ -34,9 +34,9 @@ class InteropTestParams(
 
         fun build(): InteropTestParams {
             checkNonEmptyParam("transport", transport)
-            checkNonEmptyParam("muxer", muxer)
             if (transport != QUIC_V1) {
                 checkNonEmptyParam("security", security)
+                checkNonEmptyParam("muxer", muxer)
             }
 
             if (redisAddress == null || redisAddress!!.isBlank()) {
