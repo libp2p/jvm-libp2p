@@ -15,8 +15,8 @@ The first thing to be able to run the test locally is build the images of each l
 being tested. You need to run the following steps for each one of the implementations that you are
 planning to run:
 
-1. Checkout the project https://github.com/libp2p.
-2. Navigate to test-plans/impl/<IMPL>/<VERSION>; where <IMPL> is the implementation that you want to
+1. Checkout the project https://github.com/libp2p/test-plans.
+2. Navigate to transport-interop/impl/<IMPL>/<VERSION>; where <IMPL> is the implementation that you want to
    build (e.g. `jvm`) and <VERSION> is what version you want (e.g. `v1.2`).
 3. Once in the specific version folder run `make` to build the image. This will create a
    `image.json` file with the hash of the Docker image built.

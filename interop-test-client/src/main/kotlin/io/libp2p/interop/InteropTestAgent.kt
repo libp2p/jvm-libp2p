@@ -21,6 +21,7 @@ import io.libp2p.security.noise.NoiseXXSecureChannel
 import io.libp2p.security.tls.TlsSecureChannel.Companion.ECDSA
 import io.libp2p.transport.quic.QuicTransport
 import io.libp2p.transport.tcp.TcpTransport
+import io.libp2p.transport.ws.WsTransport
 import redis.clients.jedis.Jedis
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
@@ -28,6 +29,8 @@ import java.util.stream.Collectors
 import kotlin.random.Random
 import kotlin.system.exitProcess
 
+const val TCP = "tcp"
+const val WS = "ws"
 const val QUIC_V1 = "quic-v1"
 private const val REDIS_KEY_LISTENER_ADDRESS = "listenerAddr"
 
@@ -38,12 +41,19 @@ class InteropTestAgent(val params: InteropTestParams) {
 
     init {
         val port = 10000 + Random.nextInt(50000)
-        val isTcp = "tcp" == params.transport
-        val ip = params.ip
-        val protocol = if (isTcp) "tcp" else "udp"
-        val maybeQuicSuffix = (if (isTcp) "" else "/quic-v1")
+        val transport = params.transport
+        val protocol = when (transport) {
+            TCP -> TCP
+            WS -> TCP
+            else -> "udp"
+        }
+        val maybeSuffix = when (transport) {
+            TCP -> ""
+            WS -> "/ws"
+            else -> "/quic-v1"
+        }
         val address =
-            Multiaddr.fromString("/ip4/$ip/$protocol/${port}$maybeQuicSuffix")
+            Multiaddr.fromString("/ip4/${params.ip}/$protocol/${port}$maybeSuffix")
 
         val privateKey = generateEd25519KeyPair().first
         val peerID = fromPubKey(privateKey.publicKey())
@@ -73,10 +83,10 @@ class InteropTestAgent(val params: InteropTestParams) {
         listenAddresses: ArrayList<String>
     ): Host = hostJ(Builder.Defaults.None, fn = {
         it.identity.factory = { privateKey }
-        if (params.transport == QUIC_V1) {
-            it.secureTransports.add(QuicTransport::ECDSA)
-        } else {
-            it.transports.add(::TcpTransport)
+        when (params.transport) {
+            QUIC_V1 -> it.secureTransports.add(QuicTransport::ECDSA)
+            WS -> it.transports.add(::WsTransport)
+            else -> it.transports.add(::TcpTransport)
         }
 
         if ("noise" == params.security) {
