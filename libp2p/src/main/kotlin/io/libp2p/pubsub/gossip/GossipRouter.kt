@@ -7,6 +7,7 @@ import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.etc.types.*
 import io.libp2p.etc.util.P2PService
 import io.libp2p.pubsub.*
+import io.libp2p.pubsub.partial.*
 import org.slf4j.LoggerFactory
 import pubsub.pb.Rpc
 import java.time.Duration
@@ -132,6 +133,32 @@ open class GossipRouter(
     private val acceptRequestsWhitelist = mutableMapOf<PeerHandler, AcceptRequestsWhitelistEntry>()
     override val pendingRpcParts = PendingRpcPartsMap<GossipRpcPartsQueue> { DefaultGossipRpcPartsQueue(params) }
 
+    // Partial message extension support
+    var partialMessageExtension: PartialMessageExtension? = null
+        internal set
+
+    private val partialMessageState: PartialMessageState by lazy {
+        PartialMessageState(
+            groupTtlHeartbeats = partialMessageExtension?.groupTtlHeartbeats ?: 3,
+            maxGroupsPerTopic = partialMessageExtension?.maxPeerInitiatedGroupsPerTopic ?: 255,
+            maxGroupsPerTopicPerPeer = partialMessageExtension?.maxPeerInitiatedGroupsPerTopicPerPeer ?: 8
+        )
+    }
+
+    // topic -> peer -> PartialSubOpts
+    private val peerPartialOpts = mutableMapOf<Topic, MutableMap<PeerHandler, PartialSubOpts>>()
+
+    /**
+     * Partial message subscription options for a peer.
+     *
+     * @property requestsPartial Whether peer requests partial messages
+     * @property supportsPartial Whether peer supports sending partial messages
+     */
+    data class PartialSubOpts(
+        val requestsPartial: Boolean = false,
+        val supportsPartial: Boolean = false
+    )
+
     private fun setBackOff(peer: PeerHandler, topic: Topic) = setBackOff(peer, topic, params.pruneBackoff.toMillis())
     private fun setBackOff(peer: PeerHandler, topic: Topic, delay: Long) {
         backoffExpireTimes[peer.peerId to topic] = currentTimeSupplier() + delay
@@ -158,6 +185,9 @@ open class GossipRouter(
         acceptRequestsWhitelist -= peer
         pendingRpcParts.popQueue(peer) // discard them
         super.onPeerDisconnected(peer)
+        // Clean up partial message state
+        partialMessageState.onPeerDisconnected(peer.peerId)
+        peerPartialOpts.values.forEach { it.remove(peer) }
     }
 
     override fun onPeerActive(peer: PeerHandler) {
@@ -490,6 +520,15 @@ open class GossipRouter(
 
     override fun subscribe(topic: Topic) {
         super.subscribe(topic)
+        initMeshForTopic(topic)
+    }
+
+    override fun subscribePartial(topic: Topic) {
+        super.subscribePartial(topic)
+        initMeshForTopic(topic)
+    }
+
+    private fun initMeshForTopic(topic: Topic) {
         val fanoutPeers = (fanout[topic] ?: mutableSetOf())
             .filter { score.score(it.peerId) >= 0 && !isDirect(it) }
         val meshPeers = mesh.getOrPut(topic) { mutableSetOf() }
@@ -514,6 +553,8 @@ open class GossipRouter(
         super.unsubscribe(topic)
         mesh[topic]?.copy()?.forEach { prune(it, topic) }
         mesh -= topic
+        partialMessageState.removeTopicState(topic)
+        peerPartialOpts.remove(topic)
     }
 
     private fun catchingHeartbeat() {
@@ -616,10 +657,183 @@ open class GossipRouter(
             }
 
             mCache.shift()
+            // Clean up expired partial message state
+            partialMessageState.onHeartbeat()
 
             flushAllPending()
         } catch (t: Exception) {
             logger.warn("Exception in gossipsub heartbeat", t)
+        }
+    }
+
+    /**
+     * Processes partial message subscription options from a peer.
+     *
+     * @param peer The peer handler
+     * @param subOpts The subscription options from the peer
+     */
+    internal fun processPartialSubOpts(peer: PeerHandler, subOpts: Rpc.RPC.SubOpts) {
+        if (partialMessageExtension == null) return
+
+        val topic = subOpts.topicid ?: return
+        val hasPartialOpts = subOpts.hasRequestsPartial() || subOpts.hasSupportsSendingPartial()
+
+        if (hasPartialOpts) {
+            val opts = PartialSubOpts(
+                requestsPartial = subOpts.requestsPartial,
+                supportsPartial = subOpts.supportsSendingPartial
+            )
+            peerPartialOpts.getOrPut(topic) { mutableMapOf() }[peer] = opts
+        }
+    }
+
+    /**
+     * Gets partial options for a peer on a topic.
+     *
+     * @param peer The peer handler
+     * @param topic The topic
+     * @return PartialSubOpts or null if not set
+     */
+    fun getPeerPartialOpts(peer: PeerHandler, topic: Topic): PartialSubOpts? {
+        return peerPartialOpts[topic]?.get(peer)
+    }
+
+    /**
+     * Checks if peer requests partial messages for a topic.
+     *
+     * @param peer The peer handler
+     * @param topic The topic
+     * @return true if peer requests partial messages
+     */
+    fun peerRequestsPartial(peer: PeerHandler, topic: Topic): Boolean {
+        return peerPartialOpts[topic]?.get(peer)?.requestsPartial ?: false
+    }
+
+    /**
+     * Checks if peer supports sending partial messages for a topic.
+     *
+     * @param peer The peer handler
+     * @param topic The topic
+     * @return true if peer supports sending partial messages
+     */
+    fun peerSupportsPartial(peer: PeerHandler, topic: Topic): Boolean {
+        return peerPartialOpts[topic]?.get(peer)?.supportsPartial ?: false
+    }
+
+    /**
+     * Handles incoming partial message RPC.
+     *
+     * @param partial The partial message extension
+     * @param peer The peer that sent the message
+     */
+    internal fun handlePartialMessage(partial: Rpc.PartialMessagesExtension, peer: PeerHandler) {
+        val ext = partialMessageExtension ?: return
+
+        // Validate RPC
+        if (!ext.validateRpc(peer.peerId, partial)) {
+            notifyRouterMisbehavior(peer, 1)
+            return
+        }
+
+        val topicId = if (partial.hasTopicID()) String(partial.topicID.toByteArray()) else return
+        val groupId = if (partial.hasGroupID()) partial.groupID.toByteArray() else return
+
+        // Get or create group state (peer-initiated)
+        val groupState = partialMessageState.getOrCreateGroupState(topicId, groupId, peer.peerId)
+        if (groupState == null) {
+            // Rate limited
+            return
+        }
+
+        // Update peer metadata if present
+        if (partial.hasPartsMetadata()) {
+            partialMessageState.updatePeerMetadata(
+                topicId,
+                groupId,
+                peer.peerId,
+                partial.partsMetadata.toByteArray(),
+                ext.metadataMerger
+            )
+        }
+
+        // Notify application
+        ext.onIncomingRpc(peer.peerId, partial)
+    }
+
+    /**
+     * Publishes a partial message to mesh peers.
+     *
+     * @param topic The topic to publish to
+     * @param message The partial message
+     * @param opts Publishing options
+     * @return CompletableFuture completing when sent to at least one peer
+     * @throws NoPeersForOutboundMessageException if no peers available
+     */
+    fun publishPartial(
+        topic: Topic,
+        message: PartialMessage,
+        opts: PartialPublishOptions = PartialPublishOptions()
+    ): CompletableFuture<Unit> {
+        if (partialMessageExtension == null) {
+            return CompletableFuture.failedFuture(IllegalStateException("Partial messages not enabled"))
+        }
+
+        val groupId = message.groupId()
+        val ourMetadata = message.partsMetadata()
+
+        // Get or create group state (we initiated)
+        partialMessageState.getOrCreateGroupState(topic, groupId, null)
+
+        // Determine target peers
+        val meshPeers = mesh[topic] ?: emptySet()
+        val directPeers = getDirectPeers(topic)
+        val targetPeers = if (opts.targetPeers != null) {
+            (meshPeers + directPeers).filter { opts.targetPeers.contains(it.peerId) }
+        } else {
+            meshPeers + directPeers
+        }
+
+        if (targetPeers.isEmpty()) {
+            return CompletableFuture.failedFuture(
+                NoPeersForOutboundMessageException("No peers for partial message on topic $topic")
+            )
+        }
+
+        val futures = targetPeers.map { peer ->
+            val peerState = partialMessageState.getOrCreatePeerState(topic, groupId, peer.peerId)
+
+            val rpcBuilder = Rpc.PartialMessagesExtension.newBuilder()
+                .setTopicID(com.google.protobuf.ByteString.copyFrom(topic.toByteArray()))
+                .setGroupID(com.google.protobuf.ByteString.copyFrom(groupId))
+
+            // Determine what to send based on peer capabilities and state
+            if (peerRequestsPartial(peer, topic)) {
+                val action = message.partialMessageBytes(peerState?.theirMetadata)
+
+                if (action.messageToSend != null) {
+                    rpcBuilder.setPartialMessage(com.google.protobuf.ByteString.copyFrom(action.messageToSend))
+                }
+                if (action.updatedMetadata != null) {
+                    rpcBuilder.setPartsMetadata(com.google.protobuf.ByteString.copyFrom(action.updatedMetadata))
+                    peerState?.ourSentMetadata = action.updatedMetadata
+                }
+            } else {
+                // Peer doesn't request partial, just send metadata
+                rpcBuilder.setPartsMetadata(com.google.protobuf.ByteString.copyFrom(ourMetadata))
+                peerState?.ourSentMetadata = ourMetadata
+            }
+
+            val rpc = Rpc.RPC.newBuilder()
+                .setPartial(rpcBuilder.build())
+                .build()
+
+            send(peer, rpc)
+        }
+
+        return if (futures.isNotEmpty()) {
+            anyComplete(futures)
+        } else {
+            CompletableFuture.completedFuture(Unit)
         }
     }
 

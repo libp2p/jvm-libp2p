@@ -7,6 +7,7 @@ import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.etc.types.*
 import io.libp2p.etc.util.P2PServiceSemiDuplex
 import io.libp2p.etc.util.netty.protobuf.LimitedProtobufVarint32FrameDecoder
+import io.libp2p.pubsub.gossip.GossipRouter
 import io.netty.channel.ChannelHandler
 import io.netty.handler.codec.protobuf.ProtobufDecoder
 import io.netty.handler.codec.protobuf.ProtobufEncoder
@@ -46,6 +47,7 @@ abstract class AbstractRouter(
 
     protected open val peersTopics = mutableMultiBiMap<PeerHandler, Topic>()
     protected open val subscribedTopics = linkedSetOf<Topic>()
+    protected open val partialSubscribedTopics = mutableSetOf<Topic>()
     protected open val pendingRpcParts = PendingRpcPartsMap<RpcPartsQueue> { DefaultRpcPartsQueue() }
     protected open val pendingMessagePromises = MultiSet<PeerHandler, CompletableFuture<Unit>>()
 
@@ -141,8 +143,13 @@ abstract class AbstractRouter(
 
     override fun onPeerActive(peer: PeerHandler) {
         val partsQueue = pendingRpcParts.getQueue(peer)
-        subscribedTopics.forEach {
-            partsQueue.addSubscribe(it)
+        subscribedTopics.forEach { topic ->
+            // Send subscription with partial flag if this topic has partial subscription
+            if (topic in partialSubscribedTopics) {
+                partsQueue.addSubscribePartial(topic, true)
+            } else {
+                partsQueue.addSubscribe(topic)
+            }
         }
         flushPending(peer)
     }
@@ -174,6 +181,18 @@ abstract class AbstractRouter(
         } catch (e: Exception) {
             logger.debug("Subscription filter error, ignoring message from peer {}", peer, e)
             return
+        }
+
+        // Process partial subscription options
+        if (this is GossipRouter) {
+            msg.subscriptionsList.forEach { subOpts ->
+                processPartialSubOpts(peer, subOpts)
+            }
+        }
+
+        // Process partial message extension
+        if (this is GossipRouter && msg.hasPartial()) {
+            handlePartialMessage(msg.partial, peer)
         }
 
         if (msg.hasControl()) {
@@ -312,6 +331,25 @@ abstract class AbstractRouter(
     protected open fun subscribe(topic: Topic) {
         activePeers.forEach { pendingRpcParts.getQueue(it).addSubscribe(topic) }
         subscribedTopics += topic
+    }
+
+    /**
+     * Subscribe to topics with partial message support.
+     * This sends the subscription with requestsPartial=true flag.
+     */
+    fun subscribePartial(vararg topics: Topic) {
+        runOnEventThread {
+            topics.forEach { subscribePartial(it) }
+            flushAllPending()
+        }
+    }
+
+    protected open fun subscribePartial(topic: Topic) {
+        activePeers.forEach {
+            pendingRpcParts.getQueue(it).addSubscribePartial(topic, true)
+        }
+        subscribedTopics += topic
+        partialSubscribedTopics += topic
     }
 
     override fun unsubscribe(vararg topics: Topic) {

@@ -5,6 +5,7 @@ import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.etc.types.lazyVar
 import io.libp2p.pubsub.*
 import io.libp2p.pubsub.gossip.*
+import io.libp2p.pubsub.partial.PartialMessageExtension
 import java.util.*
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
@@ -38,7 +39,8 @@ open class GossipRouterBuilder(
             eventsSubscriber(gossipScore)
             gossipScore
         },
-    val gossipRouterEventListeners: MutableList<GossipRouterEventListener> = mutableListOf()
+    val gossipRouterEventListeners: MutableList<GossipRouterEventListener> = mutableListOf(),
+    var partialMessageExtension: PartialMessageExtension? = null
 ) {
 
     var seenCache: SeenCache<Optional<ValidationResult>> by lazyVar { TTLSeenCache(SimpleSeenCache(), params.seenTTL, currentTimeSuppluer) }
@@ -66,6 +68,7 @@ open class GossipRouterBuilder(
         )
 
         router.eventBroadcaster.listeners += gossipRouterEventListeners
+        router.partialMessageExtension = partialMessageExtension
         return router
     }
 

@@ -7,11 +7,14 @@ message RPC {
 	repeated Message publish = 2;
 
 	message SubOpts {
-		optional bool subscribe = 1; // subscribe or unsubcribe
+		optional bool subscribe = 1; // subscribe or unsubscribe
 		optional string topicid = 2;
+		optional bool requestsPartial = 3;
+		optional bool supportsSendingPartial = 4;
 	}
 
 	optional ControlMessage control = 3;
+	optional PartialMessagesExtension partial = 10;
 }
 
 message Message {
@@ -57,6 +60,13 @@ message ControlIDontWant {
 message PeerInfo {
 	optional bytes peerID = 1;
 	optional bytes signedPeerRecord = 2;
+}
+
+message PartialMessagesExtension {
+	optional bytes topicID = 1;
+	optional bytes groupID = 2;
+	optional bytes partialMessage = 3;
+	optional bytes partsMetadata = 4;
 }
 
 message TopicDescriptor {
