@@ -7,7 +7,7 @@ message RPC {
 	repeated Message publish = 2;
 
 	message SubOpts {
-		optional bool subscribe = 1; // subscribe or unsubcribe
+		optional bool subscribe = 1; // subscribe or unsubscribe
 		optional string topicid = 2;
 		// signals to receiver that sender prefers partial messages
 		optional bool requestsPartial = 3;
