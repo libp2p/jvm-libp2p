@@ -12,7 +12,7 @@ message RPC {
 		// signals to receiver that sender prefers partial messages
 		optional bool requestsPartial = 3;
 		// signals to receiver that sender supports sending partial messages
-	  optional bool supportsSendingPartial = 4;
+		optional bool supportsSendingPartial = 4;
 	}
 
 	optional ControlMessage control = 3;
