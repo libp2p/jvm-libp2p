@@ -7,11 +7,16 @@ message RPC {
 	repeated Message publish = 2;
 
 	message SubOpts {
-		optional bool subscribe = 1; // subscribe or unsubcribe
+		optional bool subscribe = 1; // subscribe or unsubscribe
 		optional string topicid = 2;
+		// signals to receiver that sender prefers partial messages
+		optional bool requestsPartial = 3;
+		// signals to receiver that sender supports sending partial messages
+		optional bool supportsSendingPartial = 4;
 	}
 
 	optional ControlMessage control = 3;
+	optional PartialMessagesExtension partial = 10;
 }
 
 message Message {
@@ -29,6 +34,7 @@ message ControlMessage {
 	repeated ControlGraft graft = 3;
 	repeated ControlPrune prune = 4;
 	repeated ControlIDontWant idontwant = 5;
+	optional ControlExtensions extensions = 6;
 }
 
 message ControlIHave {
@@ -54,9 +60,20 @@ message ControlIDontWant {
 	repeated bytes messageIDs = 1;
 }
 
+message ControlExtensions {
+	optional bool partialMessages = 10;
+}
+
 message PeerInfo {
 	optional bytes peerID = 1;
 	optional bytes signedPeerRecord = 2;
+}
+
+message PartialMessagesExtension {
+	optional string topicID = 1;
+	optional bytes groupID = 2;
+	optional bytes partialMessage = 3;
+	optional bytes partsMetadata = 4;
 }
 
 message TopicDescriptor {
