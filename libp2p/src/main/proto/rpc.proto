@@ -16,7 +16,12 @@ message RPC {
 	}
 
 	optional ControlMessage control = 3;
+
+	// Canonical Extensions
 	optional PartialMessagesExtension partial = 10;
+
+	// Experimental Extensions
+  optional TestExtension testExtension = 6492434;
 }
 
 message Message {
@@ -62,6 +67,10 @@ message ControlIDontWant {
 
 message ControlExtensions {
 	optional bool partialMessages = 10;
+
+	// Experimental extensions must use field numbers larger than 0x200000 to be
+  // encoded with at least 4 bytes
+  optional bool testExtension = 6492434;
 }
 
 message PeerInfo {
@@ -103,3 +112,5 @@ message TopicDescriptor {
 		}
 	}
 }
+
+message TestExtension {}

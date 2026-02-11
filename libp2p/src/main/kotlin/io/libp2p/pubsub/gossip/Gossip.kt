@@ -31,6 +31,14 @@ class Gossip @JvmOverloads constructor(
 
     override val protocolDescriptor =
         when (router.protocol) {
+            PubsubProtocol.Gossip_V_1_3 -> {
+                ProtocolDescriptor(
+                    PubsubProtocol.Gossip_V_1_3.announceStr,
+                    PubsubProtocol.Gossip_V_1_2.announceStr,
+                    PubsubProtocol.Gossip_V_1_1.announceStr,
+                    PubsubProtocol.Gossip_V_1_0.announceStr
+                )
+            }
             PubsubProtocol.Gossip_V_1_2 -> {
                 ProtocolDescriptor(
                     PubsubProtocol.Gossip_V_1_2.announceStr,
