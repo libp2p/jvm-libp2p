@@ -388,7 +388,7 @@ open class GossipRouter(
         }.forEach { processControlMessage(it, receivedFrom) }
 
         if (protocol.supportsExtensions() && ctrl.hasExtensions()) {
-            processControlExtensions(ctrl.extensions, receivedFrom);
+            processControlExtensions(ctrl.extensions, receivedFrom)
         }
     }
 
@@ -399,7 +399,7 @@ open class GossipRouter(
         logger.info("Received control extension {}", ctrlExtensions.toString())
 
         if (peerExtensionSupportMap[receivedFrom.peerId] != null) {
-            //TODO Should downscore peers that send control extension multiple times? (https://github.com/libp2p/jvm-libp2p/issues/437)
+            // TODO Should downscore peers that send control extension multiple times? (https://github.com/libp2p/jvm-libp2p/issues/437)
             logger.trace(
                 "Received another control extension message from peer {}",
                 receivedFrom.peerId
@@ -439,9 +439,9 @@ open class GossipRouter(
         )
 
         val response =
-            Rpc.RPC.newBuilder().setTestExtension(Rpc.TestExtension.newBuilder().build()).build();
+            Rpc.RPC.newBuilder().setTestExtension(Rpc.TestExtension.newBuilder().build()).build()
 
-        send(receivedFrom, response);
+        send(receivedFrom, response)
     }
 
     private fun processPartialMessageExtension(
@@ -453,7 +453,7 @@ open class GossipRouter(
             partialMessagesExtension.toString(),
             receivedFrom.peerId
         )
-        //TODO: implement partial message handling (https://github.com/libp2p/jvm-libp2p/issues/435)
+        // TODO: implement partial message handling (https://github.com/libp2p/jvm-libp2p/issues/435)
     }
 
     override fun broadcastInbound(msgs: List<PubsubMessage>, receivedFrom: PeerHandler) {

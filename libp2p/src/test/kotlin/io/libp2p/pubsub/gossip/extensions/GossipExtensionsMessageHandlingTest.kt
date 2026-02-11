@@ -83,7 +83,7 @@ class GossipExtensionsMessageHandlingTest : GossipTestsBase() {
             Rpc.ControlMessage.newBuilder()
                 .setExtensions(Rpc.ControlExtensions.newBuilder().setTestExtension(true).build())
                 .build()
-        ).build();
+        ).build()
 
         fun controlExtensionMessage(testExtensionEnabled: Boolean = false): Rpc.ControlExtensions {
             return Rpc.ControlExtensions.newBuilder().setTestExtension(testExtensionEnabled).build()
@@ -96,7 +96,7 @@ class GossipExtensionsMessageHandlingTest : GossipTestsBase() {
                 test.mockRouter.waitForMessage(
                     { it.hasTestExtension() },
                     500L
-                );
+                )
             }
         }
     }
