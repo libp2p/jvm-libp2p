@@ -193,3 +193,7 @@ package-lock.json
 
 #Jenv
 .java-version
+
+# Claude
+CLAUDE.local.md
+.claude/settings.local.json

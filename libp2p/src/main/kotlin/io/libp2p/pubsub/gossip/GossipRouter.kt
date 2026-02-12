@@ -132,6 +132,8 @@ open class GossipRouter(
     private val acceptRequestsWhitelist = mutableMapOf<PeerHandler, AcceptRequestsWhitelistEntry>()
     override val pendingRpcParts = PendingRpcPartsMap<GossipRpcPartsQueue> { DefaultGossipRpcPartsQueue(params) }
 
+    private val peerExtensionSupportMap = mutableMapOf<PeerId, Rpc.ControlExtensions>()
+
     private fun setBackOff(peer: PeerHandler, topic: Topic) = setBackOff(peer, topic, params.pruneBackoff.toMillis())
     private fun setBackOff(peer: PeerHandler, topic: Topic, delay: Long) {
         backoffExpireTimes[peer.peerId to topic] = currentTimeSupplier() + delay
@@ -384,6 +386,74 @@ open class GossipRouter(
         ctrl.run {
             (graftList + pruneList + ihaveList + iwantList + idontwantList)
         }.forEach { processControlMessage(it, receivedFrom) }
+
+        if (protocol.supportsExtensions() && ctrl.hasExtensions()) {
+            processControlExtensions(ctrl.extensions, receivedFrom)
+        }
+    }
+
+    private fun processControlExtensions(
+        ctrlExtensions: Rpc.ControlExtensions,
+        receivedFrom: PeerHandler
+    ) {
+        logger.trace("Received control extension {}", ctrlExtensions.toString())
+
+        if (peerExtensionSupportMap[receivedFrom.peerId] != null) {
+            // TODO Should downscore peers that send control extension multiple times? (https://github.com/libp2p/jvm-libp2p/issues/437)
+            logger.trace(
+                "Received another control extension message from peer {}",
+                receivedFrom.peerId
+            )
+            return
+        } else {
+            peerExtensionSupportMap[receivedFrom.peerId] = ctrlExtensions
+        }
+    }
+
+    override fun processExtensions(msg: Rpc.RPC, receivedFrom: PeerHandler) {
+        val peerSupportedExtensions = peerExtensionSupportMap[receivedFrom.peerId]
+        if (peerSupportedExtensions == null) {
+            logger.trace(
+                "Ignoring extension messages from peer {} - did it send an extension control message?",
+                receivedFrom.peerId
+            )
+        } else {
+            when {
+                peerSupportedExtensions.hasTestExtension() && msg.hasTestExtension() ->
+                    processTestExtensionMessage(msg.testExtension, receivedFrom)
+
+                peerSupportedExtensions.hasPartialMessages() && msg.hasPartial() ->
+                    processPartialMessageExtension(msg.partial, receivedFrom)
+            }
+        }
+    }
+
+    private fun processTestExtensionMessage(
+        testExtensionMessage: Rpc.TestExtension,
+        receivedFrom: PeerHandler
+    ) {
+        logger.trace(
+            "Processing test extension message {} from {}",
+            testExtensionMessage.toByteArray(),
+            receivedFrom.peerId
+        )
+
+        val response =
+            Rpc.RPC.newBuilder().setTestExtension(Rpc.TestExtension.newBuilder().build()).build()
+
+        send(receivedFrom, response)
+    }
+
+    private fun processPartialMessageExtension(
+        partialMessagesExtension: Rpc.PartialMessagesExtension,
+        receivedFrom: PeerHandler
+    ) {
+        logger.trace(
+            "Processing partial message extension message {} from {}",
+            partialMessagesExtension.toString(),
+            receivedFrom.peerId
+        )
+        // TODO: implement partial message handling (https://github.com/libp2p/jvm-libp2p/issues/435)
     }
 
     override fun broadcastInbound(msgs: List<PubsubMessage>, receivedFrom: PeerHandler) {

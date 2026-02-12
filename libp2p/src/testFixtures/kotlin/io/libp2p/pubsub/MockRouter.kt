@@ -8,6 +8,8 @@ import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 
+private const val DEFAULT_WAIT_FOR_MESSAGE_TIMEOUT_IN_MILLIS = 5000L
+
 open class MockRouter(executor: ScheduledExecutorService) : AbstractRouter(
     protocol = PubsubProtocol.Floodsub,
     executor = executor,
@@ -26,9 +28,16 @@ open class MockRouter(executor: ScheduledExecutorService) : AbstractRouter(
     }
 
     fun waitForMessage(predicate: (Rpc.RPC) -> Boolean): Rpc.RPC {
+        return waitForMessage(predicate, DEFAULT_WAIT_FOR_MESSAGE_TIMEOUT_IN_MILLIS)
+    }
+
+    fun waitForMessage(
+        predicate: (Rpc.RPC) -> Boolean,
+        timeoutInMillis: Long = DEFAULT_WAIT_FOR_MESSAGE_TIMEOUT_IN_MILLIS
+    ): Rpc.RPC {
         var cnt = 0
         while (true) {
-            val msg = inboundMessages.poll(5, TimeUnit.SECONDS)
+            val msg = inboundMessages.poll(timeoutInMillis, TimeUnit.MILLISECONDS)
                 ?: throw TimeoutException("No matching message received among $cnt")
             if (predicate(msg)) return msg
             cnt++
@@ -47,4 +56,5 @@ open class MockRouter(executor: ScheduledExecutorService) : AbstractRouter(
     override fun broadcastOutbound(msg: PubsubMessage): CompletableFuture<Unit> = CompletableFuture.completedFuture(null)
     override fun broadcastInbound(msgs: List<PubsubMessage>, receivedFrom: PeerHandler) {}
     override fun processControl(ctrl: Rpc.ControlMessage, receivedFrom: PeerHandler) {}
+    override fun processExtensions(msg: Rpc.RPC, receivedFrom: PeerHandler) {}
 }

@@ -139,6 +139,11 @@ abstract class AbstractRouter(
      */
     protected abstract fun processControl(ctrl: Rpc.ControlMessage, receivedFrom: PeerHandler)
 
+    /**
+     * Processes Gossipsub extensions messages
+     */
+    protected abstract fun processExtensions(msg: Rpc.RPC, receivedFrom: PeerHandler)
+
     override fun onPeerActive(peer: PeerHandler) {
         val partsQueue = pendingRpcParts.getQueue(peer)
         subscribedTopics.forEach {
@@ -178,6 +183,10 @@ abstract class AbstractRouter(
 
         if (msg.hasControl()) {
             processControl(msg.control, peer)
+        }
+
+        if (protocol.supportsExtensions()) {
+            processExtensions(msg, peer)
         }
 
         val (msgSubscribed, nonSubscribed) = msg.publishList
