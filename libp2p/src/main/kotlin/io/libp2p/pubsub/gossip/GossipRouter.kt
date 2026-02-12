@@ -396,7 +396,7 @@ open class GossipRouter(
         ctrlExtensions: Rpc.ControlExtensions,
         receivedFrom: PeerHandler
     ) {
-        logger.info("Received control extension {}", ctrlExtensions.toString())
+        logger.trace("Received control extension {}", ctrlExtensions.toString())
 
         if (peerExtensionSupportMap[receivedFrom.peerId] != null) {
             // TODO Should downscore peers that send control extension multiple times? (https://github.com/libp2p/jvm-libp2p/issues/437)
@@ -413,7 +413,7 @@ open class GossipRouter(
     override fun processExtensions(msg: Rpc.RPC, receivedFrom: PeerHandler) {
         val peerSupportedExtensions = peerExtensionSupportMap[receivedFrom.peerId]
         if (peerSupportedExtensions == null) {
-            logger.info(
+            logger.trace(
                 "Ignoring extension messages from peer {} - did it send an extension control message?",
                 receivedFrom.peerId
             )

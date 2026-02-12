@@ -31,7 +31,7 @@ class GossipExtensionsMessageHandlingTest : GossipTestsBase() {
     @Test
     fun `extension messages sent to peer prior to sending extension control messages are ignored`() {
         val test = TwoRoutersTest(
-            protocol = PubsubProtocol.Gossip_V_1_2
+            protocol = PubsubProtocol.Gossip_V_1_3
         )
 
         val rpcMessageWithTestExtension =
