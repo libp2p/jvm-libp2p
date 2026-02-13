@@ -132,7 +132,10 @@ open class GossipRouter(
     private val acceptRequestsWhitelist = mutableMapOf<PeerHandler, AcceptRequestsWhitelistEntry>()
     override val pendingRpcParts = PendingRpcPartsMap<GossipRpcPartsQueue> { DefaultGossipRpcPartsQueue(params) }
 
+    // TODO-lucas maybe we need to move this into a peer extension state that will also hold the information of the peers that we already sent our extension control to
     private val peerExtensionSupportMap = mutableMapOf<PeerId, Rpc.ControlExtensions>()
+    val peerExtensionSupportMapView: Map<PeerId, Rpc.ControlExtensions>
+        get() = peerExtensionSupportMap.toMap()
 
     private fun setBackOff(peer: PeerHandler, topic: Topic) = setBackOff(peer, topic, params.pruneBackoff.toMillis())
     private fun setBackOff(peer: PeerHandler, topic: Topic, delay: Long) {
@@ -159,6 +162,7 @@ open class GossipRouter(
         fanout.values.forEach { it.remove(peer) }
         acceptRequestsWhitelist -= peer
         pendingRpcParts.popQueue(peer) // discard them
+        peerExtensionSupportMap.remove(peer.peerId)
         super.onPeerDisconnected(peer)
     }
 
@@ -578,6 +582,8 @@ open class GossipRouter(
             fanout -= topic
             lastPublished -= topic
         }
+
+        // TODO-lucas we might want to send our extension control here in case we haven't sent it yet. but it needs to keep track of which peer we have already sent it to
     }
 
     override fun unsubscribe(topic: Topic) {
