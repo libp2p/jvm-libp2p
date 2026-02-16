@@ -784,6 +784,13 @@ open class GossipRouter(
     }
 
     private fun sendExtensionsControl(peer: PeerHandler) {
+        if (!this.protocol.supportsExtensions()) {
+            logger.trace(
+                "Protocol does not support extensions. Won't send extensions control message."
+            )
+            return
+        }
+
         if (gossipExtensionsState.hasSentExtensionControlTo(peer.peerId)) {
             logger.trace(
                 "Already sent extension control msg to peer {}. Won't send another one.",
