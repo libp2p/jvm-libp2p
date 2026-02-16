@@ -798,6 +798,7 @@ open class GossipRouter(
                 .setPartialMessages(true)
                 .build()
         )
+        gossipExtensionsState.registerControlExtensionMessageSentToPeers(peer.peerId)
     }
 
     data class AcceptRequestsWhitelistEntry(val whitelistedTill: Long, val messagesAccepted: Int = 0) {

@@ -8,7 +8,7 @@ class GossipExtensionsState {
     /*
         Tracks the peers that we have already sent an extension control message
      */
-    private val outgoingExtensionControlMsgPeers: MutableList<PeerId> = mutableListOf()
+    private val outgoingExtensionControlMsgPeers: MutableSet<PeerId> = mutableSetOf()
 
     /*
         Tracks peers that already sent us an extension control message
@@ -22,6 +22,10 @@ class GossipExtensionsState {
 
     fun onExtensionControlMessage(ctrlExtensions: Rpc.ControlExtensions, receivedFrom: PeerId) {
         peerExtensionSupportMap[receivedFrom] = ctrlExtensions
+    }
+
+    fun registerControlExtensionMessageSentToPeers(peerId: PeerId) {
+        outgoingExtensionControlMsgPeers.add(peerId)
     }
 
     fun peerSupportedExtensions(peerId: PeerId) = peerExtensionSupportMap[peerId]
