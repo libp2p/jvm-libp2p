@@ -132,10 +132,7 @@ open class GossipRouter(
     private val acceptRequestsWhitelist = mutableMapOf<PeerHandler, AcceptRequestsWhitelistEntry>()
     override val pendingRpcParts = PendingRpcPartsMap<GossipRpcPartsQueue> { DefaultGossipRpcPartsQueue(params) }
 
-    // TODO-lucas maybe we need to move this into a peer extension state that will also hold the information of the peers that we already sent our extension control to
-    private val peerExtensionSupportMap = mutableMapOf<PeerId, Rpc.ControlExtensions>()
-    val peerExtensionSupportMapView: Map<PeerId, Rpc.ControlExtensions>
-        get() = peerExtensionSupportMap.toMap()
+    val gossipExtensionsState = GossipExtensionsState()
 
     private fun setBackOff(peer: PeerHandler, topic: Topic) = setBackOff(peer, topic, params.pruneBackoff.toMillis())
     private fun setBackOff(peer: PeerHandler, topic: Topic, delay: Long) {
@@ -162,7 +159,7 @@ open class GossipRouter(
         fanout.values.forEach { it.remove(peer) }
         acceptRequestsWhitelist -= peer
         pendingRpcParts.popQueue(peer) // discard them
-        peerExtensionSupportMap.remove(peer.peerId)
+        gossipExtensionsState.onPeerDisconnected(peer.peerId)
         super.onPeerDisconnected(peer)
     }
 
@@ -170,6 +167,7 @@ open class GossipRouter(
         super.onPeerActive(peer)
         eventBroadcaster.notifyConnected(peer.peerId, peer.getRemoteAddress())
         heartbeatTask.hashCode() // force lazy initialization
+        sendExtensionsControl(peer)
     }
 
     override fun notifyUnseenMessage(peer: PeerHandler, msg: PubsubMessage) {
@@ -402,20 +400,21 @@ open class GossipRouter(
     ) {
         logger.trace("Received control extension {}", ctrlExtensions.toString())
 
-        if (peerExtensionSupportMap[receivedFrom.peerId] != null) {
-            // TODO Should downscore peers that send control extension multiple times? (https://github.com/libp2p/jvm-libp2p/issues/437)
+        if (gossipExtensionsState.hasReceivedExtensionControlFrom(receivedFrom.peerId)) {
+            // TODO Should disconnect peers that send control extension multiple times (https://github.com/libp2p/jvm-libp2p/issues/437)
             logger.trace(
                 "Received another control extension message from peer {}",
                 receivedFrom.peerId
             )
             return
         } else {
-            peerExtensionSupportMap[receivedFrom.peerId] = ctrlExtensions
+            gossipExtensionsState.onExtensionControlMessage(ctrlExtensions, receivedFrom.peerId)
         }
     }
 
     override fun processExtensions(msg: Rpc.RPC, receivedFrom: PeerHandler) {
-        val peerSupportedExtensions = peerExtensionSupportMap[receivedFrom.peerId]
+        val peerSupportedExtensions =
+            gossipExtensionsState.peerSupportedExtensions(receivedFrom.peerId)
         if (peerSupportedExtensions == null) {
             logger.trace(
                 "Ignoring extension messages from peer {} - did it send an extension control message?",
@@ -583,7 +582,7 @@ open class GossipRouter(
             lastPublished -= topic
         }
 
-        // TODO-lucas we might want to send our extension control here in case we haven't sent it yet. but it needs to keep track of which peer we have already sent it to
+        activePeers.forEach { sendExtensionsControl(it) }
     }
 
     override fun unsubscribe(topic: Topic) {
@@ -782,6 +781,23 @@ open class GossipRouter(
             )
         ).build()
         send(peer, iDontWant)
+    }
+
+    private fun sendExtensionsControl(peer: PeerHandler) {
+        if (gossipExtensionsState.hasSentExtensionControlTo(peer.peerId)) {
+            logger.trace(
+                "Already sent extension control msg to peer {}. Won't send another one.",
+                peer.peerId
+            )
+            return
+        }
+
+        pendingRpcParts.getQueue(peer).addExtensionsControl(
+            Rpc.ControlExtensions.newBuilder()
+                .setTestExtension(true)
+                .setPartialMessages(true)
+                .build()
+        )
     }
 
     data class AcceptRequestsWhitelistEntry(val whitelistedTill: Long, val messagesAccepted: Int = 0) {

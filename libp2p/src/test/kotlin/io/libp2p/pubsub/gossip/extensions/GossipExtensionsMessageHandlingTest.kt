@@ -37,6 +37,10 @@ class GossipExtensionsMessageHandlingTest : GossipTestsBase() {
         )
 
         test.mockRouter.sendToSingle(rpcMessageWithControlExtensions)
+        assertThat(test.gossipRouter.gossipExtensionsState.peerSupportedExtensions(test.router2.peerId)).isEqualTo(
+            rpcMessageWithControlExtensions.control.extensions
+        )
+
         test.mockRouter.sendToSingle(rpcMessageWithTestExtension)
         test.mockRouter.waitForMessage { it.hasTestExtension() }
     }
@@ -58,15 +62,21 @@ class GossipExtensionsMessageHandlingTest : GossipTestsBase() {
         )
 
         test.mockRouter.sendToSingle(rpcMsgWithCtrlExtensionsAndTestExtension)
+
+        assertThat(test.gossipRouter.gossipExtensionsState.peerSupportedExtensions(test.router2.peerId)).isEqualTo(
+            rpcMsgWithCtrlExtensionsAndTestExtension.control.extensions
+        )
+
         test.mockRouter.waitForMessage { it.hasTestExtension() }
 
         // Successfully registered peer2 extensions support
-        assertThat(test.gossipRouter.peerExtensionSupportMapView).containsKey(test.router2.peerId)
+
+        assertThat(test.gossipRouter.gossipExtensionsState.peerSupportedExtensions(test.router2.peerId)).isNotNull()
 
         test.connection.disconnect()
 
         // After disconnecting removes peer2 from extensions support map
-        assertThat(test.gossipRouter.peerExtensionSupportMapView).isEmpty()
+        assertThat(test.gossipRouter.gossipExtensionsState.peerSupportedExtensions(test.router2.peerId)).isNull()
     }
 
     companion object {
@@ -89,7 +99,7 @@ class GossipExtensionsMessageHandlingTest : GossipTestsBase() {
             .setTestExtension(Rpc.TestExtension.newBuilder().build())
             .build()!!
 
-        fun controlExtensionMessage(testExtensionEnabled: Boolean = false): Rpc.ControlExtensions {
+        fun controlExtensionMessage(testExtensionEnabled: Boolean = true): Rpc.ControlExtensions {
             return Rpc.ControlExtensions.newBuilder().setTestExtension(testExtensionEnabled).build()
         }
 
