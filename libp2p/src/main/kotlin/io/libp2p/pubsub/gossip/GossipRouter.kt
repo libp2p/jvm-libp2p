@@ -457,25 +457,6 @@ open class GossipRouter(
         }
     }
 
-    private fun checkPeerExtensionSupport(
-        peerSavedPreferences: Rpc.ControlExtensions?,
-        checkSupportFunction: (Rpc.ControlExtensions) -> Boolean
-    ): Boolean {
-        if (peerSavedPreferences == null) {
-            return false
-        }
-
-        if (!checkSupportFunction.invoke(peerSavedPreferences)) {
-            logger.trace(
-                "Ignoring extension messages from peer {} - did it send an control extensions message?",
-                peerSavedPreferences
-            )
-            return false
-        }
-
-        return true
-    }
-
     private fun processTestExtensionMessage(
         testExtensionMessage: Rpc.TestExtension,
         receivedFrom: PeerHandler
