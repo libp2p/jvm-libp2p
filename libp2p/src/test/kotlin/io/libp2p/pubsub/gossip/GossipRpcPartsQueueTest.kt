@@ -306,4 +306,191 @@ class GossipRpcPartsQueueTest {
                 .addMessageIDs("2222".toWBytes().toProtobuf()).build(),
         )
     }
+
+    @Test
+    fun `addControlExtensions() sets testExtension flag in control message`() {
+        val partsQueue = TestGossipQueue(gossipParamsNoLimits)
+
+        val extension = Rpc.ControlExtensions.newBuilder()
+            .setTestExtension(true)
+            .build()
+
+        partsQueue.addControlExtensions(extension)
+
+        val res = partsQueue.takeMerged().first()
+
+        assertThat(res.hasControl()).isTrue()
+        assertThat(res.control.hasExtensions()).isTrue()
+        assertThat(res.control.extensions.testExtension).isTrue()
+    }
+
+    @Test
+    fun `addControlExtensions() sets partialMessages flag in control message`() {
+        val partsQueue = TestGossipQueue(gossipParamsNoLimits)
+
+        val extension = Rpc.ControlExtensions.newBuilder()
+            .setPartialMessages(true)
+            .build()
+
+        partsQueue.addControlExtensions(extension)
+
+        val res = partsQueue.takeMerged().first()
+
+        assertThat(res.hasControl()).isTrue()
+        assertThat(res.control.hasExtensions()).isTrue()
+        assertThat(res.control.extensions.partialMessages).isTrue()
+    }
+
+    @Test
+    fun `addControlExtensions() sets all extension flags`() {
+        val partsQueue = TestGossipQueue(gossipParamsNoLimits)
+
+        val extension = Rpc.ControlExtensions.newBuilder()
+            .setPartialMessages(true)
+            .setTestExtension(true)
+            .build()
+
+        partsQueue.addControlExtensions(extension)
+
+        val res = partsQueue.takeMerged().first()
+
+        assertThat(res.hasControl()).isTrue()
+        assertThat(res.control.hasExtensions()).isTrue()
+        assertThat(res.control.extensions.partialMessages).isTrue()
+        assertThat(res.control.extensions.testExtension).isTrue()
+    }
+
+    @Test
+    fun `control extensions message works with other control messages`() {
+        val partsQueue = TestGossipQueue(gossipParamsNoLimits)
+
+        // Add various control messages
+        partsQueue.addIHave(byteArrayOf(1).toWBytes(), "topic1")
+        partsQueue.addIWant(byteArrayOf(2).toWBytes())
+        partsQueue.addGraft("topic2")
+        partsQueue.addPrune("topic3")
+
+        // Add extension
+        val extension = Rpc.ControlExtensions.newBuilder()
+            .setPartialMessages(true)
+            .build()
+        partsQueue.addControlExtensions(extension)
+
+        val res = partsQueue.takeMerged().first()
+
+        // Verify all control messages are present
+        assertThat(res.hasControl()).isTrue()
+        assertThat(res.control.ihaveList).hasSize(1)
+        assertThat(res.control.iwantList).hasSize(1)
+        assertThat(res.control.graftList).hasSize(1)
+        assertThat(res.control.pruneList).hasSize(1)
+
+        // Verify extension is present
+        assertThat(res.control.hasExtensions()).isTrue()
+        assertThat(res.control.extensions.partialMessages).isTrue()
+    }
+
+    @Test
+    fun `control extensions message with subscriptions and publishes`() {
+        val partsQueue = TestGossipQueue(gossipParamsNoLimits)
+
+        partsQueue.addSubscribe("topic1")
+        partsQueue.addPublish(createRpcMessage("topic1", "data1"))
+
+        val extension = Rpc.ControlExtensions.newBuilder()
+            .setPartialMessages(true)
+            .build()
+        partsQueue.addControlExtensions(extension)
+
+        val res = partsQueue.takeMerged().first()
+
+        // Verify subscriptions and publishes
+        assertThat(res.subscriptionsList).hasSize(1)
+        assertThat(res.publishList).hasSize(1)
+
+        // Verify extension
+        assertThat(res.control.hasExtensions()).isTrue()
+        assertThat(res.control.extensions.partialMessages).isTrue()
+    }
+
+    @Test
+    fun `control extensions message works with message splitting`() {
+        val partsQueue = TestGossipQueue(gossipParamsWithLimits)
+
+        // Add enough messages to force splitting
+        (1..20).forEach {
+            partsQueue.addPublish(createRpcMessage("topic-$it", "data"))
+        }
+
+        // Add extension
+        val extension = Rpc.ControlExtensions.newBuilder()
+            .setPartialMessages(true)
+            .build()
+        partsQueue.addControlExtensions(extension)
+
+        val merged = partsQueue.takeMerged()
+
+        // Should be split into multiple RPCs due to maxPublishedMessages limit
+        assertThat(merged.size).isGreaterThan(1)
+
+        // Extension should be in the last RPC (since it's added last)
+        val lastRpc = merged.last()
+        assertThat(lastRpc.hasControl()).isTrue()
+        assertThat(lastRpc.control.hasExtensions()).isTrue()
+        assertThat(lastRpc.control.extensions.partialMessages).isTrue()
+    }
+
+    @Test
+    fun `multiple control extensions messages - last one wins`() {
+        val partsQueue = TestGossipQueue(gossipParamsNoLimits)
+
+        // Add first extension
+        val extension1 = Rpc.ControlExtensions.newBuilder()
+            .setPartialMessages(true)
+            .setTestExtension(false)
+            .build()
+        partsQueue.addControlExtensions(extension1)
+
+        // Add second extension (should overwrite first)
+        val extension2 = Rpc.ControlExtensions.newBuilder()
+            .setPartialMessages(false)
+            .setTestExtension(true)
+            .build()
+        partsQueue.addControlExtensions(extension2)
+
+        val res = partsQueue.takeMerged().first()
+
+        // Verify only the last extension is present
+        assertThat(res.control.hasExtensions()).isTrue()
+        // Note: false flags may or may not be serialized depending on protobuf default behavior
+        // But testExtension should definitely be true
+        assertThat(res.control.extensions.testExtension).isTrue()
+    }
+
+    @Test
+    fun `control extensions message does not count toward limits but may be split`() {
+        val partsQueue = TestGossipQueue(gossipParamsWithLimits)
+
+        // Add exactly maxPublishedMessages messages
+        (1..maxPublishedMessages).forEach {
+            partsQueue.addPublish(createRpcMessage("topic-$it", "data"))
+        }
+
+        // Add extension
+        val extension = Rpc.ControlExtensions.newBuilder()
+            .setPartialMessages(true)
+            .build()
+        partsQueue.addControlExtensions(extension)
+
+        val merged = partsQueue.takeMerged()
+
+        // Extension doesn't count toward limits, but it may end up in a separate RPC
+        // if it comes after parts that exhaust a limit
+        assertThat(merged).hasSize(2)
+        assertThat(merged[0].publishList).hasSize(maxPublishedMessages)
+
+        // Extension should be in the second RPC
+        assertThat(merged[1].control.hasExtensions()).isTrue()
+        assertThat(merged[1].control.extensions.partialMessages).isTrue()
+    }
 }

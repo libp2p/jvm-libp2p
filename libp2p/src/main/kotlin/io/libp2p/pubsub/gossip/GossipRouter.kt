@@ -132,7 +132,7 @@ open class GossipRouter(
     private val acceptRequestsWhitelist = mutableMapOf<PeerHandler, AcceptRequestsWhitelistEntry>()
     override val pendingRpcParts = PendingRpcPartsMap<GossipRpcPartsQueue> { DefaultGossipRpcPartsQueue(params) }
 
-    private val peerExtensionSupportMap = mutableMapOf<PeerId, Rpc.ControlExtensions>()
+    val gossipExtensionsState = GossipExtensionsState()
 
     private fun setBackOff(peer: PeerHandler, topic: Topic) = setBackOff(peer, topic, params.pruneBackoff.toMillis())
     private fun setBackOff(peer: PeerHandler, topic: Topic, delay: Long) {
@@ -159,6 +159,7 @@ open class GossipRouter(
         fanout.values.forEach { it.remove(peer) }
         acceptRequestsWhitelist -= peer
         pendingRpcParts.popQueue(peer) // discard them
+        gossipExtensionsState.onPeerDisconnected(peer.peerId)
         super.onPeerDisconnected(peer)
     }
 
@@ -166,6 +167,7 @@ open class GossipRouter(
         super.onPeerActive(peer)
         eventBroadcaster.notifyConnected(peer.peerId, peer.getRemoteAddress())
         heartbeatTask.hashCode() // force lazy initialization
+        sendControlExtensions(peer)
     }
 
     override fun notifyUnseenMessage(peer: PeerHandler, msg: PubsubMessage) {
@@ -398,34 +400,56 @@ open class GossipRouter(
     ) {
         logger.trace("Received control extension {}", ctrlExtensions.toString())
 
-        if (peerExtensionSupportMap[receivedFrom.peerId] != null) {
-            // TODO Should downscore peers that send control extension multiple times? (https://github.com/libp2p/jvm-libp2p/issues/437)
+        if (gossipExtensionsState.hasReceivedControlExtensionsFrom(receivedFrom.peerId)) {
+            // TODO Should disconnect peers that send control extension multiple times (https://github.com/libp2p/jvm-libp2p/issues/437)
             logger.trace(
                 "Received another control extension message from peer {}",
                 receivedFrom.peerId
             )
             return
         } else {
-            peerExtensionSupportMap[receivedFrom.peerId] = ctrlExtensions
+            gossipExtensionsState.onControlExtensionsMessage(ctrlExtensions, receivedFrom.peerId)
         }
     }
 
     override fun processExtensions(msg: Rpc.RPC, receivedFrom: PeerHandler) {
-        val peerSupportedExtensions = peerExtensionSupportMap[receivedFrom.peerId]
-        if (peerSupportedExtensions == null) {
-            logger.trace(
-                "Ignoring extension messages from peer {} - did it send an extension control message?",
-                receivedFrom.peerId
-            )
-        } else {
-            when {
-                peerSupportedExtensions.hasTestExtension() && msg.hasTestExtension() ->
-                    processTestExtensionMessage(msg.testExtension, receivedFrom)
+        val peerSupportedExtensions =
+            gossipExtensionsState.peerSupportedExtensions(receivedFrom.peerId)
 
-                peerSupportedExtensions.hasPartialMessages() && msg.hasPartial() ->
-                    processPartialMessageExtension(msg.partial, receivedFrom)
-            }
+        // TODO Revisit this logic as part of adding feature flags (https://github.com/libp2p/jvm-libp2p/issues/441)
+
+        when {
+            msg.hasTestExtension() && checkPeerExtensionSupport(
+                peerSupportedExtensions,
+                Rpc.ControlExtensions::hasTestExtension
+            ) ->
+                processTestExtensionMessage(msg.testExtension, receivedFrom)
+
+            msg.hasPartial() && checkPeerExtensionSupport(
+                peerSupportedExtensions,
+                Rpc.ControlExtensions::hasPartialMessages
+            ) ->
+                processPartialMessageExtension(msg.partial, receivedFrom)
         }
+    }
+
+    private fun checkPeerExtensionSupport(
+        peerSavedPreferences: Rpc.ControlExtensions?,
+        checkSupportFunction: (Rpc.ControlExtensions) -> Boolean
+    ): Boolean {
+        if (peerSavedPreferences == null) {
+            return false
+        }
+
+        if (!checkSupportFunction.invoke(peerSavedPreferences)) {
+            logger.trace(
+                "Ignoring extension messages from peer {} - did it send an control extensions message?",
+                peerSavedPreferences
+            )
+            return false
+        }
+
+        return true
     }
 
     private fun processTestExtensionMessage(
@@ -578,6 +602,8 @@ open class GossipRouter(
             fanout -= topic
             lastPublished -= topic
         }
+
+        activePeers.forEach { sendControlExtensions(it) }
     }
 
     override fun unsubscribe(topic: Topic) {
@@ -776,6 +802,33 @@ open class GossipRouter(
             )
         ).build()
         send(peer, iDontWant)
+    }
+
+    private fun sendControlExtensions(peer: PeerHandler) {
+        if (!this.protocol.supportsExtensions()) {
+            logger.trace(
+                "Protocol does not support extensions. Won't send control extensions message."
+            )
+            return
+        }
+
+        if (gossipExtensionsState.hasSentControlExtensionsTo(peer.peerId)) {
+            logger.trace(
+                "Already sent control extensions msg to peer {}. Won't send another one.",
+                peer.peerId
+            )
+            return
+        }
+
+        logger.trace("Sending control extensions message to peer {}", peer.peerId)
+
+        pendingRpcParts.getQueue(peer).addControlExtensions(
+            Rpc.ControlExtensions.newBuilder()
+                .setTestExtension(true)
+                .setPartialMessages(true)
+                .build()
+        )
+        gossipExtensionsState.registerControlExtensionMessageSentToPeers(peer.peerId)
     }
 
     data class AcceptRequestsWhitelistEntry(val whitelistedTill: Long, val messagesAccepted: Int = 0) {
