@@ -149,9 +149,6 @@ abstract class AbstractRouter(
         subscribedTopics.forEach {
             partsQueue.addSubscribe(it)
         }
-
-        // TODO end control extension
-
         flushPending(peer)
     }
 
