@@ -28,7 +28,7 @@ interface GossipRpcPartsQueue : RpcPartsQueue {
     fun addPrune(topic: Topic, backoffSeconds: Long, backoffPeers: List<PeerId>)
 
     // TODO Need to check if we should handle when control extension and extension messages could be separated by split  (https://github.com/libp2p/jvm-libp2p/issues/440)
-    fun addExtensionsControl(ctrlMessage: Rpc.ControlExtensions)
+    fun addControlExtensions(ctrlMessage: Rpc.ControlExtensions)
 }
 
 /**
@@ -110,7 +110,7 @@ open class DefaultGossipRpcPartsQueue(
         addPart(PrunePart(topic, backoffSeconds, backoffPeers))
     }
 
-    override fun addExtensionsControl(ctrlMessage: Rpc.ControlExtensions) {
+    override fun addControlExtensions(ctrlMessage: Rpc.ControlExtensions) {
         addPart(ControlExtensionPart(ctrlMessage))
     }
 

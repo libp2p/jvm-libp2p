@@ -167,7 +167,7 @@ open class GossipRouter(
         super.onPeerActive(peer)
         eventBroadcaster.notifyConnected(peer.peerId, peer.getRemoteAddress())
         heartbeatTask.hashCode() // force lazy initialization
-        sendExtensionsControl(peer)
+        sendControlExtensions(peer)
     }
 
     override fun notifyUnseenMessage(peer: PeerHandler, msg: PubsubMessage) {
@@ -400,7 +400,7 @@ open class GossipRouter(
     ) {
         logger.trace("Received control extension {}", ctrlExtensions.toString())
 
-        if (gossipExtensionsState.hasReceivedExtensionControlFrom(receivedFrom.peerId)) {
+        if (gossipExtensionsState.hasReceivedControlExtensionsFrom(receivedFrom.peerId)) {
             // TODO Should disconnect peers that send control extension multiple times (https://github.com/libp2p/jvm-libp2p/issues/437)
             logger.trace(
                 "Received another control extension message from peer {}",
@@ -408,27 +408,48 @@ open class GossipRouter(
             )
             return
         } else {
-            gossipExtensionsState.onExtensionControlMessage(ctrlExtensions, receivedFrom.peerId)
+            gossipExtensionsState.onControlExtensionsMessage(ctrlExtensions, receivedFrom.peerId)
         }
     }
 
     override fun processExtensions(msg: Rpc.RPC, receivedFrom: PeerHandler) {
         val peerSupportedExtensions =
             gossipExtensionsState.peerSupportedExtensions(receivedFrom.peerId)
-        if (peerSupportedExtensions == null) {
-            logger.trace(
-                "Ignoring extension messages from peer {} - did it send an extension control message?",
-                receivedFrom.peerId
-            )
-        } else {
-            when {
-                peerSupportedExtensions.hasTestExtension() && msg.hasTestExtension() ->
-                    processTestExtensionMessage(msg.testExtension, receivedFrom)
 
-                peerSupportedExtensions.hasPartialMessages() && msg.hasPartial() ->
-                    processPartialMessageExtension(msg.partial, receivedFrom)
-            }
+        // TODO Revisit this logic as part of adding feature flags (https://github.com/libp2p/jvm-libp2p/issues/441)
+
+        when {
+            msg.hasTestExtension() && checkPeerExtensionSupport(
+                peerSupportedExtensions,
+                Rpc.ControlExtensions::hasTestExtension
+            ) ->
+                processTestExtensionMessage(msg.testExtension, receivedFrom)
+
+            msg.hasPartial() && checkPeerExtensionSupport(
+                peerSupportedExtensions,
+                Rpc.ControlExtensions::hasPartialMessages
+            ) ->
+                processPartialMessageExtension(msg.partial, receivedFrom)
         }
+    }
+
+    private fun checkPeerExtensionSupport(
+        peerSavedPreferences: Rpc.ControlExtensions?,
+        checkSupportFunction: (Rpc.ControlExtensions) -> Boolean
+    ): Boolean {
+        if (peerSavedPreferences == null) {
+            return false
+        }
+
+        if (!checkSupportFunction.invoke(peerSavedPreferences)) {
+            logger.trace(
+                "Ignoring extension messages from peer {} - did it send an control extensions message?",
+                peerSavedPreferences
+            )
+            return false
+        }
+
+        return true
     }
 
     private fun processTestExtensionMessage(
@@ -582,7 +603,7 @@ open class GossipRouter(
             lastPublished -= topic
         }
 
-        activePeers.forEach { sendExtensionsControl(it) }
+        activePeers.forEach { sendControlExtensions(it) }
     }
 
     override fun unsubscribe(topic: Topic) {
@@ -783,23 +804,25 @@ open class GossipRouter(
         send(peer, iDontWant)
     }
 
-    private fun sendExtensionsControl(peer: PeerHandler) {
+    private fun sendControlExtensions(peer: PeerHandler) {
         if (!this.protocol.supportsExtensions()) {
             logger.trace(
-                "Protocol does not support extensions. Won't send extensions control message."
+                "Protocol does not support extensions. Won't send control extensions message."
             )
             return
         }
 
-        if (gossipExtensionsState.hasSentExtensionControlTo(peer.peerId)) {
+        if (gossipExtensionsState.hasSentControlExtensionsTo(peer.peerId)) {
             logger.trace(
-                "Already sent extension control msg to peer {}. Won't send another one.",
+                "Already sent control extensions msg to peer {}. Won't send another one.",
                 peer.peerId
             )
             return
         }
 
-        pendingRpcParts.getQueue(peer).addExtensionsControl(
+        logger.trace("Sending control extensions message to peer {}", peer.peerId)
+
+        pendingRpcParts.getQueue(peer).addControlExtensions(
             Rpc.ControlExtensions.newBuilder()
                 .setTestExtension(true)
                 .setPartialMessages(true)

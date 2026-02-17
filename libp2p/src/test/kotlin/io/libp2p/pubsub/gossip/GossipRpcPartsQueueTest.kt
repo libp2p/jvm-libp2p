@@ -308,14 +308,14 @@ class GossipRpcPartsQueueTest {
     }
 
     @Test
-    fun `addExtensionsControl() sets testExtension flag in control message`() {
+    fun `addControlExtensions() sets testExtension flag in control message`() {
         val partsQueue = TestGossipQueue(gossipParamsNoLimits)
 
         val extension = Rpc.ControlExtensions.newBuilder()
             .setTestExtension(true)
             .build()
 
-        partsQueue.addExtensionsControl(extension)
+        partsQueue.addControlExtensions(extension)
 
         val res = partsQueue.takeMerged().first()
 
@@ -325,14 +325,14 @@ class GossipRpcPartsQueueTest {
     }
 
     @Test
-    fun `addExtensionsControl() sets partialMessages flag in control message`() {
+    fun `addControlExtensions() sets partialMessages flag in control message`() {
         val partsQueue = TestGossipQueue(gossipParamsNoLimits)
 
         val extension = Rpc.ControlExtensions.newBuilder()
             .setPartialMessages(true)
             .build()
 
-        partsQueue.addExtensionsControl(extension)
+        partsQueue.addControlExtensions(extension)
 
         val res = partsQueue.takeMerged().first()
 
@@ -342,7 +342,7 @@ class GossipRpcPartsQueueTest {
     }
 
     @Test
-    fun `addExtensionsControl() sets all extension flags`() {
+    fun `addControlExtensions() sets all extension flags`() {
         val partsQueue = TestGossipQueue(gossipParamsNoLimits)
 
         val extension = Rpc.ControlExtensions.newBuilder()
@@ -350,7 +350,7 @@ class GossipRpcPartsQueueTest {
             .setTestExtension(true)
             .build()
 
-        partsQueue.addExtensionsControl(extension)
+        partsQueue.addControlExtensions(extension)
 
         val res = partsQueue.takeMerged().first()
 
@@ -361,7 +361,7 @@ class GossipRpcPartsQueueTest {
     }
 
     @Test
-    fun `extension control message works with other control messages`() {
+    fun `control extensions message works with other control messages`() {
         val partsQueue = TestGossipQueue(gossipParamsNoLimits)
 
         // Add various control messages
@@ -374,7 +374,7 @@ class GossipRpcPartsQueueTest {
         val extension = Rpc.ControlExtensions.newBuilder()
             .setPartialMessages(true)
             .build()
-        partsQueue.addExtensionsControl(extension)
+        partsQueue.addControlExtensions(extension)
 
         val res = partsQueue.takeMerged().first()
 
@@ -391,7 +391,7 @@ class GossipRpcPartsQueueTest {
     }
 
     @Test
-    fun `extension control message with subscriptions and publishes`() {
+    fun `control extensions message with subscriptions and publishes`() {
         val partsQueue = TestGossipQueue(gossipParamsNoLimits)
 
         partsQueue.addSubscribe("topic1")
@@ -400,7 +400,7 @@ class GossipRpcPartsQueueTest {
         val extension = Rpc.ControlExtensions.newBuilder()
             .setPartialMessages(true)
             .build()
-        partsQueue.addExtensionsControl(extension)
+        partsQueue.addControlExtensions(extension)
 
         val res = partsQueue.takeMerged().first()
 
@@ -414,7 +414,7 @@ class GossipRpcPartsQueueTest {
     }
 
     @Test
-    fun `extension control message works with message splitting`() {
+    fun `control extensions message works with message splitting`() {
         val partsQueue = TestGossipQueue(gossipParamsWithLimits)
 
         // Add enough messages to force splitting
@@ -426,7 +426,7 @@ class GossipRpcPartsQueueTest {
         val extension = Rpc.ControlExtensions.newBuilder()
             .setPartialMessages(true)
             .build()
-        partsQueue.addExtensionsControl(extension)
+        partsQueue.addControlExtensions(extension)
 
         val merged = partsQueue.takeMerged()
 
@@ -441,7 +441,7 @@ class GossipRpcPartsQueueTest {
     }
 
     @Test
-    fun `multiple extension control messages - last one wins`() {
+    fun `multiple control extensions messages - last one wins`() {
         val partsQueue = TestGossipQueue(gossipParamsNoLimits)
 
         // Add first extension
@@ -449,14 +449,14 @@ class GossipRpcPartsQueueTest {
             .setPartialMessages(true)
             .setTestExtension(false)
             .build()
-        partsQueue.addExtensionsControl(extension1)
+        partsQueue.addControlExtensions(extension1)
 
         // Add second extension (should overwrite first)
         val extension2 = Rpc.ControlExtensions.newBuilder()
             .setPartialMessages(false)
             .setTestExtension(true)
             .build()
-        partsQueue.addExtensionsControl(extension2)
+        partsQueue.addControlExtensions(extension2)
 
         val res = partsQueue.takeMerged().first()
 
@@ -468,7 +468,7 @@ class GossipRpcPartsQueueTest {
     }
 
     @Test
-    fun `extension control message does not count toward limits but may be split`() {
+    fun `control extensions message does not count toward limits but may be split`() {
         val partsQueue = TestGossipQueue(gossipParamsWithLimits)
 
         // Add exactly maxPublishedMessages messages
@@ -480,7 +480,7 @@ class GossipRpcPartsQueueTest {
         val extension = Rpc.ControlExtensions.newBuilder()
             .setPartialMessages(true)
             .build()
-        partsQueue.addExtensionsControl(extension)
+        partsQueue.addControlExtensions(extension)
 
         val merged = partsQueue.takeMerged()
 

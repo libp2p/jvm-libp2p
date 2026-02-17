@@ -6,33 +6,33 @@ import pubsub.pb.Rpc
 class GossipExtensionsState {
 
     /*
-        Tracks the peers that we have already sent an extension control message
+        Tracks the peers that we have already sent a control extensions message
      */
-    private val outgoingExtensionControlMsgPeers: MutableSet<PeerId> = mutableSetOf()
+    private val outgoingControlExtensionsMsgPeers: MutableSet<PeerId> = mutableSetOf()
 
     /*
-        Tracks peers that already sent us an extension control message
+        Tracks peers that already sent us a control extensions message
      */
     private val peerExtensionSupportMap: MutableMap<PeerId, Rpc.ControlExtensions> = mutableMapOf()
 
     fun onPeerDisconnected(peer: PeerId) {
-        outgoingExtensionControlMsgPeers.remove(peer)
+        outgoingControlExtensionsMsgPeers.remove(peer)
         peerExtensionSupportMap.remove(peer)
     }
 
-    fun onExtensionControlMessage(ctrlExtensions: Rpc.ControlExtensions, receivedFrom: PeerId) {
+    fun onControlExtensionsMessage(ctrlExtensions: Rpc.ControlExtensions, receivedFrom: PeerId) {
         peerExtensionSupportMap[receivedFrom] = ctrlExtensions
     }
 
     fun registerControlExtensionMessageSentToPeers(peerId: PeerId) {
-        outgoingExtensionControlMsgPeers.add(peerId)
+        outgoingControlExtensionsMsgPeers.add(peerId)
     }
 
     fun peerSupportedExtensions(peerId: PeerId) = peerExtensionSupportMap[peerId]
 
-    fun hasReceivedExtensionControlFrom(peer: PeerId) =
+    fun hasReceivedControlExtensionsFrom(peer: PeerId) =
         peerExtensionSupportMap.contains(peer)
 
-    fun hasSentExtensionControlTo(peer: PeerId) =
-        outgoingExtensionControlMsgPeers.contains(peer)
+    fun hasSentControlExtensionsTo(peer: PeerId) =
+        outgoingControlExtensionsMsgPeers.contains(peer)
 }

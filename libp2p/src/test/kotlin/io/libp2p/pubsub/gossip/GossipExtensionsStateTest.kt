@@ -22,13 +22,13 @@ class GossipExtensionsStateTest {
     }
 
     @Test
-    fun `onExtensionControlMessage() stores peer extensions support`() {
+    fun `onControlExtensionsMessage() stores peer extensions support`() {
         val extension = Rpc.ControlExtensions.newBuilder()
             .setPartialMessages(true)
             .setTestExtension(false)
             .build()
 
-        extensionsState.onExtensionControlMessage(extension, peer1)
+        extensionsState.onControlExtensionsMessage(extension, peer1)
 
         val stored = extensionsState.peerSupportedExtensions(peer1)
         assertThat(stored).isNotNull
@@ -37,21 +37,21 @@ class GossipExtensionsStateTest {
     }
 
     @Test
-    fun `hasReceivedExtensionControlFrom() returns true after receiving extensions`() {
+    fun `hasReceivedControlExtensionsFrom() returns true after receiving extensions`() {
         val extension = Rpc.ControlExtensions.newBuilder()
             .setPartialMessages(true)
             .build()
 
-        assertThat(extensionsState.hasReceivedExtensionControlFrom(peer1)).isFalse()
+        assertThat(extensionsState.hasReceivedControlExtensionsFrom(peer1)).isFalse()
 
-        extensionsState.onExtensionControlMessage(extension, peer1)
+        extensionsState.onControlExtensionsMessage(extension, peer1)
 
-        assertThat(extensionsState.hasReceivedExtensionControlFrom(peer1)).isTrue()
+        assertThat(extensionsState.hasReceivedControlExtensionsFrom(peer1)).isTrue()
     }
 
     @Test
-    fun `hasReceivedExtensionControlFrom() returns false for unknown peer`() {
-        assertThat(extensionsState.hasReceivedExtensionControlFrom(peer1)).isFalse()
+    fun `hasReceivedControlExtensionsFrom() returns false for unknown peer`() {
+        assertThat(extensionsState.hasReceivedControlExtensionsFrom(peer1)).isFalse()
     }
 
     @Test
@@ -66,7 +66,7 @@ class GossipExtensionsStateTest {
         config given it most likely has the most up-to-date data for that particular peer
      */
     @Test
-    fun `onExtensionControlMessage() overwrites previous extensions from same peer`() {
+    fun `onControlExtensionsMessage() overwrites previous extensions from same peer`() {
         val extension1 = Rpc.ControlExtensions.newBuilder()
             .setPartialMessages(true)
             .setTestExtension(false)
@@ -77,8 +77,8 @@ class GossipExtensionsStateTest {
             .setTestExtension(true)
             .build()
 
-        extensionsState.onExtensionControlMessage(extension1, peer1)
-        extensionsState.onExtensionControlMessage(extension2, peer1)
+        extensionsState.onControlExtensionsMessage(extension1, peer1)
+        extensionsState.onControlExtensionsMessage(extension2, peer1)
 
         val stored = extensionsState.peerSupportedExtensions(peer1)
         assertThat(stored).isNotNull
@@ -87,24 +87,24 @@ class GossipExtensionsStateTest {
     }
 
     @Test
-    fun `hasSentExtensionControlTo() returns false for unknown peer`() {
-        assertThat(extensionsState.hasSentExtensionControlTo(peer1)).isFalse()
+    fun `hasSentControlExtensionsTo() returns false for unknown peer`() {
+        assertThat(extensionsState.hasSentControlExtensionsTo(peer1)).isFalse()
     }
 
     @Test
     fun `registerControlExtensionMessageSentToPeers() registers peer`() {
-        assertThat(extensionsState.hasSentExtensionControlTo(peer1)).isFalse()
+        assertThat(extensionsState.hasSentControlExtensionsTo(peer1)).isFalse()
 
         extensionsState.registerControlExtensionMessageSentToPeers(peer1)
 
-        assertThat(extensionsState.hasSentExtensionControlTo(peer1)).isTrue()
+        assertThat(extensionsState.hasSentControlExtensionsTo(peer1)).isTrue()
     }
 
     @Test
-    fun `hasSentExtensionControlTo() returns true after registration`() {
+    fun `hasSentControlExtensionsTo() returns true after registration`() {
         extensionsState.registerControlExtensionMessageSentToPeers(peer1)
 
-        assertThat(extensionsState.hasSentExtensionControlTo(peer1)).isTrue()
+        assertThat(extensionsState.hasSentControlExtensionsTo(peer1)).isTrue()
     }
 
     @Test
@@ -112,9 +112,9 @@ class GossipExtensionsStateTest {
         extensionsState.registerControlExtensionMessageSentToPeers(peer1)
         extensionsState.registerControlExtensionMessageSentToPeers(peer2)
 
-        assertThat(extensionsState.hasSentExtensionControlTo(peer1)).isTrue()
-        assertThat(extensionsState.hasSentExtensionControlTo(peer2)).isTrue()
-        assertThat(extensionsState.hasSentExtensionControlTo(peer3)).isFalse()
+        assertThat(extensionsState.hasSentControlExtensionsTo(peer1)).isTrue()
+        assertThat(extensionsState.hasSentControlExtensionsTo(peer2)).isTrue()
+        assertThat(extensionsState.hasSentControlExtensionsTo(peer3)).isFalse()
     }
 
     @Test
@@ -126,15 +126,15 @@ class GossipExtensionsStateTest {
         val extension = Rpc.ControlExtensions.newBuilder()
             .setPartialMessages(true)
             .build()
-        extensionsState.onExtensionControlMessage(extension, peer2)
+        extensionsState.onControlExtensionsMessage(extension, peer2)
 
         // Verify sent tracking
-        assertThat(extensionsState.hasSentExtensionControlTo(peer1)).isTrue()
-        assertThat(extensionsState.hasSentExtensionControlTo(peer2)).isFalse()
+        assertThat(extensionsState.hasSentControlExtensionsTo(peer1)).isTrue()
+        assertThat(extensionsState.hasSentControlExtensionsTo(peer2)).isFalse()
 
         // Verify received tracking
-        assertThat(extensionsState.hasReceivedExtensionControlFrom(peer1)).isFalse()
-        assertThat(extensionsState.hasReceivedExtensionControlFrom(peer2)).isTrue()
+        assertThat(extensionsState.hasReceivedControlExtensionsFrom(peer1)).isFalse()
+        assertThat(extensionsState.hasReceivedControlExtensionsFrom(peer2)).isTrue()
     }
 
     @Test
@@ -146,11 +146,11 @@ class GossipExtensionsStateTest {
         val extension = Rpc.ControlExtensions.newBuilder()
             .setPartialMessages(true)
             .build()
-        extensionsState.onExtensionControlMessage(extension, peer1)
+        extensionsState.onControlExtensionsMessage(extension, peer1)
 
         // Both should be tracked
-        assertThat(extensionsState.hasSentExtensionControlTo(peer1)).isTrue()
-        assertThat(extensionsState.hasReceivedExtensionControlFrom(peer1)).isTrue()
+        assertThat(extensionsState.hasSentControlExtensionsTo(peer1)).isTrue()
+        assertThat(extensionsState.hasReceivedControlExtensionsFrom(peer1)).isTrue()
     }
 
     @Test
@@ -170,9 +170,9 @@ class GossipExtensionsStateTest {
             .setTestExtension(true)
             .build()
 
-        extensionsState.onExtensionControlMessage(extension1, peer1)
-        extensionsState.onExtensionControlMessage(extension2, peer2)
-        extensionsState.onExtensionControlMessage(extension3, peer3)
+        extensionsState.onControlExtensionsMessage(extension1, peer1)
+        extensionsState.onControlExtensionsMessage(extension2, peer2)
+        extensionsState.onControlExtensionsMessage(extension3, peer3)
 
         // Verify each peer has correct extensions
         val stored1 = extensionsState.peerSupportedExtensions(peer1)
@@ -188,9 +188,9 @@ class GossipExtensionsStateTest {
         assertThat(stored3.testExtension).isTrue()
 
         // Verify all peers are tracked
-        assertThat(extensionsState.hasReceivedExtensionControlFrom(peer1)).isTrue()
-        assertThat(extensionsState.hasReceivedExtensionControlFrom(peer2)).isTrue()
-        assertThat(extensionsState.hasReceivedExtensionControlFrom(peer3)).isTrue()
+        assertThat(extensionsState.hasReceivedControlExtensionsFrom(peer1)).isTrue()
+        assertThat(extensionsState.hasReceivedControlExtensionsFrom(peer2)).isTrue()
+        assertThat(extensionsState.hasReceivedControlExtensionsFrom(peer3)).isTrue()
     }
 
     @Test
@@ -201,12 +201,12 @@ class GossipExtensionsStateTest {
             .build()
 
         peers.forEach { peer ->
-            extensionsState.onExtensionControlMessage(extension, peer)
+            extensionsState.onControlExtensionsMessage(extension, peer)
         }
 
         // Verify all peers are tracked
         peers.forEach { peer ->
-            assertThat(extensionsState.hasReceivedExtensionControlFrom(peer)).isTrue()
+            assertThat(extensionsState.hasReceivedControlExtensionsFrom(peer)).isTrue()
             assertThat(extensionsState.peerSupportedExtensions(peer)).isNotNull
         }
     }
@@ -217,12 +217,12 @@ class GossipExtensionsStateTest {
             .setPartialMessages(true)
             .build()
 
-        extensionsState.onExtensionControlMessage(extension, peer1)
-        assertThat(extensionsState.hasReceivedExtensionControlFrom(peer1)).isTrue()
+        extensionsState.onControlExtensionsMessage(extension, peer1)
+        assertThat(extensionsState.hasReceivedControlExtensionsFrom(peer1)).isTrue()
 
         extensionsState.onPeerDisconnected(peer1)
 
-        assertThat(extensionsState.hasReceivedExtensionControlFrom(peer1)).isFalse()
+        assertThat(extensionsState.hasReceivedControlExtensionsFrom(peer1)).isFalse()
         assertThat(extensionsState.peerSupportedExtensions(peer1)).isNull()
     }
 
@@ -232,7 +232,7 @@ class GossipExtensionsStateTest {
         extensionsState.onPeerDisconnected(peer1)
 
         // State should remain empty
-        assertThat(extensionsState.hasReceivedExtensionControlFrom(peer1)).isFalse()
+        assertThat(extensionsState.hasReceivedControlExtensionsFrom(peer1)).isFalse()
         assertThat(extensionsState.peerSupportedExtensions(peer1)).isNull()
     }
 
@@ -246,18 +246,18 @@ class GossipExtensionsStateTest {
             .setTestExtension(true)
             .build()
 
-        extensionsState.onExtensionControlMessage(extension1, peer1)
-        extensionsState.onExtensionControlMessage(extension2, peer2)
+        extensionsState.onControlExtensionsMessage(extension1, peer1)
+        extensionsState.onControlExtensionsMessage(extension2, peer2)
 
         // Disconnect peer1
         extensionsState.onPeerDisconnected(peer1)
 
         // peer1 should be removed
-        assertThat(extensionsState.hasReceivedExtensionControlFrom(peer1)).isFalse()
+        assertThat(extensionsState.hasReceivedControlExtensionsFrom(peer1)).isFalse()
         assertThat(extensionsState.peerSupportedExtensions(peer1)).isNull()
 
         // peer2 should remain
-        assertThat(extensionsState.hasReceivedExtensionControlFrom(peer2)).isTrue()
+        assertThat(extensionsState.hasReceivedControlExtensionsFrom(peer2)).isTrue()
         assertThat(extensionsState.peerSupportedExtensions(peer2)).isNotNull
         assertThat(extensionsState.peerSupportedExtensions(peer2)!!.testExtension).isTrue()
     }
@@ -269,18 +269,18 @@ class GossipExtensionsStateTest {
             .build()
 
         // Connect
-        extensionsState.onExtensionControlMessage(extension, peer1)
-        assertThat(extensionsState.hasReceivedExtensionControlFrom(peer1)).isTrue()
+        extensionsState.onControlExtensionsMessage(extension, peer1)
+        assertThat(extensionsState.hasReceivedControlExtensionsFrom(peer1)).isTrue()
 
         // Disconnect
         extensionsState.onPeerDisconnected(peer1)
-        assertThat(extensionsState.hasReceivedExtensionControlFrom(peer1)).isFalse()
+        assertThat(extensionsState.hasReceivedControlExtensionsFrom(peer1)).isFalse()
 
         // Reconnect with different extensions
         val newExtension = Rpc.ControlExtensions.newBuilder()
             .setTestExtension(true)
             .build()
-        extensionsState.onExtensionControlMessage(newExtension, peer1)
+        extensionsState.onControlExtensionsMessage(newExtension, peer1)
 
         val stored = extensionsState.peerSupportedExtensions(peer1)
         assertThat(stored).isNotNull
@@ -291,11 +291,11 @@ class GossipExtensionsStateTest {
     @Test
     fun `onPeerDisconnected() removes peer from sent extensions list`() {
         extensionsState.registerControlExtensionMessageSentToPeers(peer1)
-        assertThat(extensionsState.hasSentExtensionControlTo(peer1)).isTrue()
+        assertThat(extensionsState.hasSentControlExtensionsTo(peer1)).isTrue()
 
         extensionsState.onPeerDisconnected(peer1)
 
-        assertThat(extensionsState.hasSentExtensionControlTo(peer1)).isFalse()
+        assertThat(extensionsState.hasSentControlExtensionsTo(peer1)).isFalse()
     }
 
     @Test
@@ -307,18 +307,18 @@ class GossipExtensionsStateTest {
         val extension = Rpc.ControlExtensions.newBuilder()
             .setPartialMessages(true)
             .build()
-        extensionsState.onExtensionControlMessage(extension, peer1)
+        extensionsState.onControlExtensionsMessage(extension, peer1)
 
         // Verify both tracked
-        assertThat(extensionsState.hasSentExtensionControlTo(peer1)).isTrue()
-        assertThat(extensionsState.hasReceivedExtensionControlFrom(peer1)).isTrue()
+        assertThat(extensionsState.hasSentControlExtensionsTo(peer1)).isTrue()
+        assertThat(extensionsState.hasReceivedControlExtensionsFrom(peer1)).isTrue()
 
         // Disconnect
         extensionsState.onPeerDisconnected(peer1)
 
         // Both should be removed
-        assertThat(extensionsState.hasSentExtensionControlTo(peer1)).isFalse()
-        assertThat(extensionsState.hasReceivedExtensionControlFrom(peer1)).isFalse()
+        assertThat(extensionsState.hasSentControlExtensionsTo(peer1)).isFalse()
+        assertThat(extensionsState.hasReceivedControlExtensionsFrom(peer1)).isFalse()
         assertThat(extensionsState.peerSupportedExtensions(peer1)).isNull()
     }
 
@@ -329,30 +329,30 @@ class GossipExtensionsStateTest {
 
         extensionsState.onPeerDisconnected(peer1)
 
-        assertThat(extensionsState.hasSentExtensionControlTo(peer1)).isFalse()
-        assertThat(extensionsState.hasSentExtensionControlTo(peer2)).isTrue()
+        assertThat(extensionsState.hasSentControlExtensionsTo(peer1)).isFalse()
+        assertThat(extensionsState.hasSentControlExtensionsTo(peer2)).isTrue()
     }
 
     @Test
     fun `reconnecting peer can have sent extension registered again`() {
         // First connection - register sent
         extensionsState.registerControlExtensionMessageSentToPeers(peer1)
-        assertThat(extensionsState.hasSentExtensionControlTo(peer1)).isTrue()
+        assertThat(extensionsState.hasSentControlExtensionsTo(peer1)).isTrue()
 
         // Disconnect
         extensionsState.onPeerDisconnected(peer1)
-        assertThat(extensionsState.hasSentExtensionControlTo(peer1)).isFalse()
+        assertThat(extensionsState.hasSentControlExtensionsTo(peer1)).isFalse()
 
         // Reconnect - register sent again
         extensionsState.registerControlExtensionMessageSentToPeers(peer1)
-        assertThat(extensionsState.hasSentExtensionControlTo(peer1)).isTrue()
+        assertThat(extensionsState.hasSentControlExtensionsTo(peer1)).isTrue()
     }
 
     @Test
     fun `querying empty state returns expected values`() {
         extensionsState = GossipExtensionsState()
-        assertThat(extensionsState.hasReceivedExtensionControlFrom(peer1)).isFalse()
-        assertThat(extensionsState.hasSentExtensionControlTo(peer1)).isFalse()
+        assertThat(extensionsState.hasReceivedControlExtensionsFrom(peer1)).isFalse()
+        assertThat(extensionsState.hasSentControlExtensionsTo(peer1)).isFalse()
         assertThat(extensionsState.peerSupportedExtensions(peer1)).isNull()
     }
 }

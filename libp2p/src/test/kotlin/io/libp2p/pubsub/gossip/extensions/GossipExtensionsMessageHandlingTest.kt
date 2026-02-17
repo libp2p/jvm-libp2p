@@ -25,7 +25,7 @@ class GossipExtensionsMessageHandlingTest : GossipTestsBase() {
     }
 
     @Test
-    fun `extension messages sent to peer prior to sending extension control messages are ignored`() {
+    fun `extension messages sent to peer prior to sending control extensions messages are ignored`() {
         val test = TwoRoutersTest(
             protocol = PubsubProtocol.Gossip_V_1_3
         )
@@ -35,7 +35,7 @@ class GossipExtensionsMessageHandlingTest : GossipTestsBase() {
     }
 
     @Test
-    fun `extension message flow with extension control message before actual extension message`() {
+    fun `extension message flow with control extensions message before actual extension message`() {
         val test = TwoRoutersTest(
             protocol = PubsubProtocol.Gossip_V_1_3
         )
@@ -50,7 +50,7 @@ class GossipExtensionsMessageHandlingTest : GossipTestsBase() {
     }
 
     @Test
-    fun `extension message flow with extension control and extension message in the same rpc message`() {
+    fun `extension message flow with control extensions and extension message in the same rpc message`() {
         val test = TwoRoutersTest(
             protocol = PubsubProtocol.Gossip_V_1_3
         )
@@ -60,7 +60,7 @@ class GossipExtensionsMessageHandlingTest : GossipTestsBase() {
     }
 
     @Test
-    fun `remove peer extension control map when disconnecting`() {
+    fun `remove peer control extensions map when disconnecting`() {
         val test = TwoRoutersTest(
             protocol = PubsubProtocol.Gossip_V_1_3
         )
@@ -144,7 +144,7 @@ class GossipExtensionsMessageHandlingTest : GossipTestsBase() {
         )
 
         // Should be tracked in state
-        assertThat(test.gossipRouter.gossipExtensionsState.hasSentExtensionControlTo(test.router2.peerId)).isTrue()
+        assertThat(test.gossipRouter.gossipExtensionsState.hasSentControlExtensionsTo(test.router2.peerId)).isTrue()
     }
 
     @Test
@@ -160,13 +160,13 @@ class GossipExtensionsMessageHandlingTest : GossipTestsBase() {
         )
 
         // Verify it's tracked
-        assertThat(test.gossipRouter.gossipExtensionsState.hasSentExtensionControlTo(test.router2.peerId)).isTrue()
+        assertThat(test.gossipRouter.gossipExtensionsState.hasSentControlExtensionsTo(test.router2.peerId)).isTrue()
 
         // Disconnect
         test.connection.disconnect()
 
         // Should be cleared from sent tracking
-        assertThat(test.gossipRouter.gossipExtensionsState.hasSentExtensionControlTo(test.router2.peerId)).isFalse()
+        assertThat(test.gossipRouter.gossipExtensionsState.hasSentControlExtensionsTo(test.router2.peerId)).isFalse()
     }
 
     companion object {
