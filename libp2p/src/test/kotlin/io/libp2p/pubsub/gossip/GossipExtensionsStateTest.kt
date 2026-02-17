@@ -4,7 +4,11 @@ import io.libp2p.core.PeerId
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.Arguments
+import org.junit.jupiter.params.provider.MethodSource
 import pubsub.pb.Rpc
+import java.util.stream.Stream
 
 class GossipExtensionsStateTest {
 
@@ -15,7 +19,9 @@ class GossipExtensionsStateTest {
 
     @BeforeEach
     fun setup() {
-        extensionsState = GossipExtensionsState()
+        extensionsState = GossipExtensionsState(
+            gossipExtensionsConfig = GossipExtensionsConfig(testExtensionEnabled = true)
+        )
         peer1 = PeerId.random()
         peer2 = PeerId.random()
         peer3 = PeerId.random()
@@ -194,6 +200,23 @@ class GossipExtensionsStateTest {
     }
 
     @Test
+    fun `tracks different peer extension support for partial messages`() {
+        val withPartial = Rpc.ControlExtensions.newBuilder()
+            .setPartialMessages(true)
+            .build()
+
+        val withoutPartial = Rpc.ControlExtensions.newBuilder()
+            .setPartialMessages(false)
+            .build()
+
+        extensionsState.onControlExtensionsMessage(withPartial, peer1)
+        extensionsState.onControlExtensionsMessage(withoutPartial, peer2)
+
+        assertThat(extensionsState.peerSupportsPartialMessages(peer1)).isTrue()
+        assertThat(extensionsState.peerSupportsPartialMessages(peer2)).isFalse()
+    }
+
+    @Test
     fun `tracks many peers simultaneously`() {
         val peers = (1..10).map { PeerId.random() }
         val extension = Rpc.ControlExtensions.newBuilder()
@@ -354,5 +377,130 @@ class GossipExtensionsStateTest {
         assertThat(extensionsState.hasReceivedControlExtensionsFrom(peer1)).isFalse()
         assertThat(extensionsState.hasSentControlExtensionsTo(peer1)).isFalse()
         assertThat(extensionsState.peerSupportedExtensions(peer1)).isNull()
+    }
+
+    @Test
+    fun `peerSupportsTestExtensions returns true when peer has extension`() {
+        val extension = Rpc.ControlExtensions.newBuilder()
+            .setTestExtension(true)
+            .build()
+
+        extensionsState.onControlExtensionsMessage(extension, peer1)
+
+        assertThat(extensionsState.peerSupportsTestExtensions(peer1)).isTrue()
+    }
+
+    @Test
+    fun `peerSupportsTestExtensions returns false when peer doesn't have extension`() {
+        val extension = Rpc.ControlExtensions.newBuilder()
+            .setTestExtension(false)
+            .setPartialMessages(true)
+            .build()
+
+        extensionsState.onControlExtensionsMessage(extension, peer1)
+
+        assertThat(extensionsState.peerSupportsTestExtensions(peer1)).isFalse()
+    }
+
+    @Test
+    fun `peerSupportsTestExtensions returns false for unknown peer`() {
+        assertThat(extensionsState.peerSupportsTestExtensions(peer1)).isFalse()
+    }
+
+    @Test
+    fun `peerSupportsPartialMessages returns true when peer has extension`() {
+        val extension = Rpc.ControlExtensions.newBuilder()
+            .setPartialMessages(true)
+            .build()
+
+        extensionsState.onControlExtensionsMessage(extension, peer1)
+
+        assertThat(extensionsState.peerSupportsPartialMessages(peer1)).isTrue()
+    }
+
+    @Test
+    fun `peerSupportsPartialMessages returns false when peer doesn't have extension`() {
+        val extension = Rpc.ControlExtensions.newBuilder()
+            .setPartialMessages(false)
+            .setTestExtension(true)
+            .build()
+
+        extensionsState.onControlExtensionsMessage(extension, peer1)
+
+        assertThat(extensionsState.peerSupportsPartialMessages(peer1)).isFalse()
+    }
+
+    @Test
+    fun `peerSupportsPartialMessages returns false for unknown peer`() {
+        assertThat(extensionsState.peerSupportsPartialMessages(peer1)).isFalse()
+    }
+
+    @Test
+    fun `default config has both extensions disabled`() {
+        val state = GossipExtensionsState()
+
+        assertThat(state.testExtensionsEnabled()).isFalse()
+        assertThat(state.partialMessagesEnabled()).isFalse()
+    }
+
+    @ParameterizedTest
+    @MethodSource("gossipExtensionConfigParams")
+    fun `config flags combinations for all extensions`(
+        description: String,
+        testExtensionsEnabled: Boolean,
+        partialMessagesEnabled: Boolean
+    ) {
+        val config = GossipExtensionsConfig(
+            testExtensionEnabled = testExtensionsEnabled,
+            partialMessagesEnabled = partialMessagesEnabled
+        )
+
+        assertThat(config.testExtensionEnabled).isEqualTo(testExtensionsEnabled)
+            .withFailMessage("expected $description")
+        assertThat(config.partialMessagesEnabled).isEqualTo(partialMessagesEnabled)
+            .withFailMessage("expected $description")
+    }
+
+    companion object {
+        @JvmStatic
+        fun gossipExtensionConfigParams(): Stream<Arguments> {
+            return Stream.of(
+                Arguments.of("both extensions enabled", true, true),
+                Arguments.of("only test extensions enabled", false, true),
+                Arguments.of("only partial messages enabled", true, false),
+                Arguments.of("both extensions disabled", false, false)
+            )
+        }
+    }
+
+    @Test
+    fun `localExtensionSupport field reflects config`() {
+        val state = GossipExtensionsState(
+            GossipExtensionsConfig(
+                testExtensionEnabled = true,
+                partialMessagesEnabled = false
+            )
+        )
+
+        val localSupport = state.localExtensionSupport
+        assertThat(localSupport.testExtension).isTrue()
+        assertThat(localSupport.partialMessages).isFalse()
+    }
+
+    @Test
+    fun `peer extension support cleared on disconnect`() {
+        val extension = Rpc.ControlExtensions.newBuilder()
+            .setTestExtension(true)
+            .setPartialMessages(true)
+            .build()
+
+        extensionsState.onControlExtensionsMessage(extension, peer1)
+        assertThat(extensionsState.peerSupportsTestExtensions(peer1)).isTrue()
+        assertThat(extensionsState.peerSupportsPartialMessages(peer1)).isTrue()
+
+        extensionsState.onPeerDisconnected(peer1)
+
+        assertThat(extensionsState.peerSupportsTestExtensions(peer1)).isFalse()
+        assertThat(extensionsState.peerSupportsPartialMessages(peer1)).isFalse()
     }
 }

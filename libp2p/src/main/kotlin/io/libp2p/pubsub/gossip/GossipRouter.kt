@@ -82,6 +82,7 @@ open class GossipRouter(
     val name: String,
     val mCache: MCache,
     val score: GossipScore,
+    val gossipExtensionsConfig: GossipExtensionsConfig = GossipExtensionsConfig(),
 
     subscriptionTopicSubscriptionFilter: TopicSubscriptionFilter,
     protocol: PubsubProtocol,
@@ -132,7 +133,7 @@ open class GossipRouter(
     private val acceptRequestsWhitelist = mutableMapOf<PeerHandler, AcceptRequestsWhitelistEntry>()
     override val pendingRpcParts = PendingRpcPartsMap<GossipRpcPartsQueue> { DefaultGossipRpcPartsQueue(params) }
 
-    val gossipExtensionsState = GossipExtensionsState()
+    val gossipExtensionsState = GossipExtensionsState(gossipExtensionsConfig)
 
     private fun setBackOff(peer: PeerHandler, topic: Topic) = setBackOff(peer, topic, params.pruneBackoff.toMillis())
     private fun setBackOff(peer: PeerHandler, topic: Topic, delay: Long) {
@@ -413,23 +414,46 @@ open class GossipRouter(
     }
 
     override fun processExtensions(msg: Rpc.RPC, receivedFrom: PeerHandler) {
-        val peerSupportedExtensions =
-            gossipExtensionsState.peerSupportedExtensions(receivedFrom.peerId)
-
-        // TODO Revisit this logic as part of adding feature flags (https://github.com/libp2p/jvm-libp2p/issues/441)
-
         when {
-            msg.hasTestExtension() && checkPeerExtensionSupport(
-                peerSupportedExtensions,
-                Rpc.ControlExtensions::hasTestExtension
-            ) ->
-                processTestExtensionMessage(msg.testExtension, receivedFrom)
+            msg.hasTestExtension() -> {
+                if (!gossipExtensionsState.testExtensionsEnabled()) {
+                    logger.trace(
+                        "Ignoring test extension message from peer {} - test extension disabled",
+                        msg
+                    )
+                    return
+                }
 
-            msg.hasPartial() && checkPeerExtensionSupport(
-                peerSupportedExtensions,
-                Rpc.ControlExtensions::hasPartialMessages
-            ) ->
+                if (!gossipExtensionsState.peerSupportsTestExtensions(receivedFrom.peerId)) {
+                    logger.trace(
+                        "Ignoring test extension message from peer {} - did peer send ControlExtensions prior?",
+                        msg
+                    )
+                    return
+                }
+
+                processTestExtensionMessage(msg.testExtension, receivedFrom)
+            }
+
+            msg.hasPartial() -> {
+                if (!gossipExtensionsState.partialMessagesEnabled()) {
+                    logger.trace(
+                        "Ignoring partial messages message from peer {} - partial messages extension disabled",
+                        msg
+                    )
+                    return
+                }
+
+                if (!gossipExtensionsState.peerSupportsPartialMessages(receivedFrom.peerId)) {
+                    logger.trace(
+                        "Ignoring partial messages message from peer {} - did peer send ControlExtensions prior?",
+                        msg
+                    )
+                    return
+                }
+
                 processPartialMessageExtension(msg.partial, receivedFrom)
+            }
         }
     }
 
@@ -822,12 +846,8 @@ open class GossipRouter(
 
         logger.trace("Sending control extensions message to peer {}", peer.peerId)
 
-        pendingRpcParts.getQueue(peer).addControlExtensions(
-            Rpc.ControlExtensions.newBuilder()
-                .setTestExtension(true)
-                .setPartialMessages(true)
-                .build()
-        )
+        pendingRpcParts.getQueue(peer)
+            .addControlExtensions(gossipExtensionsState.localExtensionSupport)
         gossipExtensionsState.registerControlExtensionMessageSentToPeers(peer.peerId)
     }
 
