@@ -1,6 +1,7 @@
 package io.libp2p.pubsub.gossip.extensions
 
 import io.libp2p.pubsub.PubsubProtocol
+import io.libp2p.pubsub.gossip.GossipExtensionsConfig
 import io.libp2p.pubsub.gossip.GossipTestsBase
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -93,13 +94,14 @@ class GossipExtensionsMessageHandlingTest : GossipTestsBase() {
             DEFAULT_WAIT_TIMEOUT_IN_MILLIS
         )
 
-        assertThat(receivedMessage.control.extensions.partialMessages).isTrue()
         assertThat(receivedMessage.control.extensions.testExtension).isTrue()
     }
 
     @ParameterizedTest
     @MethodSource("protocolVersionsWithoutExtensionSupport")
-    fun `control extension message not sent to peer on connection without extension support`(protocol: PubsubProtocol) {
+    fun `control extension message not sent to peer on connection without extension support`(
+        protocol: PubsubProtocol
+    ) {
         val test = TwoRoutersTest(protocol = protocol)
 
         // Should not receive control extension message on versions without extension support
@@ -112,9 +114,31 @@ class GossipExtensionsMessageHandlingTest : GossipTestsBase() {
     }
 
     @Test
+    fun `local peer ignores test extension messages when they are disabled in config`() {
+        val test = TwoRoutersTest(
+            protocol = PubsubProtocol.Gossip_V_1_3,
+            gossipExtensionsConfig = GossipExtensionsConfig(
+                testExtensionEnabled = false
+            )
+        )
+
+        test.mockRouter.sendToSingle(rpcMsgWithCtrlExtensionsAndTestExtension)
+        assertThrows<TimeoutException> {
+            test.mockRouter.waitForMessage(
+                { it.hasTestExtension() },
+                DEFAULT_WAIT_TIMEOUT_IN_MILLIS
+            )
+        }
+    }
+
+    @Test
     fun `control extension message contains all supported extensions flags`() {
         val test = TwoRoutersTest(
-            protocol = PubsubProtocol.Gossip_V_1_3
+            protocol = PubsubProtocol.Gossip_V_1_3,
+            gossipExtensionsConfig = GossipExtensionsConfig(
+                testExtensionEnabled = true,
+                partialMessagesEnabled = true
+            )
         )
 
         val receivedMessage = test.mockRouter.waitForMessage(

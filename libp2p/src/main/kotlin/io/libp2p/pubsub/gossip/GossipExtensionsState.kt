@@ -3,7 +3,17 @@ package io.libp2p.pubsub.gossip
 import io.libp2p.core.PeerId
 import pubsub.pb.Rpc
 
-class GossipExtensionsState {
+data class GossipExtensionsConfig(
+    val partialMessagesEnabled: Boolean = false,
+    val testExtensionEnabled: Boolean = false
+)
+
+class GossipExtensionsState(gossipExtensionsConfig: GossipExtensionsConfig? = null) {
+
+    val localExtensionSupport: Rpc.ControlExtensions = Rpc.ControlExtensions.newBuilder()
+        .setTestExtension(gossipExtensionsConfig?.testExtensionEnabled ?: false)
+        .setPartialMessages(gossipExtensionsConfig?.partialMessagesEnabled ?: false)
+        .build()
 
     /*
         Tracks the peers that we have already sent a control extensions message
@@ -35,4 +45,12 @@ class GossipExtensionsState {
 
     fun hasSentControlExtensionsTo(peer: PeerId) =
         outgoingControlExtensionsMsgPeers.contains(peer)
+
+    fun testExtensionsEnabled() = localExtensionSupport.testExtension
+    fun peerSupportsTestExtensions(peerId: PeerId) =
+        peerExtensionSupportMap[peerId]?.testExtension == true
+
+    fun partialMessagesEnabled() = localExtensionSupport.partialMessages
+    fun peerSupportsPartialMessages(peerId: PeerId) =
+        peerExtensionSupportMap[peerId]?.partialMessages == true
 }

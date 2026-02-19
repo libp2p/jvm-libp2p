@@ -185,9 +185,7 @@ abstract class AbstractRouter(
             processControl(msg.control, peer)
         }
 
-        // TODO we need to handle the existence of extension messages more generically (https://github.com/libp2p/jvm-libp2p/issues/441)
-
-        if (protocol.supportsExtensions() && (msg.hasTestExtension() || msg.hasPartial())) {
+        if (protocol.supportsExtensions()) {
             processExtensions(msg, peer)
         }
 

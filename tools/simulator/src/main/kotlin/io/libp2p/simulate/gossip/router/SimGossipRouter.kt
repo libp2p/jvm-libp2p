@@ -33,6 +33,7 @@ class SimGossipRouter(
     name,
     mCache,
     score,
+    gossipExtensionsConfig = GossipExtensionsConfig(),
     subscriptionTopicSubscriptionFilter,
     protocol,
     executor,
