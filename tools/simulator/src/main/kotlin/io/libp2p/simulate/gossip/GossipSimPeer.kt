@@ -23,7 +23,7 @@ class GossipSimPeer(
         routerBuilder.also {
             it.name = name
             it.scheduledAsyncExecutor = simExecutor
-            it.currentTimeSuppluer = { currentTime() }
+            it.currentTimeSupplier = { currentTime() }
             it.random = random
         }.build()
     }

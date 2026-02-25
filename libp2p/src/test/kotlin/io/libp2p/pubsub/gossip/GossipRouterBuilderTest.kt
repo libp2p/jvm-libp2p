@@ -16,14 +16,30 @@ class GossipRouterBuilderTest {
 
     @Test
     fun `localExtensionSupport reflects config in built router`() {
-        val config = GossipExtensionsConfig(
-            testExtensionEnabled = true,
-            partialMessagesEnabled = false
-        )
-        val router = GossipRouterBuilder(gossipExtensionsConfig = config).build()
+        val router = GossipRouterBuilder()
+            // Enabling only test extensions
+            .enabledGossipExtensions(
+                GossipExtension.TEST_EXTENSION
+            )
+            .build()
 
         val localSupport = router.gossipExtensionsState.localExtensionSupport
         assertThat(localSupport.testExtension).isTrue()
         assertThat(localSupport.partialMessages).isFalse()
+    }
+
+    @Test
+    fun `localExtensionSupport with all extensions enabled`() {
+        val router = GossipRouterBuilder()
+            // Enabling all extensions
+            .enabledGossipExtensions(
+                GossipExtension.TEST_EXTENSION,
+                GossipExtension.PARTIAL_MESSAGES,
+            )
+            .build()
+
+        val localSupport = router.gossipExtensionsState.localExtensionSupport
+        assertThat(localSupport.testExtension).isTrue()
+        assertThat(localSupport.partialMessages).isTrue()
     }
 }

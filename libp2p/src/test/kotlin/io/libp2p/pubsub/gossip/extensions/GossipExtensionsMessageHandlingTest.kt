@@ -1,7 +1,9 @@
 package io.libp2p.pubsub.gossip.extensions
 
 import io.libp2p.pubsub.PubsubProtocol
-import io.libp2p.pubsub.gossip.GossipExtensionsConfig
+import io.libp2p.pubsub.gossip.GossipExtension
+import io.libp2p.pubsub.gossip.GossipPeerScoreParams
+import io.libp2p.pubsub.gossip.GossipScoreParams
 import io.libp2p.pubsub.gossip.GossipTestsBase
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -117,9 +119,7 @@ class GossipExtensionsMessageHandlingTest : GossipTestsBase() {
     fun `local peer ignores test extension messages when they are disabled in config`() {
         val test = TwoRoutersTest(
             protocol = PubsubProtocol.Gossip_V_1_3,
-            gossipExtensionsConfig = GossipExtensionsConfig(
-                testExtensionEnabled = false
-            )
+            enabledGossipExtensions = listOf()
         )
 
         test.mockRouter.sendToSingle(rpcMsgWithCtrlExtensionsAndTestExtension)
@@ -135,9 +135,9 @@ class GossipExtensionsMessageHandlingTest : GossipTestsBase() {
     fun `control extension message contains all supported extensions flags`() {
         val test = TwoRoutersTest(
             protocol = PubsubProtocol.Gossip_V_1_3,
-            gossipExtensionsConfig = GossipExtensionsConfig(
-                testExtensionEnabled = true,
-                partialMessagesEnabled = true
+            enabledGossipExtensions = listOf(
+                GossipExtension.TEST_EXTENSION,
+                GossipExtension.PARTIAL_MESSAGES
             )
         )
 
@@ -191,6 +191,33 @@ class GossipExtensionsMessageHandlingTest : GossipTestsBase() {
 
         // Should be cleared from sent tracking
         assertThat(test.gossipRouter.gossipExtensionsState.hasSentControlExtensionsTo(test.router2.peerId)).isFalse()
+    }
+
+    @Test
+    fun `peer sending multiple control extension messages are downscored`() {
+        val test = TwoRoutersTest(
+            protocol = PubsubProtocol.Gossip_V_1_3,
+            enabledGossipExtensions = listOf(GossipExtension.PARTIAL_MESSAGES),
+            // Creating GossipScoreParams with behaviourPenaltyWeight (peer bad behavior affecting
+            // score). Here we are not interested if the weight is "correct". What we want to see if
+            // that a peer is penalized for sending more than one ControlExtensions message.
+            scoreParams = GossipScoreParams(
+                peerScoreParams = GossipPeerScoreParams(
+                    behaviourPenaltyWeight = -1.0
+                )
+            )
+        )
+
+        val offendingPeer = test.gossipRouter.peers[0].peerId
+        val initialScore = test.gossipRouter.score.score(offendingPeer)
+
+        // first ControlExtensions message, no downscoring
+        test.mockRouter.sendToSingle(rpcMessageWithControlExtensions)
+        assertThat(test.gossipRouter.score.score(offendingPeer)).isEqualTo(initialScore)
+
+        // second ControlExtensions message, peer downscored
+        test.mockRouter.sendToSingle(rpcMessageWithControlExtensions)
+        assertThat(test.gossipRouter.score.score(offendingPeer)).isLessThan(initialScore)
     }
 
     companion object {

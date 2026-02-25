@@ -402,11 +402,11 @@ open class GossipRouter(
         logger.trace("Received control extension {}", ctrlExtensions.toString())
 
         if (gossipExtensionsState.hasReceivedControlExtensionsFrom(receivedFrom.peerId)) {
-            // TODO Should disconnect peers that send control extension multiple times (https://github.com/libp2p/jvm-libp2p/issues/437)
             logger.trace(
                 "Received another control extension message from peer {}",
                 receivedFrom.peerId
             )
+            notifyRouterMisbehavior(receivedFrom, 10)
             return
         } else {
             gossipExtensionsState.onControlExtensionsMessage(ctrlExtensions, receivedFrom.peerId)
