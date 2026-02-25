@@ -31,7 +31,7 @@ class GossipRouterBuilderTest {
     @Test
     fun `localExtensionSupport with all extensions enabled`() {
         val router = GossipRouterBuilder()
-            // Enabling only test extensions
+            // Enabling all extensions
             .enabledGossipExtensions(
                 GossipExtension.TEST_EXTENSION,
                 GossipExtension.PARTIAL_MESSAGES,
