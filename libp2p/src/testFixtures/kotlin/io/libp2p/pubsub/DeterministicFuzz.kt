@@ -47,7 +47,7 @@ class DeterministicFuzz {
             { executor, curTime, random ->
                 routerBuilderFactory().also {
                     it.scheduledAsyncExecutor = executor
-                    it.currentTimeSuppluer = curTime
+                    it.currentTimeSupplier = curTime
                     it.random = random
                 }.build()
             }

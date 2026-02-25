@@ -10,12 +10,12 @@ class SimGossipRouterBuilder : GossipRouterBuilder() {
 
     override fun createGossipRouter(): GossipRouter {
         val gossipScore =
-            scoreFactory(scoreParams, scheduledAsyncExecutor, currentTimeSuppluer) { gossipRouterEventListeners += it }
+            scoreFactory(scoreParams, scheduledAsyncExecutor, currentTimeSupplier) { gossipRouterEventListeners += it }
 
         val router = SimGossipRouter(
             params = params,
             scoreParams = scoreParams,
-            currentTimeSupplier = currentTimeSuppluer,
+            currentTimeSupplier = currentTimeSupplier,
             random = random,
             name = name,
             mCache = mCache,

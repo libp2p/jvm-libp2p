@@ -24,7 +24,7 @@ open class GossipRouterBuilder(
     var scheduledAsyncExecutor: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor(
         ThreadFactoryBuilder().setDaemon(true).setNameFormat("GossipRouter-event-thread-%d").build()
     ),
-    var currentTimeSuppluer: CurrentTimeSupplier = { System.currentTimeMillis() },
+    var currentTimeSupplier: CurrentTimeSupplier = { System.currentTimeMillis() },
     var random: Random = Random(),
 
     var messageFactory: PubsubMessageFactory = { DefaultPubsubMessage(it) },
@@ -33,8 +33,8 @@ open class GossipRouterBuilder(
     var subscriptionTopicSubscriptionFilter: TopicSubscriptionFilter = TopicSubscriptionFilter.AllowAllTopicSubscriptionFilter(),
 
     var scoreFactory: GossipScoreFactory =
-        { scoreParams1, scheduledAsyncRxecutor, currentTimeSuppluer1, eventsSubscriber ->
-            val gossipScore = DefaultGossipScore(scoreParams1, scheduledAsyncRxecutor, currentTimeSuppluer1)
+        { scoreParams1, scheduledAsyncRxecutor, currentTimeSupplier1, eventsSubscriber ->
+            val gossipScore = DefaultGossipScore(scoreParams1, scheduledAsyncRxecutor, currentTimeSupplier1)
             eventsSubscriber(gossipScore)
             gossipScore
         },
@@ -43,18 +43,18 @@ open class GossipRouterBuilder(
     var gossipExtensionsConfig: GossipExtensionsConfig = GossipExtensionsConfig()
 ) {
 
-    var seenCache: SeenCache<Optional<ValidationResult>> by lazyVar { TTLSeenCache(SimpleSeenCache(), params.seenTTL, currentTimeSuppluer) }
+    var seenCache: SeenCache<Optional<ValidationResult>> by lazyVar { TTLSeenCache(SimpleSeenCache(), params.seenTTL, currentTimeSupplier) }
     var mCache: MCache by lazyVar { MCache(params.gossipSize, params.gossipHistoryLength) }
 
     private var disposed = false
 
     protected open fun createGossipRouter(): GossipRouter {
-        val gossipScore = scoreFactory(scoreParams, scheduledAsyncExecutor, currentTimeSuppluer, { gossipRouterEventListeners += it })
+        val gossipScore = scoreFactory(scoreParams, scheduledAsyncExecutor, currentTimeSupplier, { gossipRouterEventListeners += it })
 
         val router = GossipRouter(
             params = params,
             scoreParams = scoreParams,
-            currentTimeSupplier = currentTimeSuppluer,
+            currentTimeSupplier = currentTimeSupplier,
             random = random,
             name = name,
             mCache = mCache,

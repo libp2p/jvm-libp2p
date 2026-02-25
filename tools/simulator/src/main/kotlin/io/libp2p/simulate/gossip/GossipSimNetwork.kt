@@ -45,7 +45,7 @@ class GossipSimNetwork(
 
     protected fun createSimPeer(number: Int): GossipSimPeer {
         val router = routerFactory(number).also {
-            it.currentTimeSuppluer = { timeController.time }
+            it.currentTimeSupplier = { timeController.time }
             it.serializeMessagesToBytes = false
         }
 
