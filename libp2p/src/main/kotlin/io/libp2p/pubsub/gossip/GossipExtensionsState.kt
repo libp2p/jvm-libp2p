@@ -3,6 +3,14 @@ package io.libp2p.pubsub.gossip
 import io.libp2p.core.PeerId
 import pubsub.pb.Rpc
 
+enum class GossipExtension {
+    // Canonical extensions
+    PARTIAL_MESSAGES,
+
+    // Non-canonical extensions
+    TEST_EXTENSION
+}
+
 data class GossipExtensionsConfig(
     val partialMessagesEnabled: Boolean = false,
     val testExtensionEnabled: Boolean = false

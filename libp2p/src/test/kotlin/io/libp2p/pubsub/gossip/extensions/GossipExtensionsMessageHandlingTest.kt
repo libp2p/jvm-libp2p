@@ -1,7 +1,7 @@
 package io.libp2p.pubsub.gossip.extensions
 
 import io.libp2p.pubsub.PubsubProtocol
-import io.libp2p.pubsub.gossip.GossipExtensionsConfig
+import io.libp2p.pubsub.gossip.GossipExtension
 import io.libp2p.pubsub.gossip.GossipPeerScoreParams
 import io.libp2p.pubsub.gossip.GossipScoreParams
 import io.libp2p.pubsub.gossip.GossipTestsBase
@@ -119,9 +119,7 @@ class GossipExtensionsMessageHandlingTest : GossipTestsBase() {
     fun `local peer ignores test extension messages when they are disabled in config`() {
         val test = TwoRoutersTest(
             protocol = PubsubProtocol.Gossip_V_1_3,
-            gossipExtensionsConfig = GossipExtensionsConfig(
-                testExtensionEnabled = false
-            )
+            enabledGossipExtensions = listOf()
         )
 
         test.mockRouter.sendToSingle(rpcMsgWithCtrlExtensionsAndTestExtension)
@@ -137,9 +135,9 @@ class GossipExtensionsMessageHandlingTest : GossipTestsBase() {
     fun `control extension message contains all supported extensions flags`() {
         val test = TwoRoutersTest(
             protocol = PubsubProtocol.Gossip_V_1_3,
-            gossipExtensionsConfig = GossipExtensionsConfig(
-                testExtensionEnabled = true,
-                partialMessagesEnabled = true
+            enabledGossipExtensions = listOf(
+                GossipExtension.TEST_EXTENSION,
+                GossipExtension.PARTIAL_MESSAGES
             )
         )
 
@@ -199,7 +197,7 @@ class GossipExtensionsMessageHandlingTest : GossipTestsBase() {
     fun `peer sending multiple control extension messages are downscored`() {
         val test = TwoRoutersTest(
             protocol = PubsubProtocol.Gossip_V_1_3,
-            gossipExtensionsConfig = GossipExtensionsConfig(partialMessagesEnabled = true),
+            enabledGossipExtensions = listOf(GossipExtension.PARTIAL_MESSAGES),
             // Creating GossipScoreParams with behaviourPenaltyWeight (peer bad behavior affecting
             // score). Here we are not interested if the weight is "correct". What we want to see if
             // that a peer is penalized for sending more than one ControlExtensions message.

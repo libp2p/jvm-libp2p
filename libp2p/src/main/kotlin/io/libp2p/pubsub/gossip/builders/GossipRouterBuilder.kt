@@ -39,14 +39,18 @@ open class GossipRouterBuilder(
             gossipScore
         },
     val gossipRouterEventListeners: MutableList<GossipRouterEventListener> = mutableListOf(),
-
-    var gossipExtensionsConfig: GossipExtensionsConfig = GossipExtensionsConfig()
+    val enabledGossipExtensions: List<GossipExtension> = mutableListOf(),
 ) {
 
     var seenCache: SeenCache<Optional<ValidationResult>> by lazyVar { TTLSeenCache(SimpleSeenCache(), params.seenTTL, currentTimeSupplier) }
     var mCache: MCache by lazyVar { MCache(params.gossipSize, params.gossipHistoryLength) }
 
     private var disposed = false
+
+    fun enabledGossipExtensions(vararg gossipExtensions: GossipExtension): GossipRouterBuilder {
+        (enabledGossipExtensions as MutableList).addAll(gossipExtensions)
+        return this
+    }
 
     protected open fun createGossipRouter(): GossipRouter {
         val gossipScore = scoreFactory(scoreParams, scheduledAsyncExecutor, currentTimeSupplier, { gossipRouterEventListeners += it })
@@ -65,7 +69,7 @@ open class GossipRouterBuilder(
             messageFactory = messageFactory,
             seenMessages = seenCache,
             messageValidator = messageValidator,
-            gossipExtensionsConfig = gossipExtensionsConfig
+            gossipExtensionsConfig = buildGossipExtensionsConfig(),
         )
 
         router.eventBroadcaster.listeners += gossipRouterEventListeners
@@ -76,5 +80,12 @@ open class GossipRouterBuilder(
         if (disposed) throw RuntimeException("The builder was already used")
         disposed = true
         return createGossipRouter()
+    }
+
+    private fun buildGossipExtensionsConfig(): GossipExtensionsConfig {
+        return GossipExtensionsConfig(
+            partialMessagesEnabled = enabledGossipExtensions.contains(GossipExtension.PARTIAL_MESSAGES),
+            testExtensionEnabled = enabledGossipExtensions.contains(GossipExtension.TEST_EXTENSION)
+        )
     }
 }
