@@ -1,5 +1,5 @@
 plugins {
-    id("com.google.protobuf").version("0.9.5")
+    id("com.google.protobuf").version("0.9.4")
     id("me.champeau.jmh").version("0.7.3")
 }
 
