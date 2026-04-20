@@ -86,6 +86,9 @@ configure(
     tasks.withType<Copy> {
         duplicatesStrategy = DuplicatesStrategy.INCLUDE
     }
+    tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
+        jvmTarget = "11"
+    }
 
 // Parallel build execution
     tasks.test {
