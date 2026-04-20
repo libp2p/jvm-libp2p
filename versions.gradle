@@ -8,7 +8,7 @@ dependencyManagement {
         dependency "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4"
         dependency "com.google.guava:guava:33.4.8-jre"
 
-        dependency "org.slf4j:slf4j-api:2.0.17"
+        dependency "org.slf4j:slf4j-api:2.0.9"
         dependencySet(group: 'org.apache.logging.log4j', version: '2.25.4') {
             entry 'log4j-core'
             entry 'log4j-slf4j2-impl'
@@ -44,7 +44,7 @@ dependencyManagement {
         dependency "io.netty:netty-tcnative-boringssl-static:2.0.76.Final"
         dependency "com.github.multiformats:java-multibase:v1.1.1"
         dependency "tech.pegasys:noise-java:22.1.0"
-        dependencySet(group: "org.bouncycastle", version: "1.80") {
+        dependencySet(group: "org.bouncycastle", version: "1.78.1") {
             entry 'bcprov-jdk18on'
             entry 'bcpkix-jdk18on'
             entry 'bctls-jdk18on'
