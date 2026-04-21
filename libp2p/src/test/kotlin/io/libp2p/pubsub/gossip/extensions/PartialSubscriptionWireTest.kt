@@ -1,6 +1,8 @@
 package io.libp2p.pubsub.gossip.extensions
 
+import io.libp2p.core.PeerId
 import io.libp2p.pubsub.PubsubProtocol
+import io.libp2p.pubsub.Topic
 import io.libp2p.pubsub.gossip.GossipExtension
 import io.libp2p.pubsub.gossip.GossipTestsBase
 import io.libp2p.pubsub.gossip.PartialSubFlags
@@ -23,6 +25,23 @@ class PartialSubscriptionWireTest : GossipTestsBase() {
 
     private fun Rpc.RPC.firstUnsubscribeFor(topic: String): Rpc.RPC.SubOpts? =
         subscriptionsList.firstOrNull { it.topicid == topic && !it.subscribe }
+
+    /**
+     * Reads `partialSubscriptionState.peerFlags` on the pubsub event loop so the
+     * test thread establishes a happens-before with any pending event-loop
+     * mutations. The state container is documented as not thread-safe; direct
+     * access from the test thread risks `ConcurrentModificationException` and
+     * stale reads.
+     */
+    private fun TwoRoutersTest.peerFlagsOnEventLoop(topic: Topic, peer: PeerId): PartialSubFlags =
+        gossipRouter.submitOnEventThread {
+            gossipRouter.partialSubscriptionState.peerFlags(topic, peer)
+        }.join()
+
+    private fun TwoRoutersTest.snapshotPartialStateOnEventLoop(): Map<Topic, Map<PeerId, PartialSubFlags>> =
+        gossipRouter.submitOnEventThread {
+            gossipRouter.partialSubscriptionState.snapshot()
+        }.join()
 
     @Test
     fun `outbound subscribe carries configured partial flags with send-side coercion`() {
@@ -88,7 +107,7 @@ class PartialSubscriptionWireTest : GossipTestsBase() {
 
         val peerId = test.router2.peerId
         // Receive-side coercion: supportsSendingPartial := requestsPartial || supportsSendingPartial
-        assertThat(test.gossipRouter.partialSubscriptionState.peerFlags(topicA, peerId))
+        assertThat(test.peerFlagsOnEventLoop(topicA, peerId))
             .isEqualTo(PartialSubFlags(requestsPartial = true, supportsSendingPartial = true))
     }
 
@@ -99,7 +118,7 @@ class PartialSubscriptionWireTest : GossipTestsBase() {
         val rpc = subscribeRpc(topicA, requestsPartial = false, supportsSendingPartial = true)
         test.mockRouter.sendToSingle(rpc)
 
-        assertThat(test.gossipRouter.partialSubscriptionState.peerFlags(topicA, test.router2.peerId))
+        assertThat(test.peerFlagsOnEventLoop(topicA, test.router2.peerId))
             .isEqualTo(PartialSubFlags(requestsPartial = false, supportsSendingPartial = true))
     }
 
@@ -110,9 +129,9 @@ class PartialSubscriptionWireTest : GossipTestsBase() {
         val rpc = subscribeRpc(topicA, requestsPartial = false, supportsSendingPartial = false)
         test.mockRouter.sendToSingle(rpc)
 
-        assertThat(test.gossipRouter.partialSubscriptionState.peerFlags(topicA, test.router2.peerId))
+        assertThat(test.peerFlagsOnEventLoop(topicA, test.router2.peerId))
             .isEqualTo(PartialSubFlags.NONE)
-        assertThat(test.gossipRouter.partialSubscriptionState.snapshot()).doesNotContainKey(topicA)
+        assertThat(test.snapshotPartialStateOnEventLoop()).doesNotContainKey(topicA)
     }
 
     @Test
@@ -121,7 +140,7 @@ class PartialSubscriptionWireTest : GossipTestsBase() {
         val peerId = test.router2.peerId
 
         test.mockRouter.sendToSingle(subscribeRpc(topicA, requestsPartial = true, supportsSendingPartial = true))
-        assertThat(test.gossipRouter.partialSubscriptionState.peerFlags(topicA, peerId))
+        assertThat(test.peerFlagsOnEventLoop(topicA, peerId))
             .isEqualTo(PartialSubFlags(requestsPartial = true, supportsSendingPartial = true))
 
         // Unsubscribe with malicious flags set: flags MUST be ignored, state MUST be cleared.
@@ -134,7 +153,7 @@ class PartialSubscriptionWireTest : GossipTestsBase() {
         ).build()
         test.mockRouter.sendToSingle(unsub)
 
-        assertThat(test.gossipRouter.partialSubscriptionState.peerFlags(topicA, peerId))
+        assertThat(test.peerFlagsOnEventLoop(topicA, peerId))
             .isEqualTo(PartialSubFlags.NONE)
     }
 
@@ -144,12 +163,12 @@ class PartialSubscriptionWireTest : GossipTestsBase() {
         val peerId = test.router2.peerId
 
         test.mockRouter.sendToSingle(subscribeRpc(topicA, requestsPartial = true, supportsSendingPartial = true))
-        assertThat(test.gossipRouter.partialSubscriptionState.peerFlags(topicA, peerId))
+        assertThat(test.peerFlagsOnEventLoop(topicA, peerId))
             .isEqualTo(PartialSubFlags(requestsPartial = true, supportsSendingPartial = true))
 
         test.connection.disconnect()
 
-        assertThat(test.gossipRouter.partialSubscriptionState.peerFlags(topicA, peerId))
+        assertThat(test.peerFlagsOnEventLoop(topicA, peerId))
             .isEqualTo(PartialSubFlags.NONE)
     }
 
@@ -162,15 +181,15 @@ class PartialSubscriptionWireTest : GossipTestsBase() {
         test.mockRouter.sendToSingle(subscribeRpc(topicA, requestsPartial = true, supportsSendingPartial = true))
         test.mockRouter.sendToSingle(subscribeRpc(topicB, requestsPartial = true, supportsSendingPartial = true))
 
-        assertThat(test.gossipRouter.partialSubscriptionState.peerFlags(topicA, peerId))
+        assertThat(test.peerFlagsOnEventLoop(topicA, peerId))
             .isEqualTo(PartialSubFlags(requestsPartial = true, supportsSendingPartial = true))
 
         test.gossipRouter.unsubscribe(topicA)
 
-        assertThat(test.gossipRouter.partialSubscriptionState.peerFlags(topicA, peerId))
+        assertThat(test.peerFlagsOnEventLoop(topicA, peerId))
             .isEqualTo(PartialSubFlags.NONE)
         // Other topic state preserved
-        assertThat(test.gossipRouter.partialSubscriptionState.peerFlags(topicB, peerId))
+        assertThat(test.peerFlagsOnEventLoop(topicB, peerId))
             .isEqualTo(PartialSubFlags(requestsPartial = true, supportsSendingPartial = true))
     }
 
