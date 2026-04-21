@@ -20,10 +20,6 @@ interface RpcPartsQueue {
         addSubscription(topic, SubscriptionStatus.Unsubscribed, requestsPartial = false, supportsSendingPartial = false)
     }
 
-    fun addSubscription(topic: Topic, status: SubscriptionStatus) {
-        addSubscription(topic, status, requestsPartial = false, supportsSendingPartial = false)
-    }
-
     fun addSubscription(
         topic: Topic,
         status: SubscriptionStatus,
