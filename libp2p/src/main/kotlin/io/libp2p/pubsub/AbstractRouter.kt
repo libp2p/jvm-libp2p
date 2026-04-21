@@ -147,9 +147,20 @@ abstract class AbstractRouter(
     override fun onPeerActive(peer: PeerHandler) {
         val partsQueue = pendingRpcParts.getQueue(peer)
         subscribedTopics.forEach {
-            partsQueue.addSubscribe(it)
+            enqueueSubscribe(partsQueue, it)
         }
         flushPending(peer)
+    }
+
+    /**
+     * Enqueues a subscribe announcement for [topic] onto [partsQueue].
+     *
+     * The default implementation emits a bare subscribe with no per-topic options.
+     * Subclasses (e.g. GossipRouter) override this to attach per-topic options
+     * such as partial-message flags.
+     */
+    protected open fun enqueueSubscribe(partsQueue: RpcPartsQueue, topic: Topic) {
+        partsQueue.addSubscribe(topic)
     }
 
     protected open fun notifyMalformedMessage(peer: PeerHandler) {}
@@ -172,7 +183,16 @@ abstract class AbstractRouter(
         }
 
         try {
-            val subscriptions = msg.subscriptionsList.map { PubsubSubscription(it.topicid, it.subscribe) }
+            val subscriptions = msg.subscriptionsList.map {
+                // Per partial-messages spec: flags MUST be ignored on subscribe=false, and the
+                // receiving side coerces supportsSendingPartial := requestsPartial || supportsSendingPartial.
+                PubsubSubscription(
+                    topic = it.topicid,
+                    subscribe = it.subscribe,
+                    requestsPartial = it.subscribe && it.requestsPartial,
+                    supportsSendingPartial = it.subscribe && (it.supportsSendingPartial || it.requestsPartial)
+                )
+            }
             subscriptionFilter
                 .filterIncomingSubscriptions(subscriptions, peersTopics.getByFirst(peer))
                 .forEach { handleMessageSubscriptions(peer, it) }
@@ -301,7 +321,7 @@ abstract class AbstractRouter(
         }
     }
 
-    private fun handleMessageSubscriptions(peer: PeerHandler, msg: PubsubSubscription) {
+    protected open fun handleMessageSubscriptions(peer: PeerHandler, msg: PubsubSubscription) {
         if (msg.subscribe) {
             peersTopics.add(peer, msg.topic)
         } else {
@@ -319,7 +339,7 @@ abstract class AbstractRouter(
     }
 
     protected open fun subscribe(topic: Topic) {
-        activePeers.forEach { pendingRpcParts.getQueue(it).addSubscribe(topic) }
+        activePeers.forEach { enqueueSubscribe(pendingRpcParts.getQueue(it), topic) }
         subscribedTopics += topic
     }
 
