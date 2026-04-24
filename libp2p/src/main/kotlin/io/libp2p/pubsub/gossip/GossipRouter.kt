@@ -153,13 +153,11 @@ open class GossipRouter(
      */
     fun setTopicPartialFlags(topic: Topic, requestsPartial: Boolean, supportsSendingPartial: Boolean) {
         runOnEventThread {
-            if (!requestsPartial && !supportsSendingPartial) {
+            val coerced = PartialSubFlags.coerce(requestsPartial, supportsSendingPartial)
+            if (coerced == PartialSubFlags.NONE) {
                 localTopicPartialFlags -= topic
             } else {
-                localTopicPartialFlags[topic] = PartialSubFlags(
-                    requestsPartial = requestsPartial,
-                    supportsSendingPartial = requestsPartial || supportsSendingPartial
-                )
+                localTopicPartialFlags[topic] = coerced
             }
         }
     }

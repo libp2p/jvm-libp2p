@@ -9,6 +9,21 @@ data class PartialSubFlags(
 ) {
     companion object {
         val NONE = PartialSubFlags(requestsPartial = false, supportsSendingPartial = false)
+
+        /**
+         * Applies the partial-messages spec coercion
+         * `supportsSendingPartial := requestsPartial || supportsSendingPartial`.
+         *
+         * Per the spec, this rule MUST be applied by both the sender (when
+         * advertising flags outbound) and the receiver (when parsing inbound
+         * `SubOpts`). Callers are expected to have already zeroed the flags
+         * for `subscribe=false` frames before calling this helper.
+         */
+        fun coerce(requestsPartial: Boolean, supportsSendingPartial: Boolean): PartialSubFlags =
+            PartialSubFlags(
+                requestsPartial = requestsPartial,
+                supportsSendingPartial = supportsSendingPartial || requestsPartial
+            )
     }
 }
 
@@ -25,6 +40,14 @@ class PartialSubscriptionState {
 
     private val byTopic: MutableMap<Topic, MutableMap<PeerId, PartialSubFlags>> = mutableMapOf()
 
+    /**
+     * Stores [flags] for `(topic, peer)`.
+     *
+     * Passing [PartialSubFlags.NONE] (or any equivalent `PartialSubFlags(false, false)`)
+     * is treated as a removal: the peer's entry is dropped and, if it was the
+     * last peer for the topic, the topic entry is GC'd. This keeps the snapshot
+     * invariant "present ⇔ non-default flags".
+     */
     fun setPeerFlags(topic: Topic, peer: PeerId, flags: PartialSubFlags) {
         if (flags == PartialSubFlags.NONE) {
             removePeerFlags(topic, peer)
