@@ -8,6 +8,7 @@ import io.libp2p.pubsub.gossip.builders.GossipParamsBuilder
 import io.libp2p.pubsub.gossip.builders.GossipRouterBuilder
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedInvocationConstants
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
@@ -186,7 +187,7 @@ class GossipRpcPartsQueueTest {
         fun mergeParams(): Stream<Arguments> = testCases.stream()
     }
 
-    @ParameterizedTest(name = "[${ParameterizedTest.INDEX_PLACEHOLDER}] {0}")
+    @ParameterizedTest(name = "[${ParameterizedInvocationConstants.INDEX_PLACEHOLDER}] {0}")
     @MethodSource("mergeParams")
     fun `mergeMessageParts() test various combinations`(
         gossipParams: GossipParams,

@@ -6,6 +6,7 @@ import io.libp2p.core.StreamHandler
 import io.libp2p.etc.types.fromHex
 import io.libp2p.etc.types.getX
 import io.libp2p.etc.types.toHex
+import io.libp2p.etc.util.netty.mux.MuxChannel
 import io.libp2p.etc.util.netty.mux.RemoteWriteClosed
 import io.libp2p.etc.util.netty.nettyInitializer
 import io.libp2p.mux.MuxHandlerAbstractTest.AbstractTestMuxFrame.Flag.*
@@ -439,6 +440,26 @@ abstract class MuxHandlerAbstractTest {
 
         assertThrows(Exception::class.java) {
             handler.ctx.writeAndFlush(allocateMessage("42")).sync()
+        }
+    }
+
+    @Test
+    fun `write with localDisconnected should fail promise without throwing from doWrite`() {
+        val handler = openStreamLocal()
+        readFrameOrThrow()
+
+        // Simulate the state between localDisconnected=true and deactivate() in doDisconnect(),
+        // which is when a queued WriteTask can reach doWrite with localDisconnected=true while
+        // the channel is still active (flush0 would take the "not-yet-connected" path otherwise).
+        @Suppress("UNCHECKED_CAST")
+        (handler.ctx.channel() as MuxChannel<ByteBuf>).localDisconnected = true
+
+        val writeFuture = handler.ctx.writeAndFlush(allocateMessage("42"))
+        ech.runPendingTasks()
+
+        assertTrue(writeFuture.isDone)
+        assertThrows(ConnectionClosedException::class.java) {
+            writeFuture.sync()
         }
     }
 
