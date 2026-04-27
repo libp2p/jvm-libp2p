@@ -594,4 +594,46 @@ public class QuicServerTestJava {
     }
     serverHost.stop().get(5, TimeUnit.SECONDS);
   }
+
+  /**
+   * Verify that dialAsListener times out when no peer connects back. This tests the timeout path
+   * without requiring a real hole punch.
+   */
+  @Test
+  void holePunchTimeout() throws Exception {
+    String localListenAddress = "/ip4/127.0.0.1/udp/" + getPort() + "/quic-v1";
+
+    Pair<PrivKey, PubKey> serverKeyPair = KeyKt.generateKeyPair(KeyType.ED25519);
+    List<io.libp2p.core.multistream.ProtocolBinding<?>> emptyProtocols = new ArrayList<>();
+
+    QuicTransport transport = QuicTransport.ECDSA(serverKeyPair.component1(), emptyProtocols);
+    transport.initialize();
+    transport.listen(new Multiaddr(localListenAddress), conn -> {}, null).get(5, TimeUnit.SECONDS);
+    System.out.println("Transport listening on: " + localListenAddress);
+
+    // Dial a non-existent peer at an address where nobody will connect back
+    // Use a different port so nobody is listening there
+    int unreachablePort = getPort();
+    Multiaddr unreachableAddr = new Multiaddr("/ip4/127.0.0.1/udp/" + unreachablePort + "/quic-v1");
+
+    CompletableFuture<Connection> holePunchFuture =
+        transport.dialAsListener(unreachableAddr, conn -> {}, null);
+
+    long start = System.currentTimeMillis();
+    try {
+      holePunchFuture.get(6, TimeUnit.SECONDS);
+      Assertions.fail("Expected hole punch to time out, but it completed successfully");
+    } catch (ExecutionException e) {
+      long elapsed = System.currentTimeMillis() - start;
+      System.out.println("Hole punch failed as expected after " + elapsed + "ms: " + e.getCause());
+      // Expected: the future completes exceptionally (TimeoutException wrapped in
+      // ExecutionException)
+      Assertions.assertInstanceOf(
+          java.util.concurrent.TimeoutException.class,
+          e.getCause(),
+          "Expected TimeoutException but got: " + e.getCause());
+    }
+
+    transport.close().get(5, TimeUnit.SECONDS);
+  }
 }

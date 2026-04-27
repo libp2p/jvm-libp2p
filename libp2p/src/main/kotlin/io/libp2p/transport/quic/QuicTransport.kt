@@ -73,6 +73,9 @@ class QuicTransport(
     /** Tracks active listener DatagramChannels by address family (true = IPv6, false = IPv4). */
     internal val listenerChannelsByFamily = ConcurrentHashMap<Boolean, Channel>()
 
+    /** Pending hole punch futures keyed by the remote address we are trying to reach. */
+    private val pendingHolePunches = ConcurrentHashMap<InetSocketAddress, CompletableFuture<QuicChannel>>()
+
     private var workerGroup by lazyVar {
         MultiThreadIoEventLoopGroup(NioIoHandler.newFactory())
     }
@@ -422,9 +425,22 @@ class QuicTransport(
                                     // Remove this handler as it's no longer needed
                                     ctx.pipeline().remove(this)
 
-                                    // Now it's safe to call the connection handler
-                                    preHandler?.also { visitor -> visitor.visit(connection) }
-                                    connHandler.handleConnection(connection)
+                                    // Check if this connection is completing a pending hole punch
+                                    val remoteAddr = ctx.channel().remoteAddress() as? InetSocketAddress
+                                    val holePunchFuture = if (remoteAddr != null) {
+                                        pendingHolePunches.remove(remoteAddr)
+                                    } else {
+                                        null
+                                    }
+
+                                    if (holePunchFuture != null) {
+                                        // Route this inbound connection to the waiting hole-punch caller
+                                        holePunchFuture.complete(ctx.channel() as QuicChannel)
+                                    } else {
+                                        // Normal path: deliver to the connection handler
+                                        preHandler?.also { visitor -> visitor.visit(connection) }
+                                        connHandler.handleConnection(connection)
+                                    }
                                 } else {
                                     // This should not happen if channelActive is called after handshake
                                     ctx.close()
@@ -454,6 +470,80 @@ class QuicTransport(
             .statelessResetToken(deriveStatelessResetToken())
             .streamHandler(InboundStreamHandler(incomingMultistreamProtocol, protocols))
             .build()
+    }
+
+    /**
+     * Dial a remote peer using the hole-punching technique: send UDP probe packets from the
+     * active listener socket to open NAT mappings, then wait for the remote peer to connect back
+     * on the same port.
+     *
+     * Requires an active listener for the same address family as [addr].
+     * The returned future completes when the inbound QUIC connection from the remote peer arrives,
+     * or fails with a [java.util.concurrent.TimeoutException] after 5 seconds.
+     */
+    fun dialAsListener(
+        addr: Multiaddr,
+        connHandler: ConnectionHandler,
+        preHandler: ChannelVisitor<P2PChannel>?
+    ): CompletableFuture<Connection> {
+        if (closed) throw Libp2pException("Transport is closed")
+        val targetAddr = fromMultiaddr(addr) as InetSocketAddress
+        val isIPv6 = targetAddr.address is Inet6Address
+        val listenerChannel = listenerChannelsByFamily[isIPv6]
+            ?: throw Libp2pException(
+                "Hole punch requires an active listener for the same address family as $addr"
+            )
+
+        val inboundFuture = CompletableFuture<QuicChannel>()
+        pendingHolePunches[targetAddr] = inboundFuture
+
+        // Send UDP probe packets to open NAT mappings on both sides.
+        // Probes are raw UDP datagrams — not QUIC frames.
+        val probeBytes = ByteArray(64).also { java.util.concurrent.ThreadLocalRandom.current().nextBytes(it) }
+        val probeBuf = io.netty.buffer.Unpooled.wrappedBuffer(probeBytes)
+        val probeTask = workerGroup.scheduleAtFixedRate(
+            {
+                val packet = io.netty.channel.socket.DatagramPacket(probeBuf.retainedDuplicate(), targetAddr)
+                listenerChannel.writeAndFlush(packet)
+            },
+            0L,
+            50L,
+            TimeUnit.MILLISECONDS
+        )
+
+        return inboundFuture
+            .orTimeout(5, TimeUnit.SECONDS)
+            .whenComplete { _, _ ->
+                probeTask.cancel(false)
+                probeBuf.release()
+                pendingHolePunches.remove(targetAddr)
+            }
+            .thenApply { quicChannel ->
+                registerChannel(quicChannel)
+                val connection = ConnectionOverNetty(quicChannel, this@QuicTransport, false)
+                connection.setMuxerSession(QuicMuxerSession(quicChannel, connection))
+
+                val peerCerts = quicChannel.sslEngine()?.session?.peerCertificates
+                    ?: throw Libp2pException("No peer certificates in hole-punched connection from $addr")
+
+                val expectedPeerId = addr.getPeerId()
+                val remotePeerId = expectedPeerId ?: verifyAndExtractPeerId(peerCerts)
+                val remotePubKey = getPublicKeyFromCert(peerCerts)
+
+                connection.setSecureSession(
+                    SecureChannel.Session(
+                        PeerId.fromPubKey(localKey.publicKey()),
+                        remotePeerId,
+                        remotePubKey,
+                        null
+                    )
+                )
+
+                preHandler?.also { visitor -> visitor.visit(connection) }
+                connHandler.handleConnection(connection)
+                quicChannel.attr(CONNECTION).set(connection)
+                connection
+            }
     }
 
     class QuicMuxerSession(
