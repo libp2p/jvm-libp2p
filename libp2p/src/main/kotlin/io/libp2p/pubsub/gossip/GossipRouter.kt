@@ -8,6 +8,8 @@ import io.libp2p.etc.types.*
 import io.libp2p.etc.util.P2PService
 import io.libp2p.pubsub.*
 import io.libp2p.pubsub.gossip.partialmessages.PartialMessagesAdapter
+import io.libp2p.pubsub.gossip.partialmessages.PublishActionsFn
+import io.libp2p.pubsub.gossip.partialmessages.toGroupId
 import org.slf4j.LoggerFactory
 import pubsub.pb.Rpc
 import java.time.Duration
@@ -162,6 +164,28 @@ open class GossipRouter(
                 localTopicPartialFlags[topic] = coerced
             }
         }
+    }
+
+    /**
+     * Queues outbound [pubsub.pb.Rpc.PartialMessagesExtension] RPCs for [topic]/[groupId]
+     * by invoking the client's [actionsFn] on the current group state.
+     *
+     * Must be called on the pubsub event thread.
+     */
+    fun publishPartial(topic: Topic, groupId: ByteArray, actionsFn: PublishActionsFn<*>) {
+        val adapter = partialMessages ?: return
+        val gid = groupId.toGroupId()
+
+        fun peerRequestsPartial(peerId: PeerId) =
+            partialSubscriptionState.peerRequestsPartial(topic, peerId)
+
+        fun enqueue(peerId: PeerId, partialMessage: ByteArray?, partsMetadata: ByteArray?) {
+            val peerHandler = activePeers.find { it.peerId == peerId } ?: return
+            pendingRpcParts.getQueue(peerHandler).addPartialMessage(topic, groupId, partialMessage, partsMetadata)
+        }
+
+        adapter.publishPartial(topic, gid, actionsFn, ::peerRequestsPartial, ::enqueue)
+        flushAllPending()
     }
 
     private fun setBackOff(peer: PeerHandler, topic: Topic) = setBackOff(peer, topic, params.pruneBackoff.toMillis())

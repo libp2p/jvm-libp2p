@@ -154,4 +154,124 @@ class PartialMessagesAdapterImplTest {
         assertThat(capturedCalls).hasSize(2)
         assertThat(capturedCalls[0].peerStates).isNotSameAs(capturedCalls[1].peerStates)
     }
+
+    // ---- publishPartial ----
+
+    @Test
+    fun `publishPartial enqueues RPC for peer that requests partial`() {
+        val enqueued = mutableListOf<Triple<PeerId, ByteArray?, ByteArray?>>()
+        val payload = byteArrayOf(1, 2, 3)
+        val meta = byteArrayOf(0xAA.toByte())
+        val actionsFn = PublishActionsFn<String> { _, _ ->
+            sequenceOf(peer1 to PublishAction(partialMessage = payload, partsMetadata = meta))
+        }
+
+        adapter.publishPartial(
+            topic = topic,
+            groupId = groupIdBytes.toGroupId(),
+            actionsFn = actionsFn,
+            peerRequestsPartial = { true },
+            enqueueFn = { p, pm, meta2 -> enqueued += Triple(p, pm, meta2) }
+        )
+
+        assertThat(enqueued).hasSize(1)
+        assertThat(enqueued[0].first).isEqualTo(peer1)
+        assertThat(enqueued[0].second).isEqualTo(payload)
+        assertThat(enqueued[0].third).isEqualTo(meta)
+    }
+
+    @Test
+    fun `publishPartial omits partialMessage when peerRequestsPartial is false`() {
+        val enqueued = mutableListOf<Triple<PeerId, ByteArray?, ByteArray?>>()
+        val payload = byteArrayOf(1, 2, 3)
+        val meta = byteArrayOf(0xAA.toByte())
+        val actionsFn = PublishActionsFn<String> { _, _ ->
+            sequenceOf(peer1 to PublishAction(partialMessage = payload, partsMetadata = meta))
+        }
+
+        adapter.publishPartial(
+            topic = topic,
+            groupId = groupIdBytes.toGroupId(),
+            actionsFn = actionsFn,
+            peerRequestsPartial = { false },
+            enqueueFn = { p, pm, meta2 -> enqueued += Triple(p, pm, meta2) }
+        )
+
+        assertThat(enqueued).hasSize(1)
+        assertThat(enqueued[0].second).isNull()
+        assertThat(enqueued[0].third).isEqualTo(meta)
+    }
+
+    @Test
+    fun `publishPartial skips peer when action contains an error`() {
+        val enqueued = mutableListOf<PeerId>()
+        val actionsFn = PublishActionsFn<String> { _, _ ->
+            sequenceOf(peer1 to PublishAction(error = RuntimeException("oops")))
+        }
+
+        adapter.publishPartial(
+            topic = topic,
+            groupId = groupIdBytes.toGroupId(),
+            actionsFn = actionsFn,
+            peerRequestsPartial = { true },
+            enqueueFn = { p, _, _ -> enqueued += p }
+        )
+
+        assertThat(enqueued).isEmpty()
+    }
+
+    @Test
+    fun `publishPartial does not call enqueueFn when both partialMessage and partsMetadata are null`() {
+        val enqueued = mutableListOf<PeerId>()
+        val actionsFn = PublishActionsFn<String> { _, _ ->
+            sequenceOf(peer1 to PublishAction<String>())
+        }
+
+        adapter.publishPartial(
+            topic = topic,
+            groupId = groupIdBytes.toGroupId(),
+            actionsFn = actionsFn,
+            peerRequestsPartial = { true },
+            enqueueFn = { p, _, _ -> enqueued += p }
+        )
+
+        assertThat(enqueued).isEmpty()
+    }
+
+    @Test
+    fun `publishPartial stores nextPeerState in group`() {
+        val actionsFn = PublishActionsFn<String> { _, _ ->
+            sequenceOf(peer1 to PublishAction(partsMetadata = byteArrayOf(1), nextPeerState = "state-for-peer1"))
+        }
+
+        adapter.publishPartial(
+            topic = topic,
+            groupId = groupIdBytes.toGroupId(),
+            actionsFn = actionsFn,
+            peerRequestsPartial = { true },
+            enqueueFn = { _, _, _ -> }
+        )
+
+        val group = adapter.stateStore.getGroup(topic, groupIdBytes.toGroupId())
+        assertThat(group?.peerStates?.get(peer1)).isEqualTo("state-for-peer1")
+    }
+
+    @Test
+    fun `publishPartial provides peerRequestsPartial predicate to decide`() {
+        val predicateCapture = mutableListOf<Boolean>()
+        val actionsFn = PublishActionsFn<String> { _, peerRequestsPartial ->
+            predicateCapture += peerRequestsPartial(peer1)
+            emptySequence()
+        }
+
+        adapter.publishPartial(
+            topic = topic,
+            groupId = groupIdBytes.toGroupId(),
+            actionsFn = actionsFn,
+            peerRequestsPartial = { it == peer1 },
+            enqueueFn = { _, _, _ -> }
+        )
+
+        assertThat(predicateCapture).containsExactly(true)
+    }
 }
