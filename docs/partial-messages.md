@@ -371,7 +371,7 @@ Mirror this checklist in issue #435.
       route through `GossipRpcPartsQueue` (do **not** bypass — PR #433 got
       this wrong). Enforce the "omit `partialMessage` when peer supports but
       didn't request" MUST.
-- [ ] **Step 5** — End-to-end integration test with a trivial bitmap-based
+- [x] **Step 5** — End-to-end integration test with a trivial bitmap-based
       handler. Exercises Steps 1-4 before any routing changes.
 - [ ] **Step 6** — Routing: full-message suppression (§5.1).
 - [ ] **Step 7** — Routing: IDONTWANT suppression (§5.2).
