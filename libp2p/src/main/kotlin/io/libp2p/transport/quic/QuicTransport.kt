@@ -37,10 +37,12 @@ import io.netty.channel.socket.nio.NioDatagramChannel
 import io.netty.handler.codec.quic.*
 import io.netty.handler.ssl.ClientAuth
 import org.slf4j.LoggerFactory
+import java.net.Inet6Address
 import java.net.InetSocketAddress
 import java.net.SocketAddress
 import java.util.*
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
 /**
@@ -67,6 +69,9 @@ class QuicTransport(
 
     private val listeners = mutableMapOf<Multiaddr, Channel>()
     private val channels = mutableListOf<Channel>()
+
+    /** Tracks active listener DatagramChannels by address family (true = IPv6, false = IPv4). */
+    internal val listenerChannelsByFamily = ConcurrentHashMap<Boolean, Channel>()
 
     private var workerGroup by lazyVar {
         MultiThreadIoEventLoopGroup(NioIoHandler.newFactory())
@@ -171,14 +176,18 @@ class QuicTransport(
         val bindComplete = listener.bind(fromMultiaddr(addr))
 
         bindComplete.also {
+            val isIPv6 = (fromMultiaddr(addr) as InetSocketAddress).address is Inet6Address
             synchronized(this@QuicTransport) {
                 listeners += addr to it.channel()
-                it.channel().closeFuture().addListener {
+                it.channel().closeFuture().addListener { _ ->
                     synchronized(this@QuicTransport) {
                         listeners -= addr
                     }
+                    listenerChannelsByFamily.remove(isIPv6, it.channel())
                 }
             }
+            // Register after sync block to avoid holding lock during ConcurrentHashMap update
+            listenerChannelsByFamily[isIPv6] = it.channel()
         }
 
         return bindComplete.toVoidCompletableFuture().thenApply {
@@ -214,20 +223,51 @@ class QuicTransport(
             .statelessResetToken(deriveStatelessResetToken())
             .build()
 
-        return client.clone()
-            .handler(requestsHandler)
-            .bind(0)
-            .toCompletableFuture()
-            .thenCompose {
-                QuicChannel.newBootstrap(it)
-                    .streamOption(ChannelOption.ALLOCATOR, allocator)
-                    .option(ChannelOption.AUTO_READ, true)
-                    .option(ChannelOption.ALLOCATOR, allocator)
-                    .remoteAddress(fromMultiaddr(addr))
-                    .streamHandler(InboundStreamHandler(multistreamProtocol, protocols))
-                    .connect()
-                    .toCompletableFuture()
+        val targetAddr = fromMultiaddr(addr) as InetSocketAddress
+        val isIPv6 = targetAddr.address is Inet6Address
+        val existingListenerChannel = listenerChannelsByFamily[isIPv6]
+
+        // Attempt to bind the client socket to the same port as an active listener for
+        // consistent NAT mappings. Falls back to an ephemeral port if binding fails
+        // (SO_REUSEADDR alone may be insufficient for UDP port sharing on some platforms;
+        // TODO: add SO_REUSEPORT support for Linux/Epoll).
+        val bindAddr: InetSocketAddress = if (existingListenerChannel != null) {
+            val listenerPort = (existingListenerChannel.localAddress() as? InetSocketAddress)?.port ?: 0
+            val wildcard = if (isIPv6) "::" else "0.0.0.0"
+            InetSocketAddress(wildcard, listenerPort)
+        } else {
+            InetSocketAddress(0) // ephemeral port
+        }
+
+        fun connectViaBoundChannel(boundAddr: InetSocketAddress): CompletableFuture<QuicChannel> {
+            return client.clone()
+                .handler(requestsHandler)
+                .option(ChannelOption.SO_REUSEADDR, true)
+                .bind(boundAddr)
+                .toCompletableFuture()
+                .thenCompose { udpChannel ->
+                    QuicChannel.newBootstrap(udpChannel)
+                        .streamOption(ChannelOption.ALLOCATOR, allocator)
+                        .option(ChannelOption.AUTO_READ, true)
+                        .option(ChannelOption.ALLOCATOR, allocator)
+                        .remoteAddress(targetAddr)
+                        .streamHandler(InboundStreamHandler(multistreamProtocol, protocols))
+                        .connect()
+                        .toCompletableFuture()
+                }
+        }
+
+        val quicConnFuture: CompletableFuture<QuicChannel> = if (existingListenerChannel != null) {
+            connectViaBoundChannel(bindAddr).exceptionallyCompose { ex ->
+                // Port reuse failed (SO_REUSEADDR insufficient on this platform); fall back to ephemeral port.
+                logger.debug("Could not reuse listener port {} for dial ({}), using ephemeral port", bindAddr, ex.message)
+                connectViaBoundChannel(InetSocketAddress(0))
             }
+        } else {
+            connectViaBoundChannel(InetSocketAddress(0))
+        }
+
+        return quicConnFuture
             .thenApply {
                 registerChannel(it)
                 val connection = ConnectionOverNetty(it, this@QuicTransport, true)
