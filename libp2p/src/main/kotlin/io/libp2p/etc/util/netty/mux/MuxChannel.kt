@@ -32,13 +32,20 @@ class MuxChannel<TData>(
         initializer(this)
     }
 
+    @Suppress("SwallowedException")
     override fun doWrite(buf: ChannelOutboundBuffer) {
         while (true) {
             val msg = buf.current() ?: break
+            if (localDisconnected) {
+                // Must not throw from doWrite — exceptions escape uncaught to the Netty event loop.
+                // Wrap buf.remove() defensively: in some Netty versions promise listeners triggered
+                // by buf.remove() can propagate back through it.
+                try {
+                    buf.remove(ConnectionClosedException("The stream was closed for writing locally: $id"))
+                } catch (e: Throwable) { }
+                continue
+            }
             try {
-                if (localDisconnected) {
-                    throw ConnectionClosedException("The stream was closed for writing locally: $id")
-                }
                 // the msg is released by both onChildWrite and buf.remove() so we need to retain
                 // however it is still to be confirmed that no buf leaks happen here TODO
                 ReferenceCountUtil.retain(msg)
