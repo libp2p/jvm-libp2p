@@ -199,6 +199,9 @@ class QuicTransport(
             .initialMaxStreamsBidirectional(config.maxStreamsBidirectional)
             .initialMaxStreamDataBidirectionalRemote(config.maxStreamDataRemote)
             .initialMaxStreamDataBidirectionalLocal(config.maxStreamDataLocal)
+            .initialMaxStreamsUnidirectional(0) // libp2p QUIC uses bidirectional streams only
+            .activeMigration(false) // disable until address-change handling is implemented
+            // Note: spin bit is not configurable in Netty's QUIC codec; quiche disables it by default
             .statelessResetToken(deriveStatelessResetToken())
             .build()
 
@@ -396,6 +399,9 @@ class QuicTransport(
             .initialMaxStreamsBidirectional(config.maxStreamsBidirectional)
             .initialMaxStreamDataBidirectionalRemote(config.maxStreamDataRemote)
             .initialMaxStreamDataBidirectionalLocal(config.maxStreamDataLocal)
+            .initialMaxStreamsUnidirectional(0) // libp2p QUIC uses bidirectional streams only
+            .activeMigration(false) // disable until address-change handling is implemented
+            // Note: spin bit is not configurable in Netty's QUIC codec; quiche disables it by default
             .statelessResetToken(deriveStatelessResetToken())
             .streamHandler(InboundStreamHandler(incomingMultistreamProtocol, protocols))
             .build()
