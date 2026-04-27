@@ -199,6 +199,7 @@ class QuicTransport(
             .initialMaxStreamsBidirectional(config.maxStreamsBidirectional)
             .initialMaxStreamDataBidirectionalRemote(config.maxStreamDataRemote)
             .initialMaxStreamDataBidirectionalLocal(config.maxStreamDataLocal)
+            .statelessResetToken(deriveStatelessResetToken())
             .build()
 
         return client.clone()
@@ -297,6 +298,17 @@ class QuicTransport(
             addr.has(QUICV1) &&
             !addr.has(WS)
 
+    private fun deriveStatelessResetToken(): ByteArray {
+        // Derive a deterministic 16-byte token from the local identity key.
+        // Using SHA-256 of (key_bytes + magic), truncated to 16 bytes.
+        val keyBytes = localKey.raw()
+        val magic = "libp2p-quic-stateless-reset".toByteArray(Charsets.UTF_8)
+        val digest = java.security.MessageDigest.getInstance("SHA-256")
+        digest.update(keyBytes)
+        digest.update(magic)
+        return digest.digest().copyOf(16)
+    }
+
     fun quicSslContext(isClient: Boolean, trustManager: Libp2pTrustManager): QuicSslContext {
         val connectionKeys = if (certAlgorithm == "ECDSA") generateEcdsaKeyPair() else generateEd25519KeyPair()
         val javaPrivateKey = getJavaKey(connectionKeys.first)
@@ -384,6 +396,7 @@ class QuicTransport(
             .initialMaxStreamsBidirectional(config.maxStreamsBidirectional)
             .initialMaxStreamDataBidirectionalRemote(config.maxStreamDataRemote)
             .initialMaxStreamDataBidirectionalLocal(config.maxStreamDataLocal)
+            .statelessResetToken(deriveStatelessResetToken())
             .streamHandler(InboundStreamHandler(incomingMultistreamProtocol, protocols))
             .build()
     }
