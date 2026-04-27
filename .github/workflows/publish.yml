@@ -3,6 +3,14 @@ on:
   push:
     branches:
       - "develop"
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - '.gitignore'
+      - 'LICENSE-APACHE'
+      - 'LICENSE-MIT'
+      - 'funding.json'
+      - '.github/ISSUE_TEMPLATE/**'
 jobs:
   publish:
     runs-on: ubuntu-latest
