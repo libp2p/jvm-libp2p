@@ -316,11 +316,13 @@ class QuicTransport(
                         "quic-handshake-waiter",
                         object : ChannelInboundHandlerAdapter() {
                             override fun channelActive(ctx: ChannelHandlerContext) {
-                                // Now the handshake is complete and remoteCert should be available
-                                val remoteCert = trustManager.remoteCert
-                                if (remoteCert != null) {
-                                    val remotePeerId = verifyAndExtractPeerId(arrayOf(remoteCert))
-                                    val remotePublicKey = getPublicKeyFromCert(arrayOf(remoteCert))
+                                // Extract peer certificates from this connection's SSL session,
+                                // avoiding the race condition of reading shared TrustManager state.
+                                val peerCerts = (ctx.channel() as QuicChannel).sslEngine()
+                                    ?.session?.peerCertificates
+                                if (!peerCerts.isNullOrEmpty()) {
+                                    val remotePeerId = verifyAndExtractPeerId(peerCerts)
+                                    val remotePublicKey = getPublicKeyFromCert(peerCerts)
 
                                     logger.info("Handshake completed with remote peer id: {}", remotePeerId)
 

@@ -23,6 +23,8 @@ import io.libp2p.security.noise.NoiseXXSecureChannel;
 import io.libp2p.security.tls.TlsSecureChannel;
 import io.libp2p.transport.tcp.TcpTransport;
 import io.netty.handler.logging.LogLevel;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -490,5 +492,56 @@ public class QuicServerTestJava {
     Pair<PrivKey, PubKey> pair = KeyKt.generateKeyPair(KeyType.SECP256K1);
     PeerId peerId = PeerId.fromPubKey(pair.component2());
     System.out.println("PeerId: " + peerId.toHex());
+  }
+
+  @Test
+  void concurrentInboundConnections() throws Exception {
+    String localListenAddress = "/ip4/127.0.0.1/udp/" + getPort() + "/quic-v1";
+
+    Host serverHost =
+        new HostBuilder()
+            .keyType(KeyType.ED25519)
+            .secureTransport(QuicTransport::ECDSA)
+            .listen(localListenAddress)
+            .build();
+
+    serverHost.start().get(5, TimeUnit.SECONDS);
+    System.out.println("Server started: " + serverHost.getPeerId());
+
+    int numClients = 5;
+    List<Host> clientHosts = new ArrayList<>();
+    List<CompletableFuture<PeerId>> remotePeerIdFutures = new ArrayList<>();
+
+    for (int i = 0; i < numClients; i++) {
+      Host clientHost =
+          new HostBuilder().keyType(KeyType.ED25519).secureTransport(QuicTransport::ECDSA).build();
+      clientHost.start().get(5, TimeUnit.SECONDS);
+      clientHosts.add(clientHost);
+
+      CompletableFuture<PeerId> remotePeerIdFuture =
+          clientHost
+              .getNetwork()
+              .connect(serverHost.getPeerId(), new Multiaddr(localListenAddress))
+              .thenApply(conn -> conn.secureSession().getRemoteId());
+      remotePeerIdFutures.add(remotePeerIdFuture);
+    }
+
+    CompletableFuture<Void> allConnected =
+        CompletableFuture.allOf(remotePeerIdFutures.toArray(new CompletableFuture[0]));
+    allConnected.get(15, TimeUnit.SECONDS);
+
+    for (int i = 0; i < numClients; i++) {
+      PeerId reportedRemoteId = remotePeerIdFutures.get(i).get();
+      Assertions.assertEquals(
+          serverHost.getPeerId(),
+          reportedRemoteId,
+          "Client " + i + " should report the correct server PeerId");
+    }
+    System.out.println("All " + numClients + " concurrent connections reported correct PeerId");
+
+    for (Host clientHost : clientHosts) {
+      clientHost.stop().get(5, TimeUnit.SECONDS);
+    }
+    serverHost.stop().get(5, TimeUnit.SECONDS);
   }
 }
