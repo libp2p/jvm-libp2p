@@ -43,6 +43,15 @@ import java.util.*
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 
+/**
+ * QUIC transport for libp2p using QUIC v1 (RFC 9000) with TLS 1.3.
+ *
+ * Security and multiplexing are native to QUIC — no separate Noise/TLS negotiation
+ * or Yamux/Mplex negotiation is performed. Only `/quic-v1` multiaddrs are supported.
+ *
+ * **Private networks (PSK) are not supported.** QUIC's mandatory TLS 1.3 cannot be
+ * replaced with a pre-shared key scheme. Do not configure a PSK alongside this transport.
+ */
 class QuicTransport(
     private val localKey: PrivKey,
     private val certAlgorithm: String,
