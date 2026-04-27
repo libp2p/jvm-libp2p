@@ -17,7 +17,8 @@ class PartialSubscriptionWireTest : GossipTestsBase() {
 
     private fun newTest() = TwoRoutersTest(
         protocol = PubsubProtocol.Gossip_V_1_3,
-        enabledGossipExtensions = listOf(GossipExtension.PARTIAL_MESSAGES)
+        enabledGossipExtensions = listOf(GossipExtension.PARTIAL_MESSAGES),
+        partialMessagesHandler = nopPartialMessagesHandler,
     )
 
     private fun Rpc.RPC.firstSubscribeFor(topic: String): Rpc.RPC.SubOpts? =
