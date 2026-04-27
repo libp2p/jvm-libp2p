@@ -9,5 +9,5 @@ dependencies {
 }
 
 application {
-  mainClassName = 'io.libp2p.example.Pinger'
+  mainClassName = 'io.libp2p.example.ping.Pinger'
 }
