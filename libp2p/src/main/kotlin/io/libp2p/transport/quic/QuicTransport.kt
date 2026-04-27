@@ -214,19 +214,35 @@ class QuicTransport(
             .thenApply {
                 registerChannel(it)
                 val connection = ConnectionOverNetty(it, this@QuicTransport, true)
-
                 connection.setMuxerSession(QuicMuxerSession(it, connection))
 
-                val pubHash = Multihash.of(addr.getPeerId()!!.bytes.toByteBuf())
-                val remotePubKey = if (pubHash.desc.digest == Multihash.Digest.Identity) {
-                    unmarshalPublicKey(pubHash.bytes.toByteArray())
+                val peerCerts = it.sslEngine()?.session?.peerCertificates
+                    ?: throw Libp2pException("No peer certificates available after QUIC handshake with $addr")
+
+                val expectedPeerId = addr.getPeerId()
+                val remotePeerId: PeerId
+                val remotePubKey: io.libp2p.core.crypto.PubKey
+
+                if (expectedPeerId != null) {
+                    // PeerId was pre-validated by trustManager during TLS handshake.
+                    // For inline-key peerIds (identity multihash), extract pubkey from the multihash.
+                    val pubHash = Multihash.of(expectedPeerId.bytes.toByteBuf())
+                    remotePubKey = if (pubHash.desc.digest == Multihash.Digest.Identity) {
+                        unmarshalPublicKey(pubHash.bytes.toByteArray())
+                    } else {
+                        getPublicKeyFromCert(peerCerts)
+                    }
+                    remotePeerId = expectedPeerId
                 } else {
-                    getPublicKeyFromCert(arrayOf(trustManager.remoteCert!!))
+                    // No PeerId known upfront — extract from TLS certificate post-handshake.
+                    remotePubKey = getPublicKeyFromCert(peerCerts)
+                    remotePeerId = verifyAndExtractPeerId(peerCerts)
                 }
+
                 connection.setSecureSession(
                     SecureChannel.Session(
                         PeerId.fromPubKey(localKey.publicKey()),
-                        addr.getPeerId()!!,
+                        remotePeerId,
                         remotePubKey,
                         null
                     )

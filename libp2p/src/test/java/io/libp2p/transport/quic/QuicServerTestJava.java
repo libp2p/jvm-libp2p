@@ -495,6 +495,54 @@ public class QuicServerTestJava {
   }
 
   @Test
+  void dialWithoutPeerIdExtractsPeerIdFromCert() throws Exception {
+    String localListenAddress = "/ip4/127.0.0.1/udp/" + getPort() + "/quic-v1";
+
+    Pair<PrivKey, PubKey> serverKeyPair = KeyKt.generateKeyPair(KeyType.ED25519);
+    Pair<PrivKey, PubKey> clientKeyPair = KeyKt.generateKeyPair(KeyType.ED25519);
+    PeerId serverPeerId = PeerId.fromPubKey(serverKeyPair.component2());
+
+    List<io.libp2p.core.multistream.ProtocolBinding<?>> emptyProtocols = new ArrayList<>();
+
+    QuicTransport serverTransport = QuicTransport.ECDSA(serverKeyPair.component1(), emptyProtocols);
+    QuicTransport clientTransport = QuicTransport.ECDSA(clientKeyPair.component1(), emptyProtocols);
+
+    serverTransport.initialize();
+    clientTransport.initialize();
+
+    CompletableFuture<PeerId> serverSidePeerId = new CompletableFuture<>();
+    serverTransport
+        .listen(
+            new Multiaddr(localListenAddress),
+            conn -> serverSidePeerId.complete(conn.secureSession().getRemoteId()),
+            null)
+        .get(5, TimeUnit.SECONDS);
+    System.out.println("Server started: " + serverPeerId);
+
+    // Dial WITHOUT a /p2p/ component — no PeerId in the address
+    Multiaddr addrWithoutPeerId = new Multiaddr(localListenAddress);
+    CompletableFuture<PeerId> clientSidePeerId = new CompletableFuture<>();
+    Connection connection =
+        clientTransport
+            .dial(
+                addrWithoutPeerId,
+                conn -> clientSidePeerId.complete(conn.secureSession().getRemoteId()),
+                null)
+            .get(10, TimeUnit.SECONDS);
+
+    PeerId reportedRemoteId = clientSidePeerId.get(5, TimeUnit.SECONDS);
+    Assertions.assertEquals(
+        serverPeerId,
+        reportedRemoteId,
+        "PeerId extracted from TLS cert should match the server's actual PeerId");
+
+    System.out.println("Dialed without PeerId, got remote PeerId: " + reportedRemoteId);
+
+    serverTransport.close().get(5, TimeUnit.SECONDS);
+    clientTransport.close().get(5, TimeUnit.SECONDS);
+  }
+
+  @Test
   void concurrentInboundConnections() throws Exception {
     String localListenAddress = "/ip4/127.0.0.1/udp/" + getPort() + "/quic-v1";
 
