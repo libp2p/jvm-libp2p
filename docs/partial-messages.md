@@ -373,7 +373,7 @@ Mirror this checklist in issue #435.
       didn't request" MUST.
 - [x] **Step 5** — End-to-end integration test with a trivial bitmap-based
       handler. Exercises Steps 1-4 before any routing changes.
-- [ ] **Step 6** — Routing: full-message suppression (§5.1).
+- [x] **Step 6** — Routing: full-message suppression (§5.1).
 - [ ] **Step 7** — Routing: IDONTWANT suppression (§5.2).
 - [ ] **Step 8** — Heartbeat tick + TTL GC + cleanup hooks (§6.4).
 - [ ] **Step 9** — Routing: IHAVE replacement with `onEmitGossip` (§5.3).

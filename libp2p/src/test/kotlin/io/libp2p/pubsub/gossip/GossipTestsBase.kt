@@ -55,10 +55,20 @@ abstract class GossipTestsBase {
         val mockRouterCount: Int = 10,
         val params: GossipParams = GossipParams(),
         val scoreParams: GossipScoreParams = GossipScoreParams(),
-        val protocol: PubsubProtocol = PubsubProtocol.Gossip_V_1_1
+        val protocol: PubsubProtocol = PubsubProtocol.Gossip_V_1_1,
+        val enabledGossipExtensions: List<GossipExtension> = listOf(),
+        val partialMessagesHandler: PartialMessagesHandler<*>? = null,
     ) {
         val fuzz = DeterministicFuzz()
-        val gossipRouterBuilderFactory = { GossipRouterBuilder(protocol = protocol, params = params, scoreParams = scoreParams) }
+        val gossipRouterBuilderFactory = {
+            GossipRouterBuilder(
+                protocol = protocol,
+                params = params,
+                scoreParams = scoreParams,
+                enabledGossipExtensions = enabledGossipExtensions,
+                partialMessagesHandler = partialMessagesHandler,
+            )
+        }
         val router0 = fuzz.createTestRouter(createGossipFuzzRouterFactory(gossipRouterBuilderFactory))
         val routers = (0 until mockRouterCount).map { fuzz.createTestRouter(createMockFuzzRouterFactory()) }
         val connections = mutableListOf<SemiduplexConnection>()

@@ -579,6 +579,7 @@ open class GossipRouter(
                 .plus(peersFromMesh)
                 .distinct()
                 .minus(receivedFrom)
+                .filterNot { peerRequestsPartialForMessage(it, pubMsg.topics) }
                 .filterNot { peerDoesNotWantMessage(it, pubMsg.messageId) }
                 .forEach { submitPublishMessage(it, pubMsg) }
             mCache += pubMsg
@@ -603,6 +604,7 @@ open class GossipRouter(
         return if (peers.isNotEmpty()) {
             iDontWant(msg)
             val publishedMessages = peers
+                .filterNot { peerRequestsPartialForMessage(it, msg.topics) }
                 .filterNot { peerDoesNotWantMessage(it, msg.messageId) }
                 .map { submitPublishMessage(it, msg) }
             if (publishedMessages.isEmpty()) {
@@ -835,6 +837,12 @@ open class GossipRouter(
         if (mesh[topic]?.remove(peer) == true) {
             notifyPruned(peer, topic)
         }
+    }
+
+    private fun peerRequestsPartialForMessage(peer: PeerHandler, topics: Collection<Topic>): Boolean {
+        if (!gossipExtensionsState.partialMessagesEnabled()) return false
+        if (!gossipExtensionsState.peerSupportsPartialMessages(peer.peerId)) return false
+        return topics.any { partialSubscriptionState.peerRequestsPartial(it, peer.peerId) }
     }
 
     private fun peerDoesNotWantMessage(peer: PeerHandler, messageId: MessageId): Boolean {
