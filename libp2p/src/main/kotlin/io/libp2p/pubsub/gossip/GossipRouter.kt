@@ -7,6 +7,7 @@ import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.etc.types.*
 import io.libp2p.etc.util.P2PService
 import io.libp2p.pubsub.*
+import io.libp2p.pubsub.gossip.partialmessages.PartialMessagesAdapter
 import org.slf4j.LoggerFactory
 import pubsub.pb.Rpc
 import java.time.Duration
@@ -135,6 +136,7 @@ open class GossipRouter(
 
     val gossipExtensionsState = GossipExtensionsState(gossipExtensionsConfig)
     val partialSubscriptionState = PartialSubscriptionState()
+    internal var partialMessages: PartialMessagesAdapter? = null
 
     /**
      * Local per-topic subscription options that affect outbound subscribe announcements.
