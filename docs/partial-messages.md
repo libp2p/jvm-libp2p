@@ -364,7 +364,7 @@ Mirror this checklist in issue #435.
       `PublishAction<PeerState>` (with `nextPeerState`),
       `PublishActionsFn<PeerState>`, `PartialMessagesPeerFeedback`, and
       `GroupState` container with TTL + DoS caps. No routing yet.
-- [ ] **Step 3** — Inbound `RPC.partial` dispatch: replace the stub at
+- [x] **Step 3** — Inbound `RPC.partial` dispatch: replace the stub at
       `GossipRouter.kt:476` with the full flow (validate caps, create/update
       group state, call `onIncomingRpc`).
 - [ ] **Step 4** — Outbound `publishPartial(...)` on the `Gossip` facade;
