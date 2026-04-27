@@ -525,12 +525,19 @@ open class GossipRouter(
         partialMessagesExtension: Rpc.PartialMessagesExtension,
         receivedFrom: PeerHandler
     ) {
-        logger.trace(
-            "Processing partial message extension message {} from {}",
-            partialMessagesExtension.toString(),
-            receivedFrom.peerId
-        )
-        // TODO: implement partial message handling (https://github.com/libp2p/jvm-libp2p/issues/435)
+        val topic = partialMessagesExtension.topicID
+        if (!partialMessagesExtension.hasTopicID() || topic.isEmpty()) {
+            logger.debug("Dropping partial message from {}: missing topicID", receivedFrom.peerId)
+            return
+        }
+
+        if (!partialMessagesExtension.hasGroupID() || partialMessagesExtension.groupID.isEmpty) {
+            logger.debug("Dropping partial message from {}: missing groupID", receivedFrom.peerId)
+            return
+        }
+
+        logger.trace("Processing partial message extension for topic {} from {}", topic, receivedFrom.peerId)
+        partialMessages?.onIncomingRpc(topic, receivedFrom.peerId, partialMessagesExtension)
     }
 
     override fun broadcastInbound(msgs: List<PubsubMessage>, receivedFrom: PeerHandler) {
