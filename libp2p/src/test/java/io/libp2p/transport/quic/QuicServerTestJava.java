@@ -160,7 +160,9 @@ public class QuicServerTestJava {
     serverHost.stop().get(5, TimeUnit.SECONDS);
   }
 
-  @Disabled("Runs too long")
+  @Disabled(
+      "Requires active traffic or keep-alive pings; idle timeout without keep-alive will close"
+          + " idle connections. TODO: enable once keep-alive PING frames are configured.")
   @Test
   void checkConnectionIsNotClosedByTimeout() throws Exception {
     String localListenAddress = "/ip4/127.0.0.1/udp/" + getPort() + "/quic-v1";

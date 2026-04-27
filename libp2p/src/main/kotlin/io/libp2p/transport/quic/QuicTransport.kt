@@ -39,21 +39,22 @@ import io.netty.handler.ssl.ClientAuth
 import org.slf4j.LoggerFactory
 import java.net.InetSocketAddress
 import java.net.SocketAddress
-import java.time.Duration
 import java.util.*
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.TimeUnit
 
 class QuicTransport(
     private val localKey: PrivKey,
     private val certAlgorithm: String,
-    private val protocols: List<ProtocolBinding<*>>
+    private val protocols: List<ProtocolBinding<*>>,
+    private val config: QuicConfig = QuicConfig()
 ) : NettyTransport {
 
     private val logger = LoggerFactory.getLogger(QuicTransport::class.java)
 
     private var closed = false
 
-    private val connectTimeout = Duration.ofSeconds(15)
+    private val connectTimeout get() = config.connectTimeout
 
     private val listeners = mutableMapOf<Multiaddr, Channel>()
     private val channels = mutableListOf<Channel>()
@@ -67,13 +68,15 @@ class QuicTransport(
 
     companion object {
         @JvmStatic
-        fun Ed25519(k: PrivKey, p: List<ProtocolBinding<*>>): QuicTransport {
-            return QuicTransport(k, "Ed25519", p)
+        @JvmOverloads
+        fun Ed25519(k: PrivKey, p: List<ProtocolBinding<*>>, config: QuicConfig = QuicConfig()): QuicTransport {
+            return QuicTransport(k, "Ed25519", p, config)
         }
 
         @JvmStatic
-        fun ECDSA(k: PrivKey, p: List<ProtocolBinding<*>>): QuicTransport {
-            return QuicTransport(k, "ECDSA", p)
+        @JvmOverloads
+        fun ECDSA(k: PrivKey, p: List<ProtocolBinding<*>>, config: QuicConfig = QuicConfig()): QuicTransport {
+            return QuicTransport(k, "ECDSA", p, config)
         }
 
         private fun createStream(channel: QuicStreamChannel, connection: Connection, initiator: Boolean): Stream {
@@ -191,10 +194,11 @@ class QuicTransport(
         val requestsHandler = QuicClientCodecBuilder()
             .sslEngineProvider { q -> sslContext.newEngine(q.alloc()) }
             .sslTaskExecutor(workerGroup)
-            .initialMaxData(1 shl 20)
-            .initialMaxStreamsBidirectional(64)
-            .initialMaxStreamDataBidirectionalRemote(1 shl 18)
-            .initialMaxStreamDataBidirectionalLocal(1 shl 18)
+            .maxIdleTimeout(config.idleTimeout.toMillis(), TimeUnit.MILLISECONDS)
+            .initialMaxData(config.maxConnectionData)
+            .initialMaxStreamsBidirectional(config.maxStreamsBidirectional)
+            .initialMaxStreamDataBidirectionalRemote(config.maxStreamDataRemote)
+            .initialMaxStreamDataBidirectionalLocal(config.maxStreamDataLocal)
             .build()
 
         return client.clone()
@@ -375,10 +379,11 @@ class QuicTransport(
                     )
                 }
             )
-            .initialMaxData(1 shl 20)
-            .initialMaxStreamsBidirectional(64)
-            .initialMaxStreamDataBidirectionalRemote(1 shl 18)
-            .initialMaxStreamDataBidirectionalLocal(1 shl 18)
+            .maxIdleTimeout(config.idleTimeout.toMillis(), TimeUnit.MILLISECONDS)
+            .initialMaxData(config.maxConnectionData)
+            .initialMaxStreamsBidirectional(config.maxStreamsBidirectional)
+            .initialMaxStreamDataBidirectionalRemote(config.maxStreamDataRemote)
+            .initialMaxStreamDataBidirectionalLocal(config.maxStreamDataLocal)
             .streamHandler(InboundStreamHandler(incomingMultistreamProtocol, protocols))
             .build()
     }
