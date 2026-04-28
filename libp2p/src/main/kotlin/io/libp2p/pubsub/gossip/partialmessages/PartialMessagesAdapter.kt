@@ -19,6 +19,16 @@ internal interface PartialMessagesAdapter {
     fun onIncomingRpc(topic: Topic, from: PeerId, rpc: Rpc.PartialMessagesExtension)
 
     /**
+     * Called from [io.libp2p.pubsub.gossip.GossipRouter.emitGossip] for each topic where we
+     * support sending partial and at least one gossip candidate requested partial.
+     *
+     * Iterates all locally-initiated groups under [topic] and invokes
+     * [PartialMessagesHandler.onEmitGossip] once per group with [partialPeers] as the
+     * gossip-target set. No-op if [partialPeers] is empty or there are no locally-initiated groups.
+     */
+    fun onEmitGossip(topic: Topic, partialPeers: Collection<PeerId>)
+
+    /**
      * Executes the client's [PublishActionsFn], updates group state, and enqueues
      * outbound [Rpc.PartialMessagesExtension] RPCs via [enqueueFn].
      *
@@ -56,6 +66,15 @@ internal class PartialMessagesAdapterImpl<PeerState>(
         val groupId = rpc.groupID.toByteArray().toGroupId()
         val groupState = stateStore.getOrCreatePeerGroup(topic, groupId, from) ?: return
         handler.onIncomingRpc(from, groupState.peerStates, rpc, feedback)
+    }
+
+    override fun onEmitGossip(topic: Topic, partialPeers: Collection<PeerId>) {
+        if (partialPeers.isEmpty()) return
+        for ((groupId, groupState) in stateStore.groupsForTopic(topic)) {
+            if (!groupState.peerInitiated) {
+                handler.onEmitGossip(topic, groupId.bytes, partialPeers, groupState.peerStates, feedback)
+            }
+        }
     }
 
     @Suppress("UNCHECKED_CAST")

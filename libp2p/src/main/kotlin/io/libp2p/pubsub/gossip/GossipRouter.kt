@@ -818,9 +818,22 @@ open class GossipRouter(
         val peers = (getTopicPeers(topic) - excludePeers)
             .filter { score.score(it.peerId) >= scoreParams.gossipThreshold && !isDirect(it) }
 
-        peers.shuffled(random)
+        val selected = peers.shuffled(random)
             .take(max((params.gossipFactor * peers.size).toInt(), params.DLazy))
-            .forEach { enqueueIhave(it, shuffledMessageIds, topic) }
+
+        // §5.3: partition gossip targets into full-message peers and partial-capable peers.
+        // Skip IHAVE for partial peers; call onEmitGossip for locally-initiated groups instead.
+        val adapter = partialMessages
+        if (adapter != null && localTopicPartialFlags[topic]?.supportsSendingPartial == true) {
+            val (partialPeers, fullPeers) = selected.partition { peer ->
+                gossipExtensionsState.peerSupportsPartialMessages(peer.peerId) &&
+                    partialSubscriptionState.peerRequestsPartial(topic, peer.peerId)
+            }
+            fullPeers.forEach { enqueueIhave(it, shuffledMessageIds, topic) }
+            adapter.onEmitGossip(topic, partialPeers.map { it.peerId })
+        } else {
+            selected.forEach { enqueueIhave(it, shuffledMessageIds, topic) }
+        }
     }
 
     private fun graft(peer: PeerHandler, topic: Topic) {
