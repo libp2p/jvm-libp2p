@@ -860,7 +860,19 @@ open class GossipRouter(
             .flatten()
             .distinct()
             .minus(setOfNotNull(receivedFrom))
+            .filterNot { shouldSkipIDontWantForPeer(it, msg.topics) }
             .forEach { sendIdontwant(it, msg.messageId) }
+    }
+
+    // §5.2: skip IDONTWANT to peer P for topic T when we requested partial from P and P supports sending partial.
+    // Sending IDONTWANT would be redundant — P is expected to send partial RPCs instead of full messages.
+    private fun shouldSkipIDontWantForPeer(peer: PeerHandler, topics: Collection<Topic>): Boolean {
+        if (!gossipExtensionsState.partialMessagesEnabled()) return false
+        if (!gossipExtensionsState.peerSupportsPartialMessages(peer.peerId)) return false
+        return topics.any { topic ->
+            (localTopicPartialFlags[topic]?.requestsPartial == true) &&
+                partialSubscriptionState.peerSupportsSendingPartial(topic, peer.peerId)
+        }
     }
 
     private fun enqueuePrune(peer: PeerHandler, topic: Topic) {

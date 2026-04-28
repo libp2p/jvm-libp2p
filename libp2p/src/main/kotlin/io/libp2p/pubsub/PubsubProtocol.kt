@@ -26,7 +26,7 @@ enum class PubsubProtocol(val announceStr: ProtocolId) {
      * https://github.com/libp2p/specs/blob/master/pubsub/gossipsub/gossipsub-v1.2.md#idontwant-message
      */
     fun supportsIDontWant(): Boolean {
-        return this == Gossip_V_1_2
+        return this == Gossip_V_1_2 || this == Gossip_V_1_3
     }
 
     /**

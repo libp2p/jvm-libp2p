@@ -10,8 +10,8 @@ import io.libp2p.pubsub.gossip.Gossip
 import io.libp2p.pubsub.gossip.GossipExtension
 import io.libp2p.pubsub.gossip.GossipRouter
 import io.libp2p.pubsub.gossip.builders.GossipRouterBuilder
-import io.libp2p.pubsub.gossip.partialmessages.PartialMessagesPeerFeedback
 import io.libp2p.pubsub.gossip.partialmessages.PartialMessagesHandler
+import io.libp2p.pubsub.gossip.partialmessages.PartialMessagesPeerFeedback
 import io.libp2p.pubsub.gossip.partialmessages.PublishAction
 import io.libp2p.pubsub.gossip.partialmessages.PublishActionsFn
 import io.libp2p.security.noise.NoiseXXSecureChannel
@@ -166,7 +166,8 @@ class PartialMessagesEndToEndTest {
         val peer2Id = host2.peerId
 
         gossip1.publishPartial(
-            topic, groupId,
+            topic,
+            groupId,
             PublishActionsFn<ByteArray> { _, _ ->
                 sequenceOf(peer2Id to PublishAction(partialMessage = partPayload, partsMetadata = metaBitmap))
             },
@@ -193,7 +194,8 @@ class PartialMessagesEndToEndTest {
         val n1Meta = byteArrayOf(0x01) // node1 has part 0
 
         gossip1.publishPartial(
-            topic, groupId,
+            topic,
+            groupId,
             PublishActionsFn<ByteArray> { _, _ ->
                 sequenceOf(peer2Id to PublishAction(partialMessage = n1Payload, partsMetadata = n1Meta))
             },
@@ -205,7 +207,8 @@ class PartialMessagesEndToEndTest {
         val n2Meta = byteArrayOf(0x02) // node2 has part 1
 
         gossip2.publishPartial(
-            topic, groupId,
+            topic,
+            groupId,
             PublishActionsFn<ByteArray> { _, _ ->
                 sequenceOf(peer1Id to PublishAction(partialMessage = n2Payload, partsMetadata = n2Meta))
             },
@@ -237,7 +240,8 @@ class PartialMessagesEndToEndTest {
 
         // First publish: store nextPeerState = 0x01 ("sent part 0 to peer2").
         gossip1.publishPartial(
-            topic, groupId,
+            topic,
+            groupId,
             PublishActionsFn<ByteArray> { _, _ ->
                 sequenceOf(peer2Id to PublishAction(partsMetadata = byteArrayOf(0x03), nextPeerState = byteArrayOf(0x01)))
             },
@@ -245,7 +249,8 @@ class PartialMessagesEndToEndTest {
 
         // Second publish: decide() should observe peerStates[peer2Id] = 0x01.
         gossip1.publishPartial(
-            topic, groupId,
+            topic,
+            groupId,
             PublishActionsFn<ByteArray> { peerStates, _ ->
                 statesSeenInSecondCall += peerStates[peer2Id]?.copyOf()
                 sequenceOf(peer2Id to PublishAction(partsMetadata = byteArrayOf(0x03), nextPeerState = byteArrayOf(0x03)))
@@ -275,7 +280,8 @@ class PartialMessagesEndToEndTest {
         waitForOnEventThread(router1) { router1.partialSubscriptionState.peerSupportsSendingPartial(topic, peer2Id) }
 
         gossip1.publishPartial(
-            topic, groupId,
+            topic,
+            groupId,
             PublishActionsFn<ByteArray> { _, _ ->
                 sequenceOf(
                     peer2Id to PublishAction(
