@@ -215,6 +215,7 @@ open class GossipRouter(
         pendingRpcParts.popQueue(peer) // discard them
         gossipExtensionsState.onPeerDisconnected(peer.peerId)
         partialSubscriptionState.onPeerDisconnected(peer.peerId)
+        partialMessages?.onPeerDisconnected(peer.peerId)
         super.onPeerDisconnected(peer)
     }
 
@@ -703,6 +704,7 @@ open class GossipRouter(
         mesh -= topic
         localTopicPartialFlags -= topic
         partialSubscriptionState.removeTopic(topic)
+        partialMessages?.onTopicUnsubscribed(topic)
     }
 
     private fun catchingHeartbeat() {
@@ -805,6 +807,7 @@ open class GossipRouter(
             }
 
             mCache.shift()
+            partialMessages?.onHeartbeat()
 
             flushAllPending()
         } catch (t: Exception) {
