@@ -81,7 +81,6 @@ open class GossipRouterBuilder(
         )
 
         router.eventBroadcaster.listeners += gossipRouterEventListeners
-        router.partialMessages = buildPartialMessagesAdapter()
         return router
     }
 
@@ -103,10 +102,12 @@ open class GossipRouterBuilder(
                 "GossipExtension.PARTIAL_MESSAGES is enabled but no partialMessagesHandler was provided"
             )
         }
-        return createGossipRouter()
+        val router = createGossipRouter()
+        router.partialMessages = buildPartialMessagesAdapter()
+        return router
     }
 
-    private fun buildGossipExtensionsConfig(): GossipExtensionsConfig {
+    protected fun buildGossipExtensionsConfig(): GossipExtensionsConfig {
         return GossipExtensionsConfig(
             partialMessagesEnabled = enabledGossipExtensions.contains(GossipExtension.PARTIAL_MESSAGES),
             testExtensionEnabled = enabledGossipExtensions.contains(GossipExtension.TEST_EXTENSION)

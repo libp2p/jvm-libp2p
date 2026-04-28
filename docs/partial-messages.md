@@ -377,7 +377,7 @@ Mirror this checklist in issue #435.
 - [ ] **Step 7** — Routing: IDONTWANT suppression (§5.2).
 - [ ] **Step 8** — Heartbeat tick + TTL GC + cleanup hooks (§6.4).
 - [ ] **Step 9** — Routing: IHAVE replacement with `onEmitGossip` (§5.3).
-- [ ] **Step 10** — Simulator scenario + mixed-peer interop test (partial +
+- [x] **Step 10** — Simulator scenario + mixed-peer interop test (partial +
       non-partial nodes on the same topic).
 
 ---
