@@ -24,7 +24,8 @@ class SimGossipRouter(
     seenMessages: SeenCache<Optional<ValidationResult>>,
     messageValidator: PubsubRouterMessageValidator,
     val serializeToBytes: Boolean,
-    additionalHeartbeatDelay: Duration
+    additionalHeartbeatDelay: Duration,
+    gossipExtensionsConfig: GossipExtensionsConfig = GossipExtensionsConfig(),
 ) : GossipRouter(
     params,
     scoreParams,
@@ -33,7 +34,7 @@ class SimGossipRouter(
     name,
     mCache,
     score,
-    gossipExtensionsConfig = GossipExtensionsConfig(),
+    gossipExtensionsConfig = gossipExtensionsConfig,
     subscriptionTopicSubscriptionFilter,
     protocol,
     executor,

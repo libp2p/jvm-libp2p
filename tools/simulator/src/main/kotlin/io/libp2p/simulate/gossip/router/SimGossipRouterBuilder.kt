@@ -27,7 +27,8 @@ class SimGossipRouterBuilder : GossipRouterBuilder() {
             seenMessages = seenCache,
             messageValidator = messageValidator,
             serializeToBytes = serializeMessagesToBytes,
-            additionalHeartbeatDelay = additionalHeartbeatDelay
+            additionalHeartbeatDelay = additionalHeartbeatDelay,
+            gossipExtensionsConfig = buildGossipExtensionsConfig(),
         )
 
         router.eventBroadcaster.listeners += gossipRouterEventListeners
