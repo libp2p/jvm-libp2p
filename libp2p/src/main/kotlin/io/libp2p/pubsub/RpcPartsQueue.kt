@@ -9,14 +9,23 @@ interface RpcPartsQueue {
     fun addPublish(message: Rpc.Message)
 
     fun addSubscribe(topic: Topic) {
-        addSubscription(topic, SubscriptionStatus.Subscribed)
+        addSubscribe(topic, requestsPartial = false, supportsSendingPartial = false)
+    }
+
+    fun addSubscribe(topic: Topic, requestsPartial: Boolean, supportsSendingPartial: Boolean) {
+        addSubscription(topic, SubscriptionStatus.Subscribed, requestsPartial, supportsSendingPartial)
     }
 
     fun addUnsubscribe(topic: Topic) {
-        addSubscription(topic, SubscriptionStatus.Unsubscribed)
+        addSubscription(topic, SubscriptionStatus.Unsubscribed, requestsPartial = false, supportsSendingPartial = false)
     }
 
-    fun addSubscription(topic: Topic, status: SubscriptionStatus)
+    fun addSubscription(
+        topic: Topic,
+        status: SubscriptionStatus,
+        requestsPartial: Boolean,
+        supportsSendingPartial: Boolean
+    )
 
     fun takeMerged(): List<Rpc.RPC>
 }
@@ -38,11 +47,20 @@ open class DefaultRpcPartsQueue : RpcPartsQueue {
         }
     }
 
-    protected data class SubscriptionPart(val topic: Topic, val status: RpcPartsQueue.SubscriptionStatus) : AbstractPart {
+    protected data class SubscriptionPart(
+        val topic: Topic,
+        val status: RpcPartsQueue.SubscriptionStatus,
+        val requestsPartial: Boolean = false,
+        val supportsSendingPartial: Boolean = false
+    ) : AbstractPart {
         override fun appendToBuilder(builder: Rpc.RPC.Builder) {
-            builder.addSubscriptionsBuilder().apply {
-                setTopicid(topic)
-                setSubscribe(status == RpcPartsQueue.SubscriptionStatus.Subscribed)
+            val subBuilder = builder.addSubscriptionsBuilder()
+            subBuilder.topicid = topic
+            subBuilder.subscribe = status == RpcPartsQueue.SubscriptionStatus.Subscribed
+            // Per spec: partial flags MUST NOT be sent on unsubscribe (subscribe=false).
+            if (status == RpcPartsQueue.SubscriptionStatus.Subscribed) {
+                if (requestsPartial) subBuilder.requestsPartial = true
+                if (supportsSendingPartial) subBuilder.supportsSendingPartial = true
             }
         }
     }
@@ -57,8 +75,13 @@ open class DefaultRpcPartsQueue : RpcPartsQueue {
         addPart(PublishPart(message))
     }
 
-    override fun addSubscription(topic: Topic, status: RpcPartsQueue.SubscriptionStatus) {
-        addPart(SubscriptionPart(topic, status))
+    override fun addSubscription(
+        topic: Topic,
+        status: RpcPartsQueue.SubscriptionStatus,
+        requestsPartial: Boolean,
+        supportsSendingPartial: Boolean
+    ) {
+        addPart(SubscriptionPart(topic, status, requestsPartial, supportsSendingPartial))
     }
 
     override fun takeMerged(): List<Rpc.RPC> {

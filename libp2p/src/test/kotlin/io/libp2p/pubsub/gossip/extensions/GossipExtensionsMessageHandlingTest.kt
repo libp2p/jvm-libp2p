@@ -138,7 +138,8 @@ class GossipExtensionsMessageHandlingTest : GossipTestsBase() {
             enabledGossipExtensions = listOf(
                 GossipExtension.TEST_EXTENSION,
                 GossipExtension.PARTIAL_MESSAGES
-            )
+            ),
+            partialMessagesHandler = nopPartialMessagesHandler,
         )
 
         val receivedMessage = test.mockRouter.waitForMessage(
@@ -198,6 +199,7 @@ class GossipExtensionsMessageHandlingTest : GossipTestsBase() {
         val test = TwoRoutersTest(
             protocol = PubsubProtocol.Gossip_V_1_3,
             enabledGossipExtensions = listOf(GossipExtension.PARTIAL_MESSAGES),
+            partialMessagesHandler = nopPartialMessagesHandler,
             // Creating GossipScoreParams with behaviourPenaltyWeight (peer bad behavior affecting
             // score). Here we are not interested if the weight is "correct". What we want to see if
             // that a peer is penalized for sending more than one ControlExtensions message.
