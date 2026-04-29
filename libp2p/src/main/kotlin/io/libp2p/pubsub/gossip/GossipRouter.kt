@@ -589,11 +589,16 @@ open class GossipRouter(
 
     override fun subscribe(topic: Topic) {
         super.subscribe(topic)
+        // Peers that are still within their PRUNE backoff window must be excluded when
+        // seeding the mesh on (re-)subscribe; grafting them during backoff is a P7
+        // behaviour-penalty violation in go-libp2p-pubsub scorers and matches the JOIN
+        // path of the reference implementation. Heartbeat-driven mesh maintenance has
+        // always filtered by isBackOff; this path historically did not.
         val fanoutPeers = (fanout[topic] ?: mutableSetOf())
-            .filter { score.score(it.peerId) >= 0 && !isDirect(it) }
+            .filter { score.score(it.peerId) >= 0 && !isDirect(it) && !isBackOff(it, topic) }
         val meshPeers = mesh.getOrPut(topic) { mutableSetOf() }
         val otherPeers = (getTopicPeers(topic) - meshPeers - fanoutPeers)
-            .filter { score.score(it.peerId) >= 0 && !isDirect(it) }
+            .filter { score.score(it.peerId) >= 0 && !isDirect(it) && !isBackOff(it, topic) }
 
         if (meshPeers.size < params.D) {
             val addFromFanout = fanoutPeers.shuffled(random)
