@@ -356,29 +356,39 @@ mergeable.
 
 Mirror this checklist in issue #435.
 
-- [ ] **Step 1** — Per-topic `SubOpts` flag plumbing. Outbound: flags added
+- [x] **Step 1** — Per-topic `SubOpts` flag plumbing. Outbound: flags added
       to subscribe announce RPCs. Inbound: parse flags into a
       `PartialTopicState` (`Map<Topic, Map<PeerId, PartialSubFlags>>`).
       Coercion rule applied on receive. Flags ignored on `subscribe=false`.
-- [ ] **Step 2** — `PartialMessagesHandler<PeerState>` interface,
+      → [PR #460](https://github.com/libp2p/jvm-libp2p/pull/460)
+- [x] **Step 2** — `PartialMessagesHandler<PeerState>` interface,
       `PublishAction<PeerState>` (with `nextPeerState`),
       `PublishActionsFn<PeerState>`, `PartialMessagesPeerFeedback`, and
       `GroupState` container with TTL + DoS caps. No routing yet.
+      → [PR #461](https://github.com/libp2p/jvm-libp2p/pull/461)
 - [x] **Step 3** — Inbound `RPC.partial` dispatch: replace the stub at
       `GossipRouter.kt:476` with the full flow (validate caps, create/update
       group state, call `onIncomingRpc`).
+      → [PR #463](https://github.com/libp2p/jvm-libp2p/pull/463)
 - [x] **Step 4** — Outbound `publishPartial(...)` on the `Gossip` facade;
       route through `GossipRpcPartsQueue` (do **not** bypass — PR #433 got
       this wrong). Enforce the "omit `partialMessage` when peer supports but
       didn't request" MUST.
+      → [PR #465](https://github.com/libp2p/jvm-libp2p/pull/465)
 - [x] **Step 5** — End-to-end integration test with a trivial bitmap-based
       handler. Exercises Steps 1-4 before any routing changes.
+      → [PR #466](https://github.com/libp2p/jvm-libp2p/pull/466)
 - [x] **Step 6** — Routing: full-message suppression (§5.1).
-- [ ] **Step 7** — Routing: IDONTWANT suppression (§5.2).
-- [ ] **Step 8** — Heartbeat tick + TTL GC + cleanup hooks (§6.4).
-- [ ] **Step 9** — Routing: IHAVE replacement with `onEmitGossip` (§5.3).
+      → [PR #467](https://github.com/libp2p/jvm-libp2p/pull/467)
+- [x] **Step 7** — Routing: IDONTWANT suppression (§5.2).
+      → [PR #468](https://github.com/libp2p/jvm-libp2p/pull/468)
+- [x] **Step 8** — Heartbeat tick + TTL GC + cleanup hooks (§6.4).
+      → [PR #469](https://github.com/libp2p/jvm-libp2p/pull/469)
+- [x] **Step 9** — Routing: IHAVE replacement with `onEmitGossip` (§5.3).
+      → [PR #470](https://github.com/libp2p/jvm-libp2p/pull/470)
 - [x] **Step 10** — Simulator scenario + mixed-peer interop test (partial +
       non-partial nodes on the same topic).
+      → [PR #471](https://github.com/libp2p/jvm-libp2p/pull/471)
 
 ---
 
