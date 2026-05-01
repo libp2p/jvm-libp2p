@@ -238,10 +238,11 @@ open class GossipRouter(
     }
 
     override fun onPeerActive(peer: PeerHandler) {
+        // Must queue extensions before super.onPeerActive flushes, so they ship in the first RPC.
+        sendControlExtensions(peer)
         super.onPeerActive(peer)
         eventBroadcaster.notifyConnected(peer.peerId, peer.getRemoteAddress())
         heartbeatTask.hashCode() // force lazy initialization
-        sendControlExtensions(peer)
     }
 
     override fun notifyUnseenMessage(peer: PeerHandler, msg: PubsubMessage) {
