@@ -5,6 +5,7 @@ import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.etc.types.lazyVar
 import io.libp2p.pubsub.*
 import io.libp2p.pubsub.gossip.*
+import io.libp2p.pubsub.gossip.partialmessages.*
 import java.util.*
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
@@ -40,6 +41,13 @@ open class GossipRouterBuilder(
         },
     val gossipRouterEventListeners: MutableList<GossipRouterEventListener> = mutableListOf(),
     val enabledGossipExtensions: List<GossipExtension> = mutableListOf(),
+
+    /**
+     * Client-supplied handler for the partial-messages extension.
+     * Required when [GossipExtension.PARTIAL_MESSAGES] is enabled; a build-time
+     * error is thrown if the extension is enabled without a handler.
+     */
+    var partialMessagesHandler: PartialMessagesHandler<*>? = null,
 ) {
 
     var seenCache: SeenCache<Optional<ValidationResult>> by lazyVar { TTLSeenCache(SimpleSeenCache(), params.seenTTL, currentTimeSupplier) }
@@ -73,12 +81,28 @@ open class GossipRouterBuilder(
         )
 
         router.eventBroadcaster.listeners += gossipRouterEventListeners
+        router.partialMessages = buildPartialMessagesAdapter()
         return router
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun buildPartialMessagesAdapter(): PartialMessagesAdapter? {
+        val handler = partialMessagesHandler ?: return null
+        return PartialMessagesAdapterImpl(
+            handler = handler as PartialMessagesHandler<Any?>,
+            stateStore = PartialGroupStateStore(),
+            feedback = NopPartialMessagesFeedback,
+        )
     }
 
     open fun build(): GossipRouter {
         if (disposed) throw RuntimeException("The builder was already used")
         disposed = true
+        if (enabledGossipExtensions.contains(GossipExtension.PARTIAL_MESSAGES) && partialMessagesHandler == null) {
+            throw IllegalStateException(
+                "GossipExtension.PARTIAL_MESSAGES is enabled but no partialMessagesHandler was provided"
+            )
+        }
         return createGossipRouter()
     }
 
