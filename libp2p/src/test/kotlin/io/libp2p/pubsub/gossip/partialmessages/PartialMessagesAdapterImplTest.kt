@@ -29,8 +29,9 @@ class PartialMessagesAdapterImplTest {
             peerStates: Map<PeerId, String>,
             rpc: Rpc.PartialMessagesExtension,
             feedback: PartialMessagesPeerFeedback
-        ) {
+        ): String? {
             capturedCalls += IncomingRpcCall(from, peerStates, rpc)
+            return null
         }
 
         override fun onEmitGossip(
@@ -153,6 +154,50 @@ class PartialMessagesAdapterImplTest {
 
         assertThat(capturedCalls).hasSize(2)
         assertThat(capturedCalls[0].peerStates).isNotSameAs(capturedCalls[1].peerStates)
+    }
+
+    @Test
+    fun `state returned by onIncomingRpc is visible to subsequent call for same peer`() {
+        val observedStatesOnSecondCall = mutableListOf<Map<PeerId, String>>()
+        val stateAfterFirst = "state-after-first"
+
+        var callCount = 0
+        val statefulHandler = object : PartialMessagesHandler<String> {
+            override fun onIncomingRpc(
+                from: PeerId,
+                peerStates: Map<PeerId, String>,
+                rpc: Rpc.PartialMessagesExtension,
+                feedback: PartialMessagesPeerFeedback
+            ): String? {
+                callCount++
+                return if (callCount == 1) {
+                    stateAfterFirst
+                } else {
+                    observedStatesOnSecondCall += peerStates.toMap()
+                    null
+                }
+            }
+
+            override fun onEmitGossip(
+                topic: Topic,
+                groupId: ByteArray,
+                gossipPeers: Collection<PeerId>,
+                peerStates: Map<PeerId, String>,
+                feedback: PartialMessagesPeerFeedback
+            ) {}
+        }
+
+        val localAdapter = PartialMessagesAdapterImpl(
+            handler = statefulHandler,
+            stateStore = PartialGroupStateStore(groupTtlHeartbeats = 3),
+            feedback = NopPartialMessagesFeedback
+        )
+
+        localAdapter.onIncomingRpc(topic, peer1, buildRpc())
+        localAdapter.onIncomingRpc(topic, peer1, buildRpc())
+
+        assertThat(observedStatesOnSecondCall).hasSize(1)
+        assertThat(observedStatesOnSecondCall[0][peer1]).isEqualTo(stateAfterFirst)
     }
 
     // ---- publishPartial ----

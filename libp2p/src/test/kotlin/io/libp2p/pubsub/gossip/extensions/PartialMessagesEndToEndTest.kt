@@ -58,8 +58,9 @@ class PartialMessagesEndToEndTest {
                 peerStates: Map<PeerId, ByteArray>,
                 rpc: Rpc.PartialMessagesExtension,
                 feedback: PartialMessagesPeerFeedback,
-            ) {
+            ): ByteArray? {
                 sink += InboundCall(from, rpc, peerStates.mapValues { it.value.copyOf() })
+                return null
             }
 
             override fun onEmitGossip(

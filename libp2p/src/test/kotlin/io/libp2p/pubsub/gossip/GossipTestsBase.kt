@@ -28,7 +28,7 @@ abstract class GossipTestsBase {
                 peerStates: Map<PeerId, Unit>,
                 rpc: pubsub.pb.Rpc.PartialMessagesExtension,
                 feedback: PartialMessagesPeerFeedback
-            ) {}
+            ): Unit? = null
 
             override fun onEmitGossip(
                 topic: Topic,

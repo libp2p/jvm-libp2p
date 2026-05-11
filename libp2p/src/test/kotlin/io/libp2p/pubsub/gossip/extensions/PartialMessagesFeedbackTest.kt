@@ -51,8 +51,9 @@ class PartialMessagesFeedbackTest : GossipTestsBase() {
                 peerStates: Map<PeerId, Unit>,
                 rpc: Rpc.PartialMessagesExtension,
                 feedback: PartialMessagesPeerFeedback
-            ) {
+            ): Unit? {
                 feedback.reportFeedback(rpc.topicID, from, FeedbackKind.INVALID)
+                return null
             }
 
             override fun onEmitGossip(
@@ -115,8 +116,9 @@ class PartialMessagesFeedbackTest : GossipTestsBase() {
                     peerStates: Map<PeerId, Unit>,
                     rpc: Rpc.PartialMessagesExtension,
                     feedback: PartialMessagesPeerFeedback
-                ) {
+                ): Unit? {
                     feedback.reportFeedback(rpc.topicID, from, FeedbackKind.USEFUL)
+                    return null
                 }
 
                 override fun onEmitGossip(

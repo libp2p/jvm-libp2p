@@ -23,13 +23,15 @@ interface PartialMessagesHandler<PeerState> {
      *
      * [peerStates] reflects the current state for this (topic, groupId) pair across
      * all peers. The map is a live view — do not retain a reference outside this call.
+     *
+     * Return the updated [PeerState] for [from], or null to leave it unchanged.
      */
     fun onIncomingRpc(
         from: PeerId,
         peerStates: Map<PeerId, PeerState>,
         rpc: Rpc.PartialMessagesExtension,
         feedback: PartialMessagesPeerFeedback
-    )
+    ): PeerState?
 
     /**
      * Called once per locally-initiated group during the gossipsub heartbeat for

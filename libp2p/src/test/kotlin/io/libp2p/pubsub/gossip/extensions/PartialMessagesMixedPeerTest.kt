@@ -63,8 +63,9 @@ class PartialMessagesMixedPeerTest {
                 peerStates: Map<PeerId, ByteArray>,
                 rpc: Rpc.PartialMessagesExtension,
                 feedback: PartialMessagesPeerFeedback,
-            ) {
+            ): ByteArray? {
                 nodeBPartialRpcs += rpc
+                return null
             }
 
             override fun onEmitGossip(
@@ -261,7 +262,7 @@ class PartialMessagesMixedPeerTest {
                 peerStates: Map<PeerId, ByteArray>,
                 rpc: Rpc.PartialMessagesExtension,
                 feedback: PartialMessagesPeerFeedback,
-            ) {}
+            ): ByteArray? = null
 
             override fun onEmitGossip(
                 topic: Topic,

@@ -207,7 +207,7 @@ class PartialMessagesEmitGossipTest : GossipTestsBase() {
                 peerStates: Map<PeerId, Unit>,
                 rpc: Rpc.PartialMessagesExtension,
                 feedback: PartialMessagesPeerFeedback,
-            ) {}
+            ): Unit? = null
 
             override fun onEmitGossip(
                 topic: Topic,
@@ -248,7 +248,7 @@ class PartialMessagesEmitGossipTest : GossipTestsBase() {
                 peerStates: Map<PeerId, Unit>,
                 rpc: Rpc.PartialMessagesExtension,
                 feedback: PartialMessagesPeerFeedback,
-            ) {}
+            ): Unit? = null
 
             override fun onEmitGossip(
                 topic: Topic,
@@ -292,7 +292,7 @@ class PartialMessagesEmitGossipTest : GossipTestsBase() {
                 peerStates: Map<PeerId, Unit>,
                 rpc: Rpc.PartialMessagesExtension,
                 feedback: PartialMessagesPeerFeedback,
-            ) {}
+            ): Unit? = null
 
             override fun onEmitGossip(
                 topic: Topic,

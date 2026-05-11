@@ -65,7 +65,10 @@ internal class PartialMessagesAdapterImpl<PeerState>(
     override fun onIncomingRpc(topic: Topic, from: PeerId, rpc: Rpc.PartialMessagesExtension) {
         val groupId = rpc.groupID.toByteArray().toGroupId()
         val groupState = stateStore.getOrCreatePeerGroup(topic, groupId, from) ?: return
-        handler.onIncomingRpc(from, groupState.peerStates, rpc, feedback)
+        val newState = handler.onIncomingRpc(from, groupState.peerStates, rpc, feedback)
+        if (newState != null) {
+            groupState.peerStates[from] = newState
+        }
     }
 
     override fun onEmitGossip(topic: Topic, partialPeers: Collection<PeerId>) {

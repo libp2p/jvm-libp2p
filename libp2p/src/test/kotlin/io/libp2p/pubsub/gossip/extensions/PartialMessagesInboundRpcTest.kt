@@ -32,8 +32,9 @@ class PartialMessagesInboundRpcTest : GossipTestsBase() {
                 peerStates: Map<PeerId, Unit>,
                 rpc: Rpc.PartialMessagesExtension,
                 feedback: PartialMessagesPeerFeedback
-            ) {
+            ): Unit? {
                 incomingCalls += IncomingCall(from, rpc)
+                return null
             }
 
             override fun onEmitGossip(

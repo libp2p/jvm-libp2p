@@ -12,7 +12,7 @@ import pubsub.pb.Rpc
 class GossipRouterBuilderTest {
 
     private val nopHandler: PartialMessagesHandler<Unit> = object : PartialMessagesHandler<Unit> {
-        override fun onIncomingRpc(from: PeerId, peerStates: Map<PeerId, Unit>, rpc: Rpc.PartialMessagesExtension, feedback: PartialMessagesPeerFeedback) {}
+        override fun onIncomingRpc(from: PeerId, peerStates: Map<PeerId, Unit>, rpc: Rpc.PartialMessagesExtension, feedback: PartialMessagesPeerFeedback): Unit? = null
         override fun onEmitGossip(topic: Topic, groupId: ByteArray, gossipPeers: Collection<PeerId>, peerStates: Map<PeerId, Unit>, feedback: PartialMessagesPeerFeedback) {}
     }
 
