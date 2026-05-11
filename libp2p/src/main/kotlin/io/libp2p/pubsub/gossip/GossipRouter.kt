@@ -181,6 +181,8 @@ open class GossipRouter(
 
         fun enqueue(peerId: PeerId, partialMessage: ByteArray?, partsMetadata: ByteArray?) {
             val peerHandler = activePeers.find { it.peerId == peerId } ?: return
+            if (!gossipExtensionsState.peerSupportsPartialMessages(peerId)) return
+            if (!getTopicPeers(topic).contains(peerHandler)) return
             pendingRpcParts.getQueue(peerHandler).addPartialMessage(topic, groupId, partialMessage, partsMetadata)
         }
 

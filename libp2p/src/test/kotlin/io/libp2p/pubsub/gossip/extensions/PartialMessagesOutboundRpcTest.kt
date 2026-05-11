@@ -135,6 +135,44 @@ class PartialMessagesOutboundRpcTest : GossipTestsBase() {
     }
 
     @Test
+    fun `publishPartial skips peer that did not negotiate ControlExtensions`() {
+        val test = newTest()
+
+        // Peer subscribes to the topic but never sends ControlExtensions (no partial-messages negotiation)
+        test.mockRouter.sendToSingle(subscribeRpc(topicId, requestsPartial = true, supportsSendingPartial = true))
+        test.flushRouter()
+
+        val peerId = test.peerIdOfMockRouter()
+        val actionsFn = PublishActionsFn<Unit> { _, _ ->
+            sequenceOf(peerId to PublishAction(partsMetadata = byteArrayOf(0xBB.toByte())))
+        }
+
+        test.gossipRouter.publishPartial(topicId, groupIdBytes, actionsFn)
+        test.flushRouter()
+
+        assertThat(test.mockRouter.inboundMessages.none { it.hasPartial() }).isTrue()
+    }
+
+    @Test
+    fun `publishPartial skips peer not subscribed to topic`() {
+        val test = newTest()
+
+        // Peer negotiates the extension but is NOT subscribed to topicId
+        test.mockRouter.sendToSingle(controlExtensionsWithPartial())
+        test.flushRouter()
+
+        val peerId = test.peerIdOfMockRouter()
+        val actionsFn = PublishActionsFn<Unit> { _, _ ->
+            sequenceOf(peerId to PublishAction(partsMetadata = byteArrayOf(0xCC.toByte())))
+        }
+
+        test.gossipRouter.publishPartial(topicId, groupIdBytes, actionsFn)
+        test.flushRouter()
+
+        assertThat(test.mockRouter.inboundMessages.none { it.hasPartial() }).isTrue()
+    }
+
+    @Test
     fun `publishPartial two groups produce two separate RPCs`() {
         val test = newTest()
 
