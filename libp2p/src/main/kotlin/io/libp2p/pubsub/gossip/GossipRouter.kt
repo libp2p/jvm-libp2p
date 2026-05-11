@@ -7,6 +7,9 @@ import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.etc.types.*
 import io.libp2p.etc.util.P2PService
 import io.libp2p.pubsub.*
+import io.libp2p.pubsub.gossip.partialmessages.PartialMessagesAdapter
+import io.libp2p.pubsub.gossip.partialmessages.PublishActionsFn
+import io.libp2p.pubsub.gossip.partialmessages.toGroupId
 import org.slf4j.LoggerFactory
 import pubsub.pb.Rpc
 import java.time.Duration
@@ -134,6 +137,56 @@ open class GossipRouter(
     override val pendingRpcParts = PendingRpcPartsMap<GossipRpcPartsQueue> { DefaultGossipRpcPartsQueue(params) }
 
     val gossipExtensionsState = GossipExtensionsState(gossipExtensionsConfig)
+    val partialSubscriptionState = PartialSubscriptionState()
+    internal var partialMessages: PartialMessagesAdapter? = null
+
+    /**
+     * Local per-topic subscription options that affect outbound subscribe announcements.
+     * Accessed only on the pubsub event loop.
+     */
+    private val localTopicPartialFlags: MutableMap<Topic, PartialSubFlags> = mutableMapOf()
+
+    /**
+     * Configures the partial-messages flags advertised on this node's subscribe
+     * announcements for [topic]. Must be called before [subscribe] for the flags
+     * to take effect on the initial announcement; a subsequent call will affect
+     * later re-announcements (e.g. on new peer activation).
+     *
+     * Per spec, the send-side also applies the coercion
+     * `supportsSendingPartial := requestsPartial || supportsSendingPartial`.
+     */
+    fun setTopicPartialFlags(topic: Topic, requestsPartial: Boolean, supportsSendingPartial: Boolean) {
+        runOnEventThread {
+            val coerced = PartialSubFlags.coerce(requestsPartial, supportsSendingPartial)
+            if (coerced == PartialSubFlags.NONE) {
+                localTopicPartialFlags -= topic
+            } else {
+                localTopicPartialFlags[topic] = coerced
+            }
+        }
+    }
+
+    /**
+     * Queues outbound [pubsub.pb.Rpc.PartialMessagesExtension] RPCs for [topic]/[groupId]
+     * by invoking the client's [actionsFn] on the current group state.
+     *
+     * Must be called on the pubsub event thread.
+     */
+    fun publishPartial(topic: Topic, groupId: ByteArray, actionsFn: PublishActionsFn<*>) {
+        val adapter = partialMessages ?: return
+        val gid = groupId.toGroupId()
+
+        fun peerRequestsPartial(peerId: PeerId) =
+            partialSubscriptionState.peerRequestsPartial(topic, peerId)
+
+        fun enqueue(peerId: PeerId, partialMessage: ByteArray?, partsMetadata: ByteArray?) {
+            val peerHandler = activePeers.find { it.peerId == peerId } ?: return
+            pendingRpcParts.getQueue(peerHandler).addPartialMessage(topic, groupId, partialMessage, partsMetadata)
+        }
+
+        adapter.publishPartial(topic, gid, actionsFn, ::peerRequestsPartial, ::enqueue)
+        flushAllPending()
+    }
 
     private fun setBackOff(peer: PeerHandler, topic: Topic) = setBackOff(peer, topic, params.pruneBackoff.toMillis())
     private fun setBackOff(peer: PeerHandler, topic: Topic, delay: Long) {
@@ -161,7 +214,27 @@ open class GossipRouter(
         acceptRequestsWhitelist -= peer
         pendingRpcParts.popQueue(peer) // discard them
         gossipExtensionsState.onPeerDisconnected(peer.peerId)
+        partialSubscriptionState.onPeerDisconnected(peer.peerId)
+        partialMessages?.onPeerDisconnected(peer.peerId)
         super.onPeerDisconnected(peer)
+    }
+
+    override fun enqueueSubscribe(partsQueue: RpcPartsQueue, topic: Topic) {
+        val flags = localTopicPartialFlags[topic] ?: PartialSubFlags.NONE
+        partsQueue.addSubscribe(topic, flags.requestsPartial, flags.supportsSendingPartial)
+    }
+
+    override fun handleMessageSubscriptions(peer: PeerHandler, msg: PubsubSubscription) {
+        super.handleMessageSubscriptions(peer, msg)
+        if (msg.subscribe) {
+            partialSubscriptionState.setPeerFlags(
+                msg.topic,
+                peer.peerId,
+                PartialSubFlags(msg.requestsPartial, msg.supportsSendingPartial)
+            )
+        } else {
+            partialSubscriptionState.removePeerFlags(msg.topic, peer.peerId)
+        }
     }
 
     override fun onPeerActive(peer: PeerHandler) {
@@ -477,12 +550,19 @@ open class GossipRouter(
         partialMessagesExtension: Rpc.PartialMessagesExtension,
         receivedFrom: PeerHandler
     ) {
-        logger.trace(
-            "Processing partial message extension message {} from {}",
-            partialMessagesExtension.toString(),
-            receivedFrom.peerId
-        )
-        // TODO: implement partial message handling (https://github.com/libp2p/jvm-libp2p/issues/435)
+        val topic = partialMessagesExtension.topicID
+        if (!partialMessagesExtension.hasTopicID() || topic.isEmpty()) {
+            logger.debug("Dropping partial message from {}: missing topicID", receivedFrom.peerId)
+            return
+        }
+
+        if (!partialMessagesExtension.hasGroupID() || partialMessagesExtension.groupID.isEmpty) {
+            logger.debug("Dropping partial message from {}: missing groupID", receivedFrom.peerId)
+            return
+        }
+
+        logger.trace("Processing partial message extension for topic {} from {}", topic, receivedFrom.peerId)
+        partialMessages?.onIncomingRpc(topic, receivedFrom.peerId, partialMessagesExtension)
     }
 
     override fun broadcastInbound(msgs: List<PubsubMessage>, receivedFrom: PeerHandler) {
@@ -500,6 +580,7 @@ open class GossipRouter(
                 .plus(peersFromMesh)
                 .distinct()
                 .minus(receivedFrom)
+                .filterNot { peerRequestsPartialForMessage(it, pubMsg.topics) }
                 .filterNot { peerDoesNotWantMessage(it, pubMsg.messageId) }
                 .forEach { submitPublishMessage(it, pubMsg) }
             mCache += pubMsg
@@ -524,6 +605,7 @@ open class GossipRouter(
         return if (peers.isNotEmpty()) {
             iDontWant(msg)
             val publishedMessages = peers
+                .filterNot { peerRequestsPartialForMessage(it, msg.topics) }
                 .filterNot { peerDoesNotWantMessage(it, msg.messageId) }
                 .map { submitPublishMessage(it, msg) }
             if (publishedMessages.isEmpty()) {
@@ -620,6 +702,9 @@ open class GossipRouter(
         super.unsubscribe(topic)
         mesh[topic]?.copy()?.forEach { prune(it, topic) }
         mesh -= topic
+        localTopicPartialFlags -= topic
+        partialSubscriptionState.removeTopic(topic)
+        partialMessages?.onTopicUnsubscribed(topic)
     }
 
     private fun catchingHeartbeat() {
@@ -722,6 +807,7 @@ open class GossipRouter(
             }
 
             mCache.shift()
+            partialMessages?.onHeartbeat()
 
             flushAllPending()
         } catch (t: Exception) {
@@ -737,9 +823,22 @@ open class GossipRouter(
         val peers = (getTopicPeers(topic) - excludePeers)
             .filter { score.score(it.peerId) >= scoreParams.gossipThreshold && !isDirect(it) }
 
-        peers.shuffled(random)
+        val selected = peers.shuffled(random)
             .take(max((params.gossipFactor * peers.size).toInt(), params.DLazy))
-            .forEach { enqueueIhave(it, shuffledMessageIds, topic) }
+
+        // §5.3: partition gossip targets into full-message peers and partial-capable peers.
+        // Skip IHAVE for partial peers; call onEmitGossip for locally-initiated groups instead.
+        val adapter = partialMessages
+        if (adapter != null && localTopicPartialFlags[topic]?.supportsSendingPartial == true) {
+            val (partialPeers, fullPeers) = selected.partition { peer ->
+                gossipExtensionsState.peerSupportsPartialMessages(peer.peerId) &&
+                    partialSubscriptionState.peerRequestsPartial(topic, peer.peerId)
+            }
+            fullPeers.forEach { enqueueIhave(it, shuffledMessageIds, topic) }
+            adapter.onEmitGossip(topic, partialPeers.map { it.peerId })
+        } else {
+            selected.forEach { enqueueIhave(it, shuffledMessageIds, topic) }
+        }
     }
 
     private fun graft(peer: PeerHandler, topic: Topic) {
@@ -754,6 +853,12 @@ open class GossipRouter(
         if (mesh[topic]?.remove(peer) == true) {
             notifyPruned(peer, topic)
         }
+    }
+
+    private fun peerRequestsPartialForMessage(peer: PeerHandler, topics: Collection<Topic>): Boolean {
+        if (!gossipExtensionsState.partialMessagesEnabled()) return false
+        if (!gossipExtensionsState.peerSupportsPartialMessages(peer.peerId)) return false
+        return topics.any { partialSubscriptionState.peerRequestsPartial(it, peer.peerId) }
     }
 
     private fun peerDoesNotWantMessage(peer: PeerHandler, messageId: MessageId): Boolean {
@@ -776,7 +881,19 @@ open class GossipRouter(
             .flatten()
             .distinct()
             .minus(setOfNotNull(receivedFrom))
+            .filterNot { shouldSkipIDontWantForPeer(it, msg.topics) }
             .forEach { sendIdontwant(it, msg.messageId) }
+    }
+
+    // §5.2: skip IDONTWANT to peer P for topic T when we requested partial from P and P supports sending partial.
+    // Sending IDONTWANT would be redundant — P is expected to send partial RPCs instead of full messages.
+    private fun shouldSkipIDontWantForPeer(peer: PeerHandler, topics: Collection<Topic>): Boolean {
+        if (!gossipExtensionsState.partialMessagesEnabled()) return false
+        if (!gossipExtensionsState.peerSupportsPartialMessages(peer.peerId)) return false
+        return topics.any { topic ->
+            (localTopicPartialFlags[topic]?.requestsPartial == true) &&
+                partialSubscriptionState.peerSupportsSendingPartial(topic, peer.peerId)
+        }
     }
 
     private fun enqueuePrune(peer: PeerHandler, topic: Topic) {

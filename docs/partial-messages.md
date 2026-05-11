@@ -364,16 +364,16 @@ Mirror this checklist in issue #435.
       `PublishAction<PeerState>` (with `nextPeerState`),
       `PublishActionsFn<PeerState>`, `PartialMessagesPeerFeedback`, and
       `GroupState` container with TTL + DoS caps. No routing yet.
-- [ ] **Step 3** — Inbound `RPC.partial` dispatch: replace the stub at
+- [x] **Step 3** — Inbound `RPC.partial` dispatch: replace the stub at
       `GossipRouter.kt:476` with the full flow (validate caps, create/update
       group state, call `onIncomingRpc`).
-- [ ] **Step 4** — Outbound `publishPartial(...)` on the `Gossip` facade;
+- [x] **Step 4** — Outbound `publishPartial(...)` on the `Gossip` facade;
       route through `GossipRpcPartsQueue` (do **not** bypass — PR #433 got
       this wrong). Enforce the "omit `partialMessage` when peer supports but
       didn't request" MUST.
-- [ ] **Step 5** — End-to-end integration test with a trivial bitmap-based
+- [x] **Step 5** — End-to-end integration test with a trivial bitmap-based
       handler. Exercises Steps 1-4 before any routing changes.
-- [ ] **Step 6** — Routing: full-message suppression (§5.1).
+- [x] **Step 6** — Routing: full-message suppression (§5.1).
 - [ ] **Step 7** — Routing: IDONTWANT suppression (§5.2).
 - [ ] **Step 8** — Heartbeat tick + TTL GC + cleanup hooks (§6.4).
 - [ ] **Step 9** — Routing: IHAVE replacement with `onEmitGossip` (§5.3).

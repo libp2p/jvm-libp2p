@@ -29,6 +29,8 @@ interface GossipRpcPartsQueue : RpcPartsQueue {
 
     // TODO Need to check if we should handle when control extension and extension messages could be separated by split  (https://github.com/libp2p/jvm-libp2p/issues/440)
     fun addControlExtensions(ctrlMessage: Rpc.ControlExtensions)
+
+    fun addPartialMessage(topic: Topic, groupId: ByteArray, partialMessage: ByteArray?, partsMetadata: ByteArray?)
 }
 
 /**
@@ -90,6 +92,23 @@ open class DefaultGossipRpcPartsQueue(
         }
     }
 
+    // Not a data class: ByteArray fields break equals/hashCode in data classes.
+    protected class PartialMessagePart(
+        val topic: Topic,
+        val groupId: ByteArray,
+        val partialMessage: ByteArray?,
+        val partsMetadata: ByteArray?
+    ) : AbstractPart {
+        override fun appendToBuilder(builder: Rpc.RPC.Builder) {
+            val pmBuilder = Rpc.PartialMessagesExtension.newBuilder()
+                .setTopicID(topic)
+                .setGroupID(groupId.toProtobuf())
+            partialMessage?.let { pmBuilder.setPartialMessage(it.toProtobuf()) }
+            partsMetadata?.let { pmBuilder.setPartsMetadata(it.toProtobuf()) }
+            builder.setPartial(pmBuilder.build())
+        }
+    }
+
     override fun addIHave(messageId: MessageId, topic: Topic) {
         addPart(IHavePart(messageId, topic))
     }
@@ -114,6 +133,10 @@ open class DefaultGossipRpcPartsQueue(
         addPart(ControlExtensionPart(ctrlMessage))
     }
 
+    override fun addPartialMessage(topic: Topic, groupId: ByteArray, partialMessage: ByteArray?, partsMetadata: ByteArray?) {
+        addPart(PartialMessagePart(topic, groupId, partialMessage, partsMetadata))
+    }
+
     override fun takeMerged(): List<Rpc.RPC> {
         val ret = mutableListOf<Rpc.RPC>()
         var partIdx = 0
@@ -126,10 +149,12 @@ open class DefaultGossipRpcPartsQueue(
             var iWantCount = params.maxIWantMessageIds ?: Int.MAX_VALUE
             var graftCount = params.maxGraftMessages ?: Int.MAX_VALUE
             var pruneCount = params.maxPruneMessages ?: Int.MAX_VALUE
+            // proto field `partial` is optional (not repeated): at most 1 per RPC
+            var partialCount = 1
 
             while (partIdx < parts.size &&
                 publishCount > 0 && subscriptionCount > 0 && iHaveCount > 0 &&
-                iWantCount > 0 && graftCount > 0 && pruneCount > 0
+                iWantCount > 0 && graftCount > 0 && pruneCount > 0 && partialCount > 0
             ) {
                 val part = parts[partIdx++]
                 when (part) {
@@ -139,6 +164,7 @@ open class DefaultGossipRpcPartsQueue(
                     is IWantPart -> iWantCount--
                     is GraftPart -> graftCount--
                     is PrunePart -> pruneCount--
+                    is PartialMessagePart -> partialCount--
                 }
 
                 part.appendToBuilder(builder)

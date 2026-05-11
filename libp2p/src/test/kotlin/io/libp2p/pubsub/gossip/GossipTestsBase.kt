@@ -8,12 +8,36 @@ import io.libp2p.pubsub.*
 import io.libp2p.pubsub.DeterministicFuzz.Companion.createGossipFuzzRouterFactory
 import io.libp2p.pubsub.DeterministicFuzz.Companion.createMockFuzzRouterFactory
 import io.libp2p.pubsub.gossip.builders.GossipRouterBuilder
+import io.libp2p.pubsub.gossip.partialmessages.PartialMessagesHandler
+import io.libp2p.pubsub.gossip.partialmessages.PartialMessagesPeerFeedback
 import io.netty.handler.logging.LogLevel
 import pubsub.pb.Rpc
 
 abstract class GossipTestsBase {
 
     protected val GossipScore.testPeerScores get() = (this as DefaultGossipScore).peerScores
+
+    /**
+     * No-op [PartialMessagesHandler] for use in tests that enable the partial-messages
+     * extension but don't exercise handler behaviour.
+     */
+    protected val nopPartialMessagesHandler: PartialMessagesHandler<Unit> =
+        object : PartialMessagesHandler<Unit> {
+            override fun onIncomingRpc(
+                from: PeerId,
+                peerStates: Map<PeerId, Unit>,
+                rpc: pubsub.pb.Rpc.PartialMessagesExtension,
+                feedback: PartialMessagesPeerFeedback
+            ) {}
+
+            override fun onEmitGossip(
+                topic: Topic,
+                groupId: ByteArray,
+                gossipPeers: Collection<PeerId>,
+                peerStates: Map<PeerId, Unit>,
+                feedback: PartialMessagesPeerFeedback
+            ) {}
+        }
 
     protected fun newProtoMessage(topic: Topic, seqNo: Long, data: ByteArray) =
         Rpc.Message.newBuilder()
@@ -31,10 +55,20 @@ abstract class GossipTestsBase {
         val mockRouterCount: Int = 10,
         val params: GossipParams = GossipParams(),
         val scoreParams: GossipScoreParams = GossipScoreParams(),
-        val protocol: PubsubProtocol = PubsubProtocol.Gossip_V_1_1
+        val protocol: PubsubProtocol = PubsubProtocol.Gossip_V_1_1,
+        val enabledGossipExtensions: List<GossipExtension> = listOf(),
+        val partialMessagesHandler: PartialMessagesHandler<*>? = null,
     ) {
         val fuzz = DeterministicFuzz()
-        val gossipRouterBuilderFactory = { GossipRouterBuilder(protocol = protocol, params = params, scoreParams = scoreParams) }
+        val gossipRouterBuilderFactory = {
+            GossipRouterBuilder(
+                protocol = protocol,
+                params = params,
+                scoreParams = scoreParams,
+                enabledGossipExtensions = enabledGossipExtensions,
+                partialMessagesHandler = partialMessagesHandler,
+            )
+        }
         val router0 = fuzz.createTestRouter(createGossipFuzzRouterFactory(gossipRouterBuilderFactory))
         val routers = (0 until mockRouterCount).map { fuzz.createTestRouter(createMockFuzzRouterFactory()) }
         val connections = mutableListOf<SemiduplexConnection>()
@@ -63,8 +97,8 @@ abstract class GossipTestsBase {
         val scoreParams: GossipScoreParams = GossipScoreParams(),
         val mockRouterFactory: DeterministicFuzzRouterFactory = createMockFuzzRouterFactory(),
         val protocol: PubsubProtocol = PubsubProtocol.Gossip_V_1_1,
-        val enabledGossipExtensions: List<GossipExtension> = listOf(GossipExtension.TEST_EXTENSION)
-
+        val enabledGossipExtensions: List<GossipExtension> = listOf(GossipExtension.TEST_EXTENSION),
+        val partialMessagesHandler: PartialMessagesHandler<*>? = null,
     ) {
         val fuzz = DeterministicFuzz()
         val gossipRouterBuilderFactory = {
@@ -72,7 +106,8 @@ abstract class GossipTestsBase {
                 protocol = protocol,
                 params = coreParams,
                 scoreParams = scoreParams,
-                enabledGossipExtensions = enabledGossipExtensions
+                enabledGossipExtensions = enabledGossipExtensions,
+                partialMessagesHandler = partialMessagesHandler,
             )
         }
         val router1 = fuzz.createTestRouter(createGossipFuzzRouterFactory(gossipRouterBuilderFactory))

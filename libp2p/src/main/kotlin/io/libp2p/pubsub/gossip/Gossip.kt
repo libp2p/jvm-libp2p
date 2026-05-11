@@ -10,7 +10,9 @@ import io.libp2p.core.multistream.ProtocolDescriptor
 import io.libp2p.core.pubsub.PubsubApi
 import io.libp2p.pubsub.PubsubApiImpl
 import io.libp2p.pubsub.PubsubProtocol
+import io.libp2p.pubsub.Topic
 import io.libp2p.pubsub.gossip.builders.GossipRouterBuilder
+import io.libp2p.pubsub.gossip.partialmessages.PublishActionsFn
 import io.netty.channel.ChannelHandler
 import org.slf4j.LoggerFactory
 import java.util.concurrent.CompletableFuture
@@ -31,6 +33,20 @@ class Gossip @JvmOverloads constructor(
     fun getGossipScore(peerId: PeerId): Double {
         return router.score.getCachedScore(peerId)
     }
+
+    /**
+     * Queues outbound [pubsub.pb.Rpc.PartialMessagesExtension] RPCs for [topic]/[groupId]
+     * by invoking the client's [actionsFn] on the current group state.
+     *
+     * Submits to the pubsub event thread; the returned future completes when the RPCs
+     * have been enqueued and flushed.
+     */
+    fun publishPartial(
+        topic: Topic,
+        groupId: ByteArray,
+        actionsFn: PublishActionsFn<*>
+    ): CompletableFuture<Unit> =
+        router.submitOnEventThread { router.publishPartial(topic, groupId, actionsFn) }
 
     override val protocolDescriptor =
         when (router.protocol) {
