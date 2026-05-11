@@ -1,6 +1,7 @@
 package io.libp2p.pubsub.gossip.builders
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder
+import io.libp2p.core.PeerId
 import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.etc.types.lazyVar
 import io.libp2p.pubsub.*
@@ -85,12 +86,12 @@ open class GossipRouterBuilder(
     }
 
     @Suppress("UNCHECKED_CAST")
-    private fun buildPartialMessagesAdapter(): PartialMessagesAdapter? {
+    private fun buildPartialMessagesAdapter(router: GossipRouter): PartialMessagesAdapter? {
         val handler = partialMessagesHandler ?: return null
         return PartialMessagesAdapterImpl(
             handler = handler as PartialMessagesHandler<Any?>,
             stateStore = PartialGroupStateStore(),
-            feedback = NopPartialMessagesFeedback,
+            feedback = RouterBackedPartialMessagesFeedback(router),
         )
     }
 
@@ -103,7 +104,7 @@ open class GossipRouterBuilder(
             )
         }
         val router = createGossipRouter()
-        router.partialMessages = buildPartialMessagesAdapter()
+        router.partialMessages = buildPartialMessagesAdapter(router)
         return router
     }
 
@@ -112,5 +113,15 @@ open class GossipRouterBuilder(
             partialMessagesEnabled = enabledGossipExtensions.contains(GossipExtension.PARTIAL_MESSAGES),
             testExtensionEnabled = enabledGossipExtensions.contains(GossipExtension.TEST_EXTENSION)
         )
+    }
+}
+
+internal class RouterBackedPartialMessagesFeedback(
+    private val router: GossipRouter
+) : PartialMessagesPeerFeedback {
+    override fun reportFeedback(topic: Topic, peer: PeerId, kind: FeedbackKind) {
+        if (kind == FeedbackKind.INVALID) {
+            router.eventBroadcaster.notifyRouterMisbehavior(peer, 1)
+        }
     }
 }
