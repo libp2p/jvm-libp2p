@@ -77,6 +77,7 @@ class PartialMessagesInboundRpcTest : GossipTestsBase() {
     @Test
     fun `valid partial RPC after ControlExtensions dispatches to handler`() {
         val test = newTest()
+        test.gossipRouter.subscribe(topicId)
         test.flushRouter()
 
         test.mockRouter.sendToSingle(controlExtensionsWithPartial())
@@ -165,6 +166,7 @@ class PartialMessagesInboundRpcTest : GossipTestsBase() {
     @Test
     fun `multiple valid partial RPCs for different groups all dispatched`() {
         val test = newTest()
+        test.gossipRouter.subscribe(topicId)
         test.flushRouter()
 
         test.mockRouter.sendToSingle(controlExtensionsWithPartial())
@@ -173,5 +175,18 @@ class PartialMessagesInboundRpcTest : GossipTestsBase() {
         test.flushRouter()
 
         assertThat(incomingCalls).hasSize(2)
+    }
+
+    @Test
+    fun `partial RPC for unsubscribed topic is dropped`() {
+        val test = newTest()
+        // Deliberately do NOT subscribe to "unsubscribed-topic"
+        test.flushRouter()
+
+        test.mockRouter.sendToSingle(controlExtensionsWithPartial())
+        test.mockRouter.sendToSingle(partialRpcWith(topicId = "unsubscribed-topic"))
+        test.flushRouter()
+
+        assertThat(incomingCalls).isEmpty()
     }
 }

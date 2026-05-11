@@ -562,6 +562,11 @@ open class GossipRouter(
             return
         }
 
+        if (topic !in subscribedTopics) {
+            logger.debug("Dropping partial message from {}: not subscribed to topic {}", receivedFrom.peerId, topic)
+            return
+        }
+
         logger.trace("Processing partial message extension for topic {} from {}", topic, receivedFrom.peerId)
         partialMessages?.onIncomingRpc(topic, receivedFrom.peerId, partialMessagesExtension)
     }
