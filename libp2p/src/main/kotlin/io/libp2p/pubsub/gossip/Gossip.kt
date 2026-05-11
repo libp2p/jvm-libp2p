@@ -48,6 +48,19 @@ class Gossip @JvmOverloads constructor(
     ): CompletableFuture<Unit> =
         router.submitOnEventThread { router.publishPartial(topic, groupId, actionsFn) }
 
+    /**
+     * Configures the partial-messages flags advertised on this node's subscribe
+     * announcements for [topic].
+     *
+     * Delegates to [GossipRouter.setTopicPartialFlags]; must be called before
+     * [subscribe] for flags to take effect on the initial announcement.
+     */
+    fun setTopicPartialFlags(
+        topic: Topic,
+        requestsPartial: Boolean,
+        supportsSendingPartial: Boolean
+    ) = router.setTopicPartialFlags(topic, requestsPartial, supportsSendingPartial)
+
     override val protocolDescriptor =
         when (router.protocol) {
             PubsubProtocol.Gossip_V_1_3 -> {
