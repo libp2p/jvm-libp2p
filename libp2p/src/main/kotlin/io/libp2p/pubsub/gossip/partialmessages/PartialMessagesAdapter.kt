@@ -72,7 +72,7 @@ internal class PartialMessagesAdapterImpl<PeerState>(
         if (partialPeers.isEmpty()) return
         for ((groupId, groupState) in stateStore.groupsForTopic(topic)) {
             if (!groupState.peerInitiated) {
-                handler.onEmitGossip(topic, groupId.bytes, partialPeers, groupState.peerStates, feedback)
+                handler.onEmitGossip(topic, groupId.bytes.copyOf(), partialPeers, groupState.peerStates, feedback)
             }
         }
     }

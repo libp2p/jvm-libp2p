@@ -42,6 +42,22 @@ class PartialGroupStateStoreTest {
         assertThat(map["abc".toByteArray().toGroupId()]).isEqualTo(42)
     }
 
+    @Test
+    fun `GroupId is immune to mutation of original ByteArray`() {
+        val original = "abc".toByteArray()
+        val gid = original.toGroupId()
+        val map = HashMap<GroupId, Int>()
+        map[gid] = 42
+
+        // mutate the original after inserting into the map
+        original[0] = 'z'.code.toByte()
+
+        // lookup by a fresh GroupId with the original bytes should still work
+        assertThat(map["abc".toByteArray().toGroupId()]).isEqualTo(42)
+        // the stored GroupId should not reflect the mutation
+        assertThat(gid).isEqualTo("abc".toByteArray().toGroupId())
+    }
+
     // --- local groups ---
 
     @Test

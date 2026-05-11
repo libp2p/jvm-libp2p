@@ -16,9 +16,10 @@ const val DEFAULT_PEER_INITIATED_GROUP_LIMIT_PER_TOPIC_PER_PEER = 8
  * Wraps a raw [ByteArray] so it can be used as a [HashMap] key with
  * content equality rather than reference equality.
  */
-class GroupId(val bytes: ByteArray) {
+class GroupId(bytes: ByteArray) {
+    val bytes: ByteArray = bytes.copyOf()
     override fun equals(other: Any?): Boolean =
-        other is GroupId && bytes.contentEquals(other.bytes)
+        other is GroupId && this.bytes.contentEquals(other.bytes)
     override fun hashCode(): Int = bytes.contentHashCode()
     override fun toString(): String = bytes.joinToString("") { "%02x".format(it) }
 }
