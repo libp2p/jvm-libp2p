@@ -7,6 +7,7 @@ import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.etc.types.*
 import io.libp2p.etc.util.P2PService
 import io.libp2p.pubsub.*
+import io.libp2p.pubsub.gossip.partialmessages.PartialMessagesAdapter
 import org.slf4j.LoggerFactory
 import pubsub.pb.Rpc
 import java.time.Duration
@@ -134,6 +135,34 @@ open class GossipRouter(
     override val pendingRpcParts = PendingRpcPartsMap<GossipRpcPartsQueue> { DefaultGossipRpcPartsQueue(params) }
 
     val gossipExtensionsState = GossipExtensionsState(gossipExtensionsConfig)
+    val partialSubscriptionState = PartialSubscriptionState()
+    internal var partialMessages: PartialMessagesAdapter? = null
+
+    /**
+     * Local per-topic subscription options that affect outbound subscribe announcements.
+     * Accessed only on the pubsub event loop.
+     */
+    private val localTopicPartialFlags: MutableMap<Topic, PartialSubFlags> = mutableMapOf()
+
+    /**
+     * Configures the partial-messages flags advertised on this node's subscribe
+     * announcements for [topic]. Must be called before [subscribe] for the flags
+     * to take effect on the initial announcement; a subsequent call will affect
+     * later re-announcements (e.g. on new peer activation).
+     *
+     * Per spec, the send-side also applies the coercion
+     * `supportsSendingPartial := requestsPartial || supportsSendingPartial`.
+     */
+    fun setTopicPartialFlags(topic: Topic, requestsPartial: Boolean, supportsSendingPartial: Boolean) {
+        runOnEventThread {
+            val coerced = PartialSubFlags.coerce(requestsPartial, supportsSendingPartial)
+            if (coerced == PartialSubFlags.NONE) {
+                localTopicPartialFlags -= topic
+            } else {
+                localTopicPartialFlags[topic] = coerced
+            }
+        }
+    }
 
     private fun setBackOff(peer: PeerHandler, topic: Topic) = setBackOff(peer, topic, params.pruneBackoff.toMillis())
     private fun setBackOff(peer: PeerHandler, topic: Topic, delay: Long) {
@@ -161,7 +190,26 @@ open class GossipRouter(
         acceptRequestsWhitelist -= peer
         pendingRpcParts.popQueue(peer) // discard them
         gossipExtensionsState.onPeerDisconnected(peer.peerId)
+        partialSubscriptionState.onPeerDisconnected(peer.peerId)
         super.onPeerDisconnected(peer)
+    }
+
+    override fun enqueueSubscribe(partsQueue: RpcPartsQueue, topic: Topic) {
+        val flags = localTopicPartialFlags[topic] ?: PartialSubFlags.NONE
+        partsQueue.addSubscribe(topic, flags.requestsPartial, flags.supportsSendingPartial)
+    }
+
+    override fun handleMessageSubscriptions(peer: PeerHandler, msg: PubsubSubscription) {
+        super.handleMessageSubscriptions(peer, msg)
+        if (msg.subscribe) {
+            partialSubscriptionState.setPeerFlags(
+                msg.topic,
+                peer.peerId,
+                PartialSubFlags(msg.requestsPartial, msg.supportsSendingPartial)
+            )
+        } else {
+            partialSubscriptionState.removePeerFlags(msg.topic, peer.peerId)
+        }
     }
 
     override fun onPeerActive(peer: PeerHandler) {
@@ -620,6 +668,8 @@ open class GossipRouter(
         super.unsubscribe(topic)
         mesh[topic]?.copy()?.forEach { prune(it, topic) }
         mesh -= topic
+        localTopicPartialFlags -= topic
+        partialSubscriptionState.removeTopic(topic)
     }
 
     private fun catchingHeartbeat() {
