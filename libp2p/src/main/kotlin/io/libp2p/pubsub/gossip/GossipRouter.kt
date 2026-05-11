@@ -818,27 +818,47 @@ open class GossipRouter(
 
     private fun emitGossip(topic: Topic, excludePeers: Collection<PeerHandler>) {
         val ids = mCache.getMessageIds(topic)
-        if (ids.isEmpty()) return
+        val adapter = partialMessages
+        val supportsPartial =
+            adapter != null && localTopicPartialFlags[topic]?.supportsSendingPartial == true
 
-        val shuffledMessageIds = ids.shuffled(random).take(params.maxIHaveLength)
-        val peers = (getTopicPeers(topic) - excludePeers)
+        // With partial-messages, locally-initiated groups must trigger onEmitGossip even when
+        // mCache has no full messages for the topic (clients may publish partial-only).
+        if (ids.isEmpty() && !supportsPartial) return
+
+        // Standard IHAVE candidates: gossip-eligible peers minus mesh peers (excludePeers).
+        val ihaveCandidates = (getTopicPeers(topic) - excludePeers)
             .filter { score.score(it.peerId) >= scoreParams.gossipThreshold && !isDirect(it) }
-
-        val selected = peers.shuffled(random)
-            .take(max((params.gossipFactor * peers.size).toInt(), params.DLazy))
+        val ihaveSelected = ihaveCandidates.shuffled(random)
+            .take(max((params.gossipFactor * ihaveCandidates.size).toInt(), params.DLazy))
 
         // §5.3: partition gossip targets into full-message peers and partial-capable peers.
         // Skip IHAVE for partial peers; call onEmitGossip for locally-initiated groups instead.
-        val adapter = partialMessages
-        if (adapter != null && localTopicPartialFlags[topic]?.supportsSendingPartial == true) {
-            val (partialPeers, fullPeers) = selected.partition { peer ->
+        if (supportsPartial) {
+            // Partial-capable peers: include mesh peers too (they participate in partial groups
+            // even though they would be excluded from IHAVE under standard gossipsub).
+            val partialCandidates = getTopicPeers(topic)
+                .filter { score.score(it.peerId) >= scoreParams.gossipThreshold && !isDirect(it) }
+                .filter {
+                    gossipExtensionsState.peerSupportsPartialMessages(it.peerId) &&
+                        partialSubscriptionState.peerRequestsPartial(topic, it.peerId)
+                }
+            // IHAVE only goes to non-mesh, non-partial peers (full peers).
+            val fullPeers = ihaveSelected.filterNot { peer ->
                 gossipExtensionsState.peerSupportsPartialMessages(peer.peerId) &&
                     partialSubscriptionState.peerRequestsPartial(topic, peer.peerId)
             }
-            fullPeers.forEach { enqueueIhave(it, shuffledMessageIds, topic) }
-            adapter.onEmitGossip(topic, partialPeers.map { it.peerId })
+            if (ids.isNotEmpty()) {
+                val shuffledMessageIds = ids.shuffled(random).take(params.maxIHaveLength)
+                fullPeers.forEach { enqueueIhave(it, shuffledMessageIds, topic) }
+            }
+            if (partialCandidates.isNotEmpty()) {
+                adapter!!.onEmitGossip(topic, partialCandidates.map { it.peerId })
+            }
         } else {
-            selected.forEach { enqueueIhave(it, shuffledMessageIds, topic) }
+            if (ihaveSelected.isEmpty()) return
+            val shuffledMessageIds = ids.shuffled(random).take(params.maxIHaveLength)
+            ihaveSelected.forEach { enqueueIhave(it, shuffledMessageIds, topic) }
         }
     }
 
