@@ -64,7 +64,7 @@ class PartialGroupStateStoreTest {
     fun `getOrCreateLocalGroup creates a new group`() {
         val group = store.getOrCreateLocalGroup(topicA, groupId1)
         assertThat(group.peerInitiated).isFalse()
-        assertThat(group.initiatingPeer).isNull()
+        assertThat(group.firstSeenFromPeer).isNull()
         assertThat(group.ttlInHeartbeats).isEqualTo(3)
         assertThat(store.getGroup(topicA, groupId1)).isSameAs(group)
     }
@@ -91,7 +91,7 @@ class PartialGroupStateStoreTest {
         val group = store.getOrCreatePeerGroup(topicA, groupId1, peer1)
         assertThat(group).isNotNull()
         assertThat(group!!.peerInitiated).isTrue()
-        assertThat(group.initiatingPeer).isEqualTo(peer1)
+        assertThat(group.firstSeenFromPeer).isEqualTo(peer1)
         assertThat(group.ttlInHeartbeats).isEqualTo(3)
     }
 

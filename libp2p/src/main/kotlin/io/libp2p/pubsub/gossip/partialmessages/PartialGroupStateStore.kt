@@ -31,14 +31,20 @@ fun ByteArray.toGroupId(): GroupId = GroupId(this)
  *
  * [peerStates] is mutable and updated as parts arrive.
  * [ttlInHeartbeats] is decremented each heartbeat and reset on [PartialGroupStateStore.resetTtl].
- * [initiatingPeer] is non-null iff [peerInitiated] is true.
+ * [firstSeenFromPeer] is non-null iff [peerInitiated] is true.
  *
  * NOT thread-safe: accessed only on the pubsub event loop.
  */
 class GroupState<PeerState>(
     var ttlInHeartbeats: Int,
     val peerInitiated: Boolean,
-    val initiatingPeer: PeerId?
+    /**
+     * The peer whose inbound RPC first created this entry in the local store.
+     * Non-null iff [peerInitiated] is true. Note: subsequent peers contributing
+     * to the same group reuse this entry without updating this field — the
+     * per-peer DoS cap is only applied at creation time.
+     */
+    val firstSeenFromPeer: PeerId?
 ) {
     val peerStates: MutableMap<PeerId, PeerState> = mutableMapOf()
 }
@@ -77,7 +83,7 @@ class PartialGroupStateStore<PeerState>(
         return GroupState<PeerState>(
             ttlInHeartbeats = groupTtlHeartbeats,
             peerInitiated = false,
-            initiatingPeer = null
+            firstSeenFromPeer = null
         ).also { topicGroups[groupId] = it }
     }
 
@@ -102,7 +108,7 @@ class PartialGroupStateStore<PeerState>(
             return null
         }
 
-        val peerTotal = topicGroups.values.count { it.initiatingPeer == peer }
+        val peerTotal = topicGroups.values.count { it.firstSeenFromPeer == peer }
         if (peerTotal >= peerInitiatedGroupLimitPerTopicPerPeer) {
             logger.debug(
                 "Dropping peer-initiated group {} from {}: per-peer cap {} reached for topic {}",
@@ -117,7 +123,7 @@ class PartialGroupStateStore<PeerState>(
         return GroupState<PeerState>(
             ttlInHeartbeats = groupTtlHeartbeats,
             peerInitiated = true,
-            initiatingPeer = peer
+            firstSeenFromPeer = peer
         ).also { topicGroups[groupId] = it }
     }
 
