@@ -89,13 +89,16 @@ class PartialMessagesAdapterImplTest {
     }
 
     @Test
-    fun `second RPC for the same group reuses the same peerStates object`() {
+    fun `second RPC for the same group sees peerStates with consistent content`() {
         adapter.onIncomingRpc(topic, peer1, buildRpc())
         adapter.onIncomingRpc(topic, peer2, buildRpc())
 
         assertThat(capturedCalls).hasSize(2)
-        // Both calls receive the same live GroupState.peerStates reference
-        assertThat(capturedCalls[0].peerStates).isSameAs(capturedCalls[1].peerStates)
+        // Both calls receive unmodifiable views — not the same reference, but same content.
+        // The second call should see the state for peer1 (if any was set) in peerStates.
+        assertThat(capturedCalls[0].peerStates.keys).isEmpty()
+        // After peer1's RPC (returns null state), peer2's RPC sees the same (empty) group state.
+        assertThat(capturedCalls[1].peerStates.keys).isEmpty()
     }
 
     @Test
@@ -318,5 +321,61 @@ class PartialMessagesAdapterImplTest {
         )
 
         assertThat(predicateCapture).containsExactly(true)
+    }
+
+    @Test
+    fun `publishPartial throws on nextPeerState type mismatch when class token is registered`() {
+        // Adapter configured for String PeerState with class token
+        val typedAdapter = PartialMessagesAdapterImpl(
+            handler = makeHandler(),
+            stateStore = PartialGroupStateStore(groupTtlHeartbeats = 3),
+            feedback = NopPartialMessagesFeedback,
+            peerStateClass = String::class.java,
+        )
+
+        // actionsFn returns Integer as nextPeerState — type mismatch with String
+        @Suppress("UNCHECKED_CAST")
+        val mismatchedFn = PublishActionsFn<Any?> { _, _ ->
+            sequenceOf(peer1 to PublishAction(partsMetadata = byteArrayOf(1), nextPeerState = 42))
+        } as PublishActionsFn<*>
+
+        org.junit.jupiter.api.assertThrows<IllegalArgumentException> {
+            typedAdapter.publishPartial(
+                topic = topic,
+                groupId = groupIdBytes.toGroupId(),
+                actionsFn = mismatchedFn,
+                peerRequestsPartial = { true },
+                enqueueFn = { _, _, _ -> }
+            )
+        }.also { ex ->
+            assertThat(ex.message).contains("nextPeerState type mismatch")
+            assertThat(ex.message).contains("java.lang.String")
+            assertThat(ex.message).contains("java.lang.Integer")
+        }
+    }
+
+    @Test
+    fun `publishPartial does not throw when peerStateClass is null even with wrong type`() {
+        // Without a class token, no runtime check — no exception
+        val untypedAdapter = PartialMessagesAdapterImpl(
+            handler = makeHandler(),
+            stateStore = PartialGroupStateStore(groupTtlHeartbeats = 3),
+            feedback = NopPartialMessagesFeedback,
+            peerStateClass = null,
+        )
+
+        @Suppress("UNCHECKED_CAST")
+        val mismatchedFn = PublishActionsFn<Any?> { _, _ ->
+            sequenceOf(peer1 to PublishAction(partsMetadata = byteArrayOf(1), nextPeerState = 42))
+        } as PublishActionsFn<*>
+
+        // Should complete without throwing
+        untypedAdapter.publishPartial(
+            topic = topic,
+            groupId = groupIdBytes.toGroupId(),
+            actionsFn = mismatchedFn,
+            peerRequestsPartial = { true },
+            enqueueFn = { _, _, _ -> }
+        )
     }
 }

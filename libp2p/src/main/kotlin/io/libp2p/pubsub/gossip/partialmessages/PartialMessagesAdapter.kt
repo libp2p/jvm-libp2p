@@ -56,7 +56,8 @@ internal interface PartialMessagesAdapter {
 internal class PartialMessagesAdapterImpl<PeerState>(
     val handler: PartialMessagesHandler<PeerState>,
     val stateStore: PartialGroupStateStore<PeerState>,
-    val feedback: PartialMessagesPeerFeedback
+    val feedback: PartialMessagesPeerFeedback,
+    val peerStateClass: Class<*>? = null,
 ) : PartialMessagesAdapter {
 
     override fun onPeerDisconnected(peer: PeerId) = stateStore.onPeerDisconnected(peer)
@@ -101,8 +102,17 @@ internal class PartialMessagesAdapterImpl<PeerState>(
             if (effectivePartialMessage != null || action.partsMetadata != null) {
                 enqueueFn(peerId, effectivePartialMessage, action.partsMetadata)
             }
-            if (action.nextPeerState != null) {
-                groupState.peerStates[peerId] = action.nextPeerState
+            val nextState = action.nextPeerState
+            if (nextState != null) {
+                val cls = peerStateClass
+                if (cls != null && !cls.isInstance(nextState)) {
+                    throw IllegalArgumentException(
+                        "publishPartial: nextPeerState type mismatch — expected ${cls.name}, " +
+                            "got ${(nextState as Any).javaClass.name}. " +
+                            "actionsFn PeerState must match the PartialMessagesHandler PeerState."
+                    )
+                }
+                groupState.peerStates[peerId] = nextState
             }
         }
     }

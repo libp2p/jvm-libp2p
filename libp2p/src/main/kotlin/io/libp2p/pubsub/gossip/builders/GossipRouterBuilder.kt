@@ -47,9 +47,30 @@ open class GossipRouterBuilder(
      * Client-supplied handler for the partial-messages extension.
      * Required when [GossipExtension.PARTIAL_MESSAGES] is enabled; a build-time
      * error is thrown if the extension is enabled without a handler.
+     *
+     * Prefer [withPartialMessagesHandler] over setting this directly — the typed method
+     * captures the [PeerState] class token for runtime type validation of
+     * [io.libp2p.pubsub.gossip.Gossip.publishPartial] calls.
      */
     var partialMessagesHandler: PartialMessagesHandler<*>? = null,
 ) {
+
+    @PublishedApi
+    internal var partialMessagesPeerStateClass: Class<*>? = null
+
+    /**
+     * Sets the partial-messages handler and captures [PeerState] as a runtime class token.
+     * The captured class is used to validate [io.libp2p.pubsub.gossip.Gossip.publishPartial] /
+     * [io.libp2p.pubsub.gossip.GossipRouter.publishPartial] calls at runtime, preventing
+     * silent type corruption from mismatched [PublishActionsFn] types.
+     *
+     * Prefer this method over directly setting [partialMessagesHandler] when the [PeerState]
+     * type is known at the call site.
+     */
+    inline fun <reified PeerState> withPartialMessagesHandler(handler: PartialMessagesHandler<PeerState>) {
+        partialMessagesHandler = handler
+        partialMessagesPeerStateClass = PeerState::class.java
+    }
 
     var seenCache: SeenCache<Optional<ValidationResult>> by lazyVar { TTLSeenCache(SimpleSeenCache(), params.seenTTL, currentTimeSupplier) }
     var mCache: MCache by lazyVar { MCache(params.gossipSize, params.gossipHistoryLength) }
@@ -92,6 +113,7 @@ open class GossipRouterBuilder(
             handler = handler as PartialMessagesHandler<Any?>,
             stateStore = PartialGroupStateStore(),
             feedback = RouterBackedPartialMessagesFeedback(router),
+            peerStateClass = partialMessagesPeerStateClass,
         )
     }
 
