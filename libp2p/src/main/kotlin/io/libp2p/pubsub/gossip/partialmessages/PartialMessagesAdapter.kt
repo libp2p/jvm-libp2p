@@ -4,6 +4,7 @@ import io.libp2p.core.PeerId
 import io.libp2p.pubsub.Topic
 import org.slf4j.LoggerFactory
 import pubsub.pb.Rpc
+import java.util.Collections
 
 private val logger = LoggerFactory.getLogger(PartialMessagesAdapterImpl::class.java)
 
@@ -65,7 +66,7 @@ internal class PartialMessagesAdapterImpl<PeerState>(
     override fun onIncomingRpc(topic: Topic, from: PeerId, rpc: Rpc.PartialMessagesExtension) {
         val groupId = rpc.groupID.toByteArray().toGroupId()
         val groupState = stateStore.getOrCreatePeerGroup(topic, groupId, from) ?: return
-        val newState = handler.onIncomingRpc(from, groupState.peerStates, rpc, feedback)
+        val newState = handler.onIncomingRpc(from, Collections.unmodifiableMap(groupState.peerStates), rpc, feedback)
         if (newState != null) {
             groupState.peerStates[from] = newState
         }
@@ -75,7 +76,7 @@ internal class PartialMessagesAdapterImpl<PeerState>(
         if (partialPeers.isEmpty()) return
         for ((groupId, groupState) in stateStore.groupsForTopic(topic)) {
             if (!groupState.peerInitiated) {
-                handler.onEmitGossip(topic, groupId.bytes.copyOf(), partialPeers, groupState.peerStates, feedback)
+                handler.onEmitGossip(topic, groupId.bytes.copyOf(), partialPeers, Collections.unmodifiableMap(groupState.peerStates), feedback)
             }
         }
     }
