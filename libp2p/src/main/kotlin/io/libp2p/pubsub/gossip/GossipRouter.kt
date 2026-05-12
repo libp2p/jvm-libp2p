@@ -173,7 +173,10 @@ open class GossipRouter(
      * Must be called on the pubsub event thread.
      */
     fun publishPartial(topic: Topic, groupId: ByteArray, actionsFn: PublishActionsFn<*>) {
-        val adapter = partialMessages ?: return
+        val adapter = partialMessages
+            ?: throw IllegalStateException(
+                "publishPartial called but GossipExtension.PARTIAL_MESSAGES is not enabled in GossipRouterBuilder"
+            )
         val gid = groupId.toGroupId()
 
         fun peerRequestsPartial(peerId: PeerId) =

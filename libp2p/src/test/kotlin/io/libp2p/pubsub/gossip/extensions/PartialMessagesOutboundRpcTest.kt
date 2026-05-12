@@ -116,7 +116,7 @@ class PartialMessagesOutboundRpcTest : GossipTestsBase() {
     }
 
     @Test
-    fun `publishPartial sends nothing when adapter is not configured`() {
+    fun `publishPartial throws IllegalStateException when extension is not enabled`() {
         val test = TwoRoutersTest(
             protocol = PubsubProtocol.Gossip_V_1_3,
             enabledGossipExtensions = listOf(),
@@ -128,10 +128,11 @@ class PartialMessagesOutboundRpcTest : GossipTestsBase() {
             sequenceOf(peerId to PublishAction(partsMetadata = byteArrayOf(1)))
         }
 
-        test.gossipRouter.publishPartial(topicId, groupIdBytes, actionsFn)
-        test.flushRouter()
-
-        assertThat(test.mockRouter.inboundMessages.none { it.hasPartial() }).isTrue()
+        org.junit.jupiter.api.assertThrows<IllegalStateException> {
+            test.gossipRouter.publishPartial(topicId, groupIdBytes, actionsFn)
+        }.also { ex ->
+            assertThat(ex.message).contains("GossipExtension.PARTIAL_MESSAGES")
+        }
     }
 
     @Test
