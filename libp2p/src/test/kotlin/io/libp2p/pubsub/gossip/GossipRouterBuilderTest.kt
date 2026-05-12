@@ -1,10 +1,20 @@
 package io.libp2p.pubsub.gossip
 
+import io.libp2p.core.PeerId
+import io.libp2p.pubsub.Topic
 import io.libp2p.pubsub.gossip.builders.GossipRouterBuilder
+import io.libp2p.pubsub.gossip.partialmessages.PartialMessagesHandler
+import io.libp2p.pubsub.gossip.partialmessages.PartialMessagesPeerFeedback
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import pubsub.pb.Rpc
 
 class GossipRouterBuilderTest {
+
+    private val nopHandler: PartialMessagesHandler<Unit> = object : PartialMessagesHandler<Unit> {
+        override fun onIncomingRpc(from: PeerId, peerStates: Map<PeerId, Unit>, rpc: Rpc.PartialMessagesExtension, feedback: PartialMessagesPeerFeedback): Unit? = null
+        override fun onEmitGossip(topic: Topic, groupId: ByteArray, gossipPeers: Collection<PeerId>, peerStates: Map<PeerId, Unit>, feedback: PartialMessagesPeerFeedback) {}
+    }
 
     @Test
     fun `builds GossipRouter with both extensions disabled by default`() {
@@ -36,6 +46,7 @@ class GossipRouterBuilderTest {
                 GossipExtension.TEST_EXTENSION,
                 GossipExtension.PARTIAL_MESSAGES,
             )
+            .apply { partialMessagesHandler = nopHandler }
             .build()
 
         val localSupport = router.gossipExtensionsState.localExtensionSupport
