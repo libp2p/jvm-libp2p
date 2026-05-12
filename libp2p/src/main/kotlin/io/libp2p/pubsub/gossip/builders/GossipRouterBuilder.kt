@@ -143,7 +143,9 @@ internal class RouterBackedPartialMessagesFeedback(
 ) : PartialMessagesPeerFeedback {
     override fun reportFeedback(topic: Topic, peer: PeerId, kind: FeedbackKind) {
         if (kind == FeedbackKind.INVALID) {
-            router.eventBroadcaster.notifyRouterMisbehavior(peer, 1)
+            router.runOnEventThread {
+                router.eventBroadcaster.notifyRouterMisbehavior(peer, 1)
+            }
         }
     }
 }
