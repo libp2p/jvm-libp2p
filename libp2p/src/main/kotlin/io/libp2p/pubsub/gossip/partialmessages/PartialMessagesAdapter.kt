@@ -76,7 +76,7 @@ internal class PartialMessagesAdapterImpl<PeerState>(
     override fun onEmitGossip(topic: Topic, partialPeers: Collection<PeerId>) {
         if (partialPeers.isEmpty()) return
         for ((groupId, groupState) in stateStore.groupsForTopic(topic)) {
-            if (!groupState.peerInitiated) {
+            if (!groupState.peerInitiated || groupState.locallyPublished) {
                 handler.onEmitGossip(topic, groupId.bytes.copyOf(), partialPeers, Collections.unmodifiableMap(groupState.peerStates), feedback)
             }
         }

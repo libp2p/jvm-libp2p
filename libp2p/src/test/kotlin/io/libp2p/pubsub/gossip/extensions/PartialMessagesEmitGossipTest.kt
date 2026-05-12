@@ -283,6 +283,57 @@ class PartialMessagesEmitGossipTest : GossipTestsBase() {
     }
 
     @Test
+    fun `peer-initiated group that is also locally published triggers onEmitGossip`() {
+        data class Call(val topic: Topic, val groupId: ByteArray, val peers: List<PeerId>)
+        val calls = mutableListOf<Call>()
+
+        val handler = object : PartialMessagesHandler<Unit> {
+            override fun onIncomingRpc(
+                from: PeerId,
+                peerStates: Map<PeerId, Unit>,
+                rpc: Rpc.PartialMessagesExtension,
+                feedback: PartialMessagesPeerFeedback,
+            ): Unit? = null
+
+            override fun onEmitGossip(
+                topic: Topic,
+                groupId: ByteArray,
+                gossipPeers: Collection<PeerId>,
+                peerStates: Map<PeerId, Unit>,
+                feedback: PartialMessagesPeerFeedback,
+            ) {
+                calls += Call(topic, groupId, gossipPeers.toList())
+            }
+        }
+
+        val test = startNetwork(handler)
+        val peerGroupId = byteArrayOf(9, 8, 7)
+        val partialPeerId = test.routers[1].peerId
+
+        // Step 1: receive an inbound partial RPC that creates a peer-initiated group.
+        val inboundRpc = Rpc.RPC.newBuilder().setPartial(
+            Rpc.PartialMessagesExtension.newBuilder()
+                .setTopicID(topicId)
+                .setGroupID(com.google.protobuf.ByteString.copyFrom(peerGroupId))
+                .setPartsMetadata(com.google.protobuf.ByteString.copyFrom(byteArrayOf(0x01)))
+        ).build()
+        test.mockRouters[1].sendToSingle(inboundRpc)
+        test.gossipRouter.submitOnEventThread {}.join()
+
+        // Step 2: local application also publishes to the same group, marking it locally published.
+        test.gossipRouter.publishPartial(topicId, peerGroupId, PublishActionsFn<Unit> { _, _ -> emptySequence() })
+
+        // Step 3: trigger a heartbeat; emitGossip requires a non-empty mcache.
+        test.gossipRouter.publish(newMessage(topicId, 0L, "data".toByteArray()))
+        test.fuzz.timeController.addTime(2.seconds)
+
+        // onEmitGossip MUST be called for the group because it is also locally published.
+        val matchingCalls = calls.filter { it.topic == topicId && it.groupId.contentEquals(peerGroupId) }
+        assertThat(matchingCalls).isNotEmpty()
+        assertThat(matchingCalls.first().peers).contains(partialPeerId)
+    }
+
+    @Test
     fun `onEmitGossip not called when there are no locally-initiated groups`() {
         val calls = mutableListOf<Unit>()
 
