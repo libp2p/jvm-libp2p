@@ -8,6 +8,9 @@ import io.libp2p.core.PeerId
  *
  * [nextPeerState] is applied atomically by the library per peer after the
  * send; null means "leave the existing state unchanged".
+ *
+ * **Ownership:** The [nextPeerState] instance is stored directly by the library.
+ * Prefer immutable types; do not mutate [nextPeerState] after returning it from [PublishActionsFn.decide].
  */
 data class PublishAction<PeerState>(
     val partialMessage: ByteArray? = null,

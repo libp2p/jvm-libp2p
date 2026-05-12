@@ -25,6 +25,11 @@ interface PartialMessagesHandler<PeerState> {
      * all peers. The map is a live view — do not retain a reference outside this call.
      *
      * Return the updated [PeerState] for [from], or null to leave it unchanged.
+     *
+     * **Ownership:** The returned [PeerState] instance is stored directly by the library.
+     * If [PeerState] is a mutable type (e.g. a `ByteArray` or a mutable collection),
+     * do not modify the returned instance after this method returns — doing so will
+     * corrupt the library's stored state. Prefer immutable [PeerState] types.
      */
     fun onIncomingRpc(
         from: PeerId,
@@ -42,6 +47,8 @@ interface PartialMessagesHandler<PeerState> {
      *
      * [peerStates] reflects the current state for this group across all peers.
      * The map is a live view — do not retain a reference outside this call.
+     * Element values in [peerStates] are the exact instances stored by the library;
+     * do not mutate them.
      */
     fun onEmitGossip(
         topic: Topic,
