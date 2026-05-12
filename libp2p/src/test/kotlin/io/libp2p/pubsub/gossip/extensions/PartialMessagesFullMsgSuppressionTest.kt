@@ -1,7 +1,7 @@
 package io.libp2p.pubsub.gossip.extensions
 
-import io.libp2p.etc.types.toProtobuf
 import io.libp2p.etc.types.toBytesBigEndian
+import io.libp2p.etc.types.toProtobuf
 import io.libp2p.pubsub.DefaultPubsubMessage
 import io.libp2p.pubsub.PubsubProtocol
 import io.libp2p.pubsub.gossip.GossipExtension

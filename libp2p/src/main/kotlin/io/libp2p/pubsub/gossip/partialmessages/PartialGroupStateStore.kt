@@ -79,14 +79,14 @@ class PartialGroupStateStore<PeerState>(
         val existing = topicGroups[groupId]
         if (existing != null) {
             existing.ttlInHeartbeats = groupTtlHeartbeats
-            existing.locallyPublished = true   // mark as locally published even if peer-initiated
+            existing.locallyPublished = true // mark as locally published even if peer-initiated
             return existing
         }
         return GroupState<PeerState>(
             ttlInHeartbeats = groupTtlHeartbeats,
             peerInitiated = false,
             firstSeenFromPeer = null,
-            locallyPublished = true            // new local group is locally published by definition
+            locallyPublished = true // new local group is locally published by definition
         ).also { topicGroups[groupId] = it }
     }
 

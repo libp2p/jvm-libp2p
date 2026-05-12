@@ -2,6 +2,9 @@ package io.libp2p.pubsub.gossip.extensions
 
 import com.google.protobuf.ByteString
 import io.libp2p.core.PeerId
+import io.libp2p.core.multiformats.Multiaddr
+import io.libp2p.core.pubsub.ValidationResult
+import io.libp2p.pubsub.PubsubMessage
 import io.libp2p.pubsub.PubsubProtocol
 import io.libp2p.pubsub.Topic
 import io.libp2p.pubsub.gossip.GossipExtension
@@ -10,9 +13,6 @@ import io.libp2p.pubsub.gossip.GossipTestsBase
 import io.libp2p.pubsub.gossip.partialmessages.FeedbackKind
 import io.libp2p.pubsub.gossip.partialmessages.PartialMessagesHandler
 import io.libp2p.pubsub.gossip.partialmessages.PartialMessagesPeerFeedback
-import io.libp2p.core.multiformats.Multiaddr
-import io.libp2p.core.pubsub.ValidationResult
-import io.libp2p.pubsub.PubsubMessage
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import pubsub.pb.Rpc
