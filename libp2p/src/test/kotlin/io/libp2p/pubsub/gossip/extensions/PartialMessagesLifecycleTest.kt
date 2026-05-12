@@ -75,6 +75,7 @@ class PartialMessagesLifecycleTest : GossipTestsBase() {
         val test = newTest()
 
         // Peer-initiated group via inbound RPC; nopHandler sets no peerStates → empty
+        test.gossipRouter.subscribe(topicId)
         test.mockRouter.sendToSingle(controlExtensionsWithPartial())
         test.mockRouter.sendToSingle(partialRpc())
         test.gossipRouter.submitOnEventThread {}.join()

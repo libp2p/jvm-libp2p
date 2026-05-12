@@ -99,6 +99,7 @@ class PartialMessagesFeedbackTest : GossipTestsBase() {
 
         val sendingPeerId = test.router2.peerId
 
+        test.gossipRouter.subscribe(topicId)
         test.mockRouter.sendToSingle(controlExtensionsWithPartial())
         test.mockRouter.sendToSingle(partialRpc())
         test.flush()
