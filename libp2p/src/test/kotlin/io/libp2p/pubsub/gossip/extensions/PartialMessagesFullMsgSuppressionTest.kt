@@ -1,5 +1,8 @@
 package io.libp2p.pubsub.gossip.extensions
 
+import io.libp2p.etc.types.toProtobuf
+import io.libp2p.etc.types.toBytesBigEndian
+import io.libp2p.pubsub.DefaultPubsubMessage
 import io.libp2p.pubsub.PubsubProtocol
 import io.libp2p.pubsub.gossip.GossipExtension
 import io.libp2p.pubsub.gossip.GossipTestsBase
@@ -135,6 +138,41 @@ class PartialMessagesFullMsgSuppressionTest : GossipTestsBase() {
         test.fuzz.timeController.addTime(100)
 
         assertThat(test.mockRouters[1].inboundMessages.none { it.publishCount > 0 }).isTrue()
+    }
+
+    // ── multi-topic messages ─────────────────────────────────────────────────
+
+    @Test
+    fun `multi-topic message is not suppressed when peer only requests partial on a subset of topics`() {
+        val topic1 = "topic-one"
+        val topic2 = "topic-two"
+        val test = newTest()
+
+        // Peer subscribes to both topics: partial requested only on topic1, not topic2.
+        test.mockRouter.subscribe(topic1)
+        test.mockRouter.subscribe(topic2)
+        test.mockRouter.sendToSingle(controlExtensionsWithPartial())
+        test.mockRouter.sendToSingle(subscribeRpc(topic = topic1, requestsPartial = true, supportsSendingPartial = true))
+        test.mockRouter.sendToSingle(subscribeRpc(topic = topic2, requestsPartial = false, supportsSendingPartial = true))
+        test.flushRouter()
+
+        test.gossipRouter.subscribe(topic1)
+        test.gossipRouter.subscribe(topic2)
+        test.flushRouter()
+
+        // Publish a message to BOTH topics (multi-topic message).
+        val protoMsg = Rpc.Message.newBuilder()
+            .addTopicIDs(topic1)
+            .addTopicIDs(topic2)
+            .setSeqno(0L.toBytesBigEndian().toProtobuf())
+            .setData("Hello".toByteArray().toProtobuf())
+            .build()
+        val msg = DefaultPubsubMessage(protoMsg)
+        test.gossipRouter.publish(msg)
+        test.flushRouter()
+
+        // Peer MUST receive the full message because topic2 has no partial request.
+        assertThat(test.mockRouter.inboundMessages.any { it.publishCount > 0 }).isTrue()
     }
 
     @Test

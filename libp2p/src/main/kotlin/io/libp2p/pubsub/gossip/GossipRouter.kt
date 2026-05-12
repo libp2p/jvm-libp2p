@@ -889,7 +889,11 @@ open class GossipRouter(
     private fun peerRequestsPartialForMessage(peer: PeerHandler, topics: Collection<Topic>): Boolean {
         if (!gossipExtensionsState.partialMessagesEnabled()) return false
         if (!gossipExtensionsState.peerSupportsPartialMessages(peer.peerId)) return false
-        return topics.any { partialSubscriptionState.peerRequestsPartial(it, peer.peerId) }
+        // Suppress full-message delivery only when the peer has requested partial for ALL
+        // topics of this message. If any topic does not have a partial request, the peer
+        // needs the full message for that topic. (Single-topic messages — the common case —
+        // are unaffected since any == all for a single element.)
+        return topics.all { partialSubscriptionState.peerRequestsPartial(it, peer.peerId) }
     }
 
     private fun peerDoesNotWantMessage(peer: PeerHandler, messageId: MessageId): Boolean {
