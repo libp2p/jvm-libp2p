@@ -240,6 +240,15 @@ class QuicTransport(
                         .option(ChannelOption.AUTO_READ, true)
                         .option(ChannelOption.ALLOCATOR, allocator)
                         .remoteAddress(targetAddr)
+                        .handler(
+                            nettyInitializer {
+                                val quicCh = it.channel as QuicChannel
+                                val connection = ConnectionOverNetty(quicCh, this@QuicTransport, true)
+                                // ConnectionOverNetty.init sets quicCh.attr(CONNECTION) = connection,
+                                // so InboundStreamHandler can find it before thenApply runs.
+                                connection.setMuxerSession(QuicMuxerSession(quicCh, connection))
+                            }
+                        )
                         .streamHandler(InboundStreamHandler(multistreamProtocol, protocols))
                         .connect()
                         .toCompletableFuture()
@@ -263,8 +272,7 @@ class QuicTransport(
         return quicConnFuture
             .thenApply {
                 registerChannel(it)
-                val connection = ConnectionOverNetty(it, this@QuicTransport, true)
-                connection.setMuxerSession(QuicMuxerSession(it, connection))
+                val connection = it.attr(CONNECTION).get() as ConnectionOverNetty
 
                 val peerCerts = it.sslEngine()?.session?.peerCertificates
                     ?: throw Libp2pException("No peer certificates available after QUIC handshake with $addr")
@@ -300,8 +308,6 @@ class QuicTransport(
 
                 preHandler?.also { visitor -> visitor.visit(connection) }
                 connHandler.handleConnection(connection)
-
-                it.attr(CONNECTION).set(connection)
 
                 connection
             }
