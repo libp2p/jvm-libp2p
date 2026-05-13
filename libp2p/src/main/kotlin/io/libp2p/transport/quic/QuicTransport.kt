@@ -30,8 +30,6 @@ import io.netty.bootstrap.Bootstrap
 import io.netty.buffer.AdaptiveByteBufAllocator
 import io.netty.buffer.ByteBuf
 import io.netty.channel.*
-import io.netty.channel.epoll.Epoll
-import io.netty.channel.epoll.EpollDatagramChannel
 import io.netty.channel.nio.NioIoHandler
 import io.netty.channel.socket.nio.NioDatagramChannel
 import io.netty.handler.codec.quic.*
@@ -105,25 +103,13 @@ class QuicTransport(
 
     private var client by lazyVar {
         Bootstrap().group(workerGroup)
-            .channel(
-                if (Epoll.isAvailable()) {
-                    EpollDatagramChannel::class.java
-                } else {
-                    NioDatagramChannel::class.java
-                }
-            )
+            .channel(NioDatagramChannel::class.java)
             .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, connectTimeout.toMillis().toInt())
     }
 
     private var server by lazyVar {
         Bootstrap().group(workerGroup)
-            .channel(
-                if (Epoll.isAvailable()) {
-                    EpollDatagramChannel::class.java
-                } else {
-                    NioDatagramChannel::class.java
-                }
-            )
+            .channel(NioDatagramChannel::class.java)
     }
 
     override val activeListeners: Int
@@ -261,11 +247,15 @@ class QuicTransport(
         }
 
         val quicConnFuture: CompletableFuture<QuicChannel> = if (existingListenerChannel != null) {
-            connectViaBoundChannel(bindAddr).exceptionallyCompose { ex ->
-                // Port reuse failed (SO_REUSEADDR insufficient on this platform); fall back to ephemeral port.
-                logger.debug("Could not reuse listener port {} for dial ({}), using ephemeral port", bindAddr, ex.message)
-                connectViaBoundChannel(InetSocketAddress(0))
-            }
+            connectViaBoundChannel(bindAddr).handle { result, ex ->
+                if (ex != null) {
+                    // Port reuse failed (SO_REUSEADDR insufficient on this platform); fall back to ephemeral port.
+                    logger.debug("Could not reuse listener port {} for dial ({}), using ephemeral port", bindAddr, ex.message)
+                    connectViaBoundChannel(InetSocketAddress(0))
+                } else {
+                    CompletableFuture.completedFuture(result)
+                }
+            }.thenCompose { it }
         } else {
             connectViaBoundChannel(InetSocketAddress(0))
         }
