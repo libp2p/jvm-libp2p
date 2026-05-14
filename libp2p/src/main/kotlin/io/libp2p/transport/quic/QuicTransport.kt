@@ -43,6 +43,8 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
+enum class AddressFamily { IPV4, IPV6 }
+
 /**
  * QUIC transport for libp2p using QUIC v1 (RFC 9000) with TLS 1.3.
  *
@@ -68,8 +70,8 @@ class QuicTransport(
     private val listeners = mutableMapOf<Multiaddr, Channel>()
     private val channels = mutableListOf<Channel>()
 
-    /** Tracks active listener DatagramChannels by address family (true = IPv6, false = IPv4). */
-    internal val listenerChannelsByFamily = ConcurrentHashMap<Boolean, Channel>()
+    /** Tracks active listener DatagramChannels by address family. */
+    internal val listenerChannelsByFamily = ConcurrentHashMap<AddressFamily, Channel>()
 
     /** Pending hole punch futures keyed by the remote address we are trying to reach. */
     private val pendingHolePunches = ConcurrentHashMap<InetSocketAddress, CompletableFuture<QuicChannel>>()
@@ -165,18 +167,18 @@ class QuicTransport(
         val bindComplete = listener.bind(fromMultiaddr(addr))
 
         bindComplete.also {
-            val isIPv6 = (fromMultiaddr(addr) as InetSocketAddress).address is Inet6Address
+            val family = if ((fromMultiaddr(addr) as InetSocketAddress).address is Inet6Address) AddressFamily.IPV6 else AddressFamily.IPV4
             synchronized(this@QuicTransport) {
                 listeners += addr to it.channel()
                 it.channel().closeFuture().addListener { _ ->
                     synchronized(this@QuicTransport) {
                         listeners -= addr
                     }
-                    listenerChannelsByFamily.remove(isIPv6, it.channel())
+                    listenerChannelsByFamily.remove(family, it.channel())
                 }
             }
             // Register after sync block to avoid holding lock during ConcurrentHashMap update
-            listenerChannelsByFamily[isIPv6] = it.channel()
+            listenerChannelsByFamily[family] = it.channel()
         }
 
         return bindComplete.toVoidCompletableFuture().thenApply {
@@ -213,8 +215,8 @@ class QuicTransport(
             .build()
 
         val targetAddr = fromMultiaddr(addr) as InetSocketAddress
-        val isIPv6 = targetAddr.address is Inet6Address
-        val existingListenerChannel = listenerChannelsByFamily[isIPv6]
+        val family = if (targetAddr.address is Inet6Address) AddressFamily.IPV6 else AddressFamily.IPV4
+        val existingListenerChannel = listenerChannelsByFamily[family]
 
         // Attempt to bind the client socket to the same port as an active listener for
         // consistent NAT mappings. Falls back to an ephemeral port if binding fails
@@ -222,7 +224,7 @@ class QuicTransport(
         // TODO: add SO_REUSEPORT support for Linux/Epoll).
         val bindAddr: InetSocketAddress = if (existingListenerChannel != null) {
             val listenerPort = (existingListenerChannel.localAddress() as? InetSocketAddress)?.port ?: 0
-            val wildcard = if (isIPv6) "::" else "0.0.0.0"
+            val wildcard = if (family == AddressFamily.IPV6) "::" else "0.0.0.0"
             InetSocketAddress(wildcard, listenerPort)
         } else {
             InetSocketAddress(0) // ephemeral port
@@ -484,8 +486,8 @@ class QuicTransport(
     ): CompletableFuture<Connection> {
         if (closed) throw Libp2pException("Transport is closed")
         val targetAddr = fromMultiaddr(addr) as InetSocketAddress
-        val isIPv6 = targetAddr.address is Inet6Address
-        val listenerChannel = listenerChannelsByFamily[isIPv6]
+        val family = if (targetAddr.address is Inet6Address) AddressFamily.IPV6 else AddressFamily.IPV4
+        val listenerChannel = listenerChannelsByFamily[family]
             ?: throw Libp2pException(
                 "Hole punch requires an active listener for the same address family as $addr"
             )
