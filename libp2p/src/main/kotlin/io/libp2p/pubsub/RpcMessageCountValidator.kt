@@ -51,7 +51,7 @@ object RpcMessageCountValidator {
         } catch (e: IOException) {
             Result.Malformed("malformed: ${e.message}")
         } catch (e: IndexOutOfBoundsException) {
-            Result.Malformed("malformed: truncated")
+            Result.Malformed("malformed: truncated (${e.message})")
         }
     }
 
@@ -136,7 +136,8 @@ object RpcMessageCountValidator {
             val fieldNumber = WireFormat.getTagFieldNumber(tag)
             val wireType = WireFormat.getTagWireType(tag)
             if (wireType != WireFormat.WIRETYPE_LENGTH_DELIMITED) {
-                input.skipField(tag); continue
+                input.skipField(tag)
+                continue
             }
             when (fieldNumber) {
                 CTRL_IHAVE -> {
