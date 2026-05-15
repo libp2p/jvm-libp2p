@@ -20,6 +20,7 @@ data class PubsubRpcLimits(
     val maxIDontWantMessages: Int? = null,
     val maxIDontWantMessageIds: Int? = null,
     val rejectEmptyPublishEntries: Boolean = true,
+    val rejectEmptyIDontWantEntries: Boolean = true,
 ) {
     companion object {
         val NONE = PubsubRpcLimits(
@@ -34,6 +35,7 @@ data class PubsubRpcLimits(
             maxIDontWantMessages = null,
             maxIDontWantMessageIds = null,
             rejectEmptyPublishEntries = false,
+            rejectEmptyIDontWantEntries = false,
         )
     }
 }

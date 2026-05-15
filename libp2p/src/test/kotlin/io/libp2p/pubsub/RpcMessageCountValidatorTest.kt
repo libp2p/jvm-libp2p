@@ -235,4 +235,30 @@ class RpcMessageCountValidatorTest {
         assertThat(RpcMessageCountValidator.validate(bytesOf(rpc), limits))
             .isEqualTo(RpcMessageCountValidator.Result.Accepted)
     }
+
+    @Test
+    fun `rejects RPC containing an empty idontwant entry`() {
+        val rpc = Rpc.RPC.newBuilder()
+            .setControl(
+                Rpc.ControlMessage.newBuilder()
+                    .addIdontwant(Rpc.ControlIDontWant.getDefaultInstance())
+            )
+            .build()
+        val limits = PubsubRpcLimits.NONE.copy(rejectEmptyIDontWantEntries = true)
+        assertThat(RpcMessageCountValidator.validate(bytesOf(rpc), limits))
+            .isInstanceOf(RpcMessageCountValidator.Result.Rejected::class.java)
+    }
+
+    @Test
+    fun `accepts empty idontwant entry when flag is off`() {
+        val rpc = Rpc.RPC.newBuilder()
+            .setControl(
+                Rpc.ControlMessage.newBuilder()
+                    .addIdontwant(Rpc.ControlIDontWant.getDefaultInstance())
+            )
+            .build()
+        val limits = PubsubRpcLimits.NONE
+        assertThat(RpcMessageCountValidator.validate(bytesOf(rpc), limits))
+            .isEqualTo(RpcMessageCountValidator.Result.Accepted)
+    }
 }

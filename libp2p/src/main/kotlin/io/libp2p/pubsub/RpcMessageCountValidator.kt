@@ -189,6 +189,9 @@ object RpcMessageCountValidator {
                         if (idontwantCount > it) return Result.Rejected("idontwant count > $it")
                     }
                     val length = input.readRawVarint32()
+                    if (length == 0 && limits.rejectEmptyIDontWantEntries) {
+                        return Result.Rejected("empty idontwant entry")
+                    }
                     val oldLimit = input.pushLimit(length)
                     val count = countRepeatedBytes(input, IDONTWANT_MESSAGE_IDS)
                     idontwantMsgIds += count

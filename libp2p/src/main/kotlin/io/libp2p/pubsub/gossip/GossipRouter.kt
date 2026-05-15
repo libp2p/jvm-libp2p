@@ -269,6 +269,7 @@ open class GossipRouter(
             maxPeersPerPruneMessage = params.maxPeersAcceptedInPruneMsg,
             maxIDontWantMessageIds = params.maxIDontWantMessageIds,
             rejectEmptyPublishEntries = true,
+            rejectEmptyIDontWantEntries = true,
         )
     }
 
