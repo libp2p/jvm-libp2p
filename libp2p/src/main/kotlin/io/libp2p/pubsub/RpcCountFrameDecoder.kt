@@ -24,7 +24,15 @@ class RpcCountFrameDecoder(private val limits: PubsubRpcLimits) : ByteToMessageD
         val readable = msg.readableBytes()
         if (readable == 0) return
 
-        when (val result = RpcMessageCountValidator.validate(msg, limits)) {
+        val result = try {
+            RpcMessageCountValidator.validate(msg, limits)
+        } catch (e: Exception) {
+            logger.debug("Dropping pubsub RPC frame due to unexpected validator error", e)
+            msg.skipBytes(readable)
+            return
+        }
+
+        when (result) {
             RpcMessageCountValidator.Result.Accepted -> {
                 out.add(msg.readRetainedSlice(readable))
             }
