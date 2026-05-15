@@ -84,6 +84,15 @@ abstract class AbstractRouter(
     }
 
     /**
+     * Per-router caps on repeated-field counts inside inbound RPCs. Enforced before
+     * protobuf materialisation by an [RpcCountFrameDecoder] inserted into the stream
+     * pipeline. Defaults to [PubsubRpcLimits.NONE] (no pre-decode cap). Subclasses
+     * with configured limits (e.g. [io.libp2p.pubsub.gossip.GossipRouter]) override.
+     */
+    protected open val rpcLimits: PubsubRpcLimits
+        get() = PubsubRpcLimits.NONE
+
+    /**
      * Flushes all pending message parts for all peers
      */
     protected fun flushAllPending() {
@@ -113,6 +122,7 @@ abstract class AbstractRouter(
         with(streamHandler.stream) {
             pushHandler(LimitedProtobufVarint32FrameDecoder(maxMsgSize))
             pushHandler(ProtobufVarint32LengthFieldPrepender())
+            pushHandler(RpcCountFrameDecoder(rpcLimits))
             pushHandler(ProtobufDecoder(Rpc.RPC.getDefaultInstance()))
             pushHandler(ProtobufEncoder())
             handler?.also { pushHandler(it) }
