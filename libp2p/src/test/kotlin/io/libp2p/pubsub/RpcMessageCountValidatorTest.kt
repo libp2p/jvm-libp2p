@@ -200,7 +200,7 @@ class RpcMessageCountValidatorTest {
         val full = rpc.toByteArray()
         val truncated = full.copyOfRange(0, full.size - 1)
         val result = RpcMessageCountValidator.validate(Unpooled.wrappedBuffer(truncated), unlimited)
-        assertThat(result).isInstanceOf(RpcMessageCountValidator.Result.Rejected::class.java)
+        assertThat(result).isInstanceOf(RpcMessageCountValidator.Result.Malformed::class.java)
     }
 
     @Test

@@ -18,6 +18,7 @@ object RpcMessageCountValidator {
     sealed interface Result {
         object Accepted : Result
         data class Rejected(val reason: String) : Result
+        data class Malformed(val reason: String) : Result
     }
 
     // pubsub.RPC field numbers
@@ -48,9 +49,9 @@ object RpcMessageCountValidator {
         return try {
             validateRpc(input, limits)
         } catch (e: IOException) {
-            Result.Rejected("malformed: ${e.message}")
+            Result.Malformed("malformed: ${e.message}")
         } catch (e: IndexOutOfBoundsException) {
-            Result.Rejected("malformed: truncated")
+            Result.Malformed("malformed: truncated")
         }
     }
 

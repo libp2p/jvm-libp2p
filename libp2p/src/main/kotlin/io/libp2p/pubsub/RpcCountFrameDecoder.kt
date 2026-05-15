@@ -38,10 +38,10 @@ class RpcCountFrameDecoder(private val limits: PubsubRpcLimits) : MessageToMessa
             RpcMessageCountValidator.Result.Accepted -> {
                 out.add(msg.retain())
             }
+            is RpcMessageCountValidator.Result.Malformed -> {
+                throw CorruptedFrameException(result.reason)
+            }
             is RpcMessageCountValidator.Result.Rejected -> {
-                if (result.reason.startsWith("malformed:")) {
-                    throw CorruptedFrameException(result.reason)
-                }
                 logger.debug("Dropping pubsub RPC frame: {}", result.reason)
             }
         }
