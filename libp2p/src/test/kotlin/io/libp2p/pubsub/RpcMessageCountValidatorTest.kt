@@ -210,4 +210,29 @@ class RpcMessageCountValidatorTest {
         val result = RpcMessageCountValidator.validate(Unpooled.wrappedBuffer(attack), unlimited)
         assertThat(result).isEqualTo(RpcMessageCountValidator.Result.Rejected("empty publish entry"))
     }
+
+    @Test
+    fun `rejects when idontwant message count exceeds limit`() {
+        val rpc = Rpc.RPC.newBuilder()
+            .setControl(
+                Rpc.ControlMessage.newBuilder()
+                    .addIdontwant(idontwant(ids = 1))
+                    .addIdontwant(idontwant(ids = 1))
+                    .addIdontwant(idontwant(ids = 1))
+            )
+            .build()
+        val limits = PubsubRpcLimits.NONE.copy(maxIDontWantMessages = 2)
+        assertThat(RpcMessageCountValidator.validate(bytesOf(rpc), limits))
+            .isInstanceOf(RpcMessageCountValidator.Result.Rejected::class.java)
+    }
+
+    @Test
+    fun `accepts when count equals limit exactly`() {
+        val rpc = Rpc.RPC.newBuilder()
+            .apply { repeat(3) { addPublish(message(topics = 1)) } }
+            .build()
+        val limits = PubsubRpcLimits.NONE.copy(maxPublishedMessages = 3)
+        assertThat(RpcMessageCountValidator.validate(bytesOf(rpc), limits))
+            .isEqualTo(RpcMessageCountValidator.Result.Accepted)
+    }
 }
