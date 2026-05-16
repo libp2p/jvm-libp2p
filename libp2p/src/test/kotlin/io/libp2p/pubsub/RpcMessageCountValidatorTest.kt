@@ -261,4 +261,36 @@ class RpcMessageCountValidatorTest {
         assertThat(RpcMessageCountValidator.validate(bytesOf(rpc), limits))
             .isEqualTo(RpcMessageCountValidator.Result.Accepted)
     }
+
+    @Test
+    fun `rejects when graft count across split control fields exceeds limit`() {
+        // Build a frame with TWO top-level control fields manually, each containing
+        // 2 grafts. After protobuf merge the ControlMessage has 4 grafts, so a limit
+        // of 3 must reject. The validator must aggregate across both control fields.
+        val firstHalf = Rpc.RPC.newBuilder()
+            .setControl(
+                Rpc.ControlMessage.newBuilder()
+                    .addGraft(Rpc.ControlGraft.newBuilder().setTopicID("a"))
+                    .addGraft(Rpc.ControlGraft.newBuilder().setTopicID("b"))
+            )
+            .build()
+            .toByteArray()
+        val secondHalf = Rpc.RPC.newBuilder()
+            .setControl(
+                Rpc.ControlMessage.newBuilder()
+                    .addGraft(Rpc.ControlGraft.newBuilder().setTopicID("c"))
+                    .addGraft(Rpc.ControlGraft.newBuilder().setTopicID("d"))
+            )
+            .build()
+            .toByteArray()
+        val combined = firstHalf + secondHalf
+
+        // Sanity: the combined bytes parse to a merged ControlMessage with 4 grafts.
+        val parsed = Rpc.RPC.parseFrom(combined)
+        assertThat(parsed.control.graftCount).isEqualTo(4)
+
+        val limits = PubsubRpcLimits.NONE.copy(maxGraftMessages = 3)
+        val result = RpcMessageCountValidator.validate(Unpooled.wrappedBuffer(combined), limits)
+        assertThat(result).isInstanceOf(RpcMessageCountValidator.Result.Rejected::class.java)
+    }
 }

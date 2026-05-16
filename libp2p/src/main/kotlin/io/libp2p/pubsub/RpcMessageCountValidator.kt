@@ -55,9 +55,19 @@ object RpcMessageCountValidator {
         }
     }
 
+    private class ControlCounters {
+        var ihaveMsgIds = 0
+        var iwantMsgIds = 0
+        var graftCount = 0
+        var pruneCount = 0
+        var idontwantCount = 0
+        var idontwantMsgIds = 0
+    }
+
     private fun validateRpc(input: CodedInputStream, limits: PubsubRpcLimits): Result {
         var publishCount = 0
         var subscriptionCount = 0
+        val ctrl = ControlCounters()
 
         while (!input.isAtEnd) {
             val tag = input.readTag()
@@ -96,7 +106,7 @@ object RpcMessageCountValidator {
                     wireType == WireFormat.WIRETYPE_LENGTH_DELIMITED -> {
                     val length = input.readRawVarint32()
                     val oldLimit = input.pushLimit(length)
-                    val res = validateControl(input, limits)
+                    val res = validateControl(input, limits, ctrl)
                     if (res is Result.Rejected) return res
                     input.popLimit(oldLimit)
                 }
@@ -123,14 +133,11 @@ object RpcMessageCountValidator {
         return Result.Accepted
     }
 
-    private fun validateControl(input: CodedInputStream, limits: PubsubRpcLimits): Result {
-        var ihaveMsgIds = 0
-        var iwantMsgIds = 0
-        var graftCount = 0
-        var pruneCount = 0
-        var idontwantCount = 0
-        var idontwantMsgIds = 0
-
+    private fun validateControl(
+        input: CodedInputStream,
+        limits: PubsubRpcLimits,
+        c: ControlCounters,
+    ): Result {
         while (!input.isAtEnd) {
             val tag = input.readTag()
             val fieldNumber = WireFormat.getTagFieldNumber(tag)
@@ -144,9 +151,9 @@ object RpcMessageCountValidator {
                     val length = input.readRawVarint32()
                     val oldLimit = input.pushLimit(length)
                     val count = countRepeatedBytes(input, IHAVE_MESSAGE_IDS)
-                    ihaveMsgIds += count
+                    c.ihaveMsgIds += count
                     limits.maxIHaveMessageIds?.let {
-                        if (ihaveMsgIds > it) return Result.Rejected("ihave messageIDs > $it")
+                        if (c.ihaveMsgIds > it) return Result.Rejected("ihave messageIDs > $it")
                     }
                     input.popLimit(oldLimit)
                 }
@@ -154,23 +161,23 @@ object RpcMessageCountValidator {
                     val length = input.readRawVarint32()
                     val oldLimit = input.pushLimit(length)
                     val count = countRepeatedBytes(input, IWANT_MESSAGE_IDS)
-                    iwantMsgIds += count
+                    c.iwantMsgIds += count
                     limits.maxIWantMessageIds?.let {
-                        if (iwantMsgIds > it) return Result.Rejected("iwant messageIDs > $it")
+                        if (c.iwantMsgIds > it) return Result.Rejected("iwant messageIDs > $it")
                     }
                     input.popLimit(oldLimit)
                 }
                 CTRL_GRAFT -> {
-                    graftCount++
+                    c.graftCount++
                     limits.maxGraftMessages?.let {
-                        if (graftCount > it) return Result.Rejected("graft count > $it")
+                        if (c.graftCount > it) return Result.Rejected("graft count > $it")
                     }
                     input.skipField(tag)
                 }
                 CTRL_PRUNE -> {
-                    pruneCount++
+                    c.pruneCount++
                     limits.maxPruneMessages?.let {
-                        if (pruneCount > it) return Result.Rejected("prune count > $it")
+                        if (c.pruneCount > it) return Result.Rejected("prune count > $it")
                     }
                     val length = input.readRawVarint32()
                     val oldLimit = input.pushLimit(length)
@@ -184,9 +191,9 @@ object RpcMessageCountValidator {
                     input.popLimit(oldLimit)
                 }
                 CTRL_IDONTWANT -> {
-                    idontwantCount++
+                    c.idontwantCount++
                     limits.maxIDontWantMessages?.let {
-                        if (idontwantCount > it) return Result.Rejected("idontwant count > $it")
+                        if (c.idontwantCount > it) return Result.Rejected("idontwant count > $it")
                     }
                     val length = input.readRawVarint32()
                     if (length == 0 && limits.rejectEmptyIDontWantEntries) {
@@ -194,9 +201,9 @@ object RpcMessageCountValidator {
                     }
                     val oldLimit = input.pushLimit(length)
                     val count = countRepeatedBytes(input, IDONTWANT_MESSAGE_IDS)
-                    idontwantMsgIds += count
+                    c.idontwantMsgIds += count
                     limits.maxIDontWantMessageIds?.let {
-                        if (idontwantMsgIds > it) return Result.Rejected("idontwant messageIDs > $it")
+                        if (c.idontwantMsgIds > it) return Result.Rejected("idontwant messageIDs > $it")
                     }
                     input.popLimit(oldLimit)
                 }
