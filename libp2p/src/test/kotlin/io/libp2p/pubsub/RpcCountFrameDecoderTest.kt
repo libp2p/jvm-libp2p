@@ -62,4 +62,30 @@ class RpcCountFrameDecoderTest {
         val received: Any? = ch.readInbound()
         assertThat(received).isNull()
     }
+
+    /**
+     * Toggle-off guarantee: with [PubsubRpcLimits.NONE], a frame that would be rejected
+     * under tighter limits (empty publish entry plus an extra publish over the cap above)
+     * must pass through the decoder unchanged.
+     */
+    @Test
+    fun `forwards an otherwise-rejectable RPC when limits are NONE`() {
+        val ch = EmbeddedChannel(
+            RpcCountFrameDecoder(PubsubRpcLimits.NONE),
+            ProtobufDecoder(Rpc.RPC.getDefaultInstance()),
+        )
+        val rpc = Rpc.RPC.newBuilder()
+            .addPublish(Rpc.Message.getDefaultInstance())
+            .apply {
+                repeat(3) {
+                    addPublish(Rpc.Message.newBuilder().setData(ByteString.copyFromUtf8("x$it")))
+                }
+            }
+            .build()
+
+        ch.writeInbound(Unpooled.wrappedBuffer(rpc.toByteArray()))
+
+        val received: Rpc.RPC? = ch.readInbound()
+        assertThat(received).isEqualTo(rpc)
+    }
 }
