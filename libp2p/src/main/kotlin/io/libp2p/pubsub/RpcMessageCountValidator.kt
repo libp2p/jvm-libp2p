@@ -1,17 +1,24 @@
 package io.libp2p.pubsub
 
 import com.google.protobuf.CodedInputStream
+import com.google.protobuf.Descriptors
 import com.google.protobuf.WireFormat
 import io.netty.buffer.ByteBuf
+import pubsub.pb.Rpc
 import java.io.IOException
 
 /**
  * Walks an inbound pubsub RPC [ByteBuf] without materialising any `pubsub.pb.Rpc`
  * message and rejects it if its repeated-field counts violate [PubsubRpcLimits].
  *
- * Field numbers mirror `libp2p/src/main/proto/rpc.proto`. The walker uses
- * [CodedInputStream] to read tags / lengths and to skip bodies, so no
- * `Rpc$Message` / builder is allocated for rejected frames.
+ * Field numbers are taken from the protobuf-generated `*_FIELD_NUMBER` constants,
+ * so renames in `libp2p/src/main/proto/rpc.proto` break compilation. New repeated
+ * fields are caught by `RpcMessageCountValidatorProtoCoverageTest`, which
+ * recursively walks the descriptors reachable from [Rpc.RPC] and asserts each one
+ * appears in [ACKNOWLEDGED_REPEATED_FIELDS].
+ *
+ * The walker uses [CodedInputStream] to read tags / lengths and to skip bodies,
+ * so no `Rpc$Message` / builder is allocated for rejected frames.
  */
 object RpcMessageCountValidator {
 
@@ -22,27 +29,49 @@ object RpcMessageCountValidator {
     }
 
     // pubsub.RPC field numbers
-    private const val RPC_SUBSCRIPTIONS = 1
-    private const val RPC_PUBLISH = 2
-    private const val RPC_CONTROL = 3
+    private const val RPC_SUBSCRIPTIONS = Rpc.RPC.SUBSCRIPTIONS_FIELD_NUMBER
+    private const val RPC_PUBLISH = Rpc.RPC.PUBLISH_FIELD_NUMBER
+    private const val RPC_CONTROL = Rpc.RPC.CONTROL_FIELD_NUMBER
 
     // pubsub.Message field numbers
-    private const val MESSAGE_TOPIC_IDS = 4
+    private const val MESSAGE_TOPIC_IDS = Rpc.Message.TOPICIDS_FIELD_NUMBER
 
     // pubsub.ControlMessage field numbers
-    private const val CTRL_IHAVE = 1
-    private const val CTRL_IWANT = 2
-    private const val CTRL_GRAFT = 3
-    private const val CTRL_PRUNE = 4
-    private const val CTRL_IDONTWANT = 5
+    private const val CTRL_IHAVE = Rpc.ControlMessage.IHAVE_FIELD_NUMBER
+    private const val CTRL_IWANT = Rpc.ControlMessage.IWANT_FIELD_NUMBER
+    private const val CTRL_GRAFT = Rpc.ControlMessage.GRAFT_FIELD_NUMBER
+    private const val CTRL_PRUNE = Rpc.ControlMessage.PRUNE_FIELD_NUMBER
+    private const val CTRL_IDONTWANT = Rpc.ControlMessage.IDONTWANT_FIELD_NUMBER
 
     // pubsub.ControlIHave / ControlIWant / ControlIDontWant repeated bytes field numbers
-    private const val IHAVE_MESSAGE_IDS = 2
-    private const val IWANT_MESSAGE_IDS = 1
-    private const val IDONTWANT_MESSAGE_IDS = 1
+    private const val IHAVE_MESSAGE_IDS = Rpc.ControlIHave.MESSAGEIDS_FIELD_NUMBER
+    private const val IWANT_MESSAGE_IDS = Rpc.ControlIWant.MESSAGEIDS_FIELD_NUMBER
+    private const val IDONTWANT_MESSAGE_IDS = Rpc.ControlIDontWant.MESSAGEIDS_FIELD_NUMBER
 
     // pubsub.ControlPrune.peers
-    private const val PRUNE_PEERS = 2
+    private const val PRUNE_PEERS = Rpc.ControlPrune.PEERS_FIELD_NUMBER
+
+    /**
+     * Single source of truth for every repeated proto field the validator inspects.
+     * The proto-coverage test asserts this map equals the set of repeated fields
+     * actually present in the proto, recursively from [Rpc.RPC]. Any new repeated
+     * field that lands in `rpc.proto` without being added here will fail the test.
+     */
+    internal val ACKNOWLEDGED_REPEATED_FIELDS: Map<Descriptors.Descriptor, Set<Int>> = mapOf(
+        Rpc.RPC.getDescriptor() to setOf(RPC_SUBSCRIPTIONS, RPC_PUBLISH),
+        Rpc.Message.getDescriptor() to setOf(MESSAGE_TOPIC_IDS),
+        Rpc.ControlMessage.getDescriptor() to setOf(
+            CTRL_IHAVE,
+            CTRL_IWANT,
+            CTRL_GRAFT,
+            CTRL_PRUNE,
+            CTRL_IDONTWANT
+        ),
+        Rpc.ControlIHave.getDescriptor() to setOf(IHAVE_MESSAGE_IDS),
+        Rpc.ControlIWant.getDescriptor() to setOf(IWANT_MESSAGE_IDS),
+        Rpc.ControlIDontWant.getDescriptor() to setOf(IDONTWANT_MESSAGE_IDS),
+        Rpc.ControlPrune.getDescriptor() to setOf(PRUNE_PEERS),
+    )
 
     fun validate(buf: ByteBuf, limits: PubsubRpcLimits): Result {
         val input = CodedInputStream.newInstance(buf.nioBuffer())
