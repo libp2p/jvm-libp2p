@@ -22,6 +22,25 @@ data class PubsubRpcLimits(
     val rejectEmptyPublishEntries: Boolean = true,
     val rejectEmptyIDontWantEntries: Boolean = true,
 ) {
+    /**
+     * True when no configured limit or reject-flag can fire. Lets
+     * [RpcCountFrameDecoder] skip the validator walk entirely on the toggle-off
+     * path. Any new field added to this data class must be considered here.
+     */
+    val isNoop: Boolean =
+        maxPublishedMessages == null &&
+            maxTopicsPerPublishedMessage == null &&
+            maxSubscriptions == null &&
+            maxIHaveMessageIds == null &&
+            maxIWantMessageIds == null &&
+            maxGraftMessages == null &&
+            maxPruneMessages == null &&
+            maxPeersPerPruneMessage == null &&
+            maxIDontWantMessages == null &&
+            maxIDontWantMessageIds == null &&
+            !rejectEmptyPublishEntries &&
+            !rejectEmptyIDontWantEntries
+
     companion object {
         val NONE = PubsubRpcLimits(
             maxPublishedMessages = null,

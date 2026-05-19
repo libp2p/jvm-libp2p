@@ -1,6 +1,7 @@
 package io.libp2p.pubsub
 
 import com.google.protobuf.ByteString
+import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 import io.netty.channel.embedded.EmbeddedChannel
 import io.netty.handler.codec.protobuf.ProtobufDecoder
@@ -87,5 +88,25 @@ class RpcCountFrameDecoderTest {
 
         val received: Rpc.RPC? = ch.readInbound()
         assertThat(received).isEqualTo(rpc)
+    }
+
+    /**
+     * Fast-path proof: a truncated frame would be flagged `Malformed` by
+     * [RpcMessageCountValidator] and converted to a [CorruptedFrameException]
+     * by the decoder. With [PubsubRpcLimits.NONE] the validator must be skipped
+     * entirely, so the truncated bytes pass through to the next handler unchanged.
+     */
+    @Test
+    fun `skips validator when limits are noop`() {
+        val ch = EmbeddedChannel(RpcCountFrameDecoder(PubsubRpcLimits.NONE))
+        val rpc = Rpc.RPC.newBuilder()
+            .addPublish(Rpc.Message.newBuilder().setData(ByteString.copyFromUtf8("x")))
+            .build()
+        val truncated = rpc.toByteArray().copyOfRange(0, rpc.toByteArray().size - 1)
+
+        ch.writeInbound(Unpooled.wrappedBuffer(truncated))
+
+        val received: Any? = ch.readInbound()
+        assertThat(received).isInstanceOf(ByteBuf::class.java)
     }
 }

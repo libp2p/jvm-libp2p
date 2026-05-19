@@ -20,13 +20,19 @@ import org.slf4j.LoggerFactory
  * can apply the same behaviour penalty they would have on a [ProtobufDecoder]
  * failure.
  *
- * When [limits] has every count null and `rejectEmptyPublishEntries == false`
- * (e.g. [PubsubRpcLimits.NONE]) the validator walks the buffer once and accepts
- * every well-formed frame — there is no special-cased fast-path.
+ * When [limits] is a no-op (see [PubsubRpcLimits.isNoop], e.g. [PubsubRpcLimits.NONE])
+ * the validator is skipped entirely and the buffer is forwarded as-is. Malformed
+ * bytes still surface downstream from [ProtobufDecoder], which already triggers
+ * the same wire-exception path the validator would have used.
  */
 class RpcCountFrameDecoder(private val limits: PubsubRpcLimits) : MessageToMessageDecoder<ByteBuf>() {
 
     override fun decode(ctx: ChannelHandlerContext, msg: ByteBuf, out: MutableList<Any>) {
+        if (limits.isNoop) {
+            out.add(msg.retain())
+            return
+        }
+
         val result = try {
             RpcMessageCountValidator.validate(msg, limits)
         } catch (e: Exception) {
