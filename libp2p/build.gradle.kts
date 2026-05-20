@@ -1,6 +1,6 @@
 plugins {
     id("com.google.protobuf").version("0.9.4")
-    id("me.champeau.jmh").version("0.7.2")
+    id("me.champeau.jmh").version("0.7.3")
 }
 
 // https://docs.gradle.org/current/userguide/java_testing.html#ex-disable-publishing-of-test-fixtures-variants
@@ -14,6 +14,20 @@ dependencies {
     api("io.netty:netty-transport")
     implementation("io.netty:netty-handler")
     implementation("io.netty:netty-codec-http")
+    implementation("io.netty:netty-codec-protobuf")
+    implementation("io.netty:netty-transport-classes-epoll")
+    implementation("io.netty:netty-codec-native-quic")
+    // OS-specific bindings
+    implementation("io.netty:netty-codec-native-quic::linux-x86_64")
+    implementation("io.netty:netty-codec-native-quic::linux-aarch_64")
+    implementation("io.netty:netty-codec-native-quic::osx-x86_64")
+    implementation("io.netty:netty-codec-native-quic::osx-aarch_64")
+    implementation("io.netty:netty-codec-native-quic::windows-x86_64")
+    implementation("io.netty:netty-tcnative-boringssl-static::linux-x86_64")
+    implementation("io.netty:netty-tcnative-boringssl-static::linux-aarch_64")
+    implementation("io.netty:netty-tcnative-boringssl-static::osx-x86_64")
+    implementation("io.netty:netty-tcnative-boringssl-static::osx-aarch_64")
+    implementation("io.netty:netty-tcnative-boringssl-static::windows-x86_64")
 
     api("com.google.protobuf:protobuf-java")
 
@@ -22,7 +36,6 @@ dependencies {
 
     implementation("org.bouncycastle:bcprov-jdk18on")
     implementation("org.bouncycastle:bcpkix-jdk18on")
-    implementation("org.bouncycastle:bctls-jdk18on")
 
     testImplementation(project(":tools:schedulers"))
 
@@ -33,8 +46,6 @@ dependencies {
     testFixturesImplementation("org.junit.jupiter:junit-jupiter-api")
 
     jmhImplementation(project(":tools:schedulers"))
-    jmhImplementation("org.openjdk.jmh:jmh-core")
-    jmhAnnotationProcessor("org.openjdk.jmh:jmh-generator-annprocess")
 }
 
 protobuf {

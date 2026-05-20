@@ -1,0 +1,26 @@
+services:
+  dialer:
+    build: .
+    depends_on:
+      - redis
+    environment:
+      transport: tcp
+      is_dialer: true
+      ip: 0.0.0.0
+      muxer: mplex
+      security: tls
+  listener:
+    init: true
+    build: .
+    depends_on:
+      - redis
+    environment:
+      transport: tcp
+      is_dialer: false
+      ip: 0.0.0.0
+      muxer: mplex
+      security: tls
+  redis:
+    image: redis:7-alpine
+    environment:
+      REDIS_ARGS: --loglevel warning

@@ -18,9 +18,9 @@ plugins {
     id("java")
     id("maven-publish")
     id("org.jetbrains.dokka").version("1.9.20")
-    id("com.diffplug.spotless").version("6.25.0")
+    id("com.diffplug.spotless").version("7.2.1")
     id("java-test-fixtures")
-    id("io.spring.dependency-management").version("1.1.6")
+    id("io.spring.dependency-management").version("1.1.7")
 
     id("org.jetbrains.kotlin.android") version kotlinVersion apply false
     id("com.android.application") version "7.4.2" apply false
@@ -36,7 +36,7 @@ configure(
         }
 ) {
     group = "io.libp2p"
-    version = "1.2.2-RELEASE"
+    version = "1.3.0-RELEASE"
 
     apply(plugin = "kotlin")
     apply(plugin = "idea")
@@ -63,6 +63,8 @@ configure(
 
         testImplementation("org.junit.jupiter:junit-jupiter")
         testImplementation("org.junit.jupiter:junit-jupiter-params")
+        testImplementation("org.junit.platform:junit-platform-launcher")
+        testRuntimeOnly("org.junit.platform:junit-platform-engine")
         testImplementation("io.mockk:mockk")
         testImplementation("org.assertj:assertj-core")
         testRuntimeOnly("org.apache.logging.log4j:log4j-slf4j2-impl")
@@ -83,6 +85,9 @@ configure(
     }
     tasks.withType<Copy> {
         duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    }
+    tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
+        jvmTarget = "11"
     }
 
 // Parallel build execution
@@ -108,8 +113,10 @@ configure(
     }
 
     configure<SpotlessExtension> {
+        // https://github.com/pinterest/ktlint/releases
+        val ktlintVersion = "1.1.1"
         kotlin {
-            ktlint().editorConfigOverride(
+            ktlint(ktlintVersion).editorConfigOverride(
                 mapOf(
                     "ktlint_standard_no-wildcard-imports" to "disabled",
                     "ktlint_standard_enum-entry-name-case" to "disabled",
@@ -140,7 +147,7 @@ configure(
                 jdkVersion.set(11)
                 reportUndocumented.set(false)
                 externalDocumentationLink {
-                    url.set(URI.create("https://netty.io/4.1/api/").toURL())
+                    url.set(URI.create("https://netty.io/4.2/api/").toURL())
                 }
             }
         }
@@ -187,7 +194,7 @@ configure(
     }
 
     detekt {
-        config = files("$rootDir/detekt/config.yml")
+        config.from("$rootDir/detekt/config.yml")
         buildUponDefaultConfig = true
     }
 }

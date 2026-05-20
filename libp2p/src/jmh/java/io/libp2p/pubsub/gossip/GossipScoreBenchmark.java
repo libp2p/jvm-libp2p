@@ -107,12 +107,4 @@ public class GossipScoreBenchmark {
       bh.consume(s);
     }
   }
-
-  /** Uncomment for debugging */
-  //    public static void main(String[] args) {
-  //        GossipScoreBenchmark benchmark = new GossipScoreBenchmark();
-  //        Blackhole blackhole = new Blackhole("Today's password is swordfish. I understand
-  // instantiating Blackholes directly is dangerous.");
-  //        benchmark.scoresDelay0(blackhole);
-  //    }
 }

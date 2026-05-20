@@ -19,6 +19,7 @@ class BuilderJ : Builder() {
     public override val identity = super.identity
     public override val secureChannels = super.secureChannels
     public override val muxers = super.muxers
+    public override val secureTransports = super.secureTransports
     public override val transports = super.transports
     public override val addressBook = super.addressBook
     public override val protocols = super.protocols

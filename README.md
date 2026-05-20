@@ -3,7 +3,7 @@
 [![](https://img.shields.io/badge/project-libp2p-yellow.svg?style=flat-square)](https://libp2p.io/)
 [![Gitter](https://img.shields.io/gitter/room/libp2p/jvm-libp2p.svg)](https://gitter.im/jvm-libp2p/community)
 [![](https://img.shields.io/badge/freenode-%23libp2p-yellow.svg?style=flat-square)](http://webchat.freenode.net/?channels=%23libp2p)
-![Build Status](https://github.com/libp2p/jvm-libp2p/actions/workflows/build.yml/badge.svg?branch=master)
+[![Build Status](https://github.com/libp2p/jvm-libp2p/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/libp2p/jvm-libp2p/actions/workflows/build.yml)
 [![Discourse posts](https://img.shields.io/discourse/https/discuss.libp2p.io/posts.svg)](https://discuss.libp2p.io)
 
 [Libp2p](https://libp2p.io/) implementation for the JVM, written in Kotlin 🔥
@@ -15,7 +15,7 @@ List of components in the Libp2p spec and their JVM implementation status
 |                          | Component                                                                                       |      Status      |
 |--------------------------|-------------------------------------------------------------------------------------------------|:----------------:|
 | **Transport**            | tcp                                                                                             |  :green_apple:   |
-|                          | [quic](https://github.com/libp2p/specs/tree/master/quic)                                        |     :tomato:     |
+|                          | [quic](https://github.com/libp2p/specs/tree/master/quic)                                        |     :lemon:     |
 |                          | websocket                                                                                       |     :lemon:      |
 |                          | [webtransport](https://github.com/libp2p/specs/tree/master/webtransport)                        |                  |
 |                          | [webrtc-browser-to-server](https://github.com/libp2p/specs/blob/master/webrtc/webrtc-direct.md) |                  |

@@ -190,3 +190,11 @@ $RECYCLE.BIN/
 node_modules
 package-lock.json
 /src/jmh/java/generated/
+
+#Jenv
+.java-version
+
+# Claude
+CLAUDE.local.md
+.claude/settings.local.json
+.worktrees/

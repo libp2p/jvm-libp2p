@@ -259,6 +259,57 @@ class GossipV1_1Tests : GossipTestsBase() {
     }
 
     @Test
+    fun testSubscribeRespectsBackoff() {
+        // Regression test for the subscribe()-bypasses-backoff bug.
+        //
+        // Reproduces the production failure mode where Teku, after being PRUNEd by a peer,
+        // re-subscribes to a topic (e.g., attestation subnet rotation) and immediately
+        // GRAFTs back onto peers that are still within their backoff window — accumulating
+        // P7 behaviour penalties on the remote scorer until disconnect.
+        //
+        // The heartbeat-driven mesh maintenance paths correctly filter by isBackOff;
+        // the subscribe() path historically did not.
+        val test = TwoRoutersTest()
+
+        test.mockRouter.subscribe("topic1")
+
+        // Let the mock peer's subscription propagate so it appears in topicPeers.
+        test.fuzz.timeController.addTime(1.seconds)
+
+        // Mock peer pre-emptively PRUNEs us with a 30-second backoff before we subscribe.
+        val pruneMsg = Rpc.RPC.newBuilder().setControl(
+            Rpc.ControlMessage.newBuilder().addPrune(
+                Rpc.ControlPrune.newBuilder()
+                    .setTopicID("topic1")
+                    .setBackoff(30)
+            )
+        ).build()
+        test.mockRouter.sendToSingle(pruneMsg)
+        test.fuzz.timeController.addTime(100.millis)
+        test.mockRouter.inboundMessages.clear()
+
+        // Now subscribe locally — this is the path that historically grafted without
+        // checking backoff.
+        test.gossipRouter.subscribe("topic1")
+        test.fuzz.timeController.addTime(15.seconds)
+
+        // No GRAFT should have been sent while the backoff is active.
+        assertEquals(
+            0,
+            test.mockRouter.inboundMessages
+                .count { it.hasControl() && it.control.graftCount > 0 },
+            "subscribe() must not GRAFT a peer that is in backoff"
+        )
+
+        // After the backoff expires, the next heartbeat is allowed to GRAFT.
+        test.fuzz.timeController.addTime(20.seconds)
+        test.mockRouter.waitForMessage {
+            it.hasControl() &&
+                it.control.graftCount > 0 && it.control.getGraft(0).topicID == "topic1"
+        }
+    }
+
+    @Test
     fun testGraftFloodPenalty() {
         val test = TwoRoutersTest()
 

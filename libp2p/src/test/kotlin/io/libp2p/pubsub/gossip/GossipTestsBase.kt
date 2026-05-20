@@ -62,10 +62,19 @@ abstract class GossipTestsBase {
         val coreParams: GossipParams = GossipParams(),
         val scoreParams: GossipScoreParams = GossipScoreParams(),
         val mockRouterFactory: DeterministicFuzzRouterFactory = createMockFuzzRouterFactory(),
-        val protocol: PubsubProtocol = PubsubProtocol.Gossip_V_1_1
+        val protocol: PubsubProtocol = PubsubProtocol.Gossip_V_1_1,
+        val enabledGossipExtensions: List<GossipExtension> = listOf(GossipExtension.TEST_EXTENSION)
+
     ) {
         val fuzz = DeterministicFuzz()
-        val gossipRouterBuilderFactory = { GossipRouterBuilder(protocol = protocol, params = coreParams, scoreParams = scoreParams) }
+        val gossipRouterBuilderFactory = {
+            GossipRouterBuilder(
+                protocol = protocol,
+                params = coreParams,
+                scoreParams = scoreParams,
+                enabledGossipExtensions = enabledGossipExtensions
+            )
+        }
         val router1 = fuzz.createTestRouter(createGossipFuzzRouterFactory(gossipRouterBuilderFactory))
         val router2 = fuzz.createTestRouter(mockRouterFactory)
         val gossipRouter = router1.router as GossipRouter

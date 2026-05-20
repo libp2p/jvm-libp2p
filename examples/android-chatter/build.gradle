@@ -22,9 +22,17 @@ android {
         }
     }
     packagingOptions {
-        exclude 'META-INF/io.netty.versions.properties'
-        exclude 'META-INF/INDEX.LIST'
-        exclude 'META-INF/versions/9/OSGI-INF/MANIFEST.MF'
+        resources {
+            excludes.add("META-INF/io.netty.versions.properties")
+            excludes.add("META-INF/INDEX.LIST")
+            excludes.add("META-INF/versions/9/OSGI-INF/MANIFEST.MF")
+            excludes.add("META-INF/native-image/io.netty/netty-codec-native-quic/jni-config.json")
+            excludes.add("META-INF/native-image/io.netty/netty-codec-native-quic/reflect-config.json")
+            excludes.add("META-INF/native-image/io.netty/netty-codec-native-quic/resource-config.json")
+            excludes.add("META-INF/native-image/io.netty/netty-codec-native-quic/native-image.properties")
+            excludes.add("META-INF/license/*")
+        }
+
     }
     kotlinOptions {
         jvmTarget = "11"
