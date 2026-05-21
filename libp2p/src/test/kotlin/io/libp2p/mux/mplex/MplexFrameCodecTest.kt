@@ -118,6 +118,29 @@ class MplexFrameCodecTest {
     }
 
     @Test
+    fun `invalid stream tag does not leak inbound buffer`() {
+        // streamTag = 7 (header & 0x07) is not mapped in MplexFlag, so
+        // MplexFlag.getByValue() throws AFTER data.retain() has been called.
+        // Without releasing the retained slice, the parent inbound buffer leaks.
+        val rawBytes = Unpooled.buffer()
+            .writeByte(0x07) // varint header: streamId=0, streamTag=7 (invalid)
+            .writeByte(0x05) // varint lenData = 5
+            .writeBytes(byteArrayOf(1, 2, 3, 4, 5))
+
+        rawBytes.retain() // keep an external ref to observe the codec's net effect
+        assertEquals(2, rawBytes.refCnt())
+
+        assertThrows<DecoderException> {
+            channel.writeInbound(rawBytes)
+        }
+
+        // Only our external ref should remain. Without the fix, the retained
+        // slice keeps an extra ref alive (refCnt == 2 instead of 1).
+        assertEquals(1, rawBytes.refCnt())
+        rawBytes.release()
+    }
+
+    @Test
     fun `check the frame underlying buffer is released after send`() {
         val frameDataBuf = "Hello-1".toByteArray().toByteBuf()
 
