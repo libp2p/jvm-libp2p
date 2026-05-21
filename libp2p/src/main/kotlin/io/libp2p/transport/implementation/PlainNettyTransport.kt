@@ -27,6 +27,7 @@ import java.net.InetSocketAddress
 import java.net.SocketAddress
 import java.time.Duration
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.TimeUnit
 
 /**
  * A plain `NettyTransport` without embedded security and muxer
@@ -91,9 +92,14 @@ abstract class PlainNettyTransport(
         val allClosed = CompletableFuture.allOf(*everythingThatNeedsToClose.toTypedArray())
 
         return allClosed.thenCompose {
+            // Pass quietPeriod=0 instead of relying on Netty's 2-second default. By the
+            // time we reach this point every channel has been closed and the transport
+            // is marked closed, so no new work can be submitted to either group; the
+            // default 2s wait for "more work that isn't coming" is pure latency on every
+            // close(). The 5s timeout still caps how long we wait for the loop to exit.
             CompletableFuture.allOf(
-                workerGroup.shutdownGracefully().toVoidCompletableFuture(),
-                bossGroup.shutdownGracefully().toVoidCompletableFuture()
+                workerGroup.shutdownGracefully(0, 5, TimeUnit.SECONDS).toVoidCompletableFuture(),
+                bossGroup.shutdownGracefully(0, 5, TimeUnit.SECONDS).toVoidCompletableFuture()
             ).thenApply { }
         }
     } // close
