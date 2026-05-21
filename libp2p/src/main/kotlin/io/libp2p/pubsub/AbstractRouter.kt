@@ -226,7 +226,11 @@ abstract class AbstractRouter(
                 true
             } catch (e: Exception) {
                 logger.debug("Invalid pubsub message from peer {}: {}", peer, it, e)
-                seenMessages[it] = Optional.of(ValidationResult.Invalid)
+                // Evict the speculatively-inserted seen-cache entry so that a later
+                // legitimate message with the same id (e.g. same from||seqno) is not
+                // suppressed by a forged predecessor that failed validation.
+                // See security issue 01 (pubsub strict-sign spoof / seen-cache poisoning).
+                seenMessages -= it.messageId
                 notifyUnseenInvalidMessage(peer, it)
                 false
             }
@@ -240,8 +244,14 @@ abstract class AbstractRouter(
         validFuts.forEach { (msg, validationFut) ->
             validationFut.thenAcceptAsync(
                 { res ->
-                    seenMessages[msg] = Optional.of(res)
-                    if (res == ValidationResult.Invalid) notifyUnseenInvalidMessage(peer, msg)
+                    if (res == ValidationResult.Invalid) {
+                        // Evict so a later legitimate message with the same id is not
+                        // suppressed by this rejected one.
+                        seenMessages -= msg.messageId
+                        notifyUnseenInvalidMessage(peer, msg)
+                    } else {
+                        seenMessages[msg] = Optional.of(res)
+                    }
                 },
                 executor
             )
