@@ -2,10 +2,8 @@ package io.libp2p.transport.quic
 
 import io.libp2p.core.*
 import io.libp2p.core.crypto.PrivKey
-import io.libp2p.core.crypto.unmarshalPublicKey
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.multiformats.MultiaddrDns
-import io.libp2p.core.multiformats.Multihash
 import io.libp2p.core.multiformats.Protocol.*
 import io.libp2p.core.multistream.MultistreamProtocol
 import io.libp2p.core.multistream.MultistreamProtocolV1
@@ -22,8 +20,7 @@ import io.libp2p.etc.util.netty.nettyInitializer
 import io.libp2p.security.tls.Libp2pTrustManager
 import io.libp2p.security.tls.buildCert
 import io.libp2p.security.tls.getJavaKey
-import io.libp2p.security.tls.getPublicKeyFromCert
-import io.libp2p.security.tls.verifyAndExtractPeerId
+import io.libp2p.security.tls.verifyAndExtractIdentity
 import io.libp2p.transport.implementation.ConnectionOverNetty
 import io.libp2p.transport.implementation.NettyTransport
 import io.netty.bootstrap.Bootstrap
@@ -217,17 +214,28 @@ class QuicTransport(
 
                 connection.setMuxerSession(QuicMuxerSession(it, connection))
 
-                val pubHash = Multihash.of(addr.getPeerId()!!.bytes.toByteBuf())
-                val remotePubKey = if (pubHash.desc.digest == Multihash.Digest.Identity) {
-                    unmarshalPublicKey(pubHash.bytes.toByteArray())
-                } else {
-                    getPublicKeyFromCert(arrayOf(trustManager.remoteCert!!))
+                // The libp2p host pubkey is carried in the cert extension and is the only
+                // source of truth for `SecureChannel.Session.remotePubKey` (regardless of how
+                // the peer id was encoded on the wire — `identity` digest vs. sha-256). The
+                // ephemeral cert subject key MUST NOT be exposed here; doing so breaks the
+                // invariant `PeerId.fromPubKey(remotePubKey) == remoteId` that the rest of the
+                // libp2p stack relies on.
+                val remoteIdentity = verifyAndExtractIdentity(arrayOf(trustManager.remoteCert!!))
+                val expectedPeerId = addr.getPeerId()!!
+                if (remoteIdentity.peerId != expectedPeerId) {
+                    // Defence-in-depth: Libp2pTrustManager already enforces this when an
+                    // expectedRemotePeer is provided, but assert at the session-construction
+                    // site so a misconfigured trust manager cannot silently leak the wrong
+                    // identity into the connection.
+                    throw Libp2pException(
+                        "Remote peer presented libp2p pubkey for ${remoteIdentity.peerId} but dial target was $expectedPeerId"
+                    )
                 }
                 connection.setSecureSession(
                     SecureChannel.Session(
                         PeerId.fromPubKey(localKey.publicKey()),
-                        addr.getPeerId()!!,
-                        remotePubKey,
+                        remoteIdentity.peerId,
+                        remoteIdentity.pubKey,
                         null
                     )
                 )
@@ -319,16 +327,19 @@ class QuicTransport(
                                 // Now the handshake is complete and remoteCert should be available
                                 val remoteCert = trustManager.remoteCert
                                 if (remoteCert != null) {
-                                    val remotePeerId = verifyAndExtractPeerId(arrayOf(remoteCert))
-                                    val remotePublicKey = getPublicKeyFromCert(arrayOf(remoteCert))
+                                    // Both remoteId and remotePubKey must come from the same libp2p
+                                    // host key carried in the certificate extension — never from the
+                                    // ephemeral cert subject key. See SecureChannel.Session contract:
+                                    // PeerId.fromPubKey(remotePubKey) == remoteId.
+                                    val remoteIdentity = verifyAndExtractIdentity(arrayOf(remoteCert))
 
-                                    logger.info("Handshake completed with remote peer id: {}", remotePeerId)
+                                    logger.info("Handshake completed with remote peer id: {}", remoteIdentity.peerId)
 
                                     connection.setSecureSession(
                                         SecureChannel.Session(
                                             PeerId.fromPubKey(localKey.publicKey()),
-                                            remotePeerId,
-                                            remotePublicKey,
+                                            remoteIdentity.peerId,
+                                            remoteIdentity.pubKey,
                                             null
                                         )
                                     )
