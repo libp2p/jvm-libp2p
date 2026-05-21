@@ -226,10 +226,8 @@ abstract class AbstractRouter(
                 true
             } catch (e: Exception) {
                 logger.debug("Invalid pubsub message from peer {}: {}", peer, it, e)
-                // Evict the speculatively-inserted seen-cache entry so that a later
-                // legitimate message with the same id (e.g. same from||seqno) is not
-                // suppressed by a forged predecessor that failed validation.
-                // See security issue 01 (pubsub strict-sign spoof / seen-cache poisoning).
+                // Avoid rejecting a future legitimate message with the same id
+                // (e.g. same from||seqno)
                 seenMessages -= it.messageId
                 notifyUnseenInvalidMessage(peer, it)
                 false

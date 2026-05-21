@@ -43,9 +43,7 @@ open class PubsubApiImpl(val router: PubsubRouter) : PubsubApi {
             vararg topics: Topic
         ): CompletableFuture<Unit> {
             // If the caller supplies a `from` AND we have a signing key, the `from` MUST
-            // resolve to the same PeerId as the signing key. Otherwise we'd be signing a
-            // message that claims a different origin — see security issue 01
-            // (pubsub strict-sign spoof).
+            // resolve to the same PeerId as the signing key
             if (from != null && privKey != null) {
                 val derived = PeerId.fromPubKey(privKey.publicKey()).bytes
                 require(from.contentEquals(derived)) {
