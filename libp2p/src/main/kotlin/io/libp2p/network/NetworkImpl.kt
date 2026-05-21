@@ -73,7 +73,7 @@ class NetworkImpl(
 
         // 1. check that some transport can dial at least one addr.
         // 2. trigger dials in parallel via all transports.
-        // 3. when the first dial succeeds, cancel all pending dials and return the connection. // TODO cancel
+        // 3. when the first dial succeeds, cancel all pending dials and return the connection.
         // 4. if no emitted dial succeeds, or if we time out, fail the future. make sure to cancel
         //    pending dials to avoid leaking.
         val connectionFuts = addrsWithP2P.mapNotNull { addr ->
@@ -81,6 +81,10 @@ class NetworkImpl(
         }.map { (addr, transport) ->
             transport.dial(addr, createHookedConnHandler(connectionHandler), preHandler)
         }
-        return anyComplete(connectionFuts)
+        return anyComplete(connectionFuts).also { firstConnection ->
+            firstConnection.thenAccept {
+                connectionFuts.filter { !it.isDone }.forEach { it.cancel(true) }
+            }
+        }
     }
 }
