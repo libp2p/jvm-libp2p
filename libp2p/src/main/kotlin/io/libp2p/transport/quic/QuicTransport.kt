@@ -530,19 +530,23 @@ class QuicTransport(
                 val peerCerts = quicChannel.sslEngine()?.session?.peerCertificates
                     ?: throw Libp2pException("No peer certificates in hole-punched connection from $addr")
 
-                // remotePubKey must be the libp2p host key from the cert extension, not the
-                // ephemeral cert subject key (verifyAndExtractIdentity), so that the invariant
-                // PeerId.fromPubKey(remotePubKey) == remoteId holds on the hole-punch path too.
+                // remoteId and remotePubKey must both come from the libp2p host key in the cert
+                // extension (verifyAndExtractIdentity), never the ephemeral cert subject key, so
+                // that the invariant PeerId.fromPubKey(remotePubKey) == remoteId holds on the
+                // hole-punch path too.
                 val remoteIdentity = verifyAndExtractIdentity(peerCerts)
                 val expectedPeerId = addr.getPeerId()
-                val remotePeerId = expectedPeerId ?: remoteIdentity.peerId
-                val remotePubKey = remoteIdentity.pubKey
+                if (expectedPeerId != null && remoteIdentity.peerId != expectedPeerId) {
+                    throw Libp2pException(
+                        "Remote peer presented libp2p pubkey for ${remoteIdentity.peerId} but dial target was $expectedPeerId"
+                    )
+                }
 
                 connection.setSecureSession(
                     SecureChannel.Session(
                         PeerId.fromPubKey(localKey.publicKey()),
-                        remotePeerId,
-                        remotePubKey,
+                        remoteIdentity.peerId,
+                        remoteIdentity.pubKey,
                         null
                     )
                 )
