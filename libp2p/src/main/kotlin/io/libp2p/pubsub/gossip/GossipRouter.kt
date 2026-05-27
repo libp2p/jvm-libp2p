@@ -7,6 +7,7 @@ import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.etc.types.*
 import io.libp2p.etc.util.P2PService
 import io.libp2p.pubsub.*
+import io.libp2p.pubsub.PubsubRpcLimits
 import org.slf4j.LoggerFactory
 import pubsub.pb.Rpc
 import java.time.Duration
@@ -254,6 +255,22 @@ open class GossipRouter(
         }
 
         return peerScore >= scoreParams.graylistThreshold
+    }
+
+    override val rpcLimits: PubsubRpcLimits by lazy {
+        PubsubRpcLimits(
+            maxPublishedMessages = params.maxPublishedMessages,
+            maxTopicsPerPublishedMessage = params.maxTopicsPerPublishedMessage,
+            maxSubscriptions = params.maxSubscriptions,
+            maxIHaveMessageIds = params.maxIHaveLength,
+            maxIWantMessageIds = params.maxIWantMessageIds,
+            maxGraftMessages = params.maxGraftMessages,
+            maxPruneMessages = params.maxPruneMessages,
+            maxPeersPerPruneMessage = params.maxPeersAcceptedInPruneMsg,
+            maxIDontWantMessageIds = params.maxIDontWantMessageIds,
+            rejectEmptyPublishEntries = true,
+            rejectEmptyIDontWantEntries = true,
+        )
     }
 
     override fun validateMessageListLimits(msg: Rpc.RPCOrBuilder): Boolean {

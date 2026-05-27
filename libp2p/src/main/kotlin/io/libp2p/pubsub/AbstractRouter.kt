@@ -84,6 +84,15 @@ abstract class AbstractRouter(
     }
 
     /**
+     * Per-router caps on repeated-field counts inside inbound RPCs. Enforced before
+     * protobuf materialisation by an [RpcCountFrameDecoder] inserted into the stream
+     * pipeline. Defaults to [PubsubRpcLimits.NONE] (no pre-decode cap). Subclasses
+     * with configured limits (e.g. [io.libp2p.pubsub.gossip.GossipRouter]) override.
+     */
+    protected open val rpcLimits: PubsubRpcLimits
+        get() = PubsubRpcLimits.NONE
+
+    /**
      * Flushes all pending message parts for all peers
      */
     protected fun flushAllPending() {
@@ -113,6 +122,7 @@ abstract class AbstractRouter(
         with(streamHandler.stream) {
             pushHandler(LimitedProtobufVarint32FrameDecoder(maxMsgSize))
             pushHandler(ProtobufVarint32LengthFieldPrepender())
+            pushHandler(RpcCountFrameDecoder(rpcLimits))
             pushHandler(ProtobufDecoder(Rpc.RPC.getDefaultInstance()))
             pushHandler(ProtobufEncoder())
             handler?.also { pushHandler(it) }
@@ -216,7 +226,9 @@ abstract class AbstractRouter(
                 true
             } catch (e: Exception) {
                 logger.debug("Invalid pubsub message from peer {}: {}", peer, it, e)
-                seenMessages[it] = Optional.of(ValidationResult.Invalid)
+                // Avoid rejecting a future legitimate message with the same id
+                // (e.g. same from||seqno)
+                seenMessages -= it.messageId
                 notifyUnseenInvalidMessage(peer, it)
                 false
             }
@@ -230,8 +242,14 @@ abstract class AbstractRouter(
         validFuts.forEach { (msg, validationFut) ->
             validationFut.thenAcceptAsync(
                 { res ->
-                    seenMessages[msg] = Optional.of(res)
-                    if (res == ValidationResult.Invalid) notifyUnseenInvalidMessage(peer, msg)
+                    if (res == ValidationResult.Invalid) {
+                        // Evict so a later legitimate message with the same id is not
+                        // suppressed by this rejected one.
+                        seenMessages -= msg.messageId
+                        notifyUnseenInvalidMessage(peer, msg)
+                    } else {
+                        seenMessages[msg] = Optional.of(res)
+                    }
                 },
                 executor
             )
