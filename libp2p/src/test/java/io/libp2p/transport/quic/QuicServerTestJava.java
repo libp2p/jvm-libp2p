@@ -23,6 +23,8 @@ import io.libp2p.security.noise.NoiseXXSecureChannel;
 import io.libp2p.security.tls.TlsSecureChannel;
 import io.libp2p.transport.tcp.TcpTransport;
 import io.netty.handler.logging.LogLevel;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -158,7 +160,9 @@ public class QuicServerTestJava {
     serverHost.stop().get(5, TimeUnit.SECONDS);
   }
 
-  @Disabled("Runs too long")
+  @Disabled(
+      "Requires active traffic or keep-alive pings; idle timeout without keep-alive will close"
+          + " idle connections. TODO: enable once keep-alive PING frames are configured.")
   @Test
   void checkConnectionIsNotClosedByTimeout() throws Exception {
     String localListenAddress = "/ip4/127.0.0.1/udp/" + getPort() + "/quic-v1";
@@ -490,5 +494,146 @@ public class QuicServerTestJava {
     Pair<PrivKey, PubKey> pair = KeyKt.generateKeyPair(KeyType.SECP256K1);
     PeerId peerId = PeerId.fromPubKey(pair.component2());
     System.out.println("PeerId: " + peerId.toHex());
+  }
+
+  @Test
+  void dialWithoutPeerIdExtractsPeerIdFromCert() throws Exception {
+    String localListenAddress = "/ip4/127.0.0.1/udp/" + getPort() + "/quic-v1";
+
+    Pair<PrivKey, PubKey> serverKeyPair = KeyKt.generateKeyPair(KeyType.ED25519);
+    Pair<PrivKey, PubKey> clientKeyPair = KeyKt.generateKeyPair(KeyType.ED25519);
+    PeerId serverPeerId = PeerId.fromPubKey(serverKeyPair.component2());
+
+    List<io.libp2p.core.multistream.ProtocolBinding<?>> emptyProtocols = new ArrayList<>();
+
+    QuicTransport serverTransport = QuicTransport.ECDSA(serverKeyPair.component1(), emptyProtocols);
+    QuicTransport clientTransport = QuicTransport.ECDSA(clientKeyPair.component1(), emptyProtocols);
+
+    serverTransport.initialize();
+    clientTransport.initialize();
+
+    CompletableFuture<PeerId> serverSidePeerId = new CompletableFuture<>();
+    serverTransport
+        .listen(
+            new Multiaddr(localListenAddress),
+            conn -> serverSidePeerId.complete(conn.secureSession().getRemoteId()),
+            null)
+        .get(5, TimeUnit.SECONDS);
+    System.out.println("Server started: " + serverPeerId);
+
+    // Dial WITHOUT a /p2p/ component — no PeerId in the address
+    Multiaddr addrWithoutPeerId = new Multiaddr(localListenAddress);
+    CompletableFuture<PeerId> clientSidePeerId = new CompletableFuture<>();
+    Connection connection =
+        clientTransport
+            .dial(
+                addrWithoutPeerId,
+                conn -> clientSidePeerId.complete(conn.secureSession().getRemoteId()),
+                null)
+            .get(10, TimeUnit.SECONDS);
+
+    PeerId reportedRemoteId = clientSidePeerId.get(5, TimeUnit.SECONDS);
+    Assertions.assertEquals(
+        serverPeerId,
+        reportedRemoteId,
+        "PeerId extracted from TLS cert should match the server's actual PeerId");
+
+    System.out.println("Dialed without PeerId, got remote PeerId: " + reportedRemoteId);
+
+    serverTransport.close().get(5, TimeUnit.SECONDS);
+    clientTransport.close().get(5, TimeUnit.SECONDS);
+  }
+
+  @Test
+  void concurrentInboundConnections() throws Exception {
+    String localListenAddress = "/ip4/127.0.0.1/udp/" + getPort() + "/quic-v1";
+
+    Host serverHost =
+        new HostBuilder()
+            .keyType(KeyType.ED25519)
+            .secureTransport(QuicTransport::ECDSA)
+            .listen(localListenAddress)
+            .build();
+
+    serverHost.start().get(5, TimeUnit.SECONDS);
+    System.out.println("Server started: " + serverHost.getPeerId());
+
+    int numClients = 5;
+    List<Host> clientHosts = new ArrayList<>();
+    List<CompletableFuture<PeerId>> remotePeerIdFutures = new ArrayList<>();
+
+    for (int i = 0; i < numClients; i++) {
+      Host clientHost =
+          new HostBuilder().keyType(KeyType.ED25519).secureTransport(QuicTransport::ECDSA).build();
+      clientHost.start().get(5, TimeUnit.SECONDS);
+      clientHosts.add(clientHost);
+
+      CompletableFuture<PeerId> remotePeerIdFuture =
+          clientHost
+              .getNetwork()
+              .connect(serverHost.getPeerId(), new Multiaddr(localListenAddress))
+              .thenApply(conn -> conn.secureSession().getRemoteId());
+      remotePeerIdFutures.add(remotePeerIdFuture);
+    }
+
+    CompletableFuture<Void> allConnected =
+        CompletableFuture.allOf(remotePeerIdFutures.toArray(new CompletableFuture[0]));
+    allConnected.get(15, TimeUnit.SECONDS);
+
+    for (int i = 0; i < numClients; i++) {
+      PeerId reportedRemoteId = remotePeerIdFutures.get(i).get();
+      Assertions.assertEquals(
+          serverHost.getPeerId(),
+          reportedRemoteId,
+          "Client " + i + " should report the correct server PeerId");
+    }
+    System.out.println("All " + numClients + " concurrent connections reported correct PeerId");
+
+    for (Host clientHost : clientHosts) {
+      clientHost.stop().get(5, TimeUnit.SECONDS);
+    }
+    serverHost.stop().get(5, TimeUnit.SECONDS);
+  }
+
+  /**
+   * Verify that dialAsListener times out when no peer connects back. This tests the timeout path
+   * without requiring a real hole punch.
+   */
+  @Test
+  void holePunchTimeout() throws Exception {
+    String localListenAddress = "/ip4/127.0.0.1/udp/" + getPort() + "/quic-v1";
+
+    Pair<PrivKey, PubKey> serverKeyPair = KeyKt.generateKeyPair(KeyType.ED25519);
+    List<io.libp2p.core.multistream.ProtocolBinding<?>> emptyProtocols = new ArrayList<>();
+
+    QuicTransport transport = QuicTransport.ECDSA(serverKeyPair.component1(), emptyProtocols);
+    transport.initialize();
+    transport.listen(new Multiaddr(localListenAddress), conn -> {}, null).get(5, TimeUnit.SECONDS);
+    System.out.println("Transport listening on: " + localListenAddress);
+
+    // Dial a non-existent peer at an address where nobody will connect back
+    // Use a different port so nobody is listening there
+    int unreachablePort = getPort();
+    Multiaddr unreachableAddr = new Multiaddr("/ip4/127.0.0.1/udp/" + unreachablePort + "/quic-v1");
+
+    CompletableFuture<Connection> holePunchFuture =
+        transport.dialAsListener(unreachableAddr, conn -> {}, null);
+
+    long start = System.currentTimeMillis();
+    try {
+      holePunchFuture.get(6, TimeUnit.SECONDS);
+      Assertions.fail("Expected hole punch to time out, but it completed successfully");
+    } catch (ExecutionException e) {
+      long elapsed = System.currentTimeMillis() - start;
+      System.out.println("Hole punch failed as expected after " + elapsed + "ms: " + e.getCause());
+      // Expected: the future completes exceptionally (TimeoutException wrapped in
+      // ExecutionException)
+      Assertions.assertInstanceOf(
+          java.util.concurrent.TimeoutException.class,
+          e.getCause(),
+          "Expected TimeoutException but got: " + e.getCause());
+    }
+
+    transport.close().get(5, TimeUnit.SECONDS);
   }
 }
