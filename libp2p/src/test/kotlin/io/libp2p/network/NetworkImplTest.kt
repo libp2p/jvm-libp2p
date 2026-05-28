@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit.SECONDS
+import java.util.concurrent.TimeoutException
 
 class NetworkImplTest {
 
@@ -39,6 +40,54 @@ class NetworkImplTest {
 
         assertSame(successfulConnection, connection)
         assertTrue(pendingDial.isCancelled, "Pending IPv6 dial was not cancelled")
+    }
+
+    @Test
+    fun `connect cancels pending dials when aggregate future is cancelled`() {
+        val peerId = PeerId.random()
+        val pendingIpv6Dial = CompletableFuture<Connection>()
+        val pendingIpv4Dial = CompletableFuture<Connection>()
+        val network = NetworkImpl(
+            listOf(
+                TestTransport(Protocol.IP6, pendingIpv6Dial),
+                TestTransport(Protocol.IP4, pendingIpv4Dial)
+            ),
+            ConnectionHandler { }
+        )
+
+        val connect = network.connect(
+            peerId,
+            Multiaddr("/ip6/::1/tcp/4001"),
+            Multiaddr("/ip4/127.0.0.1/tcp/4001")
+        )
+
+        assertTrue(connect.cancel(true))
+        assertTrue(pendingIpv6Dial.isCancelled, "Pending IPv6 dial was not cancelled")
+        assertTrue(pendingIpv4Dial.isCancelled, "Pending IPv4 dial was not cancelled")
+    }
+
+    @Test
+    fun `connect cancels pending dials when aggregate future times out`() {
+        val peerId = PeerId.random()
+        val pendingIpv6Dial = CompletableFuture<Connection>()
+        val pendingIpv4Dial = CompletableFuture<Connection>()
+        val network = NetworkImpl(
+            listOf(
+                TestTransport(Protocol.IP6, pendingIpv6Dial),
+                TestTransport(Protocol.IP4, pendingIpv4Dial)
+            ),
+            ConnectionHandler { }
+        )
+
+        val connect = network.connect(
+            peerId,
+            Multiaddr("/ip6/::1/tcp/4001"),
+            Multiaddr("/ip4/127.0.0.1/tcp/4001")
+        )
+
+        assertTrue(connect.completeExceptionally(TimeoutException()))
+        assertTrue(pendingIpv6Dial.isCancelled, "Pending IPv6 dial was not cancelled")
+        assertTrue(pendingIpv4Dial.isCancelled, "Pending IPv4 dial was not cancelled")
     }
 
     private class TestTransport(

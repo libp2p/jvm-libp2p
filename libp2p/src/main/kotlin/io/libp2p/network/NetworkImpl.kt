@@ -82,7 +82,7 @@ class NetworkImpl(
             transport.dial(addr, createHookedConnHandler(connectionHandler), preHandler)
         }
         return anyComplete(connectionFuts).also { firstConnection ->
-            firstConnection.thenAccept {
+            firstConnection.whenComplete { _, _ ->
                 connectionFuts.filter { !it.isDone }.forEach { it.cancel(true) }
             }
         }
