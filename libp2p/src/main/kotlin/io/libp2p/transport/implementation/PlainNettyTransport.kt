@@ -158,8 +158,14 @@ abstract class PlainNettyTransport(
             .connect(fromMultiaddr(addr))
             .also { registerChannel(it.channel()) }
 
-        return chanFuture.toCompletableFuture()
+        val connection = chanFuture.toCompletableFuture()
             .thenCompose { connectionBuilder.connectionEstablished }
+        connection.whenComplete { _, _ ->
+            if (connection.isCancelled) {
+                chanFuture.channel().close()
+            }
+        }
+        return connection
     } // dial
 
     protected abstract fun clientTransportBuilder(
