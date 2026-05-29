@@ -23,7 +23,6 @@ import java.net.BindException
 import java.net.Inet6Address
 import java.net.InetAddress
 import java.net.InetSocketAddress
-import java.net.StandardProtocolFamily.INET6
 import java.nio.channels.ServerSocketChannel
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit.SECONDS
@@ -134,7 +133,7 @@ class TcpTransportTest : TransportTests() {
     }
 
     private fun bindIpv6Loopback(loopback: Inet6Address, port: Int): ServerSocketChannel =
-        ServerSocketChannel.open(INET6).apply {
+        ServerSocketChannel.open().apply {
             bind(InetSocketAddress(loopback, port))
         }
 
