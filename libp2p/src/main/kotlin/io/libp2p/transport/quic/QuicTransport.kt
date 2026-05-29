@@ -30,33 +30,51 @@ import io.netty.bootstrap.Bootstrap
 import io.netty.buffer.AdaptiveByteBufAllocator
 import io.netty.buffer.ByteBuf
 import io.netty.channel.*
-import io.netty.channel.epoll.Epoll
-import io.netty.channel.epoll.EpollDatagramChannel
 import io.netty.channel.nio.NioIoHandler
 import io.netty.channel.socket.nio.NioDatagramChannel
 import io.netty.handler.codec.quic.*
 import io.netty.handler.ssl.ClientAuth
 import org.slf4j.LoggerFactory
+import java.net.Inet6Address
 import java.net.InetSocketAddress
 import java.net.SocketAddress
-import java.time.Duration
 import java.util.*
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 
+enum class AddressFamily { IPV4, IPV6 }
+
+/**
+ * QUIC transport for libp2p using QUIC v1 (RFC 9000) with TLS 1.3.
+ *
+ * Security and multiplexing are native to QUIC — no separate Noise/TLS negotiation
+ * or Yamux/Mplex negotiation is performed. Only `/quic-v1` multiaddrs are supported.
+ *
+ * **Private networks (PSK) are not supported.** QUIC's mandatory TLS 1.3 cannot be
+ * replaced with a pre-shared key scheme. Do not configure a PSK alongside this transport.
+ */
 class QuicTransport(
     private val localKey: PrivKey,
     private val certAlgorithm: String,
-    private val protocols: List<ProtocolBinding<*>>
+    private val protocols: List<ProtocolBinding<*>>,
+    private val config: QuicConfig = QuicConfig()
 ) : NettyTransport {
 
     private val logger = LoggerFactory.getLogger(QuicTransport::class.java)
 
     private var closed = false
 
-    private val connectTimeout = Duration.ofSeconds(15)
+    private val connectTimeout get() = config.connectTimeout
 
     private val listeners = mutableMapOf<Multiaddr, Channel>()
     private val channels = mutableListOf<Channel>()
+
+    /** Tracks active listener DatagramChannels by address family. */
+    internal val listenerChannelsByFamily = ConcurrentHashMap<AddressFamily, Channel>()
+
+    /** Pending hole punch futures keyed by the remote address we are trying to reach. */
+    private val pendingHolePunches = ConcurrentHashMap<InetSocketAddress, CompletableFuture<QuicChannel>>()
 
     private var workerGroup by lazyVar {
         MultiThreadIoEventLoopGroup(NioIoHandler.newFactory())
@@ -67,13 +85,15 @@ class QuicTransport(
 
     companion object {
         @JvmStatic
-        fun Ed25519(k: PrivKey, p: List<ProtocolBinding<*>>): QuicTransport {
-            return QuicTransport(k, "Ed25519", p)
+        @JvmOverloads
+        fun Ed25519(k: PrivKey, p: List<ProtocolBinding<*>>, config: QuicConfig = QuicConfig()): QuicTransport {
+            return QuicTransport(k, "Ed25519", p, config)
         }
 
         @JvmStatic
-        fun ECDSA(k: PrivKey, p: List<ProtocolBinding<*>>): QuicTransport {
-            return QuicTransport(k, "ECDSA", p)
+        @JvmOverloads
+        fun ECDSA(k: PrivKey, p: List<ProtocolBinding<*>>, config: QuicConfig = QuicConfig()): QuicTransport {
+            return QuicTransport(k, "ECDSA", p, config)
         }
 
         private fun createStream(channel: QuicStreamChannel, connection: Connection, initiator: Boolean): Stream {
@@ -85,25 +105,13 @@ class QuicTransport(
 
     private var client by lazyVar {
         Bootstrap().group(workerGroup)
-            .channel(
-                if (Epoll.isAvailable()) {
-                    EpollDatagramChannel::class.java
-                } else {
-                    NioDatagramChannel::class.java
-                }
-            )
+            .channel(NioDatagramChannel::class.java)
             .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, connectTimeout.toMillis().toInt())
     }
 
     private var server by lazyVar {
         Bootstrap().group(workerGroup)
-            .channel(
-                if (Epoll.isAvailable()) {
-                    EpollDatagramChannel::class.java
-                } else {
-                    NioDatagramChannel::class.java
-                }
-            )
+            .channel(NioDatagramChannel::class.java)
     }
 
     override val activeListeners: Int
@@ -159,14 +167,18 @@ class QuicTransport(
         val bindComplete = listener.bind(fromMultiaddr(addr))
 
         bindComplete.also {
+            val family = if ((fromMultiaddr(addr) as InetSocketAddress).address is Inet6Address) AddressFamily.IPV6 else AddressFamily.IPV4
             synchronized(this@QuicTransport) {
                 listeners += addr to it.channel()
-                it.channel().closeFuture().addListener {
+                it.channel().closeFuture().addListener { _ ->
                     synchronized(this@QuicTransport) {
                         listeners -= addr
                     }
+                    listenerChannelsByFamily.remove(family, it.channel())
                 }
             }
+            // Register after sync block to avoid holding lock during ConcurrentHashMap update
+            listenerChannelsByFamily[family] = it.channel()
         }
 
         return bindComplete.toVoidCompletableFuture().thenApply {
@@ -191,42 +203,106 @@ class QuicTransport(
         val requestsHandler = QuicClientCodecBuilder()
             .sslEngineProvider { q -> sslContext.newEngine(q.alloc()) }
             .sslTaskExecutor(workerGroup)
-            .initialMaxData(1 shl 20)
-            .initialMaxStreamsBidirectional(64)
-            .initialMaxStreamDataBidirectionalRemote(1 shl 18)
-            .initialMaxStreamDataBidirectionalLocal(1 shl 18)
+            .maxIdleTimeout(config.idleTimeout.toMillis(), TimeUnit.MILLISECONDS)
+            .initialMaxData(config.maxConnectionData)
+            .initialMaxStreamsBidirectional(config.maxStreamsBidirectional)
+            .initialMaxStreamDataBidirectionalRemote(config.maxStreamDataRemote)
+            .initialMaxStreamDataBidirectionalLocal(config.maxStreamDataLocal)
+            .initialMaxStreamsUnidirectional(0) // libp2p QUIC uses bidirectional streams only
+            .activeMigration(false) // disable until address-change handling is implemented
+            // Note: spin bit is not configurable in Netty's QUIC codec; quiche disables it by default
+            .statelessResetToken(deriveStatelessResetToken())
             .build()
 
-        return client.clone()
-            .handler(requestsHandler)
-            .bind(0)
-            .toCompletableFuture()
-            .thenCompose {
-                QuicChannel.newBootstrap(it)
-                    .streamOption(ChannelOption.ALLOCATOR, allocator)
-                    .option(ChannelOption.AUTO_READ, true)
-                    .option(ChannelOption.ALLOCATOR, allocator)
-                    .remoteAddress(fromMultiaddr(addr))
-                    .streamHandler(InboundStreamHandler(multistreamProtocol, protocols))
-                    .connect()
-                    .toCompletableFuture()
-            }
+        val targetAddr = fromMultiaddr(addr) as InetSocketAddress
+        val family = if (targetAddr.address is Inet6Address) AddressFamily.IPV6 else AddressFamily.IPV4
+        val existingListenerChannel = listenerChannelsByFamily[family]
+
+        // Attempt to bind the client socket to the same port as an active listener for
+        // consistent NAT mappings. Falls back to an ephemeral port if binding fails
+        // (SO_REUSEADDR alone may be insufficient for UDP port sharing on some platforms;
+        // TODO: add SO_REUSEPORT support for Linux/Epoll).
+        val bindAddr: InetSocketAddress = if (existingListenerChannel != null) {
+            val listenerPort = (existingListenerChannel.localAddress() as? InetSocketAddress)?.port ?: 0
+            val wildcard = if (family == AddressFamily.IPV6) "::" else "0.0.0.0"
+            InetSocketAddress(wildcard, listenerPort)
+        } else {
+            InetSocketAddress(0) // ephemeral port
+        }
+
+        fun connectViaBoundChannel(boundAddr: InetSocketAddress): CompletableFuture<QuicChannel> {
+            return client.clone()
+                .handler(requestsHandler)
+                .option(ChannelOption.SO_REUSEADDR, true)
+                .bind(boundAddr)
+                .toCompletableFuture()
+                .thenCompose { udpChannel ->
+                    QuicChannel.newBootstrap(udpChannel)
+                        .streamOption(ChannelOption.ALLOCATOR, allocator)
+                        .option(ChannelOption.AUTO_READ, true)
+                        .option(ChannelOption.ALLOCATOR, allocator)
+                        .remoteAddress(targetAddr)
+                        .handler(
+                            nettyInitializer {
+                                val quicCh = it.channel as QuicChannel
+                                val connection = ConnectionOverNetty(quicCh, this@QuicTransport, true)
+                                // ConnectionOverNetty.init sets quicCh.attr(CONNECTION) = connection,
+                                // so InboundStreamHandler can find it before thenApply runs.
+                                connection.setMuxerSession(QuicMuxerSession(quicCh, connection))
+                            }
+                        )
+                        .streamHandler(InboundStreamHandler(multistreamProtocol, protocols))
+                        .connect()
+                        .toCompletableFuture()
+                }
+        }
+
+        val quicConnFuture: CompletableFuture<QuicChannel> = if (existingListenerChannel != null) {
+            connectViaBoundChannel(bindAddr).handle { result, ex ->
+                if (ex != null) {
+                    // Port reuse failed (SO_REUSEADDR insufficient on this platform); fall back to ephemeral port.
+                    logger.debug("Could not reuse listener port {} for dial ({}), using ephemeral port", bindAddr, ex.message)
+                    connectViaBoundChannel(InetSocketAddress(0))
+                } else {
+                    CompletableFuture.completedFuture(result)
+                }
+            }.thenCompose { it }
+        } else {
+            connectViaBoundChannel(InetSocketAddress(0))
+        }
+
+        return quicConnFuture
             .thenApply {
                 registerChannel(it)
-                val connection = ConnectionOverNetty(it, this@QuicTransport, true)
+                val connection = it.attr(CONNECTION).get() as ConnectionOverNetty
 
-                connection.setMuxerSession(QuicMuxerSession(it, connection))
+                val peerCerts = it.sslEngine()?.session?.peerCertificates
+                    ?: throw Libp2pException("No peer certificates available after QUIC handshake with $addr")
 
-                val pubHash = Multihash.of(addr.getPeerId()!!.bytes.toByteBuf())
-                val remotePubKey = if (pubHash.desc.digest == Multihash.Digest.Identity) {
-                    unmarshalPublicKey(pubHash.bytes.toByteArray())
+                val expectedPeerId = addr.getPeerId()
+                val remotePeerId: PeerId
+                val remotePubKey: io.libp2p.core.crypto.PubKey
+
+                if (expectedPeerId != null) {
+                    // PeerId was pre-validated by trustManager during TLS handshake.
+                    // For inline-key peerIds (identity multihash), extract pubkey from the multihash.
+                    val pubHash = Multihash.of(expectedPeerId.bytes.toByteBuf())
+                    remotePubKey = if (pubHash.desc.digest == Multihash.Digest.Identity) {
+                        unmarshalPublicKey(pubHash.bytes.toByteArray())
+                    } else {
+                        getPublicKeyFromCert(peerCerts)
+                    }
+                    remotePeerId = expectedPeerId
                 } else {
-                    getPublicKeyFromCert(arrayOf(trustManager.remoteCert!!))
+                    // No PeerId known upfront — extract from TLS certificate post-handshake.
+                    remotePubKey = getPublicKeyFromCert(peerCerts)
+                    remotePeerId = verifyAndExtractPeerId(peerCerts)
                 }
+
                 connection.setSecureSession(
                     SecureChannel.Session(
                         PeerId.fromPubKey(localKey.publicKey()),
-                        addr.getPeerId()!!,
+                        remotePeerId,
                         remotePubKey,
                         null
                     )
@@ -234,8 +310,6 @@ class QuicTransport(
 
                 preHandler?.also { visitor -> visitor.visit(connection) }
                 connHandler.handleConnection(connection)
-
-                it.attr(CONNECTION).set(connection)
 
                 connection
             }
@@ -277,6 +351,17 @@ class QuicTransport(
             addr.has(QUICV1) &&
             !addr.has(WS)
 
+    private fun deriveStatelessResetToken(): ByteArray {
+        // Derive a deterministic 16-byte token from the local identity key.
+        // Using SHA-256 of (key_bytes + magic), truncated to 16 bytes.
+        val keyBytes = localKey.raw()
+        val magic = "libp2p-quic-stateless-reset".toByteArray(Charsets.UTF_8)
+        val digest = java.security.MessageDigest.getInstance("SHA-256")
+        digest.update(keyBytes)
+        digest.update(magic)
+        return digest.digest().copyOf(16)
+    }
+
     fun quicSslContext(isClient: Boolean, trustManager: Libp2pTrustManager): QuicSslContext {
         val connectionKeys = if (certAlgorithm == "ECDSA") generateEcdsaKeyPair() else generateEd25519KeyPair()
         val javaPrivateKey = getJavaKey(connectionKeys.first)
@@ -316,11 +401,13 @@ class QuicTransport(
                         "quic-handshake-waiter",
                         object : ChannelInboundHandlerAdapter() {
                             override fun channelActive(ctx: ChannelHandlerContext) {
-                                // Now the handshake is complete and remoteCert should be available
-                                val remoteCert = trustManager.remoteCert
-                                if (remoteCert != null) {
-                                    val remotePeerId = verifyAndExtractPeerId(arrayOf(remoteCert))
-                                    val remotePublicKey = getPublicKeyFromCert(arrayOf(remoteCert))
+                                // Extract peer certificates from this connection's SSL session,
+                                // avoiding the race condition of reading shared TrustManager state.
+                                val peerCerts = (ctx.channel() as QuicChannel).sslEngine()
+                                    ?.session?.peerCertificates
+                                if (!peerCerts.isNullOrEmpty()) {
+                                    val remotePeerId = verifyAndExtractPeerId(peerCerts)
+                                    val remotePublicKey = getPublicKeyFromCert(peerCerts)
 
                                     logger.info("Handshake completed with remote peer id: {}", remotePeerId)
 
@@ -336,9 +423,22 @@ class QuicTransport(
                                     // Remove this handler as it's no longer needed
                                     ctx.pipeline().remove(this)
 
-                                    // Now it's safe to call the connection handler
-                                    preHandler?.also { visitor -> visitor.visit(connection) }
-                                    connHandler.handleConnection(connection)
+                                    // Check if this connection is completing a pending hole punch
+                                    val remoteAddr = ctx.channel().remoteAddress() as? InetSocketAddress
+                                    val holePunchFuture = if (remoteAddr != null) {
+                                        pendingHolePunches.remove(remoteAddr)
+                                    } else {
+                                        null
+                                    }
+
+                                    if (holePunchFuture != null) {
+                                        // Route this inbound connection to the waiting hole-punch caller
+                                        holePunchFuture.complete(ctx.channel() as QuicChannel)
+                                    } else {
+                                        // Normal path: deliver to the connection handler
+                                        preHandler?.also { visitor -> visitor.visit(connection) }
+                                        connHandler.handleConnection(connection)
+                                    }
                                 } else {
                                     // This should not happen if channelActive is called after handshake
                                     ctx.close()
@@ -357,12 +457,91 @@ class QuicTransport(
                     )
                 }
             )
-            .initialMaxData(1 shl 20)
-            .initialMaxStreamsBidirectional(64)
-            .initialMaxStreamDataBidirectionalRemote(1 shl 18)
-            .initialMaxStreamDataBidirectionalLocal(1 shl 18)
+            .maxIdleTimeout(config.idleTimeout.toMillis(), TimeUnit.MILLISECONDS)
+            .initialMaxData(config.maxConnectionData)
+            .initialMaxStreamsBidirectional(config.maxStreamsBidirectional)
+            .initialMaxStreamDataBidirectionalRemote(config.maxStreamDataRemote)
+            .initialMaxStreamDataBidirectionalLocal(config.maxStreamDataLocal)
+            .initialMaxStreamsUnidirectional(0) // libp2p QUIC uses bidirectional streams only
+            .activeMigration(false) // disable until address-change handling is implemented
+            // Note: spin bit is not configurable in Netty's QUIC codec; quiche disables it by default
+            .statelessResetToken(deriveStatelessResetToken())
             .streamHandler(InboundStreamHandler(incomingMultistreamProtocol, protocols))
             .build()
+    }
+
+    /**
+     * Dial a remote peer using the hole-punching technique: send UDP probe packets from the
+     * active listener socket to open NAT mappings, then wait for the remote peer to connect back
+     * on the same port.
+     *
+     * Requires an active listener for the same address family as [addr].
+     * The returned future completes when the inbound QUIC connection from the remote peer arrives,
+     * or fails with a [java.util.concurrent.TimeoutException] after 5 seconds.
+     */
+    fun dialAsListener(
+        addr: Multiaddr,
+        connHandler: ConnectionHandler,
+        preHandler: ChannelVisitor<P2PChannel>?
+    ): CompletableFuture<Connection> {
+        if (closed) throw Libp2pException("Transport is closed")
+        val targetAddr = fromMultiaddr(addr) as InetSocketAddress
+        val family = if (targetAddr.address is Inet6Address) AddressFamily.IPV6 else AddressFamily.IPV4
+        val listenerChannel = listenerChannelsByFamily[family]
+            ?: throw Libp2pException(
+                "Hole punch requires an active listener for the same address family as $addr"
+            )
+
+        val inboundFuture = CompletableFuture<QuicChannel>()
+        pendingHolePunches[targetAddr] = inboundFuture
+
+        // Send UDP probe packets to open NAT mappings on both sides.
+        // Probes are raw UDP datagrams — not QUIC frames.
+        val probeBytes = ByteArray(64).also { java.util.concurrent.ThreadLocalRandom.current().nextBytes(it) }
+        val probeBuf = io.netty.buffer.Unpooled.wrappedBuffer(probeBytes)
+        val probeTask = workerGroup.scheduleAtFixedRate(
+            {
+                val packet = io.netty.channel.socket.DatagramPacket(probeBuf.retainedDuplicate(), targetAddr)
+                listenerChannel.writeAndFlush(packet)
+            },
+            0L,
+            50L,
+            TimeUnit.MILLISECONDS
+        )
+
+        return inboundFuture
+            .orTimeout(5, TimeUnit.SECONDS)
+            .whenComplete { _, _ ->
+                probeTask.cancel(false)
+                probeBuf.release()
+                pendingHolePunches.remove(targetAddr)
+            }
+            .thenApply { quicChannel ->
+                registerChannel(quicChannel)
+                val connection = ConnectionOverNetty(quicChannel, this@QuicTransport, false)
+                connection.setMuxerSession(QuicMuxerSession(quicChannel, connection))
+
+                val peerCerts = quicChannel.sslEngine()?.session?.peerCertificates
+                    ?: throw Libp2pException("No peer certificates in hole-punched connection from $addr")
+
+                val expectedPeerId = addr.getPeerId()
+                val remotePeerId = expectedPeerId ?: verifyAndExtractPeerId(peerCerts)
+                val remotePubKey = getPublicKeyFromCert(peerCerts)
+
+                connection.setSecureSession(
+                    SecureChannel.Session(
+                        PeerId.fromPubKey(localKey.publicKey()),
+                        remotePeerId,
+                        remotePubKey,
+                        null
+                    )
+                )
+
+                preHandler?.also { visitor -> visitor.visit(connection) }
+                connHandler.handleConnection(connection)
+                quicChannel.attr(CONNECTION).set(connection)
+                connection
+            }
     }
 
     class QuicMuxerSession(
