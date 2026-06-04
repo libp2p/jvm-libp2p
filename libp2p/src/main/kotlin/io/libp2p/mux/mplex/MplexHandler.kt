@@ -26,9 +26,18 @@ open class MplexHandler(
     override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
         msg as MplexFrame
         when (msg.flag.type) {
-            MplexFlag.Type.OPEN -> onRemoteOpen(msg.id)
-            MplexFlag.Type.CLOSE -> onRemoteDisconnect(msg.id)
-            MplexFlag.Type.RESET -> onRemoteClose(msg.id)
+            MplexFlag.Type.OPEN -> {
+                onRemoteOpen(msg.id)
+                msg.release()
+            }
+            MplexFlag.Type.CLOSE -> {
+                onRemoteDisconnect(msg.id)
+                msg.release()
+            }
+            MplexFlag.Type.RESET -> {
+                onRemoteClose(msg.id)
+                msg.release()
+            }
             MplexFlag.Type.DATA -> childRead(msg.id, msg.data)
         }
     }

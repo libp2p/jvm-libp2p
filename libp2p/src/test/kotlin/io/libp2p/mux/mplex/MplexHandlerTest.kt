@@ -10,8 +10,44 @@ import io.libp2p.mux.MuxHandlerAbstractTest.AbstractTestMuxFrame.Flag.*
 import io.libp2p.tools.readAllBytesAndRelease
 import io.netty.buffer.Unpooled
 import io.netty.channel.ChannelHandlerContext
+import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Test
 
 class MplexHandlerTest : MuxHandlerAbstractTest() {
+
+    private fun writeInboundControlFrame(streamId: Long, type: MplexFlag.Type) {
+        // Simulate what MplexFrameCodec.decode() produces: a retained slice of the
+        // inbound buffer carried as the MplexFrame data, even for OPEN/CLOSE/RESET.
+        val data = allocateBuf()
+        val muxId = MplexId(parentChannelId, streamId, true)
+        ech.writeInbound(MplexFrame(muxId, MplexFlag.getByType(type, true), data))
+    }
+
+    @Test
+    fun `OPEN frame data buffer is released`() {
+        writeInboundControlFrame(1, MplexFlag.Type.OPEN)
+        // cleanUpAndCheck verifies the allocated buffer's refCnt was decremented.
+    }
+
+    @Test
+    fun `CLOSE frame data buffer is released`() {
+        val id = openStreamRemote()
+        writeInboundControlFrame(id, MplexFlag.Type.CLOSE)
+    }
+
+    @Test
+    fun `RESET frame data buffer is released`() {
+        val id = openStreamRemote()
+        writeInboundControlFrame(id, MplexFlag.Type.RESET)
+    }
+
+    @Test
+    fun `repeated OPEN frames do not leak buffers`() {
+        repeat(50) { i ->
+            writeInboundControlFrame(i.toLong(), MplexFlag.Type.OPEN)
+        }
+        assertThat(allocatedBufs).hasSize(50)
+    }
 
     override val maxFrameDataLength = 256
 
