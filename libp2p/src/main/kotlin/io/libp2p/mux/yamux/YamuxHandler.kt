@@ -5,22 +5,20 @@ import io.libp2p.core.Libp2pException
 import io.libp2p.core.StreamHandler
 import io.libp2p.core.multistream.MultistreamProtocol
 import io.libp2p.core.mux.StreamMuxer
-import io.libp2p.etc.types.sliceMaxSize
 import io.libp2p.etc.types.writeOnce
-import io.libp2p.etc.util.netty.ByteBufQueue
 import io.libp2p.etc.util.netty.mux.MuxChannel
 import io.libp2p.etc.util.netty.mux.MuxId
 import io.libp2p.mux.*
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
+import io.netty.channel.WriteBufferWaterMark
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
-import kotlin.math.max
 import kotlin.properties.Delegates
 
-const val DEFAULT_MAX_BUFFERED_CONNECTION_WRITES = 10 * 1024 * 1024 // 10 MiB
+const val DEFAULT_MAX_BUFFERED_STREAM_WRITES = 64 * 1024
 const val DEFAULT_ACK_BACKLOG_LIMIT = 256
 
 const val INITIAL_WINDOW_SIZE = 256 * 1024
@@ -31,10 +29,12 @@ open class YamuxHandler(
     ready: CompletableFuture<StreamMuxer.Session>?,
     inboundStreamHandler: StreamHandler<*>,
     private val connectionInitiator: Boolean,
-    private val maxBufferedConnectionWrites: Int,
     private val ackBacklogLimit: Int,
     private val initialWindowSize: Int = INITIAL_WINDOW_SIZE
 ) : MuxHandler(ready, inboundStreamHandler) {
+
+    private val childWriteBufferWaterMark =
+        WriteBufferWaterMark(DEFAULT_MAX_BUFFERED_STREAM_WRITES / 2, DEFAULT_MAX_BUFFERED_STREAM_WRITES)
 
     private inner class YamuxStreamHandler(
         val id: MuxId,
@@ -43,12 +43,11 @@ open class YamuxHandler(
         val acknowledged = AtomicBoolean(false)
         val sendWindowSize = AtomicInteger(initialWindowSize)
         val receiveWindowSize = AtomicInteger(initialWindowSize)
-        val sendBuffer = ByteBufQueue()
         var closedForWriting by Delegates.writeOnce(false)
 
-        fun dispose() {
-            sendBuffer.dispose()
-        }
+        fun dispose() {}
+
+        fun isWritable(): Boolean = sendWindowSize.get() > 0
 
         fun handleFrameRead(msg: YamuxFrame) {
             handleFlags(msg)
@@ -80,8 +79,8 @@ open class YamuxHandler(
         private fun handleWindowUpdate(msg: YamuxFrame) {
             val delta = msg.length.toInt()
             sendWindowSize.addAndGet(delta)
-            // try to send any buffered messages after the window update
-            drainBufferAndMaybeClose()
+            refreshChildWritability(id)
+            retryChildWrite(id)
         }
 
         private fun handleFlags(msg: YamuxFrame) {
@@ -112,39 +111,26 @@ open class YamuxHandler(
             }
         }
 
-        private fun fillBuffer(data: ByteBuf) {
-            sendBuffer.push(data)
-            val totalBufferedWrites = calculateTotalBufferedWrites()
-            if (totalBufferedWrites > maxBufferedConnectionWrites + sendWindowSize.get()) {
-                onLocalClose()
-                throw WriteBufferOverflowMuxerException(
-                    "Overflowed send buffer ($totalBufferedWrites/$maxBufferedConnectionWrites). Last stream attempting to write: $id"
-                )
-            }
-        }
-
-        private fun drainBufferAndMaybeClose() {
-            val maxSendLength = max(0, sendWindowSize.get())
-            val data = sendBuffer.take(maxSendLength)
-            sendWindowSize.addAndGet(-data.readableBytes())
-            data.sliceMaxSize(maxFrameDataLength)
-                .forEach { slicedData ->
-                    val length = slicedData.readableBytes()
-                    writeAndFlushFrame(YamuxFrame(id, YamuxType.DATA, YamuxFlag.NONE, length.toLong(), slicedData))
-                }
-
-            if (closedForWriting && sendBuffer.readableBytes() == 0) {
-                writeAndFlushFrame(YamuxFrame(id, YamuxType.DATA, YamuxFlag.FIN.asSet, 0))
-            }
-        }
-
-        fun sendData(data: ByteBuf) {
+        fun sendData(data: ByteBuf): Int {
             if (closedForWriting) {
                 throw ClosedForWritingMuxerException(id)
             }
             acknowledgeInboundStreamIfNeeded()
-            fillBuffer(data)
-            drainBufferAndMaybeClose()
+            val ctx = getChannelHandlerContext()
+            var written = 0
+            while (written < data.readableBytes() && sendWindowSize.get() > 0) {
+                val length = minOf(
+                    data.readableBytes() - written,
+                    maxFrameDataLength,
+                    sendWindowSize.get()
+                )
+                val slicedData = data.retainedSlice(data.readerIndex() + written, length)
+                sendWindowSize.addAndGet(-length)
+                ctx.write(YamuxFrame(id, YamuxType.DATA, YamuxFlag.NONE, length.toLong(), slicedData))
+                written += length
+            }
+            refreshChildWritability(id)
+            return written
         }
 
         fun onLocalOpen() {
@@ -157,12 +143,11 @@ open class YamuxHandler(
 
         fun onLocalDisconnect() {
             closedForWriting = true
-            drainBufferAndMaybeClose()
+            writeAndFlushFrame(YamuxFrame(id, YamuxType.DATA, YamuxFlag.FIN.asSet, 0))
         }
 
         fun onLocalClose() {
             // close stream immediately so not transferring buffered data
-            sendBuffer.dispose()
             writeAndFlushFrame(YamuxFrame(id, YamuxType.DATA, YamuxFlag.RST.asSet, 0))
         }
     }
@@ -230,8 +215,16 @@ open class YamuxHandler(
         }
     }
 
-    override fun onChildWrite(child: MuxChannel<ByteBuf>, data: ByteBuf) {
-        getStreamHandlerOrReleaseAndThrow(child.id, data).sendData(data)
+    override fun isChildWritable(child: MuxChannel<ByteBuf>): Boolean =
+        streamHandlers[child.id]?.isWritable() == true
+
+    override fun onChildRegistered(child: MuxChannel<ByteBuf>) {
+        child.config().setWriteBufferWaterMark(childWriteBufferWaterMark)
+        super.onChildRegistered(child)
+    }
+
+    override fun onChildWrite(child: MuxChannel<ByteBuf>, data: ByteBuf): Int {
+        return getStreamHandlerOrThrow(child.id).sendData(data)
     }
 
     override fun onLocalOpen(child: MuxChannel<ByteBuf>) {
@@ -292,10 +285,6 @@ open class YamuxHandler(
             throw InvalidFrameMuxerException("Invalid StreamId for GoAway frame type: ${msg.id}")
         }
         goAwayPromise.complete(msg.length)
-    }
-
-    private fun calculateTotalBufferedWrites(): Int {
-        return streamHandlers.values.sumOf { it.sendBuffer.readableBytes() }
     }
 
     override fun generateNextId() =
