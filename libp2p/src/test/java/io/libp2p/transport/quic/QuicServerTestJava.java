@@ -596,6 +596,60 @@ public class QuicServerTestJava {
   }
 
   /**
+   * Reproduces the broken outbound dial path: when the dialing transport ALSO has an active QUIC
+   * listener (as every real node does, e.g. Teku), {@code dial()} takes the port-reuse branch
+   * instead of the clean ephemeral path that all the other tests exercise. This must still complete
+   * a working outbound connection.
+   */
+  @Test
+  void dialWhileListeningCompletes() throws Exception {
+    String serverListenAddress = "/ip4/127.0.0.1/udp/" + getPort() + "/quic-v1";
+    String dialerListenAddress = "/ip4/127.0.0.1/udp/" + getPort() + "/quic-v1";
+
+    Pair<PrivKey, PubKey> serverKeyPair = KeyKt.generateKeyPair(KeyType.ED25519);
+    Pair<PrivKey, PubKey> dialerKeyPair = KeyKt.generateKeyPair(KeyType.ED25519);
+    PeerId serverPeerId = PeerId.fromPubKey(serverKeyPair.component2());
+
+    List<io.libp2p.core.multistream.ProtocolBinding<?>> emptyProtocols = new ArrayList<>();
+
+    QuicTransport serverTransport = QuicTransport.ECDSA(serverKeyPair.component1(), emptyProtocols);
+    QuicTransport dialerTransport = QuicTransport.ECDSA(dialerKeyPair.component1(), emptyProtocols);
+    serverTransport.initialize();
+    dialerTransport.initialize();
+
+    CompletableFuture<PeerId> serverSidePeerId = new CompletableFuture<>();
+    serverTransport
+        .listen(
+            new Multiaddr(serverListenAddress),
+            conn -> serverSidePeerId.complete(conn.secureSession().getRemoteId()),
+            null)
+        .get(5, TimeUnit.SECONDS);
+
+    // The dialer is ALSO listening on QUIC — this is what triggers the broken port-reuse branch.
+    dialerTransport
+        .listen(new Multiaddr(dialerListenAddress), conn -> {}, null)
+        .get(5, TimeUnit.SECONDS);
+
+    CompletableFuture<PeerId> dialerSidePeerId = new CompletableFuture<>();
+    Connection connection =
+        dialerTransport
+            .dial(
+                new Multiaddr(serverListenAddress),
+                conn -> dialerSidePeerId.complete(conn.secureSession().getRemoteId()),
+                null)
+            .get(10, TimeUnit.SECONDS);
+
+    Assertions.assertEquals(
+        serverPeerId,
+        dialerSidePeerId.get(5, TimeUnit.SECONDS),
+        "Outbound dial from a listening transport must complete the QUIC handshake");
+    Assertions.assertEquals(serverPeerId, connection.secureSession().getRemoteId());
+
+    dialerTransport.close().get(5, TimeUnit.SECONDS);
+    serverTransport.close().get(5, TimeUnit.SECONDS);
+  }
+
+  /**
    * Verify that dialAsListener times out when no peer connects back. This tests the timeout path
    * without requiring a real hole punch.
    */
