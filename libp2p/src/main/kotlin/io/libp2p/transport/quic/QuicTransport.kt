@@ -215,61 +215,36 @@ class QuicTransport(
             .build()
 
         val targetAddr = fromMultiaddr(addr) as InetSocketAddress
-        val family = if (targetAddr.address is Inet6Address) AddressFamily.IPV6 else AddressFamily.IPV4
-        val existingListenerChannel = listenerChannelsByFamily[family]
 
-        // Attempt to bind the client socket to the same port as an active listener for
-        // consistent NAT mappings. Falls back to an ephemeral port if binding fails
-        // (SO_REUSEADDR alone may be insufficient for UDP port sharing on some platforms;
-        // TODO: add SO_REUSEPORT support for Linux/Epoll).
-        val bindAddr: InetSocketAddress = if (existingListenerChannel != null) {
-            val listenerPort = (existingListenerChannel.localAddress() as? InetSocketAddress)?.port ?: 0
-            val wildcard = if (family == AddressFamily.IPV6) "::" else "0.0.0.0"
-            InetSocketAddress(wildcard, listenerPort)
-        } else {
-            InetSocketAddress(0) // ephemeral port
-        }
-
-        fun connectViaBoundChannel(boundAddr: InetSocketAddress): CompletableFuture<QuicChannel> {
-            return client.clone()
-                .handler(requestsHandler)
-                .option(ChannelOption.SO_REUSEADDR, true)
-                .bind(boundAddr)
-                .toCompletableFuture()
-                .thenCompose { udpChannel ->
-                    QuicChannel.newBootstrap(udpChannel)
-                        .streamOption(ChannelOption.ALLOCATOR, allocator)
-                        .option(ChannelOption.AUTO_READ, true)
-                        .option(ChannelOption.ALLOCATOR, allocator)
-                        .remoteAddress(targetAddr)
-                        .handler(
-                            nettyInitializer {
-                                val quicCh = it.channel as QuicChannel
-                                val connection = ConnectionOverNetty(quicCh, this@QuicTransport, true)
-                                // ConnectionOverNetty.init sets quicCh.attr(CONNECTION) = connection,
-                                // so InboundStreamHandler can find it before thenApply runs.
-                                connection.setMuxerSession(QuicMuxerSession(quicCh, connection))
-                            }
-                        )
-                        .streamHandler(InboundStreamHandler(multistreamProtocol, protocols))
-                        .connect()
-                        .toCompletableFuture()
-                }
-        }
-
-        val quicConnFuture: CompletableFuture<QuicChannel> = if (existingListenerChannel != null) {
-            connectViaBoundChannel(bindAddr).handle { result, ex ->
-                if (ex != null) {
-                    // Port reuse failed (SO_REUSEADDR insufficient on this platform); fall back to ephemeral port.
-                    logger.debug("Could not reuse listener port {} for dial ({}), using ephemeral port", bindAddr, ex.message)
-                    connectViaBoundChannel(InetSocketAddress(0))
-                } else {
-                    CompletableFuture.completedFuture(result)
-                }
-            }.thenCompose { it }
-        } else {
-            connectViaBoundChannel(InetSocketAddress(0))
-        }
+        // Always bind the dial socket to an ephemeral port. We deliberately do NOT try to reuse an
+        // active listener's port: two UDP sockets cannot share a port without SO_REUSEPORT, and
+        // even with it the kernel may deliver a dial's response packets to the listener socket
+        // (which runs a QUIC *server* codec), silently breaking the handshake. NAT-consistent
+        // dialing for hole punching is handled separately by dialAsListener, which reuses the
+        // listener socket directly.
+        val quicConnFuture: CompletableFuture<QuicChannel> = client.clone()
+            .handler(requestsHandler)
+            .bind(InetSocketAddress(0))
+            .toCompletableFuture()
+            .thenCompose { udpChannel ->
+                QuicChannel.newBootstrap(udpChannel)
+                    .streamOption(ChannelOption.ALLOCATOR, allocator)
+                    .option(ChannelOption.AUTO_READ, true)
+                    .option(ChannelOption.ALLOCATOR, allocator)
+                    .remoteAddress(targetAddr)
+                    .handler(
+                        nettyInitializer {
+                            val quicCh = it.channel as QuicChannel
+                            val connection = ConnectionOverNetty(quicCh, this@QuicTransport, true)
+                            // ConnectionOverNetty.init sets quicCh.attr(CONNECTION) = connection,
+                            // so InboundStreamHandler can find it before thenApply runs.
+                            connection.setMuxerSession(QuicMuxerSession(quicCh, connection))
+                        }
+                    )
+                    .streamHandler(InboundStreamHandler(multistreamProtocol, protocols))
+                    .connect()
+                    .toCompletableFuture()
+            }
 
         return quicConnFuture
             .thenApply {
