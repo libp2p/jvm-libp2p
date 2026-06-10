@@ -17,11 +17,6 @@ private val log = LoggerFactory.getLogger(AbstractMuxHandler::class.java)
 abstract class AbstractMuxHandler<TData>() :
     ChannelInboundHandlerAdapter() {
 
-    private companion object {
-        const val PARENT_CHANNEL_WRITABILITY_INDEX = 1
-        const val MUXER_WRITABILITY_INDEX = 2
-    }
-
     private val streamMap: MutableMap<MuxId, MuxChannel<TData>> = mutableMapOf()
     var ctx: ChannelHandlerContext? = null
     private val activeFuture = CompletableFuture<Void>()
@@ -89,11 +84,12 @@ abstract class AbstractMuxHandler<TData>() :
      */
     abstract fun releaseMessage(msg: TData)
 
-    protected open fun isChildWritable(child: MuxChannel<TData>): Boolean = true
-
-    fun canWriteChild(child: MuxChannel<TData>): Boolean =
-        getChannelHandlerContext().channel().isWritable && isChildWritable(child)
-
+    /**
+     * Writes the child channel data to the underlying connection.
+     * Returns the number of consumed bytes which may be less than the readable bytes of [data]
+     * (including 0) when the muxer can't write at the moment (e.g. flow control window exhausted).
+     * Unconsumed data remains buffered in the child channel and is written again on [retryChildWrite]
+     */
     abstract fun onChildWrite(child: MuxChannel<TData>, data: TData): Int
 
     fun flushChildWrites() {
@@ -108,32 +104,22 @@ abstract class AbstractMuxHandler<TData>() :
         streamMap.values.forEach { it.retryWrite() }
     }
 
-    protected fun refreshChildWritability(id: MuxId) {
-        streamMap[id]?.let { refreshChildWritability(it) }
+    protected fun setChildMuxWritability(id: MuxId, index: Int, writable: Boolean) {
+        streamMap[id]?.setMuxWritability(index, writable)
     }
 
-    protected open fun onChildRegistered(child: MuxChannel<TData>) {
-        refreshChildWritability(child)
+    protected fun setAllChildMuxWritability(index: Int, writable: Boolean) {
+        streamMap.values.forEach { it.setMuxWritability(index, writable) }
     }
 
-    private fun refreshChildWritability(child: MuxChannel<TData>) {
-        child.setMuxWritability(
-            PARENT_CHANNEL_WRITABILITY_INDEX,
-            getChannelHandlerContext().channel().isWritable
-        )
-        child.setMuxWritability(MUXER_WRITABILITY_INDEX, isChildWritable(child))
-    }
+    /**
+     * Total bytes (including a small per-message accounting overhead) buffered
+     * in the outbound buffers of all child channels
+     */
+    protected fun totalChildPendingWriteBytes(): Long =
+        streamMap.values.sumOf { it.pendingWriteBytes() }
 
-    override fun channelWritabilityChanged(ctx: ChannelHandlerContext) {
-        val parentWritable = ctx.channel().isWritable
-        streamMap.values.forEach {
-            it.setMuxWritability(PARENT_CHANNEL_WRITABILITY_INDEX, parentWritable)
-        }
-        if (parentWritable) {
-            retryAllChildWrites()
-        }
-        super.channelWritabilityChanged(ctx)
-    }
+    protected open fun onChildRegistered(child: MuxChannel<TData>) {}
 
     protected fun onRemoteOpen(id: MuxId) {
         val initializer = inboundInitializer

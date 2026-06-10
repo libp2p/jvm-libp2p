@@ -18,6 +18,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.properties.Delegates
 
+const val DEFAULT_MAX_BUFFERED_CONNECTION_WRITES = 10 * 1024 * 1024 // 10 MiB
 const val DEFAULT_MAX_BUFFERED_STREAM_WRITES = 64 * 1024
 const val DEFAULT_ACK_BACKLOG_LIMIT = 256
 
@@ -29,9 +30,15 @@ open class YamuxHandler(
     ready: CompletableFuture<StreamMuxer.Session>?,
     inboundStreamHandler: StreamHandler<*>,
     private val connectionInitiator: Boolean,
+    private val maxBufferedConnectionWrites: Int,
     private val ackBacklogLimit: Int,
     private val initialWindowSize: Int = INITIAL_WINDOW_SIZE
 ) : MuxHandler(ready, inboundStreamHandler) {
+
+    private companion object {
+        const val PARENT_WRITABILITY_INDEX = 1
+        const val SEND_WINDOW_WRITABILITY_INDEX = 2
+    }
 
     private val childWriteBufferWaterMark =
         WriteBufferWaterMark(DEFAULT_MAX_BUFFERED_STREAM_WRITES / 2, DEFAULT_MAX_BUFFERED_STREAM_WRITES)
@@ -45,9 +52,9 @@ open class YamuxHandler(
         val receiveWindowSize = AtomicInteger(initialWindowSize)
         var closedForWriting by Delegates.writeOnce(false)
 
-        fun dispose() {}
-
-        fun isWritable(): Boolean = sendWindowSize.get() > 0
+        fun refreshSendWindowWritability() {
+            setChildMuxWritability(id, SEND_WINDOW_WRITABILITY_INDEX, sendWindowSize.get() > 0)
+        }
 
         fun handleFrameRead(msg: YamuxFrame) {
             handleFlags(msg)
@@ -78,8 +85,13 @@ open class YamuxHandler(
 
         private fun handleWindowUpdate(msg: YamuxFrame) {
             val delta = msg.length.toInt()
-            sendWindowSize.addAndGet(delta)
-            refreshChildWritability(id)
+            // clamp the result so a misbehaving remote can't overflow the window counter
+            sendWindowSize.getAndUpdate { current ->
+                (current.toLong() + delta)
+                    .coerceIn(Int.MIN_VALUE.toLong(), Int.MAX_VALUE.toLong())
+                    .toInt()
+            }
+            refreshSendWindowWritability()
             retryChildWrite(id)
         }
 
@@ -129,7 +141,7 @@ open class YamuxHandler(
                 ctx.write(YamuxFrame(id, YamuxType.DATA, YamuxFlag.NONE, length.toLong(), slicedData))
                 written += length
             }
-            refreshChildWritability(id)
+            refreshSendWindowWritability()
             return written
         }
 
@@ -173,8 +185,6 @@ open class YamuxHandler(
         }
 
     override fun channelUnregistered(ctx: ChannelHandlerContext?) {
-        streamHandlers.values.forEach { it.dispose() }
-
         if (!goAwayPromise.isDone) {
             goAwayPromise.completeExceptionally(ConnectionClosedException("Connection was closed without Go Away message"))
         }
@@ -215,16 +225,46 @@ open class YamuxHandler(
         }
     }
 
-    override fun isChildWritable(child: MuxChannel<ByteBuf>): Boolean =
-        streamHandlers[child.id]?.isWritable() == true
-
     override fun onChildRegistered(child: MuxChannel<ByteBuf>) {
         child.config().setWriteBufferWaterMark(childWriteBufferWaterMark)
-        super.onChildRegistered(child)
+        child.setMuxWritability(PARENT_WRITABILITY_INDEX, getChannelHandlerContext().channel().isWritable)
+        streamHandlers[child.id]?.refreshSendWindowWritability()
+    }
+
+    override fun channelWritabilityChanged(ctx: ChannelHandlerContext) {
+        val parentWritable = ctx.channel().isWritable
+        setAllChildMuxWritability(PARENT_WRITABILITY_INDEX, parentWritable)
+        if (parentWritable) {
+            retryAllChildWrites()
+        }
+        super.channelWritabilityChanged(ctx)
     }
 
     override fun onChildWrite(child: MuxChannel<ByteBuf>, data: ByteBuf): Int {
-        return getStreamHandlerOrThrow(child.id).sendData(data)
+        val streamHandler = getStreamHandlerOrThrow(child.id)
+        if (!getChannelHandlerContext().channel().isWritable) {
+            // propagate the connection backpressure to the stream:
+            // don't queue more frames on the parent channel
+            verifyBufferedWritesLimit(child, 0)
+            return 0
+        }
+        val written = streamHandler.sendData(data)
+        if (written < data.readableBytes()) {
+            verifyBufferedWritesLimit(child, written)
+        }
+        return written
+    }
+
+    private fun verifyBufferedWritesLimit(child: MuxChannel<ByteBuf>, justWrittenBytes: Int) {
+        val bufferedBytes = totalChildPendingWriteBytes() - justWrittenBytes
+        if (bufferedBytes > maxBufferedConnectionWrites) {
+            onLocalClose(child)
+            // close the channel after the pending writes have been failed by the throw below
+            child.eventLoop().execute { child.closeImpl() }
+            throw WriteBufferOverflowMuxerException(
+                "Overflowed send buffer ($bufferedBytes/$maxBufferedConnectionWrites). Last stream attempting to write: ${child.id}"
+            )
+        }
     }
 
     override fun onLocalOpen(child: MuxChannel<ByteBuf>) {
@@ -261,7 +301,7 @@ open class YamuxHandler(
     }
 
     override fun onChildClosed(child: MuxChannel<ByteBuf>) {
-        streamHandlers.remove(child.id)?.dispose()
+        streamHandlers.remove(child.id)
     }
 
     private fun handlePing(msg: YamuxFrame) {

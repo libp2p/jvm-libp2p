@@ -13,6 +13,7 @@ import java.util.concurrent.CompletableFuture
 class YamuxStreamMuxer(
     val inboundStreamHandler: StreamHandler<*>,
     private val multistreamProtocol: MultistreamProtocol,
+    private val maxBufferedConnectionWrites: Int,
     private val ackBacklogLimit: Int
 ) : StreamMuxer, StreamMuxerDebug {
 
@@ -32,6 +33,7 @@ class YamuxStreamMuxer(
                 muxSessionReady,
                 inboundStreamHandler,
                 ch.isInitiator,
+                maxBufferedConnectionWrites,
                 ackBacklogLimit
             )
         )

@@ -5,7 +5,6 @@ import io.libp2p.etc.util.netty.AbstractChildChannel
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelMetadata
 import io.netty.channel.ChannelOutboundBuffer
-import io.netty.util.ReferenceCountUtil
 import java.net.SocketAddress
 
 /**
@@ -21,8 +20,7 @@ class MuxChannel<TData>(
     var remoteDisconnected = false
     var localDisconnected = false
     private var localDisconnectSent = false
-    private var disconnectFlushedMessages = 0
-    private var retainedPendingWrite: Any? = null
+    private var pendingDisconnectWrites = 0
 
     override fun metadata(): ChannelMetadata = ChannelMetadata(true)
     override fun localAddress0() =
@@ -46,63 +44,67 @@ class MuxChannel<TData>(
         unsafe().outboundBuffer()?.setUserDefinedWritability(index, writable)
     }
 
+    fun pendingWriteBytes(): Long = unsafe().outboundBuffer()?.totalPendingWriteBytes() ?: 0L
+
     @Suppress("SwallowedException")
     override fun doWrite(buf: ChannelOutboundBuffer) {
         while (true) {
             val msg = buf.current() ?: break
-            if (localDisconnected && disconnectFlushedMessages == 0) {
+            if (localDisconnected && pendingDisconnectWrites == 0) {
                 // Must not throw from doWrite — exceptions escape uncaught to the Netty event loop.
                 // Wrap buf.remove() defensively: in some Netty versions promise listeners triggered
                 // by buf.remove() can propagate back through it.
                 try {
                     buf.remove(ConnectionClosedException("The stream was closed for writing locally: $id"))
                 } catch (e: Throwable) { }
-                releaseRetainedPendingWrite(msg)
                 continue
-            }
-            if (!parent.canWriteChild(this)) {
-                retainPendingWrite(msg)
-                break
             }
             try {
                 @Suppress("UNCHECKED_CAST")
-                val consumedBytes = parent.onChildWrite(this, msg as TData)
-                if (consumedBytes <= 0) {
-                    retainPendingWrite(msg)
-                    break
-                }
-                val currentMessageComplete = msg !is ByteBuf || consumedBytes >= msg.readableBytes()
-                if (!currentMessageComplete) {
-                    retainPendingWrite(msg)
-                }
-                if (msg is ByteBuf) {
+                msg as TData
+                val complete: Boolean
+                if (msg is ByteBuf && msg.isReadable) {
+                    val consumedBytes = parent.onChildWrite(this, msg)
+                    if (consumedBytes <= 0) {
+                        // the muxer can't write at the moment: the message stays buffered
+                        // (the outbound buffer owns it) until the parent retries this write
+                        break
+                    }
+                    complete = consumedBytes >= msg.readableBytes()
                     buf.removeBytes(consumedBytes.toLong())
                 } else {
+                    parent.onChildWrite(this, msg)
+                    complete = true
                     buf.remove()
                 }
                 parent.flushChildWrites()
-                if (currentMessageComplete) {
-                    releaseRetainedPendingWrite(msg)
+                if (!complete) {
+                    // partially written: wait for a retry before sending the rest
+                    break
                 }
-                if (localDisconnected && currentMessageComplete) {
-                    disconnectFlushedMessages--
-                    if (disconnectFlushedMessages == 0) {
-                        finishLocalDisconnect()
-                        continue
-                    }
-                }
+                onPendingDisconnectWriteCompleted()
             } catch (cause: Throwable) {
                 buf.remove(cause)
-                releaseRetainedPendingWrite(msg)
+                onPendingDisconnectWriteCompleted()
             }
         }
     }
 
     override fun doDisconnect() {
         localDisconnected = true
-        disconnectFlushedMessages = unsafe().outboundBuffer()?.size() ?: 0
-        if (disconnectFlushedMessages == 0) {
+        // delay the local disconnect until all writes flushed before the disconnect are sent
+        pendingDisconnectWrites = unsafe().outboundBuffer()?.size() ?: 0
+        if (pendingDisconnectWrites == 0) {
             finishLocalDisconnect()
+        }
+    }
+
+    private fun onPendingDisconnectWriteCompleted() {
+        if (localDisconnected && pendingDisconnectWrites > 0) {
+            pendingDisconnectWrites--
+            if (pendingDisconnectWrites == 0) {
+                finishLocalDisconnect()
+            }
         }
     }
 
@@ -113,10 +115,6 @@ class MuxChannel<TData>(
     }
 
     override fun doClose() {
-        retainedPendingWrite?.let {
-            retainedPendingWrite = null
-            ReferenceCountUtil.release(it)
-        }
         super.doClose()
         parent.onClosed(this)
     }
@@ -137,20 +135,6 @@ class MuxChannel<TData>(
         parent.localDisconnect(this)
         deactivate()
         closeIfBothDisconnected()
-    }
-
-    private fun retainPendingWrite(msg: Any) {
-        if (retainedPendingWrite !== msg) {
-            retainedPendingWrite = msg
-            ReferenceCountUtil.retain(msg)
-        }
-    }
-
-    private fun releaseRetainedPendingWrite(msg: Any) {
-        if (retainedPendingWrite === msg) {
-            retainedPendingWrite = null
-            ReferenceCountUtil.release(msg)
-        }
     }
 }
 
