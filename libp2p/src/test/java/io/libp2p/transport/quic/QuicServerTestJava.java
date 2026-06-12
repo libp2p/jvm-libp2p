@@ -650,6 +650,87 @@ public class QuicServerTestJava {
   }
 
   /**
+   * Closing the write side of a stream whose connection was already closed must not fail. Mirrors
+   * Teku's Goodbye flow: the peer is disconnected (closing the QUIC connection and all its
+   * streams), then the RPC layer half-closes the stream it was responding on. The muxer-based
+   * transports tolerate this silently; QUIC must too instead of failing with
+   * "ChannelOutputShutdownException: Fin was sent already".
+   */
+  @Test
+  void closeWriteAfterConnectionCloseSucceeds() throws Exception {
+    String localListenAddress = "/ip4/127.0.0.1/udp/" + getPort() + "/quic-v1";
+
+    Host clientHost =
+        new HostBuilder().keyType(KeyType.ED25519).secureTransport(QuicTransport::ECDSA).build();
+
+    Host serverHost =
+        new HostBuilder()
+            .keyType(KeyType.ED25519)
+            .secureTransport(QuicTransport::ECDSA)
+            .protocol(new Ping())
+            .listen(localListenAddress)
+            .build();
+
+    clientHost.start().get(5, TimeUnit.SECONDS);
+    serverHost.start().get(5, TimeUnit.SECONDS);
+
+    Connection connection =
+        clientHost
+            .getNetwork()
+            .connect(serverHost.getPeerId(), new Multiaddr(localListenAddress))
+            .get(10, TimeUnit.SECONDS);
+
+    StreamPromise<PingController> ping = connection.muxerSession().createStream(new Ping());
+    Stream pingStream = ping.getStream().get(5, TimeUnit.SECONDS);
+    ping.getController().get(5, TimeUnit.SECONDS);
+
+    connection.close().get(5, TimeUnit.SECONDS);
+    pingStream.closeFuture().get(5, TimeUnit.SECONDS);
+
+    // Must complete without exception even though the stream is already gone
+    pingStream.closeWrite().get(5, TimeUnit.SECONDS);
+
+    clientHost.stop().get(5, TimeUnit.SECONDS);
+    serverHost.stop().get(5, TimeUnit.SECONDS);
+  }
+
+  /** Calling closeWrite twice must be idempotent: the first call already sent the FIN. */
+  @Test
+  void closeWriteIsIdempotent() throws Exception {
+    String localListenAddress = "/ip4/127.0.0.1/udp/" + getPort() + "/quic-v1";
+
+    Host clientHost =
+        new HostBuilder().keyType(KeyType.ED25519).secureTransport(QuicTransport::ECDSA).build();
+
+    Host serverHost =
+        new HostBuilder()
+            .keyType(KeyType.ED25519)
+            .secureTransport(QuicTransport::ECDSA)
+            .protocol(new Ping())
+            .listen(localListenAddress)
+            .build();
+
+    clientHost.start().get(5, TimeUnit.SECONDS);
+    serverHost.start().get(5, TimeUnit.SECONDS);
+
+    Connection connection =
+        clientHost
+            .getNetwork()
+            .connect(serverHost.getPeerId(), new Multiaddr(localListenAddress))
+            .get(10, TimeUnit.SECONDS);
+
+    StreamPromise<PingController> ping = connection.muxerSession().createStream(new Ping());
+    Stream pingStream = ping.getStream().get(5, TimeUnit.SECONDS);
+    ping.getController().get(5, TimeUnit.SECONDS);
+
+    pingStream.closeWrite().get(5, TimeUnit.SECONDS);
+    pingStream.closeWrite().get(5, TimeUnit.SECONDS);
+
+    clientHost.stop().get(5, TimeUnit.SECONDS);
+    serverHost.stop().get(5, TimeUnit.SECONDS);
+  }
+
+  /**
    * Verify that dialAsListener times out when no peer connects back. This tests the timeout path
    * without requiring a real hole punch.
    */
