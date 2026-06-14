@@ -49,8 +49,16 @@ class NoiseXXCodec(val aliceCipher: CipherState, val bobCipher: CipherState) :
         } else if (cause.hasCauseOfType(SecureChannelError::class)) {
             logger.debug("Invalid Noise content", cause)
             closeAbruptly(ctx)
+        } else if (cause.hasCauseOfType(Error::class)) {
+            // A fatal JVM error (e.g. OutOfMemoryError) must never be swallowed: close the
+            // channel to release resources, then rethrow so the failure is surfaced rather
+            // than downgraded to a single log line while the event loop keeps running.
+            logger.error("Fatal error in Noise channel, closing", cause)
+            closeAbruptly(ctx)
+            throw cause
         } else {
             logger.error("Unexpected error in Noise channel", cause)
+            closeAbruptly(ctx)
         }
     }
 
