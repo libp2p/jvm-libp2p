@@ -4,6 +4,7 @@ import com.southernstorm.noise.protocol.CipherState
 import io.mockk.mockk
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.embedded.EmbeddedChannel
+import io.netty.handler.codec.EncoderException
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
@@ -38,6 +39,19 @@ class NoiseXXCodecTest {
 
         channel.runPendingTasks()
         assertThat(channel.isOpen).isFalse()
+    }
+
+    @Test
+    fun `wrapped fatal Error is unwrapped and rethrown as the Error`() {
+        val codec = codec()
+        val (_, ctx) = channelWith(codec)
+        val oom = OutOfMemoryError("Java heap space")
+        // Netty wraps throwables from encode() in an EncoderException; the fatal JVM signal
+        // must be surfaced as the Error itself, not downgraded to the runtime wrapper.
+        val wrapped = EncoderException(oom)
+
+        assertThatThrownBy { codec.exceptionCaught(ctx, wrapped) }
+            .isSameAs(oom)
     }
 
     @Test
