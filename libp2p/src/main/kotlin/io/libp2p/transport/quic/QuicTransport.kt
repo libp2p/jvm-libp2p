@@ -244,49 +244,67 @@ class QuicTransport(
                     .streamHandler(InboundStreamHandler(multistreamProtocol, protocols))
                     .connect()
                     .toCompletableFuture()
+                    .whenComplete { quicCh, ex ->
+                        // The QuicChannel rides on its own ephemeral datagram socket. Closing a
+                        // QuicChannel does NOT close its parent datagram channel, so we must tie the
+                        // two lifecycles together. Otherwise every dial leaks a NioDatagramChannel
+                        // (plus its codec, native quiche config and queued direct buffers).
+                        if (ex != null || quicCh == null) {
+                            udpChannel.close()
+                        } else {
+                            quicCh.closeFuture().addListener { udpChannel.close() }
+                        }
+                    }
             }
 
         return quicConnFuture
             .thenApply {
                 registerChannel(it)
-                val connection = it.attr(CONNECTION).get() as ConnectionOverNetty
+                try {
+                    val connection = it.attr(CONNECTION).get() as ConnectionOverNetty
 
-                val peerCerts = it.sslEngine()?.session?.peerCertificates
-                    ?: throw Libp2pException("No peer certificates available after QUIC handshake with $addr")
+                    val peerCerts = it.sslEngine()?.session?.peerCertificates
+                        ?: throw Libp2pException("No peer certificates available after QUIC handshake with $addr")
 
-                val expectedPeerId = addr.getPeerId()
-                val remotePeerId: PeerId
-                val remotePubKey: io.libp2p.core.crypto.PubKey
+                    val expectedPeerId = addr.getPeerId()
+                    val remotePeerId: PeerId
+                    val remotePubKey: io.libp2p.core.crypto.PubKey
 
-                if (expectedPeerId != null) {
-                    // PeerId was pre-validated by trustManager during TLS handshake.
-                    // For inline-key peerIds (identity multihash), extract pubkey from the multihash.
-                    val pubHash = Multihash.of(expectedPeerId.bytes.toByteBuf())
-                    remotePubKey = if (pubHash.desc.digest == Multihash.Digest.Identity) {
-                        unmarshalPublicKey(pubHash.bytes.toByteArray())
+                    if (expectedPeerId != null) {
+                        // PeerId was pre-validated by trustManager during TLS handshake.
+                        // For inline-key peerIds (identity multihash), extract pubkey from the multihash.
+                        val pubHash = Multihash.of(expectedPeerId.bytes.toByteBuf())
+                        remotePubKey = if (pubHash.desc.digest == Multihash.Digest.Identity) {
+                            unmarshalPublicKey(pubHash.bytes.toByteArray())
+                        } else {
+                            getPublicKeyFromCert(peerCerts)
+                        }
+                        remotePeerId = expectedPeerId
                     } else {
-                        getPublicKeyFromCert(peerCerts)
+                        // No PeerId known upfront — extract from TLS certificate post-handshake.
+                        remotePubKey = getPublicKeyFromCert(peerCerts)
+                        remotePeerId = verifyAndExtractPeerId(peerCerts)
                     }
-                    remotePeerId = expectedPeerId
-                } else {
-                    // No PeerId known upfront — extract from TLS certificate post-handshake.
-                    remotePubKey = getPublicKeyFromCert(peerCerts)
-                    remotePeerId = verifyAndExtractPeerId(peerCerts)
-                }
 
-                connection.setSecureSession(
-                    SecureChannel.Session(
-                        PeerId.fromPubKey(localKey.publicKey()),
-                        remotePeerId,
-                        remotePubKey,
-                        null
+                    connection.setSecureSession(
+                        SecureChannel.Session(
+                            PeerId.fromPubKey(localKey.publicKey()),
+                            remotePeerId,
+                            remotePubKey,
+                            null
+                        )
                     )
-                )
 
-                preHandler?.also { visitor -> visitor.visit(connection) }
-                connHandler.handleConnection(connection)
+                    preHandler?.also { visitor -> visitor.visit(connection) }
+                    connHandler.handleConnection(connection)
 
-                connection
+                    connection
+                } catch (e: Throwable) {
+                    // Post-handshake setup failed — close the established QuicChannel so neither it
+                    // nor its underlying datagram channel is leaked.
+                    it.close()
+                    throw e
+                }
             }
     }
 
