@@ -252,14 +252,18 @@ class QuicTransport(
                         if (ex != null || quicCh == null) {
                             udpChannel.close()
                         } else {
+                            // Register as soon as the connection is established — before the dependent
+                            // thenApply runs — so that a dial cancelled mid-race (whose thenApply is
+                            // skipped) still has its channel tracked, closeable on transport shutdown,
+                            // and counted in activeConnections.
+                            registerChannel(quicCh)
                             quicCh.closeFuture().addListener { udpChannel.close() }
                         }
                     }
             }
 
-        return quicConnFuture
+        val connectionFuture: CompletableFuture<Connection> = quicConnFuture
             .thenApply {
-                registerChannel(it)
                 try {
                     val connection = it.attr(CONNECTION).get() as ConnectionOverNetty
 
@@ -306,6 +310,18 @@ class QuicTransport(
                     throw e
                 }
             }
+
+        // NetworkImpl.connect() cancels losing dial futures in the multi-address race. Cancelling
+        // this dependent future does NOT propagate upstream to quicConnFuture, so if the handshake
+        // later completes, the thenApply body above is skipped and the established QuicChannel is
+        // never registered, handed to the caller, nor closed. Close it explicitly on cancellation
+        // so neither it nor its underlying datagram channel is leaked (mirrors the TCP transport).
+        connectionFuture.whenComplete { _, _ ->
+            if (connectionFuture.isCancelled) {
+                quicConnFuture.thenAccept { it.close() }
+            }
+        }
+        return connectionFuture
     }
 
     private fun registerChannel(ch: Channel) {

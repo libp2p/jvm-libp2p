@@ -789,4 +789,52 @@ public class QuicServerTestJava {
     clientTransport.close().get(5, TimeUnit.SECONDS);
     serverTransport.close().get(5, TimeUnit.SECONDS);
   }
+
+  /**
+   * NetworkImpl.connect() races dials across multiple addresses and cancels the losing dial futures
+   * once the first one completes. For QUIC, dial() returns the dependent {@code thenApply} future;
+   * cancelling it does not propagate upstream to the QUIC connect. If the handshake then completes,
+   * the {@code thenApply} body is skipped, so the established QuicChannel is never registered,
+   * handed to the caller, nor closed — it (and its underlying datagram channel) leaks until the
+   * idle timeout. A cancelled dial must promptly close the established QUIC connection.
+   */
+  @Test
+  void cancelledDialClosesEstablishedQuicConnection() throws Exception {
+    String serverListenAddress = "/ip4/127.0.0.1/udp/" + getPort() + "/quic-v1";
+
+    Pair<PrivKey, PubKey> serverKeyPair = KeyKt.generateKeyPair(KeyType.ED25519);
+    Pair<PrivKey, PubKey> clientKeyPair = KeyKt.generateKeyPair(KeyType.ED25519);
+    List<io.libp2p.core.multistream.ProtocolBinding<?>> emptyProtocols = new ArrayList<>();
+
+    QuicTransport serverTransport = QuicTransport.ECDSA(serverKeyPair.component1(), emptyProtocols);
+    QuicTransport clientTransport = QuicTransport.ECDSA(clientKeyPair.component1(), emptyProtocols);
+    serverTransport.initialize();
+    clientTransport.initialize();
+
+    serverTransport
+        .listen(new Multiaddr(serverListenAddress), conn -> {}, null)
+        .get(5, TimeUnit.SECONDS);
+
+    CompletableFuture<Connection> dial =
+        clientTransport.dial(new Multiaddr(serverListenAddress), conn -> {}, null);
+    // Cancel synchronously, before the async handshake completes — the same situation a losing dial
+    // in NetworkImpl.connect() hits.
+    dial.cancel(true);
+
+    // The handshake still completes at the network level, so the QuicChannel is established and
+    // tracked. A leaked channel stays in activeConnections until the 30s idle timeout; a properly
+    // handled cancellation closes it, dropping activeConnections back to zero well inside this
+    // window.
+    long deadline = System.currentTimeMillis() + 15_000;
+    while (clientTransport.getActiveConnections() > 0 && System.currentTimeMillis() < deadline) {
+      Thread.sleep(50);
+    }
+    Assertions.assertEquals(
+        0,
+        clientTransport.getActiveConnections(),
+        "a cancelled dial must close (not leak) the established QUIC connection");
+
+    clientTransport.close().get(5, TimeUnit.SECONDS);
+    serverTransport.close().get(5, TimeUnit.SECONDS);
+  }
 }
