@@ -244,50 +244,84 @@ class QuicTransport(
                     .streamHandler(InboundStreamHandler(multistreamProtocol, protocols))
                     .connect()
                     .toCompletableFuture()
-            }
-
-        return quicConnFuture
-            .thenApply {
-                registerChannel(it)
-                val connection = it.attr(CONNECTION).get() as ConnectionOverNetty
-
-                val peerCerts = it.sslEngine()?.session?.peerCertificates
-                    ?: throw Libp2pException("No peer certificates available after QUIC handshake with $addr")
-
-                val expectedPeerId = addr.getPeerId()
-                val remotePeerId: PeerId
-                val remotePubKey: io.libp2p.core.crypto.PubKey
-
-                if (expectedPeerId != null) {
-                    // PeerId was pre-validated by trustManager during TLS handshake.
-                    // For inline-key peerIds (identity multihash), extract pubkey from the multihash.
-                    val pubHash = Multihash.of(expectedPeerId.bytes.toByteBuf())
-                    remotePubKey = if (pubHash.desc.digest == Multihash.Digest.Identity) {
-                        unmarshalPublicKey(pubHash.bytes.toByteArray())
-                    } else {
-                        getPublicKeyFromCert(peerCerts)
+                    .whenComplete { quicCh, ex ->
+                        // The QuicChannel rides on its own ephemeral datagram socket. Closing a
+                        // QuicChannel does NOT close its parent datagram channel, so we must tie the
+                        // two lifecycles together. Otherwise every dial leaks a NioDatagramChannel
+                        // (plus its codec, native quiche config and queued direct buffers).
+                        if (ex != null || quicCh == null) {
+                            udpChannel.close()
+                        } else {
+                            // Register as soon as the connection is established — before the dependent
+                            // thenApply runs — so that a dial cancelled mid-race (whose thenApply is
+                            // skipped) still has its channel tracked, closeable on transport shutdown,
+                            // and counted in activeConnections.
+                            registerChannel(quicCh)
+                            quicCh.closeFuture().addListener { udpChannel.close() }
+                        }
                     }
-                    remotePeerId = expectedPeerId
-                } else {
-                    // No PeerId known upfront — extract from TLS certificate post-handshake.
-                    remotePubKey = getPublicKeyFromCert(peerCerts)
-                    remotePeerId = verifyAndExtractPeerId(peerCerts)
-                }
-
-                connection.setSecureSession(
-                    SecureChannel.Session(
-                        PeerId.fromPubKey(localKey.publicKey()),
-                        remotePeerId,
-                        remotePubKey,
-                        null
-                    )
-                )
-
-                preHandler?.also { visitor -> visitor.visit(connection) }
-                connHandler.handleConnection(connection)
-
-                connection
             }
+
+        val connectionFuture: CompletableFuture<Connection> = quicConnFuture
+            .thenApply {
+                try {
+                    val connection = it.attr(CONNECTION).get() as ConnectionOverNetty
+
+                    val peerCerts = it.sslEngine()?.session?.peerCertificates
+                        ?: throw Libp2pException("No peer certificates available after QUIC handshake with $addr")
+
+                    val expectedPeerId = addr.getPeerId()
+                    val remotePeerId: PeerId
+                    val remotePubKey: io.libp2p.core.crypto.PubKey
+
+                    if (expectedPeerId != null) {
+                        // PeerId was pre-validated by trustManager during TLS handshake.
+                        // For inline-key peerIds (identity multihash), extract pubkey from the multihash.
+                        val pubHash = Multihash.of(expectedPeerId.bytes.toByteBuf())
+                        remotePubKey = if (pubHash.desc.digest == Multihash.Digest.Identity) {
+                            unmarshalPublicKey(pubHash.bytes.toByteArray())
+                        } else {
+                            getPublicKeyFromCert(peerCerts)
+                        }
+                        remotePeerId = expectedPeerId
+                    } else {
+                        // No PeerId known upfront — extract from TLS certificate post-handshake.
+                        remotePubKey = getPublicKeyFromCert(peerCerts)
+                        remotePeerId = verifyAndExtractPeerId(peerCerts)
+                    }
+
+                    connection.setSecureSession(
+                        SecureChannel.Session(
+                            PeerId.fromPubKey(localKey.publicKey()),
+                            remotePeerId,
+                            remotePubKey,
+                            null
+                        )
+                    )
+
+                    preHandler?.also { visitor -> visitor.visit(connection) }
+                    connHandler.handleConnection(connection)
+
+                    connection
+                } catch (e: Throwable) {
+                    // Post-handshake setup failed — close the established QuicChannel so neither it
+                    // nor its underlying datagram channel is leaked.
+                    it.close()
+                    throw e
+                }
+            }
+
+        // NetworkImpl.connect() cancels losing dial futures in the multi-address race. Cancelling
+        // this dependent future does NOT propagate upstream to quicConnFuture, so if the handshake
+        // later completes, the thenApply body above is skipped and the established QuicChannel is
+        // never registered, handed to the caller, nor closed. Close it explicitly on cancellation
+        // so neither it nor its underlying datagram channel is leaked (mirrors the TCP transport).
+        connectionFuture.whenComplete { _, _ ->
+            if (connectionFuture.isCancelled) {
+                quicConnFuture.thenAccept { it.close() }
+            }
+        }
+        return connectionFuture
     }
 
     private fun registerChannel(ch: Channel) {

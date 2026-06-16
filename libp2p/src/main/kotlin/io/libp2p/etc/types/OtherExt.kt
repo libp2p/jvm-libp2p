@@ -44,3 +44,9 @@ fun <T : Throwable> Throwable.hasCauseOfType(clazz: KClass<T>) =
     Throwables.getCausalChain(this)
         .filter(clazz::isInstance)
         .any()
+
+fun <T : Throwable> Throwable.findCauseOfType(clazz: KClass<T>): T? =
+    Throwables.getCausalChain(this)
+        .filter(clazz::isInstance)
+        .map { clazz.java.cast(it) }
+        .firstOrNull()

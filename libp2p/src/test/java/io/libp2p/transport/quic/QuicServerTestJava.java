@@ -23,7 +23,9 @@ import io.libp2p.protocol.PingController;
 import io.libp2p.protocol.PingProtocol;
 import io.libp2p.security.noise.NoiseXXSecureChannel;
 import io.libp2p.security.tls.TlsSecureChannel;
+import io.libp2p.transport.implementation.ConnectionOverNetty;
 import io.libp2p.transport.tcp.TcpTransport;
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.handler.codec.quic.QuicStreamResetException;
@@ -849,5 +851,150 @@ public class QuicServerTestJava {
     }
 
     transport.close().get(5, TimeUnit.SECONDS);
+  }
+
+  /**
+   * Each outbound {@code dial()} binds its own ephemeral {@code NioDatagramChannel} to carry the
+   * QUIC connection. When the QUIC connection closes, that underlying datagram channel must be
+   * closed too — closing a {@code QuicChannel} does not close its parent datagram channel in Netty.
+   * If it is left open, every dial leaks a datagram channel (plus its codec, native quiche config
+   * and queued direct buffers) for the lifetime of the transport.
+   */
+  @Test
+  void dialClosesUnderlyingDatagramChannelWhenConnectionCloses() throws Exception {
+    String serverListenAddress = "/ip4/127.0.0.1/udp/" + getPort() + "/quic-v1";
+
+    Pair<PrivKey, PubKey> serverKeyPair = KeyKt.generateKeyPair(KeyType.ED25519);
+    Pair<PrivKey, PubKey> clientKeyPair = KeyKt.generateKeyPair(KeyType.ED25519);
+    List<io.libp2p.core.multistream.ProtocolBinding<?>> emptyProtocols = new ArrayList<>();
+
+    QuicTransport serverTransport = QuicTransport.ECDSA(serverKeyPair.component1(), emptyProtocols);
+    QuicTransport clientTransport = QuicTransport.ECDSA(clientKeyPair.component1(), emptyProtocols);
+    serverTransport.initialize();
+    clientTransport.initialize();
+
+    serverTransport
+        .listen(new Multiaddr(serverListenAddress), conn -> {}, null)
+        .get(5, TimeUnit.SECONDS);
+
+    Connection connection =
+        clientTransport
+            .dial(new Multiaddr(serverListenAddress), conn -> {}, null)
+            .get(10, TimeUnit.SECONDS);
+
+    Channel quicChannel = ((ConnectionOverNetty) connection).getNettyChannel();
+    Channel datagramChannel = quicChannel.parent();
+    Assertions.assertNotNull(
+        datagramChannel, "QUIC connection should ride on an underlying datagram channel");
+    Assertions.assertTrue(
+        datagramChannel.isOpen(), "datagram channel should be open while the connection is live");
+
+    // Closing the QUIC connection must cascade to the ephemeral dial datagram channel.
+    connection.close().get(5, TimeUnit.SECONDS);
+
+    datagramChannel.closeFuture().get(5, TimeUnit.SECONDS);
+    Assertions.assertFalse(
+        datagramChannel.isOpen(),
+        "underlying datagram channel must be closed after the QUIC connection closes");
+
+    clientTransport.close().get(5, TimeUnit.SECONDS);
+    serverTransport.close().get(5, TimeUnit.SECONDS);
+  }
+
+  /**
+   * A dial that fails AFTER the QUIC handshake completes (e.g. the connection handler throws during
+   * setup) must close the already-established QuicChannel rather than leave it registered and open.
+   * Otherwise the failed dial leaks the QUIC connection and its underlying datagram channel for the
+   * lifetime of the transport.
+   */
+  @Test
+  void dialThatFailsAfterHandshakeDoesNotLeakConnection() throws Exception {
+    String serverListenAddress = "/ip4/127.0.0.1/udp/" + getPort() + "/quic-v1";
+
+    Pair<PrivKey, PubKey> serverKeyPair = KeyKt.generateKeyPair(KeyType.ED25519);
+    Pair<PrivKey, PubKey> clientKeyPair = KeyKt.generateKeyPair(KeyType.ED25519);
+    List<io.libp2p.core.multistream.ProtocolBinding<?>> emptyProtocols = new ArrayList<>();
+
+    QuicTransport serverTransport = QuicTransport.ECDSA(serverKeyPair.component1(), emptyProtocols);
+    QuicTransport clientTransport = QuicTransport.ECDSA(clientKeyPair.component1(), emptyProtocols);
+    serverTransport.initialize();
+    clientTransport.initialize();
+
+    serverTransport
+        .listen(new Multiaddr(serverListenAddress), conn -> {}, null)
+        .get(5, TimeUnit.SECONDS);
+
+    // Connection handler that throws after the handshake completes, exercising the post-handshake
+    // failure path in dial().thenApply.
+    ConnectionHandler throwingHandler =
+        conn -> {
+          throw new RuntimeException("boom");
+        };
+
+    CompletableFuture<Connection> dial =
+        clientTransport.dial(new Multiaddr(serverListenAddress), throwingHandler, null);
+
+    Assertions.assertThrows(ExecutionException.class, () -> dial.get(10, TimeUnit.SECONDS));
+
+    // The failed dial must not leak the established QuicChannel.
+    long deadline = System.currentTimeMillis() + 5_000;
+    while (clientTransport.getActiveConnections() > 0 && System.currentTimeMillis() < deadline) {
+      Thread.sleep(50);
+    }
+    Assertions.assertEquals(
+        0,
+        clientTransport.getActiveConnections(),
+        "a dial that fails after the handshake must close (not leak) the QUIC connection");
+
+    clientTransport.close().get(5, TimeUnit.SECONDS);
+    serverTransport.close().get(5, TimeUnit.SECONDS);
+  }
+
+  /**
+   * NetworkImpl.connect() races dials across multiple addresses and cancels the losing dial futures
+   * once the first one completes. For QUIC, dial() returns the dependent {@code thenApply} future;
+   * cancelling it does not propagate upstream to the QUIC connect. If the handshake then completes,
+   * the {@code thenApply} body is skipped, so the established QuicChannel is never registered,
+   * handed to the caller, nor closed — it (and its underlying datagram channel) leaks until the
+   * idle timeout. A cancelled dial must promptly close the established QUIC connection.
+   */
+  @Test
+  void cancelledDialClosesEstablishedQuicConnection() throws Exception {
+    String serverListenAddress = "/ip4/127.0.0.1/udp/" + getPort() + "/quic-v1";
+
+    Pair<PrivKey, PubKey> serverKeyPair = KeyKt.generateKeyPair(KeyType.ED25519);
+    Pair<PrivKey, PubKey> clientKeyPair = KeyKt.generateKeyPair(KeyType.ED25519);
+    List<io.libp2p.core.multistream.ProtocolBinding<?>> emptyProtocols = new ArrayList<>();
+
+    QuicTransport serverTransport = QuicTransport.ECDSA(serverKeyPair.component1(), emptyProtocols);
+    QuicTransport clientTransport = QuicTransport.ECDSA(clientKeyPair.component1(), emptyProtocols);
+    serverTransport.initialize();
+    clientTransport.initialize();
+
+    serverTransport
+        .listen(new Multiaddr(serverListenAddress), conn -> {}, null)
+        .get(5, TimeUnit.SECONDS);
+
+    CompletableFuture<Connection> dial =
+        clientTransport.dial(new Multiaddr(serverListenAddress), conn -> {}, null);
+    // Cancel synchronously, before the async handshake completes — the same situation a losing dial
+    // in NetworkImpl.connect() hits.
+    dial.cancel(true);
+
+    // The handshake still completes at the network level, so the QuicChannel is established and
+    // tracked. A leaked channel stays in activeConnections until the 30s idle timeout; a properly
+    // handled cancellation closes it, dropping activeConnections back to zero well inside this
+    // window.
+    long deadline = System.currentTimeMillis() + 15_000;
+    while (clientTransport.getActiveConnections() > 0 && System.currentTimeMillis() < deadline) {
+      Thread.sleep(50);
+    }
+    Assertions.assertEquals(
+        0,
+        clientTransport.getActiveConnections(),
+        "a cancelled dial must close (not leak) the established QUIC connection");
+
+    clientTransport.close().get(5, TimeUnit.SECONDS);
+    serverTransport.close().get(5, TimeUnit.SECONDS);
   }
 }
