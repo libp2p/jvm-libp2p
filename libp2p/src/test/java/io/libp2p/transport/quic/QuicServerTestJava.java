@@ -18,18 +18,24 @@ import io.libp2p.protocol.BlobController;
 import io.libp2p.protocol.OneShotPing;
 import io.libp2p.protocol.OneShotPingController;
 import io.libp2p.protocol.Ping;
+import io.libp2p.protocol.PingBinding;
 import io.libp2p.protocol.PingController;
+import io.libp2p.protocol.PingProtocol;
 import io.libp2p.security.noise.NoiseXXSecureChannel;
 import io.libp2p.security.tls.TlsSecureChannel;
 import io.libp2p.transport.implementation.ConnectionOverNetty;
 import io.libp2p.transport.tcp.TcpTransport;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.handler.codec.quic.QuicStreamResetException;
 import io.netty.handler.logging.LogLevel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -649,6 +655,160 @@ public class QuicServerTestJava {
 
     dialerTransport.close().get(5, TimeUnit.SECONDS);
     serverTransport.close().get(5, TimeUnit.SECONDS);
+  }
+
+  /**
+   * Closing the write side of a stream whose connection was already closed must not fail. Mirrors
+   * Teku's Goodbye flow: the peer is disconnected (closing the QUIC connection and all its
+   * streams), then the RPC layer half-closes the stream it was responding on. The muxer-based
+   * transports tolerate this silently; QUIC must too instead of failing with
+   * "ChannelOutputShutdownException: Fin was sent already".
+   */
+  @Test
+  void closeWriteAfterConnectionCloseSucceeds() throws Exception {
+    String localListenAddress = "/ip4/127.0.0.1/udp/" + getPort() + "/quic-v1";
+
+    Host clientHost =
+        new HostBuilder().keyType(KeyType.ED25519).secureTransport(QuicTransport::ECDSA).build();
+
+    Host serverHost =
+        new HostBuilder()
+            .keyType(KeyType.ED25519)
+            .secureTransport(QuicTransport::ECDSA)
+            .protocol(new Ping())
+            .listen(localListenAddress)
+            .build();
+
+    clientHost.start().get(5, TimeUnit.SECONDS);
+    serverHost.start().get(5, TimeUnit.SECONDS);
+
+    Connection connection =
+        clientHost
+            .getNetwork()
+            .connect(serverHost.getPeerId(), new Multiaddr(localListenAddress))
+            .get(10, TimeUnit.SECONDS);
+
+    StreamPromise<PingController> ping = connection.muxerSession().createStream(new Ping());
+    Stream pingStream = ping.getStream().get(5, TimeUnit.SECONDS);
+    ping.getController().get(5, TimeUnit.SECONDS);
+
+    connection.close().get(5, TimeUnit.SECONDS);
+    pingStream.closeFuture().get(5, TimeUnit.SECONDS);
+
+    // Must complete without exception even though the stream is already gone
+    pingStream.closeWrite().get(5, TimeUnit.SECONDS);
+
+    clientHost.stop().get(5, TimeUnit.SECONDS);
+    serverHost.stop().get(5, TimeUnit.SECONDS);
+  }
+
+  /**
+   * A remote STREAM_RESET must close the local stream quietly, matching the muxer-based transports
+   * where a remote RST closes the child channel (see AbstractMuxHandler.onRemoteClose) without
+   * surfacing an exception to application handlers. Without this, Netty fires
+   * QuicStreamResetException into the app pipeline (Teku logs "Unhandled error while processes
+   * req/response") and leaves the stream channel open.
+   */
+  @Test
+  void remoteStreamResetClosesStreamQuietly() throws Exception {
+    String localListenAddress = "/ip4/127.0.0.1/udp/" + getPort() + "/quic-v1";
+
+    List<Throwable> serverStreamExceptions = new CopyOnWriteArrayList<>();
+    CompletableFuture<Stream> serverStreamFuture = new CompletableFuture<>();
+    // Stream visitors are not wired into the QUIC transport, so capture the server-side
+    // stream (and any exception reaching application handlers) via the protocol handler
+    PingProtocol capturingPing =
+        new PingProtocol(32) {
+          @Override
+          protected CompletableFuture<PingController> onStartResponder(@NotNull Stream stream) {
+            stream.pushHandler(
+                new ChannelInboundHandlerAdapter() {
+                  @Override
+                  public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
+                    serverStreamExceptions.add(cause);
+                    ctx.fireExceptionCaught(cause);
+                  }
+                });
+            serverStreamFuture.complete(stream);
+            return super.onStartResponder(stream);
+          }
+        };
+
+    Host clientHost =
+        new HostBuilder().keyType(KeyType.ED25519).secureTransport(QuicTransport::ECDSA).build();
+
+    Host serverHost =
+        new HostBuilder()
+            .keyType(KeyType.ED25519)
+            .secureTransport(QuicTransport::ECDSA)
+            .protocol(new PingBinding(capturingPing))
+            .listen(localListenAddress)
+            .build();
+
+    clientHost.start().get(5, TimeUnit.SECONDS);
+    serverHost.start().get(5, TimeUnit.SECONDS);
+
+    Connection connection =
+        clientHost
+            .getNetwork()
+            .connect(serverHost.getPeerId(), new Multiaddr(localListenAddress))
+            .get(10, TimeUnit.SECONDS);
+
+    StreamPromise<PingController> ping = connection.muxerSession().createStream(new Ping());
+    Stream pingStream = ping.getStream().get(5, TimeUnit.SECONDS);
+    PingController pingCtr = ping.getController().get(5, TimeUnit.SECONDS);
+    pingCtr.ping().get(5, TimeUnit.SECONDS);
+
+    Stream serverStream = serverStreamFuture.get(5, TimeUnit.SECONDS);
+
+    // Reset the stream from the client side: quiche sends a RESET_STREAM frame
+    ((QuicStream) pingStream).getQuicStreamChannel().shutdownOutput(1).sync();
+
+    serverStream.closeFuture().get(5, TimeUnit.SECONDS);
+    Assertions.assertTrue(
+        serverStreamExceptions.stream().noneMatch(t -> t instanceof QuicStreamResetException),
+        "Remote stream reset must not surface QuicStreamResetException to application handlers,"
+            + " got: "
+            + serverStreamExceptions);
+
+    clientHost.stop().get(5, TimeUnit.SECONDS);
+    serverHost.stop().get(5, TimeUnit.SECONDS);
+  }
+
+  /** Calling closeWrite twice must be idempotent: the first call already sent the FIN. */
+  @Test
+  void closeWriteIsIdempotent() throws Exception {
+    String localListenAddress = "/ip4/127.0.0.1/udp/" + getPort() + "/quic-v1";
+
+    Host clientHost =
+        new HostBuilder().keyType(KeyType.ED25519).secureTransport(QuicTransport::ECDSA).build();
+
+    Host serverHost =
+        new HostBuilder()
+            .keyType(KeyType.ED25519)
+            .secureTransport(QuicTransport::ECDSA)
+            .protocol(new Ping())
+            .listen(localListenAddress)
+            .build();
+
+    clientHost.start().get(5, TimeUnit.SECONDS);
+    serverHost.start().get(5, TimeUnit.SECONDS);
+
+    Connection connection =
+        clientHost
+            .getNetwork()
+            .connect(serverHost.getPeerId(), new Multiaddr(localListenAddress))
+            .get(10, TimeUnit.SECONDS);
+
+    StreamPromise<PingController> ping = connection.muxerSession().createStream(new Ping());
+    Stream pingStream = ping.getStream().get(5, TimeUnit.SECONDS);
+    ping.getController().get(5, TimeUnit.SECONDS);
+
+    pingStream.closeWrite().get(5, TimeUnit.SECONDS);
+    pingStream.closeWrite().get(5, TimeUnit.SECONDS);
+
+    clientHost.stop().get(5, TimeUnit.SECONDS);
+    serverHost.stop().get(5, TimeUnit.SECONDS);
   }
 
   /**
