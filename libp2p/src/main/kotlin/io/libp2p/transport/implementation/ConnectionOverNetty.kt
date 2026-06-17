@@ -50,4 +50,15 @@ open class ConnectionOverNetty(
 
     override fun remoteAddress(): Multiaddr =
         cachedRemoteAddress ?: nettyTransport.remoteAddress(nettyChannel).also { cachedRemoteAddress = it }
+
+    /**
+     * Eagerly resolves and caches the local and remote addresses while the underlying channel is
+     * still live. Transports whose channels free their native state on close (e.g. QUIC) must call
+     * this before exposing the connection, so a teardown-time caller that is the first to read an
+     * address gets the cached value instead of dereferencing the freed channel.
+     */
+    fun cacheAddresses() {
+        localAddress()
+        remoteAddress()
+    }
 }

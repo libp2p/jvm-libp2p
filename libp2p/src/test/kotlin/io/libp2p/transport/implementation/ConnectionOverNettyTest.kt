@@ -49,4 +49,28 @@ class ConnectionOverNettyTest {
 
         verify(exactly = 1) { transport.localAddress(any()) }
     }
+
+    @Test
+    fun `cacheAddresses warms the cache so a teardown-time read is the first to hit the live channel`() {
+        val transport = mockk<NettyTransport>()
+        // The transport may only be queried once per address while the channel is live; any later
+        // resolution would NPE because the underlying (QUIC) native channel has been freed.
+        every { transport.localAddress(any()) } returns localMultiaddr andThenThrows
+            NullPointerException("channel freed")
+        every { transport.remoteAddress(any()) } returns remoteMultiaddr andThenThrows
+            NullPointerException("channel freed")
+
+        val connection = newConnection(transport)
+
+        // Warm the cache while the channel is live (as the QUIC transport does before exposing it).
+        connection.cacheAddresses()
+
+        // A teardown handler being the very first caller of the public getters must still succeed,
+        // served entirely from the warmed cache without re-hitting the freed channel.
+        assertThat(connection.localAddress()).isEqualTo(localMultiaddr)
+        assertThat(connection.remoteAddress()).isEqualTo(remoteMultiaddr)
+
+        verify(exactly = 1) { transport.localAddress(any()) }
+        verify(exactly = 1) { transport.remoteAddress(any()) }
+    }
 }
