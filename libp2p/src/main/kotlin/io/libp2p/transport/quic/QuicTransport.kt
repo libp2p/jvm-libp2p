@@ -293,6 +293,10 @@ class QuicTransport(
                         )
                     )
 
+                    // Warm the address cache while the QuicChannel is still live; once closed it
+                    // frees native state and remoteSocketAddress() returns null.
+                    connection.cacheAddresses()
+
                     preHandler?.also { visitor -> visitor.visit(connection) }
                     connHandler.handleConnection(connection)
 
@@ -429,6 +433,11 @@ class QuicTransport(
                                     // Remove this handler as it's no longer needed
                                     ctx.pipeline().remove(this)
 
+                                    // Warm the address cache while the QuicChannel is still live;
+                                    // once closed it frees native state and remoteSocketAddress()
+                                    // returns null.
+                                    connection.cacheAddresses()
+
                                     // Check if this connection is completing a pending hole punch
                                     val remoteAddr = ctx.channel().remoteAddress() as? InetSocketAddress
                                     val holePunchFuture = if (remoteAddr != null) {
@@ -524,33 +533,48 @@ class QuicTransport(
             }
             .thenApply { quicChannel ->
                 registerChannel(quicChannel)
-                val connection = ConnectionOverNetty(quicChannel, this@QuicTransport, false)
-                connection.setMuxerSession(QuicMuxerSession(quicChannel, connection))
+                try {
+                    val connection = ConnectionOverNetty(quicChannel, this@QuicTransport, false)
+                    connection.setMuxerSession(QuicMuxerSession(quicChannel, connection))
 
-                val peerCerts = quicChannel.sslEngine()?.session?.peerCertificates
-                    ?: throw Libp2pException("No peer certificates in hole-punched connection from $addr")
+                    val peerCerts = quicChannel.sslEngine()?.session?.peerCertificates
+                        ?: throw Libp2pException("No peer certificates in hole-punched connection from $addr")
 
-                // remotePubKey must be the libp2p host key from the cert extension, not the
-                // ephemeral cert subject key (verifyAndExtractIdentity), so that the invariant
-                // PeerId.fromPubKey(remotePubKey) == remoteId holds on the hole-punch path too.
-                val remoteIdentity = verifyAndExtractIdentity(peerCerts)
-                val expectedPeerId = addr.getPeerId()
-                val remotePeerId = expectedPeerId ?: remoteIdentity.peerId
-                val remotePubKey = remoteIdentity.pubKey
+                    // remoteId and remotePubKey must both come from the libp2p host key in the cert
+                    // extension (verifyAndExtractIdentity), never the ephemeral cert subject key, so
+                    // that the invariant PeerId.fromPubKey(remotePubKey) == remoteId holds on the
+                    // hole-punch path too.
+                    val remoteIdentity = verifyAndExtractIdentity(peerCerts)
+                    val expectedPeerId = addr.getPeerId()
+                    if (expectedPeerId != null && remoteIdentity.peerId != expectedPeerId) {
+                        throw Libp2pException(
+                            "Remote peer presented libp2p pubkey for ${remoteIdentity.peerId} but dial target was $expectedPeerId"
+                        )
+                    }
 
-                connection.setSecureSession(
-                    SecureChannel.Session(
-                        PeerId.fromPubKey(localKey.publicKey()),
-                        remotePeerId,
-                        remotePubKey,
-                        null
+                    connection.setSecureSession(
+                        SecureChannel.Session(
+                            PeerId.fromPubKey(localKey.publicKey()),
+                            remoteIdentity.peerId,
+                            remoteIdentity.pubKey,
+                            null
+                        )
                     )
-                )
 
-                preHandler?.also { visitor -> visitor.visit(connection) }
-                connHandler.handleConnection(connection)
-                quicChannel.attr(CONNECTION).set(connection)
-                connection
+                    // Warm the address cache while the QuicChannel is still live; once closed it
+                    // frees native state and remoteSocketAddress() returns null.
+                    connection.cacheAddresses()
+
+                    preHandler?.also { visitor -> visitor.visit(connection) }
+                    connHandler.handleConnection(connection)
+                    quicChannel.attr(CONNECTION).set(connection)
+                    connection
+                } catch (e: Throwable) {
+                    // Post-handshake setup failed — close the registered QuicChannel so neither it
+                    // nor its underlying datagram channel is leaked (mirrors the normal dial path).
+                    quicChannel.close()
+                    throw e
+                }
             }
     }
 

@@ -20,6 +20,16 @@ open class ConnectionOverNetty(
     private lateinit var muxerSession: StreamMuxer.Session
     private lateinit var secureSession: SecureChannel.Session
 
+    // Addresses are resolved from the underlying Netty channel, but some transports (e.g. QUIC)
+    // free the native channel state on close, after which the socket addresses are no longer
+    // available. We cache the addresses on first successful read while the channel is still live
+    // so that teardown-time callers (e.g. disconnect handlers) get a stable value instead of an NPE.
+    @Volatile
+    private var cachedLocalAddress: Multiaddr? = null
+
+    @Volatile
+    private var cachedRemoteAddress: Multiaddr? = null
+
     init {
         ch.attr(CONNECTION).set(this)
     }
@@ -35,6 +45,20 @@ open class ConnectionOverNetty(
     override fun secureSession() = secureSession
     override fun transport() = nettyTransport
 
-    override fun localAddress(): Multiaddr = nettyTransport.localAddress(nettyChannel)
-    override fun remoteAddress(): Multiaddr = nettyTransport.remoteAddress(nettyChannel)
+    override fun localAddress(): Multiaddr =
+        cachedLocalAddress ?: nettyTransport.localAddress(nettyChannel).also { cachedLocalAddress = it }
+
+    override fun remoteAddress(): Multiaddr =
+        cachedRemoteAddress ?: nettyTransport.remoteAddress(nettyChannel).also { cachedRemoteAddress = it }
+
+    /**
+     * Eagerly resolves and caches the local and remote addresses while the underlying channel is
+     * still live. Transports whose channels free their native state on close (e.g. QUIC) must call
+     * this before exposing the connection, so a teardown-time caller that is the first to read an
+     * address gets the cached value instead of dereferencing the freed channel.
+     */
+    fun cacheAddresses() {
+        localAddress()
+        remoteAddress()
+    }
 }
