@@ -3,6 +3,7 @@ package io.libp2p.pubsub.gossip
 import io.libp2p.etc.types.toBytesBigEndian
 import io.libp2p.etc.types.toProtobuf
 import io.libp2p.pubsub.DefaultPubsubMessage
+import io.libp2p.pubsub.MessageId
 import io.libp2p.pubsub.PubsubMessage
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -11,6 +12,9 @@ import pubsub.pb.Rpc
 class MCacheTest {
 
     private var seqNo = 0L
+
+    private fun MCache.getMessageIds(topic: String): Set<MessageId> =
+        getGossipMessageIdsByTopic()[topic].orEmpty()
 
     private fun msg(vararg topics: String): PubsubMessage =
         DefaultPubsubMessage(
@@ -36,20 +40,6 @@ class MCacheTest {
     }
 
     @Test
-    fun `getMessageIds reflects messages added after an earlier query (snapshot invalidation on add)`() {
-        val mCache = MCache(3, 5)
-        val a = msg("t")
-        mCache.add(a)
-        // populate the internal snapshot
-        assertThat(mCache.getMessageIds("t")).containsExactly(a.messageId)
-
-        val b = msg("t")
-        mCache.add(b)
-        // a stale snapshot would miss 'b'
-        assertThat(mCache.getMessageIds("t")).containsExactlyInAnyOrder(a.messageId, b.messageId)
-    }
-
-    @Test
     fun `getMessageIds dedups a message id present in multiple windows`() {
         val mCache = MCache(3, 5)
         val a = msg("t")
@@ -61,7 +51,7 @@ class MCacheTest {
     }
 
     @Test
-    fun `getMessageIds only considers the last gossipSize windows (snapshot invalidation on shift)`() {
+    fun `getMessageIds only considers the last gossipSize windows`() {
         val mCache = MCache(gossipSize = 2, historyLength = 5)
         val old = msg("t")
         mCache.add(old)
@@ -74,5 +64,26 @@ class MCacheTest {
         mCache.add(recent)
 
         assertThat(mCache.getMessageIds("t")).containsExactlyInAnyOrder(mid.messageId, recent.messageId)
+    }
+
+    @Test
+    fun `getGossipMessageIdsByTopic groups ids for the current gossip window`() {
+        val mCache = MCache(gossipSize = 2, historyLength = 5)
+        val old = msg("topicA")
+        mCache.add(old)
+        mCache.shift()
+
+        val mid = msg("topicA", "topicB")
+        mCache.add(mid)
+        mCache.shift()
+        mCache.add(mid)
+        val recent = msg("topicB")
+        mCache.add(recent)
+
+        val idsByTopic = mCache.getGossipMessageIdsByTopic()
+
+        assertThat(idsByTopic["topicA"]).containsExactly(mid.messageId)
+        assertThat(idsByTopic["topicB"]).containsExactlyInAnyOrder(mid.messageId, recent.messageId)
+        assertThat(idsByTopic).doesNotContainKey("topicC")
     }
 }
