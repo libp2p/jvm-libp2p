@@ -11,6 +11,9 @@ private data class CacheEntry(val msgId: MessageId, val topics: Set<Topic>)
 
 data class MessageForPeer(val msg: PubsubMessage, val sentCount: Int)
 
+/**
+ * Message cache owned by [GossipRouter]'s event executor. It is not thread-safe.
+ */
 class MCache(val gossipSize: Int, historyLength: Int) {
 
     private val messages = mutableMapOf<MessageId, PubsubMessage>()

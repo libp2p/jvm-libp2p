@@ -668,6 +668,8 @@ open class GossipRouter(
         }
 
         try {
+            // Heartbeat runs on the router event executor. With the supported single-thread executor,
+            // publish/inbound validation tasks cannot mutate mCache while emitGossip consumes this snapshot.
             val gossipMessageIdsByTopic = mCache.getGossipMessageIdsByTopic()
 
             mesh.entries.forEach { (topic, peers) ->
