@@ -668,6 +668,10 @@ open class GossipRouter(
         }
 
         try {
+            // Heartbeat runs on the router event executor. With the supported single-thread executor,
+            // publish/inbound validation tasks cannot mutate mCache while emitGossip consumes this snapshot.
+            val gossipMessageIdsByTopic = mCache.getGossipMessageIdsByTopic()
+
             mesh.entries.forEach { (topic, peers) ->
 
                 // drop underscored peers from mesh
@@ -718,7 +722,7 @@ open class GossipRouter(
                     }
                 }
 
-                emitGossip(topic, peers)
+                emitGossip(topic, peers, gossipMessageIdsByTopic)
             }
             fanout.entries.forEach { (topic, peers) ->
                 peers.removeIf {
@@ -731,7 +735,7 @@ open class GossipRouter(
                         .shuffled(random)
                         .take(needMore)
                 }
-                emitGossip(topic, peers)
+                emitGossip(topic, peers, gossipMessageIdsByTopic)
             }
             lastPublished.entries.removeIf { (topic, lastPub) ->
                 (currentTimeSupplier() - lastPub > params.fanoutTTL.toMillis())
@@ -746,9 +750,12 @@ open class GossipRouter(
         }
     }
 
-    private fun emitGossip(topic: Topic, excludePeers: Collection<PeerHandler>) {
-        val ids = mCache.getMessageIds(topic)
-        if (ids.isEmpty()) return
+    private fun emitGossip(
+        topic: Topic,
+        excludePeers: Collection<PeerHandler>,
+        gossipMessageIdsByTopic: Map<Topic, Set<MessageId>>
+    ) {
+        val ids = gossipMessageIdsByTopic[topic] ?: return
 
         val shuffledMessageIds = ids.shuffled(random).take(params.maxIHaveLength)
         val peers = (getTopicPeers(topic) - excludePeers)
