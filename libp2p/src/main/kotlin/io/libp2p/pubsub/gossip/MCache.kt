@@ -11,6 +11,9 @@ private data class CacheEntry(val msgId: MessageId, val topics: Set<Topic>)
 
 data class MessageForPeer(val msg: PubsubMessage, val sentCount: Int)
 
+/**
+ * Message cache owned by [GossipRouter]'s event executor. It is not thread-safe.
+ */
 class MCache(val gossipSize: Int, historyLength: Int) {
 
     private val messages = mutableMapOf<MessageId, PubsubMessage>()
@@ -28,7 +31,7 @@ class MCache(val gossipSize: Int, historyLength: Int) {
 
     fun add(msg: PubsubMessage) {
         messages[msg.messageId] = msg
-        history.last.add(CacheEntry(msg.messageId, msg.topics.toSet()))
+        history.last().add(CacheEntry(msg.messageId, msg.topics.toSet()))
     }
 
     operator fun get(msgId: MessageId) = messages[msgId]
@@ -40,8 +43,21 @@ class MCache(val gossipSize: Int, historyLength: Int) {
         MessageForPeer(it, sentCount)
     }
 
-    fun getMessageIds(topic: Topic) =
-        history.takeLast(gossipSize).flatten().filter { topic in it.topics }.map { it.msgId }.distinct()
+    fun getGossipMessageIdsByTopic(): Map<Topic, Set<MessageId>> {
+        val messageIdsByTopic = mutableMapOf<Topic, MutableSet<MessageId>>()
+        val startIndex = (history.size - gossipSize).coerceAtLeast(0)
+        val gossipWindows = history.listIterator(startIndex)
+
+        while (gossipWindows.hasNext()) {
+            gossipWindows.next().forEach { entry ->
+                entry.topics.forEach { topic ->
+                    messageIdsByTopic.getOrPut(topic) { linkedSetOf() }.add(entry.msgId)
+                }
+            }
+        }
+
+        return messageIdsByTopic
+    }
 
     fun shift() = history.add(mutableListOf())
 
