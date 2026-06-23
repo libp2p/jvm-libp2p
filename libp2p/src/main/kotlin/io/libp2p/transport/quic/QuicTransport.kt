@@ -131,8 +131,19 @@ class QuicTransport(
             // Route this validated inbound connection to the waiting hole-punch caller.
             pending.future.complete(holePunchChannel())
         } else {
-            // Normal path: deliver to the connection handler.
-            exposeConnection()
+            // Normal path: deliver to the connection handler. The application handler may reject
+            // the connection by throwing (e.g. PeerAlreadyConnectedException for a duplicate or
+            // simultaneous connection to an already-connected peer). This runs inside the server
+            // pipeline's channelActive, and the handshake-waiter handler has already removed itself
+            // by this point, so an escaping exception would reach the Netty pipeline tail and log a
+            // noisy "exceptionCaught reached tail of pipeline" warning while leaking the channel.
+            // Close the rejected connection instead, mirroring the dial paths.
+            try {
+                exposeConnection()
+            } catch (e: Throwable) {
+                logger.debug("Inbound connection rejected by handler; closing", e)
+                closeChannel()
+            }
         }
     }
 

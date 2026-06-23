@@ -6,6 +6,7 @@ import io.libp2p.security.tls.TlsPeerIdentity
 import io.mockk.mockk
 import io.netty.handler.codec.quic.QuicChannel
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatCode
 import org.junit.jupiter.api.Test
 import java.util.concurrent.CompletableFuture
 
@@ -106,5 +107,33 @@ class QuicInboundHandshakeRoutingTest {
         assertThat(prepared).isTrue()
         assertThat(exposed).isTrue()
         assertThat(closed).isFalse()
+    }
+
+    @Test
+    fun `closes the connection when the handler rejects a normal inbound connection`() {
+        val transport = transport()
+        val inbound = identity()
+
+        var closed = false
+
+        // The application connection handler may reject an inbound connection by throwing
+        // (e.g. PeerAlreadyConnectedException for a duplicate/simultaneous connection). That
+        // exception must NOT escape routeInboundHandshake: in the live server pipeline the
+        // handshake-waiter handler has already removed itself by the time the connection is
+        // exposed, so an escaping exception reaches the Netty pipeline tail and logs a noisy
+        // "exceptionCaught reached tail of pipeline" warning. Instead the rejected connection
+        // must be closed, mirroring the dial paths.
+        assertThatCode {
+            transport.routeInboundHandshake(
+                remoteIdentity = inbound,
+                pending = null,
+                prepareConnection = { },
+                closeChannel = { closed = true },
+                holePunchChannel = { error("no hole punch is pending") },
+                exposeConnection = { throw RuntimeException("Already connected to peer") }
+            )
+        }.doesNotThrowAnyException()
+
+        assertThat(closed).isTrue()
     }
 }
