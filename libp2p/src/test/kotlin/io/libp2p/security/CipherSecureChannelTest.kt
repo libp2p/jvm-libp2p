@@ -63,7 +63,7 @@ abstract class CipherSecureChannelTest(secureChannelCtor: SecureChannelCtor, mux
     }
 
     @Test
-    fun `test that on malformed message from remote the connection closes and no log noise`() {
+    open fun `test that on malformed message from remote the connection closes and no log noise`() {
         val (privKey1, _) = generateKeyPair(KeyType.ECDSA)
         val (privKey2, pubKey2) = generateKeyPair(KeyType.ECDSA)
 

@@ -3,6 +3,7 @@ package io.libp2p.transport.quic;
 import io.libp2p.core.Connection;
 import io.libp2p.core.ConnectionHandler;
 import io.libp2p.core.Host;
+import io.libp2p.core.Libp2pException;
 import io.libp2p.core.PeerId;
 import io.libp2p.core.Stream;
 import io.libp2p.core.StreamPromise;
@@ -18,16 +19,27 @@ import io.libp2p.protocol.BlobController;
 import io.libp2p.protocol.OneShotPing;
 import io.libp2p.protocol.OneShotPingController;
 import io.libp2p.protocol.Ping;
+import io.libp2p.protocol.PingBinding;
 import io.libp2p.protocol.PingController;
+import io.libp2p.protocol.PingProtocol;
 import io.libp2p.security.noise.NoiseXXSecureChannel;
 import io.libp2p.security.tls.TlsSecureChannel;
+import io.libp2p.transport.implementation.ConnectionOverNetty;
 import io.libp2p.transport.tcp.TcpTransport;
+import io.netty.buffer.Unpooled;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.channel.socket.ChannelOutputShutdownException;
+import io.netty.handler.codec.quic.QuicStreamChannel;
+import io.netty.handler.codec.quic.QuicStreamResetException;
 import io.netty.handler.logging.LogLevel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -650,6 +662,259 @@ public class QuicServerTestJava {
   }
 
   /**
+   * Closing the write side of a stream whose connection was already closed must not fail. Mirrors
+   * Teku's Goodbye flow: the peer is disconnected (closing the QUIC connection and all its
+   * streams), then the RPC layer half-closes the stream it was responding on. The muxer-based
+   * transports tolerate this silently; QUIC must too instead of failing with
+   * "ChannelOutputShutdownException: Fin was sent already".
+   */
+  @Test
+  void closeWriteAfterConnectionCloseSucceeds() throws Exception {
+    String localListenAddress = "/ip4/127.0.0.1/udp/" + getPort() + "/quic-v1";
+
+    Host clientHost =
+        new HostBuilder().keyType(KeyType.ED25519).secureTransport(QuicTransport::ECDSA).build();
+
+    Host serverHost =
+        new HostBuilder()
+            .keyType(KeyType.ED25519)
+            .secureTransport(QuicTransport::ECDSA)
+            .protocol(new Ping())
+            .listen(localListenAddress)
+            .build();
+
+    clientHost.start().get(5, TimeUnit.SECONDS);
+    serverHost.start().get(5, TimeUnit.SECONDS);
+
+    Connection connection =
+        clientHost
+            .getNetwork()
+            .connect(serverHost.getPeerId(), new Multiaddr(localListenAddress))
+            .get(10, TimeUnit.SECONDS);
+
+    StreamPromise<PingController> ping = connection.muxerSession().createStream(new Ping());
+    Stream pingStream = ping.getStream().get(5, TimeUnit.SECONDS);
+    ping.getController().get(5, TimeUnit.SECONDS);
+
+    connection.close().get(5, TimeUnit.SECONDS);
+    pingStream.closeFuture().get(5, TimeUnit.SECONDS);
+
+    // Must complete without exception even though the stream is already gone
+    pingStream.closeWrite().get(5, TimeUnit.SECONDS);
+
+    clientHost.stop().get(5, TimeUnit.SECONDS);
+    serverHost.stop().get(5, TimeUnit.SECONDS);
+  }
+
+  /**
+   * A remote STREAM_RESET must close the local stream quietly, matching the muxer-based transports
+   * where a remote RST closes the child channel (see AbstractMuxHandler.onRemoteClose) without
+   * surfacing an exception to application handlers. Without this, Netty fires
+   * QuicStreamResetException into the app pipeline (Teku logs "Unhandled error while processes
+   * req/response") and leaves the stream channel open.
+   */
+  @Test
+  void remoteStreamResetClosesStreamQuietly() throws Exception {
+    String localListenAddress = "/ip4/127.0.0.1/udp/" + getPort() + "/quic-v1";
+
+    List<Throwable> serverStreamExceptions = new CopyOnWriteArrayList<>();
+    CompletableFuture<Stream> serverStreamFuture = new CompletableFuture<>();
+    // Stream visitors are not wired into the QUIC transport, so capture the server-side
+    // stream (and any exception reaching application handlers) via the protocol handler
+    PingProtocol capturingPing =
+        new PingProtocol(32) {
+          @Override
+          protected CompletableFuture<PingController> onStartResponder(@NotNull Stream stream) {
+            stream.pushHandler(
+                new ChannelInboundHandlerAdapter() {
+                  @Override
+                  public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
+                    serverStreamExceptions.add(cause);
+                    ctx.fireExceptionCaught(cause);
+                  }
+                });
+            serverStreamFuture.complete(stream);
+            return super.onStartResponder(stream);
+          }
+        };
+
+    Host clientHost =
+        new HostBuilder().keyType(KeyType.ED25519).secureTransport(QuicTransport::ECDSA).build();
+
+    Host serverHost =
+        new HostBuilder()
+            .keyType(KeyType.ED25519)
+            .secureTransport(QuicTransport::ECDSA)
+            .protocol(new PingBinding(capturingPing))
+            .listen(localListenAddress)
+            .build();
+
+    clientHost.start().get(5, TimeUnit.SECONDS);
+    serverHost.start().get(5, TimeUnit.SECONDS);
+
+    Connection connection =
+        clientHost
+            .getNetwork()
+            .connect(serverHost.getPeerId(), new Multiaddr(localListenAddress))
+            .get(10, TimeUnit.SECONDS);
+
+    StreamPromise<PingController> ping = connection.muxerSession().createStream(new Ping());
+    Stream pingStream = ping.getStream().get(5, TimeUnit.SECONDS);
+    PingController pingCtr = ping.getController().get(5, TimeUnit.SECONDS);
+    pingCtr.ping().get(5, TimeUnit.SECONDS);
+
+    Stream serverStream = serverStreamFuture.get(5, TimeUnit.SECONDS);
+
+    // Reset the stream from the client side: quiche sends a RESET_STREAM frame
+    ((QuicStream) pingStream).getQuicStreamChannel().shutdownOutput(1).sync();
+
+    serverStream.closeFuture().get(5, TimeUnit.SECONDS);
+    Assertions.assertTrue(
+        serverStreamExceptions.stream().noneMatch(t -> t instanceof QuicStreamResetException),
+        "Remote stream reset must not surface QuicStreamResetException to application handlers,"
+            + " got: "
+            + serverStreamExceptions);
+
+    clientHost.stop().get(5, TimeUnit.SECONDS);
+    serverHost.stop().get(5, TimeUnit.SECONDS);
+  }
+
+  /**
+   * A remote STOP_SENDING frame (the peer no longer wants to read from the stream) must not surface
+   * to application handlers. Netty fails our queued/in-flight writes with a
+   * ChannelOutputShutdownException("STOP_SENDING frame received"); without special handling that
+   * exception travels the stream pipeline's exceptionCaught path and reaches the application's
+   * ProtocolMessageHandler.onException (Teku logs "Unhandled error while processing req/response").
+   * QuicStreamReadCloseEventConverter must swallow it quietly and leave the stream open, since only
+   * the write side is affected.
+   */
+  @Test
+  void remoteStopSendingDoesNotSurfaceToApplicationHandlers() throws Exception {
+    String localListenAddress = "/ip4/127.0.0.1/udp/" + getPort() + "/quic-v1";
+
+    CompletableFuture<Stream> serverStreamFuture = new CompletableFuture<>();
+    PingProtocol capturingPing =
+        new PingProtocol(32) {
+          @Override
+          protected CompletableFuture<PingController> onStartResponder(@NotNull Stream stream) {
+            serverStreamFuture.complete(stream);
+            return super.onStartResponder(stream);
+          }
+        };
+
+    Host clientHost =
+        new HostBuilder().keyType(KeyType.ED25519).secureTransport(QuicTransport::ECDSA).build();
+    Host serverHost =
+        new HostBuilder()
+            .keyType(KeyType.ED25519)
+            .secureTransport(QuicTransport::ECDSA)
+            .protocol(new PingBinding(capturingPing))
+            .listen(localListenAddress)
+            .build();
+
+    clientHost.start().get(5, TimeUnit.SECONDS);
+    serverHost.start().get(5, TimeUnit.SECONDS);
+
+    Connection connection =
+        clientHost
+            .getNetwork()
+            .connect(serverHost.getPeerId(), new Multiaddr(localListenAddress))
+            .get(10, TimeUnit.SECONDS);
+
+    StreamPromise<PingController> ping = connection.muxerSession().createStream(new Ping());
+    Stream pingStream = ping.getStream().get(5, TimeUnit.SECONDS);
+    ping.getController().get(5, TimeUnit.SECONDS);
+
+    QuicStreamChannel clientStreamChannel = ((QuicStream) pingStream).getQuicStreamChannel();
+
+    // Capture exceptions that get past the converter towards application handlers. Insert the
+    // capturer immediately after QuicStreamReadCloseEventConverter so the converter runs first:
+    // if it swallows the exception (the fix) nothing reaches the capturer; if it forwards it (the
+    // bug) the capturer records it, exactly where the application handler would otherwise see it.
+    List<Throwable> appExceptions = new CopyOnWriteArrayList<>();
+    String converterName =
+        clientStreamChannel.pipeline().context(QuicStreamReadCloseEventConverter.class).name();
+    clientStreamChannel
+        .pipeline()
+        .addAfter(
+            converterName,
+            "test-app-exception-capture",
+            new ChannelInboundHandlerAdapter() {
+              @Override
+              public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
+                appExceptions.add(cause);
+                ctx.fireExceptionCaught(cause);
+              }
+            });
+
+    Stream serverStream = serverStreamFuture.get(5, TimeUnit.SECONDS);
+
+    // The server stops reading: quiche sends a STOP_SENDING frame to the client.
+    ((QuicStream) serverStream).getQuicStreamChannel().shutdownInput().sync();
+
+    // Write to the client stream after STOP_SENDING. Use a void promise so a write failure is
+    // routed through the pipeline's exceptionCaught (mirroring how the exception surfaced in the
+    // wild), rather than only failing the write future. quiche reports STREAM_STOPPED and Netty
+    // fails the write with ChannelOutputShutdownException.
+    for (int i = 0; i < 40 && clientStreamChannel.isOpen(); i++) {
+      clientStreamChannel.writeAndFlush(
+          Unpooled.wrappedBuffer(new byte[256]), clientStreamChannel.voidPromise());
+      Thread.sleep(25);
+    }
+
+    // Allow any fired exception to propagate through the pipeline before asserting.
+    Thread.sleep(500);
+
+    Assertions.assertTrue(
+        appExceptions.stream().noneMatch(t -> t instanceof ChannelOutputShutdownException),
+        "Remote STOP_SENDING must not surface ChannelOutputShutdownException to application"
+            + " handlers, got: "
+            + appExceptions);
+    Assertions.assertTrue(
+        clientStreamChannel.isOpen(),
+        "STOP_SENDING only stops the write side; the stream must stay open for reads");
+
+    clientHost.stop().get(5, TimeUnit.SECONDS);
+    serverHost.stop().get(5, TimeUnit.SECONDS);
+  }
+
+  /** Calling closeWrite twice must be idempotent: the first call already sent the FIN. */
+  @Test
+  void closeWriteIsIdempotent() throws Exception {
+    String localListenAddress = "/ip4/127.0.0.1/udp/" + getPort() + "/quic-v1";
+
+    Host clientHost =
+        new HostBuilder().keyType(KeyType.ED25519).secureTransport(QuicTransport::ECDSA).build();
+
+    Host serverHost =
+        new HostBuilder()
+            .keyType(KeyType.ED25519)
+            .secureTransport(QuicTransport::ECDSA)
+            .protocol(new Ping())
+            .listen(localListenAddress)
+            .build();
+
+    clientHost.start().get(5, TimeUnit.SECONDS);
+    serverHost.start().get(5, TimeUnit.SECONDS);
+
+    Connection connection =
+        clientHost
+            .getNetwork()
+            .connect(serverHost.getPeerId(), new Multiaddr(localListenAddress))
+            .get(10, TimeUnit.SECONDS);
+
+    StreamPromise<PingController> ping = connection.muxerSession().createStream(new Ping());
+    Stream pingStream = ping.getStream().get(5, TimeUnit.SECONDS);
+    ping.getController().get(5, TimeUnit.SECONDS);
+
+    pingStream.closeWrite().get(5, TimeUnit.SECONDS);
+    pingStream.closeWrite().get(5, TimeUnit.SECONDS);
+
+    clientHost.stop().get(5, TimeUnit.SECONDS);
+    serverHost.stop().get(5, TimeUnit.SECONDS);
+  }
+
+  /**
    * Verify that dialAsListener times out when no peer connects back. This tests the timeout path
    * without requiring a real hole punch.
    */
@@ -666,9 +931,12 @@ public class QuicServerTestJava {
     System.out.println("Transport listening on: " + localListenAddress);
 
     // Dial a non-existent peer at an address where nobody will connect back
-    // Use a different port so nobody is listening there
+    // Use a different port so nobody is listening there. A hole punch always targets a known
+    // peer, so the address must carry a /p2p peer id (otherwise dialAsListener fails fast).
     int unreachablePort = getPort();
-    Multiaddr unreachableAddr = new Multiaddr("/ip4/127.0.0.1/udp/" + unreachablePort + "/quic-v1");
+    Multiaddr unreachableAddr =
+        new Multiaddr(
+            "/ip4/127.0.0.1/udp/" + unreachablePort + "/quic-v1/p2p/" + PeerId.random().toBase58());
 
     CompletableFuture<Connection> holePunchFuture =
         transport.dialAsListener(unreachableAddr, conn -> {}, null);
@@ -689,5 +957,176 @@ public class QuicServerTestJava {
     }
 
     transport.close().get(5, TimeUnit.SECONDS);
+  }
+
+  /**
+   * A hole punch always targets a known peer. dialAsListener must reject an address with no {@code
+   * /p2p} peer id, because without it the inbound connection could not be validated before exposure
+   * — any peer reaching the expected UDP tuple would be handed back as the dialed peer.
+   */
+  @Test
+  void holePunchWithoutPeerIdIsRejected() throws Exception {
+    String localListenAddress = "/ip4/127.0.0.1/udp/" + getPort() + "/quic-v1";
+
+    Pair<PrivKey, PubKey> serverKeyPair = KeyKt.generateKeyPair(KeyType.ED25519);
+    List<io.libp2p.core.multistream.ProtocolBinding<?>> emptyProtocols = new ArrayList<>();
+
+    QuicTransport transport = QuicTransport.ECDSA(serverKeyPair.component1(), emptyProtocols);
+    transport.initialize();
+    transport.listen(new Multiaddr(localListenAddress), conn -> {}, null).get(5, TimeUnit.SECONDS);
+
+    Multiaddr noPeerIdAddr = new Multiaddr("/ip4/127.0.0.1/udp/" + getPort() + "/quic-v1");
+
+    Assertions.assertThrows(
+        Libp2pException.class,
+        () -> transport.dialAsListener(noPeerIdAddr, conn -> {}, null),
+        "dialAsListener must reject a hole-punch target with no /p2p peer id");
+
+    transport.close().get(5, TimeUnit.SECONDS);
+  }
+
+  /**
+   * Each outbound {@code dial()} binds its own ephemeral {@code NioDatagramChannel} to carry the
+   * QUIC connection. When the QUIC connection closes, that underlying datagram channel must be
+   * closed too — closing a {@code QuicChannel} does not close its parent datagram channel in Netty.
+   * If it is left open, every dial leaks a datagram channel (plus its codec, native quiche config
+   * and queued direct buffers) for the lifetime of the transport.
+   */
+  @Test
+  void dialClosesUnderlyingDatagramChannelWhenConnectionCloses() throws Exception {
+    String serverListenAddress = "/ip4/127.0.0.1/udp/" + getPort() + "/quic-v1";
+
+    Pair<PrivKey, PubKey> serverKeyPair = KeyKt.generateKeyPair(KeyType.ED25519);
+    Pair<PrivKey, PubKey> clientKeyPair = KeyKt.generateKeyPair(KeyType.ED25519);
+    List<io.libp2p.core.multistream.ProtocolBinding<?>> emptyProtocols = new ArrayList<>();
+
+    QuicTransport serverTransport = QuicTransport.ECDSA(serverKeyPair.component1(), emptyProtocols);
+    QuicTransport clientTransport = QuicTransport.ECDSA(clientKeyPair.component1(), emptyProtocols);
+    serverTransport.initialize();
+    clientTransport.initialize();
+
+    serverTransport
+        .listen(new Multiaddr(serverListenAddress), conn -> {}, null)
+        .get(5, TimeUnit.SECONDS);
+
+    Connection connection =
+        clientTransport
+            .dial(new Multiaddr(serverListenAddress), conn -> {}, null)
+            .get(10, TimeUnit.SECONDS);
+
+    Channel quicChannel = ((ConnectionOverNetty) connection).getNettyChannel();
+    Channel datagramChannel = quicChannel.parent();
+    Assertions.assertNotNull(
+        datagramChannel, "QUIC connection should ride on an underlying datagram channel");
+    Assertions.assertTrue(
+        datagramChannel.isOpen(), "datagram channel should be open while the connection is live");
+
+    // Closing the QUIC connection must cascade to the ephemeral dial datagram channel.
+    connection.close().get(5, TimeUnit.SECONDS);
+
+    datagramChannel.closeFuture().get(5, TimeUnit.SECONDS);
+    Assertions.assertFalse(
+        datagramChannel.isOpen(),
+        "underlying datagram channel must be closed after the QUIC connection closes");
+
+    clientTransport.close().get(5, TimeUnit.SECONDS);
+    serverTransport.close().get(5, TimeUnit.SECONDS);
+  }
+
+  /**
+   * A dial that fails AFTER the QUIC handshake completes (e.g. the connection handler throws during
+   * setup) must close the already-established QuicChannel rather than leave it registered and open.
+   * Otherwise the failed dial leaks the QUIC connection and its underlying datagram channel for the
+   * lifetime of the transport.
+   */
+  @Test
+  void dialThatFailsAfterHandshakeDoesNotLeakConnection() throws Exception {
+    String serverListenAddress = "/ip4/127.0.0.1/udp/" + getPort() + "/quic-v1";
+
+    Pair<PrivKey, PubKey> serverKeyPair = KeyKt.generateKeyPair(KeyType.ED25519);
+    Pair<PrivKey, PubKey> clientKeyPair = KeyKt.generateKeyPair(KeyType.ED25519);
+    List<io.libp2p.core.multistream.ProtocolBinding<?>> emptyProtocols = new ArrayList<>();
+
+    QuicTransport serverTransport = QuicTransport.ECDSA(serverKeyPair.component1(), emptyProtocols);
+    QuicTransport clientTransport = QuicTransport.ECDSA(clientKeyPair.component1(), emptyProtocols);
+    serverTransport.initialize();
+    clientTransport.initialize();
+
+    serverTransport
+        .listen(new Multiaddr(serverListenAddress), conn -> {}, null)
+        .get(5, TimeUnit.SECONDS);
+
+    // Connection handler that throws after the handshake completes, exercising the post-handshake
+    // failure path in dial().thenApply.
+    ConnectionHandler throwingHandler =
+        conn -> {
+          throw new RuntimeException("boom");
+        };
+
+    CompletableFuture<Connection> dial =
+        clientTransport.dial(new Multiaddr(serverListenAddress), throwingHandler, null);
+
+    Assertions.assertThrows(ExecutionException.class, () -> dial.get(10, TimeUnit.SECONDS));
+
+    // The failed dial must not leak the established QuicChannel.
+    long deadline = System.currentTimeMillis() + 5_000;
+    while (clientTransport.getActiveConnections() > 0 && System.currentTimeMillis() < deadline) {
+      Thread.sleep(50);
+    }
+    Assertions.assertEquals(
+        0,
+        clientTransport.getActiveConnections(),
+        "a dial that fails after the handshake must close (not leak) the QUIC connection");
+
+    clientTransport.close().get(5, TimeUnit.SECONDS);
+    serverTransport.close().get(5, TimeUnit.SECONDS);
+  }
+
+  /**
+   * NetworkImpl.connect() races dials across multiple addresses and cancels the losing dial futures
+   * once the first one completes. For QUIC, dial() returns the dependent {@code thenApply} future;
+   * cancelling it does not propagate upstream to the QUIC connect. If the handshake then completes,
+   * the {@code thenApply} body is skipped, so the established QuicChannel is never registered,
+   * handed to the caller, nor closed — it (and its underlying datagram channel) leaks until the
+   * idle timeout. A cancelled dial must promptly close the established QUIC connection.
+   */
+  @Test
+  void cancelledDialClosesEstablishedQuicConnection() throws Exception {
+    String serverListenAddress = "/ip4/127.0.0.1/udp/" + getPort() + "/quic-v1";
+
+    Pair<PrivKey, PubKey> serverKeyPair = KeyKt.generateKeyPair(KeyType.ED25519);
+    Pair<PrivKey, PubKey> clientKeyPair = KeyKt.generateKeyPair(KeyType.ED25519);
+    List<io.libp2p.core.multistream.ProtocolBinding<?>> emptyProtocols = new ArrayList<>();
+
+    QuicTransport serverTransport = QuicTransport.ECDSA(serverKeyPair.component1(), emptyProtocols);
+    QuicTransport clientTransport = QuicTransport.ECDSA(clientKeyPair.component1(), emptyProtocols);
+    serverTransport.initialize();
+    clientTransport.initialize();
+
+    serverTransport
+        .listen(new Multiaddr(serverListenAddress), conn -> {}, null)
+        .get(5, TimeUnit.SECONDS);
+
+    CompletableFuture<Connection> dial =
+        clientTransport.dial(new Multiaddr(serverListenAddress), conn -> {}, null);
+    // Cancel synchronously, before the async handshake completes — the same situation a losing dial
+    // in NetworkImpl.connect() hits.
+    dial.cancel(true);
+
+    // The handshake still completes at the network level, so the QuicChannel is established and
+    // tracked. A leaked channel stays in activeConnections until the 30s idle timeout; a properly
+    // handled cancellation closes it, dropping activeConnections back to zero well inside this
+    // window.
+    long deadline = System.currentTimeMillis() + 15_000;
+    while (clientTransport.getActiveConnections() > 0 && System.currentTimeMillis() < deadline) {
+      Thread.sleep(50);
+    }
+    Assertions.assertEquals(
+        0,
+        clientTransport.getActiveConnections(),
+        "a cancelled dial must close (not leak) the established QUIC connection");
+
+    clientTransport.close().get(5, TimeUnit.SECONDS);
+    serverTransport.close().get(5, TimeUnit.SECONDS);
   }
 }
