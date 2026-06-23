@@ -1,0 +1,61 @@
+name: "Create Release PR"
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'The release version (e.g., 1.3.3)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  create-release-pr:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. Checkout develop branch
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0 # Fetch all history so we can merge master later
+
+      # 2. Configure Git Identity
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      # 3. Create the release branch from develop
+      - name: Create Release Branch
+        run: |
+          git checkout -b ${{ github.event.inputs.version }}
+
+      # 4. Merge master into the fork branch
+      - name: Merge Master into Release Branch
+        run: |
+          git fetch origin master:master
+          git merge master --no-edit || (echo "Merge conflict detected!" && exit 1)
+
+      # 5. Update the version in build.gradle.kts
+      - name: Update Version in build.gradle.kts
+        run: |
+          sed -i 's/version = ".*"/version = "${{ github.event.inputs.version }}-RELEASE"/g' build.gradle.kts
+          
+          git add build.gradle.kts
+          git commit -m "chore: bump version to ${{ github.event.inputs.version }}-RELEASE"
+          git push origin ${{ github.event.inputs.version }}
+
+      # 6. Make a PR from the release branch to master
+      - name: Create Pull Request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr create \
+            --head ${{ github.event.inputs.version }} \
+            --base master \
+            --title "Release ${{ github.event.inputs.version }}" \
+            --body "Please review, approve, and **Regular Merge** (do not squash) this PR to trigger the Cloudsmith deployment."
