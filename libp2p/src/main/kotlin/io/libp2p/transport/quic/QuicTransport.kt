@@ -43,6 +43,15 @@ import java.util.concurrent.TimeUnit
 enum class AddressFamily { IPV4, IPV6 }
 
 /**
+ * Whether an inbound hole-punched connection presenting libp2p identity [actual] is acceptable for
+ * a hole punch that targeted [expected]. A hole punch always targets a known peer, so the inbound
+ * identity must match exactly — unlike a normal inbound server connection, reaching the expected UDP
+ * tuple is not sufficient to be handed back to the caller as the dialed peer.
+ */
+internal fun holePunchIdentityMatches(expected: PeerId, actual: PeerId): Boolean =
+    expected == actual
+
+/**
  * QUIC transport for libp2p using QUIC v1 (RFC 9000) with TLS 1.3.
  *
  * Security and multiplexing are native to QUIC — no separate Noise/TLS negotiation
@@ -70,8 +79,65 @@ class QuicTransport(
     /** Tracks active listener DatagramChannels by address family. */
     internal val listenerChannelsByFamily = ConcurrentHashMap<AddressFamily, Channel>()
 
-    /** Pending hole punch futures keyed by the remote address we are trying to reach. */
-    private val pendingHolePunches = ConcurrentHashMap<InetSocketAddress, CompletableFuture<QuicChannel>>()
+    /**
+     * A pending hole punch: the future completed when the inbound QUIC connection arrives, plus the
+     * peer id we expect that connection to present. A hole punch always targets a known peer, so this
+     * is never null (see [dialAsListener]).
+     */
+    internal data class PendingHolePunch(
+        val expectedPeerId: PeerId,
+        val future: CompletableFuture<QuicChannel>
+    )
+
+    /**
+     * Routes a completed inbound (server-side) handshake, applying the hole-punch identity guard
+     * before the connection is exposed to application handlers. Extracted from the channelActive
+     * handler in [serverTransportBuilder] so the reject-before-exposure guarantee is testable without
+     * a live QUIC channel.
+     *
+     * If [pending] is a hole punch whose identity does not match the dial target, [closeChannel] is
+     * invoked and the pending future is completed exceptionally — neither [prepareConnection] nor
+     * [exposeConnection] runs, so a wrong-identity peer never reaches inbound protocol handlers.
+     * Otherwise the connection is prepared and then either handed to the waiting hole-punch caller
+     * ([holePunchChannel]) or exposed via [exposeConnection].
+     */
+    internal fun routeInboundHandshake(
+        remoteIdentity: io.libp2p.security.tls.TlsPeerIdentity,
+        pending: PendingHolePunch?,
+        prepareConnection: () -> Unit,
+        closeChannel: () -> Unit,
+        holePunchChannel: () -> QuicChannel,
+        exposeConnection: () -> Unit
+    ) {
+        if (pending != null && !holePunchIdentityMatches(pending.expectedPeerId, remoteIdentity.peerId)) {
+            logger.warn(
+                "Hole-punched peer presented libp2p id {} but dial target was {}; closing",
+                remoteIdentity.peerId,
+                pending.expectedPeerId
+            )
+            closeChannel()
+            pending.future.completeExceptionally(
+                Libp2pException(
+                    "Remote peer presented libp2p pubkey for ${remoteIdentity.peerId} " +
+                        "but dial target was ${pending.expectedPeerId}"
+                )
+            )
+            return
+        }
+
+        prepareConnection()
+
+        if (pending != null) {
+            // Route this validated inbound connection to the waiting hole-punch caller.
+            pending.future.complete(holePunchChannel())
+        } else {
+            // Normal path: deliver to the connection handler.
+            exposeConnection()
+        }
+    }
+
+    /** Pending hole punches keyed by the remote address we are trying to reach. */
+    private val pendingHolePunches = ConcurrentHashMap<InetSocketAddress, PendingHolePunch>()
 
     private var workerGroup by lazyVar {
         MultiThreadIoEventLoopGroup(NioIoHandler.newFactory())
@@ -408,6 +474,7 @@ class QuicTransport(
                         "quic-handshake-waiter",
                         object : ChannelInboundHandlerAdapter() {
                             override fun channelActive(ctx: ChannelHandlerContext) {
+                                val self = this
                                 // Read peer certificates from this connection's own SSL session
                                 // rather than shared TrustManager state, avoiding a race between
                                 // concurrent handshakes. Both remoteId and remotePubKey come from
@@ -421,39 +488,49 @@ class QuicTransport(
 
                                     logger.info("Handshake completed with remote peer id: {}", remoteIdentity.peerId)
 
-                                    connection.setSecureSession(
-                                        SecureChannel.Session(
-                                            PeerId.fromPubKey(localKey.publicKey()),
-                                            remoteIdentity.peerId,
-                                            remoteIdentity.pubKey,
-                                            null
-                                        )
-                                    )
-
-                                    // Remove this handler as it's no longer needed
-                                    ctx.pipeline().remove(this)
-
-                                    // Warm the address cache while the QuicChannel is still live;
-                                    // once closed it frees native state and remoteSocketAddress()
-                                    // returns null.
-                                    connection.cacheAddresses()
-
-                                    // Check if this connection is completing a pending hole punch
+                                    // Check if this connection is completing a pending hole punch.
                                     val remoteAddr = ctx.channel().remoteAddress() as? InetSocketAddress
-                                    val holePunchFuture = if (remoteAddr != null) {
+                                    val pending = if (remoteAddr != null) {
                                         pendingHolePunches.remove(remoteAddr)
                                     } else {
                                         null
                                     }
 
-                                    if (holePunchFuture != null) {
-                                        // Route this inbound connection to the waiting hole-punch caller
-                                        holePunchFuture.complete(ctx.channel() as QuicChannel)
-                                    } else {
-                                        // Normal path: deliver to the connection handler
-                                        preHandler?.also { visitor -> visitor.visit(connection) }
-                                        connHandler.handleConnection(connection)
-                                    }
+                                    // For a hole punch, validate the inbound peer's identity against
+                                    // the dial target BEFORE exposing the connection. The server
+                                    // pipeline's InboundStreamHandler would otherwise dispatch streams
+                                    // to protocol handlers during the window before the dialAsListener
+                                    // check closes the channel, giving a wrong-identity peer that
+                                    // reached the expected UDP tuple an unauthenticated-by-target
+                                    // window into inbound protocols.
+                                    routeInboundHandshake(
+                                        remoteIdentity = remoteIdentity,
+                                        pending = pending,
+                                        prepareConnection = {
+                                            connection.setSecureSession(
+                                                SecureChannel.Session(
+                                                    PeerId.fromPubKey(localKey.publicKey()),
+                                                    remoteIdentity.peerId,
+                                                    remoteIdentity.pubKey,
+                                                    null
+                                                )
+                                            )
+
+                                            // Remove this handler as it's no longer needed
+                                            ctx.pipeline().remove(self)
+
+                                            // Warm the address cache while the QuicChannel is still
+                                            // live; once closed it frees native state and
+                                            // remoteSocketAddress() returns null.
+                                            connection.cacheAddresses()
+                                        },
+                                        closeChannel = { ctx.close() },
+                                        holePunchChannel = { ctx.channel() as QuicChannel },
+                                        exposeConnection = {
+                                            preHandler?.also { visitor -> visitor.visit(connection) }
+                                            connHandler.handleConnection(connection)
+                                        }
+                                    )
                                 } else {
                                     // This should not happen if channelActive is called after handshake
                                     ctx.close()
@@ -501,6 +578,11 @@ class QuicTransport(
     ): CompletableFuture<Connection> {
         if (closed) throw Libp2pException("Transport is closed")
         val targetAddr = fromMultiaddr(addr) as InetSocketAddress
+        // A hole punch always targets a known peer. Without a target peer id the inbound connection
+        // could not be validated before exposure, so any peer reaching the expected UDP tuple would
+        // be handed back as the dialed peer — defeating the identity check. Fail fast instead.
+        val expectedPeerId = addr.getPeerId()
+            ?: throw Libp2pException("Hole punch requires a target peer id (/p2p) in $addr")
         val family = if (targetAddr.address is Inet6Address) AddressFamily.IPV6 else AddressFamily.IPV4
         val listenerChannel = listenerChannelsByFamily[family]
             ?: throw Libp2pException(
@@ -508,7 +590,9 @@ class QuicTransport(
             )
 
         val inboundFuture = CompletableFuture<QuicChannel>()
-        pendingHolePunches[targetAddr] = inboundFuture
+        // Record the expected peer id so the inbound handshake can be validated against the dial
+        // target before the connection is exposed (see channelActive in serverTransportBuilder).
+        pendingHolePunches[targetAddr] = PendingHolePunch(expectedPeerId, inboundFuture)
 
         // Send UDP probe packets to open NAT mappings on both sides.
         // Probes are raw UDP datagrams — not QUIC frames.
@@ -545,8 +629,7 @@ class QuicTransport(
                     // that the invariant PeerId.fromPubKey(remotePubKey) == remoteId holds on the
                     // hole-punch path too.
                     val remoteIdentity = verifyAndExtractIdentity(peerCerts)
-                    val expectedPeerId = addr.getPeerId()
-                    if (expectedPeerId != null && remoteIdentity.peerId != expectedPeerId) {
+                    if (remoteIdentity.peerId != expectedPeerId) {
                         throw Libp2pException(
                             "Remote peer presented libp2p pubkey for ${remoteIdentity.peerId} but dial target was $expectedPeerId"
                         )
