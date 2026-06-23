@@ -84,10 +84,57 @@ class QuicTransport(
      * peer id we expect that connection to present. A hole punch always targets a known peer, so this
      * is never null (see [dialAsListener]).
      */
-    private data class PendingHolePunch(
+    internal data class PendingHolePunch(
         val expectedPeerId: PeerId,
         val future: CompletableFuture<QuicChannel>
     )
+
+    /**
+     * Routes a completed inbound (server-side) handshake, applying the hole-punch identity guard
+     * before the connection is exposed to application handlers. Extracted from the channelActive
+     * handler in [serverTransportBuilder] so the reject-before-exposure guarantee is testable without
+     * a live QUIC channel.
+     *
+     * If [pending] is a hole punch whose identity does not match the dial target, [closeChannel] is
+     * invoked and the pending future is completed exceptionally — neither [prepareConnection] nor
+     * [exposeConnection] runs, so a wrong-identity peer never reaches inbound protocol handlers.
+     * Otherwise the connection is prepared and then either handed to the waiting hole-punch caller
+     * ([holePunchChannel]) or exposed via [exposeConnection].
+     */
+    internal fun routeInboundHandshake(
+        remoteIdentity: io.libp2p.security.tls.TlsPeerIdentity,
+        pending: PendingHolePunch?,
+        prepareConnection: () -> Unit,
+        closeChannel: () -> Unit,
+        holePunchChannel: () -> QuicChannel,
+        exposeConnection: () -> Unit
+    ) {
+        if (pending != null && !holePunchIdentityMatches(pending.expectedPeerId, remoteIdentity.peerId)) {
+            logger.warn(
+                "Hole-punched peer presented libp2p id {} but dial target was {}; closing",
+                remoteIdentity.peerId,
+                pending.expectedPeerId
+            )
+            closeChannel()
+            pending.future.completeExceptionally(
+                Libp2pException(
+                    "Remote peer presented libp2p pubkey for ${remoteIdentity.peerId} " +
+                        "but dial target was ${pending.expectedPeerId}"
+                )
+            )
+            return
+        }
+
+        prepareConnection()
+
+        if (pending != null) {
+            // Route this validated inbound connection to the waiting hole-punch caller.
+            pending.future.complete(holePunchChannel())
+        } else {
+            // Normal path: deliver to the connection handler.
+            exposeConnection()
+        }
+    }
 
     /** Pending hole punches keyed by the remote address we are trying to reach. */
     private val pendingHolePunches = ConcurrentHashMap<InetSocketAddress, PendingHolePunch>()
@@ -427,6 +474,7 @@ class QuicTransport(
                         "quic-handshake-waiter",
                         object : ChannelInboundHandlerAdapter() {
                             override fun channelActive(ctx: ChannelHandlerContext) {
+                                val self = this
                                 // Read peer certificates from this connection's own SSL session
                                 // rather than shared TrustManager state, avoiding a race between
                                 // concurrent handshakes. Both remoteId and remotePubKey come from
@@ -455,50 +503,34 @@ class QuicTransport(
                                     // check closes the channel, giving a wrong-identity peer that
                                     // reached the expected UDP tuple an unauthenticated-by-target
                                     // window into inbound protocols.
-                                    if (pending != null &&
-                                        !holePunchIdentityMatches(pending.expectedPeerId, remoteIdentity.peerId)
-                                    ) {
-                                        logger.warn(
-                                            "Hole-punched peer presented libp2p id {} but dial target was {}; closing",
-                                            remoteIdentity.peerId,
-                                            pending.expectedPeerId
-                                        )
-                                        ctx.close()
-                                        pending.future.completeExceptionally(
-                                            Libp2pException(
-                                                "Remote peer presented libp2p pubkey for ${remoteIdentity.peerId} " +
-                                                    "but dial target was ${pending.expectedPeerId}"
+                                    routeInboundHandshake(
+                                        remoteIdentity = remoteIdentity,
+                                        pending = pending,
+                                        prepareConnection = {
+                                            connection.setSecureSession(
+                                                SecureChannel.Session(
+                                                    PeerId.fromPubKey(localKey.publicKey()),
+                                                    remoteIdentity.peerId,
+                                                    remoteIdentity.pubKey,
+                                                    null
+                                                )
                                             )
-                                        )
-                                        return
-                                    }
 
-                                    connection.setSecureSession(
-                                        SecureChannel.Session(
-                                            PeerId.fromPubKey(localKey.publicKey()),
-                                            remoteIdentity.peerId,
-                                            remoteIdentity.pubKey,
-                                            null
-                                        )
+                                            // Remove this handler as it's no longer needed
+                                            ctx.pipeline().remove(self)
+
+                                            // Warm the address cache while the QuicChannel is still
+                                            // live; once closed it frees native state and
+                                            // remoteSocketAddress() returns null.
+                                            connection.cacheAddresses()
+                                        },
+                                        closeChannel = { ctx.close() },
+                                        holePunchChannel = { ctx.channel() as QuicChannel },
+                                        exposeConnection = {
+                                            preHandler?.also { visitor -> visitor.visit(connection) }
+                                            connHandler.handleConnection(connection)
+                                        }
                                     )
-
-                                    // Remove this handler as it's no longer needed
-                                    ctx.pipeline().remove(this)
-
-                                    // Warm the address cache while the QuicChannel is still live;
-                                    // once closed it frees native state and remoteSocketAddress()
-                                    // returns null.
-                                    connection.cacheAddresses()
-
-                                    if (pending != null) {
-                                        // Route this validated inbound connection to the waiting
-                                        // hole-punch caller.
-                                        pending.future.complete(ctx.channel() as QuicChannel)
-                                    } else {
-                                        // Normal path: deliver to the connection handler
-                                        preHandler?.also { visitor -> visitor.visit(connection) }
-                                        connHandler.handleConnection(connection)
-                                    }
                                 } else {
                                     // This should not happen if channelActive is called after handshake
                                     ctx.close()
