@@ -44,11 +44,12 @@ enum class AddressFamily { IPV4, IPV6 }
 
 /**
  * Whether an inbound hole-punched connection presenting libp2p identity [actual] is acceptable for
- * a hole punch that targeted [expected]. A null [expected] (dial multiaddr carried no peer id) means
- * any valid identity is accepted, matching the behaviour of a normal inbound server connection.
+ * a hole punch that targeted [expected]. A hole punch always targets a known peer, so the inbound
+ * identity must match exactly — unlike a normal inbound server connection, reaching the expected UDP
+ * tuple is not sufficient to be handed back to the caller as the dialed peer.
  */
-internal fun holePunchIdentityMatches(expected: PeerId?, actual: PeerId): Boolean =
-    expected == null || expected == actual
+internal fun holePunchIdentityMatches(expected: PeerId, actual: PeerId): Boolean =
+    expected == actual
 
 /**
  * QUIC transport for libp2p using QUIC v1 (RFC 9000) with TLS 1.3.
@@ -80,10 +81,11 @@ class QuicTransport(
 
     /**
      * A pending hole punch: the future completed when the inbound QUIC connection arrives, plus the
-     * peer id we expect that connection to present (null if the dial multiaddr carried no peer id).
+     * peer id we expect that connection to present. A hole punch always targets a known peer, so this
+     * is never null (see [dialAsListener]).
      */
     private data class PendingHolePunch(
-        val expectedPeerId: PeerId?,
+        val expectedPeerId: PeerId,
         val future: CompletableFuture<QuicChannel>
     )
 
@@ -544,6 +546,11 @@ class QuicTransport(
     ): CompletableFuture<Connection> {
         if (closed) throw Libp2pException("Transport is closed")
         val targetAddr = fromMultiaddr(addr) as InetSocketAddress
+        // A hole punch always targets a known peer. Without a target peer id the inbound connection
+        // could not be validated before exposure, so any peer reaching the expected UDP tuple would
+        // be handed back as the dialed peer — defeating the identity check. Fail fast instead.
+        val expectedPeerId = addr.getPeerId()
+            ?: throw Libp2pException("Hole punch requires a target peer id (/p2p) in $addr")
         val family = if (targetAddr.address is Inet6Address) AddressFamily.IPV6 else AddressFamily.IPV4
         val listenerChannel = listenerChannelsByFamily[family]
             ?: throw Libp2pException(
@@ -553,7 +560,7 @@ class QuicTransport(
         val inboundFuture = CompletableFuture<QuicChannel>()
         // Record the expected peer id so the inbound handshake can be validated against the dial
         // target before the connection is exposed (see channelActive in serverTransportBuilder).
-        pendingHolePunches[targetAddr] = PendingHolePunch(addr.getPeerId(), inboundFuture)
+        pendingHolePunches[targetAddr] = PendingHolePunch(expectedPeerId, inboundFuture)
 
         // Send UDP probe packets to open NAT mappings on both sides.
         // Probes are raw UDP datagrams — not QUIC frames.
@@ -590,8 +597,7 @@ class QuicTransport(
                     // that the invariant PeerId.fromPubKey(remotePubKey) == remoteId holds on the
                     // hole-punch path too.
                     val remoteIdentity = verifyAndExtractIdentity(peerCerts)
-                    val expectedPeerId = addr.getPeerId()
-                    if (expectedPeerId != null && remoteIdentity.peerId != expectedPeerId) {
+                    if (remoteIdentity.peerId != expectedPeerId) {
                         throw Libp2pException(
                             "Remote peer presented libp2p pubkey for ${remoteIdentity.peerId} but dial target was $expectedPeerId"
                         )

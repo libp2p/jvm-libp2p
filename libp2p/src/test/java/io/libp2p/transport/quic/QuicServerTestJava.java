@@ -3,6 +3,7 @@ package io.libp2p.transport.quic;
 import io.libp2p.core.Connection;
 import io.libp2p.core.ConnectionHandler;
 import io.libp2p.core.Host;
+import io.libp2p.core.Libp2pException;
 import io.libp2p.core.PeerId;
 import io.libp2p.core.Stream;
 import io.libp2p.core.StreamPromise;
@@ -930,9 +931,12 @@ public class QuicServerTestJava {
     System.out.println("Transport listening on: " + localListenAddress);
 
     // Dial a non-existent peer at an address where nobody will connect back
-    // Use a different port so nobody is listening there
+    // Use a different port so nobody is listening there. A hole punch always targets a known
+    // peer, so the address must carry a /p2p peer id (otherwise dialAsListener fails fast).
     int unreachablePort = getPort();
-    Multiaddr unreachableAddr = new Multiaddr("/ip4/127.0.0.1/udp/" + unreachablePort + "/quic-v1");
+    Multiaddr unreachableAddr =
+        new Multiaddr(
+            "/ip4/127.0.0.1/udp/" + unreachablePort + "/quic-v1/p2p/" + PeerId.random().toBase58());
 
     CompletableFuture<Connection> holePunchFuture =
         transport.dialAsListener(unreachableAddr, conn -> {}, null);
@@ -951,6 +955,32 @@ public class QuicServerTestJava {
           e.getCause(),
           "Expected TimeoutException but got: " + e.getCause());
     }
+
+    transport.close().get(5, TimeUnit.SECONDS);
+  }
+
+  /**
+   * A hole punch always targets a known peer. dialAsListener must reject an address with no {@code
+   * /p2p} peer id, because without it the inbound connection could not be validated before exposure
+   * — any peer reaching the expected UDP tuple would be handed back as the dialed peer.
+   */
+  @Test
+  void holePunchWithoutPeerIdIsRejected() throws Exception {
+    String localListenAddress = "/ip4/127.0.0.1/udp/" + getPort() + "/quic-v1";
+
+    Pair<PrivKey, PubKey> serverKeyPair = KeyKt.generateKeyPair(KeyType.ED25519);
+    List<io.libp2p.core.multistream.ProtocolBinding<?>> emptyProtocols = new ArrayList<>();
+
+    QuicTransport transport = QuicTransport.ECDSA(serverKeyPair.component1(), emptyProtocols);
+    transport.initialize();
+    transport.listen(new Multiaddr(localListenAddress), conn -> {}, null).get(5, TimeUnit.SECONDS);
+
+    Multiaddr noPeerIdAddr = new Multiaddr("/ip4/127.0.0.1/udp/" + getPort() + "/quic-v1");
+
+    Assertions.assertThrows(
+        Libp2pException.class,
+        () -> transport.dialAsListener(noPeerIdAddr, conn -> {}, null),
+        "dialAsListener must reject a hole-punch target with no /p2p peer id");
 
     transport.close().get(5, TimeUnit.SECONDS);
   }

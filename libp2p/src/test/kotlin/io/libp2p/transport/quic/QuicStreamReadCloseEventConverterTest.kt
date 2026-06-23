@@ -38,6 +38,19 @@ class QuicStreamReadCloseEventConverterTest {
     }
 
     @Test
+    fun `propagates a non-STOP_SENDING ChannelOutputShutdownException without swallowing it`() {
+        val (channel, capturing) = channelWithConverter()
+        // Netty raises this for a local write after the FIN was sent. Unlike STOP_SENDING it means
+        // bytes were not accepted, so it must reach application handlers rather than be dropped.
+        val finAlreadySent = ChannelOutputShutdownException("Fin was sent already")
+
+        channel.pipeline().fireExceptionCaught(finAlreadySent)
+
+        assertThat(capturing.caught).containsExactly(finAlreadySent)
+        assertThat(channel.isOpen).isTrue()
+    }
+
+    @Test
     fun `closes the stream quietly on a remote QuicStreamResetException`() {
         val (channel, capturing) = channelWithConverter()
 

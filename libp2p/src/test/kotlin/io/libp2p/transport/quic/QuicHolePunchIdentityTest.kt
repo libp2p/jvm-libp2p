@@ -20,9 +20,4 @@ class QuicHolePunchIdentityTest {
 
         assertThat(holePunchIdentityMatches(expected = target, actual = impostor)).isFalse()
     }
-
-    @Test
-    fun `accepts any identity when the dial target carried no peer id`() {
-        assertThat(holePunchIdentityMatches(expected = null, actual = PeerId.random())).isTrue()
-    }
 }
