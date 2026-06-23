@@ -37,8 +37,6 @@ jobs:
             # Clean clone directly from master branch inside the docker environment
             git clone -b master https://github.com/libp2p/jvm-libp2p.git /tmp/jvm-libp2p
             cd /tmp/jvm-libp2p
-            
-            set +o history
             ./gradlew publish \
               -PcloudsmithUser="${{ secrets.CLOUDSMITH_USER }}" \
               -PcloudsmithApiKey="${{ secrets.CLOUDSMITH_API_KEY }}"
