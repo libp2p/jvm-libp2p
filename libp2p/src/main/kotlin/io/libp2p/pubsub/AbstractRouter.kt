@@ -157,9 +157,20 @@ abstract class AbstractRouter(
     override fun onPeerActive(peer: PeerHandler) {
         val partsQueue = pendingRpcParts.getQueue(peer)
         subscribedTopics.forEach {
-            partsQueue.addSubscribe(it)
+            enqueueSubscribe(partsQueue, it)
         }
         flushPending(peer)
+    }
+
+    /**
+     * Enqueues a subscribe announcement for [topic] onto [partsQueue].
+     *
+     * The default implementation emits a bare subscribe with no per-topic options.
+     * Subclasses (e.g. GossipRouter) override this to attach per-topic options
+     * such as partial-message flags.
+     */
+    protected open fun enqueueSubscribe(partsQueue: RpcPartsQueue, topic: Topic) {
+        partsQueue.addSubscribe(topic)
     }
 
     protected open fun notifyMalformedMessage(peer: PeerHandler) {}
@@ -182,7 +193,17 @@ abstract class AbstractRouter(
         }
 
         try {
-            val subscriptions = msg.subscriptionsList.map { PubsubSubscription(it.topicid, it.subscribe) }
+            val subscriptions = msg.subscriptionsList.map {
+                // Per partial-messages spec: flags MUST be ignored on subscribe=false, and the
+                // receiving side coerces supportsSendingPartial := requestsPartial || supportsSendingPartial.
+                // The coercion rule is also applied on the outbound side by GossipRouter.
+                PubsubSubscription(
+                    topic = it.topicid,
+                    subscribe = it.subscribe,
+                    requestsPartial = it.subscribe && it.requestsPartial,
+                    supportsSendingPartial = it.subscribe && (it.supportsSendingPartial || it.requestsPartial)
+                )
+            }
             subscriptionFilter
                 .filterIncomingSubscriptions(subscriptions, peersTopics.getByFirst(peer))
                 .forEach { handleMessageSubscriptions(peer, it) }
@@ -319,7 +340,20 @@ abstract class AbstractRouter(
         }
     }
 
-    private fun handleMessageSubscriptions(peer: PeerHandler, msg: PubsubSubscription) {
+    /**
+     * Applies a single filtered inbound subscription to the router's state.
+     *
+     * Called once per `SubOpts` on the pubsub event loop, after
+     * [SubscriptionFilter.filterIncomingSubscriptions] has run. Subclasses may
+     * override to react to subscription state changes (for example, to track
+     * per-topic capability flags). Overrides MUST call `super` so that
+     * [peersTopics] stays in sync.
+     *
+     * [msg] carries the protocol-level flags already normalised by the caller:
+     * for `subscribe=false` frames, extension flags are zeroed before reaching
+     * this method.
+     */
+    protected open fun handleMessageSubscriptions(peer: PeerHandler, msg: PubsubSubscription) {
         if (msg.subscribe) {
             peersTopics.add(peer, msg.topic)
         } else {
@@ -337,7 +371,7 @@ abstract class AbstractRouter(
     }
 
     protected open fun subscribe(topic: Topic) {
-        activePeers.forEach { pendingRpcParts.getQueue(it).addSubscribe(topic) }
+        activePeers.forEach { enqueueSubscribe(pendingRpcParts.getQueue(it), topic) }
         subscribedTopics += topic
     }
 
