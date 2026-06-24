@@ -137,10 +137,15 @@ class QuicTransport(
             // pipeline's channelActive, and the handshake-waiter handler has already removed itself
             // by this point, so an escaping exception would reach the Netty pipeline tail and log a
             // noisy "exceptionCaught reached tail of pipeline" warning while leaking the channel.
-            // Close the rejected connection instead, mirroring the dial paths.
+            // Close the rejected connection instead, mirroring the dial paths. Only Exception is
+            // caught — fatal Errors (OutOfMemoryError, LinkageError, ...) must propagate rather than
+            // be downgraded to a routine rejection. The library cannot tell a deliberate rejection
+            // from an application bug (the handler contract has no typed rejection), so the log stays
+            // at debug to avoid reintroducing the noise this guard removes; the application owns
+            // logging of its own connection decisions.
             try {
                 exposeConnection()
-            } catch (e: Throwable) {
+            } catch (e: Exception) {
                 logger.debug("Inbound connection rejected by handler; closing", e)
                 closeChannel()
             }

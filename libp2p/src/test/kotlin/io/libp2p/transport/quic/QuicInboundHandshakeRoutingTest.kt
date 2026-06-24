@@ -7,6 +7,7 @@ import io.mockk.mockk
 import io.netty.handler.codec.quic.QuicChannel
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatCode
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import java.util.concurrent.CompletableFuture
 
@@ -135,5 +136,29 @@ class QuicInboundHandshakeRoutingTest {
         }.doesNotThrowAnyException()
 
         assertThat(closed).isTrue()
+    }
+
+    @Test
+    fun `does not swallow a fatal Error thrown by the handler`() {
+        val transport = transport()
+        val inbound = identity()
+
+        var closed = false
+
+        // A fatal Error (OutOfMemoryError, LinkageError, ...) is NOT a routine connection rejection
+        // and must propagate rather than be silently downgraded to a closed connection. Only
+        // Exception is caught by routeInboundHandshake.
+        assertThatThrownBy {
+            transport.routeInboundHandshake(
+                remoteIdentity = inbound,
+                pending = null,
+                prepareConnection = { },
+                closeChannel = { closed = true },
+                holePunchChannel = { error("no hole punch is pending") },
+                exposeConnection = { throw OutOfMemoryError("simulated fatal error") }
+            )
+        }.isInstanceOf(OutOfMemoryError::class.java)
+
+        assertThat(closed).isFalse()
     }
 }
