@@ -502,7 +502,7 @@ class QuicTransport(
                                 if (!peerCerts.isNullOrEmpty()) {
                                     val remoteIdentity = verifyAndExtractIdentity(peerCerts)
 
-                                    logger.info("Handshake completed with remote peer id: {}", remoteIdentity.peerId)
+                                    logger.debug("Handshake completed with remote peer id: {}", remoteIdentity.peerId)
 
                                     // Check if this connection is completing a pending hole punch.
                                     val remoteAddr = ctx.channel().remoteAddress() as? InetSocketAddress
