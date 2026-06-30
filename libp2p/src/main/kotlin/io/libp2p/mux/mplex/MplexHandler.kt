@@ -3,7 +3,6 @@ package io.libp2p.mux.mplex
 import io.libp2p.core.StreamHandler
 import io.libp2p.core.multistream.MultistreamProtocol
 import io.libp2p.core.mux.StreamMuxer
-import io.libp2p.etc.types.sliceMaxSize
 import io.libp2p.etc.util.netty.mux.MuxChannel
 import io.libp2p.mux.MuxHandler
 import io.netty.buffer.ByteBuf
@@ -42,15 +41,19 @@ open class MplexHandler(
         }
     }
 
-    override fun onChildWrite(child: MuxChannel<ByteBuf>, data: ByteBuf) {
+    override fun onChildWrite(child: MuxChannel<ByteBuf>, data: ByteBuf): Int {
         val ctx = getChannelHandlerContext()
-        data.sliceMaxSize(maxFrameDataLength)
-            .map { frameSliceBuf ->
-                MplexFrame.createDataFrame(child.id, frameSliceBuf)
-            }.forEach { muxFrame ->
-                ctx.write(muxFrame)
-            }
-        ctx.flush()
+        var written = 0
+        while (written < data.readableBytes()) {
+            val frameLength = minOf(
+                data.readableBytes() - written,
+                maxFrameDataLength
+            )
+            val frameSliceBuf = data.retainedSlice(data.readerIndex() + written, frameLength)
+            ctx.write(MplexFrame.createDataFrame(child.id, frameSliceBuf))
+            written += frameLength
+        }
+        return written
     }
 
     override fun onLocalOpen(child: MuxChannel<ByteBuf>) {

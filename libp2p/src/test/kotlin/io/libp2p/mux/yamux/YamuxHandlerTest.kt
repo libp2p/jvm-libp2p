@@ -9,6 +9,8 @@ import io.libp2p.mux.AckBacklogLimitExceededMuxerException
 import io.libp2p.mux.MuxHandler
 import io.libp2p.mux.MuxHandlerAbstractTest
 import io.libp2p.mux.MuxHandlerAbstractTest.AbstractTestMuxFrame.Flag.*
+import io.libp2p.mux.UnknownStreamIdMuxerException
+import io.libp2p.mux.WriteBufferOverflowMuxerException
 import io.libp2p.tools.readAllBytesAndRelease
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
@@ -22,7 +24,7 @@ import org.junit.jupiter.params.provider.ValueSource
 class YamuxHandlerTest : MuxHandlerAbstractTest() {
 
     override val maxFrameDataLength = 256
-    private val maxBufferedConnectionWrites = 512
+    private val maxBufferedConnectionWrites = 100 * 1024
     private val ackBacklogLimit = 42
     private val initialWindowSize = 300
     override val localMuxIdGenerator = YamuxStreamIdGenerator(isLocalConnectionInitiator).toIterator()
@@ -153,13 +155,38 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
             )
         )
 
-        handler.ctx.writeAndFlush("1984".fromHex().toByteBuf(allocateBuf()))
+        val writeResult = handler.ctx.writeAndFlush("1984".fromHex().toByteBuf(allocateBuf()))
 
         assertThat(readFrame()).isNull()
+        assertThat(writeResult.isDone).isFalse()
 
         ech.writeInbound(YamuxFrame(streamId.toMuxId(), YamuxType.WINDOW_UPDATE, YamuxFlag.ACK.asSet, 5000))
         val frame = readFrameOrThrow()
         assertThat(frame.data).isEqualTo("1984")
+        assertThat(writeResult.isSuccess).isTrue()
+    }
+
+    @Test
+    fun `data should stay pending while parent channel is not writable`() {
+        val handler = openStreamLocal()
+        readFrameOrThrow()
+
+        ech.unsafe().outboundBuffer().setUserDefinedWritability(1, false)
+        ech.runPendingTasks()
+
+        assertThat(handler.ctx.channel().isWritable).isFalse()
+
+        val writeResult = handler.ctx.writeAndFlush("1984".fromHex().toByteBuf(allocateBuf()))
+
+        assertThat(readFrame()).isNull()
+        assertThat(writeResult.isDone).isFalse()
+
+        ech.unsafe().outboundBuffer().setUserDefinedWritability(1, true)
+        ech.runPendingTasks()
+
+        val frame = readFrameOrThrow()
+        assertThat(frame.data).isEqualTo("1984")
+        assertThat(writeResult.isSuccess).isTrue()
     }
 
     @Test
@@ -222,7 +249,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
     }
 
     @Test
-    fun `overflowing buffer sends RST flag and throws an exception`() {
+    fun `writes remain pending and make child unwritable when send window is exhausted`() {
         val handler = openStreamLocal()
         val muxId = readFrameOrThrow().streamId.toMuxId()
 
@@ -235,23 +262,147 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
             )
         )
 
+        val messageSize = DEFAULT_MAX_BUFFERED_STREAM_WRITES / 5
         val createMessage: () -> ByteBuf =
-            { "42".repeat(maxBufferedConnectionWrites / 5).fromHex().toByteBuf(allocateBuf()) }
+            { "42".repeat(messageSize).fromHex().toByteBuf(allocateBuf()) }
 
-        for (i in 1..5) {
-            val writeResult = handler.ctx.writeAndFlush(createMessage())
-            assertThat(writeResult.isSuccess).isTrue()
+        val writeResults = (1..6).map {
+            handler.ctx.writeAndFlush(createMessage())
         }
 
-        // next message will overflow the configured buffer
-        val writeResult = handler.ctx.writeAndFlush(createMessage())
-        assertThat(writeResult.isSuccess).isFalse()
-        assertThat(writeResult.cause())
-            .isInstanceOf(Libp2pException::class.java)
-            .hasMessage("Overflowed send buffer (612/512). Last stream attempting to write: $muxId")
+        assertThat(readYamuxFrame()).isNull()
+        assertThat(handler.ctx.channel().isWritable).isFalse()
+        assertThat(writeResults).allMatch { !it.isDone }
+
+        ech.writeInbound(YamuxFrame(muxId, YamuxType.WINDOW_UPDATE, YamuxFlag.ACK.asSet, (messageSize * 6).toLong()))
+
+        assertThat(handler.ctx.channel().isWritable).isFalse()
+        assertThat(writeResults).allMatch { it.isSuccess }
+
+        val receivedData = generateSequence {
+            readYamuxFrame()
+        }
+            .map {
+                assertThat(it.data).isNotNull()
+                String(it.data!!.readAllBytesAndRelease())
+            }
+            .joinToString(separator = "")
+
+        assertThat(receivedData).isEqualTo("B".repeat(messageSize * 6))
+    }
+
+    @Test
+    fun `overflowing buffered writes when send window is exhausted sends RST and fails the writes`() {
+        val handler = openStreamLocal()
+        val muxId = readFrameOrThrow().streamId.toMuxId()
+
+        // shrink the window to 0 so all writes stay pending
+        ech.writeInbound(
+            YamuxFrame(
+                muxId,
+                YamuxType.WINDOW_UPDATE,
+                YamuxFlag.ACK.asSet,
+                -initialWindowSize.toLong()
+            )
+        )
+
+        val messageSize = 60 * 1024
+        val createMessage: () -> ByteBuf =
+            { "42".repeat(messageSize).fromHex().toByteBuf(allocateBuf()) }
+
+        val writeResult1 = handler.ctx.writeAndFlush(createMessage())
+        assertThat(writeResult1.isDone).isFalse()
+
+        // the second write overflows maxBufferedConnectionWrites
+        val writeResult2 = handler.ctx.writeAndFlush(createMessage())
+
+        assertThat(writeResult1.isDone).isTrue()
+        assertThat(writeResult1.cause()).isInstanceOf(WriteBufferOverflowMuxerException::class.java)
+        assertThat(writeResult2.isDone).isTrue()
+        assertThat(writeResult2.cause()).isInstanceOf(UnknownStreamIdMuxerException::class.java)
 
         val frame = readYamuxFrameOrThrow()
         assertThat(frame.flags).containsExactly(YamuxFlag.RST)
+
+        // the stream channel is closed and its buffered writes are released
+        ech.runPendingTasks()
+        assertThat(handler.ctx.channel().isOpen).isFalse()
+    }
+
+    @Test
+    fun `overflowing buffered writes when parent channel is not writable sends RST and fails the writes`() {
+        val handler = openStreamLocal()
+        readFrameOrThrow()
+
+        ech.unsafe().outboundBuffer().setUserDefinedWritability(1, false)
+        ech.runPendingTasks()
+        assertThat(handler.ctx.channel().isWritable).isFalse()
+
+        val messageSize = 60 * 1024
+        val createMessage: () -> ByteBuf =
+            { "42".repeat(messageSize).fromHex().toByteBuf(allocateBuf()) }
+
+        val writeResult1 = handler.ctx.writeAndFlush(createMessage())
+        assertThat(writeResult1.isDone).isFalse()
+
+        // the second write overflows maxBufferedConnectionWrites
+        val writeResult2 = handler.ctx.writeAndFlush(createMessage())
+
+        assertThat(writeResult1.cause()).isInstanceOf(WriteBufferOverflowMuxerException::class.java)
+        assertThat(writeResult2.cause()).isInstanceOf(UnknownStreamIdMuxerException::class.java)
+
+        val frame = readYamuxFrameOrThrow()
+        assertThat(frame.flags).containsExactly(YamuxFlag.RST)
+
+        ech.runPendingTasks()
+        assertThat(handler.ctx.channel().isOpen).isFalse()
+    }
+
+    @Test
+    fun `child channel should be unwritable when send window is exhausted and writable after window update`() {
+        val handler = openStreamLocal()
+        val muxId = readFrameOrThrow().streamId.toMuxId()
+
+        assertThat(handler.ctx.channel().isWritable).isTrue()
+
+        // writing 1 byte more than the send window allows
+        val writeResult = handler.ctx.writeAndFlush(
+            "42".repeat(initialWindowSize + 1).fromHex().toByteBuf(allocateBuf())
+        )
+
+        // the window is exhausted: the child should be unwritable even though
+        // its pending bytes are far below the write buffer watermark
+        assertThat(handler.ctx.channel().isWritable).isFalse()
+        assertThat(writeResult.isDone).isFalse()
+
+        ech.writeInbound(YamuxFrame(muxId, YamuxType.WINDOW_UPDATE, YamuxFlag.ACK.asSet, 1000))
+
+        assertThat(handler.ctx.channel().isWritable).isTrue()
+        assertThat(writeResult.isSuccess).isTrue()
+
+        generateSequence { readYamuxFrame() }.forEach { it.data?.release() }
+    }
+
+    @Test
+    fun `huge cumulative window updates should not overflow the send window`() {
+        val handler = openStreamLocal()
+        val muxId = readFrameOrThrow().streamId.toMuxId()
+
+        repeat(3) {
+            ech.writeInbound(
+                YamuxFrame(
+                    muxId,
+                    YamuxType.WINDOW_UPDATE,
+                    YamuxFlag.ACK.asSet,
+                    Int.MAX_VALUE.toLong()
+                )
+            )
+        }
+
+        val writeResult = handler.ctx.writeAndFlush("1984".fromHex().toByteBuf(allocateBuf()))
+
+        assertThat(writeResult.isSuccess).isTrue()
+        assertThat(readFrameOrThrow().data).isEqualTo("1984")
     }
 
     @Test
@@ -281,7 +432,7 @@ class YamuxHandlerTest : MuxHandlerAbstractTest() {
         val range = 1..messagesToSend
 
         // 100 window updates should be sent to ensure buffer is flushed and all messages are sent
-        // so will send them at random times ensuring maxBufferedConnectionWrites can never be reached
+        // so will send them at random times and never exhaust the child channel write buffer
         val windowUpdatesIndices = (range).chunked(100).flatMap {
             it.shuffled().take(20)
         }
