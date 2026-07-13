@@ -168,7 +168,8 @@ public class RelayTestJava {
           relayed.get(0).toString().contains("p2p-circuit"),
           "advertised address should be a /p2p-circuit address: " + relayed);
 
-      // a second pass renews the existing reservation and must not throw (renewAfter was previously null)
+      // a second pass renews the existing reservation and must not throw (renewAfter was previously
+      // null)
       Assertions.assertDoesNotThrow(serverRelay::ensureEnoughCurrentRelays);
     } finally {
       serverHost.stop().get(5, TimeUnit.SECONDS);

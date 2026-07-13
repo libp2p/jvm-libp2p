@@ -321,7 +321,8 @@ public class RelayTransport implements Transport, HostConsumer {
     List<MultiaddrComponent> components = relayAddr.getComponents();
     Multiaddr withoutCircuit = new Multiaddr(components.subList(0, components.size() - 1));
     PeerId relayId = withoutCircuit.getPeerId();
-    StreamPromise<? extends CircuitHopProtocol.HopController> promise = hop.dial(us, withoutCircuit);
+    StreamPromise<? extends CircuitHopProtocol.HopController> promise =
+        hop.dial(us, withoutCircuit);
     CircuitHopProtocol.HopController ctr = promise.getController().join();
     return ctr.reserve()
         .thenApply(
