@@ -49,6 +49,15 @@ public class RelayTransport implements Transport, HostConsumer {
     hop.setHost(us);
   }
 
+  /**
+   * The connection handler to run for inbound relayed connections, so the host's registered
+   * connection handlers (identify, DCUtR, ...) fire for a connection established through a relay.
+   */
+  public ConnectionHandler inboundConnectionHandler() {
+    Host host = us;
+    return host == null ? connection -> {} : host.getNetwork().getConnectionHandler();
+  }
+
   public static class CandidateRelay {
     public final PeerId id;
     public final List<Multiaddr> addrs;
@@ -225,7 +234,7 @@ public class RelayTransport implements Transport, HostConsumer {
                 .thenAccept(
                     sess -> {
                       conn.setMuxerSession(sess);
-                      connHandler.handleConnection(conn);
+                      if (connHandler != null) connHandler.handleConnection(conn);
                       res.complete(conn);
                     })
                 .exceptionally(
