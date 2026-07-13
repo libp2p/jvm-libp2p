@@ -160,12 +160,16 @@ public class CircuitHopProtocol extends ProtobufProtocolHandler<CircuitHopProtoc
               msg -> {
                 if (msg.getStatus() == Circuit.Status.OK) {
                   long expiry = msg.getReservation().getExpire();
+                  Multiaddr[] addrs =
+                      msg.getReservation().getAddrsList().stream()
+                          .map(bytes -> Multiaddr.deserialize(bytes.toByteArray()))
+                          .toArray(Multiaddr[]::new);
                   return new Reservation(
                       LocalDateTime.ofEpochSecond(expiry, 0, ZoneOffset.UTC),
                       msg.getLimit().getDuration(),
                       msg.getLimit().getData(),
                       msg.getReservation().getVoucher().toByteArray(),
-                      null);
+                      addrs);
                 }
                 throw new IllegalStateException(msg.getStatus().name());
               });
@@ -283,6 +287,7 @@ public class CircuitHopProtocol extends ProtobufProtocolHandler<CircuitHopProtoc
                         Circuit.Limit.newBuilder()
                             .setDuration(resv.durationSeconds)
                             .setData(resv.maxBytes)));
+            break;
           }
         case CONNECT:
           {

@@ -127,6 +127,64 @@ public class RelayTestJava {
   }
 
   @Test
+  void autoReservationPopulatesListenAddresses() throws Exception {
+    Host relayHost =
+        new HostBuilder()
+            .builderModifier(b -> enableRelay(b, Collections.emptyList()))
+            .transport(TcpTransport::new)
+            .secureChannel(NoiseXXSecureChannel::new)
+            .muxer(StreamMuxerProtocol::getYamux)
+            .listen("/ip4/127.0.0.1/tcp/0")
+            .build();
+    RelayTransport relayTransport = relayTransportOf(relayHost);
+    relayTransport.setHost(relayHost);
+    relayHost.start().get(5, TimeUnit.SECONDS);
+
+    List<Multiaddr> relayAddrs = relayHost.listenAddresses();
+    RelayTransport.CandidateRelay relay =
+        new RelayTransport.CandidateRelay(relayHost.getPeerId(), relayAddrs);
+
+    Host serverHost =
+        new HostBuilder()
+            .builderModifier(b -> enableRelay(b, List.of(relay)))
+            .transport(TcpTransport::new)
+            .secureChannel(NoiseXXSecureChannel::new)
+            .muxer(StreamMuxerProtocol::getYamux)
+            .listen("/ip4/127.0.0.1/tcp/0")
+            .protocol(new Ping())
+            .build();
+    RelayTransport serverRelay = relayTransportOf(serverHost);
+    serverRelay.setHost(serverHost);
+    serverHost.start().get(5, TimeUnit.SECONDS);
+
+    try {
+      serverRelay.setRelayCount(1);
+      // reserve on the candidate relay
+      serverRelay.ensureEnoughCurrentRelays();
+
+      List<Multiaddr> relayed = serverRelay.listenAddresses();
+      Assertions.assertFalse(relayed.isEmpty(), "should advertise a relayed address");
+      Assertions.assertTrue(
+          relayed.get(0).toString().contains("p2p-circuit"),
+          "advertised address should be a /p2p-circuit address: " + relayed);
+
+      // a second pass renews the existing reservation and must not throw (renewAfter was previously null)
+      Assertions.assertDoesNotThrow(serverRelay::ensureEnoughCurrentRelays);
+    } finally {
+      serverHost.stop().get(5, TimeUnit.SECONDS);
+      relayHost.stop().get(5, TimeUnit.SECONDS);
+    }
+  }
+
+  private static RelayTransport relayTransportOf(Host host) {
+    return host.getNetwork().getTransports().stream()
+        .filter(t -> t instanceof RelayTransport)
+        .map(t -> (RelayTransport) t)
+        .findFirst()
+        .get();
+  }
+
+  @Test
   void relayStreamsAreLimited() throws Exception {
     Host relayHost =
         new HostBuilder()
