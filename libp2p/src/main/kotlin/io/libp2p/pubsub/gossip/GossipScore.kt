@@ -190,7 +190,7 @@ class DefaultGossipScore(
         val peerScore = getPeerScores(peerId)
         val topicsScore = min(
             if (peerParams.topicScoreCap > 0) peerParams.topicScoreCap else Double.MAX_VALUE,
-            peerScore.topicScores.values.map { it.calcTopicScore() }.sum()
+            peerScore.topicScores.values.sumOf { it.calcTopicScore() }
         )
         val appScore = peerParams.appSpecificScore(peerId) * peerParams.appSpecificWeight
 

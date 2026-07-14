@@ -3,6 +3,7 @@ package io.libp2p.transport.quic;
 import io.libp2p.core.Connection;
 import io.libp2p.core.ConnectionHandler;
 import io.libp2p.core.Host;
+import io.libp2p.core.Libp2pException;
 import io.libp2p.core.PeerId;
 import io.libp2p.core.Stream;
 import io.libp2p.core.StreamPromise;
@@ -25,9 +26,12 @@ import io.libp2p.security.noise.NoiseXXSecureChannel;
 import io.libp2p.security.tls.TlsSecureChannel;
 import io.libp2p.transport.implementation.ConnectionOverNetty;
 import io.libp2p.transport.tcp.TcpTransport;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.channel.socket.ChannelOutputShutdownException;
+import io.netty.handler.codec.quic.QuicStreamChannel;
 import io.netty.handler.codec.quic.QuicStreamResetException;
 import io.netty.handler.logging.LogLevel;
 import java.util.ArrayList;
@@ -775,6 +779,105 @@ public class QuicServerTestJava {
     serverHost.stop().get(5, TimeUnit.SECONDS);
   }
 
+  /**
+   * A remote STOP_SENDING frame (the peer no longer wants to read from the stream) must not surface
+   * to application handlers. Netty fails our queued/in-flight writes with a
+   * ChannelOutputShutdownException("STOP_SENDING frame received"); without special handling that
+   * exception travels the stream pipeline's exceptionCaught path and reaches the application's
+   * ProtocolMessageHandler.onException (Teku logs "Unhandled error while processing req/response").
+   * QuicStreamReadCloseEventConverter must swallow it quietly and leave the stream open, since only
+   * the write side is affected.
+   */
+  @Test
+  void remoteStopSendingDoesNotSurfaceToApplicationHandlers() throws Exception {
+    String localListenAddress = "/ip4/127.0.0.1/udp/" + getPort() + "/quic-v1";
+
+    CompletableFuture<Stream> serverStreamFuture = new CompletableFuture<>();
+    PingProtocol capturingPing =
+        new PingProtocol(32) {
+          @Override
+          protected CompletableFuture<PingController> onStartResponder(@NotNull Stream stream) {
+            serverStreamFuture.complete(stream);
+            return super.onStartResponder(stream);
+          }
+        };
+
+    Host clientHost =
+        new HostBuilder().keyType(KeyType.ED25519).secureTransport(QuicTransport::ECDSA).build();
+    Host serverHost =
+        new HostBuilder()
+            .keyType(KeyType.ED25519)
+            .secureTransport(QuicTransport::ECDSA)
+            .protocol(new PingBinding(capturingPing))
+            .listen(localListenAddress)
+            .build();
+
+    clientHost.start().get(5, TimeUnit.SECONDS);
+    serverHost.start().get(5, TimeUnit.SECONDS);
+
+    Connection connection =
+        clientHost
+            .getNetwork()
+            .connect(serverHost.getPeerId(), new Multiaddr(localListenAddress))
+            .get(10, TimeUnit.SECONDS);
+
+    StreamPromise<PingController> ping = connection.muxerSession().createStream(new Ping());
+    Stream pingStream = ping.getStream().get(5, TimeUnit.SECONDS);
+    ping.getController().get(5, TimeUnit.SECONDS);
+
+    QuicStreamChannel clientStreamChannel = ((QuicStream) pingStream).getQuicStreamChannel();
+
+    // Capture exceptions that get past the converter towards application handlers. Insert the
+    // capturer immediately after QuicStreamReadCloseEventConverter so the converter runs first:
+    // if it swallows the exception (the fix) nothing reaches the capturer; if it forwards it (the
+    // bug) the capturer records it, exactly where the application handler would otherwise see it.
+    List<Throwable> appExceptions = new CopyOnWriteArrayList<>();
+    String converterName =
+        clientStreamChannel.pipeline().context(QuicStreamReadCloseEventConverter.class).name();
+    clientStreamChannel
+        .pipeline()
+        .addAfter(
+            converterName,
+            "test-app-exception-capture",
+            new ChannelInboundHandlerAdapter() {
+              @Override
+              public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
+                appExceptions.add(cause);
+                ctx.fireExceptionCaught(cause);
+              }
+            });
+
+    Stream serverStream = serverStreamFuture.get(5, TimeUnit.SECONDS);
+
+    // The server stops reading: quiche sends a STOP_SENDING frame to the client.
+    ((QuicStream) serverStream).getQuicStreamChannel().shutdownInput().sync();
+
+    // Write to the client stream after STOP_SENDING. Use a void promise so a write failure is
+    // routed through the pipeline's exceptionCaught (mirroring how the exception surfaced in the
+    // wild), rather than only failing the write future. quiche reports STREAM_STOPPED and Netty
+    // fails the write with ChannelOutputShutdownException.
+    for (int i = 0; i < 40 && clientStreamChannel.isOpen(); i++) {
+      clientStreamChannel.writeAndFlush(
+          Unpooled.wrappedBuffer(new byte[256]), clientStreamChannel.voidPromise());
+      Thread.sleep(25);
+    }
+
+    // Allow any fired exception to propagate through the pipeline before asserting.
+    Thread.sleep(500);
+
+    Assertions.assertTrue(
+        appExceptions.stream().noneMatch(t -> t instanceof ChannelOutputShutdownException),
+        "Remote STOP_SENDING must not surface ChannelOutputShutdownException to application"
+            + " handlers, got: "
+            + appExceptions);
+    Assertions.assertTrue(
+        clientStreamChannel.isOpen(),
+        "STOP_SENDING only stops the write side; the stream must stay open for reads");
+
+    clientHost.stop().get(5, TimeUnit.SECONDS);
+    serverHost.stop().get(5, TimeUnit.SECONDS);
+  }
+
   /** Calling closeWrite twice must be idempotent: the first call already sent the FIN. */
   @Test
   void closeWriteIsIdempotent() throws Exception {
@@ -828,9 +931,12 @@ public class QuicServerTestJava {
     System.out.println("Transport listening on: " + localListenAddress);
 
     // Dial a non-existent peer at an address where nobody will connect back
-    // Use a different port so nobody is listening there
+    // Use a different port so nobody is listening there. A hole punch always targets a known
+    // peer, so the address must carry a /p2p peer id (otherwise dialAsListener fails fast).
     int unreachablePort = getPort();
-    Multiaddr unreachableAddr = new Multiaddr("/ip4/127.0.0.1/udp/" + unreachablePort + "/quic-v1");
+    Multiaddr unreachableAddr =
+        new Multiaddr(
+            "/ip4/127.0.0.1/udp/" + unreachablePort + "/quic-v1/p2p/" + PeerId.random().toBase58());
 
     CompletableFuture<Connection> holePunchFuture =
         transport.dialAsListener(unreachableAddr, conn -> {}, null);
@@ -849,6 +955,32 @@ public class QuicServerTestJava {
           e.getCause(),
           "Expected TimeoutException but got: " + e.getCause());
     }
+
+    transport.close().get(5, TimeUnit.SECONDS);
+  }
+
+  /**
+   * A hole punch always targets a known peer. dialAsListener must reject an address with no {@code
+   * /p2p} peer id, because without it the inbound connection could not be validated before exposure
+   * — any peer reaching the expected UDP tuple would be handed back as the dialed peer.
+   */
+  @Test
+  void holePunchWithoutPeerIdIsRejected() throws Exception {
+    String localListenAddress = "/ip4/127.0.0.1/udp/" + getPort() + "/quic-v1";
+
+    Pair<PrivKey, PubKey> serverKeyPair = KeyKt.generateKeyPair(KeyType.ED25519);
+    List<io.libp2p.core.multistream.ProtocolBinding<?>> emptyProtocols = new ArrayList<>();
+
+    QuicTransport transport = QuicTransport.ECDSA(serverKeyPair.component1(), emptyProtocols);
+    transport.initialize();
+    transport.listen(new Multiaddr(localListenAddress), conn -> {}, null).get(5, TimeUnit.SECONDS);
+
+    Multiaddr noPeerIdAddr = new Multiaddr("/ip4/127.0.0.1/udp/" + getPort() + "/quic-v1");
+
+    Assertions.assertThrows(
+        Libp2pException.class,
+        () -> transport.dialAsListener(noPeerIdAddr, conn -> {}, null),
+        "dialAsListener must reject a hole-punch target with no /p2p peer id");
 
     transport.close().get(5, TimeUnit.SECONDS);
   }
