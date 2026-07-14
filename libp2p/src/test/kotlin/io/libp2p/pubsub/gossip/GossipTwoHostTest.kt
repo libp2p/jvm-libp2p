@@ -8,6 +8,7 @@ import io.libp2p.etc.types.toByteBuf
 import io.libp2p.mux.mplex.DEFAULT_MAX_MPLEX_FRAME_DATA_LENGTH
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.TimeUnit
 
 class GossipTwoHostTest : TwoGossipHostTestBase() {
@@ -38,5 +39,25 @@ class GossipTwoHostTest : TwoGossipHostTestBase() {
         assertThat(messages)
             .hasSize(1)
             .allMatch { it.data.toByteArray().contentEquals(msgBytes) }
+    }
+
+    @Test
+    fun `TCP Mplex preserves healthy gossipsub publication order`() {
+        connect()
+
+        val topic = Topic("ordered-topic")
+        val received = CopyOnWriteArrayList<MessageApi>()
+        gossip2.subscribe(Subscriber { received += it }, topic)
+        waitForSubscribed(router1, topic.topic)
+
+        val publisher = gossip1.createPublisher(null)
+        val payloads = listOf("first", "second", "third")
+        payloads.forEach { payload ->
+            publisher.publish(payload.toByteArray().toByteBuf(), topic).get(10, TimeUnit.SECONDS)
+        }
+
+        waitFor { received.size == payloads.size }
+
+        assertThat(received.map { it.data.toByteArray().decodeToString() }).containsExactlyElementsOf(payloads)
     }
 }

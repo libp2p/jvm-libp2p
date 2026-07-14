@@ -1,6 +1,8 @@
 package io.libp2p.pubsub.gossip
 
 import io.libp2p.core.PeerId
+import io.libp2p.core.multiformats.Multiaddr
+import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.pubsub.*
 import io.libp2p.pubsub.DeterministicFuzz.Companion.createGossipFuzzRouterFactory
 import io.libp2p.pubsub.gossip.builders.GossipRouterBuilder
@@ -65,6 +67,7 @@ class GossipOutboundWriteBackpressureTest : GossipTestsBase() {
         peerTopics.values.forEach { topics -> assertThat(topics).containsExactly(TOPIC) }
 
         writePolicy.stalledPeerId = stalledPeer.peerId
+        writePolicy.clearRecordedWrites(stalledPeer.peerId)
         senderRouter.enqueueRpcForTest(
             stalledPeer.peerId,
             Rpc.RPC.newBuilder()
@@ -130,14 +133,162 @@ class GossipOutboundWriteBackpressureTest : GossipTestsBase() {
         fuzz.timeController.addTime(Duration.ofSeconds(2))
 
         writePolicy.stalledPeerId = stalledPeer.peerId
-        val publication = sender.router.publish(newMessage(TOPIC, 1, "stalled".toByteArray()))
+        writePolicy.clearRecordedWrites(stalledPeer.peerId)
+        val publications = (0 until 3).map { sequence ->
+            sender.router.publish(newMessage(TOPIC, sequence.toLong(), "stalled-$sequence".toByteArray()))
+        }
         fuzz.timeController.addTime(Duration.ofMillis(20))
 
-        assertThat(publication).isCompletedExceptionally
-        assertThat((sender.router as RecordingGossipRouter).peers).isEmpty()
+        val senderRouter = sender.router as RecordingGossipRouter
+        assertThat(publications).allMatch { it.isCompletedExceptionally }
+        assertThat(senderRouter.peers).isEmpty()
+        assertThat(senderRouter.pendingPeerCountForTest().join()).isZero()
+        assertThat(senderRouter.disconnectCount).isEqualTo(1)
         assertThat(writePolicy.unresolvedWriteCount(stalledPeer.peerId)).isZero()
         assertThat(writePolicy.failedWriteCount(stalledPeer.peerId)).isEqualTo(1)
+        assertThat(writePolicy.messagesSentTo(stalledPeer.peerId)).hasSize(1)
+
+        sender.router.publish(newMessage(TOPIC, 10, "after-timeout".toByteArray()))
+        fuzz.timeController.addTime(Duration.ofMillis(1))
+        assertThat(writePolicy.messagesSentTo(stalledPeer.peerId)).hasSize(1)
     }
+
+    @Test
+    fun `successful write resets the progress deadline for the next queued write`() {
+        val fuzz = DeterministicFuzz()
+        val writePolicy = WritePolicy()
+        val params = singlePeerParams()
+        val scoreParams = directPeerScoreParams()
+        val sender = createSender(fuzz, writePolicy, params, scoreParams, Duration.ofMillis(100))
+        val stalledPeer = createPeer(fuzz, params, scoreParams)
+
+        stalledPeer.router.subscribe(TOPIC)
+        sender.connectSemiDuplex(stalledPeer)
+        fuzz.timeController.addTime(Duration.ofSeconds(2))
+
+        val senderRouter = sender.router as RecordingGossipRouter
+        writePolicy.stalledPeerId = stalledPeer.peerId
+        writePolicy.clearRecordedWrites(stalledPeer.peerId)
+        senderRouter.enqueueRpcForTest(stalledPeer.peerId, controlRpc())
+        fuzz.timeController.addTime(Duration.ofMillis(1))
+        senderRouter.enqueueRpcForTest(stalledPeer.peerId, controlRpc())
+        fuzz.timeController.addTime(Duration.ofMillis(1))
+
+        writePolicy.completeNext(stalledPeer.peerId)
+        fuzz.timeController.addTime(Duration.ofMillis(1))
+        fuzz.timeController.addTime(Duration.ofMillis(98))
+
+        assertThat(senderRouter.peers).hasSize(1)
+        assertThat(writePolicy.unresolvedWriteCount(stalledPeer.peerId)).isEqualTo(1)
+
+        fuzz.timeController.addTime(Duration.ofMillis(2))
+
+        assertThat(senderRouter.peers).isEmpty()
+        assertThat(writePolicy.failedWriteCount(stalledPeer.peerId)).isEqualTo(1)
+    }
+
+    @Test
+    fun `queued RPC batches are sent sequentially and preserve ordering`() {
+        val fuzz = DeterministicFuzz()
+        val writePolicy = WritePolicy()
+        val params = singlePeerParams()
+        val scoreParams = directPeerScoreParams()
+        val sender = createSender(fuzz, writePolicy, params, scoreParams, Duration.ofSeconds(1))
+        val stalledPeer = createPeer(fuzz, params, scoreParams)
+
+        stalledPeer.router.subscribe(TOPIC)
+        sender.connectSemiDuplex(stalledPeer)
+        fuzz.timeController.addTime(Duration.ofSeconds(2))
+
+        val senderRouter = sender.router as RecordingGossipRouter
+        writePolicy.stalledPeerId = stalledPeer.peerId
+        writePolicy.clearRecordedWrites(stalledPeer.peerId)
+        val first = controlRpc()
+        val second = controlRpc()
+        senderRouter.enqueueRpcForTest(stalledPeer.peerId, first)
+        fuzz.timeController.addTime(Duration.ofMillis(1))
+        senderRouter.enqueueRpcForTest(stalledPeer.peerId, second)
+        val publication = sender.router.publish(newMessage(TOPIC, 1, "queued".toByteArray()))
+        fuzz.timeController.addTime(Duration.ofMillis(1))
+
+        assertThat(writePolicy.messagesSentTo(stalledPeer.peerId)).containsExactly(first)
+        writePolicy.completeNext(stalledPeer.peerId)
+        fuzz.timeController.addTime(Duration.ofMillis(1))
+        assertThat(writePolicy.messagesSentTo(stalledPeer.peerId)).containsExactly(first, second)
+        writePolicy.completeNext(stalledPeer.peerId)
+        fuzz.timeController.addTime(Duration.ofMillis(1))
+
+        assertThat(writePolicy.messagesSentTo(stalledPeer.peerId))
+            .hasSize(3)
+            .last()
+            .extracting { it.publishList.single().data.toByteArray() }
+            .isEqualTo("queued".toByteArray())
+
+        writePolicy.completeNext(stalledPeer.peerId)
+        fuzz.timeController.addTime(Duration.ofMillis(1))
+        assertThat(publication).isCompleted
+    }
+
+    @Test
+    fun `repeated stalled peer reconnects do not retain router state`() {
+        val fuzz = DeterministicFuzz()
+        val writePolicy = WritePolicy()
+        val params = singlePeerParams()
+        val scoreParams = directPeerScoreParams()
+        val sender = createSender(fuzz, writePolicy, params, scoreParams, Duration.ofMillis(10))
+        val senderRouter = sender.router as RecordingGossipRouter
+
+        repeat(3) { cycle ->
+            val stalledPeer = createPeer(fuzz, params, scoreParams)
+            stalledPeer.router.subscribe(TOPIC)
+            sender.connectSemiDuplex(stalledPeer)
+            fuzz.timeController.addTime(Duration.ofSeconds(2))
+
+            writePolicy.stalledPeerId = stalledPeer.peerId
+            writePolicy.clearRecordedWrites(stalledPeer.peerId)
+            val publication = sender.router.publish(newMessage(TOPIC, cycle.toLong(), "cycle-$cycle".toByteArray()))
+            fuzz.timeController.addTime(Duration.ofMillis(20))
+
+            assertThat(publication).isCompletedExceptionally
+            assertThat(senderRouter.peers).isEmpty()
+            assertThat(senderRouter.pendingPeerCountForTest().join()).isZero()
+            assertThat(writePolicy.failedWriteCount(stalledPeer.peerId)).isEqualTo(1)
+        }
+    }
+
+    private fun createSender(
+        fuzz: DeterministicFuzz,
+        writePolicy: WritePolicy,
+        params: GossipParams,
+        scoreParams: GossipScoreParams,
+        progressTimeout: Duration
+    ): TestRouter = fuzz.createTestRouter(
+        createGossipFuzzRouterFactory {
+            RecordingGossipRouterBuilder(writePolicy, progressTimeout).apply {
+                this.params = params
+                this.scoreParams = scoreParams
+                protocol = PubsubProtocol.Gossip_V_1_2
+            }
+        }
+    )
+
+    private fun singlePeerParams() = GossipParams(
+        D = 1,
+        DLow = 1,
+        DHigh = 1,
+        floodPublishMaxMessageSizeThreshold = ALWAYS_FLOOD_PUBLISH
+    )
+
+    private fun directPeerScoreParams() = GossipScoreParams(
+        peerScoreParams = GossipPeerScoreParams(isDirect = { true })
+    )
+
+    private fun controlRpc(): Rpc.RPC = Rpc.RPC.newBuilder()
+        .setControl(
+            Rpc.ControlMessage.newBuilder()
+                .addIdontwant(Rpc.ControlIDontWant.getDefaultInstance())
+        )
+        .build()
 
     private fun createPeer(
         fuzz: DeterministicFuzz,
@@ -159,9 +310,8 @@ class GossipOutboundWriteBackpressureTest : GossipTestsBase() {
         private val sentMessages = mutableMapOf<PeerId, MutableList<Rpc.RPC>>()
 
         fun send(peerId: PeerId, msg: Rpc.RPC): CompletableFuture<Unit> {
-            if (peerId != stalledPeerId) return CompletableFuture.completedFuture(Unit)
-
             sentMessages.getOrPut(peerId) { mutableListOf() } += msg
+            if (peerId != stalledPeerId) return CompletableFuture.completedFuture(Unit)
             return CompletableFuture<Unit>().also {
                 unresolvedWrites.getOrPut(peerId) { mutableListOf() } += it
             }
@@ -172,6 +322,16 @@ class GossipOutboundWriteBackpressureTest : GossipTestsBase() {
             unresolvedWrites[peerId]?.count { it.isCompletedExceptionally } ?: 0
 
         fun messagesSentTo(peerId: PeerId): List<Rpc.RPC> = sentMessages[peerId] ?: emptyList()
+
+        fun clearRecordedWrites(peerId: PeerId) {
+            unresolvedWrites.remove(peerId)
+            sentMessages.remove(peerId)
+        }
+
+        fun completeNext(peerId: PeerId) {
+            unresolvedWrites[peerId]?.firstOrNull { !it.isDone }?.complete(Unit)
+                ?: throw AssertionError("No pending write for $peerId")
+        }
     }
 
     private class RecordingGossipRouter(
@@ -205,11 +365,34 @@ class GossipOutboundWriteBackpressureTest : GossipTestsBase() {
         seenMessages = seenMessages,
         messageValidator = messageValidator
     ) {
+        var disconnectCount = 0
+            private set
+
+        init {
+            eventBroadcaster.listeners += object : GossipRouterEventListener {
+                override fun notifyDisconnected(peerId: PeerId) {
+                    disconnectCount++
+                }
+
+                override fun notifyConnected(peerId: PeerId, peerAddress: Multiaddr) {}
+                override fun notifyUnseenMessage(peerId: PeerId, msg: PubsubMessage) {}
+                override fun notifySeenMessage(peerId: PeerId, msg: PubsubMessage, validationResult: Optional<ValidationResult>) {}
+                override fun notifyUnseenInvalidMessage(peerId: PeerId, msg: PubsubMessage) {}
+                override fun notifyUnseenValidMessage(peerId: PeerId, msg: PubsubMessage) {}
+                override fun notifyMeshed(peerId: PeerId, topic: Topic) {}
+                override fun notifyPruned(peerId: PeerId, topic: Topic) {}
+                override fun notifyRouterMisbehavior(peerId: PeerId, count: Int) {}
+            }
+        }
+
         override fun send(peer: PeerHandler, msg: Rpc.RPC): CompletableFuture<Unit> =
             writePolicy.send(peer.peerId, msg)
 
         fun enqueueRpcForTest(peerId: PeerId, msg: Rpc.RPC): CompletableFuture<Unit> =
             submitOnEventThread { enqueueRpc(peers.single { it.peerId == peerId }, msg) }
+
+        fun pendingPeerCountForTest(): CompletableFuture<Int> =
+            submitOnEventThread { pendingRpcParts.pendingPeers.size }
     }
 
     private class RecordingGossipRouterBuilder(
