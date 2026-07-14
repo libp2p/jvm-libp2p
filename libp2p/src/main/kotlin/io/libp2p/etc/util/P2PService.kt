@@ -9,8 +9,11 @@ import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
 import io.netty.util.ReferenceCountUtil
 import org.slf4j.LoggerFactory
+import java.time.Duration
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.ScheduledFuture
+import java.util.concurrent.TimeUnit
 
 private val logger = LoggerFactory.getLogger(P2PService::class.java)
 
@@ -231,7 +234,40 @@ abstract class P2PService(
      * Executes the code on the service event thread
      * Supply additional info which is reported to [onServiceException]
      */
-    fun runOnEventThread(peer: PeerHandler? = null, msg: Any? = null, run: () -> Unit) = executor.execute {
+    fun runOnEventThread(peer: PeerHandler? = null, msg: Any? = null, run: () -> Unit) =
+        executor.execute(guarded(peer, msg, run))
+
+    /**
+     * Schedules code on the service event thread.
+     * Supply additional info which is reported to [onServiceException].
+     */
+    fun scheduleOnEventThread(
+        delay: Duration,
+        peer: PeerHandler? = null,
+        msg: Any? = null,
+        run: () -> Unit
+    ): ScheduledFuture<*> =
+        executor.schedule(guarded(peer, msg, run), delay.toMillis(), TimeUnit.MILLISECONDS)
+
+    /**
+     * Schedules recurring code on the service event thread with a fixed delay between runs.
+     * Supply additional info which is reported to [onServiceException].
+     */
+    fun scheduleWithFixedDelayOnEventThread(
+        initialDelay: Duration,
+        delay: Duration,
+        peer: PeerHandler? = null,
+        msg: Any? = null,
+        run: () -> Unit
+    ): ScheduledFuture<*> =
+        executor.scheduleWithFixedDelay(
+            guarded(peer, msg, run),
+            initialDelay.toMillis(),
+            delay.toMillis(),
+            TimeUnit.MILLISECONDS
+        )
+
+    private fun guarded(peer: PeerHandler?, msg: Any?, run: () -> Unit) = Runnable {
         try {
             run()
         } catch (e: Exception) {

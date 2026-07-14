@@ -5,6 +5,7 @@ import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.etc.types.lazyVar
 import io.libp2p.pubsub.*
 import io.libp2p.pubsub.gossip.*
+import java.time.Duration
 import java.util.*
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
@@ -42,6 +43,7 @@ open class GossipRouterBuilder(
     val enabledGossipExtensions: List<GossipExtension> = mutableListOf(),
 ) {
 
+    var outboundWriteProgressTimeout: Duration = DEFAULT_OUTBOUND_WRITE_PROGRESS_TIMEOUT
     var seenCache: SeenCache<Optional<ValidationResult>> by lazyVar { TTLSeenCache(SimpleSeenCache(), params.seenTTL, currentTimeSupplier) }
     var mCache: MCache by lazyVar { MCache(params.gossipSize, params.gossipHistoryLength) }
 
@@ -71,6 +73,7 @@ open class GossipRouterBuilder(
             messageValidator = messageValidator,
             gossipExtensionsConfig = buildGossipExtensionsConfig(),
         )
+        router.configureOutboundWriteProgressTimeout(outboundWriteProgressTimeout)
 
         router.eventBroadcaster.listeners += gossipRouterEventListeners
         return router

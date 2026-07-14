@@ -118,6 +118,13 @@ open class DefaultGossipRpcPartsQueue(
         val ret = mutableListOf<Rpc.RPC>()
         var partIdx = 0
         while (partIdx < parts.size) {
+            val firstPart = parts[partIdx]
+            if (firstPart is RpcPart) {
+                ret += firstPart.rpc
+                partIdx++
+                continue
+            }
+
             val builder = Rpc.RPC.newBuilder()
 
             var publishCount = params.maxPublishedMessages ?: Int.MAX_VALUE
@@ -127,7 +134,7 @@ open class DefaultGossipRpcPartsQueue(
             var graftCount = params.maxGraftMessages ?: Int.MAX_VALUE
             var pruneCount = params.maxPruneMessages ?: Int.MAX_VALUE
 
-            while (partIdx < parts.size &&
+            while (partIdx < parts.size && parts[partIdx] !is RpcPart &&
                 publishCount > 0 && subscriptionCount > 0 && iHaveCount > 0 &&
                 iWantCount > 0 && graftCount > 0 && pruneCount > 0
             ) {

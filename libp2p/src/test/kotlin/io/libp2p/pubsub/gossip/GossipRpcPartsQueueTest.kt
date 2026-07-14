@@ -494,4 +494,26 @@ class GossipRpcPartsQueueTest {
         assertThat(merged[1].control.hasExtensions()).isTrue()
         assertThat(merged[1].control.extensions.partialMessages).isTrue()
     }
+
+    @Test
+    fun `complete RPC remains an ordered batching boundary`() {
+        val partsQueue = TestGossipQueue(gossipParamsNoLimits)
+        val directRpc = Rpc.RPC.newBuilder()
+            .setControl(
+                Rpc.ControlMessage.newBuilder()
+                    .addIdontwant(Rpc.ControlIDontWant.getDefaultInstance())
+            )
+            .build()
+
+        partsQueue.addPublish(createRpcMessage("before", "data"))
+        partsQueue.addRpc(directRpc)
+        partsQueue.addPublish(createRpcMessage("after", "data"))
+
+        val messages = partsQueue.takeMerged()
+
+        assertThat(messages).hasSize(3)
+        assertThat(messages[0].publishList.single().topicIDsList).containsExactly("before")
+        assertThat(messages[1]).isEqualTo(directRpc)
+        assertThat(messages[2].publishList.single().topicIDsList).containsExactly("after")
+    }
 }

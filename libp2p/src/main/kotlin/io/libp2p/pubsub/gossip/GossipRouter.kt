@@ -14,7 +14,6 @@ import java.time.Duration
 import java.util.*
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ScheduledExecutorService
-import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.collections.Collection
 import kotlin.collections.List
@@ -101,6 +100,10 @@ open class GossipRouter(
     messageValidator
 ) {
 
+    internal fun configureOutboundWriteProgressTimeout(timeout: Duration) {
+        outboundWriteProgressTimeout = timeout
+    }
+
     // The idea behind choosing these specific default values for acceptRequestsWhitelist was
     // - from one side are pretty small and safe: peer unlikely be able to drop its score to `graylist`
     //   with 128 messages. But even if so then it's not critical to accept some extra messages before
@@ -124,11 +127,10 @@ open class GossipRouter(
     private val iWantRequests = createLRUMap<Pair<PeerHandler, MessageId>, Long>(MaxIWantRequestsEntries)
     private val peerIDontWant = createLRUMap<PeerHandler, IDontWantCacheEntry>(MaxPeerIDontWantEntries)
     private val heartbeatTask by lazy {
-        executor.scheduleWithFixedDelay(
-            ::catchingHeartbeat,
-            heartbeatInitialDelay.toMillis(),
-            params.heartbeatInterval.toMillis(),
-            TimeUnit.MILLISECONDS
+        scheduleWithFixedDelayOnEventThread(
+            heartbeatInitialDelay,
+            params.heartbeatInterval,
+            run = ::heartbeat
         )
     }
     private val acceptRequestsWhitelist = mutableMapOf<PeerHandler, AcceptRequestsWhitelistEntry>()
@@ -487,7 +489,7 @@ open class GossipRouter(
         val response =
             Rpc.RPC.newBuilder().setTestExtension(Rpc.TestExtension.newBuilder().build()).build()
 
-        send(receivedFrom, response)
+        enqueueRpc(receivedFrom, response)
     }
 
     private fun processPartialMessageExtension(
@@ -637,14 +639,6 @@ open class GossipRouter(
         super.unsubscribe(topic)
         mesh[topic]?.copy()?.forEach { prune(it, topic) }
         mesh -= topic
-    }
-
-    private fun catchingHeartbeat() {
-        try {
-            heartbeat()
-        } catch (e: Exception) {
-            onServiceException(null, null, e)
-        }
     }
 
     private fun heartbeat() {
@@ -828,7 +822,7 @@ open class GossipRouter(
                     .addMessageIDs(messageId.toProtobuf())
             )
         ).build()
-        send(peer, iDontWant)
+        enqueueRpc(peer, iDontWant)
     }
 
     private fun sendControlExtensions(peer: PeerHandler) {
