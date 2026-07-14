@@ -62,6 +62,12 @@ abstract class AbstractRouter(
         var batchPromises: List<CompletableFuture<Unit>> = emptyList()
     }
 
+    protected fun hasOutboundState(): Boolean =
+        outboundSendStates.isNotEmpty() ||
+            stalledOutboundPeers.isNotEmpty() ||
+            pendingRpcParts.pendingPeers.isNotEmpty() ||
+            pendingMessagePromises.any()
+
     protected class PendingRpcPartsMap<out TPartsQueue : RpcPartsQueue>(
         private val queueFactory: () -> TPartsQueue
     ) {
@@ -454,8 +460,12 @@ abstract class AbstractRouter(
 
         if (resetStream) {
             stalledOutboundPeers[peer] = cause
-            peer.getOutboundHandler()?.stream?.reset()
+            resetOutboundStream(peer)
         }
+    }
+
+    protected open fun resetOutboundStream(peer: PeerHandler) {
+        peer.getOutboundHandler()?.stream?.reset()
     }
 
     private fun failQueuedOutbound(peer: PeerHandler, cause: Throwable) {

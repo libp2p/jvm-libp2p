@@ -79,10 +79,11 @@ class GossipOutboundWriteBackpressureTest : GossipTestsBase() {
         )
         fuzz.timeController.addTime(Duration.ofMillis(1))
 
-        val publishFutures = (0 until MESSAGE_COUNT).map { sequence ->
-            val future = sender.router.publish(
-                newMessage(TOPIC, sequence.toLong(), "message-$sequence".toByteArray())
-            )
+        val publishedMessages = (0 until MESSAGE_COUNT).map { sequence ->
+            newMessage(TOPIC, sequence.toLong(), "message-$sequence".toByteArray())
+        }
+        val publishFutures = publishedMessages.map { message ->
+            val future = sender.router.publish(message)
             fuzz.timeController.addTime(Duration.ofMillis(1))
             future
         }
@@ -91,6 +92,7 @@ class GossipOutboundWriteBackpressureTest : GossipTestsBase() {
         publishFutures.forEach { it.get(1, TimeUnit.SECONDS) }
 
         assertThat(writePolicy.unresolvedWriteCount(healthyPeer.peerId)).isZero()
+        assertThat(healthyPeer.inboundMessages).containsExactlyElementsOf(publishedMessages)
         val stalledWriteCount = writePolicy.unresolvedWriteCount(stalledPeer.peerId)
         assertThat(stalledWriteCount)
             .withFailMessage(
@@ -99,6 +101,11 @@ class GossipOutboundWriteBackpressureTest : GossipTestsBase() {
             .isEqualTo(1)
         assertThat(writePolicy.messagesSentTo(stalledPeer.peerId).single().control.idontwantCount)
             .isEqualTo(1)
+
+        val reply = newMessage(TOPIC, 100, "healthy-reply".toByteArray())
+        healthyPeer.router.publish(reply)
+        fuzz.timeController.addTime(Duration.ofMillis(1))
+        assertThat(sender.inboundMessages).containsExactly(reply)
     }
 
     @Test
@@ -142,8 +149,9 @@ class GossipOutboundWriteBackpressureTest : GossipTestsBase() {
         val senderRouter = sender.router as RecordingGossipRouter
         assertThat(publications).allMatch { it.isCompletedExceptionally }
         assertThat(senderRouter.peers).isEmpty()
-        assertThat(senderRouter.pendingPeerCountForTest().join()).isZero()
+        assertThat(senderRouter.hasNoOutboundStateForTest().join()).isTrue()
         assertThat(senderRouter.disconnectCount).isEqualTo(1)
+        assertThat(senderRouter.resetCount(stalledPeer.peerId)).isEqualTo(1)
         assertThat(writePolicy.unresolvedWriteCount(stalledPeer.peerId)).isZero()
         assertThat(writePolicy.failedWriteCount(stalledPeer.peerId)).isEqualTo(1)
         assertThat(writePolicy.messagesSentTo(stalledPeer.peerId)).hasSize(1)
@@ -208,7 +216,9 @@ class GossipOutboundWriteBackpressureTest : GossipTestsBase() {
         senderRouter.enqueueRpcForTest(stalledPeer.peerId, first)
         fuzz.timeController.addTime(Duration.ofMillis(1))
         senderRouter.enqueueRpcForTest(stalledPeer.peerId, second)
-        val publication = sender.router.publish(newMessage(TOPIC, 1, "queued".toByteArray()))
+        val publications = (1L..3L).map { sequence ->
+            sender.router.publish(newMessage(TOPIC, sequence, "queued-$sequence".toByteArray()))
+        }
         fuzz.timeController.addTime(Duration.ofMillis(1))
 
         assertThat(writePolicy.messagesSentTo(stalledPeer.peerId)).containsExactly(first)
@@ -221,12 +231,48 @@ class GossipOutboundWriteBackpressureTest : GossipTestsBase() {
         assertThat(writePolicy.messagesSentTo(stalledPeer.peerId))
             .hasSize(3)
             .last()
-            .extracting { it.publishList.single().data.toByteArray() }
-            .isEqualTo("queued".toByteArray())
+            .extracting { rpc -> rpc.publishList.map { it.data.toStringUtf8() } }
+            .isEqualTo(listOf("queued-1", "queued-2", "queued-3"))
 
         writePolicy.completeNext(stalledPeer.peerId)
         fuzz.timeController.addTime(Duration.ofMillis(1))
-        assertThat(publication).isCompleted
+        assertThat(publications).allMatch { it.isDone && !it.isCompletedExceptionally }
+    }
+
+    @Test
+    fun `disconnect fails queued writes and prevents any later send`() {
+        val fuzz = DeterministicFuzz()
+        val writePolicy = WritePolicy()
+        val params = singlePeerParams()
+        val scoreParams = directPeerScoreParams()
+        val sender = createSender(fuzz, writePolicy, params, scoreParams, Duration.ofSeconds(1))
+        val stalledPeer = createPeer(fuzz, params, scoreParams)
+
+        stalledPeer.router.subscribe(TOPIC)
+        val connection = sender.connectSemiDuplex(stalledPeer)
+        fuzz.timeController.addTime(Duration.ofSeconds(2))
+
+        val senderRouter = sender.router as RecordingGossipRouter
+        writePolicy.stalledPeerId = stalledPeer.peerId
+        writePolicy.clearRecordedWrites(stalledPeer.peerId)
+        val publications = (0 until 3).map { sequence ->
+            sender.router.publish(newMessage(TOPIC, sequence.toLong(), "disconnect-$sequence".toByteArray()))
+        }
+        fuzz.timeController.addTime(Duration.ofMillis(1))
+        assertThat(writePolicy.messagesSentTo(stalledPeer.peerId)).hasSize(1)
+
+        connection.disconnect()
+        fuzz.timeController.addTime(Duration.ofMillis(1))
+
+        assertThat(publications).allMatch { it.isCompletedExceptionally }
+        assertThat(senderRouter.peers).isEmpty()
+        assertThat(senderRouter.hasNoOutboundStateForTest().join()).isTrue()
+        assertThat(senderRouter.resetCount(stalledPeer.peerId)).isZero()
+        assertThat(writePolicy.failedWriteCount(stalledPeer.peerId)).isEqualTo(1)
+
+        sender.router.publish(newMessage(TOPIC, 10, "after-disconnect".toByteArray()))
+        fuzz.timeController.addTime(Duration.ofMillis(1))
+        assertThat(writePolicy.messagesSentTo(stalledPeer.peerId)).hasSize(1)
     }
 
     @Test
@@ -237,9 +283,13 @@ class GossipOutboundWriteBackpressureTest : GossipTestsBase() {
         val scoreParams = directPeerScoreParams()
         val sender = createSender(fuzz, writePolicy, params, scoreParams, Duration.ofMillis(10))
         val senderRouter = sender.router as RecordingGossipRouter
+        val peerKeyPair = createPeer(fuzz, params, scoreParams).keyPair
+        var stalledPeerId: PeerId? = null
 
         repeat(3) { cycle ->
-            val stalledPeer = createPeer(fuzz, params, scoreParams)
+            val stalledPeer = createPeer(fuzz, params, scoreParams).also { it.keyPair = peerKeyPair }
+            stalledPeerId = stalledPeerId ?: stalledPeer.peerId
+            assertThat(stalledPeer.peerId).isEqualTo(stalledPeerId)
             stalledPeer.router.subscribe(TOPIC)
             sender.connectSemiDuplex(stalledPeer)
             fuzz.timeController.addTime(Duration.ofSeconds(2))
@@ -251,8 +301,9 @@ class GossipOutboundWriteBackpressureTest : GossipTestsBase() {
 
             assertThat(publication).isCompletedExceptionally
             assertThat(senderRouter.peers).isEmpty()
-            assertThat(senderRouter.pendingPeerCountForTest().join()).isZero()
+            assertThat(senderRouter.hasNoOutboundStateForTest().join()).isTrue()
             assertThat(writePolicy.failedWriteCount(stalledPeer.peerId)).isEqualTo(1)
+            assertThat(senderRouter.resetCount(stalledPeer.peerId)).isEqualTo(cycle + 1)
         }
     }
 
@@ -309,13 +360,16 @@ class GossipOutboundWriteBackpressureTest : GossipTestsBase() {
         private val unresolvedWrites = mutableMapOf<PeerId, MutableList<CompletableFuture<Unit>>>()
         private val sentMessages = mutableMapOf<PeerId, MutableList<Rpc.RPC>>()
 
-        fun send(peerId: PeerId, msg: Rpc.RPC): CompletableFuture<Unit> {
+        fun record(peerId: PeerId, msg: Rpc.RPC) {
             sentMessages.getOrPut(peerId) { mutableListOf() } += msg
-            if (peerId != stalledPeerId) return CompletableFuture.completedFuture(Unit)
-            return CompletableFuture<Unit>().also {
+        }
+
+        fun shouldStall(peerId: PeerId): Boolean = peerId == stalledPeerId
+
+        fun newStalledWrite(peerId: PeerId): CompletableFuture<Unit> =
+            CompletableFuture<Unit>().also {
                 unresolvedWrites.getOrPut(peerId) { mutableListOf() } += it
             }
-        }
 
         fun unresolvedWriteCount(peerId: PeerId): Int = unresolvedWrites[peerId]?.count { !it.isDone } ?: 0
         fun failedWriteCount(peerId: PeerId): Int =
@@ -367,6 +421,7 @@ class GossipOutboundWriteBackpressureTest : GossipTestsBase() {
     ) {
         var disconnectCount = 0
             private set
+        private val resetCounts = mutableMapOf<PeerId, Int>()
 
         init {
             eventBroadcaster.listeners += object : GossipRouterEventListener {
@@ -385,14 +440,27 @@ class GossipOutboundWriteBackpressureTest : GossipTestsBase() {
             }
         }
 
-        override fun send(peer: PeerHandler, msg: Rpc.RPC): CompletableFuture<Unit> =
-            writePolicy.send(peer.peerId, msg)
+        override fun send(peer: PeerHandler, msg: Rpc.RPC): CompletableFuture<Unit> {
+            writePolicy.record(peer.peerId, msg)
+            return if (writePolicy.shouldStall(peer.peerId)) {
+                writePolicy.newStalledWrite(peer.peerId)
+            } else {
+                super.send(peer, msg)
+            }
+        }
+
+        override fun resetOutboundStream(peer: PeerHandler) {
+            resetCounts[peer.peerId] = resetCount(peer.peerId) + 1
+            super.resetOutboundStream(peer)
+        }
 
         fun enqueueRpcForTest(peerId: PeerId, msg: Rpc.RPC): CompletableFuture<Unit> =
             submitOnEventThread { enqueueRpc(peers.single { it.peerId == peerId }, msg) }
 
-        fun pendingPeerCountForTest(): CompletableFuture<Int> =
-            submitOnEventThread { pendingRpcParts.pendingPeers.size }
+        fun hasNoOutboundStateForTest(): CompletableFuture<Boolean> =
+            submitOnEventThread { !hasOutboundState() }
+
+        fun resetCount(peerId: PeerId): Int = resetCounts[peerId] ?: 0
     }
 
     private class RecordingGossipRouterBuilder(
