@@ -27,10 +27,18 @@ interface RpcPartsQueue {
  *
  * NOT thread safe
  */
-open class DefaultRpcPartsQueue : RpcPartsQueue {
+open class DefaultRpcPartsQueue(
+    private val maxMessageSize: Int = Int.MAX_VALUE
+) : RpcPartsQueue {
 
     protected interface AbstractPart {
         fun appendToBuilder(builder: Rpc.RPC.Builder)
+
+        fun standaloneRpcSize(): Int =
+            Rpc.RPC.newBuilder()
+                .also(::appendToBuilder)
+                .build()
+                .serializedSize
     }
 
     protected data class PublishPart(val message: Rpc.Message) : AbstractPart {
@@ -43,6 +51,8 @@ open class DefaultRpcPartsQueue : RpcPartsQueue {
         override fun appendToBuilder(builder: Rpc.RPC.Builder) {
             builder.mergeFrom(rpc)
         }
+
+        override fun standaloneRpcSize(): Int = rpc.serializedSize
     }
 
     protected data class SubscriptionPart(val topic: Topic, val status: RpcPartsQueue.SubscriptionStatus) : AbstractPart {
@@ -60,6 +70,13 @@ open class DefaultRpcPartsQueue : RpcPartsQueue {
         parts += part
     }
 
+    protected fun requirePartFits(part: AbstractPart): Int =
+        part.standaloneRpcSize().also { size ->
+            require(size <= maxMessageSize) {
+                "Outbound RPC part size $size exceeds maxGossipMessageSize $maxMessageSize"
+            }
+        }
+
     override fun addPublish(message: Rpc.Message) {
         addPart(PublishPart(message))
     }
@@ -75,22 +92,34 @@ open class DefaultRpcPartsQueue : RpcPartsQueue {
     override fun takeMerged(): List<Rpc.RPC> {
         val messages = mutableListOf<Rpc.RPC>()
         var builder = Rpc.RPC.newBuilder()
+        var estimatedSize = 0
         var hasMergedParts = false
+
+        fun flushBuilder() {
+            messages += builder.build()
+            builder = Rpc.RPC.newBuilder()
+            estimatedSize = 0
+            hasMergedParts = false
+        }
+
         parts.forEach { part ->
+            val partSize = requirePartFits(part)
             if (part is RpcPart) {
-                if (hasMergedParts) {
-                    messages += builder.build()
-                    builder = Rpc.RPC.newBuilder()
-                    hasMergedParts = false
-                }
+                if (hasMergedParts) flushBuilder()
                 messages += part.rpc
             } else {
+                if (hasMergedParts && estimatedSize > maxMessageSize - partSize) {
+                    flushBuilder()
+                }
                 part.appendToBuilder(builder)
+                estimatedSize += partSize
                 hasMergedParts = true
             }
         }
         parts.clear()
-        if (hasMergedParts || messages.isEmpty()) {
+        if (hasMergedParts) {
+            flushBuilder()
+        } else if (messages.isEmpty()) {
             messages += builder.build()
         }
         return messages

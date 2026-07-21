@@ -7,6 +7,7 @@ import io.libp2p.pubsub.Topic
 import io.libp2p.pubsub.gossip.builders.GossipParamsBuilder
 import io.libp2p.pubsub.gossip.builders.GossipRouterBuilder
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedInvocationConstants
 import org.junit.jupiter.params.ParameterizedTest
@@ -216,6 +217,37 @@ class GossipRpcPartsQueueTest {
         partsQueue.addPublish(createRpcMessage("topic", "data-2"))
 
         assertThat(partsQueue.takeMerged()[0].hasControl()).isFalse()
+    }
+
+    @Test
+    fun `merge splits before maximum serialized size is exceeded`() {
+        val single = createRpcMessage("topic", "x".repeat(32))
+        val oneRpcSize = Rpc.RPC.newBuilder().addPublish(single).build().serializedSize
+        val params = GossipParams(
+            maxGossipMessageSize = oneRpcSize * 2
+        )
+        val queue = DefaultGossipRpcPartsQueue(params)
+        repeat(3) { queue.addPublish(single) }
+
+        val merged = queue.takeMerged()
+
+        assertThat(merged).hasSize(2)
+        assertThat(merged).allMatch { it.serializedSize <= params.maxGossipMessageSize }
+        assertThat(merged.flatMap { it.publishList }).hasSize(3)
+    }
+
+    @Test
+    fun `atomic RPC larger than maximum size is rejected`() {
+        val params = GossipParams(maxGossipMessageSize = 32)
+        val oversized = Rpc.RPC.newBuilder()
+            .addPublish(createRpcMessage("topic", "x".repeat(128)))
+            .build()
+        val queue = DefaultGossipRpcPartsQueue(params)
+        queue.addRpc(oversized)
+
+        assertThatIllegalArgumentException()
+            .isThrownBy(queue::takeMerged)
+            .withMessageContaining("maxGossipMessageSize")
     }
 
     @Test

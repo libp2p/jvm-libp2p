@@ -38,7 +38,7 @@ interface GossipRpcPartsQueue : RpcPartsQueue {
  */
 open class DefaultGossipRpcPartsQueue(
     private val params: GossipParams
-) : DefaultRpcPartsQueue(), GossipRpcPartsQueue {
+) : DefaultRpcPartsQueue(params.maxGossipMessageSize), GossipRpcPartsQueue {
 
     protected data class IHavePart(val messageId: MessageId, val topic: Topic) : AbstractPart {
         override fun appendToBuilder(builder: Rpc.RPC.Builder) {
@@ -120,6 +120,7 @@ open class DefaultGossipRpcPartsQueue(
         while (partIdx < parts.size) {
             val firstPart = parts[partIdx]
             if (firstPart is RpcPart) {
+                requirePartFits(firstPart)
                 ret += firstPart.rpc
                 partIdx++
                 continue
@@ -133,12 +134,20 @@ open class DefaultGossipRpcPartsQueue(
             var iWantCount = params.maxIWantMessageIds ?: Int.MAX_VALUE
             var graftCount = params.maxGraftMessages ?: Int.MAX_VALUE
             var pruneCount = params.maxPruneMessages ?: Int.MAX_VALUE
+            var estimatedSize = 0
+            var appendedParts = 0
 
             while (partIdx < parts.size && parts[partIdx] !is RpcPart &&
                 publishCount > 0 && subscriptionCount > 0 && iHaveCount > 0 &&
                 iWantCount > 0 && graftCount > 0 && pruneCount > 0
             ) {
+                val partSize = requirePartFits(parts[partIdx])
+                val fitsBytes = estimatedSize <= params.maxGossipMessageSize - partSize
+                if (!fitsBytes && appendedParts > 0) break
+
                 val part = parts[partIdx++]
+                estimatedSize += partSize
+                appendedParts++
                 when (part) {
                     is PublishPart -> publishCount--
                     is SubscriptionPart -> subscriptionCount--
