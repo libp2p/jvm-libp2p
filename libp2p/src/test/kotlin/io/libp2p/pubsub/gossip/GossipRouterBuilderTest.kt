@@ -91,4 +91,27 @@ class GossipRouterBuilderTest {
             .isThrownBy(builder::build)
             .withMessageContaining("maxOutboundRetainedEntriesPerPeer")
     }
+
+    @Test
+    fun `invalid outbound limits do not construct a router`() {
+        val builder = CreationTrackingGossipRouterBuilder(
+            params = GossipParams(maxGossipMessageSize = 1024)
+        ).apply {
+            maxOutboundRetainedBytesPerPeer = 1023
+        }
+
+        assertThatIllegalArgumentException().isThrownBy(builder::build)
+        assertThat(builder.createCount).isZero()
+    }
+
+    private class CreationTrackingGossipRouterBuilder(
+        params: GossipParams
+    ) : GossipRouterBuilder(params = params) {
+        var createCount = 0
+
+        override fun createGossipRouter(): GossipRouter {
+            createCount++
+            return super.createGossipRouter()
+        }
+    }
 }

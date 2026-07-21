@@ -82,9 +82,10 @@ open class GossipRouterBuilder(
     open fun build(): GossipRouter {
         if (disposed) throw RuntimeException("The builder was already used")
         disposed = true
+        val outboundLimits = resolveOutboundLimits()
         return createGossipRouter().also { router ->
             router.configureOutboundWriteProgressTimeout(outboundWriteProgressTimeout)
-            router.configureOutboundLimits(resolveOutboundLimits())
+            router.configureOutboundLimits(outboundLimits)
             router.eventBroadcaster.listeners += gossipRouterEventListeners
         }
     }

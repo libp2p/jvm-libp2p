@@ -30,7 +30,6 @@ class SimGossipRouterBuilder : GossipRouterBuilder() {
             additionalHeartbeatDelay = additionalHeartbeatDelay
         )
 
-        router.eventBroadcaster.listeners += gossipRouterEventListeners
         return router
     }
 }
