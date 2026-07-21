@@ -90,6 +90,17 @@ abstract class P2PService(
                 streamActive(this)
             }
         }
+
+        override fun channelWritabilityChanged(ctx: ChannelHandlerContext) {
+            ctx.fireChannelWritabilityChanged()
+            val peer = peerHandler ?: return
+            runOnEventThread(peer) {
+                if (!aborted && !closed) {
+                    streamWritabilityChanged(this)
+                }
+            }
+        }
+
         override fun channelUnregistered(ctx: ChannelHandlerContext?) {
             closed = true
             runOnEventThread(peerHandler) {
@@ -128,6 +139,7 @@ abstract class P2PService(
         open val peerId = streamHandler.stream.remotePeerId()
         open fun writeAndFlush(msg: Any): CompletableFuture<Unit> = streamHandler.ctx!!.writeAndFlush(msg).toVoidCompletableFuture()
         open fun isActive() = streamHandler.ctx != null
+        open fun isWritable(): Boolean = getOutboundHandler()?.ctx?.channel()?.isWritable == true
         open fun getInboundHandler(): StreamHandler? = streamHandler
         open fun getOutboundHandler(): StreamHandler? = streamHandler
         override fun toString(): String {
@@ -163,6 +175,8 @@ abstract class P2PService(
     }
 
     protected open fun createPeerHandler(streamHandler: StreamHandler) = PeerHandler(streamHandler)
+
+    protected open fun streamWritabilityChanged(stream: StreamHandler) {}
 
     protected open fun streamActive(stream: StreamHandler) {
         if (stream.aborted) return
