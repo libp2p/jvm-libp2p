@@ -53,7 +53,7 @@ class GossipRouterBuilderTest {
         val router = builder.build()
 
         assertThat(router.outboundLimits.maxRetainedBytesPerPeer).isEqualTo(16_428_746)
-        assertThat(router.outboundLimits.maxRetainedEntriesPerPeer).isEqualTo(1024)
+        assertThat(router.outboundLimits.maxRetainedEntriesPerPeer).isEqualTo(10_000)
     }
 
     @Test

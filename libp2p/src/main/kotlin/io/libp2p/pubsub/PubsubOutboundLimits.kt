@@ -3,7 +3,7 @@ package io.libp2p.pubsub
 import pubsub.pb.Rpc
 
 private const val MIB = 1024L * 1024L
-const val DEFAULT_MAX_OUTBOUND_RETAINED_ENTRIES_PER_PEER = 1024
+const val DEFAULT_MAX_OUTBOUND_RETAINED_ENTRIES_PER_PEER = 10_000
 
 data class PubsubOutboundLimits(
     val maxRetainedBytesPerPeer: Long,
