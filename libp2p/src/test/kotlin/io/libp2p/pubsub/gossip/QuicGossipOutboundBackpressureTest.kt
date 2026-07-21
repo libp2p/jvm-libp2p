@@ -24,8 +24,8 @@ import java.util.concurrent.TimeUnit
 /**
  * Real QUIC reproduction for outbound gossipsub writes accumulating behind exhausted flow control.
  *
- * This is intentionally expected to fail against the unmodified router: every publish can start
- * another write while the first write remains unresolved.
+ * This verifies that the router keeps one unresolved write during a real QUIC flow-control stall
+ * and resumes the queued publications when the receiver starts reading again.
  */
 class QuicGossipOutboundBackpressureTest : GossipTestsBase() {
 
@@ -102,6 +102,27 @@ class QuicGossipOutboundBackpressureTest : GossipTestsBase() {
                         "observed ${unresolvedWrites.size}"
                 )
                 .hasSizeLessThanOrEqualTo(1)
+
+            val writesBeforeResume = writeRecorder.totalWrites()
+            receiverChannel.eventLoop().submit {
+                receiverChannel.config().isAutoRead = true
+                receiverChannel.read()
+            }.sync()
+
+            waitFor("sender QUIC stream to become writable again") {
+                senderChannel.isWritable
+            }
+            waitFor("all queued publications to complete") {
+                publishFutures.all { it.isDone }
+            }
+
+            assertThat(publishFutures)
+                .allMatch { it.isDone && !it.isCompletedExceptionally }
+            assertThat(writeRecorder.unresolvedWrites()).isEmpty()
+            assertThat(writeRecorder.totalWrites()).isGreaterThan(writesBeforeResume)
+            assertThat(connectionChannel.isActive).isTrue()
+            assertThat(senderChannel.isActive).isTrue()
+            assertThat(receiverChannel.isActive).isTrue()
         } finally {
             senderHost.stop().get(5, TimeUnit.SECONDS)
             receiverHost.stop().get(5, TimeUnit.SECONDS)
@@ -177,6 +198,8 @@ class QuicGossipOutboundBackpressureTest : GossipTestsBase() {
         }
 
         fun unresolvedWrites(): List<ChannelPromise> = promises.filterNot { it.isDone }
+
+        fun totalWrites(): Int = promises.size
     }
 
     private companion object {
