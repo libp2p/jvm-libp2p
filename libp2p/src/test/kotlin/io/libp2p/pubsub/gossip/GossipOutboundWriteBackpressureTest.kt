@@ -19,11 +19,86 @@ import java.util.concurrent.TimeUnit
 /**
  * Deterministic proof of the per-peer write accumulation described in
  * JVM_LIBP2P_QUIC_GOSSIPSUB_LEAK_FIX_PLAN.md.
- *
- * The stalled transport future is intentionally never completed. This test is expected to fail
- * against the current implementation because every publish starts another write for that peer.
  */
 class GossipOutboundWriteBackpressureTest : GossipTestsBase() {
+
+    @Test
+    fun `unwritable peer is not materialized or written until transition`() {
+        val fuzz = DeterministicFuzz()
+        val writePolicy = WritePolicy()
+        val params = singlePeerParams()
+        val scoreParams = directPeerScoreParams()
+        val sender = createSender(
+            fuzz,
+            writePolicy,
+            params,
+            scoreParams,
+            Duration.ofSeconds(1)
+        )
+        val peer = createPeer(fuzz, params, scoreParams)
+
+        peer.router.subscribe(TOPIC)
+        sender.connectSemiDuplex(peer)
+        fuzz.timeController.addTime(Duration.ofSeconds(2))
+
+        val senderRouter = sender.router as RecordingGossipRouter
+        writePolicy.setWritable(peer.peerId, false)
+        writePolicy.clearRecordedWrites(peer.peerId)
+        val publications = (1L..3L).map { sequence ->
+            sender.router.publish(
+                newMessage(TOPIC, sequence, "queued-$sequence".toByteArray())
+            )
+        }
+        fuzz.timeController.addTime(Duration.ofMillis(1))
+
+        assertThat(writePolicy.messagesSentTo(peer.peerId)).isEmpty()
+        assertThat(publications).allMatch { !it.isDone }
+
+        writePolicy.setWritable(peer.peerId, true)
+        senderRouter.fireWritabilityChanged(peer.peerId)
+        fuzz.timeController.addTime(Duration.ofMillis(1))
+
+        assertThat(writePolicy.messagesSentTo(peer.peerId))
+            .singleElement()
+            .extracting { rpc -> rpc.publishList.map { it.data.toStringUtf8() } }
+            .isEqualTo(listOf("queued-1", "queued-2", "queued-3"))
+        assertThat(publications).allMatch {
+            it.isDone && !it.isCompletedExceptionally
+        }
+    }
+
+    @Test
+    fun `deadline expires while queued work waits for writability`() {
+        val fuzz = DeterministicFuzz()
+        val writePolicy = WritePolicy()
+        val params = singlePeerParams()
+        val scoreParams = directPeerScoreParams()
+        val sender = createSender(
+            fuzz,
+            writePolicy,
+            params,
+            scoreParams,
+            Duration.ofMillis(10)
+        )
+        val peer = createPeer(fuzz, params, scoreParams)
+
+        peer.router.subscribe(TOPIC)
+        sender.connectSemiDuplex(peer)
+        fuzz.timeController.addTime(Duration.ofSeconds(2))
+
+        val senderRouter = sender.router as RecordingGossipRouter
+        writePolicy.setWritable(peer.peerId, false)
+        writePolicy.clearRecordedWrites(peer.peerId)
+        val publication = sender.router.publish(
+            newMessage(TOPIC, 1, "queued".toByteArray())
+        )
+        fuzz.timeController.addTime(Duration.ofMillis(20))
+
+        assertThat(publication).isCompletedExceptionally
+        assertThat(writePolicy.messagesSentTo(peer.peerId)).isEmpty()
+        assertThat(senderRouter.resetCount(peer.peerId)).isEqualTo(1)
+        assertThat(senderRouter.hasNoOutboundStateForTest().join()).isTrue()
+    }
 
     @Test
     fun `materialization failure settles active generation and clears state`() {
@@ -500,8 +575,19 @@ class GossipOutboundWriteBackpressureTest : GossipTestsBase() {
 
     private class WritePolicy {
         var stalledPeerId: PeerId? = null
+        private val unwritablePeers = mutableSetOf<PeerId>()
         private val unresolvedWrites = mutableMapOf<PeerId, MutableList<CompletableFuture<Unit>>>()
         private val sentMessages = mutableMapOf<PeerId, MutableList<Rpc.RPC>>()
+
+        fun setWritable(peerId: PeerId, writable: Boolean) {
+            if (writable) {
+                unwritablePeers -= peerId
+            } else {
+                unwritablePeers += peerId
+            }
+        }
+
+        fun isWritable(peerId: PeerId): Boolean = peerId !in unwritablePeers
 
         fun record(peerId: PeerId, msg: Rpc.RPC) {
             sentMessages.getOrPut(peerId) { mutableListOf() } += msg
@@ -592,9 +678,17 @@ class GossipOutboundWriteBackpressureTest : GossipTestsBase() {
             }
         }
 
+        override fun isOutboundWritable(peer: PeerHandler): Boolean =
+            writePolicy.isWritable(peer.peerId)
+
         override fun resetOutboundStream(peer: PeerHandler) {
             resetCounts[peer.peerId] = resetCount(peer.peerId) + 1
             super.resetOutboundStream(peer)
+        }
+
+        fun fireWritabilityChanged(peerId: PeerId) {
+            val handler = peers.single { it.peerId == peerId }.getOutboundHandler()!!
+            handler.channelWritabilityChanged(handler.ctx!!)
         }
 
         fun enqueueRpcForTest(peerId: PeerId, msg: Rpc.RPC): CompletableFuture<Unit> =

@@ -162,6 +162,7 @@ abstract class AbstractRouter(
         }
         pending.usage = pending.usage.plusOrNull(usage)!!
         promise?.let(pending.promises::add)
+        ensureProgressDeadline(peer, state)
         return null
     }
 
@@ -191,29 +192,18 @@ abstract class AbstractRouter(
             return
         }
         val state = outboundSendStates.getOrPut(peer) { OutboundSendState() }
-        if (state.activeWrite != null) return
+        pumpOutbound(peer, state)
+    }
 
-        val pending = pendingRpcParts.pop(peer)
-        if (pending == null) {
-            outboundSendStates.remove(peer)
-            return
-        }
+    protected open fun isOutboundWritable(peer: PeerHandler): Boolean =
+        peer.isWritable()
 
-        state.activeMessageIndex = 0
-        state.activePromises = pending.promises.toList()
-        state.activeUsage = pending.usage
-        try {
-            state.activeMessages = pending.queue.takeMerged()
-        } catch (cause: Throwable) {
-            cleanupOutbound(peer, cause, resetStream = true)
-            return
+    override fun streamWritabilityChanged(stream: StreamHandler) {
+        if (stream.aborted || stream.closed) return
+        val peer = stream.getPeerHandler()
+        if (peer.getOutboundHandler() === stream) {
+            outboundSendStates[peer]?.let { pumpOutbound(peer, it) }
         }
-        if (state.activeMessages.isEmpty()) {
-            completeActiveGeneration(state)
-            outboundSendStates.remove(peer)
-            return
-        }
-        sendNext(peer, state)
     }
 
     override fun addPeer(peer: Stream) = addPeerWithDebugHandler(peer, null)
@@ -512,28 +502,95 @@ abstract class AbstractRouter(
         if (cause == null) flushPending(peer)
     }
 
-    private fun sendNext(
+    private fun pumpOutbound(
         peer: PeerHandler,
         state: OutboundSendState
     ) {
+        if (outboundSendStates[peer] !== state || state.activeWrite != null) return
+
+        if (state.activeMessageIndex >= state.activeMessages.size) {
+            completeActiveGeneration(state)
+            if (pendingRpcParts.getOrNull(peer) == null) {
+                removeIdleState(peer, state)
+                return
+            }
+            if (!isOutboundWritable(peer)) {
+                ensureProgressDeadline(peer, state)
+                return
+            }
+            val pending = pendingRpcParts.pop(peer)!!
+            state.activePromises = pending.promises.toList()
+            state.activeUsage = pending.usage
+            state.activeMessages = try {
+                pending.queue.takeMerged()
+            } catch (cause: Throwable) {
+                cleanupOutbound(peer, cause, resetStream = true)
+                return
+            }
+            state.activeMessageIndex = 0
+            if (state.activeMessages.isEmpty()) {
+                completeActiveGeneration(state)
+                removeIdleState(peer, state)
+                return
+            }
+        }
+
+        if (!isOutboundWritable(peer)) {
+            ensureProgressDeadline(peer, state)
+            return
+        }
+
+        startWrite(peer, state, state.activeMessages[state.activeMessageIndex])
+    }
+
+    private fun removeIdleState(peer: PeerHandler, state: OutboundSendState) {
+        if (state.activeWrite == null &&
+            state.activeMessages.isEmpty() &&
+            pendingRpcParts.getOrNull(peer) == null &&
+            outboundSendStates.remove(peer, state)
+        ) {
+            state.progressDeadline?.cancel(false)
+            state.progressDeadline = null
+        }
+    }
+
+    private fun hasRetainedWork(
+        peer: PeerHandler,
+        state: OutboundSendState
+    ): Boolean =
+        state.activeWrite != null ||
+            state.activeMessages.isNotEmpty() ||
+            pendingRpcParts.getOrNull(peer) != null
+
+    private fun ensureProgressDeadline(peer: PeerHandler, state: OutboundSendState) {
+        if (state.progressDeadline != null) return
+        state.progressDeadline =
+            scheduleOnEventThread(outboundWriteProgressTimeout, peer) {
+                if (outboundSendStates[peer] === state && hasRetainedWork(peer, state)) {
+                    state.progressDeadline = null
+                    cleanupOutbound(
+                        peer,
+                        TimeoutException(
+                            "Outbound pubsub write to ${peer.peerId} made no progress within $outboundWriteProgressTimeout"
+                        ),
+                        resetStream = true
+                    )
+                }
+            }
+    }
+
+    private fun startWrite(
+        peer: PeerHandler,
+        state: OutboundSendState,
+        msg: Rpc.RPC
+    ) {
         val write = try {
-            send(peer, state.activeMessages[state.activeMessageIndex])
+            send(peer, msg)
         } catch (cause: Throwable) {
             completedExceptionally(cause)
         }
         state.activeWrite = write
-        state.progressDeadline = scheduleOnEventThread(outboundWriteProgressTimeout, peer) {
-            if (outboundSendStates[peer] === state && state.activeWrite === write) {
-                state.progressDeadline = null
-                cleanupOutbound(
-                    peer,
-                    TimeoutException(
-                        "Outbound pubsub write to ${peer.peerId} made no progress within $outboundWriteProgressTimeout"
-                    ),
-                    resetStream = true
-                )
-            }
-        }
+        ensureProgressDeadline(peer, state)
         write.whenComplete { _, error ->
             runOnEventThread(peer) {
                 if (outboundSendStates[peer] !== state || state.activeWrite !== write) return@runOnEventThread
@@ -544,19 +601,24 @@ abstract class AbstractRouter(
 
                 if (error != null) {
                     cleanupOutbound(peer, error, resetStream = true)
-                } else if (state.activeMessageIndex + 1 < state.activeMessages.size) {
-                    state.activeMessageIndex++
-                    sendNext(peer, state)
                 } else {
-                    completeActiveGeneration(state)
-                    flushPending(peer)
+                    state.activeMessageIndex++
+                    if (hasRetainedWork(peer, state)) {
+                        ensureProgressDeadline(peer, state)
+                    }
+                    pumpOutbound(peer, state)
                 }
             }
         }
     }
 
     private fun completeActiveGeneration(state: OutboundSendState) {
-        if (state.activeMessages.isEmpty()) return
+        if (state.activeMessages.isEmpty() &&
+            state.activePromises.isEmpty() &&
+            state.activeUsage == OutboundResourceUsage.ZERO
+        ) {
+            return
+        }
         state.activePromises.forEach { it.complete(Unit) }
         state.activePromises = emptyList()
         state.activeMessages = emptyList()
