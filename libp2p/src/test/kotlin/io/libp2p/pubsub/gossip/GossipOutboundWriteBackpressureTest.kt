@@ -26,6 +26,116 @@ import java.util.concurrent.TimeUnit
 class GossipOutboundWriteBackpressureTest : GossipTestsBase() {
 
     @Test
+    fun `entry overflow resets peer and settles every promise`() {
+        val fuzz = DeterministicFuzz()
+        val writePolicy = WritePolicy()
+        val params = singlePeerParams().copy(maxGossipMessageSize = 1024)
+        val sender = createSender(
+            fuzz,
+            writePolicy,
+            params,
+            directPeerScoreParams(),
+            Duration.ofSeconds(10),
+            maxBytes = 4096,
+            maxEntries = 8
+        )
+        val slowPeer = createPeer(fuzz, params, directPeerScoreParams())
+
+        slowPeer.router.subscribe(TOPIC)
+        sender.connectSemiDuplex(slowPeer)
+        fuzz.timeController.addTime(Duration.ofSeconds(2))
+
+        writePolicy.stalledPeerId = slowPeer.peerId
+        val publications = (0 until 8).map {
+            sender.router.publish(newMessage(TOPIC, it.toLong(), byteArrayOf(it.toByte())))
+        }
+        fuzz.timeController.addTime(Duration.ofMillis(1))
+
+        val senderRouter = sender.router as RecordingGossipRouter
+        assertThat(senderRouter.resetCount(slowPeer.peerId)).isEqualTo(1)
+        assertThat(senderRouter.hasNoOutboundStateForTest().join()).isTrue()
+        assertThat(publications).allMatch { it.isDone }
+        assertThat(publications).anyMatch { future ->
+            future.handle { _, error ->
+                generateSequence(error) { it.cause }
+                    .any { it is OutboundQueueOverflowException }
+            }.join()
+        }
+    }
+
+    @Test
+    fun `active and pending bytes share one limit`() {
+        val fuzz = DeterministicFuzz()
+        val writePolicy = WritePolicy()
+        val params = singlePeerParams().copy(maxGossipMessageSize = 256)
+        val firstMessage = newMessage(TOPIC, 1, ByteArray(16))
+        val onePublishBytes = Rpc.RPC.newBuilder()
+            .addPublish(firstMessage.protobufMessage)
+            .build()
+            .serializedSize
+        val byteLimit = params.maxGossipMessageSize.toLong()
+        val publicationCount = (byteLimit / onePublishBytes + 1).toInt()
+        val sender = createSender(
+            fuzz,
+            writePolicy,
+            params,
+            directPeerScoreParams(),
+            Duration.ofSeconds(10),
+            maxBytes = byteLimit,
+            maxEntries = 100
+        )
+        val slowPeer = createPeer(fuzz, params, directPeerScoreParams())
+
+        slowPeer.router.subscribe(TOPIC)
+        sender.connectSemiDuplex(slowPeer)
+        fuzz.timeController.addTime(Duration.ofSeconds(2))
+        writePolicy.stalledPeerId = slowPeer.peerId
+
+        repeat(publicationCount) { sequence ->
+            sender.router.publish(
+                newMessage(TOPIC, sequence.toLong() + 1, ByteArray(16))
+            )
+            fuzz.timeController.addTime(Duration.ofMillis(1))
+        }
+
+        assertThat((sender.router as RecordingGossipRouter).resetCount(slowPeer.peerId))
+            .isEqualTo(1)
+    }
+
+    @Test
+    fun `control-only backlog is bounded by entries`() {
+        val fuzz = DeterministicFuzz()
+        val writePolicy = WritePolicy()
+        val params = singlePeerParams().copy(maxGossipMessageSize = 1024)
+        val sender = createSender(
+            fuzz,
+            writePolicy,
+            params,
+            directPeerScoreParams(),
+            Duration.ofSeconds(10),
+            maxBytes = 4096,
+            maxEntries = 5
+        )
+        val slowPeer = createPeer(fuzz, params, directPeerScoreParams())
+
+        slowPeer.router.subscribe(TOPIC)
+        sender.connectSemiDuplex(slowPeer)
+        fuzz.timeController.addTime(Duration.ofSeconds(2))
+
+        val senderRouter = sender.router as RecordingGossipRouter
+        writePolicy.stalledPeerId = slowPeer.peerId
+        writePolicy.clearRecordedWrites(slowPeer.peerId)
+        repeat(3) {
+            senderRouter.enqueueRpcForTest(slowPeer.peerId, controlRpc())
+            fuzz.timeController.addTime(Duration.ofMillis(1))
+        }
+
+        assertThat(senderRouter.resetCount(slowPeer.peerId)).isEqualTo(1)
+        assertThat(senderRouter.hasNoOutboundStateForTest().join()).isTrue()
+        assertThat(writePolicy.messagesSentTo(slowPeer.peerId)).hasSize(1)
+    }
+
+    @Test
     fun `one stalled peer write must not be superseded by another write`() {
         val fuzz = DeterministicFuzz()
         val writePolicy = WritePolicy()
@@ -312,13 +422,17 @@ class GossipOutboundWriteBackpressureTest : GossipTestsBase() {
         writePolicy: WritePolicy,
         params: GossipParams,
         scoreParams: GossipScoreParams,
-        progressTimeout: Duration
+        progressTimeout: Duration,
+        maxBytes: Long? = null,
+        maxEntries: Int = DEFAULT_MAX_OUTBOUND_RETAINED_ENTRIES_PER_PEER
     ): TestRouter = fuzz.createTestRouter(
         createGossipFuzzRouterFactory {
             RecordingGossipRouterBuilder(writePolicy, progressTimeout).apply {
                 this.params = params
                 this.scoreParams = scoreParams
                 protocol = PubsubProtocol.Gossip_V_1_2
+                maxOutboundRetainedBytesPerPeer = maxBytes
+                maxOutboundRetainedEntriesPerPeer = maxEntries
             }
         }
     )

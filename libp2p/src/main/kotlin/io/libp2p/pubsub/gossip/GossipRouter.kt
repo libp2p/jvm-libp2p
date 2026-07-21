@@ -162,7 +162,6 @@ open class GossipRouter(
         mesh.values.forEach { it.remove(peer) }
         fanout.values.forEach { it.remove(peer) }
         acceptRequestsWhitelist -= peer
-        pendingRpcParts.popQueue(peer) // discard them
         gossipExtensionsState.onPeerDisconnected(peer.peerId)
         super.onPeerDisconnected(peer)
     }
@@ -797,27 +796,82 @@ open class GossipRouter(
             .forEach { sendIdontwant(it, msg.messageId) }
     }
 
+    private fun enqueueGossipPart(
+        peer: PeerHandler,
+        standaloneRpc: Rpc.RPC,
+        addPart: (GossipRpcPartsQueue) -> Unit
+    ) {
+        enqueueOutbound(
+            peer,
+            pendingRpcParts,
+            OutboundResourceUsage.fromRpc(standaloneRpc),
+            addPart = addPart
+        )
+    }
+
     private fun enqueuePrune(peer: PeerHandler, topic: Topic) {
-        val peerQueue = pendingRpcParts.getQueue(peer)
-        if (peer.getPeerProtocol().supportsBackoffAndPX() && this.protocol.supportsBackoffAndPX()) {
-            val backoffPeers = (getTopicPeers(topic) - peer)
+        val supportsBackoff =
+            peer.getPeerProtocol().supportsBackoffAndPX() &&
+                protocol.supportsBackoffAndPX()
+        val backoffPeers = if (supportsBackoff) {
+            (getTopicPeers(topic) - peer)
                 .take(params.maxPeersSentInPruneMsg)
                 .filter { score.score(it.peerId) >= 0 }
                 .map { it.peerId }
-            peerQueue.addPrune(topic, params.pruneBackoff.seconds, backoffPeers)
         } else {
-            peerQueue.addPrune(topic)
+            emptyList()
+        }
+        val prune = Rpc.ControlPrune.newBuilder().setTopicID(topic).apply {
+            if (supportsBackoff) {
+                setBackoff(params.pruneBackoff.seconds)
+                addAllPeers(
+                    backoffPeers.map {
+                        Rpc.PeerInfo.newBuilder()
+                            .setPeerID(it.bytes.toProtobuf())
+                            .build()
+                    }
+                )
+            }
+        }.build()
+        val rpc = Rpc.RPC.newBuilder()
+            .setControl(Rpc.ControlMessage.newBuilder().addPrune(prune))
+            .build()
+        enqueueGossipPart(peer, rpc) { queue ->
+            if (supportsBackoff) {
+                queue.addPrune(topic, params.pruneBackoff.seconds, backoffPeers)
+            } else {
+                queue.addPrune(topic)
+            }
         }
     }
 
-    private fun enqueueGraft(peer: PeerHandler, topic: Topic) =
-        pendingRpcParts.getQueue(peer).addGraft(topic)
+    private fun enqueueGraft(peer: PeerHandler, topic: Topic) {
+        val rpc = Rpc.RPC.newBuilder().apply {
+            controlBuilder.addGraftBuilder().setTopicID(topic)
+        }.build()
+        enqueueGossipPart(peer, rpc) { it.addGraft(topic) }
+    }
 
-    private fun enqueueIwant(peer: PeerHandler, messageIds: List<MessageId>) =
-        pendingRpcParts.getQueue(peer).addIWants(messageIds)
+    private fun enqueueIwant(peer: PeerHandler, messageIds: List<MessageId>) {
+        val rpc = Rpc.RPC.newBuilder().apply {
+            controlBuilder.addIwantBuilder()
+                .addAllMessageIDs(messageIds.map { it.toProtobuf() })
+        }.build()
+        enqueueGossipPart(peer, rpc) { it.addIWants(messageIds) }
+    }
 
-    private fun enqueueIhave(peer: PeerHandler, messageIds: List<MessageId>, topic: Topic) =
-        pendingRpcParts.getQueue(peer).addIHaves(messageIds, topic)
+    private fun enqueueIhave(
+        peer: PeerHandler,
+        messageIds: List<MessageId>,
+        topic: Topic
+    ) {
+        val rpc = Rpc.RPC.newBuilder().apply {
+            controlBuilder.addIhaveBuilder()
+                .setTopicID(topic)
+                .addAllMessageIDs(messageIds.map { it.toProtobuf() })
+        }.build()
+        enqueueGossipPart(peer, rpc) { it.addIHaves(messageIds, topic) }
+    }
 
     private fun sendIdontwant(peer: PeerHandler, messageId: MessageId) {
         if (!peer.getPeerProtocol().supportsIDontWant()) {
@@ -850,9 +904,18 @@ open class GossipRouter(
 
         logger.trace("Sending control extensions message to peer {}", peer.peerId)
 
-        pendingRpcParts.getQueue(peer)
-            .addControlExtensions(gossipExtensionsState.localExtensionSupport)
-        gossipExtensionsState.registerControlExtensionMessageSentToPeers(peer.peerId)
+        val extensions = gossipExtensionsState.localExtensionSupport
+        val rpc = Rpc.RPC.newBuilder().apply {
+            controlBuilder.setExtensions(extensions)
+        }.build()
+        val cause = enqueueOutbound(
+            peer,
+            pendingRpcParts,
+            OutboundResourceUsage.fromRpc(rpc)
+        ) { it.addControlExtensions(extensions) }
+        if (cause == null) {
+            gossipExtensionsState.registerControlExtensionMessageSentToPeers(peer.peerId)
+        }
     }
 
     data class AcceptRequestsWhitelistEntry(val whitelistedTill: Long, val messagesAccepted: Int = 0) {

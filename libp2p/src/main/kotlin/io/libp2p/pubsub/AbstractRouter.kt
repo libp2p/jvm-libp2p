@@ -54,7 +54,6 @@ abstract class AbstractRouter(
     protected open val peersTopics = mutableMultiBiMap<PeerHandler, Topic>()
     protected open val subscribedTopics = linkedSetOf<Topic>()
     protected open val pendingRpcParts = PendingRpcPartsMap<RpcPartsQueue> { DefaultRpcPartsQueue() }
-    protected open val pendingMessagePromises = MultiSet<PeerHandler, CompletableFuture<Unit>>()
     private val outboundSendStates = mutableMapOf<PeerHandler, OutboundSendState>()
     private val stalledOutboundPeers = mutableMapOf<PeerHandler, Throwable>()
 
@@ -65,25 +64,35 @@ abstract class AbstractRouter(
     private class OutboundSendState {
         var activeWrite: CompletableFuture<Unit>? = null
         var progressDeadline: ScheduledFuture<*>? = null
-        var batchPromises: List<CompletableFuture<Unit>> = emptyList()
+        var activeMessages: List<Rpc.RPC> = emptyList()
+        var activeMessageIndex: Int = 0
+        var activePromises: List<CompletableFuture<Unit>> = emptyList()
+        var activeUsage: OutboundResourceUsage = OutboundResourceUsage.ZERO
     }
 
     protected fun hasOutboundState(): Boolean =
         outboundSendStates.isNotEmpty() ||
             stalledOutboundPeers.isNotEmpty() ||
-            pendingRpcParts.pendingPeers.isNotEmpty() ||
-            pendingMessagePromises.any()
+            pendingRpcParts.pendingPeers.isNotEmpty()
 
     protected class PendingRpcPartsMap<out TPartsQueue : RpcPartsQueue>(
         private val queueFactory: () -> TPartsQueue
     ) {
-        private val map = linkedMapOf<PeerHandler, TPartsQueue>()
+        data class PendingGeneration<out TPartsQueue : RpcPartsQueue>(
+            val queue: TPartsQueue,
+            val promises: MutableList<CompletableFuture<Unit>> = mutableListOf(),
+            var usage: OutboundResourceUsage = OutboundResourceUsage.ZERO
+        )
+
+        private val map = linkedMapOf<PeerHandler, PendingGeneration<TPartsQueue>>()
 
         val pendingPeers: Collection<PeerHandler> get() = map.keys.copy()
 
-        fun getQueue(peer: PeerHandler) = map.computeIfAbsent(peer) { queueFactory() }
-        fun popQueue(peer: PeerHandler) = map.remove(peer) ?: queueFactory()
-        fun popQueueOrNull(peer: PeerHandler) = map.remove(peer)
+        fun get(peer: PeerHandler): PendingGeneration<TPartsQueue> =
+            map.computeIfAbsent(peer) { PendingGeneration(queueFactory()) }
+
+        fun getOrNull(peer: PeerHandler) = map[peer]
+        fun pop(peer: PeerHandler) = map.remove(peer)
     }
 
     override fun publish(msg: PubsubMessage): CompletableFuture<Unit> {
@@ -99,11 +108,61 @@ abstract class AbstractRouter(
     }
 
     protected open fun submitPublishMessage(toPeer: PeerHandler, msg: PubsubMessage): CompletableFuture<Unit> {
-        stalledOutboundPeers[toPeer]?.let { return completedExceptionally(it) }
-        pendingRpcParts.getQueue(toPeer).addPublish(msg.protobufMessage)
+        val rpc = Rpc.RPC.newBuilder().addPublish(msg.protobufMessage).build()
+        if (rpc.serializedSize > maxMsgSize) {
+            return completedExceptionally(
+                InvalidMessageException(
+                    "Outbound pubsub message size ${rpc.serializedSize} exceeds maxGossipMessageSize $maxMsgSize"
+                )
+            )
+        }
         val sendPromise = CompletableFuture<Unit>()
-        pendingMessagePromises[toPeer] += sendPromise
+        val cause = enqueueOutbound(
+            toPeer,
+            pendingRpcParts,
+            OutboundResourceUsage.fromRpc(rpc, promiseEntries = 1),
+            sendPromise
+        ) { it.addPublish(msg.protobufMessage) }
+        cause?.let(sendPromise::completeExceptionally)
         return sendPromise
+    }
+
+    protected fun <TPartsQueue : RpcPartsQueue> enqueueOutbound(
+        peer: PeerHandler,
+        pendingMap: PendingRpcPartsMap<TPartsQueue>,
+        usage: OutboundResourceUsage,
+        promise: CompletableFuture<Unit>? = null,
+        addPart: (TPartsQueue) -> Unit
+    ): Throwable? {
+        stalledOutboundPeers[peer]?.let { return it }
+        val state = outboundSendStates.getOrPut(peer) { OutboundSendState() }
+        val pending = pendingMap.get(peer)
+        val retained = state.activeUsage.plusOrNull(pending.usage)
+        val projected = retained?.plusOrNull(usage)
+
+        if (projected == null || !projected.fits(outboundLimits)) {
+            val cause = OutboundQueueOverflowException(
+                "Outbound pubsub queue for ${peer.peerId} exceeds " +
+                    "${outboundLimits.maxRetainedBytesPerPeer} bytes or " +
+                    "${outboundLimits.maxRetainedEntriesPerPeer} entries"
+            )
+            cleanupOutbound(peer, cause, resetStream = true)
+            return cause
+        }
+
+        try {
+            addPart(pending.queue)
+        } catch (error: Throwable) {
+            if (pending.usage == OutboundResourceUsage.ZERO &&
+                pending.promises.isEmpty()
+            ) {
+                pendingMap.pop(peer)
+            }
+            throw error
+        }
+        pending.usage = pending.usage.plusOrNull(usage)!!
+        promise?.let(pending.promises::add)
+        return null
     }
 
     internal open fun validateMessageListLimits(msg: Rpc.RPCOrBuilder): Boolean {
@@ -134,11 +193,22 @@ abstract class AbstractRouter(
         val state = outboundSendStates.getOrPut(peer) { OutboundSendState() }
         if (state.activeWrite != null) return
 
-        val peerMessages = pendingRpcParts.popQueueOrNull(peer)?.takeMerged() ?: return
-        if (peerMessages.isEmpty()) return
+        val pending = pendingRpcParts.pop(peer)
+        if (pending == null) {
+            outboundSendStates.remove(peer)
+            return
+        }
 
-        state.batchPromises = pendingMessagePromises.removeAll(peer) ?: emptyList()
-        sendNext(peer, state, peerMessages, 0)
+        state.activeMessages = pending.queue.takeMerged()
+        state.activeMessageIndex = 0
+        state.activePromises = pending.promises.toList()
+        state.activeUsage = pending.usage
+        if (state.activeMessages.isEmpty()) {
+            completeActiveGeneration(state)
+            outboundSendStates.remove(peer)
+            return
+        }
+        sendNext(peer, state)
     }
 
     override fun addPeer(peer: Stream) = addPeerWithDebugHandler(peer, null)
@@ -189,9 +259,8 @@ abstract class AbstractRouter(
     protected abstract fun processExtensions(msg: Rpc.RPC, receivedFrom: PeerHandler)
 
     override fun onPeerActive(peer: PeerHandler) {
-        val partsQueue = pendingRpcParts.getQueue(peer)
         subscribedTopics.forEach {
-            partsQueue.addSubscribe(it)
+            enqueueSubscription(peer, it, RpcPartsQueue.SubscriptionStatus.Subscribed)
         }
         flushPending(peer)
     }
@@ -373,7 +442,9 @@ abstract class AbstractRouter(
     }
 
     protected open fun subscribe(topic: Topic) {
-        activePeers.forEach { pendingRpcParts.getQueue(it).addSubscribe(topic) }
+        activePeers.forEach {
+            enqueueSubscription(it, topic, RpcPartsQueue.SubscriptionStatus.Subscribed)
+        }
         subscribedTopics += topic
     }
 
@@ -385,8 +456,27 @@ abstract class AbstractRouter(
     }
 
     protected open fun unsubscribe(topic: Topic) {
-        activePeers.forEach { pendingRpcParts.getQueue(it).addUnsubscribe(topic) }
+        activePeers.forEach {
+            enqueueSubscription(it, topic, RpcPartsQueue.SubscriptionStatus.Unsubscribed)
+        }
         subscribedTopics -= topic
+    }
+
+    private fun enqueueSubscription(
+        peer: PeerHandler,
+        topic: Topic,
+        status: RpcPartsQueue.SubscriptionStatus
+    ) {
+        val subscription = Rpc.RPC.SubOpts.newBuilder()
+            .setTopicid(topic)
+            .setSubscribe(status == RpcPartsQueue.SubscriptionStatus.Subscribed)
+            .build()
+        val rpc = Rpc.RPC.newBuilder().addSubscriptions(subscription).build()
+        enqueueOutbound(
+            peer,
+            pendingRpcParts,
+            OutboundResourceUsage.fromRpc(rpc)
+        ) { it.addSubscription(topic, status) }
     }
 
     override fun getPeerTopics(): CompletableFuture<Map<PeerId, Set<Topic>>> {
@@ -404,18 +494,25 @@ abstract class AbstractRouter(
     }
 
     protected fun enqueueRpc(peer: PeerHandler, msg: Rpc.RPC) {
-        pendingRpcParts.getQueue(peer).addRpc(msg)
-        flushPending(peer)
+        if (msg.serializedSize > maxMsgSize) {
+            throw InvalidMessageException(
+                "Outbound RPC size ${msg.serializedSize} exceeds maxGossipMessageSize $maxMsgSize"
+            )
+        }
+        val cause = enqueueOutbound(
+            peer,
+            pendingRpcParts,
+            OutboundResourceUsage.fromRpc(msg)
+        ) { it.addRpc(msg) }
+        if (cause == null) flushPending(peer)
     }
 
     private fun sendNext(
         peer: PeerHandler,
-        state: OutboundSendState,
-        messages: List<Rpc.RPC>,
-        messageIndex: Int
+        state: OutboundSendState
     ) {
         val write = try {
-            send(peer, messages[messageIndex])
+            send(peer, state.activeMessages[state.activeMessageIndex])
         } catch (cause: Throwable) {
             completedExceptionally(cause)
         }
@@ -442,15 +539,24 @@ abstract class AbstractRouter(
 
                 if (error != null) {
                     cleanupOutbound(peer, error, resetStream = true)
-                } else if (messageIndex + 1 < messages.size) {
-                    sendNext(peer, state, messages, messageIndex + 1)
+                } else if (state.activeMessageIndex + 1 < state.activeMessages.size) {
+                    state.activeMessageIndex++
+                    sendNext(peer, state)
                 } else {
-                    state.batchPromises.forEach { it.complete(Unit) }
-                    state.batchPromises = emptyList()
+                    completeActiveGeneration(state)
                     flushPending(peer)
                 }
             }
         }
+    }
+
+    private fun completeActiveGeneration(state: OutboundSendState) {
+        if (state.activeMessages.isEmpty()) return
+        state.activePromises.forEach { it.complete(Unit) }
+        state.activePromises = emptyList()
+        state.activeMessages = emptyList()
+        state.activeMessageIndex = 0
+        state.activeUsage = OutboundResourceUsage.ZERO
     }
 
     private fun cleanupOutbound(peer: PeerHandler, cause: Throwable, resetStream: Boolean) {
@@ -459,8 +565,11 @@ abstract class AbstractRouter(
             state.progressDeadline = null
             state.activeWrite?.completeExceptionally(cause)
             state.activeWrite = null
-            state.batchPromises.forEach { it.completeExceptionally(cause) }
-            state.batchPromises = emptyList()
+            state.activePromises.forEach { it.completeExceptionally(cause) }
+            state.activePromises = emptyList()
+            state.activeMessages = emptyList()
+            state.activeMessageIndex = 0
+            state.activeUsage = OutboundResourceUsage.ZERO
         }
         failQueuedOutbound(peer, cause)
 
@@ -475,8 +584,11 @@ abstract class AbstractRouter(
     }
 
     private fun failQueuedOutbound(peer: PeerHandler, cause: Throwable) {
-        pendingRpcParts.popQueue(peer)
-        pendingMessagePromises.removeAll(peer)?.forEach { it.completeExceptionally(cause) }
+        pendingRpcParts.pop(peer)?.let { pending ->
+            pending.promises.forEach { it.completeExceptionally(cause) }
+            pending.promises.clear()
+            pending.usage = OutboundResourceUsage.ZERO
+        }
     }
 
     override fun initHandler(handler: (PubsubMessage) -> CompletableFuture<ValidationResult>) {

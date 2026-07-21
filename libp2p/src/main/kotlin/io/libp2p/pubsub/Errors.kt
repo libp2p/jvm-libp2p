@@ -21,3 +21,8 @@ class InvalidMessageException(message: String) : PubsubException(message)
  * Thrown when no suitable peers found to broadcast outbound exception
  */
 class NoPeersForOutboundMessageException(message: String) : PubsubException(message)
+
+/**
+ * Thrown when a peer's retained outbound pubsub work exceeds its configured limits.
+ */
+class OutboundQueueOverflowException(message: String) : PubsubException(message)
