@@ -46,35 +46,35 @@ data class OutboundResourceUsage internal constructor(
 
     companion object {
         val ZERO = OutboundResourceUsage()
-    }
-}
 
-internal fun OutboundResourceUsage.Companion.fromRpc(
-    rpc: Rpc.RPC,
-    promiseEntries: Long = 0
-): OutboundResourceUsage {
-    val controlEntries = if (rpc.hasControl()) {
-        val control = rpc.control
-        control.ihaveCount.toLong() +
-            control.ihaveList.sumOf { it.messageIDsCount.toLong() } +
-            control.iwantCount.toLong() +
-            control.iwantList.sumOf { it.messageIDsCount.toLong() } +
-            control.graftCount.toLong() +
-            control.pruneCount.toLong() +
-            control.pruneList.sumOf { it.peersCount.toLong() } +
-            control.idontwantCount.toLong() +
-            control.idontwantList.sumOf { it.messageIDsCount.toLong() } +
-            (if (control.hasExtensions()) 1L else 0L)
-    } else {
-        0L
+        internal fun fromRpc(
+            rpc: Rpc.RPC,
+            promiseEntries: Long = 0
+        ): OutboundResourceUsage {
+            val controlEntries = if (rpc.hasControl()) {
+                val control = rpc.control
+                control.ihaveCount.toLong() +
+                    control.ihaveList.sumOf { it.messageIDsCount.toLong() } +
+                    control.iwantCount.toLong() +
+                    control.iwantList.sumOf { it.messageIDsCount.toLong() } +
+                    control.graftCount.toLong() +
+                    control.pruneCount.toLong() +
+                    control.pruneList.sumOf { it.peersCount.toLong() } +
+                    control.idontwantCount.toLong() +
+                    control.idontwantList.sumOf { it.messageIDsCount.toLong() } +
+                    (if (control.hasExtensions()) 1L else 0L)
+            } else {
+                0L
+            }
+            val logicalEntries =
+                1L +
+                    rpc.subscriptionsCount.toLong() +
+                    rpc.publishList.sumOf { 1L + it.topicIDsCount.toLong() } +
+                    controlEntries +
+                    promiseEntries +
+                    (if (rpc.hasPartial()) 1L else 0L) +
+                    (if (rpc.hasTestExtension()) 1L else 0L)
+            return OutboundResourceUsage(rpc.serializedSize.toLong(), logicalEntries)
+        }
     }
-    val logicalEntries =
-        1L +
-            rpc.subscriptionsCount.toLong() +
-            rpc.publishList.sumOf { 1L + it.topicIDsCount.toLong() } +
-            controlEntries +
-            promiseEntries +
-            (if (rpc.hasPartial()) 1L else 0L) +
-            (if (rpc.hasTestExtension()) 1L else 0L)
-    return OutboundResourceUsage(rpc.serializedSize.toLong(), logicalEntries)
 }
