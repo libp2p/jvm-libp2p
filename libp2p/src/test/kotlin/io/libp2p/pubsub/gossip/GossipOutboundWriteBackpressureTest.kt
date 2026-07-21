@@ -23,6 +23,36 @@ import java.util.concurrent.TimeUnit
 class GossipOutboundWriteBackpressureTest : GossipTestsBase() {
 
     @Test
+    fun `v1_3 initial control extensions are flushed before progress deadline`() {
+        val fuzz = DeterministicFuzz()
+        val writePolicy = WritePolicy()
+        val params = singlePeerParams()
+        val scoreParams = directPeerScoreParams()
+        val sender = createSender(
+            fuzz,
+            writePolicy,
+            params,
+            scoreParams,
+            Duration.ofMillis(10),
+            protocol = PubsubProtocol.Gossip_V_1_3
+        )
+        val peer = createPeer(
+            fuzz,
+            params,
+            scoreParams,
+            protocol = PubsubProtocol.Gossip_V_1_3
+        )
+
+        sender.connectSemiDuplex(peer)
+        fuzz.timeController.addTime(Duration.ofMillis(20))
+
+        val senderRouter = sender.router as RecordingGossipRouter
+        assertThat(senderRouter.resetCount(peer.peerId)).isZero()
+        assertThat(writePolicy.messagesSentTo(peer.peerId))
+            .anyMatch { it.hasControl() && it.control.hasExtensions() }
+    }
+
+    @Test
     fun `unwritable peer is not materialized or written until transition`() {
         val fuzz = DeterministicFuzz()
         val writePolicy = WritePolicy()
@@ -528,13 +558,14 @@ class GossipOutboundWriteBackpressureTest : GossipTestsBase() {
         scoreParams: GossipScoreParams,
         progressTimeout: Duration,
         maxBytes: Long? = null,
-        maxEntries: Int = DEFAULT_MAX_OUTBOUND_RETAINED_ENTRIES_PER_PEER
+        maxEntries: Int = DEFAULT_MAX_OUTBOUND_RETAINED_ENTRIES_PER_PEER,
+        protocol: PubsubProtocol = PubsubProtocol.Gossip_V_1_2
     ): TestRouter = fuzz.createTestRouter(
         createGossipFuzzRouterFactory {
             RecordingGossipRouterBuilder(writePolicy, progressTimeout).apply {
                 this.params = params
                 this.scoreParams = scoreParams
-                protocol = PubsubProtocol.Gossip_V_1_2
+                this.protocol = protocol
                 maxOutboundRetainedBytesPerPeer = maxBytes
                 maxOutboundRetainedEntriesPerPeer = maxEntries
             }
@@ -562,11 +593,12 @@ class GossipOutboundWriteBackpressureTest : GossipTestsBase() {
     private fun createPeer(
         fuzz: DeterministicFuzz,
         params: GossipParams,
-        scoreParams: GossipScoreParams
+        scoreParams: GossipScoreParams,
+        protocol: PubsubProtocol = PubsubProtocol.Gossip_V_1_2
     ): TestRouter = fuzz.createTestRouter(
         createGossipFuzzRouterFactory {
             GossipRouterBuilder(
-                protocol = PubsubProtocol.Gossip_V_1_2,
+                protocol = protocol,
                 params = params,
                 scoreParams = scoreParams
             )

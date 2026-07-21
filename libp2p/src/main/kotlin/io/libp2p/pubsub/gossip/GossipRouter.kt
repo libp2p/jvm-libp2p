@@ -175,6 +175,7 @@ open class GossipRouter(
         eventBroadcaster.notifyConnected(peer.peerId, peer.getRemoteAddress())
         heartbeatTask.hashCode() // force lazy initialization
         sendControlExtensions(peer)
+        flushPending(peer)
     }
 
     override fun notifyUnseenMessage(peer: PeerHandler, msg: PubsubMessage) {
