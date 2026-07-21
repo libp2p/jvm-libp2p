@@ -26,6 +26,35 @@ import java.util.concurrent.TimeUnit
 class GossipOutboundWriteBackpressureTest : GossipTestsBase() {
 
     @Test
+    fun `materialization failure settles active generation and clears state`() {
+        val fuzz = DeterministicFuzz()
+        val writePolicy = WritePolicy()
+        val params = singlePeerParams().copy(maxGossipMessageSize = 1024)
+        val sender = createSender(
+            fuzz,
+            writePolicy,
+            params,
+            directPeerScoreParams(),
+            Duration.ofSeconds(10)
+        )
+        val peer = createPeer(fuzz, params, directPeerScoreParams())
+
+        peer.router.subscribe(TOPIC)
+        sender.connectSemiDuplex(peer)
+        fuzz.timeController.addTime(Duration.ofSeconds(2))
+
+        val oversizedMessage = newProtoMessage(TOPIC, 1, ByteArray(2048))
+        val senderRouter = sender.router as RecordingGossipRouter
+        val publication = senderRouter.enqueueOversizedPublishForTest(
+            peer.peerId,
+            oversizedMessage
+        )
+
+        assertThat(publication).isCompletedExceptionally
+        assertThat(senderRouter.hasNoOutboundStateForTest().join()).isTrue()
+    }
+
+    @Test
     fun `entry overflow resets peer and settles every promise`() {
         val fuzz = DeterministicFuzz()
         val writePolicy = WritePolicy()
@@ -570,6 +599,25 @@ class GossipOutboundWriteBackpressureTest : GossipTestsBase() {
 
         fun enqueueRpcForTest(peerId: PeerId, msg: Rpc.RPC): CompletableFuture<Unit> =
             submitOnEventThread { enqueueRpc(peers.single { it.peerId == peerId }, msg) }
+
+        fun enqueueOversizedPublishForTest(
+            peerId: PeerId,
+            msg: Rpc.Message
+        ): CompletableFuture<Unit> {
+            val promise = CompletableFuture<Unit>()
+            submitOnEventThread {
+                val pending = pendingRpcParts.get(peers.single { it.peerId == peerId })
+                pending.queue.addPublish(msg)
+                pending.promises += promise
+                pending.usage = OutboundResourceUsage(1, 1)
+                try {
+                    flushPending(peers.single { it.peerId == peerId })
+                } catch (_: Throwable) {
+                    // Let the test inspect the promise and router state after the service-boundary failure.
+                }
+            }.join()
+            return promise
+        }
 
         fun hasNoOutboundStateForTest(): CompletableFuture<Boolean> =
             submitOnEventThread { !hasOutboundState() }

@@ -100,6 +100,10 @@ open class GossipRouter(
     messageValidator
 ) {
 
+    init {
+        configureOutboundLimits(PubsubOutboundLimits.defaults(params.maxGossipMessageSize))
+    }
+
     internal fun configureOutboundWriteProgressTimeout(timeout: Duration) {
         outboundWriteProgressTimeout = timeout
     }

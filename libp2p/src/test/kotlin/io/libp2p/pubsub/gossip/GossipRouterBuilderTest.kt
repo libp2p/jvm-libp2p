@@ -104,14 +104,28 @@ class GossipRouterBuilderTest {
         assertThat(builder.createCount).isZero()
     }
 
+    @Test
+    fun `router construction starts with bounded default outbound limits`() {
+        val params = GossipParams(maxGossipMessageSize = 1024)
+        val builder = CreationTrackingGossipRouterBuilder(params)
+
+        builder.build()
+
+        assertThat(builder.limitsAtCreation)
+            .isEqualTo(PubsubOutboundLimits.defaults(params.maxGossipMessageSize))
+    }
+
     private class CreationTrackingGossipRouterBuilder(
         params: GossipParams
     ) : GossipRouterBuilder(params = params) {
         var createCount = 0
+        var limitsAtCreation: PubsubOutboundLimits? = null
 
         override fun createGossipRouter(): GossipRouter {
             createCount++
-            return super.createGossipRouter()
+            return super.createGossipRouter().also {
+                limitsAtCreation = it.outboundLimits
+            }
         }
     }
 }

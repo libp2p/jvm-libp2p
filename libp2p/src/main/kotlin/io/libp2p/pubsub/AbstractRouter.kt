@@ -199,10 +199,15 @@ abstract class AbstractRouter(
             return
         }
 
-        state.activeMessages = pending.queue.takeMerged()
         state.activeMessageIndex = 0
         state.activePromises = pending.promises.toList()
         state.activeUsage = pending.usage
+        try {
+            state.activeMessages = pending.queue.takeMerged()
+        } catch (cause: Throwable) {
+            cleanupOutbound(peer, cause, resetStream = true)
+            return
+        }
         if (state.activeMessages.isEmpty()) {
             completeActiveGeneration(state)
             outboundSendStates.remove(peer)
