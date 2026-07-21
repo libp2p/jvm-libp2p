@@ -61,13 +61,18 @@ abstract class AbstractRouter(
         outboundLimits = limits
     }
 
+    private class ActiveGeneration(
+        val promises: List<CompletableFuture<Unit>>,
+        val usage: OutboundResourceUsage
+    ) {
+        var messages: List<Rpc.RPC> = emptyList()
+        var messageIndex: Int = 0
+    }
+
     private class OutboundSendState {
+        var activeGeneration: ActiveGeneration? = null
         var activeWrite: CompletableFuture<Unit>? = null
         var progressDeadline: ScheduledFuture<*>? = null
-        var activeMessages: List<Rpc.RPC> = emptyList()
-        var activeMessageIndex: Int = 0
-        var activePromises: List<CompletableFuture<Unit>> = emptyList()
-        var activeUsage: OutboundResourceUsage = OutboundResourceUsage.ZERO
     }
 
     protected fun hasOutboundState(): Boolean =
@@ -135,9 +140,10 @@ abstract class AbstractRouter(
         addPart: (TPartsQueue) -> Unit
     ): Throwable? {
         stalledOutboundPeers[peer]?.let { return it }
-        val state = outboundSendStates.getOrPut(peer) { OutboundSendState() }
+        val existingState = outboundSendStates[peer]
         val pending = pendingMap.get(peer)
-        val retained = state.activeUsage.plusOrNull(pending.usage)
+        val activeUsage = existingState?.activeGeneration?.usage ?: OutboundResourceUsage.ZERO
+        val retained = activeUsage.plusOrNull(pending.usage)
         val projected = retained?.plusOrNull(usage)
 
         if (projected == null || !projected.fits(outboundLimits)) {
@@ -162,6 +168,7 @@ abstract class AbstractRouter(
         }
         pending.usage = pending.usage.plusOrNull(usage)!!
         promise?.let(pending.promises::add)
+        val state = existingState ?: OutboundSendState().also { outboundSendStates[peer] = it }
         ensureProgressDeadline(peer, state)
         return null
     }
@@ -508,8 +515,11 @@ abstract class AbstractRouter(
     ) {
         if (outboundSendStates[peer] !== state || state.activeWrite != null) return
 
-        if (state.activeMessageIndex >= state.activeMessages.size) {
-            completeActiveGeneration(state)
+        var generation = state.activeGeneration
+        if (generation == null || generation.messageIndex >= generation.messages.size) {
+            if (generation != null) {
+                completeActiveGeneration(state)
+            }
             if (pendingRpcParts.getOrNull(peer) == null) {
                 removeIdleState(peer, state)
                 return
@@ -519,16 +529,15 @@ abstract class AbstractRouter(
                 return
             }
             val pending = pendingRpcParts.pop(peer)!!
-            state.activePromises = pending.promises.toList()
-            state.activeUsage = pending.usage
-            state.activeMessages = try {
+            generation = ActiveGeneration(pending.promises.toList(), pending.usage)
+            state.activeGeneration = generation
+            generation.messages = try {
                 pending.queue.takeMerged()
             } catch (cause: Throwable) {
                 cleanupOutbound(peer, cause, resetStream = true)
                 return
             }
-            state.activeMessageIndex = 0
-            if (state.activeMessages.isEmpty()) {
+            if (generation.messages.isEmpty()) {
                 completeActiveGeneration(state)
                 removeIdleState(peer, state)
                 return
@@ -540,12 +549,12 @@ abstract class AbstractRouter(
             return
         }
 
-        startWrite(peer, state, state.activeMessages[state.activeMessageIndex])
+        startWrite(peer, state, generation.messages[generation.messageIndex])
     }
 
     private fun removeIdleState(peer: PeerHandler, state: OutboundSendState) {
         if (state.activeWrite == null &&
-            state.activeMessages.isEmpty() &&
+            state.activeGeneration == null &&
             pendingRpcParts.getOrNull(peer) == null &&
             outboundSendStates.remove(peer, state)
         ) {
@@ -559,7 +568,7 @@ abstract class AbstractRouter(
         state: OutboundSendState
     ): Boolean =
         state.activeWrite != null ||
-            state.activeMessages.isNotEmpty() ||
+            state.activeGeneration?.let { it.messageIndex < it.messages.size } == true ||
             pendingRpcParts.getOrNull(peer) != null
 
     private fun ensureProgressDeadline(peer: PeerHandler, state: OutboundSendState) {
@@ -602,7 +611,7 @@ abstract class AbstractRouter(
                 if (error != null) {
                     cleanupOutbound(peer, error, resetStream = true)
                 } else {
-                    state.activeMessageIndex++
+                    state.activeGeneration!!.messageIndex++
                     if (hasRetainedWork(peer, state)) {
                         ensureProgressDeadline(peer, state)
                     }
@@ -613,17 +622,9 @@ abstract class AbstractRouter(
     }
 
     private fun completeActiveGeneration(state: OutboundSendState) {
-        if (state.activeMessages.isEmpty() &&
-            state.activePromises.isEmpty() &&
-            state.activeUsage == OutboundResourceUsage.ZERO
-        ) {
-            return
-        }
-        state.activePromises.forEach { it.complete(Unit) }
-        state.activePromises = emptyList()
-        state.activeMessages = emptyList()
-        state.activeMessageIndex = 0
-        state.activeUsage = OutboundResourceUsage.ZERO
+        val generation = state.activeGeneration ?: return
+        generation.promises.forEach { it.complete(Unit) }
+        state.activeGeneration = null
     }
 
     private fun cleanupOutbound(peer: PeerHandler, cause: Throwable, resetStream: Boolean) {
@@ -632,11 +633,8 @@ abstract class AbstractRouter(
             state.progressDeadline = null
             state.activeWrite?.completeExceptionally(cause)
             state.activeWrite = null
-            state.activePromises.forEach { it.completeExceptionally(cause) }
-            state.activePromises = emptyList()
-            state.activeMessages = emptyList()
-            state.activeMessageIndex = 0
-            state.activeUsage = OutboundResourceUsage.ZERO
+            state.activeGeneration?.promises?.forEach { it.completeExceptionally(cause) }
+            state.activeGeneration = null
         }
         failQueuedOutbound(peer, cause)
 
