@@ -44,6 +44,9 @@ open class GossipRouterBuilder(
 ) {
 
     var outboundWriteProgressTimeout: Duration = DEFAULT_OUTBOUND_WRITE_PROGRESS_TIMEOUT
+    var maxOutboundRetainedBytesPerPeer: Long? = null
+    var maxOutboundRetainedEntriesPerPeer: Int =
+        DEFAULT_MAX_OUTBOUND_RETAINED_ENTRIES_PER_PEER
     var seenCache: SeenCache<Optional<ValidationResult>> by lazyVar { TTLSeenCache(SimpleSeenCache(), params.seenTTL, currentTimeSupplier) }
     var mCache: MCache by lazyVar { MCache(params.gossipSize, params.gossipHistoryLength) }
 
@@ -73,16 +76,25 @@ open class GossipRouterBuilder(
             messageValidator = messageValidator,
             gossipExtensionsConfig = buildGossipExtensionsConfig(),
         )
-        router.configureOutboundWriteProgressTimeout(outboundWriteProgressTimeout)
-
-        router.eventBroadcaster.listeners += gossipRouterEventListeners
         return router
     }
 
     open fun build(): GossipRouter {
         if (disposed) throw RuntimeException("The builder was already used")
         disposed = true
-        return createGossipRouter()
+        return createGossipRouter().also { router ->
+            router.configureOutboundWriteProgressTimeout(outboundWriteProgressTimeout)
+            router.configureOutboundLimits(resolveOutboundLimits())
+            router.eventBroadcaster.listeners += gossipRouterEventListeners
+        }
+    }
+
+    private fun resolveOutboundLimits(): PubsubOutboundLimits {
+        val defaults = PubsubOutboundLimits.defaults(params.maxGossipMessageSize)
+        return PubsubOutboundLimits(
+            maxOutboundRetainedBytesPerPeer ?: defaults.maxRetainedBytesPerPeer,
+            maxOutboundRetainedEntriesPerPeer
+        ).validate(params.maxGossipMessageSize)
     }
 
     private fun buildGossipExtensionsConfig(): GossipExtensionsConfig {

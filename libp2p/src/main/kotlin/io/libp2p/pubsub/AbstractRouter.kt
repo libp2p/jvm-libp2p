@@ -48,6 +48,8 @@ abstract class AbstractRouter(
 
     protected var msgHandler: PubsubMessageHandler = { throw IllegalStateException("Message handler is not initialized for PubsubRouter") }
     protected var outboundWriteProgressTimeout: Duration = DEFAULT_OUTBOUND_WRITE_PROGRESS_TIMEOUT
+    internal var outboundLimits: PubsubOutboundLimits = PubsubOutboundLimits.UNBOUNDED
+        private set
 
     protected open val peersTopics = mutableMultiBiMap<PeerHandler, Topic>()
     protected open val subscribedTopics = linkedSetOf<Topic>()
@@ -55,6 +57,10 @@ abstract class AbstractRouter(
     protected open val pendingMessagePromises = MultiSet<PeerHandler, CompletableFuture<Unit>>()
     private val outboundSendStates = mutableMapOf<PeerHandler, OutboundSendState>()
     private val stalledOutboundPeers = mutableMapOf<PeerHandler, Throwable>()
+
+    internal fun configureOutboundLimits(limits: PubsubOutboundLimits) {
+        outboundLimits = limits
+    }
 
     private class OutboundSendState {
         var activeWrite: CompletableFuture<Unit>? = null

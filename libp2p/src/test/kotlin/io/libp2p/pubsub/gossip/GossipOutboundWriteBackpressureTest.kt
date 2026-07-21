@@ -493,10 +493,7 @@ class GossipOutboundWriteBackpressureTest : GossipTestsBase() {
                 seenMessages = seenCache,
                 messageValidator = messageValidator,
                 writePolicy = writePolicy
-            ).also {
-                it.configureOutboundWriteProgressTimeout(outboundWriteProgressTimeout)
-                it.eventBroadcaster.listeners += gossipRouterEventListeners
-            }
+            )
         }
     }
 
