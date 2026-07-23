@@ -14,8 +14,8 @@ class BackpressureAwarePumpTest {
         val writes = ConcurrentLinkedQueue<Pair<Any, CompletableFuture<Boolean>>>()
         val writer =
             BackpressureAwarePump(
-                { message ->
-                    CompletableFuture<Boolean>().also { writes.add(message.message to it) }
+                { message, _ ->
+                    CompletableFuture<Boolean>().also { writes.add(message to it) }
                 },
                 {
                     CompletableFuture<MessageAndPromise?>().also(suppliedMessages::add)
@@ -48,7 +48,7 @@ class BackpressureAwarePumpTest {
         val writes = ConcurrentLinkedQueue<CompletableFuture<Boolean>>()
         val writer =
             BackpressureAwarePump(
-                {
+                { _, _ ->
                     CompletableFuture<Boolean>().also(writes::add)
                 },
                 {
@@ -72,7 +72,7 @@ class BackpressureAwarePumpTest {
         val suppliedMessages = ConcurrentLinkedQueue<CompletableFuture<MessageAndPromise?>>()
         val writer =
             BackpressureAwarePump(
-                { CompletableFuture.completedFuture(true) },
+                { _, _ -> CompletableFuture.completedFuture(true) },
                 {
                     CompletableFuture<MessageAndPromise?>().also(suppliedMessages::add)
                 }
@@ -92,8 +92,8 @@ class BackpressureAwarePumpTest {
         val writes = ConcurrentLinkedQueue<Any>()
         val writer =
             BackpressureAwarePump(
-                { message ->
-                    writes.add(message.message)
+                { message, _ ->
+                    writes.add(message)
                     CompletableFuture<Boolean>()
                 },
                 {
@@ -113,7 +113,7 @@ class BackpressureAwarePumpTest {
         val writes = ConcurrentLinkedQueue<CompletableFuture<Boolean>>()
         val writer =
             BackpressureAwarePump(
-                {
+                { _, _ ->
                     CompletableFuture<Boolean>().also(writes::add)
                 },
                 {
@@ -136,7 +136,7 @@ class BackpressureAwarePumpTest {
         val suppliedMessages = ConcurrentLinkedQueue<CompletableFuture<MessageAndPromise?>>()
         val writer =
             BackpressureAwarePump(
-                { CompletableFuture.completedFuture(true) },
+                { _, _ -> CompletableFuture.completedFuture(true) },
                 {
                     CompletableFuture<MessageAndPromise?>().also(suppliedMessages::add)
                 }
@@ -158,7 +158,7 @@ class BackpressureAwarePumpTest {
         val suppliedMessages = ConcurrentLinkedQueue<CompletableFuture<MessageAndPromise?>>()
         val writer =
             BackpressureAwarePump(
-                { CompletableFuture.completedFuture(true) },
+                { _, _ -> CompletableFuture.completedFuture(true) },
                 {
                     CompletableFuture<MessageAndPromise?>().also(suppliedMessages::add)
                 }

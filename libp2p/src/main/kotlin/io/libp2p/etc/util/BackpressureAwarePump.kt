@@ -3,11 +3,28 @@ package io.libp2p.etc.util
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CompletionStage
 
+/**
+ * Outbound message together with the promise that should be completed when the write finishes.
+ */
 data class MessageAndPromise(
     val messagePayload: Any,
     val writePromise: CompletableFuture<Unit>,
 )
 
+/**
+ * Drains outbound messages while respecting channel backpressure.
+ *
+ * The pump is driven by two external signals: [onNewOutboundData] tells it that the supplier may
+ * now have another message, and [onChannelWritabilityChanged] tells it whether polling new messages
+ * is currently allowed. Both methods are synchronized and may be called from different threads.
+ *
+ * [messageSupplier] returns the next already-consumed outbound message, or `null` when no message is
+ * ready. Once a non-null message is returned, the pump writes it even if channel writability changes
+ * to false before the supplier future completes. Backpressure only prevents polling the next message.
+ *
+ * [messageWriter] writes one supplied message and completes with the channel writability observed
+ * after that write was scheduled.
+ */
 class BackpressureAwarePump(
     private val messageWriter: BackpressureAwareAsyncWriter,
     private val messageSupplier: () -> CompletionStage<MessageAndPromise?>
@@ -23,7 +40,7 @@ class BackpressureAwarePump(
     private var outboundDataGeneration = 0L
 
     /**
-     * Notified when channel writability changes
+     * Notifies the pump that channel writability changed.
      */
     @Synchronized
     fun onChannelWritabilityChanged(isWritable: Boolean) {
@@ -34,7 +51,7 @@ class BackpressureAwarePump(
     }
 
     /**
-     * Notified when new outbound data is ready to be sent
+     * Notifies the pump that outbound data may now be available from [messageSupplier].
      */
     @Synchronized
     fun onNewOutboundData() {

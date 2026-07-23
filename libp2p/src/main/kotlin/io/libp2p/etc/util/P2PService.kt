@@ -1,11 +1,8 @@
 package io.libp2p.etc.util
 
-import io.libp2p.core.ConnectionClosedException
 import io.libp2p.core.InternalErrorException
 import io.libp2p.core.PeerId
 import io.libp2p.core.Stream
-import io.libp2p.core.StreamNotActiveException
-import io.libp2p.etc.types.forwardTo
 import io.libp2p.etc.types.submitAsync
 import io.libp2p.etc.types.toVoidCompletableFuture
 import io.netty.channel.ChannelHandlerContext
@@ -134,8 +131,8 @@ abstract class P2PService(
         private val backpressureAwarePump = BackpressureAwarePump(
             messageWriter = BackpressureAwareAsyncWriter.createFromStreamHandler(this),
             messageSupplier = {
-                submitOnEventThread() {
-                    maybeTakeOutboundMessage(this)
+                submitOnEventThread {
+                    pollOutboundMessage(this)
                 }
             }
         )
@@ -212,14 +209,21 @@ abstract class P2PService(
         onInbound(stream.getPeerHandler(), msg)
     }
 
-    protected fun notifyWriteDataAvailable(peer: PeerHandler) {
+    /**
+     * Notifies the service that outbound data is ready for [peer].
+     * May be called from any thread; the message will be polled later via [pollOutboundMessage]
+     * on the service event thread when the peer's outbound channel is writable.
+     */
+    protected fun notifyOutboundDataAvailable(peer: PeerHandler) {
         peer.onNewOutboundData()
     }
 
     /**
-     * Invoked on event thread
+     * Invoked on event thread to poll the next outbound message for [peer].
+     * The returned message is considered consumed and will be written exactly once.
+     * Return `null` when there is no outbound message ready for this peer.
      */
-    protected abstract fun maybeTakeOutboundMessage(peer: PeerHandler): MessageAndPromise?
+    protected abstract fun pollOutboundMessage(peer: PeerHandler): MessageAndPromise?
 
     /**
      * Callback notifies that the peer is active and ready for writing data
