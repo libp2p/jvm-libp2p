@@ -414,6 +414,7 @@ abstract class PubsubRouterTest(val routerFactory: DeterministicFuzzRouterFactor
         val msg = newMessage("topic1", 1L, "Hello".toByteArray())
         val publishFut = router1.router.publish(msg)
 
+        router1OutboundChannel.runPendingTasks()
         assertThat(publishFut).isNotDone()
         assertThat(router2.inboundMessages.poll(100, TimeUnit.MILLISECONDS)).isNull()
 
