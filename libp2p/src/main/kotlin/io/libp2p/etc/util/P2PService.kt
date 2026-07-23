@@ -1,8 +1,11 @@
 package io.libp2p.etc.util
 
+import io.libp2p.core.ConnectionClosedException
 import io.libp2p.core.InternalErrorException
 import io.libp2p.core.PeerId
 import io.libp2p.core.Stream
+import io.libp2p.core.StreamNotActiveException
+import io.libp2p.etc.types.forwardTo
 import io.libp2p.etc.types.submitAsync
 import io.libp2p.etc.types.toVoidCompletableFuture
 import io.netty.channel.ChannelHandlerContext
@@ -87,6 +90,11 @@ abstract class P2PService(
                 streamActive(this)
             }
         }
+
+        override fun channelWritabilityChanged(ctx: ChannelHandlerContext) {
+            peerHandler?.onStreamWriteabilityChanged(this, ctx.channel().isWritable)
+        }
+
         override fun channelUnregistered(ctx: ChannelHandlerContext?) {
             closed = true
             runOnEventThread(peerHandler) {
@@ -94,6 +102,15 @@ abstract class P2PService(
                 streamDisconnected(this)
             }
         }
+
+        /**
+         * Writes message immediately.
+         * To respect stream backpressure it is recommended to use [backpressureAwarePump] mechanism
+         */
+        fun writeAndFlush(msg: Any): CompletableFuture<Unit> =
+            ctx?.writeAndFlush(msg)?.toVoidCompletableFuture()
+                ?: CompletableFuture.failedFuture(StreamNotActiveException())
+
 
         override fun exceptionCaught(ctx: ChannelHandlerContext?, cause: Throwable) {
             runOnEventThread(peerHandler) {
@@ -123,10 +140,28 @@ abstract class P2PService(
      */
     open inner class PeerHandler(val streamHandler: StreamHandler) {
         open val peerId = streamHandler.stream.remotePeerId()
-        open fun writeAndFlush(msg: Any): CompletableFuture<Unit> = streamHandler.ctx!!.writeAndFlush(msg).toVoidCompletableFuture()
+        private val backpressureAwarePump = BackpressureAwarePump(
+            messageWriter = BackpressureAwareAsyncWriter.createFromStreamHandler(this),
+            messageSupplier = {
+                submitOnEventThread() {
+                    maybeTakeOutboundMessage(this)
+                }
+            }
+        )
+
+        open fun writeAndFlush(msg: Any): CompletableFuture<Unit> = streamHandler.writeAndFlush(msg)
         open fun isActive() = streamHandler.ctx != null
         open fun getInboundHandler(): StreamHandler? = streamHandler
         open fun getOutboundHandler(): StreamHandler? = streamHandler
+
+        internal fun onStreamWriteabilityChanged(streamHandler: StreamHandler, isWriteable: Boolean) {
+            if (streamHandler == getOutboundHandler()) {
+                backpressureAwarePump.onChannelWritabilityChanged(isWriteable)
+            }
+        }
+        internal fun onNewOutboundData() {
+            backpressureAwarePump.onNewOutboundData()
+        }
         override fun toString(): String {
             return "PeerHandler(peerId=$peerId, stream=${streamHandler.stream})"
         }
@@ -161,6 +196,12 @@ abstract class P2PService(
 
     protected open fun createPeerHandler(streamHandler: StreamHandler) = PeerHandler(streamHandler)
 
+    /**
+     * Callback notifies that a stream's outbound writability changed.
+     * Invoked on the service event thread.
+     */
+    protected open fun streamWritabilityChanged(stream: StreamHandler) {}
+
     protected open fun streamActive(stream: StreamHandler) {
         if (stream.aborted) return
         activePeersMutable += stream.getPeerHandler()
@@ -185,6 +226,15 @@ abstract class P2PService(
         if (stream.aborted) return
         onInbound(stream.getPeerHandler(), msg)
     }
+
+    protected fun notifyWriteDataAvailable(peer: PeerHandler) {
+        peer.onNewOutboundData()
+    }
+
+    /**
+     * Invoked on event thread
+     */
+    protected abstract fun maybeTakeOutboundMessage(peer: PeerHandler): MessageAndPromise?
 
     /**
      * Callback notifies that the peer is active and ready for writing data

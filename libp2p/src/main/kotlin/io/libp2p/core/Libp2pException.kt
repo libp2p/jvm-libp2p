@@ -71,4 +71,8 @@ open class ProtocolViolationException(message: String) : Libp2pException(message
  * When trying to write a message to a peer within [io.libp2p.etc.util.P2PServiceSemiDuplex]
  * but there is no yet outbound stream created.
  */
-open class SemiDuplexNoOutboundStreamException(message: String) : Libp2pException(message)
+open class SemiDuplexNoOutboundStreamException(message: String = "SDPeerHandler.otherStreamHandler hasn't been initialized") :
+    Libp2pException(message)
+
+open class StreamNotActiveException(message: String = "Stream is either closed already or not activated yet") :
+    Libp2pException(message)
