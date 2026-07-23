@@ -9,6 +9,7 @@ import io.libp2p.etc.util.netty.nettyInitializer
 import io.libp2p.transport.implementation.ConnectionOverNetty
 import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelId
+import io.netty.channel.EventLoop
 import io.netty.channel.embedded.EmbeddedChannel
 import org.slf4j.LoggerFactory
 import java.net.InetSocketAddress
@@ -61,6 +62,16 @@ class TestChannel(
 
     fun <TRet> onChannelThread(task: (EmbeddedChannel) -> TRet): CompletableFuture<TRet> {
         return CompletableFuture.supplyAsync({ task(this) }, executor)
+    }
+
+    override fun eventLoop(): EventLoop {
+        val delegate = super.eventLoop()
+        return object : EventLoop by delegate {
+            override fun execute(command: Runnable) {
+                delegate.execute(command)
+                runPendingTasks()
+            }
+        }
     }
 
     @Suppress("DEPRECATION")
