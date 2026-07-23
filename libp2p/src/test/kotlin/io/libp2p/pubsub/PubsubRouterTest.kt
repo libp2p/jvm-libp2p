@@ -399,6 +399,34 @@ abstract class PubsubRouterTest(val routerFactory: DeterministicFuzzRouterFactor
     }
 
     @Test
+    fun `publish waits until outbound channel becomes writable`() {
+        val fuzz = DeterministicFuzz()
+
+        val router1 = fuzz.createTestRouter(routerFactory)
+        val router2 = fuzz.createTestRouter(routerFactory)
+        router2.router.subscribe("topic1")
+
+        val connection = router1.connectSemiDuplex(router2, LogLevel.ERROR, LogLevel.ERROR)
+        val router1OutboundChannel = connection.conn1.ch1
+        router1OutboundChannel.setWritableForTest(false)
+        assertThat(router1OutboundChannel.isWritable).isFalse()
+
+        val msg = newMessage("topic1", 1L, "Hello".toByteArray())
+        val publishFut = router1.router.publish(msg)
+
+        assertThat(publishFut).isNotDone()
+        assertThat(router2.inboundMessages.poll(100, TimeUnit.MILLISECONDS)).isNull()
+
+        router1OutboundChannel.setWritableForTest(true)
+        router1OutboundChannel.runPendingTasks()
+
+        publishFut.get(5, TimeUnit.SECONDS)
+        assertThat(router2.inboundMessages.poll(5, TimeUnit.SECONDS)).isEqualTo(msg)
+        assertThat(router1.inboundMessages).isEmpty()
+        assertThat(router2.inboundMessages).isEmpty()
+    }
+
+    @Test
     fun validateTest() {
         val fuzz = DeterministicFuzz()
 

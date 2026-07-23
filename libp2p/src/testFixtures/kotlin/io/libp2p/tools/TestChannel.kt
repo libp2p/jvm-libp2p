@@ -63,6 +63,12 @@ class TestChannel(
         return CompletableFuture.supplyAsync({ task(this) }, executor)
     }
 
+    @Suppress("DEPRECATION")
+    fun setWritableForTest(isWritable: Boolean) {
+        unsafe().outboundBuffer().setUserDefinedWritability(1, isWritable)
+        pipeline().fireChannelWritabilityChanged()
+    }
+
     @Synchronized
     fun connect(other: TestChannel) {
         link = other
