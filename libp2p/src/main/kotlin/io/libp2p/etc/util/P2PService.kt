@@ -103,15 +103,6 @@ abstract class P2PService(
             }
         }
 
-        /**
-         * Writes message immediately.
-         * To respect stream backpressure it is recommended to use [backpressureAwarePump] mechanism
-         */
-        fun writeAndFlush(msg: Any): CompletableFuture<Unit> =
-            ctx?.writeAndFlush(msg)?.toVoidCompletableFuture()
-                ?: CompletableFuture.failedFuture(StreamNotActiveException())
-
-
         override fun exceptionCaught(ctx: ChannelHandlerContext?, cause: Throwable) {
             runOnEventThread(peerHandler) {
                 streamException(this, cause)
@@ -149,7 +140,7 @@ abstract class P2PService(
             }
         )
 
-        open fun writeAndFlush(msg: Any): CompletableFuture<Unit> = streamHandler.writeAndFlush(msg)
+        open fun writeAndFlush(msg: Any): CompletableFuture<Unit> = streamHandler.ctx!!.writeAndFlush(msg).toVoidCompletableFuture()
         open fun isActive() = streamHandler.ctx != null
         open fun getInboundHandler(): StreamHandler? = streamHandler
         open fun getOutboundHandler(): StreamHandler? = streamHandler
@@ -195,12 +186,6 @@ abstract class P2PService(
     }
 
     protected open fun createPeerHandler(streamHandler: StreamHandler) = PeerHandler(streamHandler)
-
-    /**
-     * Callback notifies that a stream's outbound writability changed.
-     * Invoked on the service event thread.
-     */
-    protected open fun streamWritabilityChanged(stream: StreamHandler) {}
 
     protected open fun streamActive(stream: StreamHandler) {
         if (stream.aborted) return
