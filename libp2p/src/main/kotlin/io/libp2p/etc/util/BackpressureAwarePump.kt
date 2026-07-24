@@ -90,19 +90,19 @@ class BackpressureAwarePump(
     @Synchronized
     private fun writeMessage(message: MessageAndPromise) {
         messageWriter.write(message.messagePayload, message.writePromise)
-            .whenComplete { isWritable: Boolean, error: Throwable? ->
+            .whenComplete { isWritable: Boolean?, error: Throwable? ->
                 onMessageWritten(isWritable, error)
             }
     }
 
     @Synchronized
     private fun onMessageWritten(
-        isWritable: Boolean,
+        isWritable: Boolean?,
         error: Throwable?
     ) {
         when {
             error != null -> state = State.IDLE
-            !isWritable -> {
+            isWritable == false -> {
                 channelWritable = false
                 state = State.BLOCKED
             }

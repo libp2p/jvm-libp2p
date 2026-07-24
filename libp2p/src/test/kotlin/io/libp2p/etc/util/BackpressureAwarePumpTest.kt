@@ -182,5 +182,25 @@ class BackpressureAwarePumpTest {
         assertThat(suppliedMessages).hasSize(1)
     }
 
+    @Test
+    fun `recovers after writer failure`() {
+        val suppliedMessages = ConcurrentLinkedQueue<CompletableFuture<MessageAndPromise?>>()
+        val writer =
+            BackpressureAwarePump(
+                { _, _ ->
+                    CompletableFuture.failedFuture(IllegalStateException("write failed"))
+                },
+                {
+                    CompletableFuture<MessageAndPromise?>().also(suppliedMessages::add)
+                }
+            )
+
+        writer.onNewOutboundData()
+        suppliedMessages.remove().complete(message("first"))
+        writer.onNewOutboundData()
+
+        assertThat(suppliedMessages).hasSize(1)
+    }
+
     private fun message(value: String) = MessageAndPromise(value, CompletableFuture())
 }
