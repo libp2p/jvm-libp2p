@@ -1,6 +1,7 @@
 package io.libp2p.pubsub
 
 import io.libp2p.core.BadPeerException
+import io.libp2p.core.ConnectionClosedException
 import io.libp2p.core.PeerId
 import io.libp2p.core.Stream
 import io.libp2p.core.pubsub.ValidationResult
@@ -314,7 +315,9 @@ abstract class AbstractRouter(
     override fun onPeerDisconnected(peer: PeerHandler) {
         super.onPeerDisconnected(peer)
         peersTopics.removeAllByFirst(peer)
-        pendingOutboundMessages.remove(peer)
+        pendingOutboundMessages.remove(peer)?.forEach {
+            it.writePromise.completeExceptionally(ConnectionClosedException())
+        }
     }
 
     override fun onPeerWireException(peer: PeerHandler?, cause: Throwable) {

@@ -550,4 +550,27 @@ abstract class PubsubRouterTest(val routerFactory: DeterministicFuzzRouterFactor
         assertThat(peerTopics1SetIt.next()).isEqualTo("topic1")
         assertThat(peerTopics1SetIt.hasNext()).isFalse()
     }
+
+    @Test
+    fun `queued publish completes when peer disconnects`() {
+        val fuzz = DeterministicFuzz()
+
+        val router1 = fuzz.createTestRouter(routerFactory)
+        val router2 = fuzz.createTestRouter(routerFactory)
+        router2.router.subscribe("topic1")
+
+        val connection = router1.connectSemiDuplex(router2, LogLevel.ERROR, LogLevel.ERROR)
+        val router1OutboundChannel = connection.conn1.ch1
+        router1OutboundChannel.setWritableForTest(false)
+
+        val msg = newMessage("topic1", 2L, "Hello".toByteArray())
+        val publishFut = router1.router.publish(msg)
+        router1OutboundChannel.runPendingTasks()
+        assertThat(publishFut).isNotDone()
+
+        connection.disconnect()
+        router1OutboundChannel.runPendingTasks()
+
+        assertThat(publishFut).isDone()
+    }
 }
