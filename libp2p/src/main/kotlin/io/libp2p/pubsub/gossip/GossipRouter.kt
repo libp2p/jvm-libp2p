@@ -160,7 +160,6 @@ open class GossipRouter(
         mesh.values.forEach { it.remove(peer) }
         fanout.values.forEach { it.remove(peer) }
         acceptRequestsWhitelist -= peer
-        pendingRpcParts.popQueue(peer) // discard them
         gossipExtensionsState.onPeerDisconnected(peer.peerId)
         super.onPeerDisconnected(peer)
     }
@@ -377,7 +376,7 @@ open class GossipRouter(
         msg.messageIDsList
             .mapNotNull { mCache.getMessageForPeer(peer.peerId, it.toWBytes()) }
             .filter { it.sentCount < params.gossipRetransmission }
-            .forEach { submitPublishMessage(peer, it.msg) }
+            .forEach { submitPublishMessageSilently(peer, it.msg) }
     }
 
     private fun handleIDontWant(msg: Rpc.ControlIDontWant, peer: PeerHandler) {
@@ -518,7 +517,7 @@ open class GossipRouter(
                 .distinct()
                 .minus(receivedFrom)
                 .filterNot { peerDoesNotWantMessage(it, pubMsg.messageId) }
-                .forEach { submitPublishMessage(it, pubMsg) }
+                .forEach { submitPublishMessageSilently(it, pubMsg) }
             mCache += pubMsg
         }
         flushAllPending()

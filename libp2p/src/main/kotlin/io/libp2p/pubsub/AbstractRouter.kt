@@ -15,7 +15,6 @@ import io.netty.handler.codec.protobuf.ProtobufEncoder
 import io.netty.handler.codec.protobuf.ProtobufVarint32LengthFieldPrepender
 import org.slf4j.LoggerFactory
 import pubsub.pb.Rpc
-import java.util.ArrayDeque
 import java.util.Collections.singletonList
 import java.util.Optional
 import java.util.concurrent.CompletableFuture
@@ -50,8 +49,6 @@ abstract class AbstractRouter(
     protected open val peersTopics = mutableMultiBiMap<PeerHandler, Topic>()
     protected open val subscribedTopics = linkedSetOf<Topic>()
     protected open val pendingRpcParts = PendingRpcPartsMap<RpcPartsQueue> { DefaultRpcPartsQueue() }
-    protected open val pendingMessagePromises = MultiSet<PeerHandler, CompletableFuture<Unit>>()
-    private val pendingOutboundMessages = mutableMapOf<PeerHandler, ArrayDeque<MessageAndPromise>>()
 
     protected class PendingRpcPartsMap<out TPartsQueue : RpcPartsQueue>(
         private val queueFactory: () -> TPartsQueue
@@ -61,7 +58,9 @@ abstract class AbstractRouter(
         val pendingPeers: Collection<PeerHandler> get() = map.keys.copy()
 
         fun getQueue(peer: PeerHandler) = map.computeIfAbsent(peer) { queueFactory() }
-        fun popQueue(peer: PeerHandler) = map.remove(peer) ?: queueFactory()
+        fun onDisconnected(peer: PeerHandler) {
+            map.remove(peer)?.abort(ConnectionClosedException())
+        }
     }
 
     override fun publish(msg: PubsubMessage): CompletableFuture<Unit> {
@@ -76,10 +75,13 @@ abstract class AbstractRouter(
         }
     }
 
-    protected open fun submitPublishMessage(toPeer: PeerHandler, msg: PubsubMessage): CompletableFuture<Unit> {
+    protected open fun submitPublishMessageSilently(toPeer: PeerHandler, msg: PubsubMessage) {
         pendingRpcParts.getQueue(toPeer).addPublish(msg.protobufMessage)
+    }
+
+    protected open fun submitPublishMessage(toPeer: PeerHandler, msg: PubsubMessage): CompletableFuture<Unit> {
         val sendPromise = CompletableFuture<Unit>()
-        pendingMessagePromises[toPeer] += sendPromise
+        pendingRpcParts.getQueue(toPeer).addPublish(msg.protobufMessage, sendPromise)
         return sendPromise
     }
 
@@ -104,18 +106,6 @@ abstract class AbstractRouter(
     }
 
     protected fun flushPending(peer: PeerHandler) {
-        val peerMessages = pendingRpcParts.popQueue(peer).takeMerged()
-        val messageAndPromises = peerMessages.map { message ->
-            MessageAndPromise(message, CompletableFuture())
-        }
-        val allSendPromise = messageAndPromises.map { it.writePromise }.thenApplyAll { }
-        pendingMessagePromises.removeAll(peer)?.forEach {
-            allSendPromise.forward(it)
-        }
-        pendingOutboundMessages
-            .getOrPut(peer) { ArrayDeque() }
-            .addAll(messageAndPromises)
-
         notifyOutboundDataAvailable(peer)
     }
 
@@ -315,9 +305,7 @@ abstract class AbstractRouter(
     override fun onPeerDisconnected(peer: PeerHandler) {
         super.onPeerDisconnected(peer)
         peersTopics.removeAllByFirst(peer)
-        pendingOutboundMessages.remove(peer)?.forEach {
-            it.writePromise.completeExceptionally(ConnectionClosedException())
-        }
+        pendingRpcParts.onDisconnected(peer)
     }
 
     override fun onPeerWireException(peer: PeerHandler?, cause: Throwable) {
@@ -345,7 +333,14 @@ abstract class AbstractRouter(
     protected fun getTopicPeers(topic: Topic) = peersTopics.getBySecond(topic)
 
     override fun pollOutboundMessage(peer: PeerHandler): MessageAndPromise? {
-        return pendingOutboundMessages[peer]?.pollFirst()
+        val slice = pendingRpcParts.getQueue(peer).slice()
+        if (slice.isEmpty()) {
+            return null
+        } else {
+            val writePromise = slice.mergePromises()
+            val message = slice.mergeRpc()
+            return MessageAndPromise(message, writePromise)
+        }
     }
 
     override fun subscribe(vararg topics: Topic) {

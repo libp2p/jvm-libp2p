@@ -6,6 +6,7 @@ import io.libp2p.pubsub.DefaultRpcPartsQueue
 import io.libp2p.pubsub.MessageId
 import io.libp2p.pubsub.RpcPartsQueue
 import io.libp2p.pubsub.Topic
+import io.libp2p.pubsub.gossip.GossipParams.Companion.builder
 import pubsub.pb.Rpc
 
 interface GossipRpcPartsQueue : RpcPartsQueue {
@@ -40,6 +41,10 @@ open class DefaultGossipRpcPartsQueue(
     private val params: GossipParams
 ) : DefaultRpcPartsQueue(), GossipRpcPartsQueue {
 
+    protected constructor(params: GossipParams, parts: List<AbstractPart>) : this(params) {
+        this.parts.addAll(parts)
+    }
+
     protected data class IHavePart(val messageId: MessageId, val topic: Topic) : AbstractPart {
         override fun appendToBuilder(builder: Rpc.RPC.Builder) {
             val ctrlBuilder = builder.controlBuilder
@@ -69,7 +74,8 @@ open class DefaultGossipRpcPartsQueue(
         }
     }
 
-    protected data class PrunePart(val topic: Topic, val backoffSeconds: Long?, val backoffPeers: List<PeerId>) : AbstractPart {
+    protected data class PrunePart(val topic: Topic, val backoffSeconds: Long?, val backoffPeers: List<PeerId>) :
+        AbstractPart {
         override fun appendToBuilder(builder: Rpc.RPC.Builder) {
             val pruneBuilder = builder.controlBuilder.addPruneBuilder()
             pruneBuilder.setTopicID(topic)
@@ -114,39 +120,34 @@ open class DefaultGossipRpcPartsQueue(
         addPart(ControlExtensionPart(ctrlMessage))
     }
 
-    override fun takeMerged(): List<Rpc.RPC> {
-        val ret = mutableListOf<Rpc.RPC>()
+    override fun slice(): RpcPartsQueue {
+        var publishCount = params.maxPublishedMessages ?: Int.MAX_VALUE
+        var subscriptionCount = params.maxSubscriptions ?: Int.MAX_VALUE
+        var iHaveCount = params.maxIHaveLength
+        var iWantCount = params.maxIWantMessageIds ?: Int.MAX_VALUE
+        var graftCount = params.maxGraftMessages ?: Int.MAX_VALUE
+        var pruneCount = params.maxPruneMessages ?: Int.MAX_VALUE
+
         var partIdx = 0
-        while (partIdx < parts.size) {
-            val builder = Rpc.RPC.newBuilder()
 
-            var publishCount = params.maxPublishedMessages ?: Int.MAX_VALUE
-            var subscriptionCount = params.maxSubscriptions ?: Int.MAX_VALUE
-            var iHaveCount = params.maxIHaveLength
-            var iWantCount = params.maxIWantMessageIds ?: Int.MAX_VALUE
-            var graftCount = params.maxGraftMessages ?: Int.MAX_VALUE
-            var pruneCount = params.maxPruneMessages ?: Int.MAX_VALUE
-
-            while (partIdx < parts.size &&
-                publishCount > 0 && subscriptionCount > 0 && iHaveCount > 0 &&
-                iWantCount > 0 && graftCount > 0 && pruneCount > 0
-            ) {
-                val part = parts[partIdx++]
-                when (part) {
-                    is PublishPart -> publishCount--
-                    is SubscriptionPart -> subscriptionCount--
-                    is IHavePart -> iHaveCount--
-                    is IWantPart -> iWantCount--
-                    is GraftPart -> graftCount--
-                    is PrunePart -> pruneCount--
-                }
-
-                part.appendToBuilder(builder)
+        while (partIdx < parts.size &&
+            publishCount > 0 && subscriptionCount > 0 && iHaveCount > 0 &&
+            iWantCount > 0 && graftCount > 0 && pruneCount > 0
+        ) {
+            val part = parts[partIdx++]
+            when (part) {
+                is PublishPart -> publishCount--
+                is SubscriptionPart -> subscriptionCount--
+                is IHavePart -> iHaveCount--
+                is IWantPart -> iWantCount--
+                is GraftPart -> graftCount--
+                is PrunePart -> pruneCount--
             }
-            ret += builder.build()
         }
+        val sliceSublist: MutableList<AbstractPart> = parts.subList(0, partIdx)
+        val ret = DefaultGossipRpcPartsQueue(params, sliceSublist.toList())
+        sliceSublist.clear()
 
-        parts.clear()
         return ret
     }
 }
