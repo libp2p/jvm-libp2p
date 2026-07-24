@@ -29,9 +29,14 @@ fun interface BackpressureAwareAsyncWriter {
                         return CompletableFuture.failedFuture(StreamNotActiveException())
                     }
                     val ret = CompletableFuture<Boolean>()
-                    channel.eventLoop().execute {
-                        channel.writeAndFlush(message).forwardTo(writePromise)
-                        ret.complete(channel.isWritable)
+                    try {
+                        channel.eventLoop().execute {
+                            channel.writeAndFlush(message).forwardTo(writePromise)
+                            ret.complete(channel.isWritable)
+                        }
+                    } catch (e: Exception) {
+                        ret.completeExceptionally(e)
+                        writePromise.completeExceptionally(e)
                     }
                     return ret
                 }
