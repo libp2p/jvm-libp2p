@@ -56,10 +56,12 @@ class BackpressureAwarePump(
     @Synchronized
     fun onNewOutboundData() {
         outboundDataGeneration++
-        if (state == State.IDLE && channelWritable) {
-            takeNextMessage()
-        } else if (state == State.IDLE) {
-            state = State.BLOCKED
+        if (state == State.IDLE) {
+            if (channelWritable) {
+                takeNextMessage()
+            } else {
+                state = State.BLOCKED
+            }
         }
     }
 
