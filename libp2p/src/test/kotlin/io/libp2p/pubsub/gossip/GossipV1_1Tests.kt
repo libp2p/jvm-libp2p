@@ -1458,6 +1458,20 @@ class GossipV1_1Tests : GossipTestsBase() {
         assertEquals(expectedPublishedCount, publishedCount)
     }
 
+    @Test
+    fun `pollOutboundMessages should return null when empty instead of exception`() {
+        val test = TwoRoutersTest()
+        val peer = test.mockRouter.peers.single()
+        test.connection.conn2.ch1.setWritableForTest(false)
+
+        assertNull(test.mockRouter.pollOutboundMessage(peer))
+
+        test.mockRouter.enqueuePublishForTest(peer, newProtoMessage("topic1", 0L, "Hello".toByteArray()))
+
+        assertNotNull(test.mockRouter.pollOutboundMessage(peer))
+        assertNull(test.mockRouter.pollOutboundMessage(peer))
+    }
+
     private fun createGraftMessage(topic: String): Rpc.RPC {
         return Rpc.RPC.newBuilder().setControl(
             Rpc.ControlMessage.newBuilder().addGraft(

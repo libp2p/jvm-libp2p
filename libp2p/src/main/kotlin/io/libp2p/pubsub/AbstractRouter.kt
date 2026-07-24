@@ -345,7 +345,7 @@ abstract class AbstractRouter(
     protected fun getTopicPeers(topic: Topic) = peersTopics.getBySecond(topic)
 
     override fun pollOutboundMessage(peer: PeerHandler): MessageAndPromise? {
-        return pendingOutboundMessages[peer]?.removeFirst()
+        return pendingOutboundMessages[peer]?.pollFirst()
     }
 
     override fun subscribe(vararg topics: Topic) {
