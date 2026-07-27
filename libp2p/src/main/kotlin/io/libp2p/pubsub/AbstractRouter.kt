@@ -1,10 +1,12 @@
 package io.libp2p.pubsub
 
 import io.libp2p.core.BadPeerException
+import io.libp2p.core.ConnectionClosedException
 import io.libp2p.core.PeerId
 import io.libp2p.core.Stream
 import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.etc.types.*
+import io.libp2p.etc.util.MessageAndPromise
 import io.libp2p.etc.util.P2PServiceSemiDuplex
 import io.libp2p.etc.util.netty.protobuf.LimitedProtobufVarint32FrameDecoder
 import io.netty.channel.ChannelHandler
@@ -13,6 +15,7 @@ import io.netty.handler.codec.protobuf.ProtobufEncoder
 import io.netty.handler.codec.protobuf.ProtobufVarint32LengthFieldPrepender
 import org.slf4j.LoggerFactory
 import pubsub.pb.Rpc
+import java.util.ArrayDeque
 import java.util.Collections.singletonList
 import java.util.Optional
 import java.util.concurrent.CompletableFuture
@@ -48,6 +51,7 @@ abstract class AbstractRouter(
     protected open val subscribedTopics = linkedSetOf<Topic>()
     protected open val pendingRpcParts = PendingRpcPartsMap<RpcPartsQueue> { DefaultRpcPartsQueue() }
     protected open val pendingMessagePromises = MultiSet<PeerHandler, CompletableFuture<Unit>>()
+    private val pendingOutboundMessages = mutableMapOf<PeerHandler, ArrayDeque<MessageAndPromise>>()
 
     protected class PendingRpcPartsMap<out TPartsQueue : RpcPartsQueue>(
         private val queueFactory: () -> TPartsQueue
@@ -101,10 +105,18 @@ abstract class AbstractRouter(
 
     protected fun flushPending(peer: PeerHandler) {
         val peerMessages = pendingRpcParts.popQueue(peer).takeMerged()
-        val allSendPromise = peerMessages.map { send(peer, it) }.thenApplyAll { }
+        val messageAndPromises = peerMessages.map { message ->
+            MessageAndPromise(message, CompletableFuture())
+        }
+        val allSendPromise = messageAndPromises.map { it.writePromise }.thenApplyAll { }
         pendingMessagePromises.removeAll(peer)?.forEach {
             allSendPromise.forward(it)
         }
+        pendingOutboundMessages
+            .getOrPut(peer) { ArrayDeque() }
+            .addAll(messageAndPromises)
+
+        notifyOutboundDataAvailable(peer)
     }
 
     override fun addPeer(peer: Stream) = addPeerWithDebugHandler(peer, null)
@@ -303,6 +315,9 @@ abstract class AbstractRouter(
     override fun onPeerDisconnected(peer: PeerHandler) {
         super.onPeerDisconnected(peer)
         peersTopics.removeAllByFirst(peer)
+        pendingOutboundMessages.remove(peer)?.forEach {
+            it.writePromise.completeExceptionally(ConnectionClosedException())
+        }
     }
 
     override fun onPeerWireException(peer: PeerHandler?, cause: Throwable) {
@@ -328,6 +343,10 @@ abstract class AbstractRouter(
     }
 
     protected fun getTopicPeers(topic: Topic) = peersTopics.getBySecond(topic)
+
+    override fun pollOutboundMessage(peer: PeerHandler): MessageAndPromise? {
+        return pendingOutboundMessages[peer]?.pollFirst()
+    }
 
     override fun subscribe(vararg topics: Topic) {
         runOnEventThread {

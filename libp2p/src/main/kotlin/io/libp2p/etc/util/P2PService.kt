@@ -87,6 +87,11 @@ abstract class P2PService(
                 streamActive(this)
             }
         }
+
+        override fun channelWritabilityChanged(ctx: ChannelHandlerContext) {
+            peerHandler?.onStreamWriteabilityChanged(this, ctx.channel().isWritable)
+        }
+
         override fun channelUnregistered(ctx: ChannelHandlerContext?) {
             closed = true
             runOnEventThread(peerHandler) {
@@ -123,10 +128,28 @@ abstract class P2PService(
      */
     open inner class PeerHandler(val streamHandler: StreamHandler) {
         open val peerId = streamHandler.stream.remotePeerId()
+        private val backpressureAwarePump = BackpressureAwarePump(
+            messageWriter = BackpressureAwareAsyncWriter.createFromStreamHandler(this),
+            messageSupplier = {
+                submitOnEventThread {
+                    pollOutboundMessage(this)
+                }
+            }
+        )
+
         open fun writeAndFlush(msg: Any): CompletableFuture<Unit> = streamHandler.ctx!!.writeAndFlush(msg).toVoidCompletableFuture()
         open fun isActive() = streamHandler.ctx != null
         open fun getInboundHandler(): StreamHandler? = streamHandler
         open fun getOutboundHandler(): StreamHandler? = streamHandler
+
+        internal fun onStreamWriteabilityChanged(streamHandler: StreamHandler, isWriteable: Boolean) {
+            if (streamHandler == getOutboundHandler()) {
+                backpressureAwarePump.onChannelWritabilityChanged(isWriteable)
+            }
+        }
+        internal fun onNewOutboundData() {
+            backpressureAwarePump.onNewOutboundData()
+        }
         override fun toString(): String {
             return "PeerHandler(peerId=$peerId, stream=${streamHandler.stream})"
         }
@@ -185,6 +208,22 @@ abstract class P2PService(
         if (stream.aborted) return
         onInbound(stream.getPeerHandler(), msg)
     }
+
+    /**
+     * Notifies the service that outbound data is ready for [peer].
+     * May be called from any thread; the message will be polled later via [pollOutboundMessage]
+     * on the service event thread when the peer's outbound channel is writable.
+     */
+    protected fun notifyOutboundDataAvailable(peer: PeerHandler) {
+        peer.onNewOutboundData()
+    }
+
+    /**
+     * Invoked on event thread to poll the next outbound message for [peer].
+     * The returned message is considered consumed and will be written exactly once.
+     * Return `null` when there is no outbound message ready for this peer.
+     */
+    protected abstract fun pollOutboundMessage(peer: PeerHandler): MessageAndPromise?
 
     /**
      * Callback notifies that the peer is active and ready for writing data
