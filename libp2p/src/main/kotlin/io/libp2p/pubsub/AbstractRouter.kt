@@ -332,14 +332,8 @@ abstract class AbstractRouter(
     protected fun getTopicPeers(topic: Topic) = peersTopics.getBySecond(topic)
 
     override fun pollOutboundMessage(peer: PeerHandler): MessageAndPromise? {
-        val slice = pendingRpcParts.getQueue(peer).takeBatch()
-        if (slice.isEmpty()) {
-            return null
-        } else {
-            val writePromise = slice.mergePromises()
-            val message = slice.mergeRpc()
-            return MessageAndPromise(message, writePromise)
-        }
+        val batch = pendingRpcParts.getQueue(peer).takeBatch() ?: return null
+        return MessageAndPromise(batch.rpc, batch.writePromise)
     }
 
     override fun subscribe(vararg topics: Topic) {

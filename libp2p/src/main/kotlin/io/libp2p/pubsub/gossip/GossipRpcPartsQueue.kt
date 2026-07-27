@@ -4,9 +4,9 @@ import io.libp2p.core.PeerId
 import io.libp2p.etc.types.toProtobuf
 import io.libp2p.pubsub.DefaultRpcPartsQueue
 import io.libp2p.pubsub.MessageId
+import io.libp2p.pubsub.RpcPartsBatch
 import io.libp2p.pubsub.RpcPartsQueue
 import io.libp2p.pubsub.Topic
-import io.libp2p.pubsub.gossip.GossipParams.Companion.builder
 import pubsub.pb.Rpc
 
 interface GossipRpcPartsQueue : RpcPartsQueue {
@@ -40,10 +40,6 @@ interface GossipRpcPartsQueue : RpcPartsQueue {
 open class DefaultGossipRpcPartsQueue(
     private val params: GossipParams
 ) : DefaultRpcPartsQueue(), GossipRpcPartsQueue {
-
-    protected constructor(params: GossipParams, parts: List<AbstractPart>) : this(params) {
-        this.parts.addAll(parts)
-    }
 
     protected data class IHavePart(val messageId: MessageId, val topic: Topic) : AbstractPart {
         override fun appendToBuilder(builder: Rpc.RPC.Builder) {
@@ -120,7 +116,7 @@ open class DefaultGossipRpcPartsQueue(
         addPart(ControlExtensionPart(ctrlMessage))
     }
 
-    override fun takeBatch(): RpcPartsQueue {
+    override fun takeBatch(): RpcPartsBatch? {
         var publishCount = params.maxPublishedMessages ?: Int.MAX_VALUE
         var subscriptionCount = params.maxSubscriptions ?: Int.MAX_VALUE
         var iHaveCount = params.maxIHaveLength
@@ -144,8 +140,10 @@ open class DefaultGossipRpcPartsQueue(
                 is PrunePart -> pruneCount--
             }
         }
+        if (partIdx == 0) return null
+
         val sliceSublist: MutableList<AbstractPart> = parts.subList(0, partIdx)
-        val ret = DefaultGossipRpcPartsQueue(params, sliceSublist.toList())
+        val ret = createBatch(sliceSublist)
         sliceSublist.clear()
 
         return ret
