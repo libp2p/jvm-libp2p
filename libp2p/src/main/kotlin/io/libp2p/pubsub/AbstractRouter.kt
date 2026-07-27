@@ -55,8 +55,9 @@ abstract class AbstractRouter(
     ) {
         private val map = linkedMapOf<PeerHandler, TPartsQueue>()
 
-        val pendingPeers: Collection<PeerHandler> get() = map.keys.copy()
-
+        fun getPeersWithPendingOutboundData() = map.entries
+            .filter { !it.value.isEmpty() }
+            .map { it.key }
         fun getQueue(peer: PeerHandler) = map.computeIfAbsent(peer) { queueFactory() }
         fun onDisconnected(peer: PeerHandler) {
             map.remove(peer)?.abort(ConnectionClosedException())
@@ -102,11 +103,9 @@ abstract class AbstractRouter(
      * Flushes all pending message parts for all peers
      */
     protected fun flushAllPending() {
-        pendingRpcParts.pendingPeers.forEach(::flushPending)
-    }
-
-    protected fun flushPending(peer: PeerHandler) {
-        notifyOutboundDataAvailable(peer)
+        pendingRpcParts.getPeersWithPendingOutboundData().forEach {
+            notifyOutboundDataAvailable(it)
+        }
     }
 
     override fun addPeer(peer: Stream) = addPeerWithDebugHandler(peer, null)
@@ -161,7 +160,7 @@ abstract class AbstractRouter(
         subscribedTopics.forEach {
             partsQueue.addSubscribe(it)
         }
-        flushPending(peer)
+        notifyOutboundDataAvailable(peer)
     }
 
     protected open fun notifyMalformedMessage(peer: PeerHandler) {}
