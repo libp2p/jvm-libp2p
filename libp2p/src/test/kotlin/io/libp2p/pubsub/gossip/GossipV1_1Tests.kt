@@ -1464,12 +1464,47 @@ class GossipV1_1Tests : GossipTestsBase() {
         val peer = test.mockRouter.peers.single()
         test.connection.conn2.ch1.setWritableForTest(false)
 
+        assertEquals(0, test.mockRouter.pendingPeerCountForTest())
         assertNull(test.mockRouter.pollOutboundMessage(peer))
+        assertEquals(0, test.mockRouter.pendingPeerCountForTest())
 
         test.mockRouter.enqueuePublishForTest(peer, newProtoMessage("topic1", 0L, "Hello".toByteArray()))
 
+        assertEquals(1, test.mockRouter.pendingPeerCountForTest())
         assertNotNull(test.mockRouter.pollOutboundMessage(peer))
+        assertEquals(0, test.mockRouter.pendingPeerCountForTest())
         assertNull(test.mockRouter.pollOutboundMessage(peer))
+        assertEquals(0, test.mockRouter.pendingPeerCountForTest())
+    }
+
+    @Test
+    fun `single outbound wake drains all split publish slices`() {
+        val test = TwoRoutersTest(GossipParams(maxPublishedMessages = 1))
+        test.mockRouter.subscribe("topic1")
+
+        val outboundChannel = test.connection.conn1.ch1
+        outboundChannel.setWritableForTest(false)
+
+        val msg1 = newMessage("topic1", 1L, "Hello-1".toByteArray())
+        val msg2 = newMessage("topic1", 2L, "Hello-2".toByteArray())
+        val publishFuture1 = test.gossipRouter.publish(msg1)
+        val publishFuture2 = test.gossipRouter.publish(msg2)
+
+        outboundChannel.runPendingTasks()
+        assertFalse(publishFuture1.isDone)
+        assertFalse(publishFuture2.isDone)
+
+        outboundChannel.setWritableForTest(true)
+        outboundChannel.runPendingTasks()
+
+        publishFuture1.get(5, TimeUnit.SECONDS)
+        publishFuture2.get(5, TimeUnit.SECONDS)
+
+        val rpc1 = test.mockRouter.waitForMessage { it.publishCount > 0 }
+        val rpc2 = test.mockRouter.waitForMessage { it.publishCount > 0 }
+
+        assertEquals(listOf("Hello-1"), rpc1.publishList.map { it.data.toStringUtf8() })
+        assertEquals(listOf("Hello-2"), rpc2.publishList.map { it.data.toStringUtf8() })
     }
 
     private fun createGraftMessage(topic: String): Rpc.RPC {

@@ -58,9 +58,11 @@ open class MockRouter(executor: ScheduledExecutorService) : AbstractRouter(
         return super.pollOutboundMessage(peer)
     }
 
+    fun pendingPeerCountForTest(): Int = pendingRpcParts.getPeersWithPendingOutboundData().size
+
     fun enqueuePublishForTest(peer: PeerHandler, msg: Rpc.Message) {
         pendingRpcParts.getQueue(peer).addPublish(msg)
-        flushPending(peer)
+        notifyOutboundDataAvailable(peer)
     }
 
     override fun broadcastOutbound(msg: PubsubMessage): CompletableFuture<Unit> = CompletableFuture.completedFuture(null)

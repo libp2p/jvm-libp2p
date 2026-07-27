@@ -1,5 +1,6 @@
 package io.libp2p.pubsub
 
+import io.libp2p.core.ConnectionClosedException
 import io.libp2p.core.pubsub.MessageApi
 import io.libp2p.core.pubsub.RESULT_INVALID
 import io.libp2p.core.pubsub.RESULT_VALID
@@ -572,5 +573,7 @@ abstract class PubsubRouterTest(val routerFactory: DeterministicFuzzRouterFactor
         router1OutboundChannel.runPendingTasks()
 
         assertThat(publishFut).isDone()
+        assertThat(Assertions.assertThrows(ExecutionException::class.java) { publishFut.get() })
+            .hasRootCauseInstanceOf(ConnectionClosedException::class.java)
     }
 }
