@@ -332,7 +332,7 @@ abstract class AbstractRouter(
     protected fun getTopicPeers(topic: Topic) = peersTopics.getBySecond(topic)
 
     override fun pollOutboundMessage(peer: PeerHandler): MessageAndPromise? {
-        val slice = pendingRpcParts.getQueue(peer).slice()
+        val slice = pendingRpcParts.getQueue(peer).takeBatch()
         if (slice.isEmpty()) {
             return null
         } else {

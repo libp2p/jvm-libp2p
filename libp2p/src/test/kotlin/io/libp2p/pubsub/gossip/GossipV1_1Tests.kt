@@ -1478,7 +1478,7 @@ class GossipV1_1Tests : GossipTestsBase() {
     }
 
     @Test
-    fun `single outbound wake drains all split publish slices`() {
+    fun `single outbound wake drains all split publish batches`() {
         val test = TwoRoutersTest(GossipParams(maxPublishedMessages = 1))
         test.mockRouter.subscribe("topic1")
 

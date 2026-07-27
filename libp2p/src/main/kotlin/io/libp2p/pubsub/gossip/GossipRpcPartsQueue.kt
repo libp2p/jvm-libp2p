@@ -120,7 +120,7 @@ open class DefaultGossipRpcPartsQueue(
         addPart(ControlExtensionPart(ctrlMessage))
     }
 
-    override fun slice(): RpcPartsQueue {
+    override fun takeBatch(): RpcPartsQueue {
         var publishCount = params.maxPublishedMessages ?: Int.MAX_VALUE
         var subscriptionCount = params.maxSubscriptions ?: Int.MAX_VALUE
         var iHaveCount = params.maxIHaveLength

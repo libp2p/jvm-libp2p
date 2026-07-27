@@ -19,7 +19,7 @@ import java.util.stream.Stream
 private fun RpcPartsQueue.takeMerged(): List<Rpc.RPC> {
     val ret = mutableListOf<Rpc.RPC>()
     while (!isEmpty()) {
-        ret += slice().mergeRpc()
+        ret += takeBatch().mergeRpc()
     }
     return ret
 }

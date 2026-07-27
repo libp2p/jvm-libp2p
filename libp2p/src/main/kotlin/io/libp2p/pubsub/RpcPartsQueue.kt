@@ -22,7 +22,7 @@ interface RpcPartsQueue {
     fun addSubscription(topic: Topic, status: SubscriptionStatus)
 
     fun isEmpty(): Boolean
-    fun slice(): RpcPartsQueue
+    fun takeBatch(): RpcPartsQueue
 
     fun mergePromises(): CompletableFuture<Unit>
     fun mergeRpc(): Rpc.RPC
@@ -87,7 +87,7 @@ open class DefaultRpcPartsQueue : RpcPartsQueue {
     }
 
     override fun isEmpty(): Boolean = parts.isEmpty()
-    override fun slice(): RpcPartsQueue {
+    override fun takeBatch(): RpcPartsQueue {
         val ret = DefaultRpcPartsQueue(parts.toList())
         parts.clear()
         return ret

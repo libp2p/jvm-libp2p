@@ -14,7 +14,7 @@ import java.util.concurrent.CompletableFuture
 class RpcPartsQueueTest {
 
     @Test
-    fun `merged promise completes publish promises from the same slice`() {
+    fun `merged promise completes publish promises from the same batch`() {
         val queue = DefaultRpcPartsQueue()
         val publishPromise1 = CompletableFuture<Unit>()
         val publishPromise2 = CompletableFuture<Unit>()
@@ -23,9 +23,9 @@ class RpcPartsQueueTest {
         queue.addPublish(createRpcMessage("topic", "silent-data"))
         queue.addPublish(createRpcMessage("topic", "data-2"), publishPromise2)
 
-        val slice = queue.slice()
-        val writePromise = slice.mergePromises()
-        val rpc = slice.mergeRpc()
+        val batch = queue.takeBatch()
+        val writePromise = batch.mergePromises()
+        val rpc = batch.mergeRpc()
 
         assertThat(queue.isEmpty()).isTrue()
         assertThat(rpc.publishList.map { it.data.toStringUtf8() })
@@ -40,14 +40,14 @@ class RpcPartsQueueTest {
     }
 
     @Test
-    fun `merged promise fails publish promises from the same slice`() {
+    fun `merged promise fails publish promises from the same batch`() {
         val queue = DefaultRpcPartsQueue()
         val publishPromise = CompletableFuture<Unit>()
         val writeFailure = RuntimeException("write failed")
 
         queue.addPublish(createRpcMessage("topic", "data"), publishPromise)
 
-        val writePromise = queue.slice().mergePromises()
+        val writePromise = queue.takeBatch().mergePromises()
         writePromise.completeExceptionally(writeFailure)
 
         assertThat(publishPromise).isCompletedExceptionally
@@ -56,7 +56,7 @@ class RpcPartsQueueTest {
     }
 
     @Test
-    fun `sliced queue keeps later publish promises pending until their slice is written`() {
+    fun `batched queue keeps later publish promises pending until their batch is written`() {
         val queue = DefaultGossipRpcPartsQueue(
             GossipParamsBuilder()
                 .maxPublishedMessages(1)
@@ -69,9 +69,9 @@ class RpcPartsQueueTest {
         queue.addPublish(createRpcMessage("topic", "data-1"), publishPromise1)
         queue.addPublish(createRpcMessage("topic", "data-2"), publishPromise2)
 
-        val slice1 = queue.slice()
-        val writePromise1 = slice1.mergePromises()
-        val rpc1 = slice1.mergeRpc()
+        val batch1 = queue.takeBatch()
+        val writePromise1 = batch1.mergePromises()
+        val rpc1 = batch1.mergeRpc()
 
         assertThat(rpc1.publishList.map { it.data.toStringUtf8() }).containsExactly("data-1")
         assertThat(queue.isEmpty()).isFalse()
@@ -81,9 +81,9 @@ class RpcPartsQueueTest {
         assertThat(publishPromise1).isCompleted
         assertThat(publishPromise2).isNotDone()
 
-        val slice2 = queue.slice()
-        val writePromise2 = slice2.mergePromises()
-        val rpc2 = slice2.mergeRpc()
+        val batch2 = queue.takeBatch()
+        val writePromise2 = batch2.mergePromises()
+        val rpc2 = batch2.mergeRpc()
 
         assertThat(rpc2.publishList.map { it.data.toStringUtf8() }).containsExactly("data-2")
 
