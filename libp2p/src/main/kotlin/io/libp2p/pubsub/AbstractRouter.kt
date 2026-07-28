@@ -58,7 +58,8 @@ abstract class AbstractRouter(
         fun getPeersWithPendingOutboundData() = map.entries
             .filter { !it.value.isEmpty() }
             .map { it.key }
-        fun getQueue(peer: PeerHandler) = map.computeIfAbsent(peer) { queueFactory() }
+        fun getOrCreateQueue(peer: PeerHandler) = map.computeIfAbsent(peer) { queueFactory() }
+        fun getExistingQueue(peer: PeerHandler) = map[peer]
         fun onDisconnected(peer: PeerHandler) {
             map.remove(peer)?.abort(ConnectionClosedException())
         }
@@ -77,12 +78,12 @@ abstract class AbstractRouter(
     }
 
     protected open fun submitPublishMessageSilently(toPeer: PeerHandler, msg: PubsubMessage) {
-        pendingRpcParts.getQueue(toPeer).addPublish(msg.protobufMessage)
+        pendingRpcParts.getOrCreateQueue(toPeer).addPublish(msg.protobufMessage)
     }
 
     protected open fun submitPublishMessage(toPeer: PeerHandler, msg: PubsubMessage): CompletableFuture<Unit> {
         val sendPromise = CompletableFuture<Unit>()
-        pendingRpcParts.getQueue(toPeer).addPublish(msg.protobufMessage, sendPromise)
+        pendingRpcParts.getOrCreateQueue(toPeer).addPublish(msg.protobufMessage, sendPromise)
         return sendPromise
     }
 
@@ -156,7 +157,7 @@ abstract class AbstractRouter(
     protected abstract fun processExtensions(msg: Rpc.RPC, receivedFrom: PeerHandler)
 
     override fun onPeerActive(peer: PeerHandler) {
-        val partsQueue = pendingRpcParts.getQueue(peer)
+        val partsQueue = pendingRpcParts.getOrCreateQueue(peer)
         subscribedTopics.forEach {
             partsQueue.addSubscribe(it)
         }
@@ -332,7 +333,7 @@ abstract class AbstractRouter(
     protected fun getTopicPeers(topic: Topic) = peersTopics.getBySecond(topic)
 
     override fun pollOutboundMessage(peer: PeerHandler): MessageAndPromise? {
-        val batch = pendingRpcParts.getQueue(peer).takeBatch() ?: return null
+        val batch = pendingRpcParts.getExistingQueue(peer)?.takeBatch() ?: return null
         return MessageAndPromise(batch.rpc, batch.writePromise)
     }
 
@@ -344,7 +345,7 @@ abstract class AbstractRouter(
     }
 
     protected open fun subscribe(topic: Topic) {
-        activePeers.forEach { pendingRpcParts.getQueue(it).addSubscribe(topic) }
+        activePeers.forEach { pendingRpcParts.getOrCreateQueue(it).addSubscribe(topic) }
         subscribedTopics += topic
     }
 
@@ -356,7 +357,7 @@ abstract class AbstractRouter(
     }
 
     protected open fun unsubscribe(topic: Topic) {
-        activePeers.forEach { pendingRpcParts.getQueue(it).addUnsubscribe(topic) }
+        activePeers.forEach { pendingRpcParts.getOrCreateQueue(it).addUnsubscribe(topic) }
         subscribedTopics -= topic
     }
 

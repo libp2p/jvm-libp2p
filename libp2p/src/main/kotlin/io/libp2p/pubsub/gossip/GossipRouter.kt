@@ -803,7 +803,7 @@ open class GossipRouter(
     }
 
     private fun enqueuePrune(peer: PeerHandler, topic: Topic) {
-        val peerQueue = pendingRpcParts.getQueue(peer)
+        val peerQueue = pendingRpcParts.getOrCreateQueue(peer)
         if (peer.getPeerProtocol().supportsBackoffAndPX() && this.protocol.supportsBackoffAndPX()) {
             val backoffPeers = (getTopicPeers(topic) - peer)
                 .take(params.maxPeersSentInPruneMsg)
@@ -816,13 +816,13 @@ open class GossipRouter(
     }
 
     private fun enqueueGraft(peer: PeerHandler, topic: Topic) =
-        pendingRpcParts.getQueue(peer).addGraft(topic)
+        pendingRpcParts.getOrCreateQueue(peer).addGraft(topic)
 
     private fun enqueueIwant(peer: PeerHandler, messageIds: List<MessageId>) =
-        pendingRpcParts.getQueue(peer).addIWants(messageIds)
+        pendingRpcParts.getOrCreateQueue(peer).addIWants(messageIds)
 
     private fun enqueueIhave(peer: PeerHandler, messageIds: List<MessageId>, topic: Topic) =
-        pendingRpcParts.getQueue(peer).addIHaves(messageIds, topic)
+        pendingRpcParts.getOrCreateQueue(peer).addIHaves(messageIds, topic)
 
     private fun sendIdontwant(peer: PeerHandler, messageId: MessageId) {
         if (!peer.getPeerProtocol().supportsIDontWant()) {
@@ -855,7 +855,7 @@ open class GossipRouter(
 
         logger.trace("Sending control extensions message to peer {}", peer.peerId)
 
-        pendingRpcParts.getQueue(peer)
+        pendingRpcParts.getOrCreateQueue(peer)
             .addControlExtensions(gossipExtensionsState.localExtensionSupport)
         gossipExtensionsState.registerControlExtensionMessageSentToPeers(peer.peerId)
     }

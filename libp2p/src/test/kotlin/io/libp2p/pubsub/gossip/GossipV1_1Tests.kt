@@ -1478,6 +1478,27 @@ class GossipV1_1Tests : GossipTestsBase() {
     }
 
     @Test
+    fun `late outbound poll after disconnect does not retain peer pending parts`() {
+        val test = TwoRoutersTest()
+        val peer = test.mockRouter.peers.single()
+        test.connection.conn2.ch1.setWritableForTest(false)
+
+        test.mockRouter.enqueuePublishForTest(peer, newProtoMessage("topic1", 0L, "Hello".toByteArray()))
+
+        assertNotNull(test.mockRouter.getRpcQueueIfExist(peer))
+
+        test.connection.disconnect()
+        test.connection.connections
+            .flatMap { listOf(it.ch1, it.ch2) }
+            .forEach { it.runPendingTasks() }
+
+        assertNull(test.mockRouter.getRpcQueueIfExist(peer))
+
+        assertNull(test.mockRouter.pollOutboundMessage(peer))
+        assertNull(test.mockRouter.getRpcQueueIfExist(peer))
+    }
+
+    @Test
     fun `single outbound wake drains all split publish batches`() {
         val test = TwoRoutersTest(GossipParams(maxPublishedMessages = 1))
         test.mockRouter.subscribe("topic1")
