@@ -13,7 +13,12 @@ typealias Topic = String
 typealias MessageId = WBytes
 typealias PubsubMessageFactory = (Rpc.Message) -> PubsubMessage
 
-data class PubsubSubscription(val topic: Topic, val subscribe: Boolean)
+data class PubsubSubscription(
+    val topic: Topic,
+    val subscribe: Boolean,
+    val requestsPartial: Boolean = false,
+    val supportsSendingPartial: Boolean = false
+)
 
 interface PubsubMessage {
     val protobufMessage: Rpc.Message
