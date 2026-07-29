@@ -3,6 +3,7 @@ package io.libp2p.pubsub.gossip
 import io.libp2p.core.PeerId
 import io.libp2p.etc.types.toProtobuf
 import io.libp2p.etc.types.toWBytes
+import io.libp2p.pubsub.RpcPartsQueue
 import io.libp2p.pubsub.Topic
 import io.libp2p.pubsub.gossip.builders.GossipParamsBuilder
 import io.libp2p.pubsub.gossip.builders.GossipRouterBuilder
@@ -14,6 +15,14 @@ import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
 import pubsub.pb.Rpc
 import java.util.stream.Stream
+
+private fun RpcPartsQueue.takeMerged(): List<Rpc.RPC> {
+    val ret = mutableListOf<Rpc.RPC>()
+    while (!isEmpty()) {
+        ret += takeBatch()!!.rpc
+    }
+    return ret
+}
 
 class GossipRpcPartsQueueTest {
 
