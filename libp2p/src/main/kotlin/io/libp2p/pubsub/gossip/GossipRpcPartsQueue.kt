@@ -33,7 +33,11 @@ interface GossipRpcPartsQueue : RpcPartsQueue {
 }
 
 /**
- * Default [RpcPartsQueue] implementation
+ * Gossip-aware [RpcPartsQueue] implementation.
+ *
+ * The queue respects gossip message-count limits and [GossipParams.maxGossipMessageSize] when
+ * selecting parts for [takeBatch]. Size limiting uses each part's conservative standalone RPC
+ * estimate, so a batch can be split before the actual merged protobuf RPC is built.
  *
  * NOT thread safe
  */
@@ -123,6 +127,7 @@ open class DefaultGossipRpcPartsQueue(
         var iWantCount = params.maxIWantMessageIds ?: Int.MAX_VALUE
         var graftCount = params.maxGraftMessages ?: Int.MAX_VALUE
         var pruneCount = params.maxPruneMessages ?: Int.MAX_VALUE
+        var sizeLeft = params.maxGossipMessageSize
 
         var partIdx = 0
 
@@ -130,7 +135,7 @@ open class DefaultGossipRpcPartsQueue(
             publishCount > 0 && subscriptionCount > 0 && iHaveCount > 0 &&
             iWantCount > 0 && graftCount > 0 && pruneCount > 0
         ) {
-            val part = parts[partIdx++]
+            val part = parts[partIdx]
             when (part) {
                 is PublishPart -> publishCount--
                 is SubscriptionPart -> subscriptionCount--
@@ -139,11 +144,17 @@ open class DefaultGossipRpcPartsQueue(
                 is GraftPart -> graftCount--
                 is PrunePart -> pruneCount--
             }
+            sizeLeft -= part.estimatedMaxSerializedSize
+            if (sizeLeft < 0) {
+                break
+            }
+            partIdx++
         }
         if (partIdx == 0) return null
 
         val sliceSublist: MutableList<AbstractPart> = parts.subList(0, partIdx)
         val ret = createBatch(sliceSublist)
+        onPartsRemoving(sliceSublist)
         sliceSublist.clear()
 
         return ret
