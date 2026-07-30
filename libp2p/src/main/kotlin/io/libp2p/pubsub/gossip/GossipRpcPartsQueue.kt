@@ -41,7 +41,7 @@ open class DefaultGossipRpcPartsQueue(
     private val params: GossipParams
 ) : DefaultRpcPartsQueue(), GossipRpcPartsQueue {
 
-    protected data class IHavePart(val messageId: MessageId, val topic: Topic) : AbstractPart {
+    protected data class IHavePart(val messageId: MessageId, val topic: Topic) : AbstractPart() {
         override fun appendToBuilder(builder: Rpc.RPC.Builder) {
             val ctrlBuilder = builder.controlBuilder
             val iHaveBuilder = ctrlBuilder.ihaveBuilderList
@@ -52,7 +52,7 @@ open class DefaultGossipRpcPartsQueue(
         }
     }
 
-    protected data class IWantPart(val messageId: MessageId) : AbstractPart {
+    protected data class IWantPart(val messageId: MessageId) : AbstractPart() {
         override fun appendToBuilder(builder: Rpc.RPC.Builder) {
             val ctrlBuilder = builder.controlBuilder
             val iWantBuilder = if (ctrlBuilder.iwantBuilderList.isEmpty()) {
@@ -64,14 +64,14 @@ open class DefaultGossipRpcPartsQueue(
         }
     }
 
-    protected data class GraftPart(val topic: Topic) : AbstractPart {
+    protected data class GraftPart(val topic: Topic) : AbstractPart() {
         override fun appendToBuilder(builder: Rpc.RPC.Builder) {
             builder.controlBuilder.addGraftBuilder().setTopicID(topic)
         }
     }
 
     protected data class PrunePart(val topic: Topic, val backoffSeconds: Long?, val backoffPeers: List<PeerId>) :
-        AbstractPart {
+        AbstractPart() {
         override fun appendToBuilder(builder: Rpc.RPC.Builder) {
             val pruneBuilder = builder.controlBuilder.addPruneBuilder()
             pruneBuilder.setTopicID(topic)
@@ -86,7 +86,7 @@ open class DefaultGossipRpcPartsQueue(
         }
     }
 
-    protected data class ControlExtensionPart(val ctrlExtension: Rpc.ControlExtensions) : AbstractPart {
+    protected data class ControlExtensionPart(val ctrlExtension: Rpc.ControlExtensions) : AbstractPart() {
         override fun appendToBuilder(builder: Rpc.RPC.Builder) {
             builder.controlBuilder.setExtensions(ctrlExtension)
         }
