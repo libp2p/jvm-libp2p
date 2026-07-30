@@ -218,6 +218,38 @@ class GossipRpcPartsQueueTest {
     }
 
     @Test
+    fun `takeBatch splits by estimated max serialized size and updates remaining estimate`() {
+        val maxSerializedSize = standaloneGraftRpc("topic-1").serializedSize
+        val partsQueue = DefaultGossipRpcPartsQueue(
+            GossipParamsBuilder()
+                .maxGossipMessageSize(maxSerializedSize)
+                .maxIHaveLength(Int.MAX_VALUE)
+                .build()
+        )
+        val firstPartEstimate = standaloneGraftRpc("topic-1").serializedSize
+        val secondPartEstimate = standaloneGraftRpc("topic-2").serializedSize
+
+        partsQueue.addGraft("topic-1")
+        partsQueue.addGraft("topic-2")
+
+        assertThat(partsQueue.estimateMaxSerializedSize()).isEqualTo(firstPartEstimate + secondPartEstimate)
+
+        val firstBatch = partsQueue.takeBatch()!!
+
+        assertThat(firstBatch.rpc.control.graftList.map { it.topicID }).containsExactly("topic-1")
+        assertThat(firstBatch.rpc.serializedSize).isLessThanOrEqualTo(maxSerializedSize)
+        assertThat(partsQueue.estimateMaxSerializedSize()).isEqualTo(secondPartEstimate)
+        assertThat(partsQueue.isEmpty()).isFalse()
+
+        val secondBatch = partsQueue.takeBatch()!!
+
+        assertThat(secondBatch.rpc.control.graftList.map { it.topicID }).containsExactly("topic-2")
+        assertThat(secondBatch.rpc.serializedSize).isLessThanOrEqualTo(maxSerializedSize)
+        assertThat(partsQueue.estimateMaxSerializedSize()).isZero()
+        assertThat(partsQueue.isEmpty()).isTrue()
+    }
+
+    @Test
     fun `mergeMessageParts() have no control part`() {
         val partsQueue = DefaultGossipRpcPartsQueue(gossipParamsNoLimits)
         partsQueue.addSubscribe("topic")
@@ -503,4 +535,9 @@ class GossipRpcPartsQueueTest {
         assertThat(merged[1].control.hasExtensions()).isTrue()
         assertThat(merged[1].control.extensions.partialMessages).isTrue()
     }
+
+    private fun standaloneGraftRpc(topic: Topic): Rpc.RPC =
+        Rpc.RPC.newBuilder().apply {
+            controlBuilder.addGraftBuilder().setTopicID(topic)
+        }.build()
 }

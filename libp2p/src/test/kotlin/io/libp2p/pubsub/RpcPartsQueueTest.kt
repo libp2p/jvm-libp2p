@@ -94,6 +94,27 @@ class RpcPartsQueueTest {
     }
 
     @Test
+    fun `estimate max serialized size accumulates queued standalone parts and resets after batch`() {
+        val queue = DefaultRpcPartsQueue()
+        val message = createRpcMessage("topic", "data")
+
+        queue.addSubscribe("topic")
+        queue.addPublish(message)
+
+        val expectedEstimate =
+            standaloneSubscribeRpc("topic").serializedSize +
+                standalonePublishRpc(message).serializedSize
+
+        assertThat(queue.estimateMaxSerializedSize()).isEqualTo(expectedEstimate)
+
+        val batch = queue.takeBatch()!!
+
+        assertThat(batch.rpc.serializedSize).isLessThanOrEqualTo(expectedEstimate)
+        assertThat(queue.estimateMaxSerializedSize()).isZero()
+        assertThat(queue.isEmpty()).isTrue()
+    }
+
+    @Test
     fun `abort fails pending publish promises`() {
         val queue = DefaultRpcPartsQueue()
         val publishPromise = CompletableFuture<Unit>()
@@ -101,9 +122,12 @@ class RpcPartsQueueTest {
         queue.addPublish(createRpcMessage("topic", "data"), publishPromise)
         queue.addPublish(createRpcMessage("topic", "silent-data"))
 
+        assertThat(queue.estimateMaxSerializedSize()).isGreaterThan(0)
+
         queue.abort(ConnectionClosedException())
 
         assertThat(queue.isEmpty()).isTrue()
+        assertThat(queue.estimateMaxSerializedSize()).isZero()
         assertThat(publishPromise).isCompletedExceptionally
         assertThrows(ConnectionClosedException::class.java) { publishPromise.getX() }
     }
@@ -113,4 +137,16 @@ class RpcPartsQueueTest {
             .addTopicIDs(topic)
             .setData(data.toByteArray().toProtobuf())
             .build()
+
+    private fun standalonePublishRpc(message: Rpc.Message): Rpc.RPC =
+        Rpc.RPC.newBuilder()
+            .addPublish(message)
+            .build()
+
+    private fun standaloneSubscribeRpc(topic: Topic): Rpc.RPC =
+        Rpc.RPC.newBuilder().apply {
+            addSubscriptionsBuilder()
+                .setTopicid(topic)
+                .setSubscribe(true)
+        }.build()
 }
