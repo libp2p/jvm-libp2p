@@ -34,6 +34,12 @@ import io.netty.channel.socket.ChannelOutputShutdownException;
 import io.netty.handler.codec.quic.QuicStreamChannel;
 import io.netty.handler.codec.quic.QuicStreamResetException;
 import io.netty.handler.logging.LogLevel;
+import java.net.BindException;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -1128,5 +1134,57 @@ public class QuicServerTestJava {
 
     clientTransport.close().get(5, TimeUnit.SECONDS);
     serverTransport.close().get(5, TimeUnit.SECONDS);
+  }
+
+  @Test
+  void cancelledPendingDialPromptlyReleasesUdpSocket() throws Exception {
+    Pair<PrivKey, PubKey> clientKeyPair = KeyKt.generateKeyPair(KeyType.ED25519);
+    List<io.libp2p.core.multistream.ProtocolBinding<?>> emptyProtocols = new ArrayList<>();
+    QuicTransport clientTransport = QuicTransport.ECDSA(clientKeyPair.component1(), emptyProtocols);
+    clientTransport.initialize();
+
+    try (DatagramSocket blackhole =
+        new DatagramSocket(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0))) {
+      blackhole.setSoTimeout(5_000);
+      String targetAddress = "/ip4/127.0.0.1/udp/" + blackhole.getLocalPort() + "/quic-v1";
+
+      CompletableFuture<Connection> dial =
+          clientTransport.dial(new Multiaddr(targetAddress), conn -> {}, null);
+
+      DatagramPacket firstPacket = new DatagramPacket(new byte[2_048], 2_048);
+      blackhole.receive(firstPacket);
+      int clientPort = firstPacket.getPort();
+
+      Assertions.assertTrue(dial.cancel(true));
+
+      long releaseMillis = awaitUdpPortReusable(clientPort, Duration.ofSeconds(6));
+      System.out.println(
+          "Cancelled pending QUIC dial released UDP port after " + releaseMillis + " ms");
+      Assertions.assertTrue(
+          releaseMillis < Duration.ofSeconds(5).toMillis(),
+          "cancelled pending QUIC dial did not promptly release its UDP socket");
+    } finally {
+      clientTransport.close().get(5, TimeUnit.SECONDS);
+    }
+  }
+
+  private static long awaitUdpPortReusable(int port, Duration timeout) throws Exception {
+    long startedAt = System.nanoTime();
+    long deadline = startedAt + timeout.toNanos();
+    BindException lastBindFailure = null;
+
+    while (System.nanoTime() < deadline) {
+      try (DatagramSocket probe = new DatagramSocket(null)) {
+        probe.setReuseAddress(false);
+        probe.bind(new InetSocketAddress(port));
+        return TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAt);
+      } catch (BindException e) {
+        lastBindFailure = e;
+        Thread.sleep(50);
+      }
+    }
+
+    throw new AssertionError(
+        "UDP port " + port + " was not released within " + timeout, lastBindFailure);
   }
 }
