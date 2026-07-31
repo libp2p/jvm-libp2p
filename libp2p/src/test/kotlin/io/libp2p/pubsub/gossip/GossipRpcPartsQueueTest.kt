@@ -49,7 +49,8 @@ class GossipRpcPartsQueueTest {
         val iHaves: Int,
         val iWants: Int,
         val grafts: Int,
-        val prunes: Int
+        val prunes: Int,
+        val iDontWants: Int = 0
     ) {
 
         fun generateQueue(params: GossipParams): TestGossipQueue {
@@ -66,6 +67,9 @@ class GossipRpcPartsQueueTest {
             }
             (1..iWants).forEach {
                 queue.addIWant(byteArrayOf(it.toByte()).toWBytes())
+            }
+            (1..iDontWants).forEach {
+                queue.addIDontWant(byteArrayOf(it.toByte()).toWBytes())
             }
             (1..grafts).forEach {
                 queue.addGraft("topic-$it")
@@ -128,6 +132,13 @@ class GossipRpcPartsQueueTest {
                                     controlBuilder.addIwantBuilder().addMessageIDs(it)
                                 }
                             },
+                        idontwantList
+                            .flatMap { it.messageIDsList }
+                            .map {
+                                Rpc.RPC.newBuilder().apply {
+                                    controlBuilder.addIdontwantBuilder().addMessageIDs(it)
+                                }
+                            },
                         graftList
                             .map {
                                 Rpc.RPC.newBuilder().apply {
@@ -175,6 +186,9 @@ class GossipRpcPartsQueueTest {
             PartCounts(0, 0, 0, 15, 0, 0),
             PartCounts(0, 0, 0, 28, 0, 0),
             PartCounts(0, 0, 0, 29, 0, 0),
+            PartCounts(0, 0, 0, 0, 0, 0, 1),
+            PartCounts(0, 0, 0, 0, 0, 0, gossipParamsWithLimits.maxIDontWantMessageIds),
+            PartCounts(0, 0, 0, 0, 0, 0, gossipParamsWithLimits.maxIDontWantMessageIds + 1),
         )
 
         val testCases = partsCases
@@ -433,6 +447,7 @@ class GossipRpcPartsQueueTest {
         // Add various control messages
         partsQueue.addIHave(byteArrayOf(1).toWBytes(), "topic1")
         partsQueue.addIWant(byteArrayOf(2).toWBytes())
+        partsQueue.addIDontWant(byteArrayOf(3).toWBytes())
         partsQueue.addGraft("topic2")
         partsQueue.addPrune("topic3")
 
@@ -448,6 +463,7 @@ class GossipRpcPartsQueueTest {
         assertThat(res.hasControl()).isTrue()
         assertThat(res.control.ihaveList).hasSize(1)
         assertThat(res.control.iwantList).hasSize(1)
+        assertThat(res.control.idontwantList).hasSize(1)
         assertThat(res.control.graftList).hasSize(1)
         assertThat(res.control.pruneList).hasSize(1)
 
@@ -531,6 +547,25 @@ class GossipRpcPartsQueueTest {
         // Note: false flags may or may not be serialized depending on protobuf default behavior
         // But testExtension should definitely be true
         assertThat(res.control.extensions.testExtension).isTrue()
+    }
+
+    @Test
+    fun `addIDontWant() groups message ids in control message`() {
+        val partsQueue = TestGossipQueue(gossipParamsNoLimits)
+        val messageId1 = "1111".toWBytes()
+        val messageId2 = "2222".toWBytes()
+
+        partsQueue.addIDontWant(messageId1)
+        partsQueue.addIDontWant(messageId2)
+
+        val res = partsQueue.takeMerged().first()
+
+        assertThat(res.hasControl()).isTrue()
+        assertThat(res.control.idontwantList).containsExactly(
+            Rpc.ControlIDontWant.newBuilder()
+                .addAllMessageIDs(listOf(messageId1.toProtobuf(), messageId2.toProtobuf()))
+                .build()
+        )
     }
 
     @Test

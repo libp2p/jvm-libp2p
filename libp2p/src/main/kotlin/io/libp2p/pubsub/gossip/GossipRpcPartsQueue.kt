@@ -17,6 +17,9 @@ interface GossipRpcPartsQueue : RpcPartsQueue {
     fun addIWant(messageId: MessageId)
     fun addIWants(messageIds: Collection<MessageId>) = messageIds.forEach { addIWant(it) }
 
+    fun addIDontWant(messageId: MessageId)
+    fun addIDontWants(messageIds: Collection<MessageId>) = messageIds.forEach { addIDontWant(it) }
+
     fun addGraft(topic: Topic)
 
     /**
@@ -69,6 +72,18 @@ open class DefaultGossipRpcPartsQueue(
         }
     }
 
+    protected data class IDontWantPart(val messageId: MessageId) : AbstractPart() {
+        override fun appendToBuilder(builder: Rpc.RPC.Builder) {
+            val ctrlBuilder = builder.controlBuilder
+            val iDontWantBuilder = if (ctrlBuilder.idontwantBuilderList.isEmpty()) {
+                ctrlBuilder.addIdontwantBuilder()
+            } else {
+                ctrlBuilder.getIdontwantBuilder(0)
+            }
+            iDontWantBuilder.addMessageIDs(messageId.toProtobuf())
+        }
+    }
+
     protected data class GraftPart(val topic: Topic) : AbstractPart() {
         override fun appendToBuilder(builder: Rpc.RPC.Builder) {
             builder.controlBuilder.addGraftBuilder().setTopicID(topic)
@@ -115,6 +130,10 @@ open class DefaultGossipRpcPartsQueue(
         addPart(IWantPart(messageId))
     }
 
+    override fun addIDontWant(messageId: MessageId) {
+        addPart(IDontWantPart(messageId))
+    }
+
     override fun addGraft(topic: Topic) {
         addPart(GraftPart(topic))
     }
@@ -136,6 +155,7 @@ open class DefaultGossipRpcPartsQueue(
         var subscriptionCount = params.maxSubscriptions ?: Int.MAX_VALUE
         var iHaveCount = params.maxIHaveLength
         var iWantCount = params.maxIWantMessageIds ?: Int.MAX_VALUE
+        var iDontWantCount = params.maxIDontWantMessageIds
         var graftCount = params.maxGraftMessages ?: Int.MAX_VALUE
         var pruneCount = params.maxPruneMessages ?: Int.MAX_VALUE
         var sizeLeft = params.maxGossipMessageSize
@@ -144,7 +164,7 @@ open class DefaultGossipRpcPartsQueue(
 
         while (partIdx < parts.size &&
             publishCount > 0 && subscriptionCount > 0 && iHaveCount > 0 &&
-            iWantCount > 0 && graftCount > 0 && pruneCount > 0
+            iWantCount > 0 && iDontWantCount > 0 && graftCount > 0 && pruneCount > 0
         ) {
             val part = parts[partIdx]
             when (part) {
@@ -152,6 +172,7 @@ open class DefaultGossipRpcPartsQueue(
                 is SubscriptionPart -> subscriptionCount--
                 is IHavePart -> iHaveCount--
                 is IWantPart -> iWantCount--
+                is IDontWantPart -> iDontWantCount--
                 is GraftPart -> graftCount--
                 is PrunePart -> pruneCount--
             }

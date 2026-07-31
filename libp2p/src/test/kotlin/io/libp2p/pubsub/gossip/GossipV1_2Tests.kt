@@ -161,13 +161,13 @@ class GossipV1_2Tests : GossipTestsBase() {
         val msgToPublish = newMessage("topic1", 0L, "Hello".toByteArray())
         test.gossipRouter.publish(msgToPublish)
         test.mockRouters.forEach {
-            // IDONTWANT is received
             it.waitForMessage { msg ->
-                msg.control.idontwantCount == 1 &&
-                    msg.control.idontwantList.first().messageIDsList.map { mIds -> mIds.toWBytes() }.contains(msgToPublish.messageId)
+                msg.publishCount > 0 &&
+                    msg.control.idontwantCount == 1 &&
+                    msg.control.idontwantList.first().messageIDsList
+                        .map { mIds -> mIds.toWBytes() }
+                        .contains(msgToPublish.messageId)
             }
-            // msg is received
-            it.waitForMessage { msg -> msg.publishCount > 0 }
         }
     }
 
