@@ -1,10 +1,8 @@
 package io.libp2p.pubsub.gossip
 
-import io.libp2p.core.InternalErrorException
 import io.libp2p.core.PeerId
 import io.libp2p.etc.types.toProtobuf
 import io.libp2p.pubsub.AbstractRpcPartsQueue
-import io.libp2p.pubsub.DefaultRpcPartsQueue
 import io.libp2p.pubsub.MessageId
 import io.libp2p.pubsub.RpcPartsBatch
 import io.libp2p.pubsub.RpcPartsQueue
@@ -128,6 +126,7 @@ open class DefaultGossipRpcPartsQueue(
             )
         }
         priorityPartList(part).add(part)
+        addPartSize(part)
     }
 
     private fun priorityPartList(part: AbstractPart): MutableList<AbstractPart> =
@@ -171,17 +170,14 @@ open class DefaultGossipRpcPartsQueue(
         addPart(ControlExtensionPart(ctrlMessage))
     }
 
-    override fun isEmpty(): Boolean =
-        priorityPartLists.all { it.isEmpty() }
-
+    override fun isEmpty(): Boolean = priorityPartLists.all { it.isEmpty() }
 
     override fun takeBatch(): RpcPartsBatch? {
         val topmostPriorityList = priorityPartLists.firstOrNull { it.isNotEmpty() } ?: return null
         return takeBatch(topmostPriorityList)
     }
 
-    private fun takeBatch(priorityParts: MutableList<AbstractPart>): RpcPartsBatch {
-
+    private fun takeBatch(priorityParts: MutableList<AbstractPart>): RpcPartsBatch? {
         var publishCount = params.maxPublishedMessages ?: Int.MAX_VALUE
         var subscriptionCount = params.maxSubscriptions ?: Int.MAX_VALUE
         var iHaveCount = params.maxIHaveLength
@@ -213,6 +209,8 @@ open class DefaultGossipRpcPartsQueue(
             }
             partIdx++
         }
+        if (partIdx == 0) return null
+
         val batchParts: MutableList<AbstractPart> = priorityParts.subList(0, partIdx)
         val ret = createBatch(batchParts)
         removePartsSize(batchParts)
@@ -221,19 +219,10 @@ open class DefaultGossipRpcPartsQueue(
         return ret
     }
 
-    private fun removePart(part: AbstractPart, from: MutableList<AbstractPart>) {
-        val idx = from.indexOfFirst { it === part }
-        if (idx >= 0) {
-            from.removeAt(idx)
-        }
-    }
-
     override fun abort(exception: Exception) {
+        mergePromises(priorityPartLists.flatten()).completeExceptionally(exception)
         super.abort(exception)
-        priorityPartLists.forEach {
-            removePartsSize(it)
-            it.clear()
-        }
+        priorityPartLists.forEach { it.clear() }
     }
 
     private companion object {
