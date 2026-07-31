@@ -1,7 +1,6 @@
 package io.libp2p.pubsub
 
 import io.libp2p.etc.types.forward
-import io.libp2p.pubsub.DefaultRpcPartsQueue.AbstractPart
 import pubsub.pb.Rpc
 import java.util.concurrent.CompletableFuture
 
@@ -79,12 +78,7 @@ interface RpcPartsQueue {
     fun estimateMaxSerializedSize(): Int
 }
 
-/**
- * Default [RpcPartsQueue] implementation
- *
- * NOT thread safe
- */
-open class DefaultRpcPartsQueue : RpcPartsQueue {
+abstract class AbstractRpcPartsQueue : RpcPartsQueue {
 
     protected abstract class AbstractPart {
 
@@ -128,16 +122,23 @@ open class DefaultRpcPartsQueue : RpcPartsQueue {
         }
     }
 
-    protected open val parts = mutableListOf<AbstractPart>()
     private var estimatedMaxSerializedSizeAccum: Int = 0
 
-    protected open fun addPart(part: AbstractPart) {
-        parts += part
+    protected abstract fun addPart(part: AbstractPart)
+
+    protected open fun addPartSize(part: AbstractPart) {
         estimatedMaxSerializedSizeAccum += part.estimatedMaxSerializedSize
     }
-    protected fun onPartsRemoving(removedParts: List<AbstractPart>) {
-        estimatedMaxSerializedSizeAccum -= removedParts.sumOf { it.estimatedMaxSerializedSize }
+    protected fun removePartsSize(removedParts: List<AbstractPart>) {
+        removedParts.forEach {
+            removePartSize(it)
+        }
     }
+    protected fun removePartSize(removedPart: AbstractPart) {
+        estimatedMaxSerializedSizeAccum -= removedPart.estimatedMaxSerializedSize
+    }
+
+    override fun estimateMaxSerializedSize(): Int = estimatedMaxSerializedSizeAccum
 
     override fun addPublish(message: Rpc.Message) {
         addPart(PublishPart(message))
@@ -154,15 +155,6 @@ open class DefaultRpcPartsQueue : RpcPartsQueue {
         addPart(SubscriptionPart(topic, status))
     }
 
-    override fun isEmpty(): Boolean = parts.isEmpty()
-    override fun takeBatch(): RpcPartsBatch? {
-        if (parts.isEmpty()) return null
-        val ret = createBatch(parts.toList())
-        onPartsRemoving(parts)
-        parts.clear()
-        return ret
-    }
-
     protected fun createBatch(batchParts: List<AbstractPart>): RpcPartsBatch {
         return RpcPartsBatch(
             mergeRpc(batchParts),
@@ -170,9 +162,7 @@ open class DefaultRpcPartsQueue : RpcPartsQueue {
         )
     }
 
-    override fun estimateMaxSerializedSize(): Int = estimatedMaxSerializedSizeAccum
-
-    private fun mergePromises(batchParts: List<AbstractPart>): CompletableFuture<Unit> {
+    protected fun mergePromises(batchParts: List<AbstractPart>): CompletableFuture<Unit> {
         val ret = CompletableFuture<Unit>()
         batchParts.mapNotNull { it.writePromise }.forEach { ret.forward(it) }
         return ret
@@ -187,8 +177,36 @@ open class DefaultRpcPartsQueue : RpcPartsQueue {
     }
 
     override fun abort(exception: Exception) {
-        mergePromises(parts).completeExceptionally(exception)
         estimatedMaxSerializedSizeAccum = 0
+    }
+}
+
+/**
+ * Default [RpcPartsQueue] implementation
+ *
+ * NOT thread safe
+ */
+open class DefaultRpcPartsQueue : AbstractRpcPartsQueue() {
+
+    protected open val parts = mutableListOf<AbstractPart>()
+
+    override fun addPart(part: AbstractPart) {
+        parts += part
+        addPartSize(part)
+    }
+
+    override fun isEmpty(): Boolean = parts.isEmpty()
+    override fun takeBatch(): RpcPartsBatch? {
+        if (parts.isEmpty()) return null
+        val ret = createBatch(parts.toList())
+        removePartsSize(parts)
+        parts.clear()
+        return ret
+    }
+
+    override fun abort(exception: Exception) {
+        mergePromises(parts).completeExceptionally(exception)
+        removePartsSize(parts)
         parts.clear()
     }
 }

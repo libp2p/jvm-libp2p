@@ -1,7 +1,9 @@
 package io.libp2p.pubsub.gossip
 
+import io.libp2p.core.InternalErrorException
 import io.libp2p.core.PeerId
 import io.libp2p.etc.types.toProtobuf
+import io.libp2p.pubsub.AbstractRpcPartsQueue
 import io.libp2p.pubsub.DefaultRpcPartsQueue
 import io.libp2p.pubsub.MessageId
 import io.libp2p.pubsub.RpcPartsBatch
@@ -47,7 +49,7 @@ interface GossipRpcPartsQueue : RpcPartsQueue {
  */
 open class DefaultGossipRpcPartsQueue(
     private val params: GossipParams
-) : DefaultRpcPartsQueue(), GossipRpcPartsQueue {
+) : AbstractRpcPartsQueue(), GossipRpcPartsQueue {
 
     protected data class IHavePart(val messageId: MessageId, val topic: Topic) : AbstractPart() {
         override fun appendToBuilder(builder: Rpc.RPC.Builder) {
@@ -126,7 +128,6 @@ open class DefaultGossipRpcPartsQueue(
             )
         }
         priorityPartList(part).add(part)
-        super.addPart(part)
     }
 
     private fun priorityPartList(part: AbstractPart): MutableList<AbstractPart> =
@@ -170,8 +171,17 @@ open class DefaultGossipRpcPartsQueue(
         addPart(ControlExtensionPart(ctrlMessage))
     }
 
+    override fun isEmpty(): Boolean =
+        priorityPartLists.all { it.isEmpty() }
+
+
     override fun takeBatch(): RpcPartsBatch? {
-        val priorityParts = priorityPartLists.firstOrNull { it.isNotEmpty() } ?: return null
+        val topmostPriorityList = priorityPartLists.firstOrNull { it.isNotEmpty() } ?: return null
+        return takeBatch(topmostPriorityList)
+    }
+
+    private fun takeBatch(priorityParts: MutableList<AbstractPart>): RpcPartsBatch {
+
         var publishCount = params.maxPublishedMessages ?: Int.MAX_VALUE
         var subscriptionCount = params.maxSubscriptions ?: Int.MAX_VALUE
         var iHaveCount = params.maxIHaveLength
@@ -203,12 +213,9 @@ open class DefaultGossipRpcPartsQueue(
             }
             partIdx++
         }
-        if (partIdx == 0) return null
-
         val batchParts: MutableList<AbstractPart> = priorityParts.subList(0, partIdx)
         val ret = createBatch(batchParts)
-        onPartsRemoving(batchParts)
-        batchParts.forEach { removePart(it, parts) }
+        removePartsSize(batchParts)
         batchParts.clear()
 
         return ret
@@ -223,7 +230,10 @@ open class DefaultGossipRpcPartsQueue(
 
     override fun abort(exception: Exception) {
         super.abort(exception)
-        priorityPartLists.forEach { it.clear() }
+        priorityPartLists.forEach {
+            removePartsSize(it)
+            it.clear()
+        }
     }
 
     private companion object {
