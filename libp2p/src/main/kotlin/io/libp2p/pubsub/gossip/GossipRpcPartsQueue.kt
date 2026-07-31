@@ -112,6 +112,11 @@ open class DefaultGossipRpcPartsQueue(
         }
     }
 
+    protected val urgentControlParts = mutableListOf<AbstractPart>()
+    protected val stateControlParts = mutableListOf<AbstractPart>()
+    protected val bulkParts = mutableListOf<AbstractPart>()
+    protected val priorityPartLists = listOf(urgentControlParts, stateControlParts, bulkParts)
+
     override fun addPart(part: AbstractPart) {
         if (part.estimatedMaxSerializedSize > params.maxGossipMessageSize) {
             throw TooLargeMessageException(
@@ -119,8 +124,22 @@ open class DefaultGossipRpcPartsQueue(
                     "maxGossipMessageSize ${params.maxGossipMessageSize}: $part"
             )
         }
+        priorityPartList(part).add(part)
         super.addPart(part)
     }
+
+    private fun priorityPartList(part: AbstractPart): MutableList<AbstractPart> =
+        when (part) {
+            is IDontWantPart -> urgentControlParts
+            is SubscriptionPart,
+            is ControlExtensionPart,
+            is GraftPart,
+            is PrunePart -> stateControlParts
+            is PublishPart,
+            is IHavePart,
+            is IWantPart -> bulkParts
+            else -> bulkParts
+        }
 
     override fun addIHave(messageId: MessageId, topic: Topic) {
         addPart(IHavePart(messageId, topic))
@@ -151,6 +170,7 @@ open class DefaultGossipRpcPartsQueue(
     }
 
     override fun takeBatch(): RpcPartsBatch? {
+        val priorityParts = priorityPartLists.firstOrNull { it.isNotEmpty() } ?: return null
         var publishCount = params.maxPublishedMessages ?: Int.MAX_VALUE
         var subscriptionCount = params.maxSubscriptions ?: Int.MAX_VALUE
         var iHaveCount = params.maxIHaveLength
@@ -162,11 +182,11 @@ open class DefaultGossipRpcPartsQueue(
 
         var partIdx = 0
 
-        while (partIdx < parts.size &&
+        while (partIdx < priorityParts.size &&
             publishCount > 0 && subscriptionCount > 0 && iHaveCount > 0 &&
             iWantCount > 0 && iDontWantCount > 0 && graftCount > 0 && pruneCount > 0
         ) {
-            val part = parts[partIdx]
+            val part = priorityParts[partIdx]
             when (part) {
                 is PublishPart -> publishCount--
                 is SubscriptionPart -> subscriptionCount--
@@ -184,11 +204,24 @@ open class DefaultGossipRpcPartsQueue(
         }
         if (partIdx == 0) return null
 
-        val sliceSublist: MutableList<AbstractPart> = parts.subList(0, partIdx)
-        val ret = createBatch(sliceSublist)
-        onPartsRemoving(sliceSublist)
-        sliceSublist.clear()
+        val batchParts: MutableList<AbstractPart> = priorityParts.subList(0, partIdx)
+        val ret = createBatch(batchParts)
+        onPartsRemoving(batchParts)
+        batchParts.forEach { removePart(it, parts) }
+        batchParts.clear()
 
         return ret
+    }
+
+    private fun removePart(part: AbstractPart, from: MutableList<AbstractPart>) {
+        val idx = from.indexOfFirst { it === part }
+        if (idx >= 0) {
+            from.removeAt(idx)
+        }
+    }
+
+    override fun abort(exception: Exception) {
+        super.abort(exception)
+        priorityPartLists.forEach { it.clear() }
     }
 }

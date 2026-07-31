@@ -162,12 +162,12 @@ class GossipV1_2Tests : GossipTestsBase() {
         test.gossipRouter.publish(msgToPublish)
         test.mockRouters.forEach {
             it.waitForMessage { msg ->
-                msg.publishCount > 0 &&
-                    msg.control.idontwantCount == 1 &&
+                msg.control.idontwantCount == 1 &&
                     msg.control.idontwantList.first().messageIDsList
                         .map { mIds -> mIds.toWBytes() }
                         .contains(msgToPublish.messageId)
             }
+            it.waitForMessage { msg -> msg.publishCount > 0 }
         }
     }
 
