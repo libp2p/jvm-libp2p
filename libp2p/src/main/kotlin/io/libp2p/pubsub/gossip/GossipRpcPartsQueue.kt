@@ -6,6 +6,7 @@ import io.libp2p.pubsub.DefaultRpcPartsQueue
 import io.libp2p.pubsub.MessageId
 import io.libp2p.pubsub.RpcPartsBatch
 import io.libp2p.pubsub.RpcPartsQueue
+import io.libp2p.pubsub.TooLargeMessageException
 import io.libp2p.pubsub.Topic
 import pubsub.pb.Rpc
 
@@ -94,6 +95,16 @@ open class DefaultGossipRpcPartsQueue(
         override fun appendToBuilder(builder: Rpc.RPC.Builder) {
             builder.controlBuilder.setExtensions(ctrlExtension)
         }
+    }
+
+    override fun addPart(part: AbstractPart) {
+        if (part.estimatedMaxSerializedSize > params.maxGossipMessageSize) {
+            throw TooLargeMessageException(
+                "RPC part estimated serialized size ${part.estimatedMaxSerializedSize} exceeds " +
+                    "maxGossipMessageSize ${params.maxGossipMessageSize}: $part"
+            )
+        }
+        super.addPart(part)
     }
 
     override fun addIHave(messageId: MessageId, topic: Topic) {

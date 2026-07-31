@@ -4,10 +4,12 @@ import io.libp2p.core.PeerId
 import io.libp2p.etc.types.toProtobuf
 import io.libp2p.etc.types.toWBytes
 import io.libp2p.pubsub.RpcPartsQueue
+import io.libp2p.pubsub.TooLargeMessageException
 import io.libp2p.pubsub.Topic
 import io.libp2p.pubsub.gossip.builders.GossipParamsBuilder
 import io.libp2p.pubsub.gossip.builders.GossipRouterBuilder
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedInvocationConstants
 import org.junit.jupiter.params.ParameterizedTest
@@ -247,6 +249,28 @@ class GossipRpcPartsQueueTest {
         assertThat(secondBatch.rpc.serializedSize).isLessThanOrEqualTo(maxSerializedSize)
         assertThat(partsQueue.estimateMaxSerializedSize()).isZero()
         assertThat(partsQueue.isEmpty()).isTrue()
+    }
+
+    @Test
+    fun `addPart describes part that exceeds max gossip message size`() {
+        val message = createRpcMessage("topic", "large-payload")
+        val maxSerializedSize = standalonePublishRpc(message).serializedSize - 1
+        val partsQueue = DefaultGossipRpcPartsQueue(
+            GossipParamsBuilder()
+                .maxGossipMessageSize(maxSerializedSize)
+                .maxIHaveLength(Int.MAX_VALUE)
+                .build()
+        )
+
+        val exception = assertThrows(TooLargeMessageException::class.java) {
+            partsQueue.addPublish(message)
+        }
+
+        assertThat(exception.message)
+            .contains("RPC part estimated serialized size")
+            .contains("maxGossipMessageSize $maxSerializedSize")
+            .contains("PublishPart")
+            .doesNotContain("large-payload")
     }
 
     @Test
@@ -540,4 +564,9 @@ class GossipRpcPartsQueueTest {
         Rpc.RPC.newBuilder().apply {
             controlBuilder.addGraftBuilder().setTopicID(topic)
         }.build()
+
+    private fun standalonePublishRpc(message: Rpc.Message): Rpc.RPC =
+        Rpc.RPC.newBuilder()
+            .addPublish(message)
+            .build()
 }

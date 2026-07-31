@@ -87,6 +87,7 @@ interface RpcPartsQueue {
 open class DefaultRpcPartsQueue : RpcPartsQueue {
 
     protected abstract class AbstractPart {
+
         abstract fun appendToBuilder(builder: Rpc.RPC.Builder)
 
         /**
@@ -109,6 +110,13 @@ open class DefaultRpcPartsQueue : RpcPartsQueue {
         override fun appendToBuilder(builder: Rpc.RPC.Builder) {
             builder.addPublish(message)
         }
+
+        override fun toString(): String =
+            "PublishPart(" +
+                "dataSize=${message.data.size()}, " +
+                "topicIDs=${message.topicIDsList}, " +
+                "hasWritePromise=${writePromise != null}" +
+                ")"
     }
 
     protected data class SubscriptionPart(val topic: Topic, val status: RpcPartsQueue.SubscriptionStatus) : AbstractPart() {
