@@ -55,6 +55,7 @@ const val MaxIAskedEntries = 256
 const val MaxPeerIHaveEntries = 256
 const val MaxIWantRequestsEntries = 10 * 1024
 const val MaxPeerIDontWantEntries = 256
+const val MaxSlowPeerPressureEntries = 256
 
 typealias CurrentTimeSupplier = () -> Long
 
@@ -123,6 +124,7 @@ open class GossipRouter(
     private val peerIHave = createLRUMap<PeerHandler, AtomicInteger>(MaxPeerIHaveEntries)
     private val iWantRequests = createLRUMap<Pair<PeerHandler, MessageId>, Long>(MaxIWantRequestsEntries)
     private val peerIDontWant = createLRUMap<PeerHandler, IDontWantCacheEntry>(MaxPeerIDontWantEntries)
+    private val slowPeerQueuePressure = createLRUMap<PeerHandler, SlowPeerQueuePressure>(MaxSlowPeerPressureEntries)
     private val heartbeatTask by lazy {
         executor.scheduleWithFixedDelay(
             ::catchingHeartbeat,
@@ -160,6 +162,7 @@ open class GossipRouter(
         mesh.values.forEach { it.remove(peer) }
         fanout.values.forEach { it.remove(peer) }
         acceptRequestsWhitelist -= peer
+        slowPeerQueuePressure -= peer
         gossipExtensionsState.onPeerDisconnected(peer.peerId)
         super.onPeerDisconnected(peer)
     }
@@ -228,6 +231,9 @@ open class GossipRouter(
 
     fun notifyRouterMisbehavior(peer: PeerHandler, penalty: Int) {
         eventBroadcaster.notifyRouterMisbehavior(peer.peerId, penalty)
+    }
+
+    open fun notifySlowPeer(peer: PeerHandler) {
     }
 
     override fun acceptRequestsFrom(peer: PeerHandler): Boolean {
@@ -652,6 +658,7 @@ open class GossipRouter(
         heartbeatsCount++
         iAsked.clear()
         peerIHave.clear()
+        trackSlowPeers()
 
         val staleIWantTime = this.currentTimeSupplier() - params.iWantFollowupTime.toMillis()
         iWantRequests.entries.removeIf { (key, time) ->
@@ -748,6 +755,22 @@ open class GossipRouter(
             flushAllPending()
         } catch (t: Exception) {
             logger.warn("Exception in gossipsub heartbeat", t)
+        }
+    }
+
+    private fun trackSlowPeers() {
+        val threshold = params.slowPeerPendingBytesThreshold ?: return
+        pendingRpcParts.getQueues().forEach { (peer, queue) ->
+            if (queue.estimateMaxSerializedSize() >= threshold) {
+                val pressure = slowPeerQueuePressure.getOrPut(peer) { SlowPeerQueuePressure() }
+                pressure.heartbeatsAboveThreshold++
+                if (pressure.heartbeatsAboveThreshold >= params.slowPeerHeartbeatThreshold) {
+                    notifySlowPeer(peer)
+                    pressure.heartbeatsAboveThreshold = 0
+                }
+            } else {
+                slowPeerQueuePressure -= peer
+            }
         }
     }
 
@@ -863,5 +886,9 @@ open class GossipRouter(
     data class IDontWantCacheEntry(
         var heartbeatMessageIdsCount: Int = 0,
         val messageIdsAndTimeReceived: MutableMap<MessageId, Long> = mutableMapOf()
+    )
+
+    private data class SlowPeerQueuePressure(
+        var heartbeatsAboveThreshold: Int = 0
     )
 }

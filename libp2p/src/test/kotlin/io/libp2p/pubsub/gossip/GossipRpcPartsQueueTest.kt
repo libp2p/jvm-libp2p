@@ -472,12 +472,13 @@ class GossipRpcPartsQueueTest {
         assertThat(urgentControlRpc.control.idontwantList).hasSize(1)
         assertThat(urgentControlRpc.control.graftList).isEmpty()
         assertThat(urgentControlRpc.control.ihaveList).isEmpty()
+        assertThat(urgentControlRpc.control.hasExtensions()).isTrue()
+        assertThat(urgentControlRpc.control.extensions.partialMessages).isTrue()
 
         val stateControlRpc = merged[1]
         assertThat(stateControlRpc.control.graftList).hasSize(1)
         assertThat(stateControlRpc.control.pruneList).hasSize(1)
-        assertThat(stateControlRpc.control.hasExtensions()).isTrue()
-        assertThat(stateControlRpc.control.extensions.partialMessages).isTrue()
+        assertThat(stateControlRpc.control.hasExtensions()).isFalse()
 
         val bulkRpc = merged[2]
         assertThat(bulkRpc.control.ihaveList).hasSize(1)
@@ -498,13 +499,17 @@ class GossipRpcPartsQueueTest {
         partsQueue.addControlExtensions(extension)
 
         val merged = partsQueue.takeMerged()
-        val stateControlRpc = merged[0]
-        val publishRpc = merged[1]
+        val urgentControlRpc = merged[0]
+        val stateControlRpc = merged[1]
+        val publishRpc = merged[2]
 
+        assertThat(urgentControlRpc.subscriptionsList).isEmpty()
+        assertThat(urgentControlRpc.publishList).isEmpty()
+        assertThat(urgentControlRpc.control.hasExtensions()).isTrue()
+        assertThat(urgentControlRpc.control.extensions.partialMessages).isTrue()
         assertThat(stateControlRpc.subscriptionsList).hasSize(1)
         assertThat(stateControlRpc.publishList).isEmpty()
-        assertThat(stateControlRpc.control.hasExtensions()).isTrue()
-        assertThat(stateControlRpc.control.extensions.partialMessages).isTrue()
+        assertThat(stateControlRpc.control.hasExtensions()).isFalse()
         assertThat(publishRpc.subscriptionsList).isEmpty()
         assertThat(publishRpc.publishList).hasSize(1)
     }

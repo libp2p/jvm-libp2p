@@ -256,7 +256,20 @@ data class GossipParams(
     /**
      * [iDontWantTTL] Expiry time for cache of received IDONTWANT messages for peers
      */
-    val iDontWantTTL: Duration = 3.seconds
+    val iDontWantTTL: Duration = 3.seconds,
+
+    /**
+     * [slowPeerPendingBytesThreshold] controls when a peer's pending outbound queue is considered
+     * pressured. When unset, slow-peer detection by pending queue size is disabled.
+     */
+    val slowPeerPendingBytesThreshold: Int? = null,
+
+    /**
+     * [slowPeerHeartbeatThreshold] controls how many consecutive heartbeats a peer's pending
+     * outbound queue may stay at or above [slowPeerPendingBytesThreshold] before it is reported
+     * through `notifySlowPeer`.
+     */
+    val slowPeerHeartbeatThreshold: Int = 3
 
 ) {
     init {
@@ -271,6 +284,10 @@ data class GossipParams(
         check(gossipFactor in 0.0..1.0, "gossipFactor should be in range [0.0, 1.0]")
         check(floodPublishMaxMessageSizeThreshold >= 0, "floodPublishMaxMessageSizeThreshold should be >= 0")
         check(iDontWantMinMessageSizeThreshold >= 0, "iDontWantMinMessageSizeThreshold should be >= 0")
+        slowPeerPendingBytesThreshold?.let {
+            check(it > 0, "slowPeerPendingBytesThreshold should be > 0")
+        }
+        check(slowPeerHeartbeatThreshold > 0, "slowPeerHeartbeatThreshold should be > 0")
     }
 
     companion object {
