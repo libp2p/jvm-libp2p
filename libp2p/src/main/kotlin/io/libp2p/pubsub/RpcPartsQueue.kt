@@ -206,7 +206,7 @@ open class DefaultRpcPartsQueue : AbstractRpcPartsQueue() {
 
     override fun abort(exception: Exception) {
         mergePromises(parts).completeExceptionally(exception)
-        removePartsSize(parts)
+        super.abort(exception)
         parts.clear()
     }
 }

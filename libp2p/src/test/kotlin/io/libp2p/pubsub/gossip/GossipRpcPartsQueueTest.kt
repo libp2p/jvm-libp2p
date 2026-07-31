@@ -1,6 +1,8 @@
 package io.libp2p.pubsub.gossip
 
+import io.libp2p.core.ConnectionClosedException
 import io.libp2p.core.PeerId
+import io.libp2p.etc.types.getX
 import io.libp2p.etc.types.toProtobuf
 import io.libp2p.etc.types.toWBytes
 import io.libp2p.pubsub.RpcPartsQueue
@@ -16,6 +18,7 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
 import pubsub.pb.Rpc
+import java.util.concurrent.CompletableFuture
 import java.util.stream.Stream
 
 private fun RpcPartsQueue.takeMerged(): List<Rpc.RPC> {
@@ -31,13 +34,12 @@ class GossipRpcPartsQueueTest {
     class TestGossipQueue(params: GossipParams) : DefaultGossipRpcPartsQueue(params) {
 
         fun shuffleParts() {
-            parts.shuffle()
             priorityPartLists.forEach { it.shuffle() }
         }
 
         fun mergedSingle(): Rpc.RPC {
             val builder = Rpc.RPC.newBuilder()
-            parts.forEach {
+            priorityPartLists.flatten().forEach {
                 it.appendToBuilder(builder)
             }
             return builder.build()
@@ -604,6 +606,42 @@ class GossipRpcPartsQueueTest {
         assertThat(secondBatch.subscriptionsList.map { it.topicid }).containsExactly("topic")
         assertThat(secondBatch.publishCount).isZero()
         assertThat(thirdBatch.publishList).containsExactly(publishMessage)
+    }
+
+    @Test
+    fun `takeBatch returns null when highest priority part cannot be admitted`() {
+        val partsQueue = TestGossipQueue(
+            GossipParamsBuilder()
+                .maxIDontWantMessageIds(0)
+                .maxIHaveLength(Int.MAX_VALUE)
+                .build()
+        )
+
+        partsQueue.addIDontWant("1111".toWBytes())
+        partsQueue.addPublish(createRpcMessage("topic", "data"))
+
+        assertThat(partsQueue.takeBatch()).isNull()
+        assertThat(partsQueue.isEmpty()).isFalse()
+        assertThat(partsQueue.estimateMaxSerializedSize()).isGreaterThan(0)
+    }
+
+    @Test
+    fun `abort clears priority parts and fails pending publish promises`() {
+        val partsQueue = TestGossipQueue(gossipParamsNoLimits)
+        val publishPromise = CompletableFuture<Unit>()
+
+        partsQueue.addIDontWant("1111".toWBytes())
+        partsQueue.addSubscribe("topic")
+        partsQueue.addPublish(createRpcMessage("topic", "data"), publishPromise)
+
+        assertThat(partsQueue.estimateMaxSerializedSize()).isGreaterThan(0)
+
+        partsQueue.abort(ConnectionClosedException())
+
+        assertThat(partsQueue.isEmpty()).isTrue()
+        assertThat(partsQueue.estimateMaxSerializedSize()).isZero()
+        assertThat(publishPromise).isCompletedExceptionally
+        assertThrows(ConnectionClosedException::class.java) { publishPromise.getX() }
     }
 
     @Test
