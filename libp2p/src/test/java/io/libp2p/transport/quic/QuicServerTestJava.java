@@ -1146,8 +1146,7 @@ public class QuicServerTestJava {
     try (DatagramSocket blackhole =
         new DatagramSocket(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0))) {
       blackhole.setSoTimeout(5_000);
-      String targetAddress =
-          "/ip4/127.0.0.1/udp/" + blackhole.getLocalPort() + "/quic-v1";
+      String targetAddress = "/ip4/127.0.0.1/udp/" + blackhole.getLocalPort() + "/quic-v1";
 
       CompletableFuture<Connection> dial =
           clientTransport.dial(new Multiaddr(targetAddress), conn -> {}, null);
