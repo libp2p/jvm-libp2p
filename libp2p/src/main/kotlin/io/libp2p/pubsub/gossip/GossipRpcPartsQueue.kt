@@ -32,7 +32,6 @@ interface GossipRpcPartsQueue : RpcPartsQueue {
      */
     fun addPrune(topic: Topic, backoffSeconds: Long, backoffPeers: List<PeerId>)
 
-    // TODO Need to check if we should handle when control extension and extension messages could be separated by split  (https://github.com/libp2p/jvm-libp2p/issues/440)
     fun addControlExtensions(ctrlMessage: Rpc.ControlExtensions)
 }
 
@@ -131,9 +130,9 @@ open class DefaultGossipRpcPartsQueue(
 
     private fun priorityPartList(part: AbstractPart): MutableList<AbstractPart> =
         when (part) {
+            is ControlExtensionPart,
             is IDontWantPart -> priorityPartLists[URGENT_CONTROL_PRIORITY]
             is SubscriptionPart,
-            is ControlExtensionPart,
             is GraftPart,
             is PrunePart -> priorityPartLists[STATE_CONTROL_PRIORITY]
             is PublishPart,
