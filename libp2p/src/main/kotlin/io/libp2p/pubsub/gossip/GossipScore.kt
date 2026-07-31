@@ -308,6 +308,9 @@ class DefaultGossipScore(
         getPeerScores(peerId).behaviorPenalty += count
     }
 
+    override fun notifySlowPeer(peerId: PeerId) {
+    }
+
     fun stop() {
         refreshTask.cancel(false)
     }

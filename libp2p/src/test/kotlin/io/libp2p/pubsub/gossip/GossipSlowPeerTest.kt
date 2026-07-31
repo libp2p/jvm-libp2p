@@ -1,20 +1,25 @@
 package io.libp2p.pubsub.gossip
 
 import io.libp2p.core.PeerId
+import io.libp2p.core.multiformats.Multiaddr
+import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.etc.types.millis
 import io.libp2p.etc.types.seconds
 import io.libp2p.pubsub.DefaultPubsubMessage
 import io.libp2p.pubsub.DeterministicFuzz
 import io.libp2p.pubsub.NOP_ROUTER_VALIDATOR
+import io.libp2p.pubsub.PubsubMessage
 import io.libp2p.pubsub.PubsubProtocol
 import io.libp2p.pubsub.SimpleSeenCache
 import io.libp2p.pubsub.TTLSeenCache
 import io.libp2p.pubsub.TestRouter
+import io.libp2p.pubsub.Topic
 import io.libp2p.pubsub.TopicSubscriptionFilter
 import io.netty.handler.logging.LogLevel
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import pubsub.pb.Rpc
+import java.util.Optional
 import java.util.Random
 import java.util.concurrent.ScheduledExecutorService
 
@@ -32,6 +37,8 @@ class GossipSlowPeerTest : GossipTestsBase() {
         val mockRouter = fuzz.createMockRouter()
         val connection = gossipRouter.connectSemiDuplex(mockRouter, pubsubLogs = LogLevel.ERROR)
         val router = gossipRouter.router as SlowPeerTrackingGossipRouter
+        val listener = SlowPeerTrackingListener()
+        router.eventBroadcaster.listeners += listener
         val outboundChannel = connection.conn1.ch1
 
         mockRouter.router.subscribe("topic1")
@@ -46,12 +53,15 @@ class GossipSlowPeerTest : GossipTestsBase() {
 
         fuzz.timeController.addTime(1.seconds)
         assertThat(router.slowPeers).containsExactly(mockRouter.peerId)
+        assertThat(listener.slowPeers).containsExactly(mockRouter.peerId)
 
         fuzz.timeController.addTime(1.seconds)
         assertThat(router.slowPeers).containsExactly(mockRouter.peerId)
+        assertThat(listener.slowPeers).containsExactly(mockRouter.peerId)
 
         fuzz.timeController.addTime(1.seconds)
         assertThat(router.slowPeers).containsExactly(mockRouter.peerId, mockRouter.peerId)
+        assertThat(listener.slowPeers).containsExactly(mockRouter.peerId, mockRouter.peerId)
     }
 
     @Test
@@ -135,10 +145,50 @@ class GossipSlowPeerTest : GossipTestsBase() {
         }
 
         override fun notifySlowPeer(peer: PeerHandler) {
+            super.notifySlowPeer(peer)
             slowPeers += peer.peerId
         }
 
         override fun processExtensions(msg: Rpc.RPC, receivedFrom: PeerHandler) {
+        }
+    }
+
+    private class SlowPeerTrackingListener : GossipRouterEventListener {
+        val slowPeers = mutableListOf<PeerId>()
+
+        override fun notifyDisconnected(peerId: PeerId) {
+        }
+
+        override fun notifyConnected(peerId: PeerId, peerAddress: Multiaddr) {
+        }
+
+        override fun notifyUnseenMessage(peerId: PeerId, msg: PubsubMessage) {
+        }
+
+        override fun notifySeenMessage(
+            peerId: PeerId,
+            msg: PubsubMessage,
+            validationResult: Optional<ValidationResult>
+        ) {
+        }
+
+        override fun notifyUnseenInvalidMessage(peerId: PeerId, msg: PubsubMessage) {
+        }
+
+        override fun notifyUnseenValidMessage(peerId: PeerId, msg: PubsubMessage) {
+        }
+
+        override fun notifyMeshed(peerId: PeerId, topic: Topic) {
+        }
+
+        override fun notifyPruned(peerId: PeerId, topic: Topic) {
+        }
+
+        override fun notifyRouterMisbehavior(peerId: PeerId, count: Int) {
+        }
+
+        override fun notifySlowPeer(peerId: PeerId) {
+            slowPeers += peerId
         }
     }
 }

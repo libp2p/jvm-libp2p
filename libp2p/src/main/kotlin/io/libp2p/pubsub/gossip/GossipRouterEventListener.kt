@@ -27,6 +27,8 @@ interface GossipRouterEventListener {
     fun notifyPruned(peerId: PeerId, topic: Topic)
 
     fun notifyRouterMisbehavior(peerId: PeerId, count: Int)
+
+    fun notifySlowPeer(peerId: PeerId)
 }
 
 class GossipRouterEventBroadcaster : GossipRouterEventListener {
@@ -70,5 +72,9 @@ class GossipRouterEventBroadcaster : GossipRouterEventListener {
 
     override fun notifyRouterMisbehavior(peerId: PeerId, count: Int) {
         listeners.forEach { it.notifyRouterMisbehavior(peerId, count) }
+    }
+
+    override fun notifySlowPeer(peerId: PeerId) {
+        listeners.forEach { it.notifySlowPeer(peerId) }
     }
 }

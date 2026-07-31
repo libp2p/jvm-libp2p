@@ -234,6 +234,7 @@ open class GossipRouter(
     }
 
     open fun notifySlowPeer(peer: PeerHandler) {
+        eventBroadcaster.notifySlowPeer(peer.peerId)
     }
 
     override fun acceptRequestsFrom(peer: PeerHandler): Boolean {
