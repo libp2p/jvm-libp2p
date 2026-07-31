@@ -112,10 +112,11 @@ open class DefaultGossipRpcPartsQueue(
         }
     }
 
-    protected val urgentControlParts = mutableListOf<AbstractPart>()
-    protected val stateControlParts = mutableListOf<AbstractPart>()
-    protected val bulkParts = mutableListOf<AbstractPart>()
-    protected val priorityPartLists = listOf(urgentControlParts, stateControlParts, bulkParts)
+    protected val priorityPartLists = listOf(
+        mutableListOf<AbstractPart>(),
+        mutableListOf(),
+        mutableListOf()
+    )
 
     override fun addPart(part: AbstractPart) {
         if (part.estimatedMaxSerializedSize > params.maxGossipMessageSize) {
@@ -130,15 +131,15 @@ open class DefaultGossipRpcPartsQueue(
 
     private fun priorityPartList(part: AbstractPart): MutableList<AbstractPart> =
         when (part) {
-            is IDontWantPart -> urgentControlParts
+            is IDontWantPart -> priorityPartLists[URGENT_CONTROL_PRIORITY]
             is SubscriptionPart,
             is ControlExtensionPart,
             is GraftPart,
-            is PrunePart -> stateControlParts
+            is PrunePart -> priorityPartLists[STATE_CONTROL_PRIORITY]
             is PublishPart,
             is IHavePart,
-            is IWantPart -> bulkParts
-            else -> bulkParts
+            is IWantPart -> priorityPartLists[BULK_PRIORITY]
+            else -> priorityPartLists[BULK_PRIORITY]
         }
 
     override fun addIHave(messageId: MessageId, topic: Topic) {
@@ -223,5 +224,11 @@ open class DefaultGossipRpcPartsQueue(
     override fun abort(exception: Exception) {
         super.abort(exception)
         priorityPartLists.forEach { it.clear() }
+    }
+
+    private companion object {
+        const val URGENT_CONTROL_PRIORITY = 0
+        const val STATE_CONTROL_PRIORITY = 1
+        const val BULK_PRIORITY = 2
     }
 }
