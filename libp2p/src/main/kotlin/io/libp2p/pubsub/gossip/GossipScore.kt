@@ -309,6 +309,7 @@ class DefaultGossipScore(
     }
 
     override fun notifySlowPeer(peerId: PeerId) {
+        notifyRouterMisbehavior(peerId, 1)
     }
 
     fun stop() {

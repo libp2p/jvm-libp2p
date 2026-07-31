@@ -28,6 +28,10 @@ interface GossipRouterEventListener {
 
     fun notifyRouterMisbehavior(peerId: PeerId, count: Int)
 
+    /**
+     * Called when a peer's outbound RPC parts queue remains above the configured slow-peer
+     * threshold for the configured number of heartbeats.
+     */
     fun notifySlowPeer(peerId: PeerId)
 }
 

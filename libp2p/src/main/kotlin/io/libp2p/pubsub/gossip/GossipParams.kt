@@ -260,14 +260,15 @@ data class GossipParams(
 
     /**
      * [slowPeerPendingBytesThreshold] controls when a peer's pending outbound queue is considered
-     * pressured. When unset, slow-peer detection by pending queue size is disabled.
+     * pressured. The default is intentionally very high, which effectively disables slow-peer
+     * detection by pending queue size unless a lower value is configured.
      */
-    val slowPeerPendingBytesThreshold: Int? = null,
+    val slowPeerPendingBytesThreshold: Int = Int.MAX_VALUE,
 
     /**
      * [slowPeerHeartbeatThreshold] controls how many consecutive heartbeats a peer's pending
-     * outbound queue may stay at or above [slowPeerPendingBytesThreshold] before it is reported
-     * through `notifySlowPeer`.
+     * outbound queue may stay at or above [slowPeerPendingBytesThreshold] before it is processed as
+     * slow through `notifySlowPeer`.
      */
     val slowPeerHeartbeatThreshold: Int = 3
 
@@ -284,9 +285,7 @@ data class GossipParams(
         check(gossipFactor in 0.0..1.0, "gossipFactor should be in range [0.0, 1.0]")
         check(floodPublishMaxMessageSizeThreshold >= 0, "floodPublishMaxMessageSizeThreshold should be >= 0")
         check(iDontWantMinMessageSizeThreshold >= 0, "iDontWantMinMessageSizeThreshold should be >= 0")
-        slowPeerPendingBytesThreshold?.let {
-            check(it > 0, "slowPeerPendingBytesThreshold should be > 0")
-        }
+        check(slowPeerPendingBytesThreshold > 0, "slowPeerPendingBytesThreshold should be > 0")
         check(slowPeerHeartbeatThreshold > 0, "slowPeerHeartbeatThreshold should be > 0")
     }
 
@@ -416,6 +415,7 @@ data class GossipPeerScoreParams(
      * router. The router currently applies penalties for the following behaviors:
      * - attempting to re-graft before the prune backoff time has elapsed.
      * - not following up in IWANT requests for messages advertised with IHAVE.
+     * - keeping outbound RPC parts queued above the slow-peer threshold for too many heartbeats.
      *
      * The value of the parameter is the square of the counter over the threshold,
      * which decays with [behaviourPenaltyDecay].

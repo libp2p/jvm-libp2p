@@ -233,8 +233,24 @@ open class GossipRouter(
         eventBroadcaster.notifyRouterMisbehavior(peer.peerId, penalty)
     }
 
+    /**
+     * Processes a peer whose outbound queue stayed above the slow-peer threshold for the configured
+     * number of heartbeats. The default handling first unloads low-priority queued data, then emits
+     * the slow-peer event so listeners such as [DefaultGossipScore] can apply their own policy.
+     */
     open fun notifySlowPeer(peer: PeerHandler) {
+        trimOutboundQueue(peer)
+        // will be downscored by GossipScore
         eventBroadcaster.notifySlowPeer(peer.peerId)
+    }
+
+    fun trimOutboundQueue(peer: PeerHandler) {
+        val partsQueue = pendingRpcParts.getExistingQueue(peer) ?: return
+        partsQueue.dropLowPriority()
+        if (partsQueue.estimateMaxSerializedSize() >= params.slowPeerPendingBytesThreshold) {
+            // last resort is to drop all the queued parts
+            partsQueue.dropAll(DroppedRpcPartsException())
+        }
     }
 
     override fun acceptRequestsFrom(peer: PeerHandler): Boolean {
@@ -760,9 +776,8 @@ open class GossipRouter(
     }
 
     private fun trackSlowPeers() {
-        val threshold = params.slowPeerPendingBytesThreshold ?: return
         pendingRpcParts.getQueues().forEach { (peer, queue) ->
-            if (queue.estimateMaxSerializedSize() >= threshold) {
+            if (queue.estimateMaxSerializedSize() >= params.slowPeerPendingBytesThreshold) {
                 val pressure = slowPeerQueuePressure.getOrPut(peer) { SlowPeerQueuePressure() }
                 pressure.heartbeatsAboveThreshold++
                 if (pressure.heartbeatsAboveThreshold >= params.slowPeerHeartbeatThreshold) {

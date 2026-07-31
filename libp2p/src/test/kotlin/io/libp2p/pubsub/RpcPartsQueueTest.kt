@@ -115,7 +115,7 @@ class RpcPartsQueueTest {
     }
 
     @Test
-    fun `abort fails pending publish promises`() {
+    fun `dropAll fails pending publish promises`() {
         val queue = DefaultRpcPartsQueue()
         val publishPromise = CompletableFuture<Unit>()
 
@@ -124,7 +124,7 @@ class RpcPartsQueueTest {
 
         assertThat(queue.estimateMaxSerializedSize()).isGreaterThan(0)
 
-        queue.abort(ConnectionClosedException())
+        queue.dropAll(ConnectionClosedException())
 
         assertThat(queue.isEmpty()).isTrue()
         assertThat(queue.estimateMaxSerializedSize()).isZero()

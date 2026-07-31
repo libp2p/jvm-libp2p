@@ -63,9 +63,18 @@ interface RpcPartsQueue {
     fun takeBatch(): RpcPartsBatch?
 
     /**
+     * Drops queued parts that are considered low priority by this queue implementation.
+     *
+     * Publish promises associated with dropped parts are failed with [DroppedRpcPartsException].
+     * Higher-priority parts, if any, are left queued. Queues without explicit priorities may treat
+     * all queued parts as low priority.
+     */
+    fun dropLowPriority()
+
+    /**
      * Fails all queued publish promises with [exception] and clears this queue.
      */
-    fun abort(exception: Exception)
+    fun dropAll(exception: Exception)
 
     /**
      * Returns a conservative upper bound for the serialized size of all currently queued parts.
@@ -168,6 +177,15 @@ abstract class AbstractRpcPartsQueue : RpcPartsQueue {
         return ret
     }
 
+    protected fun dropParts(droppedParts: MutableList<AbstractPart>) {
+        if (droppedParts.isEmpty()) return
+        mergePromises(droppedParts).completeExceptionally(
+            DroppedRpcPartsException("Queued low priority RPC parts were dropped")
+        )
+        removePartsSize(droppedParts)
+        droppedParts.clear()
+    }
+
     private fun mergeRpc(batchParts: List<AbstractPart>): Rpc.RPC {
         val builder = Rpc.RPC.newBuilder()
         batchParts.forEach {
@@ -176,7 +194,7 @@ abstract class AbstractRpcPartsQueue : RpcPartsQueue {
         return builder.build()
     }
 
-    override fun abort(exception: Exception) {
+    override fun dropAll(exception: Exception) {
         estimatedMaxSerializedSizeAccum = 0
     }
 }
@@ -204,9 +222,13 @@ open class DefaultRpcPartsQueue : AbstractRpcPartsQueue() {
         return ret
     }
 
-    override fun abort(exception: Exception) {
+    override fun dropLowPriority() {
+        dropParts(parts)
+    }
+
+    override fun dropAll(exception: Exception) {
         mergePromises(parts).completeExceptionally(exception)
-        super.abort(exception)
+        super.dropAll(exception)
         parts.clear()
     }
 }

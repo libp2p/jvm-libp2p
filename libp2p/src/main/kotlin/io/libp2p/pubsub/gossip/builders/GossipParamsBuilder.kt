@@ -235,7 +235,7 @@ class GossipParamsBuilder {
             maxIDontWantMessageIds = maxIDontWantMessageIds!!,
             iDontWantMinMessageSizeThreshold = iDontWantMinMessageSizeThreshold!!,
             iDontWantTTL = iDontWantTTL!!,
-            slowPeerPendingBytesThreshold = slowPeerPendingBytesThreshold,
+            slowPeerPendingBytesThreshold = slowPeerPendingBytesThreshold!!,
             slowPeerHeartbeatThreshold = slowPeerHeartbeatThreshold!!
         )
     }
@@ -277,6 +277,7 @@ class GossipParamsBuilder {
         check(maxIDontWantMessageIds != null, { "maxIDontWantMessageIds must not be null" })
         check(iDontWantMinMessageSizeThreshold != null, { "iDontWantMinMessageSizeThreshold must not be null" })
         check(iDontWantTTL != null, { "iDontWantTTL must not be null" })
+        check(slowPeerPendingBytesThreshold != null, { "slowPeerPendingBytesThreshold must not be null" })
         check(slowPeerHeartbeatThreshold != null, { "slowPeerHeartbeatThreshold must not be null" })
     }
 }

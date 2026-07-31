@@ -62,7 +62,7 @@ abstract class AbstractRouter(
         fun getExistingQueue(peer: PeerHandler) = map[peer]
         fun getQueues(): Map<PeerHandler, TPartsQueue> = map
         fun onDisconnected(peer: PeerHandler) {
-            map.remove(peer)?.abort(ConnectionClosedException())
+            map.remove(peer)?.dropAll(ConnectionClosedException())
         }
     }
 
