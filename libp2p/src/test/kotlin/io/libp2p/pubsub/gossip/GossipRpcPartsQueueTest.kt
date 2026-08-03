@@ -4,10 +4,12 @@ import io.libp2p.core.PeerId
 import io.libp2p.etc.types.toProtobuf
 import io.libp2p.etc.types.toWBytes
 import io.libp2p.pubsub.RpcPartsQueue
+import io.libp2p.pubsub.TooLargeMessageException
 import io.libp2p.pubsub.Topic
 import io.libp2p.pubsub.gossip.builders.GossipParamsBuilder
 import io.libp2p.pubsub.gossip.builders.GossipRouterBuilder
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedInvocationConstants
 import org.junit.jupiter.params.ParameterizedTest
@@ -215,6 +217,60 @@ class GossipRpcPartsQueueTest {
     fun `mergeMessageParts() none parts`() {
         val partsQueue = DefaultGossipRpcPartsQueue(gossipParamsNoLimits)
         assertThat(partsQueue.takeMerged()).isEmpty()
+    }
+
+    @Test
+    fun `takeBatch splits by estimated max serialized size and updates remaining estimate`() {
+        val maxSerializedSize = standaloneGraftRpc("topic-1").serializedSize
+        val partsQueue = DefaultGossipRpcPartsQueue(
+            GossipParamsBuilder()
+                .maxGossipMessageSize(maxSerializedSize)
+                .maxIHaveLength(Int.MAX_VALUE)
+                .build()
+        )
+        val firstPartEstimate = standaloneGraftRpc("topic-1").serializedSize
+        val secondPartEstimate = standaloneGraftRpc("topic-2").serializedSize
+
+        partsQueue.addGraft("topic-1")
+        partsQueue.addGraft("topic-2")
+
+        assertThat(partsQueue.estimateMaxSerializedSize()).isEqualTo(firstPartEstimate + secondPartEstimate)
+
+        val firstBatch = partsQueue.takeBatch()!!
+
+        assertThat(firstBatch.rpc.control.graftList.map { it.topicID }).containsExactly("topic-1")
+        assertThat(firstBatch.rpc.serializedSize).isLessThanOrEqualTo(maxSerializedSize)
+        assertThat(partsQueue.estimateMaxSerializedSize()).isEqualTo(secondPartEstimate)
+        assertThat(partsQueue.isEmpty()).isFalse()
+
+        val secondBatch = partsQueue.takeBatch()!!
+
+        assertThat(secondBatch.rpc.control.graftList.map { it.topicID }).containsExactly("topic-2")
+        assertThat(secondBatch.rpc.serializedSize).isLessThanOrEqualTo(maxSerializedSize)
+        assertThat(partsQueue.estimateMaxSerializedSize()).isZero()
+        assertThat(partsQueue.isEmpty()).isTrue()
+    }
+
+    @Test
+    fun `addPart describes part that exceeds max gossip message size`() {
+        val message = createRpcMessage("topic", "large-payload")
+        val maxSerializedSize = standalonePublishRpc(message).serializedSize - 1
+        val partsQueue = DefaultGossipRpcPartsQueue(
+            GossipParamsBuilder()
+                .maxGossipMessageSize(maxSerializedSize)
+                .maxIHaveLength(Int.MAX_VALUE)
+                .build()
+        )
+
+        val exception = assertThrows(TooLargeMessageException::class.java) {
+            partsQueue.addPublish(message)
+        }
+
+        assertThat(exception.message)
+            .contains("RPC part estimated serialized size")
+            .contains("maxGossipMessageSize $maxSerializedSize")
+            .contains("PublishPart")
+            .doesNotContain("large-payload")
     }
 
     @Test
@@ -503,4 +559,14 @@ class GossipRpcPartsQueueTest {
         assertThat(merged[1].control.hasExtensions()).isTrue()
         assertThat(merged[1].control.extensions.partialMessages).isTrue()
     }
+
+    private fun standaloneGraftRpc(topic: Topic): Rpc.RPC =
+        Rpc.RPC.newBuilder().apply {
+            controlBuilder.addGraftBuilder().setTopicID(topic)
+        }.build()
+
+    private fun standalonePublishRpc(message: Rpc.Message): Rpc.RPC =
+        Rpc.RPC.newBuilder()
+            .addPublish(message)
+            .build()
 }

@@ -8,6 +8,7 @@ import io.libp2p.core.PeerId
 import io.libp2p.core.pubsub.*
 import io.libp2p.etc.types.*
 import io.libp2p.pubsub.MockRouter
+import io.libp2p.pubsub.TooLargeMessageException
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 import io.netty.channel.ChannelHandler
@@ -57,6 +58,24 @@ class GossipV1_1Tests : GossipTestsBase() {
         val msg = newMessage("topic1", 0L, "Hello".toByteArray())
         test.gossipRouter.publish(msg)
         test.mockRouter.waitForMessage { it.publishCount > 0 }
+    }
+
+    @Test
+    fun `publishing too large message fails with TooLargeMessageException`() {
+        val msg = newMessage("topic1", 0L, "too-large".toByteArray())
+        val standalonePublishSize = Rpc.RPC.newBuilder()
+            .addPublish(msg.protobufMessage)
+            .buildPartial()
+            .serializedSize
+        val test = TwoRoutersTest(GossipParams(maxGossipMessageSize = standalonePublishSize - 1))
+
+        test.mockRouter.subscribe("topic1")
+
+        val publishFuture = test.gossipRouter.publish(msg)
+
+        assertThrows(TooLargeMessageException::class.java) {
+            publishFuture.getX()
+        }
     }
 
     @Test

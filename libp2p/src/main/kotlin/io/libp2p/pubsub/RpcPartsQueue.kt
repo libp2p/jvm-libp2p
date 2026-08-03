@@ -1,12 +1,16 @@
 package io.libp2p.pubsub
 
 import io.libp2p.etc.types.forward
+import io.libp2p.pubsub.DefaultRpcPartsQueue.AbstractPart
 import pubsub.pb.Rpc
 import java.util.concurrent.CompletableFuture
 
+/**
+ * A ready-to-send RPC and its associated write completion.
+ */
 data class RpcPartsBatch(
     val rpc: Rpc.RPC,
-    val writePromise: CompletableFuture<Unit>
+    val writePromise: CompletableFuture<Unit>,
 )
 
 /**
@@ -15,6 +19,10 @@ data class RpcPartsBatch(
  * Implementations may decide how many queued parts can be sent in a single outbound RPC. For example,
  * gossip queues split parts into protocol-limit-valid batches, while the default queue drains
  * everything at once.
+ *
+ * Every queued part contributes a conservative serialized-size estimate. [estimateMaxSerializedSize]
+ * returns the accumulated estimate for all currently queued parts so callers can reason about the
+ * pending outbound data before the final RPC is built.
  *
  * Implementations are not expected to be thread-safe; routers own and access queues on their event
  * executor.
@@ -59,6 +67,16 @@ interface RpcPartsQueue {
      * Fails all queued publish promises with [exception] and clears this queue.
      */
     fun abort(exception: Exception)
+
+    /**
+     * Returns a conservative upper bound for the serialized size of all currently queued parts.
+     *
+     * The estimate is intentionally allowed to be larger than the final serialized RPC size. Parts
+     * may share protobuf wrapper messages when [takeBatch] merges them, while the estimate is based
+     * on each part's standalone serialized form. Implementations may use the same per-part estimate
+     * to decide where to split batches before building the final protobuf message.
+     */
+    fun estimateMaxSerializedSize(): Int
 }
 
 /**
@@ -68,21 +86,40 @@ interface RpcPartsQueue {
  */
 open class DefaultRpcPartsQueue : RpcPartsQueue {
 
-    protected interface AbstractPart {
-        fun appendToBuilder(builder: Rpc.RPC.Builder)
-        val writePromise: CompletableFuture<Unit>? get() = null
+    protected abstract class AbstractPart {
+
+        abstract fun appendToBuilder(builder: Rpc.RPC.Builder)
+
+        /**
+         * Conservative upper bound for this part when serialized as a standalone RPC.
+         *
+         * The value is lazy because [appendToBuilder] depends on subclass state. It is cached after
+         * the part is added to a queue and can then be used for accumulated queue-size accounting.
+         */
+        val estimatedMaxSerializedSize: Int by lazy {
+            Rpc.RPC.newBuilder().also { appendToBuilder(it) }.buildPartial().serializedSize
+        }
+
+        open val writePromise: CompletableFuture<Unit>? = null
     }
 
     protected data class PublishPart(
         val message: Rpc.Message,
         override val writePromise: CompletableFuture<Unit>? = null
-    ) : AbstractPart {
+    ) : AbstractPart() {
         override fun appendToBuilder(builder: Rpc.RPC.Builder) {
             builder.addPublish(message)
         }
+
+        override fun toString(): String =
+            "PublishPart(" +
+                "dataSize=${message.data.size()}, " +
+                "topicIDs=${message.topicIDsList}, " +
+                "hasWritePromise=${writePromise != null}" +
+                ")"
     }
 
-    protected data class SubscriptionPart(val topic: Topic, val status: RpcPartsQueue.SubscriptionStatus) : AbstractPart {
+    protected data class SubscriptionPart(val topic: Topic, val status: RpcPartsQueue.SubscriptionStatus) : AbstractPart() {
         override fun appendToBuilder(builder: Rpc.RPC.Builder) {
             builder.addSubscriptionsBuilder().apply {
                 setTopicid(topic)
@@ -92,9 +129,14 @@ open class DefaultRpcPartsQueue : RpcPartsQueue {
     }
 
     protected open val parts = mutableListOf<AbstractPart>()
+    private var estimatedMaxSerializedSizeAccum: Int = 0
 
     protected open fun addPart(part: AbstractPart) {
         parts += part
+        estimatedMaxSerializedSizeAccum += part.estimatedMaxSerializedSize
+    }
+    protected fun onPartsRemoving(removedParts: List<AbstractPart>) {
+        estimatedMaxSerializedSizeAccum -= removedParts.sumOf { it.estimatedMaxSerializedSize }
     }
 
     override fun addPublish(message: Rpc.Message) {
@@ -116,6 +158,7 @@ open class DefaultRpcPartsQueue : RpcPartsQueue {
     override fun takeBatch(): RpcPartsBatch? {
         if (parts.isEmpty()) return null
         val ret = createBatch(parts.toList())
+        onPartsRemoving(parts)
         parts.clear()
         return ret
     }
@@ -126,6 +169,8 @@ open class DefaultRpcPartsQueue : RpcPartsQueue {
             mergePromises(batchParts)
         )
     }
+
+    override fun estimateMaxSerializedSize(): Int = estimatedMaxSerializedSizeAccum
 
     private fun mergePromises(batchParts: List<AbstractPart>): CompletableFuture<Unit> {
         val ret = CompletableFuture<Unit>()
@@ -143,6 +188,7 @@ open class DefaultRpcPartsQueue : RpcPartsQueue {
 
     override fun abort(exception: Exception) {
         mergePromises(parts).completeExceptionally(exception)
+        estimatedMaxSerializedSizeAccum = 0
         parts.clear()
     }
 }

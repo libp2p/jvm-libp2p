@@ -6,6 +6,7 @@ import io.libp2p.pubsub.DefaultRpcPartsQueue
 import io.libp2p.pubsub.MessageId
 import io.libp2p.pubsub.RpcPartsBatch
 import io.libp2p.pubsub.RpcPartsQueue
+import io.libp2p.pubsub.TooLargeMessageException
 import io.libp2p.pubsub.Topic
 import pubsub.pb.Rpc
 
@@ -33,7 +34,11 @@ interface GossipRpcPartsQueue : RpcPartsQueue {
 }
 
 /**
- * Default [RpcPartsQueue] implementation
+ * Gossip-aware [RpcPartsQueue] implementation.
+ *
+ * The queue respects gossip message-count limits and [GossipParams.maxGossipMessageSize] when
+ * selecting parts for [takeBatch]. Size limiting uses each part's conservative standalone RPC
+ * estimate, so a batch can be split before the actual merged protobuf RPC is built.
  *
  * NOT thread safe
  */
@@ -41,7 +46,7 @@ open class DefaultGossipRpcPartsQueue(
     private val params: GossipParams
 ) : DefaultRpcPartsQueue(), GossipRpcPartsQueue {
 
-    protected data class IHavePart(val messageId: MessageId, val topic: Topic) : AbstractPart {
+    protected data class IHavePart(val messageId: MessageId, val topic: Topic) : AbstractPart() {
         override fun appendToBuilder(builder: Rpc.RPC.Builder) {
             val ctrlBuilder = builder.controlBuilder
             val iHaveBuilder = ctrlBuilder.ihaveBuilderList
@@ -52,7 +57,7 @@ open class DefaultGossipRpcPartsQueue(
         }
     }
 
-    protected data class IWantPart(val messageId: MessageId) : AbstractPart {
+    protected data class IWantPart(val messageId: MessageId) : AbstractPart() {
         override fun appendToBuilder(builder: Rpc.RPC.Builder) {
             val ctrlBuilder = builder.controlBuilder
             val iWantBuilder = if (ctrlBuilder.iwantBuilderList.isEmpty()) {
@@ -64,14 +69,14 @@ open class DefaultGossipRpcPartsQueue(
         }
     }
 
-    protected data class GraftPart(val topic: Topic) : AbstractPart {
+    protected data class GraftPart(val topic: Topic) : AbstractPart() {
         override fun appendToBuilder(builder: Rpc.RPC.Builder) {
             builder.controlBuilder.addGraftBuilder().setTopicID(topic)
         }
     }
 
     protected data class PrunePart(val topic: Topic, val backoffSeconds: Long?, val backoffPeers: List<PeerId>) :
-        AbstractPart {
+        AbstractPart() {
         override fun appendToBuilder(builder: Rpc.RPC.Builder) {
             val pruneBuilder = builder.controlBuilder.addPruneBuilder()
             pruneBuilder.setTopicID(topic)
@@ -86,10 +91,20 @@ open class DefaultGossipRpcPartsQueue(
         }
     }
 
-    protected data class ControlExtensionPart(val ctrlExtension: Rpc.ControlExtensions) : AbstractPart {
+    protected data class ControlExtensionPart(val ctrlExtension: Rpc.ControlExtensions) : AbstractPart() {
         override fun appendToBuilder(builder: Rpc.RPC.Builder) {
             builder.controlBuilder.setExtensions(ctrlExtension)
         }
+    }
+
+    override fun addPart(part: AbstractPart) {
+        if (part.estimatedMaxSerializedSize > params.maxGossipMessageSize) {
+            throw TooLargeMessageException(
+                "RPC part estimated serialized size ${part.estimatedMaxSerializedSize} exceeds " +
+                    "maxGossipMessageSize ${params.maxGossipMessageSize}: $part"
+            )
+        }
+        super.addPart(part)
     }
 
     override fun addIHave(messageId: MessageId, topic: Topic) {
@@ -123,6 +138,7 @@ open class DefaultGossipRpcPartsQueue(
         var iWantCount = params.maxIWantMessageIds ?: Int.MAX_VALUE
         var graftCount = params.maxGraftMessages ?: Int.MAX_VALUE
         var pruneCount = params.maxPruneMessages ?: Int.MAX_VALUE
+        var sizeLeft = params.maxGossipMessageSize
 
         var partIdx = 0
 
@@ -130,7 +146,7 @@ open class DefaultGossipRpcPartsQueue(
             publishCount > 0 && subscriptionCount > 0 && iHaveCount > 0 &&
             iWantCount > 0 && graftCount > 0 && pruneCount > 0
         ) {
-            val part = parts[partIdx++]
+            val part = parts[partIdx]
             when (part) {
                 is PublishPart -> publishCount--
                 is SubscriptionPart -> subscriptionCount--
@@ -139,11 +155,17 @@ open class DefaultGossipRpcPartsQueue(
                 is GraftPart -> graftCount--
                 is PrunePart -> pruneCount--
             }
+            sizeLeft -= part.estimatedMaxSerializedSize
+            if (sizeLeft < 0) {
+                break
+            }
+            partIdx++
         }
         if (partIdx == 0) return null
 
         val sliceSublist: MutableList<AbstractPart> = parts.subList(0, partIdx)
         val ret = createBatch(sliceSublist)
+        onPartsRemoving(sliceSublist)
         sliceSublist.clear()
 
         return ret
