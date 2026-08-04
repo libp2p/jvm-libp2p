@@ -614,23 +614,6 @@ class GossipRpcPartsQueueTest {
     }
 
     @Test
-    fun `takeBatch returns null when highest priority part cannot be admitted`() {
-        val partsQueue = TestGossipQueue(
-            GossipParamsBuilder()
-                .maxIDontWantMessageIds(0)
-                .maxIHaveLength(Int.MAX_VALUE)
-                .build()
-        )
-
-        partsQueue.addIDontWant("1111".toWBytes())
-        partsQueue.addPublish(createRpcMessage("topic", "data"))
-
-        assertThat(partsQueue.takeBatch()).isNull()
-        assertThat(partsQueue.isEmpty()).isFalse()
-        assertThat(partsQueue.estimateMaxSerializedSize()).isGreaterThan(0)
-    }
-
-    @Test
     fun `abort clears priority parts and fails pending publish promises`() {
         val partsQueue = TestGossipQueue(gossipParamsNoLimits)
         val publishPromise = CompletableFuture<Unit>()

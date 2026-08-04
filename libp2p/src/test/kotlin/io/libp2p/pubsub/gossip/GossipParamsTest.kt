@@ -85,6 +85,16 @@ class GossipParamsTest {
     }
 
     @Test
+    fun `test invalid max IDONTWANT message IDs is zero`() {
+        val exception = assertThrows<IllegalArgumentException> {
+            GossipParams.builder()
+                .maxIDontWantMessageIds(0)
+                .build()
+        }
+        assertEquals("maxIDontWantMessageIds should be > 0", exception.message)
+    }
+
+    @Test
     fun `test invalid dout same as dlow`() {
         val exception = assertThrows<IllegalArgumentException> {
             GossipParams.builder()
