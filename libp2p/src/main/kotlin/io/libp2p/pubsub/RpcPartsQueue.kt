@@ -14,6 +14,15 @@ data class RpcPartsBatch(
 )
 
 /**
+ * Conservative upper bound for [message] serialized as a standalone publish RPC.
+ *
+ * This is the same estimate [DefaultRpcPartsQueue] accounts for when a publish part is queued, so
+ * callers can check whether a message can ever be sent before touching any queue.
+ */
+internal fun estimateStandalonePublishRpcSize(message: Rpc.Message): Int =
+    Rpc.RPC.newBuilder().addPublish(message).buildPartial().serializedSize
+
+/**
  * Accumulates outbound pubsub RPC parts before they are written to a peer.
  *
  * Implementations may decide how many queued parts can be sent in a single outbound RPC. For example,

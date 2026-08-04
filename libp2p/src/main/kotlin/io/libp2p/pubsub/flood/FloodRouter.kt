@@ -20,10 +20,10 @@ class FloodRouter(executor: ScheduledExecutorService = Executors.newSingleThread
 ) {
 
     // msg: validated unseen messages received from api
-    override fun broadcastOutbound(msg: PubsubMessage): CompletableFuture<Unit> {
+    override fun prepareOutboundPublish(msg: PubsubMessage) = OutboundPublish {
         val ret = broadcast(msg, null)
         flushAllPending()
-        return ret
+        ret
     }
 
     // msg: validated unseen messages received from wire
