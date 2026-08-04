@@ -171,6 +171,36 @@ class GossipV1_2Tests : GossipTestsBase() {
         }
     }
 
+    @Test
+    fun iDontWantIsFlushedWhenAllPublishTargetsOptOut() {
+        val test = startSingleTopicNetwork(
+            params = GossipParams(iDontWantMinMessageSizeThreshold = 5),
+            mockRouterCount = 2
+        )
+
+        val msgToPublish = newMessage("topic1", 0L, "Hello".toByteArray())
+        test.mockRouters.forEach { peer ->
+            peer.sendToSingle(
+                Rpc.RPC.newBuilder().setControl(
+                    Rpc.ControlMessage.newBuilder().addIdontwant(
+                        Rpc.ControlIDontWant.newBuilder().addMessageIDs(msgToPublish.messageId.toProtobuf())
+                    )
+                ).build()
+            )
+        }
+        test.fuzz.timeController.addTime(100.millis)
+
+        test.gossipRouter.publish(msgToPublish)
+
+        test.mockRouters.forEach { peer ->
+            peer.waitForMessage { rpc ->
+                rpc.control.idontwantList.any { idontwant ->
+                    idontwant.messageIDsList.map { it.toWBytes() }.contains(msgToPublish.messageId)
+                }
+            }
+        }
+    }
+
     private fun startSingleTopicNetwork(params: GossipParams, mockRouterCount: Int): ManyRoutersTest {
         val test = ManyRoutersTest(
             protocol = PubsubProtocol.Gossip_V_1_2,

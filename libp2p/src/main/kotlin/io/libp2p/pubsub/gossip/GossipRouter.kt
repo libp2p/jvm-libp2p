@@ -544,11 +544,11 @@ open class GossipRouter(
             val publishedMessages = peers
                 .filterNot { peerDoesNotWantMessage(it, msg.messageId) }
                 .map { submitPublishMessage(it, msg) }
+            flushAllPending()
             if (publishedMessages.isEmpty()) {
                 // all peers have sent IDONTWANT for this message id
                 CompletableFuture.completedFuture(Unit)
             } else {
-                flushAllPending()
                 anyComplete(publishedMessages)
             }
         } else {
