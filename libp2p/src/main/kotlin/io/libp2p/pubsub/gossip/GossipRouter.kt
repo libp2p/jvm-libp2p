@@ -523,9 +523,7 @@ open class GossipRouter(
         flushAllPending()
     }
 
-    override fun broadcastOutbound(msg: PubsubMessage): CompletableFuture<Unit> {
-        msg.topics.forEach { lastPublished[it] = currentTimeSupplier() }
-
+    override fun prepareOutboundPublish(msg: PubsubMessage): OutboundPublish {
         val floodPublish = msg.size <= params.floodPublishMaxMessageSizeThreshold
 
         val peers =
@@ -535,24 +533,28 @@ open class GossipRouter(
                 selectPeersForOutboundBroadcasting(msg)
             }
 
-        mCache += msg
+        if (peers.isEmpty()) {
+            throw NoPeersForOutboundMessageException("No peers for message topics ${msg.topics} found")
+        }
 
-        return if (peers.isNotEmpty()) {
-            iDontWant(msg)
-            val publishedMessages = peers
-                .filterNot { peerDoesNotWantMessage(it, msg.messageId) }
-                .map { submitPublishMessage(it, msg) }
-            if (publishedMessages.isEmpty()) {
-                // all peers have sent IDONTWANT for this message id
-                CompletableFuture.completedFuture(Unit)
-            } else {
-                flushAllPending()
-                anyComplete(publishedMessages)
-            }
+        return OutboundPublish { broadcastOutboundToPeers(msg, peers) }
+    }
+
+    private fun broadcastOutboundToPeers(msg: PubsubMessage, peers: List<PeerHandler>): CompletableFuture<Unit> {
+        msg.topics.forEach { lastPublished[it] = currentTimeSupplier() }
+        mCache += msg
+        iDontWant(msg)
+
+        val publishedMessages = peers
+            .filterNot { peerDoesNotWantMessage(it, msg.messageId) }
+            .map { submitPublishMessage(it, msg) }
+
+        return if (publishedMessages.isEmpty()) {
+            // all peers have sent IDONTWANT for this message id
+            CompletableFuture.completedFuture(Unit)
         } else {
-            completedExceptionally(
-                NoPeersForOutboundMessageException("No peers for message topics ${msg.topics} found")
-            )
+            flushAllPending()
+            anyComplete(publishedMessages)
         }
     }
 

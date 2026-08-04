@@ -66,7 +66,7 @@ open class MockRouter(executor: ScheduledExecutorService) : AbstractRouter(
         notifyOutboundDataAvailable(peer)
     }
 
-    override fun broadcastOutbound(msg: PubsubMessage): CompletableFuture<Unit> = CompletableFuture.completedFuture(null)
+    override fun prepareOutboundPublish(msg: PubsubMessage) = OutboundPublish { CompletableFuture.completedFuture(Unit) }
     override fun broadcastInbound(msgs: List<PubsubMessage>, receivedFrom: PeerHandler) {}
     override fun processControl(ctrl: Rpc.ControlMessage, receivedFrom: PeerHandler) {}
     override fun processExtensions(msg: Rpc.RPC, receivedFrom: PeerHandler) {}

@@ -71,9 +71,28 @@ abstract class AbstractRouter(
                 completedExceptionally(MessageAlreadySeenException("Msg: $msg"))
             } else {
                 messageValidator.validate(msg) // check ourselves not to be a bad peer
+                validateOutboundMessageSize(msg)
+                val publication = prepareOutboundPublish(msg)
                 seenMessages[msg] = Optional.of(ValidationResult.Valid)
-                broadcastOutbound(msg)
+                publication.publish()
             }
+        }
+    }
+
+    /**
+     * Checks that a locally originated message can be sent as a single outbound RPC.
+     *
+     * Called before any router state is mutated, so an oversized message is never retained: every
+     * publish attempt fails with [TooLargeMessageException] instead of the second and later attempts
+     * failing with [MessageAlreadySeenException].
+     */
+    protected open fun validateOutboundMessageSize(msg: PubsubMessage) {
+        val estimatedSize = estimateStandalonePublishRpcSize(msg.protobufMessage)
+        if (estimatedSize > maxMsgSize) {
+            throw TooLargeMessageException(
+                "Locally published message estimated serialized size $estimatedSize " +
+                    "exceeds max message size $maxMsgSize: $msg"
+            )
         }
     }
 
@@ -137,9 +156,27 @@ abstract class AbstractRouter(
     }
 
     /**
-     * Broadcasts to peers validated unseen messages received from api
+     * A locally originated message which passed outbound admission checks and is ready to be sent.
      */
-    protected abstract fun broadcastOutbound(msg: PubsubMessage): CompletableFuture<Unit>
+    protected fun interface OutboundPublish {
+        fun publish(): CompletableFuture<Unit>
+    }
+
+    /**
+     * Performs outbound admission checks for a validated unseen message received from api and
+     * selects the target peers.
+     *
+     * Implementations must not mutate router state on any path that can throw (e.g.
+     * [NoPeersForOutboundMessageException] when no peer is eligible), so a failed publish leaves
+     * nothing behind and can be retried. All sending, and all state changes that depend on the
+     * publish actually happening, belong in the returned [OutboundPublish].
+     *
+     * This retryability guarantee only covers admission failures raised here. Once
+     * [OutboundPublish.publish] has queued parts for sending, a later failure (e.g. a peer
+     * disconnecting, or every send failing) leaves the message in the seen cache, so it is not
+     * retryable.
+     */
+    protected abstract fun prepareOutboundPublish(msg: PubsubMessage): OutboundPublish
 
     /**
      * Broadcasts to peers validated unseen messages received from another peer

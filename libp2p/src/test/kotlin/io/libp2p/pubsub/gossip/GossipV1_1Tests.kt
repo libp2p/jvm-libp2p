@@ -8,6 +8,7 @@ import io.libp2p.core.PeerId
 import io.libp2p.core.pubsub.*
 import io.libp2p.etc.types.*
 import io.libp2p.pubsub.MockRouter
+import io.libp2p.pubsub.NoPeersForOutboundMessageException
 import io.libp2p.pubsub.TooLargeMessageException
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
@@ -63,10 +64,7 @@ class GossipV1_1Tests : GossipTestsBase() {
     @Test
     fun `publishing too large message fails with TooLargeMessageException`() {
         val msg = newMessage("topic1", 0L, "too-large".toByteArray())
-        val standalonePublishSize = Rpc.RPC.newBuilder()
-            .addPublish(msg.protobufMessage)
-            .buildPartial()
-            .serializedSize
+        val standalonePublishSize = standalonePublishRpcSize(msg)
         val test = TwoRoutersTest(GossipParams(maxGossipMessageSize = standalonePublishSize - 1))
 
         test.mockRouter.subscribe("topic1")
@@ -76,6 +74,70 @@ class GossipV1_1Tests : GossipTestsBase() {
         assertThrows(TooLargeMessageException::class.java) {
             publishFuture.getX()
         }
+    }
+
+    @Test
+    fun `publishing too large message doesn't poison seen cache`() {
+        val msg = newMessage("topic1", 0L, "too-large".toByteArray())
+        val standalonePublishSize = standalonePublishRpcSize(msg)
+        val test = TwoRoutersTest(GossipParams(maxGossipMessageSize = standalonePublishSize - 1))
+
+        test.mockRouter.subscribe("topic1")
+
+        assertThrows(TooLargeMessageException::class.java) {
+            test.gossipRouter.publish(msg).getX()
+        }
+
+        // the failed publish must not be retained: the same message fails the same way
+        assertThrows(TooLargeMessageException::class.java) {
+            test.gossipRouter.publish(msg).getX()
+        }
+    }
+
+    @Test
+    fun `failed too large publish leaves no message in mCache`() {
+        val msg = newMessage("topic1", 0L, "too-large".toByteArray())
+        val standalonePublishSize = standalonePublishRpcSize(msg)
+        val test = TwoRoutersTest(GossipParams(maxGossipMessageSize = standalonePublishSize - 1))
+
+        test.mockRouter.subscribe("topic1")
+        test.mockRouter.inboundMessages.clear()
+
+        assertThrows(TooLargeMessageException::class.java) {
+            test.gossipRouter.publish(msg).getX()
+        }
+
+        assertNull(test.gossipRouter.mCache[msg.messageId])
+    }
+
+    @Test
+    fun `publishing message of exactly max size succeeds`() {
+        val msg = newMessage("topic1", 0L, "exact-fit".toByteArray())
+        val standalonePublishSize = standalonePublishRpcSize(msg)
+        val test = TwoRoutersTest(GossipParams(maxGossipMessageSize = standalonePublishSize))
+
+        test.mockRouter.subscribe("topic1")
+        test.gossipRouter.publish(msg).getX()
+
+        test.mockRouter.waitForMessage { it.publishCount > 0 }
+    }
+
+    @Test
+    fun `publishing without outbound peers is retryable`() {
+        val test = TwoRoutersTest()
+        val msg = newMessage("topic1", 0L, "no-peers".toByteArray())
+
+        // mockRouter is connected but not subscribed to topic1: no eligible peer
+        assertThrows(NoPeersForOutboundMessageException::class.java) {
+            test.gossipRouter.publish(msg).getX()
+        }
+        assertNull(test.gossipRouter.mCache[msg.messageId])
+
+        test.mockRouter.subscribe("topic1")
+
+        // the earlier failure must not be retained
+        test.gossipRouter.publish(msg).getX()
+        test.mockRouter.waitForMessage { it.publishCount > 0 }
     }
 
     @Test

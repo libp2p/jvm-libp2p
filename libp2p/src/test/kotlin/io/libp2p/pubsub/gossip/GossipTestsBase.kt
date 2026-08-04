@@ -27,6 +27,12 @@ abstract class GossipTestsBase {
 
     protected fun getMessageId(msg: Rpc.Message): MessageId = msg.from.toWBytes() + msg.seqno.toWBytes()
 
+    protected fun standalonePublishRpcSize(msg: PubsubMessage): Int =
+        Rpc.RPC.newBuilder()
+            .addPublish(msg.protobufMessage)
+            .buildPartial()
+            .serializedSize
+
     class ManyRoutersTest(
         val mockRouterCount: Int = 10,
         val params: GossipParams = GossipParams(),

@@ -57,11 +57,11 @@ class PubsubStrictSignSpoofTest {
         seenMessages = LRUSeenCache(SimpleSeenCache(), 1000),
         messageValidator = SIGNATURE_ROUTER_VALIDATOR
     ) {
-        override fun broadcastOutbound(msg: PubsubMessage): CompletableFuture<Unit> {
+        override fun prepareOutboundPublish(msg: PubsubMessage) = OutboundPublish {
             val peers = msg.topics.flatMap { getTopicPeers(it) }.distinct()
             peers.forEach { submitPublishMessage(it, msg) }
             flushAllPending()
-            return CompletableFuture.completedFuture(null)
+            CompletableFuture.completedFuture(Unit)
         }
 
         override fun broadcastInbound(msgs: List<PubsubMessage>, receivedFrom: PeerHandler) {
