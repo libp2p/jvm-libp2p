@@ -1,5 +1,6 @@
 package io.libp2p.pubsub.gossip
 
+import io.libp2p.core.ConnectionClosedException
 import io.libp2p.core.InternalErrorException
 import io.libp2p.core.PeerId
 import io.libp2p.core.multiformats.Multiaddr
@@ -137,6 +138,20 @@ open class GossipRouter(
     override val pendingRpcParts = PendingRpcPartsMap<GossipRpcPartsQueue> { DefaultGossipRpcPartsQueue(params) }
 
     val gossipExtensionsState = GossipExtensionsState(gossipExtensionsConfig)
+
+
+    override val peerStates = PubsubPeerStates(::GossipPeerState)
+
+    protected open inner class GossipPeerState(
+        peer: PeerHandler
+    ) : PubsubPeerState(peer) {
+        override val rpcPartsQueue: GossipRpcPartsQueue = DefaultGossipRpcPartsQueue(params)
+
+        override fun onDisconnected() {
+            rpcPartsQueue.dropAll(ConnectionClosedException())
+        }
+    }
+
 
     private fun setBackOff(peer: PeerHandler, topic: Topic) = setBackOff(peer, topic, params.pruneBackoff.toMillis())
     private fun setBackOff(peer: PeerHandler, topic: Topic, delay: Long) {

@@ -7,8 +7,11 @@ import io.libp2p.core.Stream
 import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.etc.types.*
 import io.libp2p.etc.util.MessageAndPromise
+import io.libp2p.etc.util.P2PService
 import io.libp2p.etc.util.P2PServiceSemiDuplex
 import io.libp2p.etc.util.netty.protobuf.LimitedProtobufVarint32FrameDecoder
+import io.libp2p.pubsub.AbstractRouter.PubsubPeerState
+import io.libp2p.pubsub.gossip.DefaultGossipRpcPartsQueue
 import io.netty.channel.ChannelHandler
 import io.netty.handler.codec.protobuf.ProtobufDecoder
 import io.netty.handler.codec.protobuf.ProtobufEncoder
@@ -49,6 +52,41 @@ abstract class AbstractRouter(
     protected open val peersTopics = mutableMultiBiMap<PeerHandler, Topic>()
     protected open val subscribedTopics = linkedSetOf<Topic>()
     protected open val pendingRpcParts = PendingRpcPartsMap<RpcPartsQueue> { DefaultRpcPartsQueue() }
+
+    protected open val peerStates = PubsubPeerStates(::PubsubPeerState)
+
+    protected open class PubsubPeerState(
+        val peer: PeerHandler
+    ) {
+        open val rpcPartsQueue: RpcPartsQueue = DefaultRpcPartsQueue()
+
+        open fun onDisconnected() {
+            rpcPartsQueue.dropAll(ConnectionClosedException())
+        }
+    }
+
+    protected class PubsubPeerStates<out TState : PubsubPeerState>(
+        private val createState: (PeerHandler) -> TState
+    ) {
+        private val byPeer = linkedMapOf<P2PService.PeerHandler, TState>()
+
+        fun getOrCreate(peer: PeerHandler): TState =
+            byPeer.computeIfAbsent(peer) { createState(it) }
+
+        fun getExisting(peer: PeerHandler): TState? =
+            byPeer[peer]
+
+        fun getPeersWithPendingOutboundData(): List<PeerHandler> =
+            byPeer.values
+                .filter { !it.rpcPartsQueue.isEmpty() }
+                .map { it.peer }
+
+        fun getStates(): Collection<TState> = byPeer.values
+
+        fun onDisconnected(peer: PeerHandler) {
+            byPeer.remove(peer)?.onDisconnected()
+        }
+    }
 
     protected class PendingRpcPartsMap<out TPartsQueue : RpcPartsQueue>(
         private val queueFactory: () -> TPartsQueue
