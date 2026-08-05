@@ -672,11 +672,9 @@ open class GossipRouter(
 
     private fun heartbeat() {
         heartbeatsCount++
-        trackSlowPeers()
 
-        val curTime = this.currentTimeSupplier()
-        val staleIWantTime = curTime - params.iWantFollowupTime.toMillis()
-        val staleIDontWantTime = curTime - params.iDontWantTTL.toMillis()
+        val staleIWantTime = currentTimeSupplier() - params.iWantFollowupTime.toMillis()
+        val staleIDontWantTime = currentTimeSupplier() - params.iDontWantTTL.toMillis()
         peerStates.getAllStates().forEach { peerState ->
             peerState.iHaveMessagesReceived = 0
             peerState.iHaveMessageIdsAsked = 0
@@ -684,13 +682,11 @@ open class GossipRouter(
                 (time < staleIWantTime)
                     .whenTrue { notifyIWantTimeout(peerState.peer, messageId) }
             }
-            peerState.backoffExpireTimes.entries.removeIf { (_, expireTime) ->
-                expireTime <= curTime
-            }
             peerState.iDontWantState.heartbeatMessageIdsCount = 0
             peerState.iDontWantState.messageIdsAndTimeReceived.values.removeIf { timeReceived ->
                 timeReceived < staleIDontWantTime
             }
+            trackSlowPeer(peerState)
         }
 
         try {
@@ -776,18 +772,16 @@ open class GossipRouter(
         }
     }
 
-    private fun trackSlowPeers() {
-        peerStates.getAllStates().forEach { peerState ->
-            val queue = peerState.rpcPartsQueue
-            if (queue.estimateMaxSerializedSize() >= params.slowPeerPendingBytesThreshold) {
-                peerState.slowPeerHeartbeatsAboveThreshold++
-                if (peerState.slowPeerHeartbeatsAboveThreshold >= params.slowPeerHeartbeatThreshold) {
-                    notifySlowPeer(peerState.peer)
-                    peerState.slowPeerHeartbeatsAboveThreshold = 0
-                }
-            } else {
+    private fun trackSlowPeer(peerState: GossipPeerState) {
+        val queue = peerState.rpcPartsQueue
+        if (queue.estimateMaxSerializedSize() >= params.slowPeerPendingBytesThreshold) {
+            peerState.slowPeerHeartbeatsAboveThreshold++
+            if (peerState.slowPeerHeartbeatsAboveThreshold >= params.slowPeerHeartbeatThreshold) {
+                notifySlowPeer(peerState.peer)
                 peerState.slowPeerHeartbeatsAboveThreshold = 0
             }
+        } else {
+            peerState.slowPeerHeartbeatsAboveThreshold = 0
         }
     }
 
