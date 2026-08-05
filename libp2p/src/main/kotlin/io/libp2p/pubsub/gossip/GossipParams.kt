@@ -244,12 +244,15 @@ data class GossipParams(
 
     /**
      * [maxIDontWantMessageIds] is the maximum number of IDONTWANT message ids allowed per heartbeat per peer
+     * and must be greater than zero.
      */
     val maxIDontWantMessageIds: Int = maxIHaveLength * maxIHaveMessages,
 
     /**
      * [iDontWantMinMessageSizeThreshold] controls the minimum size (in bytes) that an incoming message needs to be so that an IDONTWANT message is sent to mesh peers.
      * The default is 16 KiB.
+     * To disable sending IDONTWANT messages, set this to a value larger than any permitted message size,
+     * such as [Int.MAX_VALUE].
      */
     val iDontWantMinMessageSizeThreshold: Int = 16384,
 
@@ -270,6 +273,7 @@ data class GossipParams(
         check(DHigh >= D, "DHigh should be >= D")
         check(gossipFactor in 0.0..1.0, "gossipFactor should be in range [0.0, 1.0]")
         check(floodPublishMaxMessageSizeThreshold >= 0, "floodPublishMaxMessageSizeThreshold should be >= 0")
+        check(maxIDontWantMessageIds > 0, "maxIDontWantMessageIds should be > 0")
         check(iDontWantMinMessageSizeThreshold >= 0, "iDontWantMinMessageSizeThreshold should be >= 0")
     }
 

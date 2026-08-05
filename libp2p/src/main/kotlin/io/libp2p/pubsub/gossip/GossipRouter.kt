@@ -275,12 +275,14 @@ open class GossipRouter(
     override fun validateMessageListLimits(msg: Rpc.RPCOrBuilder): Boolean {
         val iWantMessageIdCount = msg.control?.iwantList?.sumOf { w -> w.messageIDsCount } ?: 0
         val iHaveMessageIdCount = msg.control?.ihaveList?.sumOf { w -> w.messageIDsCount } ?: 0
+        val iDontWantMessageIdCount = msg.control?.idontwantList?.sumOf { w -> w.messageIDsCount } ?: 0
 
         return params.maxPublishedMessages?.let { msg.publishCount <= it } ?: true &&
             params.maxTopicsPerPublishedMessage?.let { msg.publishList.none { m -> m.topicIDsCount > it } } ?: true &&
             params.maxSubscriptions?.let { msg.subscriptionsCount <= it } ?: true &&
             params.maxIHaveLength.let { iHaveMessageIdCount <= it } &&
             params.maxIWantMessageIds?.let { iWantMessageIdCount <= it } ?: true &&
+            params.maxIDontWantMessageIds.let { iDontWantMessageIdCount <= it } &&
             params.maxGraftMessages?.let { (msg.control?.graftCount ?: 0) <= it } ?: true &&
             params.maxPruneMessages?.let { (msg.control?.pruneCount ?: 0) <= it } ?: true &&
             params.maxPeersAcceptedInPruneMsg.let { msg.control?.pruneList?.none { p -> p.peersCount > it } } ?: true
@@ -542,11 +544,11 @@ open class GossipRouter(
             val publishedMessages = peers
                 .filterNot { peerDoesNotWantMessage(it, msg.messageId) }
                 .map { submitPublishMessage(it, msg) }
+            flushAllPending()
             if (publishedMessages.isEmpty()) {
                 // all peers have sent IDONTWANT for this message id
                 CompletableFuture.completedFuture(Unit)
             } else {
-                flushAllPending()
                 anyComplete(publishedMessages)
             }
         } else {
@@ -799,7 +801,7 @@ open class GossipRouter(
             .flatten()
             .distinct()
             .minus(setOfNotNull(receivedFrom))
-            .forEach { sendIdontwant(it, msg.messageId) }
+            .forEach { enqueueIDontWant(it, msg.messageId) }
     }
 
     private fun enqueuePrune(peer: PeerHandler, topic: Topic) {
@@ -824,17 +826,11 @@ open class GossipRouter(
     private fun enqueueIhave(peer: PeerHandler, messageIds: List<MessageId>, topic: Topic) =
         pendingRpcParts.getOrCreateQueue(peer).addIHaves(messageIds, topic)
 
-    private fun sendIdontwant(peer: PeerHandler, messageId: MessageId) {
+    private fun enqueueIDontWant(peer: PeerHandler, messageId: MessageId) {
         if (!peer.getPeerProtocol().supportsIDontWant()) {
             return
         }
-        val iDontWant = Rpc.RPC.newBuilder().setControl(
-            Rpc.ControlMessage.newBuilder().addIdontwant(
-                Rpc.ControlIDontWant.newBuilder()
-                    .addMessageIDs(messageId.toProtobuf())
-            )
-        ).build()
-        send(peer, iDontWant)
+        pendingRpcParts.getOrCreateQueue(peer).addIDontWant(messageId)
     }
 
     private fun sendControlExtensions(peer: PeerHandler) {

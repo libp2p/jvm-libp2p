@@ -2,7 +2,7 @@ package io.libp2p.pubsub.gossip
 
 import io.libp2p.core.PeerId
 import io.libp2p.etc.types.toProtobuf
-import io.libp2p.pubsub.DefaultRpcPartsQueue
+import io.libp2p.pubsub.AbstractRpcPartsQueue
 import io.libp2p.pubsub.MessageId
 import io.libp2p.pubsub.RpcPartsBatch
 import io.libp2p.pubsub.RpcPartsQueue
@@ -17,6 +17,9 @@ interface GossipRpcPartsQueue : RpcPartsQueue {
     fun addIWant(messageId: MessageId)
     fun addIWants(messageIds: Collection<MessageId>) = messageIds.forEach { addIWant(it) }
 
+    fun addIDontWant(messageId: MessageId)
+    fun addIDontWants(messageIds: Collection<MessageId>) = messageIds.forEach { addIDontWant(it) }
+
     fun addGraft(topic: Topic)
 
     /**
@@ -29,7 +32,6 @@ interface GossipRpcPartsQueue : RpcPartsQueue {
      */
     fun addPrune(topic: Topic, backoffSeconds: Long, backoffPeers: List<PeerId>)
 
-    // TODO Need to check if we should handle when control extension and extension messages could be separated by split  (https://github.com/libp2p/jvm-libp2p/issues/440)
     fun addControlExtensions(ctrlMessage: Rpc.ControlExtensions)
 }
 
@@ -44,7 +46,7 @@ interface GossipRpcPartsQueue : RpcPartsQueue {
  */
 open class DefaultGossipRpcPartsQueue(
     private val params: GossipParams
-) : DefaultRpcPartsQueue(), GossipRpcPartsQueue {
+) : AbstractRpcPartsQueue(), GossipRpcPartsQueue {
 
     protected data class IHavePart(val messageId: MessageId, val topic: Topic) : AbstractPart() {
         override fun appendToBuilder(builder: Rpc.RPC.Builder) {
@@ -66,6 +68,18 @@ open class DefaultGossipRpcPartsQueue(
                 ctrlBuilder.getIwantBuilder(0)
             }
             iWantBuilder.addMessageIDs(messageId.toProtobuf())
+        }
+    }
+
+    protected data class IDontWantPart(val messageId: MessageId) : AbstractPart() {
+        override fun appendToBuilder(builder: Rpc.RPC.Builder) {
+            val ctrlBuilder = builder.controlBuilder
+            val iDontWantBuilder = if (ctrlBuilder.idontwantBuilderList.isEmpty()) {
+                ctrlBuilder.addIdontwantBuilder()
+            } else {
+                ctrlBuilder.getIdontwantBuilder(0)
+            }
+            iDontWantBuilder.addMessageIDs(messageId.toProtobuf())
         }
     }
 
@@ -97,6 +111,12 @@ open class DefaultGossipRpcPartsQueue(
         }
     }
 
+    protected val priorityPartLists = listOf(
+        mutableListOf<AbstractPart>(),
+        mutableListOf(),
+        mutableListOf()
+    )
+
     override fun addPart(part: AbstractPart) {
         if (part.estimatedMaxSerializedSize > params.maxGossipMessageSize) {
             throw TooLargeMessageException(
@@ -104,8 +124,22 @@ open class DefaultGossipRpcPartsQueue(
                     "maxGossipMessageSize ${params.maxGossipMessageSize}: $part"
             )
         }
-        super.addPart(part)
+        priorityPartList(part).add(part)
+        addPartSize(part)
     }
+
+    private fun priorityPartList(part: AbstractPart): MutableList<AbstractPart> =
+        when (part) {
+            is ControlExtensionPart,
+            is IDontWantPart -> priorityPartLists[URGENT_CONTROL_PRIORITY]
+            is SubscriptionPart,
+            is GraftPart,
+            is PrunePart -> priorityPartLists[STATE_CONTROL_PRIORITY]
+            is PublishPart,
+            is IHavePart,
+            is IWantPart -> priorityPartLists[BULK_PRIORITY]
+            else -> priorityPartLists[BULK_PRIORITY]
+        }
 
     override fun addIHave(messageId: MessageId, topic: Topic) {
         addPart(IHavePart(messageId, topic))
@@ -113,6 +147,10 @@ open class DefaultGossipRpcPartsQueue(
 
     override fun addIWant(messageId: MessageId) {
         addPart(IWantPart(messageId))
+    }
+
+    override fun addIDontWant(messageId: MessageId) {
+        addPart(IDontWantPart(messageId))
     }
 
     override fun addGraft(topic: Topic) {
@@ -131,27 +169,36 @@ open class DefaultGossipRpcPartsQueue(
         addPart(ControlExtensionPart(ctrlMessage))
     }
 
+    override fun isEmpty(): Boolean = priorityPartLists.all { it.isEmpty() }
+
     override fun takeBatch(): RpcPartsBatch? {
+        val topmostPriorityList = priorityPartLists.firstOrNull { it.isNotEmpty() } ?: return null
+        return takeBatch(topmostPriorityList)
+    }
+
+    private fun takeBatch(priorityParts: MutableList<AbstractPart>): RpcPartsBatch? {
         var publishCount = params.maxPublishedMessages ?: Int.MAX_VALUE
         var subscriptionCount = params.maxSubscriptions ?: Int.MAX_VALUE
         var iHaveCount = params.maxIHaveLength
         var iWantCount = params.maxIWantMessageIds ?: Int.MAX_VALUE
+        var iDontWantCount = params.maxIDontWantMessageIds
         var graftCount = params.maxGraftMessages ?: Int.MAX_VALUE
         var pruneCount = params.maxPruneMessages ?: Int.MAX_VALUE
         var sizeLeft = params.maxGossipMessageSize
 
         var partIdx = 0
 
-        while (partIdx < parts.size &&
+        while (partIdx < priorityParts.size &&
             publishCount > 0 && subscriptionCount > 0 && iHaveCount > 0 &&
-            iWantCount > 0 && graftCount > 0 && pruneCount > 0
+            iWantCount > 0 && iDontWantCount > 0 && graftCount > 0 && pruneCount > 0
         ) {
-            val part = parts[partIdx]
+            val part = priorityParts[partIdx]
             when (part) {
                 is PublishPart -> publishCount--
                 is SubscriptionPart -> subscriptionCount--
                 is IHavePart -> iHaveCount--
                 is IWantPart -> iWantCount--
+                is IDontWantPart -> iDontWantCount--
                 is GraftPart -> graftCount--
                 is PrunePart -> pruneCount--
             }
@@ -163,11 +210,23 @@ open class DefaultGossipRpcPartsQueue(
         }
         if (partIdx == 0) return null
 
-        val sliceSublist: MutableList<AbstractPart> = parts.subList(0, partIdx)
-        val ret = createBatch(sliceSublist)
-        onPartsRemoving(sliceSublist)
-        sliceSublist.clear()
+        val batchParts: MutableList<AbstractPart> = priorityParts.subList(0, partIdx)
+        val ret = createBatch(batchParts)
+        removePartsSize(batchParts)
+        batchParts.clear()
 
         return ret
+    }
+
+    override fun abort(exception: Exception) {
+        mergePromises(priorityPartLists.flatten()).completeExceptionally(exception)
+        super.abort(exception)
+        priorityPartLists.forEach { it.clear() }
+    }
+
+    private companion object {
+        const val URGENT_CONTROL_PRIORITY = 0
+        const val STATE_CONTROL_PRIORITY = 1
+        const val BULK_PRIORITY = 2
     }
 }

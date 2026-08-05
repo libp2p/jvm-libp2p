@@ -1,6 +1,8 @@
 package io.libp2p.pubsub.gossip
 
+import io.libp2p.core.ConnectionClosedException
 import io.libp2p.core.PeerId
+import io.libp2p.etc.types.getX
 import io.libp2p.etc.types.toProtobuf
 import io.libp2p.etc.types.toWBytes
 import io.libp2p.pubsub.RpcPartsQueue
@@ -16,6 +18,7 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
 import pubsub.pb.Rpc
+import java.util.concurrent.CompletableFuture
 import java.util.stream.Stream
 
 private fun RpcPartsQueue.takeMerged(): List<Rpc.RPC> {
@@ -31,12 +34,12 @@ class GossipRpcPartsQueueTest {
     class TestGossipQueue(params: GossipParams) : DefaultGossipRpcPartsQueue(params) {
 
         fun shuffleParts() {
-            parts.shuffle()
+            priorityPartLists.forEach { it.shuffle() }
         }
 
         fun mergedSingle(): Rpc.RPC {
             val builder = Rpc.RPC.newBuilder()
-            parts.forEach {
+            priorityPartLists.flatten().forEach {
                 it.appendToBuilder(builder)
             }
             return builder.build()
@@ -49,7 +52,8 @@ class GossipRpcPartsQueueTest {
         val iHaves: Int,
         val iWants: Int,
         val grafts: Int,
-        val prunes: Int
+        val prunes: Int,
+        val iDontWants: Int = 0
     ) {
 
         fun generateQueue(params: GossipParams): TestGossipQueue {
@@ -66,6 +70,9 @@ class GossipRpcPartsQueueTest {
             }
             (1..iWants).forEach {
                 queue.addIWant(byteArrayOf(it.toByte()).toWBytes())
+            }
+            (1..iDontWants).forEach {
+                queue.addIDontWant(byteArrayOf(it.toByte()).toWBytes())
             }
             (1..grafts).forEach {
                 queue.addGraft("topic-$it")
@@ -128,6 +135,13 @@ class GossipRpcPartsQueueTest {
                                     controlBuilder.addIwantBuilder().addMessageIDs(it)
                                 }
                             },
+                        idontwantList
+                            .flatMap { it.messageIDsList }
+                            .map {
+                                Rpc.RPC.newBuilder().apply {
+                                    controlBuilder.addIdontwantBuilder().addMessageIDs(it)
+                                }
+                            },
                         graftList
                             .map {
                                 Rpc.RPC.newBuilder().apply {
@@ -175,6 +189,9 @@ class GossipRpcPartsQueueTest {
             PartCounts(0, 0, 0, 15, 0, 0),
             PartCounts(0, 0, 0, 28, 0, 0),
             PartCounts(0, 0, 0, 29, 0, 0),
+            PartCounts(0, 0, 0, 0, 0, 0, 1),
+            PartCounts(0, 0, 0, 0, 0, 0, gossipParamsWithLimits.maxIDontWantMessageIds),
+            PartCounts(0, 0, 0, 0, 0, 0, gossipParamsWithLimits.maxIDontWantMessageIds + 1),
         )
 
         val testCases = partsCases
@@ -299,14 +316,15 @@ class GossipRpcPartsQueueTest {
         msgs.forEach {
             assertThat(router.validateMessageListLimits(it)).isTrue()
         }
-        assertThat(msgs).hasSize(2)
+        assertThat(msgs).hasSize(3)
         assertThat(msgs[0].publishCount).isZero()
-        assertThat(msgs[1].publishCount).isEqualTo(1)
+        assertThat(msgs[1].publishCount).isZero()
+        assertThat(msgs[2].publishCount).isEqualTo(1)
         assertThat(msgs.merge()).isEqualTo(single)
     }
 
     @Test
-    fun `mergeMessageParts() test that even when all parts fit to 2 messages the result should be 3 messages`() {
+    fun `mergeMessageParts() test priority batches split independently`() {
         val router = GossipRouterBuilder(params = gossipParamsWithLimits).build()
         val partsQueue = TestGossipQueue(gossipParamsWithLimits)
         (0 until maxSubscriptions + 1).forEach {
@@ -323,7 +341,12 @@ class GossipRpcPartsQueueTest {
         msgs.forEach {
             assertThat(router.validateMessageListLimits(it)).isTrue()
         }
-        assertThat(msgs).hasSize(3)
+        assertThat(msgs).hasSize(4)
+        assertThat(msgs.take(2)).allMatch { it.publishCount == 0 }
+        assertThat(msgs.drop(2).map { it.publishCount }).containsExactly(
+            maxPublishedMessages,
+            maxPublishedMessages
+        )
         assertThat(msgs.merge()).isEqualTo(single)
     }
 
@@ -433,6 +456,7 @@ class GossipRpcPartsQueueTest {
         // Add various control messages
         partsQueue.addIHave(byteArrayOf(1).toWBytes(), "topic1")
         partsQueue.addIWant(byteArrayOf(2).toWBytes())
+        partsQueue.addIDontWant(byteArrayOf(3).toWBytes())
         partsQueue.addGraft("topic2")
         partsQueue.addPrune("topic3")
 
@@ -442,18 +466,24 @@ class GossipRpcPartsQueueTest {
             .build()
         partsQueue.addControlExtensions(extension)
 
-        val res = partsQueue.takeMerged().first()
+        val merged = partsQueue.takeMerged()
 
-        // Verify all control messages are present
-        assertThat(res.hasControl()).isTrue()
-        assertThat(res.control.ihaveList).hasSize(1)
-        assertThat(res.control.iwantList).hasSize(1)
-        assertThat(res.control.graftList).hasSize(1)
-        assertThat(res.control.pruneList).hasSize(1)
+        val urgentControlRpc = merged[0]
+        assertThat(urgentControlRpc.control.idontwantList).hasSize(1)
+        assertThat(urgentControlRpc.control.graftList).isEmpty()
+        assertThat(urgentControlRpc.control.ihaveList).isEmpty()
+        assertThat(urgentControlRpc.control.hasExtensions()).isTrue()
+        assertThat(urgentControlRpc.control.extensions.partialMessages).isTrue()
 
-        // Verify extension is present
-        assertThat(res.control.hasExtensions()).isTrue()
-        assertThat(res.control.extensions.partialMessages).isTrue()
+        val stateControlRpc = merged[1]
+        assertThat(stateControlRpc.control.graftList).hasSize(1)
+        assertThat(stateControlRpc.control.pruneList).hasSize(1)
+        assertThat(stateControlRpc.control.hasExtensions()).isFalse()
+
+        val bulkRpc = merged[2]
+        assertThat(bulkRpc.control.ihaveList).hasSize(1)
+        assertThat(bulkRpc.control.iwantList).hasSize(1)
+        assertThat(bulkRpc.control.idontwantList).isEmpty()
     }
 
     @Test
@@ -468,15 +498,20 @@ class GossipRpcPartsQueueTest {
             .build()
         partsQueue.addControlExtensions(extension)
 
-        val res = partsQueue.takeMerged().first()
+        val merged = partsQueue.takeMerged()
+        val urgentControlRpc = merged[0]
+        val stateControlRpc = merged[1]
+        val publishRpc = merged[2]
 
-        // Verify subscriptions and publishes
-        assertThat(res.subscriptionsList).hasSize(1)
-        assertThat(res.publishList).hasSize(1)
-
-        // Verify extension
-        assertThat(res.control.hasExtensions()).isTrue()
-        assertThat(res.control.extensions.partialMessages).isTrue()
+        assertThat(urgentControlRpc.subscriptionsList).isEmpty()
+        assertThat(urgentControlRpc.publishList).isEmpty()
+        assertThat(urgentControlRpc.control.hasExtensions()).isTrue()
+        assertThat(urgentControlRpc.control.extensions.partialMessages).isTrue()
+        assertThat(stateControlRpc.subscriptionsList).hasSize(1)
+        assertThat(stateControlRpc.publishList).isEmpty()
+        assertThat(stateControlRpc.hasControl()).isFalse()
+        assertThat(publishRpc.subscriptionsList).isEmpty()
+        assertThat(publishRpc.publishList).hasSize(1)
     }
 
     @Test
@@ -499,11 +534,11 @@ class GossipRpcPartsQueueTest {
         // Should be split into multiple RPCs due to maxPublishedMessages limit
         assertThat(merged.size).isGreaterThan(1)
 
-        // Extension should be in the last RPC (since it's added last)
-        val lastRpc = merged.last()
-        assertThat(lastRpc.hasControl()).isTrue()
-        assertThat(lastRpc.control.hasExtensions()).isTrue()
-        assertThat(lastRpc.control.extensions.partialMessages).isTrue()
+        // Extension is urgent-control priority, so it should go in the first RPC before bulk publishes.
+        val firstRpc = merged.first()
+        assertThat(firstRpc.hasControl()).isTrue()
+        assertThat(firstRpc.control.hasExtensions()).isTrue()
+        assertThat(firstRpc.control.extensions.partialMessages).isTrue()
     }
 
     @Test
@@ -534,7 +569,71 @@ class GossipRpcPartsQueueTest {
     }
 
     @Test
-    fun `control extensions message does not count toward limits but may be split`() {
+    fun `addIDontWant() groups message ids in control message`() {
+        val partsQueue = TestGossipQueue(gossipParamsNoLimits)
+        val messageId1 = "1111".toWBytes()
+        val messageId2 = "2222".toWBytes()
+
+        partsQueue.addIDontWant(messageId1)
+        partsQueue.addIDontWant(messageId2)
+
+        val res = partsQueue.takeMerged().first()
+
+        assertThat(res.hasControl()).isTrue()
+        assertThat(res.control.idontwantList).containsExactly(
+            Rpc.ControlIDontWant.newBuilder()
+                .addAllMessageIDs(listOf(messageId1.toProtobuf(), messageId2.toProtobuf()))
+                .build()
+        )
+    }
+
+    @Test
+    fun `takeBatch drains only highest priority parts`() {
+        val publishMessage = createRpcMessage("topic", "data")
+        val iDontWantMessageId = "1111".toWBytes()
+        val partsQueue = TestGossipQueue(gossipParamsNoLimits)
+
+        partsQueue.addPublish(publishMessage)
+        partsQueue.addSubscribe("topic")
+        partsQueue.addIDontWant(iDontWantMessageId)
+
+        val firstBatch = partsQueue.takeBatch()!!.rpc
+        val secondBatch = partsQueue.takeBatch()!!.rpc
+        val thirdBatch = partsQueue.takeBatch()!!.rpc
+
+        assertThat(firstBatch.publishCount).isZero()
+        assertThat(firstBatch.subscriptionsCount).isZero()
+        assertThat(firstBatch.control.idontwantList).containsExactly(
+            Rpc.ControlIDontWant.newBuilder()
+                .addMessageIDs(iDontWantMessageId.toProtobuf())
+                .build()
+        )
+        assertThat(secondBatch.subscriptionsList.map { it.topicid }).containsExactly("topic")
+        assertThat(secondBatch.publishCount).isZero()
+        assertThat(thirdBatch.publishList).containsExactly(publishMessage)
+    }
+
+    @Test
+    fun `abort clears priority parts and fails pending publish promises`() {
+        val partsQueue = TestGossipQueue(gossipParamsNoLimits)
+        val publishPromise = CompletableFuture<Unit>()
+
+        partsQueue.addIDontWant("1111".toWBytes())
+        partsQueue.addSubscribe("topic")
+        partsQueue.addPublish(createRpcMessage("topic", "data"), publishPromise)
+
+        assertThat(partsQueue.estimateMaxSerializedSize()).isGreaterThan(0)
+
+        partsQueue.abort(ConnectionClosedException())
+
+        assertThat(partsQueue.isEmpty()).isTrue()
+        assertThat(partsQueue.estimateMaxSerializedSize()).isZero()
+        assertThat(publishPromise).isCompletedExceptionally
+        assertThrows(ConnectionClosedException::class.java) { publishPromise.getX() }
+    }
+
+    @Test
+    fun `control extensions message is batched separately from publish limits`() {
         val partsQueue = TestGossipQueue(gossipParamsWithLimits)
 
         // Add exactly maxPublishedMessages messages
@@ -550,14 +649,11 @@ class GossipRpcPartsQueueTest {
 
         val merged = partsQueue.takeMerged()
 
-        // Extension doesn't count toward limits, but it may end up in a separate RPC
-        // if it comes after parts that exhaust a limit
         assertThat(merged).hasSize(2)
-        assertThat(merged[0].publishList).hasSize(maxPublishedMessages)
-
-        // Extension should be in the second RPC
-        assertThat(merged[1].control.hasExtensions()).isTrue()
-        assertThat(merged[1].control.extensions.partialMessages).isTrue()
+        assertThat(merged[0].publishCount).isZero()
+        assertThat(merged[0].control.hasExtensions()).isTrue()
+        assertThat(merged[0].control.extensions.partialMessages).isTrue()
+        assertThat(merged[1].publishList).hasSize(maxPublishedMessages)
     }
 
     private fun standaloneGraftRpc(topic: Topic): Rpc.RPC =
