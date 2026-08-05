@@ -677,7 +677,7 @@ open class GossipRouter(
         val curTime = this.currentTimeSupplier()
         val staleIWantTime = curTime - params.iWantFollowupTime.toMillis()
         val staleIDontWantTime = curTime - params.iDontWantTTL.toMillis()
-        peerStates.getStates().forEach { peerState ->
+        peerStates.getAllStates().forEach { peerState ->
             peerState.iHaveMessagesReceived = 0
             peerState.iHaveMessageIdsAsked = 0
             peerState.iWantRequests.entries.removeIf { (messageId, time) ->
@@ -777,7 +777,7 @@ open class GossipRouter(
     }
 
     private fun trackSlowPeers() {
-        peerStates.getStates().forEach { peerState ->
+        peerStates.getAllStates().forEach { peerState ->
             val queue = peerState.rpcPartsQueue
             if (queue.estimateMaxSerializedSize() >= params.slowPeerPendingBytesThreshold) {
                 peerState.slowPeerHeartbeatsAboveThreshold++

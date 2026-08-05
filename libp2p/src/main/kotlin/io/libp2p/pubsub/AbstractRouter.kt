@@ -72,12 +72,7 @@ abstract class AbstractRouter(
         fun getExisting(peer: PeerHandler): TState? =
             byPeer[peer]
 
-        fun getPeersWithPendingOutboundData(): List<PeerHandler> =
-            byPeer.values
-                .filter { !it.rpcPartsQueue.isEmpty() }
-                .map { it.peer }
-
-        fun getStates(): Collection<TState> = byPeer.values
+        fun getAllStates(): Collection<TState> = byPeer.values
 
         fun onDisconnected(peer: PeerHandler) {
             byPeer.remove(peer)?.onDisconnected()
@@ -123,7 +118,11 @@ abstract class AbstractRouter(
      * Flushes all pending message parts for all peers
      */
     protected fun flushAllPending() {
-        peerStates.getPeersWithPendingOutboundData().forEach {
+        val peersWithPendingOutboundData: List<PeerHandler> =
+            peerStates.getAllStates()
+                .filter { !it.rpcPartsQueue.isEmpty() }
+                .map { it.peer }
+        peersWithPendingOutboundData.forEach {
             notifyOutboundDataAvailable(it)
         }
     }
