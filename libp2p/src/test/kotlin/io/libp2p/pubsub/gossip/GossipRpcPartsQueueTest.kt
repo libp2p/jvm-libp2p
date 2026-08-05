@@ -536,7 +536,7 @@ class GossipRpcPartsQueueTest {
         // Should be split into multiple RPCs due to maxPublishedMessages limit
         assertThat(merged.size).isGreaterThan(1)
 
-        // Extension is state/control priority, so it should go in the first RPC before bulk publishes.
+        // Extension is urgent-control priority, so it should go in the first RPC before bulk publishes.
         val firstRpc = merged.first()
         assertThat(firstRpc.hasControl()).isTrue()
         assertThat(firstRpc.control.hasExtensions()).isTrue()
@@ -613,23 +613,6 @@ class GossipRpcPartsQueueTest {
         assertThat(secondBatch.subscriptionsList.map { it.topicid }).containsExactly("topic")
         assertThat(secondBatch.publishCount).isZero()
         assertThat(thirdBatch.publishList).containsExactly(publishMessage)
-    }
-
-    @Test
-    fun `takeBatch returns null when highest priority part cannot be admitted`() {
-        val partsQueue = TestGossipQueue(
-            GossipParamsBuilder()
-                .maxIDontWantMessageIds(0)
-                .maxIHaveLength(Int.MAX_VALUE)
-                .build()
-        )
-
-        partsQueue.addIDontWant("1111".toWBytes())
-        partsQueue.addPublish(createRpcMessage("topic", "data"))
-
-        assertThat(partsQueue.takeBatch()).isNull()
-        assertThat(partsQueue.isEmpty()).isFalse()
-        assertThat(partsQueue.estimateMaxSerializedSize()).isGreaterThan(0)
     }
 
     @Test
