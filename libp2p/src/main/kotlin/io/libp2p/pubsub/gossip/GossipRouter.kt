@@ -131,10 +131,10 @@ open class GossipRouter(
 
         var iHaveMessagesReceived: Int = 0
         var iHaveMessageIdsAsked: Int = 0
-        val iWantRequests: MutableMap<MessageId, Long> = mutableMapOf()
-        val iDontWant: IDontWantCacheEntry = IDontWantCacheEntry()
+        val iWantRequestTimes: MutableMap<MessageId, Long> = mutableMapOf()
+        val iDontWantState: IDontWantState = IDontWantState()
         val backoffExpireTimes: MutableMap<Topic, Long> = mutableMapOf()
-        var acceptRequestsWhitelistEntry: AcceptRequestsWhitelistEntry? = null
+        var acceptRequestsWhitelistState: AcceptRequestsWhitelistState? = null
         var slowPeerHeartbeatsAboveThreshold: Int = 0
     }
 
@@ -204,7 +204,7 @@ open class GossipRouter(
     }
 
     protected open fun notifyAnyMessage(peer: PeerHandler, msg: PubsubMessage) {
-        if (peerStates.getExisting(peer)?.iWantRequests?.remove(msg.messageId) != null) {
+        if (peerStates.getExisting(peer)?.iWantRequestTimes?.remove(msg.messageId) != null) {
             notifyIWantComplete(peer, msg)
         }
     }
@@ -258,20 +258,20 @@ open class GossipRouter(
 
         val curTime = currentTimeSupplier()
         val peerState = peerStates.getOrCreate(peer)
-        val whitelistEntry = peerState.acceptRequestsWhitelistEntry
+        val whitelistEntry = peerState.acceptRequestsWhitelistState
         if (whitelistEntry != null &&
             curTime <= whitelistEntry.whitelistedTill &&
             whitelistEntry.messagesAccepted < acceptRequestsWhitelistMaxMessages
         ) {
-            peerState.acceptRequestsWhitelistEntry = whitelistEntry.incrementMessageCount()
+            peerState.acceptRequestsWhitelistState = whitelistEntry.incrementMessageCount()
             return true
         }
 
         val peerScore = score.score(peer.peerId)
         if (peerScore >= acceptRequestsWhitelistThresholdScore) {
-            peerState.acceptRequestsWhitelistEntry = AcceptRequestsWhitelistEntry(curTime + acceptRequestsWhitelistDuration.toMillis())
+            peerState.acceptRequestsWhitelistState = AcceptRequestsWhitelistState(curTime + acceptRequestsWhitelistDuration.toMillis())
         } else {
-            peerState.acceptRequestsWhitelistEntry = null
+            peerState.acceptRequestsWhitelistState = null
         }
 
         return peerScore >= scoreParams.graylistThreshold
@@ -407,7 +407,7 @@ open class GossipRouter(
         if (!this.protocol.supportsIDontWant()) return
         val peerScore = score.score(peer.peerId)
         if (peerScore < scoreParams.gossipThreshold) return
-        val iDontWantCacheEntry = peerStates.getOrCreate(peer).iDontWant
+        val iDontWantCacheEntry = peerStates.getOrCreate(peer).iDontWantState
         iDontWantCacheEntry.heartbeatMessageIdsCount += msg.messageIDsCount
         if (iDontWantCacheEntry.heartbeatMessageIdsCount > params.maxIDontWantMessageIds) {
             return
@@ -680,15 +680,15 @@ open class GossipRouter(
         peerStates.getAllStates().forEach { peerState ->
             peerState.iHaveMessagesReceived = 0
             peerState.iHaveMessageIdsAsked = 0
-            peerState.iWantRequests.entries.removeIf { (messageId, time) ->
+            peerState.iWantRequestTimes.entries.removeIf { (messageId, time) ->
                 (time < staleIWantTime)
                     .whenTrue { notifyIWantTimeout(peerState.peer, messageId) }
             }
             peerState.backoffExpireTimes.entries.removeIf { (_, expireTime) ->
                 expireTime <= curTime
             }
-            peerState.iDontWant.heartbeatMessageIdsCount = 0
-            peerState.iDontWant.messageIdsAndTimeReceived.values.removeIf { timeReceived ->
+            peerState.iDontWantState.heartbeatMessageIdsCount = 0
+            peerState.iDontWantState.messageIdsAndTimeReceived.values.removeIf { timeReceived ->
                 timeReceived < staleIDontWantTime
             }
         }
@@ -822,13 +822,13 @@ open class GossipRouter(
     }
 
     private fun peerDoesNotWantMessage(peer: PeerHandler, messageId: MessageId): Boolean {
-        return peerStates.getExisting(peer)?.iDontWant?.messageIdsAndTimeReceived?.contains(messageId) == true
+        return peerStates.getExisting(peer)?.iDontWantState?.messageIdsAndTimeReceived?.contains(messageId) == true
     }
 
     private fun iWant(peer: PeerHandler, messageIds: List<MessageId>) {
         if (messageIds.isEmpty()) return
         messageIds[random.nextInt(messageIds.size)]
-            .also { peerStates.getOrCreate(peer).iWantRequests[it] = currentTimeSupplier() }
+            .also { peerStates.getOrCreate(peer).iWantRequestTimes[it] = currentTimeSupplier() }
         enqueueIwant(peer, messageIds)
     }
 
@@ -896,11 +896,11 @@ open class GossipRouter(
         gossipExtensionsState.registerControlExtensionMessageSentToPeers(peer.peerId)
     }
 
-    data class AcceptRequestsWhitelistEntry(val whitelistedTill: Long, val messagesAccepted: Int = 0) {
-        fun incrementMessageCount() = AcceptRequestsWhitelistEntry(whitelistedTill, messagesAccepted + 1)
+    data class AcceptRequestsWhitelistState(val whitelistedTill: Long, val messagesAccepted: Int = 0) {
+        fun incrementMessageCount() = AcceptRequestsWhitelistState(whitelistedTill, messagesAccepted + 1)
     }
 
-    data class IDontWantCacheEntry(
+    data class IDontWantState(
         var heartbeatMessageIdsCount: Int = 0,
         val messageIdsAndTimeReceived: MutableMap<MessageId, Long> = mutableMapOf()
     )
