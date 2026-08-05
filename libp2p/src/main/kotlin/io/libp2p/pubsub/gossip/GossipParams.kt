@@ -259,7 +259,21 @@ data class GossipParams(
     /**
      * [iDontWantTTL] Expiry time for cache of received IDONTWANT messages for peers
      */
-    val iDontWantTTL: Duration = 3.seconds
+    val iDontWantTTL: Duration = 3.seconds,
+
+    /**
+     * [slowPeerPendingBytesThreshold] controls when a peer's pending outbound queue is considered
+     * pressured. The default is intentionally very high, which effectively disables slow-peer
+     * detection by pending queue size unless a lower value is configured.
+     */
+    val slowPeerPendingBytesThreshold: Int = Int.MAX_VALUE,
+
+    /**
+     * [slowPeerHeartbeatThreshold] controls how many consecutive heartbeats a peer's pending
+     * outbound queue may stay at or above [slowPeerPendingBytesThreshold] before it is processed as
+     * slow through `notifySlowPeer`.
+     */
+    val slowPeerHeartbeatThreshold: Int = 3
 
 ) {
     init {
@@ -275,6 +289,8 @@ data class GossipParams(
         check(floodPublishMaxMessageSizeThreshold >= 0, "floodPublishMaxMessageSizeThreshold should be >= 0")
         check(maxIDontWantMessageIds > 0, "maxIDontWantMessageIds should be > 0")
         check(iDontWantMinMessageSizeThreshold >= 0, "iDontWantMinMessageSizeThreshold should be >= 0")
+        check(slowPeerPendingBytesThreshold > 0, "slowPeerPendingBytesThreshold should be > 0")
+        check(slowPeerHeartbeatThreshold > 0, "slowPeerHeartbeatThreshold should be > 0")
     }
 
     companion object {
@@ -403,6 +419,7 @@ data class GossipPeerScoreParams(
      * router. The router currently applies penalties for the following behaviors:
      * - attempting to re-graft before the prune backoff time has elapsed.
      * - not following up in IWANT requests for messages advertised with IHAVE.
+     * - keeping outbound RPC parts queued above the slow-peer threshold for too many heartbeats.
      *
      * The value of the parameter is the square of the counter over the threshold,
      * which decays with [behaviourPenaltyDecay].

@@ -176,6 +176,10 @@ open class DefaultGossipRpcPartsQueue(
         return takeBatch(topmostPriorityList)
     }
 
+    override fun dropLowPriority() {
+        dropParts(priorityPartLists[BULK_PRIORITY])
+    }
+
     private fun takeBatch(priorityParts: MutableList<AbstractPart>): RpcPartsBatch? {
         var publishCount = params.maxPublishedMessages ?: Int.MAX_VALUE
         var subscriptionCount = params.maxSubscriptions ?: Int.MAX_VALUE
@@ -218,9 +222,9 @@ open class DefaultGossipRpcPartsQueue(
         return ret
     }
 
-    override fun abort(exception: Exception) {
+    override fun dropAll(exception: Exception) {
         mergePromises(priorityPartLists.flatten()).completeExceptionally(exception)
-        super.abort(exception)
+        super.dropAll(exception)
         priorityPartLists.forEach { it.clear() }
     }
 

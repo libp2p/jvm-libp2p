@@ -5,6 +5,8 @@ import io.libp2p.core.PeerId
 import io.libp2p.etc.types.getX
 import io.libp2p.etc.types.toProtobuf
 import io.libp2p.etc.types.toWBytes
+import io.libp2p.pubsub.DefaultRpcPartsQueue
+import io.libp2p.pubsub.DroppedRpcPartsException
 import io.libp2p.pubsub.RpcPartsQueue
 import io.libp2p.pubsub.TooLargeMessageException
 import io.libp2p.pubsub.Topic
@@ -509,7 +511,7 @@ class GossipRpcPartsQueueTest {
         assertThat(urgentControlRpc.control.extensions.partialMessages).isTrue()
         assertThat(stateControlRpc.subscriptionsList).hasSize(1)
         assertThat(stateControlRpc.publishList).isEmpty()
-        assertThat(stateControlRpc.hasControl()).isFalse()
+        assertThat(stateControlRpc.control.hasExtensions()).isFalse()
         assertThat(publishRpc.subscriptionsList).isEmpty()
         assertThat(publishRpc.publishList).hasSize(1)
     }
@@ -614,7 +616,68 @@ class GossipRpcPartsQueueTest {
     }
 
     @Test
-    fun `abort clears priority parts and fails pending publish promises`() {
+    fun `dropLowPriority drops only bulk priority parts`() {
+        val partsQueue = TestGossipQueue(gossipParamsNoLimits)
+        val publishPromise = CompletableFuture<Unit>()
+        val publishMessage = createRpcMessage("topic", "data")
+        val iHaveMessageId = "2222".toWBytes()
+        val iWantMessageId = "3333".toWBytes()
+        val iDontWantMessageId = "1111".toWBytes()
+
+        partsQueue.addIDontWant(iDontWantMessageId)
+        partsQueue.addSubscribe("topic")
+        partsQueue.addGraft("topic")
+        partsQueue.addPrune("topic")
+        partsQueue.addPublish(publishMessage, publishPromise)
+        partsQueue.addIHave(iHaveMessageId, "topic")
+        partsQueue.addIWant(iWantMessageId)
+
+        val estimateBeforeDrop = partsQueue.estimateMaxSerializedSize()
+
+        partsQueue.dropLowPriority()
+
+        assertThat(partsQueue.isEmpty()).isFalse()
+        assertThat(partsQueue.estimateMaxSerializedSize()).isLessThan(estimateBeforeDrop)
+        assertThat(publishPromise).isCompletedExceptionally
+        assertThrows(DroppedRpcPartsException::class.java) { publishPromise.getX() }
+
+        val merged = partsQueue.takeMerged()
+
+        assertThat(merged).hasSize(2)
+        assertThat(merged[0].control.idontwantList).containsExactly(
+            Rpc.ControlIDontWant.newBuilder()
+                .addMessageIDs(iDontWantMessageId.toProtobuf())
+                .build()
+        )
+        assertThat(merged[1].subscriptionsList.map { it.topicid }).containsExactly("topic")
+        assertThat(merged[1].control.graftList.map { it.topicID }).containsExactly("topic")
+        assertThat(merged[1].control.pruneList.map { it.topicID }).containsExactly("topic")
+        assertThat(merged).allMatch { it.publishCount == 0 }
+        assertThat(merged).allMatch { it.control.ihaveCount == 0 }
+        assertThat(merged).allMatch { it.control.iwantCount == 0 }
+        assertThat(partsQueue.estimateMaxSerializedSize()).isZero()
+    }
+
+    @Test
+    fun `dropLowPriority clears default queue and fails pending publish promises`() {
+        val partsQueue = DefaultRpcPartsQueue()
+        val publishPromise = CompletableFuture<Unit>()
+
+        partsQueue.addSubscribe("topic")
+        partsQueue.addPublish(createRpcMessage("topic", "data"), publishPromise)
+
+        assertThat(partsQueue.estimateMaxSerializedSize()).isGreaterThan(0)
+
+        partsQueue.dropLowPriority()
+
+        assertThat(partsQueue.isEmpty()).isTrue()
+        assertThat(partsQueue.estimateMaxSerializedSize()).isZero()
+        assertThat(publishPromise).isCompletedExceptionally
+        assertThrows(DroppedRpcPartsException::class.java) { publishPromise.getX() }
+    }
+
+    @Test
+    fun `dropAll clears priority parts and fails pending publish promises`() {
         val partsQueue = TestGossipQueue(gossipParamsNoLimits)
         val publishPromise = CompletableFuture<Unit>()
 
@@ -624,7 +687,7 @@ class GossipRpcPartsQueueTest {
 
         assertThat(partsQueue.estimateMaxSerializedSize()).isGreaterThan(0)
 
-        partsQueue.abort(ConnectionClosedException())
+        partsQueue.dropAll(ConnectionClosedException())
 
         assertThat(partsQueue.isEmpty()).isTrue()
         assertThat(partsQueue.estimateMaxSerializedSize()).isZero()

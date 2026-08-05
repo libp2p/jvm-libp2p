@@ -78,6 +78,10 @@ class GossipParamsBuilder {
 
     private var iDontWantTTL: Duration? = null
 
+    private var slowPeerPendingBytesThreshold: Int? = null
+
+    private var slowPeerHeartbeatThreshold: Int? = null
+
     init {
         val source = GossipParams()
         this.D = source.D
@@ -109,6 +113,8 @@ class GossipParamsBuilder {
         this.maxIDontWantMessageIds = source.maxIDontWantMessageIds
         this.iDontWantMinMessageSizeThreshold = source.iDontWantMinMessageSizeThreshold
         this.iDontWantTTL = source.iDontWantTTL
+        this.slowPeerPendingBytesThreshold = source.slowPeerPendingBytesThreshold
+        this.slowPeerHeartbeatThreshold = source.slowPeerHeartbeatThreshold
     }
 
     fun D(value: Int): GossipParamsBuilder = apply { D = value }
@@ -187,6 +193,10 @@ class GossipParamsBuilder {
 
     fun iDontWantTTL(value: Duration): GossipParamsBuilder = apply { iDontWantTTL = value }
 
+    fun slowPeerPendingBytesThreshold(value: Int): GossipParamsBuilder = apply { slowPeerPendingBytesThreshold = value }
+
+    fun slowPeerHeartbeatThreshold(value: Int): GossipParamsBuilder = apply { slowPeerHeartbeatThreshold = value }
+
     fun build(): GossipParams {
         calculateMissing()
         checkRequiredFields()
@@ -224,7 +234,9 @@ class GossipParamsBuilder {
             connectCallback = connectCallback!!,
             maxIDontWantMessageIds = maxIDontWantMessageIds!!,
             iDontWantMinMessageSizeThreshold = iDontWantMinMessageSizeThreshold!!,
-            iDontWantTTL = iDontWantTTL!!
+            iDontWantTTL = iDontWantTTL!!,
+            slowPeerPendingBytesThreshold = slowPeerPendingBytesThreshold!!,
+            slowPeerHeartbeatThreshold = slowPeerHeartbeatThreshold!!
         )
     }
 
@@ -265,5 +277,7 @@ class GossipParamsBuilder {
         check(maxIDontWantMessageIds != null, { "maxIDontWantMessageIds must not be null" })
         check(iDontWantMinMessageSizeThreshold != null, { "iDontWantMinMessageSizeThreshold must not be null" })
         check(iDontWantTTL != null, { "iDontWantTTL must not be null" })
+        check(slowPeerPendingBytesThreshold != null, { "slowPeerPendingBytesThreshold must not be null" })
+        check(slowPeerHeartbeatThreshold != null, { "slowPeerHeartbeatThreshold must not be null" })
     }
 }
