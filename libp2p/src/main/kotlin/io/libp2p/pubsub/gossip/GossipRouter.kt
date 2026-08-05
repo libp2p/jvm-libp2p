@@ -140,14 +140,14 @@ open class GossipRouter(
 
     private fun setBackOff(peer: PeerHandler, topic: Topic) = setBackOff(peer, topic, params.pruneBackoff.toMillis())
     private fun setBackOff(peer: PeerHandler, topic: Topic, delay: Long) {
-        peerStates.getOrCreate(peer).backoffExpireTimes[topic] = currentTimeSupplier() + delay
+        peerStates.get(peer)?.backoffExpireTimes?.set(topic, currentTimeSupplier() + delay)
     }
 
     private fun isBackOff(peer: PeerHandler, topic: Topic) =
-        currentTimeSupplier() < (peerStates.getExisting(peer)?.backoffExpireTimes?.get(topic) ?: 0)
+        currentTimeSupplier() < (peerStates.get(peer)?.backoffExpireTimes?.get(topic) ?: 0)
 
     private fun isBackOffFlood(peer: PeerHandler, topic: Topic): Boolean {
-        val expire = peerStates.getExisting(peer)?.backoffExpireTimes?.get(topic) ?: return false
+        val expire = peerStates.get(peer)?.backoffExpireTimes?.get(topic) ?: return false
         return currentTimeSupplier() < expire - (params.pruneBackoff + params.graftFloodThreshold).toMillis()
     }
 
@@ -204,7 +204,7 @@ open class GossipRouter(
     }
 
     protected open fun notifyAnyMessage(peer: PeerHandler, msg: PubsubMessage) {
-        if (peerStates.getExisting(peer)?.iWantRequestTimes?.remove(msg.messageId) != null) {
+        if (peerStates.get(peer)?.iWantRequestTimes?.remove(msg.messageId) != null) {
             notifyIWantComplete(peer, msg)
         }
     }
@@ -243,7 +243,7 @@ open class GossipRouter(
     }
 
     fun trimOutboundQueue(peer: PeerHandler) {
-        val partsQueue = peerStates.getExisting(peer)?.rpcPartsQueue ?: return
+        val partsQueue = peerStates.get(peer)?.rpcPartsQueue ?: return
         partsQueue.dropLowPriority()
         if (partsQueue.estimateMaxSerializedSize() >= params.slowPeerPendingBytesThreshold) {
             // last resort is to drop all the queued parts
@@ -257,7 +257,7 @@ open class GossipRouter(
         }
 
         val curTime = currentTimeSupplier()
-        val peerState = peerStates.getOrCreate(peer)
+        val peerState = peerStates.get(peer) ?: return false
         val whitelistEntry = peerState.acceptRequestsWhitelistState
         if (whitelistEntry != null &&
             curTime <= whitelistEntry.whitelistedTill &&
@@ -375,7 +375,7 @@ open class GossipRouter(
         val peerScore = score.score(peer.peerId)
         // we ignore IHAVE gossip from any peer whose score is below the gossip threshold
         if (peerScore < scoreParams.gossipThreshold) return
-        val peerState = peerStates.getOrCreate(peer)
+        val peerState = peerStates.get(peer) ?: return
         peerState.iHaveMessagesReceived++
         if (peerState.iHaveMessagesReceived > params.maxIHaveMessages) {
             // peer has advertised too many times within this heartbeat interval, ignoring
@@ -407,7 +407,7 @@ open class GossipRouter(
         if (!this.protocol.supportsIDontWant()) return
         val peerScore = score.score(peer.peerId)
         if (peerScore < scoreParams.gossipThreshold) return
-        val iDontWantCacheEntry = peerStates.getOrCreate(peer).iDontWantState
+        val iDontWantCacheEntry = peerStates.get(peer)?.iDontWantState ?: return
         iDontWantCacheEntry.heartbeatMessageIdsCount += msg.messageIDsCount
         if (iDontWantCacheEntry.heartbeatMessageIdsCount > params.maxIDontWantMessageIds) {
             return
@@ -816,13 +816,13 @@ open class GossipRouter(
     }
 
     private fun peerDoesNotWantMessage(peer: PeerHandler, messageId: MessageId): Boolean {
-        return peerStates.getExisting(peer)?.iDontWantState?.messageIdsAndTimeReceived?.contains(messageId) == true
+        return peerStates.get(peer)?.iDontWantState?.messageIdsAndTimeReceived?.contains(messageId) == true
     }
 
     private fun iWant(peer: PeerHandler, messageIds: List<MessageId>) {
         if (messageIds.isEmpty()) return
         messageIds[random.nextInt(messageIds.size)]
-            .also { peerStates.getOrCreate(peer).iWantRequestTimes[it] = currentTimeSupplier() }
+            .also { peerStates.get(peer)?.iWantRequestTimes?.set(it, currentTimeSupplier()) }
         enqueueIwant(peer, messageIds)
     }
 
@@ -839,7 +839,7 @@ open class GossipRouter(
     }
 
     private fun enqueuePrune(peer: PeerHandler, topic: Topic) {
-        val peerQueue = peerStates.getOrCreate(peer).rpcPartsQueue
+        val peerQueue = peerStates.get(peer)?.rpcPartsQueue ?: return
         if (peer.getPeerProtocol().supportsBackoffAndPX() && this.protocol.supportsBackoffAndPX()) {
             val backoffPeers = (getTopicPeers(topic) - peer)
                 .take(params.maxPeersSentInPruneMsg)
@@ -852,19 +852,19 @@ open class GossipRouter(
     }
 
     private fun enqueueGraft(peer: PeerHandler, topic: Topic) =
-        peerStates.getOrCreate(peer).rpcPartsQueue.addGraft(topic)
+        peerStates.get(peer)?.rpcPartsQueue?.addGraft(topic)
 
     private fun enqueueIwant(peer: PeerHandler, messageIds: List<MessageId>) =
-        peerStates.getOrCreate(peer).rpcPartsQueue.addIWants(messageIds)
+        peerStates.get(peer)?.rpcPartsQueue?.addIWants(messageIds)
 
     private fun enqueueIhave(peer: PeerHandler, messageIds: List<MessageId>, topic: Topic) =
-        peerStates.getOrCreate(peer).rpcPartsQueue.addIHaves(messageIds, topic)
+        peerStates.get(peer)?.rpcPartsQueue?.addIHaves(messageIds, topic)
 
     private fun enqueueIDontWant(peer: PeerHandler, messageId: MessageId) {
         if (!peer.getPeerProtocol().supportsIDontWant()) {
             return
         }
-        peerStates.getOrCreate(peer).rpcPartsQueue.addIDontWant(messageId)
+        peerStates.get(peer)?.rpcPartsQueue?.addIDontWant(messageId)
     }
 
     private fun sendControlExtensions(peer: PeerHandler) {
@@ -885,8 +885,8 @@ open class GossipRouter(
 
         logger.trace("Sending control extensions message to peer {}", peer.peerId)
 
-        peerStates.getOrCreate(peer).rpcPartsQueue
-            .addControlExtensions(gossipExtensionsState.localExtensionSupport)
+        val peerQueue = peerStates.get(peer)?.rpcPartsQueue ?: return
+        peerQueue.addControlExtensions(gossipExtensionsState.localExtensionSupport)
         gossipExtensionsState.registerControlExtensionMessageSentToPeers(peer.peerId)
     }
 

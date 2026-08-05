@@ -66,10 +66,10 @@ abstract class AbstractRouter(
     ) {
         private val byPeer = linkedMapOf<PeerHandler, TState>()
 
-        fun getOrCreate(peer: PeerHandler): TState =
+        fun onConnected(peer: PeerHandler): TState =
             byPeer.computeIfAbsent(peer) { createState(it) }
 
-        fun getExisting(peer: PeerHandler): TState? =
+        fun get(peer: PeerHandler): TState? =
             byPeer[peer]
 
         fun getAllStates(): Collection<TState> = byPeer.values
@@ -92,12 +92,14 @@ abstract class AbstractRouter(
     }
 
     protected open fun submitPublishMessageSilently(toPeer: PeerHandler, msg: PubsubMessage) {
-        peerStates.getOrCreate(toPeer).rpcPartsQueue.addPublish(msg.protobufMessage)
+        peerStates.get(toPeer)?.rpcPartsQueue?.addPublish(msg.protobufMessage)
     }
 
     protected open fun submitPublishMessage(toPeer: PeerHandler, msg: PubsubMessage): CompletableFuture<Unit> {
+        val peerState = peerStates.get(toPeer)
+            ?: return completedExceptionally(ConnectionClosedException())
         val sendPromise = CompletableFuture<Unit>()
-        peerStates.getOrCreate(toPeer).rpcPartsQueue.addPublish(msg.protobufMessage, sendPromise)
+        peerState.rpcPartsQueue.addPublish(msg.protobufMessage, sendPromise)
         return sendPromise
     }
 
@@ -150,6 +152,11 @@ abstract class AbstractRouter(
         }
     }
 
+    override fun streamAdded(streamHandler: StreamHandler) {
+        super.streamAdded(streamHandler)
+        peerStates.onConnected(streamHandler.getPeerHandler())
+    }
+
     override fun removePeer(peer: Stream) {
         peer.close()
     }
@@ -175,7 +182,7 @@ abstract class AbstractRouter(
     protected abstract fun processExtensions(msg: Rpc.RPC, receivedFrom: PeerHandler)
 
     override fun onPeerActive(peer: PeerHandler) {
-        val partsQueue = peerStates.getOrCreate(peer).rpcPartsQueue
+        val partsQueue = peerStates.onConnected(peer).rpcPartsQueue
         subscribedTopics.forEach {
             partsQueue.addSubscribe(it)
         }
@@ -351,7 +358,7 @@ abstract class AbstractRouter(
     protected fun getTopicPeers(topic: Topic) = peersTopics.getBySecond(topic)
 
     override fun pollOutboundMessage(peer: PeerHandler): MessageAndPromise? {
-        val batch = peerStates.getExisting(peer)?.rpcPartsQueue?.takeBatch() ?: return null
+        val batch = peerStates.get(peer)?.rpcPartsQueue?.takeBatch() ?: return null
         return MessageAndPromise(batch.rpc, batch.writePromise)
     }
 
@@ -363,7 +370,7 @@ abstract class AbstractRouter(
     }
 
     protected open fun subscribe(topic: Topic) {
-        activePeers.forEach { peerStates.getOrCreate(it).rpcPartsQueue.addSubscribe(topic) }
+        activePeers.forEach { peerStates.get(it)?.rpcPartsQueue?.addSubscribe(topic) }
         subscribedTopics += topic
     }
 
@@ -375,7 +382,7 @@ abstract class AbstractRouter(
     }
 
     protected open fun unsubscribe(topic: Topic) {
-        activePeers.forEach { peerStates.getOrCreate(it).rpcPartsQueue.addUnsubscribe(topic) }
+        activePeers.forEach { peerStates.get(it)?.rpcPartsQueue?.addUnsubscribe(topic) }
         subscribedTopics -= topic
     }
 
