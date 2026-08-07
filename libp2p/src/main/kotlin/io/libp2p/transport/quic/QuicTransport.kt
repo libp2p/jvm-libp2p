@@ -320,6 +320,7 @@ class QuicTransport(
                             // ConnectionOverNetty.init sets quicCh.attr(CONNECTION) = connection,
                             // so InboundStreamHandler can find it before thenApply runs.
                             connection.setMuxerSession(QuicMuxerSession(quicCh, connection))
+                            it.addLastLocal(QuicConnectionExceptionHandler())
                         }
                     )
                     .streamHandler(InboundStreamHandler(multistreamProtocol, protocols))
@@ -566,6 +567,7 @@ class QuicTransport(
                             }
                         }
                     )
+                    it.addLastLocal(QuicConnectionExceptionHandler())
                 }
             )
             .maxIdleTimeout(config.idleTimeout.toMillis(), TimeUnit.MILLISECONDS)

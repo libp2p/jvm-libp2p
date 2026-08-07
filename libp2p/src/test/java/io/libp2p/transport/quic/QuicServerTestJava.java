@@ -31,8 +31,11 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.socket.ChannelOutputShutdownException;
+import io.netty.handler.codec.quic.QuicChannel;
+import io.netty.handler.codec.quic.QuicException;
 import io.netty.handler.codec.quic.QuicStreamChannel;
 import io.netty.handler.codec.quic.QuicStreamResetException;
+import io.netty.handler.codec.quic.QuicTransportError;
 import io.netty.handler.logging.LogLevel;
 import java.net.BindException;
 import java.net.DatagramPacket;
@@ -1037,6 +1040,87 @@ public class QuicServerTestJava {
 
     clientTransport.close().get(5, TimeUnit.SECONDS);
     serverTransport.close().get(5, TimeUnit.SECONDS);
+  }
+
+  @Test
+  void connectionLevelQuicExceptionIsHandledAndCleansUpOutboundResources() throws Exception {
+    String serverListenAddress = "/ip4/127.0.0.1/udp/" + getPort() + "/quic-v1";
+
+    Pair<PrivKey, PubKey> serverKeyPair = KeyKt.generateKeyPair(KeyType.ED25519);
+    Pair<PrivKey, PubKey> clientKeyPair = KeyKt.generateKeyPair(KeyType.ED25519);
+    List<io.libp2p.core.multistream.ProtocolBinding<?>> emptyProtocols = new ArrayList<>();
+
+    QuicTransport serverTransport = QuicTransport.ECDSA(serverKeyPair.component1(), emptyProtocols);
+    QuicTransport clientTransport = QuicTransport.ECDSA(clientKeyPair.component1(), emptyProtocols);
+    serverTransport.initialize();
+    clientTransport.initialize();
+
+    CompletableFuture<Connection> inboundConnection = new CompletableFuture<>();
+    List<Throwable> propagatedExceptions = new CopyOnWriteArrayList<>();
+
+    try {
+      serverTransport
+          .listen(
+              new Multiaddr(serverListenAddress),
+              connection -> inboundConnection.complete(connection),
+              null)
+          .get(5, TimeUnit.SECONDS);
+
+      Connection outboundConnection =
+          clientTransport
+              .dial(new Multiaddr(serverListenAddress), connection -> {}, null)
+              .get(5, TimeUnit.SECONDS);
+      Connection inbound = inboundConnection.get(5, TimeUnit.SECONDS);
+
+      QuicChannel outboundChannel =
+          (QuicChannel) ((ConnectionOverNetty) outboundConnection).getNettyChannel();
+      QuicChannel inboundChannel = (QuicChannel) ((ConnectionOverNetty) inbound).getNettyChannel();
+      Channel datagramChannel = outboundChannel.parent();
+
+      Assertions.assertNotNull(
+          outboundChannel.pipeline().get(QuicConnectionExceptionHandler.class));
+      Assertions.assertNotNull(inboundChannel.pipeline().get(QuicConnectionExceptionHandler.class));
+
+      outboundChannel
+          .pipeline()
+          .addLast(
+              "test-exception-capturer",
+              new ChannelInboundHandlerAdapter() {
+                @Override
+                public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
+                  propagatedExceptions.add(cause);
+                }
+              });
+
+      outboundChannel
+          .eventLoop()
+          .submit(
+              () ->
+                  outboundChannel
+                      .pipeline()
+                      .fireExceptionCaught(
+                          new QuicException(
+                              "invalid QUIC state", QuicTransportError.PROTOCOL_VIOLATION)))
+          .sync();
+
+      Assertions.assertTrue(
+          outboundChannel.closeFuture().await(5, TimeUnit.SECONDS),
+          "connection-level QUIC exception must close the affected channel");
+      Assertions.assertTrue(
+          datagramChannel.closeFuture().await(5, TimeUnit.SECONDS),
+          "closing an outbound QUIC channel must close its dedicated datagram channel");
+
+      long deadline = System.currentTimeMillis() + 5_000;
+      while (clientTransport.getActiveConnections() > 0 && System.currentTimeMillis() < deadline) {
+        Thread.sleep(20);
+      }
+
+      Assertions.assertEquals(0, clientTransport.getActiveConnections());
+      Assertions.assertTrue(propagatedExceptions.isEmpty());
+    } finally {
+      clientTransport.close().get(5, TimeUnit.SECONDS);
+      serverTransport.close().get(5, TimeUnit.SECONDS);
+    }
   }
 
   /**
