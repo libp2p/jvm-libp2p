@@ -26,6 +26,23 @@ fun defaultDOut(D: Int, DLow: Int) = min(D / 2, max(DLow - 1, 0))
 const val NEVER_FLOOD_PUBLISH = 0
 const val ALWAYS_FLOOD_PUBLISH = Int.MAX_VALUE
 
+// slowPeerPendingBytesThreshold shortcuts
+const val NEVER_DETECT_SLOW_PEER_BY_PENDING_BYTES = Int.MAX_VALUE
+
+/**
+ * Default limit for the bytes a single peer may keep queued for outbound delivery.
+ *
+ * Outbound RPC parts are retained across flushes when they do not fit into a single
+ * protocol-limit-valid RPC, so a peer which stops draining accumulates parts - and the message
+ * payloads they reference - for as long as the connection stays open. Slow-peer handling is what
+ * reclaims that queue, so this limit has to be reachable by a real queue for the retention to be
+ * bounded at all.
+ *
+ * 4 MiB is well above any legitimate steady-state backlog while still bounding total retention to
+ * a predictable amount per peer.
+ */
+const val DEFAULT_SLOW_PEER_PENDING_BYTES_THRESHOLD = 4 * 1024 * 1024
+
 /**
  * Parameters of Gossip 1.1 router
  */
@@ -263,10 +280,15 @@ data class GossipParams(
 
     /**
      * [slowPeerPendingBytesThreshold] controls when a peer's pending outbound queue is considered
-     * pressured. The default is intentionally very high, which effectively disables slow-peer
-     * detection by pending queue size unless a lower value is configured.
+     * pressured, and therefore when the queue is eligible to be reclaimed through slow-peer
+     * handling. Because retained outbound RPC parts are only ever reclaimed this way, this is the
+     * effective bound on how much a single non-draining peer can retain on the heap.
+     *
+     * Defaults to [DEFAULT_SLOW_PEER_PENDING_BYTES_THRESHOLD]. Set to
+     * [NEVER_DETECT_SLOW_PEER_BY_PENDING_BYTES] to disable detection by pending queue size, but
+     * note that doing so leaves the pending queue of a peer which never drains unbounded.
      */
-    val slowPeerPendingBytesThreshold: Int = Int.MAX_VALUE,
+    val slowPeerPendingBytesThreshold: Int = DEFAULT_SLOW_PEER_PENDING_BYTES_THRESHOLD,
 
     /**
      * [slowPeerHeartbeatThreshold] controls how many consecutive heartbeats a peer's pending
