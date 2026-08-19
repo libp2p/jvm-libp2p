@@ -27,6 +27,12 @@ interface GossipRouterEventListener {
     fun notifyPruned(peerId: PeerId, topic: Topic)
 
     fun notifyRouterMisbehavior(peerId: PeerId, count: Int)
+
+    /**
+     * Called when a peer's outbound RPC parts queue remains above the configured slow-peer
+     * threshold for the configured number of heartbeats.
+     */
+    fun notifySlowPeer(peerId: PeerId)
 }
 
 class GossipRouterEventBroadcaster : GossipRouterEventListener {
@@ -70,5 +76,9 @@ class GossipRouterEventBroadcaster : GossipRouterEventListener {
 
     override fun notifyRouterMisbehavior(peerId: PeerId, count: Int) {
         listeners.forEach { it.notifyRouterMisbehavior(peerId, count) }
+    }
+
+    override fun notifySlowPeer(peerId: PeerId) {
+        listeners.forEach { it.notifySlowPeer(peerId) }
     }
 }

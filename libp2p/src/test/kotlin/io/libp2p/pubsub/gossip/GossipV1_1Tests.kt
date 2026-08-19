@@ -8,6 +8,7 @@ import io.libp2p.core.PeerId
 import io.libp2p.core.pubsub.*
 import io.libp2p.etc.types.*
 import io.libp2p.pubsub.MockRouter
+import io.libp2p.pubsub.TooLargeMessageException
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 import io.netty.channel.ChannelHandler
@@ -57,6 +58,24 @@ class GossipV1_1Tests : GossipTestsBase() {
         val msg = newMessage("topic1", 0L, "Hello".toByteArray())
         test.gossipRouter.publish(msg)
         test.mockRouter.waitForMessage { it.publishCount > 0 }
+    }
+
+    @Test
+    fun `publishing too large message fails with TooLargeMessageException`() {
+        val msg = newMessage("topic1", 0L, "too-large".toByteArray())
+        val standalonePublishSize = Rpc.RPC.newBuilder()
+            .addPublish(msg.protobufMessage)
+            .buildPartial()
+            .serializedSize
+        val test = TwoRoutersTest(GossipParams(maxGossipMessageSize = standalonePublishSize - 1))
+
+        test.mockRouter.subscribe("topic1")
+
+        val publishFuture = test.gossipRouter.publish(msg)
+
+        assertThrows(TooLargeMessageException::class.java) {
+            publishFuture.getX()
+        }
     }
 
     @Test
@@ -1456,6 +1475,76 @@ class GossipV1_1Tests : GossipTestsBase() {
         val publishedCount = test.mockRouters.flatMap { it.inboundMessages }.count { it.publishCount > 0 }
 
         assertEquals(expectedPublishedCount, publishedCount)
+    }
+
+    @Test
+    fun `pollOutboundMessages should return null when empty instead of exception`() {
+        val test = TwoRoutersTest()
+        val peer = test.mockRouter.peers.single()
+        test.connection.conn2.ch1.setWritableForTest(false)
+
+        assertEquals(0, test.mockRouter.pendingPeerCountForTest())
+        assertNull(test.mockRouter.pollOutboundMessage(peer))
+        assertEquals(0, test.mockRouter.pendingPeerCountForTest())
+
+        test.mockRouter.enqueuePublishForTest(peer, newProtoMessage("topic1", 0L, "Hello".toByteArray()))
+
+        assertEquals(1, test.mockRouter.pendingPeerCountForTest())
+        assertNotNull(test.mockRouter.pollOutboundMessage(peer))
+        assertEquals(0, test.mockRouter.pendingPeerCountForTest())
+        assertNull(test.mockRouter.pollOutboundMessage(peer))
+        assertEquals(0, test.mockRouter.pendingPeerCountForTest())
+    }
+
+    @Test
+    fun `late outbound poll after disconnect does not retain peer pending parts`() {
+        val test = TwoRoutersTest()
+        val peer = test.mockRouter.peers.single()
+        test.connection.conn2.ch1.setWritableForTest(false)
+
+        test.mockRouter.enqueuePublishForTest(peer, newProtoMessage("topic1", 0L, "Hello".toByteArray()))
+
+        assertNotNull(test.mockRouter.getRpcQueueIfExist(peer))
+
+        test.connection.disconnect()
+        test.connection.connections
+            .flatMap { listOf(it.ch1, it.ch2) }
+            .forEach { it.runPendingTasks() }
+
+        assertNull(test.mockRouter.getRpcQueueIfExist(peer))
+
+        assertNull(test.mockRouter.pollOutboundMessage(peer))
+        assertNull(test.mockRouter.getRpcQueueIfExist(peer))
+    }
+
+    @Test
+    fun `single outbound wake drains all split publish batches`() {
+        val test = TwoRoutersTest(GossipParams(maxPublishedMessages = 1))
+        test.mockRouter.subscribe("topic1")
+
+        val outboundChannel = test.connection.conn1.ch1
+        outboundChannel.setWritableForTest(false)
+
+        val msg1 = newMessage("topic1", 1L, "Hello-1".toByteArray())
+        val msg2 = newMessage("topic1", 2L, "Hello-2".toByteArray())
+        val publishFuture1 = test.gossipRouter.publish(msg1)
+        val publishFuture2 = test.gossipRouter.publish(msg2)
+
+        outboundChannel.runPendingTasks()
+        assertFalse(publishFuture1.isDone)
+        assertFalse(publishFuture2.isDone)
+
+        outboundChannel.setWritableForTest(true)
+        outboundChannel.runPendingTasks()
+
+        publishFuture1.get(5, TimeUnit.SECONDS)
+        publishFuture2.get(5, TimeUnit.SECONDS)
+
+        val rpc1 = test.mockRouter.waitForMessage { it.publishCount > 0 }
+        val rpc2 = test.mockRouter.waitForMessage { it.publishCount > 0 }
+
+        assertEquals(listOf("Hello-1"), rpc1.publishList.map { it.data.toStringUtf8() })
+        assertEquals(listOf("Hello-2"), rpc2.publishList.map { it.data.toStringUtf8() })
     }
 
     private fun createGraftMessage(topic: String): Rpc.RPC {

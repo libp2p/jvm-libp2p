@@ -301,9 +301,11 @@ class QuicTransport(
         // (which runs a QUIC *server* codec), silently breaking the handshake. NAT-consistent
         // dialing for hole punching is handled separately by dialAsListener, which reuses the
         // listener socket directly.
-        val quicConnFuture: CompletableFuture<QuicChannel> = client.clone()
+        val udpBindFuture = client.clone()
             .handler(requestsHandler)
             .bind(InetSocketAddress(0))
+
+        val quicConnFuture: CompletableFuture<QuicChannel> = udpBindFuture
             .toCompletableFuture()
             .thenCompose { udpChannel ->
                 QuicChannel.newBootstrap(udpChannel)
@@ -318,6 +320,7 @@ class QuicTransport(
                             // ConnectionOverNetty.init sets quicCh.attr(CONNECTION) = connection,
                             // so InboundStreamHandler can find it before thenApply runs.
                             connection.setMuxerSession(QuicMuxerSession(quicCh, connection))
+                            it.addLastLocal(QuicConnectionExceptionHandler())
                         }
                     )
                     .streamHandler(InboundStreamHandler(multistreamProtocol, protocols))
@@ -394,11 +397,12 @@ class QuicTransport(
         // NetworkImpl.connect() cancels losing dial futures in the multi-address race. Cancelling
         // this dependent future does NOT propagate upstream to quicConnFuture, so if the handshake
         // later completes, the thenApply body above is skipped and the established QuicChannel is
-        // never registered, handed to the caller, nor closed. Close it explicitly on cancellation
-        // so neither it nor its underlying datagram channel is leaked (mirrors the TCP transport).
+        // never registered, handed to the caller, nor closed. Close the datagram channel immediately
+        // and also close any QuicChannel that won the completion race (mirrors the TCP transport).
         connectionFuture.whenComplete { _, _ ->
             if (connectionFuture.isCancelled) {
                 quicConnFuture.thenAccept { it.close() }
+                udpBindFuture.channel().close()
             }
         }
         return connectionFuture
@@ -563,6 +567,7 @@ class QuicTransport(
                             }
                         }
                     )
+                    it.addLastLocal(QuicConnectionExceptionHandler())
                 }
             )
             .maxIdleTimeout(config.idleTimeout.toMillis(), TimeUnit.MILLISECONDS)

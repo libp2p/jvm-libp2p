@@ -26,6 +26,23 @@ fun defaultDOut(D: Int, DLow: Int) = min(D / 2, max(DLow - 1, 0))
 const val NEVER_FLOOD_PUBLISH = 0
 const val ALWAYS_FLOOD_PUBLISH = Int.MAX_VALUE
 
+// slowPeerPendingBytesThreshold shortcuts
+const val NEVER_DETECT_SLOW_PEER_BY_PENDING_BYTES = Int.MAX_VALUE
+
+/**
+ * Default limit for the bytes a single peer may keep queued for outbound delivery.
+ *
+ * Outbound RPC parts are retained across flushes when they do not fit into a single
+ * protocol-limit-valid RPC, so a peer which stops draining accumulates parts - and the message
+ * payloads they reference - for as long as the connection stays open. Slow-peer handling is what
+ * reclaims that queue, so this limit has to be reachable by a real queue for the retention to be
+ * bounded at all.
+ *
+ * 4 MiB is well above any legitimate steady-state backlog while still bounding total retention to
+ * a predictable amount per peer.
+ */
+const val DEFAULT_SLOW_PEER_PENDING_BYTES_THRESHOLD = 4 * 1024 * 1024
+
 /**
  * Parameters of Gossip 1.1 router
  */
@@ -244,19 +261,41 @@ data class GossipParams(
 
     /**
      * [maxIDontWantMessageIds] is the maximum number of IDONTWANT message ids allowed per heartbeat per peer
+     * and must be greater than zero.
      */
     val maxIDontWantMessageIds: Int = maxIHaveLength * maxIHaveMessages,
 
     /**
      * [iDontWantMinMessageSizeThreshold] controls the minimum size (in bytes) that an incoming message needs to be so that an IDONTWANT message is sent to mesh peers.
      * The default is 16 KiB.
+     * To disable sending IDONTWANT messages, set this to a value larger than any permitted message size,
+     * such as [Int.MAX_VALUE].
      */
     val iDontWantMinMessageSizeThreshold: Int = 16384,
 
     /**
      * [iDontWantTTL] Expiry time for cache of received IDONTWANT messages for peers
      */
-    val iDontWantTTL: Duration = 3.seconds
+    val iDontWantTTL: Duration = 3.seconds,
+
+    /**
+     * [slowPeerPendingBytesThreshold] controls when a peer's pending outbound queue is considered
+     * pressured, and therefore when the queue is eligible to be reclaimed through slow-peer
+     * handling. Because retained outbound RPC parts are only ever reclaimed this way, this is the
+     * effective bound on how much a single non-draining peer can retain on the heap.
+     *
+     * Defaults to [DEFAULT_SLOW_PEER_PENDING_BYTES_THRESHOLD]. Set to
+     * [NEVER_DETECT_SLOW_PEER_BY_PENDING_BYTES] to disable detection by pending queue size, but
+     * note that doing so leaves the pending queue of a peer which never drains unbounded.
+     */
+    val slowPeerPendingBytesThreshold: Int = DEFAULT_SLOW_PEER_PENDING_BYTES_THRESHOLD,
+
+    /**
+     * [slowPeerHeartbeatThreshold] controls how many consecutive heartbeats a peer's pending
+     * outbound queue may stay at or above [slowPeerPendingBytesThreshold] before it is processed as
+     * slow through `notifySlowPeer`.
+     */
+    val slowPeerHeartbeatThreshold: Int = 3
 
 ) {
     init {
@@ -270,7 +309,10 @@ data class GossipParams(
         check(DHigh >= D, "DHigh should be >= D")
         check(gossipFactor in 0.0..1.0, "gossipFactor should be in range [0.0, 1.0]")
         check(floodPublishMaxMessageSizeThreshold >= 0, "floodPublishMaxMessageSizeThreshold should be >= 0")
+        check(maxIDontWantMessageIds > 0, "maxIDontWantMessageIds should be > 0")
         check(iDontWantMinMessageSizeThreshold >= 0, "iDontWantMinMessageSizeThreshold should be >= 0")
+        check(slowPeerPendingBytesThreshold > 0, "slowPeerPendingBytesThreshold should be > 0")
+        check(slowPeerHeartbeatThreshold > 0, "slowPeerHeartbeatThreshold should be > 0")
     }
 
     companion object {
@@ -399,6 +441,7 @@ data class GossipPeerScoreParams(
      * router. The router currently applies penalties for the following behaviors:
      * - attempting to re-graft before the prune backoff time has elapsed.
      * - not following up in IWANT requests for messages advertised with IHAVE.
+     * - keeping outbound RPC parts queued above the slow-peer threshold for too many heartbeats.
      *
      * The value of the parameter is the square of the counter over the threshold,
      * which decays with [behaviourPenaltyDecay].

@@ -21,3 +21,13 @@ class InvalidMessageException(message: String) : PubsubException(message)
  * Thrown when no suitable peers found to broadcast outbound exception
  */
 class NoPeersForOutboundMessageException(message: String) : PubsubException(message)
+
+/**
+ * Thrown when an outbound pubsub message or queued RPC part is too large to fit protocol limits.
+ */
+class TooLargeMessageException(message: String) : PubsubException(message)
+
+/**
+ * Thrown when queued RPC parts are dropped before they are written.
+ */
+class DroppedRpcPartsException(message: String = "Queued RPC parts were dropped") : PubsubException(message)

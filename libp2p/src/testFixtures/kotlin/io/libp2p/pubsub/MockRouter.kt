@@ -1,5 +1,6 @@
 package io.libp2p.pubsub
 
+import io.libp2p.etc.util.MessageAndPromise
 import pubsub.pb.Rpc
 import java.util.concurrent.BlockingQueue
 import java.util.concurrent.CompletableFuture
@@ -51,6 +52,18 @@ open class MockRouter(executor: ScheduledExecutorService) : AbstractRouter(
     override fun onInbound(peer: PeerHandler, msg: Any) {
         super.onInbound(peer, msg)
         inboundMessages += msg as Rpc.RPC
+    }
+
+    public override fun pollOutboundMessage(peer: PeerHandler): MessageAndPromise? {
+        return super.pollOutboundMessage(peer)
+    }
+
+    fun pendingPeerCountForTest(): Int = pendingRpcParts.getPeersWithPendingOutboundData().size
+    fun getRpcQueueIfExist(peer: PeerHandler) = pendingRpcParts.getExistingQueue(peer)
+
+    fun enqueuePublishForTest(peer: PeerHandler, msg: Rpc.Message) {
+        pendingRpcParts.getOrCreateQueue(peer).addPublish(msg)
+        notifyOutboundDataAvailable(peer)
     }
 
     override fun broadcastOutbound(msg: PubsubMessage): CompletableFuture<Unit> = CompletableFuture.completedFuture(null)

@@ -2,9 +2,11 @@ package io.libp2p.pubsub.gossip
 
 import io.libp2p.core.PeerId
 import io.libp2p.etc.types.toProtobuf
-import io.libp2p.pubsub.DefaultRpcPartsQueue
+import io.libp2p.pubsub.AbstractRpcPartsQueue
 import io.libp2p.pubsub.MessageId
+import io.libp2p.pubsub.RpcPartsBatch
 import io.libp2p.pubsub.RpcPartsQueue
+import io.libp2p.pubsub.TooLargeMessageException
 import io.libp2p.pubsub.Topic
 import pubsub.pb.Rpc
 
@@ -14,6 +16,9 @@ interface GossipRpcPartsQueue : RpcPartsQueue {
     fun addIHaves(messageIds: Collection<MessageId>, topic: Topic) = messageIds.forEach { addIHave(it, topic) }
     fun addIWant(messageId: MessageId)
     fun addIWants(messageIds: Collection<MessageId>) = messageIds.forEach { addIWant(it) }
+
+    fun addIDontWant(messageId: MessageId)
+    fun addIDontWants(messageIds: Collection<MessageId>) = messageIds.forEach { addIDontWant(it) }
 
     fun addGraft(topic: Topic)
 
@@ -27,20 +32,23 @@ interface GossipRpcPartsQueue : RpcPartsQueue {
      */
     fun addPrune(topic: Topic, backoffSeconds: Long, backoffPeers: List<PeerId>)
 
-    // TODO Need to check if we should handle when control extension and extension messages could be separated by split  (https://github.com/libp2p/jvm-libp2p/issues/440)
     fun addControlExtensions(ctrlMessage: Rpc.ControlExtensions)
 }
 
 /**
- * Default [RpcPartsQueue] implementation
+ * Gossip-aware [RpcPartsQueue] implementation.
+ *
+ * The queue respects gossip message-count limits and [GossipParams.maxGossipMessageSize] when
+ * selecting parts for [takeBatch]. Size limiting uses each part's conservative standalone RPC
+ * estimate, so a batch can be split before the actual merged protobuf RPC is built.
  *
  * NOT thread safe
  */
 open class DefaultGossipRpcPartsQueue(
     private val params: GossipParams
-) : DefaultRpcPartsQueue(), GossipRpcPartsQueue {
+) : AbstractRpcPartsQueue(), GossipRpcPartsQueue {
 
-    protected data class IHavePart(val messageId: MessageId, val topic: Topic) : AbstractPart {
+    protected data class IHavePart(val messageId: MessageId, val topic: Topic) : AbstractPart() {
         override fun appendToBuilder(builder: Rpc.RPC.Builder) {
             val ctrlBuilder = builder.controlBuilder
             val iHaveBuilder = ctrlBuilder.ihaveBuilderList
@@ -51,7 +59,7 @@ open class DefaultGossipRpcPartsQueue(
         }
     }
 
-    protected data class IWantPart(val messageId: MessageId) : AbstractPart {
+    protected data class IWantPart(val messageId: MessageId) : AbstractPart() {
         override fun appendToBuilder(builder: Rpc.RPC.Builder) {
             val ctrlBuilder = builder.controlBuilder
             val iWantBuilder = if (ctrlBuilder.iwantBuilderList.isEmpty()) {
@@ -63,13 +71,26 @@ open class DefaultGossipRpcPartsQueue(
         }
     }
 
-    protected data class GraftPart(val topic: Topic) : AbstractPart {
+    protected data class IDontWantPart(val messageId: MessageId) : AbstractPart() {
+        override fun appendToBuilder(builder: Rpc.RPC.Builder) {
+            val ctrlBuilder = builder.controlBuilder
+            val iDontWantBuilder = if (ctrlBuilder.idontwantBuilderList.isEmpty()) {
+                ctrlBuilder.addIdontwantBuilder()
+            } else {
+                ctrlBuilder.getIdontwantBuilder(0)
+            }
+            iDontWantBuilder.addMessageIDs(messageId.toProtobuf())
+        }
+    }
+
+    protected data class GraftPart(val topic: Topic) : AbstractPart() {
         override fun appendToBuilder(builder: Rpc.RPC.Builder) {
             builder.controlBuilder.addGraftBuilder().setTopicID(topic)
         }
     }
 
-    protected data class PrunePart(val topic: Topic, val backoffSeconds: Long?, val backoffPeers: List<PeerId>) : AbstractPart {
+    protected data class PrunePart(val topic: Topic, val backoffSeconds: Long?, val backoffPeers: List<PeerId>) :
+        AbstractPart() {
         override fun appendToBuilder(builder: Rpc.RPC.Builder) {
             val pruneBuilder = builder.controlBuilder.addPruneBuilder()
             pruneBuilder.setTopicID(topic)
@@ -84,11 +105,41 @@ open class DefaultGossipRpcPartsQueue(
         }
     }
 
-    protected data class ControlExtensionPart(val ctrlExtension: Rpc.ControlExtensions) : AbstractPart {
+    protected data class ControlExtensionPart(val ctrlExtension: Rpc.ControlExtensions) : AbstractPart() {
         override fun appendToBuilder(builder: Rpc.RPC.Builder) {
             builder.controlBuilder.setExtensions(ctrlExtension)
         }
     }
+
+    protected val priorityPartLists = listOf(
+        mutableListOf<AbstractPart>(),
+        mutableListOf(),
+        mutableListOf()
+    )
+
+    override fun addPart(part: AbstractPart) {
+        if (part.estimatedMaxSerializedSize > params.maxGossipMessageSize) {
+            throw TooLargeMessageException(
+                "RPC part estimated serialized size ${part.estimatedMaxSerializedSize} exceeds " +
+                    "maxGossipMessageSize ${params.maxGossipMessageSize}: $part"
+            )
+        }
+        priorityPartList(part).add(part)
+        addPartSize(part)
+    }
+
+    private fun priorityPartList(part: AbstractPart): MutableList<AbstractPart> =
+        when (part) {
+            is ControlExtensionPart,
+            is IDontWantPart -> priorityPartLists[URGENT_CONTROL_PRIORITY]
+            is SubscriptionPart,
+            is GraftPart,
+            is PrunePart -> priorityPartLists[STATE_CONTROL_PRIORITY]
+            is PublishPart,
+            is IHavePart,
+            is IWantPart -> priorityPartLists[BULK_PRIORITY]
+            else -> priorityPartLists[BULK_PRIORITY]
+        }
 
     override fun addIHave(messageId: MessageId, topic: Topic) {
         addPart(IHavePart(messageId, topic))
@@ -96,6 +147,10 @@ open class DefaultGossipRpcPartsQueue(
 
     override fun addIWant(messageId: MessageId) {
         addPart(IWantPart(messageId))
+    }
+
+    override fun addIDontWant(messageId: MessageId) {
+        addPart(IDontWantPart(messageId))
     }
 
     override fun addGraft(topic: Topic) {
@@ -114,39 +169,68 @@ open class DefaultGossipRpcPartsQueue(
         addPart(ControlExtensionPart(ctrlMessage))
     }
 
-    override fun takeMerged(): List<Rpc.RPC> {
-        val ret = mutableListOf<Rpc.RPC>()
+    override fun isEmpty(): Boolean = priorityPartLists.all { it.isEmpty() }
+
+    override fun takeBatch(): RpcPartsBatch? {
+        val topmostPriorityList = priorityPartLists.firstOrNull { it.isNotEmpty() } ?: return null
+        return takeBatch(topmostPriorityList)
+    }
+
+    override fun dropLowPriority() {
+        dropParts(priorityPartLists[BULK_PRIORITY])
+    }
+
+    private fun takeBatch(priorityParts: MutableList<AbstractPart>): RpcPartsBatch? {
+        var publishCount = params.maxPublishedMessages ?: Int.MAX_VALUE
+        var subscriptionCount = params.maxSubscriptions ?: Int.MAX_VALUE
+        var iHaveCount = params.maxIHaveLength
+        var iWantCount = params.maxIWantMessageIds ?: Int.MAX_VALUE
+        var iDontWantCount = params.maxIDontWantMessageIds
+        var graftCount = params.maxGraftMessages ?: Int.MAX_VALUE
+        var pruneCount = params.maxPruneMessages ?: Int.MAX_VALUE
+        var sizeLeft = params.maxGossipMessageSize
+
         var partIdx = 0
-        while (partIdx < parts.size) {
-            val builder = Rpc.RPC.newBuilder()
 
-            var publishCount = params.maxPublishedMessages ?: Int.MAX_VALUE
-            var subscriptionCount = params.maxSubscriptions ?: Int.MAX_VALUE
-            var iHaveCount = params.maxIHaveLength
-            var iWantCount = params.maxIWantMessageIds ?: Int.MAX_VALUE
-            var graftCount = params.maxGraftMessages ?: Int.MAX_VALUE
-            var pruneCount = params.maxPruneMessages ?: Int.MAX_VALUE
-
-            while (partIdx < parts.size &&
-                publishCount > 0 && subscriptionCount > 0 && iHaveCount > 0 &&
-                iWantCount > 0 && graftCount > 0 && pruneCount > 0
-            ) {
-                val part = parts[partIdx++]
-                when (part) {
-                    is PublishPart -> publishCount--
-                    is SubscriptionPart -> subscriptionCount--
-                    is IHavePart -> iHaveCount--
-                    is IWantPart -> iWantCount--
-                    is GraftPart -> graftCount--
-                    is PrunePart -> pruneCount--
-                }
-
-                part.appendToBuilder(builder)
+        while (partIdx < priorityParts.size &&
+            publishCount > 0 && subscriptionCount > 0 && iHaveCount > 0 &&
+            iWantCount > 0 && iDontWantCount > 0 && graftCount > 0 && pruneCount > 0
+        ) {
+            val part = priorityParts[partIdx]
+            when (part) {
+                is PublishPart -> publishCount--
+                is SubscriptionPart -> subscriptionCount--
+                is IHavePart -> iHaveCount--
+                is IWantPart -> iWantCount--
+                is IDontWantPart -> iDontWantCount--
+                is GraftPart -> graftCount--
+                is PrunePart -> pruneCount--
             }
-            ret += builder.build()
+            sizeLeft -= part.estimatedMaxSerializedSize
+            if (sizeLeft < 0) {
+                break
+            }
+            partIdx++
         }
+        if (partIdx == 0) return null
 
-        parts.clear()
+        val batchParts: MutableList<AbstractPart> = priorityParts.subList(0, partIdx)
+        val ret = createBatch(batchParts)
+        removePartsSize(batchParts)
+        batchParts.clear()
+
         return ret
+    }
+
+    override fun dropAll(exception: Exception) {
+        mergePromises(priorityPartLists.flatten()).completeExceptionally(exception)
+        super.dropAll(exception)
+        priorityPartLists.forEach { it.clear() }
+    }
+
+    private companion object {
+        const val URGENT_CONTROL_PRIORITY = 0
+        const val STATE_CONTROL_PRIORITY = 1
+        const val BULK_PRIORITY = 2
     }
 }

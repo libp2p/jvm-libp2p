@@ -85,6 +85,16 @@ class GossipParamsTest {
     }
 
     @Test
+    fun `test invalid max IDONTWANT message IDs is zero`() {
+        val exception = assertThrows<IllegalArgumentException> {
+            GossipParams.builder()
+                .maxIDontWantMessageIds(0)
+                .build()
+        }
+        assertEquals("maxIDontWantMessageIds should be > 0", exception.message)
+    }
+
+    @Test
     fun `test invalid dout same as dlow`() {
         val exception = assertThrows<IllegalArgumentException> {
             GossipParams.builder()
@@ -163,6 +173,26 @@ class GossipParamsTest {
                 .build()
         }
         assertEquals("gossipFactor should be in range [0.0, 1.0]", exception.message)
+    }
+
+    @Test
+    fun `test invalid slow peer pending bytes threshold`() {
+        val exception = assertThrows<IllegalArgumentException> {
+            GossipParams.builder()
+                .slowPeerPendingBytesThreshold(0)
+                .build()
+        }
+        assertEquals("slowPeerPendingBytesThreshold should be > 0", exception.message)
+    }
+
+    @Test
+    fun `test invalid slow peer heartbeat threshold`() {
+        val exception = assertThrows<IllegalArgumentException> {
+            GossipParams.builder()
+                .slowPeerHeartbeatThreshold(0)
+                .build()
+        }
+        assertEquals("slowPeerHeartbeatThreshold should be > 0", exception.message)
     }
 
     /* GossipScoreParams */

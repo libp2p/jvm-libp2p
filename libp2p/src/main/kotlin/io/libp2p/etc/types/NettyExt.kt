@@ -21,6 +21,14 @@ fun ChannelFuture.toCompletableFuture(): CompletableFuture<Channel> {
     return ret
 }
 
+fun ChannelFuture.forwardTo(fut: CompletableFuture<Unit>) = this.addListener {
+    if (it.isSuccess) {
+        fut.complete(Unit)
+    } else {
+        fut.completeExceptionally(it.cause())
+    }
+}
+
 fun Future<*>.toVoidCompletableFuture(): CompletableFuture<Unit> = toCompletableFuture().thenApply { }
 
 fun <T> Future<T>.toCompletableFuture(): CompletableFuture<T> {
