@@ -292,6 +292,7 @@ open class GossipRouter(
             maxIDontWantMessageIds = params.maxIDontWantMessageIds,
             rejectEmptyPublishEntries = true,
             rejectEmptyIDontWantEntries = true,
+            maxControlMessageSize = params.maxControlMessageSize,
         )
     }
 

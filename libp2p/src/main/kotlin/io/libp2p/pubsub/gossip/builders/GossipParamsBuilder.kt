@@ -82,6 +82,8 @@ class GossipParamsBuilder {
 
     private var slowPeerHeartbeatThreshold: Int? = null
 
+    private var maxControlMessageSize: Int? = null
+
     init {
         val source = GossipParams()
         this.D = source.D
@@ -115,6 +117,7 @@ class GossipParamsBuilder {
         this.iDontWantTTL = source.iDontWantTTL
         this.slowPeerPendingBytesThreshold = source.slowPeerPendingBytesThreshold
         this.slowPeerHeartbeatThreshold = source.slowPeerHeartbeatThreshold
+        this.maxControlMessageSize = source.maxControlMessageSize
     }
 
     fun D(value: Int): GossipParamsBuilder = apply { D = value }
@@ -197,6 +200,8 @@ class GossipParamsBuilder {
 
     fun slowPeerHeartbeatThreshold(value: Int): GossipParamsBuilder = apply { slowPeerHeartbeatThreshold = value }
 
+    fun maxControlMessageSize(value: Int): GossipParamsBuilder = apply { maxControlMessageSize = value }
+
     fun build(): GossipParams {
         calculateMissing()
         checkRequiredFields()
@@ -236,7 +241,8 @@ class GossipParamsBuilder {
             iDontWantMinMessageSizeThreshold = iDontWantMinMessageSizeThreshold!!,
             iDontWantTTL = iDontWantTTL!!,
             slowPeerPendingBytesThreshold = slowPeerPendingBytesThreshold!!,
-            slowPeerHeartbeatThreshold = slowPeerHeartbeatThreshold!!
+            slowPeerHeartbeatThreshold = slowPeerHeartbeatThreshold!!,
+            maxControlMessageSize = maxControlMessageSize!!
         )
     }
 
@@ -279,5 +285,6 @@ class GossipParamsBuilder {
         check(iDontWantTTL != null, { "iDontWantTTL must not be null" })
         check(slowPeerPendingBytesThreshold != null, { "slowPeerPendingBytesThreshold must not be null" })
         check(slowPeerHeartbeatThreshold != null, { "slowPeerHeartbeatThreshold must not be null" })
+        check(maxControlMessageSize != null, { "maxControlMessageSize must not be null" })
     }
 }
