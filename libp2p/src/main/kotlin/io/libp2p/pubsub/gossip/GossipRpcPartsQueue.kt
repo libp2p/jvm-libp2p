@@ -185,7 +185,7 @@ open class DefaultGossipRpcPartsQueue(
         var subscriptionCount = params.maxSubscriptions ?: Int.MAX_VALUE
         var iHaveCount = params.maxIHaveLength
         var iWantCount = params.maxIWantMessageIds ?: Int.MAX_VALUE
-        var iDontWantCount = params.maxIDontWantMessageIds
+        var iDontWantCount = params.maxIDontWantMessageIdsPerRpc
         var graftCount = params.maxGraftMessages ?: Int.MAX_VALUE
         var pruneCount = params.maxPruneMessages ?: Int.MAX_VALUE
         var sizeLeft = params.maxGossipMessageSize

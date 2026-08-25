@@ -306,7 +306,14 @@ data class GossipParams(
      * Must stay at or above what our own outbound batcher can emit in one RPC; see
      * `ControlBytesBudgetMeasurementTest`.
      */
-    val maxControlMessageSize: Int = 256 * 1024
+    val maxControlMessageSize: Int = 256 * 1024,
+
+    /**
+     * [maxIDontWantMessageIdsPerRpc] bounds how many IDONTWANT message ids a single outbound RPC
+     * may carry. [maxIDontWantMessageIds] remains the per-heartbeat allowance; this splits that
+     * allowance across RPCs so each one fits inside [maxControlMessageSize].
+     */
+    val maxIDontWantMessageIdsPerRpc: Int = 5000
 
 ) {
     init {
@@ -325,6 +332,7 @@ data class GossipParams(
         check(slowPeerPendingBytesThreshold > 0, "slowPeerPendingBytesThreshold should be > 0")
         check(slowPeerHeartbeatThreshold > 0, "slowPeerHeartbeatThreshold should be > 0")
         check(maxControlMessageSize > 0, "maxControlMessageSize should be > 0")
+        check(maxIDontWantMessageIdsPerRpc > 0, "maxIDontWantMessageIdsPerRpc should be > 0")
     }
 
     companion object {

@@ -1,5 +1,6 @@
 package io.libp2p.pubsub.gossip
 
+import io.libp2p.etc.types.toWBytes
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -193,6 +194,34 @@ class GossipParamsTest {
                 .build()
         }
         assertEquals("slowPeerHeartbeatThreshold should be > 0", exception.message)
+    }
+
+    @Test
+    fun `maxIDontWantMessageIdsPerRpc defaults to 5000 and is independently settable`() {
+        assertEquals(5000, GossipParams().maxIDontWantMessageIdsPerRpc)
+        assertEquals(5000, GossipParams.builder().build().maxIDontWantMessageIdsPerRpc)
+        assertEquals(
+            77,
+            GossipParams.builder().maxIDontWantMessageIdsPerRpc(77).build().maxIDontWantMessageIdsPerRpc
+        )
+    }
+
+    @Test
+    fun `takeBatch splits IDONTWANT across RPCs at the per-RPC cap`() {
+        val params = GossipParams(maxIDontWantMessageIds = 50_000, maxIDontWantMessageIdsPerRpc = 5_000)
+        val queue = object : DefaultGossipRpcPartsQueue(params) {}
+        repeat(50_000) { queue.addIDontWant(ByteArray(20) { b -> (it + b).toByte() }.toWBytes()) }
+
+        var batches = 0
+        var worst = 0
+        while (true) {
+            val batch = queue.takeBatch() ?: break
+            batches++
+            worst = maxOf(worst, batch.rpc.control.idontwantList.sumOf { it.messageIDsCount })
+        }
+
+        assertEquals(10, batches)
+        assertEquals(5_000, worst)
     }
 
     /* GossipScoreParams */
