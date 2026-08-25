@@ -303,8 +303,10 @@ data class GossipParams(
      * envelope costs at least two wire bytes, this bounds envelope-flooding of every shape with a
      * single counter, enforced before the frame is decoded.
      *
-     * Must stay at or above what our own outbound batcher can emit in one RPC; see
-     * `ControlBytesBudgetMeasurementTest`.
+     * The same value bounds the control bytes our own outbound batcher puts into one RPC:
+     * `DefaultGossipRpcPartsQueue.takeBatch` splits a batch once this budget is spent, so the
+     * library cannot emit a frame its own inbound guard would reject, whatever this is set to.
+     * See `ControlBytesBudgetSymmetryTest`.
      */
     val maxControlMessageSize: Int = 256 * 1024,
 
