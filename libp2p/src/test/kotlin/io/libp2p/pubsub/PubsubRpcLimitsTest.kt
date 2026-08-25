@@ -22,6 +22,23 @@ class PubsubRpcLimitsTest {
         assertThat(mutated.isNoop).isFalse
     }
 
+    @Test
+    fun `maxControlMessageSize defaults to null and is appended last`() {
+        assertThat(PubsubRpcLimits.NONE.maxControlMessageSize).isNull()
+
+        // Positional construction must keep its existing meaning: the new field is appended,
+        // so the first twelve positional arguments are unchanged.
+        val limits = PubsubRpcLimits(
+            null, null, null, null, null, null, null, null,
+            9, 10, false, true,
+        )
+        assertThat(limits.maxIDontWantMessages).isEqualTo(9)
+        assertThat(limits.maxIDontWantMessageIds).isEqualTo(10)
+        assertThat(limits.rejectEmptyPublishEntries).isFalse()
+        assertThat(limits.rejectEmptyIDontWantEntries).isTrue()
+        assertThat(limits.maxControlMessageSize).isNull()
+    }
+
     companion object {
         @JvmStatic
         fun nonNoopMutations(): List<Arguments> = listOf(
@@ -37,6 +54,7 @@ class PubsubRpcLimitsTest {
             Arguments.of("maxIDontWantMessageIds set", PubsubRpcLimits.NONE.copy(maxIDontWantMessageIds = 1)),
             Arguments.of("rejectEmptyPublishEntries=true", PubsubRpcLimits.NONE.copy(rejectEmptyPublishEntries = true)),
             Arguments.of("rejectEmptyIDontWantEntries=true", PubsubRpcLimits.NONE.copy(rejectEmptyIDontWantEntries = true)),
+            Arguments.of("maxControlMessageSize set", PubsubRpcLimits.NONE.copy(maxControlMessageSize = 1)),
         )
     }
 }
