@@ -295,7 +295,27 @@ data class GossipParams(
      * outbound queue may stay at or above [slowPeerPendingBytesThreshold] before it is processed as
      * slow through `notifySlowPeer`.
      */
-    val slowPeerHeartbeatThreshold: Int = 3
+    val slowPeerHeartbeatThreshold: Int = 3,
+
+    /**
+     * [maxControlMessageSize] bounds the cumulative wire size of a single inbound RPC's control
+     * plane - everything except `publish` payloads and `RPC.partial`. Because every protobuf
+     * envelope costs at least two wire bytes, this bounds envelope-flooding of every shape with a
+     * single counter, enforced before the frame is decoded.
+     *
+     * The same value bounds the control bytes our own outbound batcher puts into one RPC:
+     * `DefaultGossipRpcPartsQueue.takeBatch` splits a batch once this budget is spent, so the
+     * library cannot emit a frame its own inbound guard would reject, whatever this is set to.
+     * See `ControlBytesBudgetSymmetryTest`.
+     */
+    val maxControlMessageSize: Int = 256 * 1024,
+
+    /**
+     * [maxIDontWantMessageIdsPerRpc] bounds how many IDONTWANT message ids a single outbound RPC
+     * may carry. [maxIDontWantMessageIds] remains the per-heartbeat allowance; this splits that
+     * allowance across RPCs so each one fits inside [maxControlMessageSize].
+     */
+    val maxIDontWantMessageIdsPerRpc: Int = 5000
 
 ) {
     init {
@@ -313,6 +333,8 @@ data class GossipParams(
         check(iDontWantMinMessageSizeThreshold >= 0, "iDontWantMinMessageSizeThreshold should be >= 0")
         check(slowPeerPendingBytesThreshold > 0, "slowPeerPendingBytesThreshold should be > 0")
         check(slowPeerHeartbeatThreshold > 0, "slowPeerHeartbeatThreshold should be > 0")
+        check(maxControlMessageSize > 0, "maxControlMessageSize should be > 0")
+        check(maxIDontWantMessageIdsPerRpc > 0, "maxIDontWantMessageIdsPerRpc should be > 0")
     }
 
     companion object {

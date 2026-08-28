@@ -38,9 +38,10 @@ interface GossipRpcPartsQueue : RpcPartsQueue {
 /**
  * Gossip-aware [RpcPartsQueue] implementation.
  *
- * The queue respects gossip message-count limits and [GossipParams.maxGossipMessageSize] when
- * selecting parts for [takeBatch]. Size limiting uses each part's conservative standalone RPC
- * estimate, so a batch can be split before the actual merged protobuf RPC is built.
+ * The queue respects gossip message-count limits, [GossipParams.maxGossipMessageSize] and
+ * [GossipParams.maxControlMessageSize] when selecting parts for [takeBatch]. Size limiting uses
+ * each part's conservative standalone RPC estimate, so a batch can be split before the actual
+ * merged protobuf RPC is built.
  *
  * NOT thread safe
  */
@@ -185,10 +186,24 @@ open class DefaultGossipRpcPartsQueue(
         var subscriptionCount = params.maxSubscriptions ?: Int.MAX_VALUE
         var iHaveCount = params.maxIHaveLength
         var iWantCount = params.maxIWantMessageIds ?: Int.MAX_VALUE
-        var iDontWantCount = params.maxIDontWantMessageIds
+        var iDontWantCount = params.maxIDontWantMessageIdsPerRpc
         var graftCount = params.maxGraftMessages ?: Int.MAX_VALUE
         var pruneCount = params.maxPruneMessages ?: Int.MAX_VALUE
         var sizeLeft = params.maxGossipMessageSize
+
+        /**
+         * Remaining control-plane bytes for this batch, mirroring the inbound
+         * [GossipParams.maxControlMessageSize] guard so we never emit an RPC a peer running this
+         * same code would reject pre-decode. Per-category counters cannot enforce this on their
+         * own: publish, IHAVE and IWANT parts share the BULK priority list and are merged into one
+         * RPC, so only a cumulative byte counter bounds their sum.
+         *
+         * Publish payloads are exempt on the inbound side, so only a publish part's envelope
+         * overhead is charged here. [AbstractPart.estimatedMaxSerializedSize] is a standalone-RPC
+         * estimate and over-counts once parts merge and share protobuf wrappers, which errs towards
+         * splitting a batch earlier than strictly required.
+         */
+        var controlLeft = params.maxControlMessageSize
 
         var partIdx = 0
 
@@ -207,7 +222,13 @@ open class DefaultGossipRpcPartsQueue(
                 is PrunePart -> pruneCount--
             }
             sizeLeft -= part.estimatedMaxSerializedSize
-            if (sizeLeft < 0) {
+            controlLeft -= when (part) {
+                is PublishPart -> part.estimatedMaxSerializedSize - part.message.data.size()
+                else -> part.estimatedMaxSerializedSize
+            }
+            // A part that alone exceeds a budget is still emitted, otherwise the queue would
+            // never drain past it.
+            if (partIdx > 0 && (sizeLeft < 0 || controlLeft < 0)) {
                 break
             }
             partIdx++

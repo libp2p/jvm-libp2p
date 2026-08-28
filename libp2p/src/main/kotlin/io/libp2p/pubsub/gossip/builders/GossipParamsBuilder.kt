@@ -82,6 +82,10 @@ class GossipParamsBuilder {
 
     private var slowPeerHeartbeatThreshold: Int? = null
 
+    private var maxControlMessageSize: Int? = null
+
+    private var maxIDontWantMessageIdsPerRpc: Int? = null
+
     init {
         val source = GossipParams()
         this.D = source.D
@@ -115,6 +119,8 @@ class GossipParamsBuilder {
         this.iDontWantTTL = source.iDontWantTTL
         this.slowPeerPendingBytesThreshold = source.slowPeerPendingBytesThreshold
         this.slowPeerHeartbeatThreshold = source.slowPeerHeartbeatThreshold
+        this.maxControlMessageSize = source.maxControlMessageSize
+        this.maxIDontWantMessageIdsPerRpc = source.maxIDontWantMessageIdsPerRpc
     }
 
     fun D(value: Int): GossipParamsBuilder = apply { D = value }
@@ -197,6 +203,10 @@ class GossipParamsBuilder {
 
     fun slowPeerHeartbeatThreshold(value: Int): GossipParamsBuilder = apply { slowPeerHeartbeatThreshold = value }
 
+    fun maxControlMessageSize(value: Int): GossipParamsBuilder = apply { maxControlMessageSize = value }
+
+    fun maxIDontWantMessageIdsPerRpc(value: Int): GossipParamsBuilder = apply { maxIDontWantMessageIdsPerRpc = value }
+
     fun build(): GossipParams {
         calculateMissing()
         checkRequiredFields()
@@ -236,7 +246,9 @@ class GossipParamsBuilder {
             iDontWantMinMessageSizeThreshold = iDontWantMinMessageSizeThreshold!!,
             iDontWantTTL = iDontWantTTL!!,
             slowPeerPendingBytesThreshold = slowPeerPendingBytesThreshold!!,
-            slowPeerHeartbeatThreshold = slowPeerHeartbeatThreshold!!
+            slowPeerHeartbeatThreshold = slowPeerHeartbeatThreshold!!,
+            maxControlMessageSize = maxControlMessageSize!!,
+            maxIDontWantMessageIdsPerRpc = maxIDontWantMessageIdsPerRpc!!
         )
     }
 
@@ -279,5 +291,7 @@ class GossipParamsBuilder {
         check(iDontWantTTL != null, { "iDontWantTTL must not be null" })
         check(slowPeerPendingBytesThreshold != null, { "slowPeerPendingBytesThreshold must not be null" })
         check(slowPeerHeartbeatThreshold != null, { "slowPeerHeartbeatThreshold must not be null" })
+        check(maxControlMessageSize != null, { "maxControlMessageSize must not be null" })
+        check(maxIDontWantMessageIdsPerRpc != null, { "maxIDontWantMessageIdsPerRpc must not be null" })
     }
 }

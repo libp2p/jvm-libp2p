@@ -21,6 +21,12 @@ data class PubsubRpcLimits(
     val maxIDontWantMessageIds: Int? = null,
     val rejectEmptyPublishEntries: Boolean = true,
     val rejectEmptyIDontWantEntries: Boolean = true,
+    /**
+     * Cumulative wire size of an inbound RPC's control plane: everything except
+     * `publish` payloads and `RPC.partial`. Bounds allocation shape-agnostically,
+     * since every protobuf envelope costs at least two wire bytes.
+     */
+    val maxControlMessageSize: Int? = null,
 ) {
     /**
      * True when no configured limit or reject-flag can fire. Lets
@@ -39,7 +45,8 @@ data class PubsubRpcLimits(
             maxIDontWantMessages == null &&
             maxIDontWantMessageIds == null &&
             !rejectEmptyPublishEntries &&
-            !rejectEmptyIDontWantEntries
+            !rejectEmptyIDontWantEntries &&
+            maxControlMessageSize == null
 
     companion object {
         val NONE = PubsubRpcLimits(
@@ -55,6 +62,7 @@ data class PubsubRpcLimits(
             maxIDontWantMessageIds = null,
             rejectEmptyPublishEntries = false,
             rejectEmptyIDontWantEntries = false,
+            maxControlMessageSize = null,
         )
     }
 }

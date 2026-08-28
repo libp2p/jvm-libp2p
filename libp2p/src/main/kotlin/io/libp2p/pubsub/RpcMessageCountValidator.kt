@@ -32,9 +32,15 @@ object RpcMessageCountValidator {
     private const val RPC_SUBSCRIPTIONS = Rpc.RPC.SUBSCRIPTIONS_FIELD_NUMBER
     private const val RPC_PUBLISH = Rpc.RPC.PUBLISH_FIELD_NUMBER
     private const val RPC_CONTROL = Rpc.RPC.CONTROL_FIELD_NUMBER
+    private const val RPC_PARTIAL = Rpc.RPC.PARTIAL_FIELD_NUMBER
 
     // pubsub.Message field numbers
     private const val MESSAGE_TOPIC_IDS = Rpc.Message.TOPICIDS_FIELD_NUMBER
+    private const val MESSAGE_DATA = Rpc.Message.DATA_FIELD_NUMBER
+
+    // pubsub.PartialMessagesExtension field numbers
+    private const val PARTIAL_MESSAGE = Rpc.PartialMessagesExtension.PARTIALMESSAGE_FIELD_NUMBER
+    private const val PARTS_METADATA = Rpc.PartialMessagesExtension.PARTSMETADATA_FIELD_NUMBER
 
     // pubsub.ControlMessage field numbers
     private const val CTRL_IHAVE = Rpc.ControlMessage.IHAVE_FIELD_NUMBER
@@ -96,12 +102,18 @@ object RpcMessageCountValidator {
     private fun validateRpc(input: CodedInputStream, limits: PubsubRpcLimits): Result {
         var publishCount = 0
         var subscriptionCount = 0
+        var controlBytes = 0
         val ctrl = ControlCounters()
+        val budget = limits.maxControlMessageSize
 
         while (!input.isAtEnd) {
+            val fieldStart = input.totalBytesRead
             val tag = input.readTag()
             val fieldNumber = WireFormat.getTagFieldNumber(tag)
             val wireType = WireFormat.getTagWireType(tag)
+            // Bytes consumed by this field that are NOT charged to the control budget.
+            var exemptBytes = 0
+
             when {
                 fieldNumber == RPC_SUBSCRIPTIONS &&
                     wireType == WireFormat.WIRETYPE_LENGTH_DELIMITED -> {
@@ -122,13 +134,9 @@ object RpcMessageCountValidator {
                         if (publishCount > it) return Result.Rejected("publish count > $it")
                     }
                     val oldLimit = input.pushLimit(length)
-                    val maxTopics = limits.maxTopicsPerPublishedMessage
-                    if (maxTopics != null) {
-                        val res = validatePublish(input, maxTopics)
-                        if (res is Result.Rejected) return res
-                    } else {
-                        input.skipMessage()
-                    }
+                    val scan = scanPublish(input, limits.maxTopicsPerPublishedMessage)
+                    scan.rejection?.let { return it }
+                    exemptBytes = scan.dataBytes
                     input.popLimit(oldLimit)
                 }
                 fieldNumber == RPC_CONTROL &&
@@ -139,27 +147,86 @@ object RpcMessageCountValidator {
                     if (res is Result.Rejected) return res
                     input.popLimit(oldLimit)
                 }
+                fieldNumber == RPC_PARTIAL &&
+                    wireType == WireFormat.WIRETYPE_LENGTH_DELIMITED -> {
+                    val length = input.readRawVarint32()
+                    val oldLimit = input.pushLimit(length)
+                    exemptBytes = scanPartial(input)
+                    input.popLimit(oldLimit)
+                }
                 else -> input.skipField(tag)
+            }
+
+            if (budget != null) {
+                controlBytes += (input.totalBytesRead - fieldStart) - exemptBytes
+                if (controlBytes > budget) {
+                    return Result.Rejected("control bytes > $budget")
+                }
             }
         }
         return Result.Accepted
     }
 
-    private fun validatePublish(input: CodedInputStream, maxTopics: Int): Result {
+    private class PublishScan(val rejection: Result.Rejected?, val dataBytes: Int)
+
+    /**
+     * Walks one `publish` entry, enforcing [maxTopics] when configured and accumulating the
+     * length of its `data` payload so the caller can exempt it from the control budget.
+     */
+    private fun scanPublish(input: CodedInputStream, maxTopics: Int?): PublishScan {
         var topicCount = 0
+        var dataBytes = 0
         while (!input.isAtEnd) {
             val tag = input.readTag()
-            if (WireFormat.getTagFieldNumber(tag) == MESSAGE_TOPIC_IDS &&
-                WireFormat.getTagWireType(tag) == WireFormat.WIRETYPE_LENGTH_DELIMITED
+            val fieldNumber = WireFormat.getTagFieldNumber(tag)
+            val wireType = WireFormat.getTagWireType(tag)
+            when {
+                fieldNumber == MESSAGE_TOPIC_IDS &&
+                    wireType == WireFormat.WIRETYPE_LENGTH_DELIMITED -> {
+                    topicCount++
+                    if (maxTopics != null && topicCount > maxTopics) {
+                        return PublishScan(
+                            Result.Rejected("topicIDs per publish > $maxTopics"),
+                            dataBytes
+                        )
+                    }
+                    input.skipField(tag)
+                }
+                fieldNumber == MESSAGE_DATA &&
+                    wireType == WireFormat.WIRETYPE_LENGTH_DELIMITED -> {
+                    val length = input.readRawVarint32()
+                    dataBytes += length
+                    input.skipRawBytes(length)
+                }
+                else -> input.skipField(tag)
+            }
+        }
+        return PublishScan(null, dataBytes)
+    }
+
+    /**
+     * Sums the payload lengths of the opaque byte fields of a partial-messages extension so the
+     * caller can exempt them from the control budget. Everything else inside the extension -
+     * including unknown fields - stays charged, because protobuf-java retains unknown fields in an
+     * UnknownFieldSet and they are not free.
+     */
+    private fun scanPartial(input: CodedInputStream): Int {
+        var payloadBytes = 0
+        while (!input.isAtEnd) {
+            val tag = input.readTag()
+            val fieldNumber = WireFormat.getTagFieldNumber(tag)
+            val wireType = WireFormat.getTagWireType(tag)
+            if ((fieldNumber == PARTIAL_MESSAGE || fieldNumber == PARTS_METADATA) &&
+                wireType == WireFormat.WIRETYPE_LENGTH_DELIMITED
             ) {
-                topicCount++
-                if (topicCount > maxTopics) return Result.Rejected("topicIDs per publish > $maxTopics")
-                input.skipField(tag)
+                val length = input.readRawVarint32()
+                payloadBytes += length
+                input.skipRawBytes(length)
             } else {
                 input.skipField(tag)
             }
         }
-        return Result.Accepted
+        return payloadBytes
     }
 
     private fun validateControl(
