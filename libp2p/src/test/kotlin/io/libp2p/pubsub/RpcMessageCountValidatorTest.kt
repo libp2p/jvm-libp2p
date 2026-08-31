@@ -72,7 +72,6 @@ class RpcMessageCountValidatorTest {
         assertThat(result).isInstanceOf(RpcMessageCountValidator.Result.Rejected::class.java)
     }
 
-
     @Test
     fun `rejects when topicIDs per publish exceeds limit`() {
         val rpc = Rpc.RPC.newBuilder().addPublish(message(topics = 5)).build()
@@ -80,12 +79,6 @@ class RpcMessageCountValidatorTest {
         assertThat(RpcMessageCountValidator.validate(bytesOf(rpc), limits))
             .isInstanceOf(RpcMessageCountValidator.Result.Rejected::class.java)
     }
-
-
-
-
-
-
 
     @Test
     fun `accepts well-formed RPC under every configured limit`() {
@@ -135,7 +128,6 @@ class RpcMessageCountValidatorTest {
         assertThat(result).isEqualTo(RpcMessageCountValidator.Result.Rejected("empty publish entry"))
     }
 
-
     @Test
     fun `accepts when count equals limit exactly`() {
         val rpc = Rpc.RPC.newBuilder()
@@ -145,9 +137,6 @@ class RpcMessageCountValidatorTest {
         assertThat(RpcMessageCountValidator.validate(bytesOf(rpc), limits))
             .isEqualTo(RpcMessageCountValidator.Result.Accepted)
     }
-
-
-
 
     @Test
     fun `rejects when control bytes exceed the budget`() {
