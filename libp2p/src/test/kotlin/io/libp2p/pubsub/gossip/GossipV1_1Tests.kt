@@ -1203,14 +1203,11 @@ class GossipV1_1Tests : GossipTestsBase() {
             createPruneMessage(topic, test.gossipRouter.params.maxPeersAcceptedInPruneMsg + 1)
         )
 
-        // prune message should be dropped because too many peers
-        assertEquals(1, test.gossipRouter.mesh[topic]!!.size)
-
-        test.mockRouter.sendToSingle(
-            createPruneMessage(topic, test.gossipRouter.params.maxPeersAcceptedInPruneMsg)
-        )
-
-        // prune message should now be processed
+        // The PRUNE is processed regardless of its PX peer-list size: maxPeersAcceptedInPruneMsg
+        // now only bounds how many peers processPrunePeers() passes to the PX connectCallback
+        // (GossipRouter.kt processPrunePeers .take(...)) — it no longer gates whether the PRUNE
+        // itself is accepted, since that decode/list-count rejection was removed as subsumed by
+        // the control-byte budget (teku-internal#317).
         assertEquals(0, test.gossipRouter.mesh[topic]!!.size)
     }
 
