@@ -182,11 +182,6 @@ data class GossipParams(
     val maxTopicsPerPublishedMessage: Int? = null,
 
     /**
-     * [maxSubscriptions] is the maximum number of subscriptions allowed per gossip message.
-     */
-    val maxSubscriptions: Int? = null,
-
-    /**
      * [maxIHaveLength] is the maximum number of messages to include in an IHAVE message.
      * Also controls the maximum number of IHAVE ids we will accept and request with IWANT from a
      * peer within a heartbeat, to protect from IHAVE floods. You should adjust this value from the
@@ -201,22 +196,11 @@ data class GossipParams(
     val maxIHaveMessages: Int = 10,
 
     /**
-     * [maxIWantMessageIds] The maximum number of message ids that can be included across IWANT messages within
-     * a single gossip message
-     */
-    val maxIWantMessageIds: Int? = null,
-
-    /**
      * Time to wait for a message requested through IWANT following an IHAVE advertisement.
      * If the message is not received within this window, a broken promise is declared and
      * the router may apply behavioural penalties.
      */
     val iWantFollowupTime: Duration = 3.seconds,
-
-    /**
-     * [maxGraftMessages] is the maximum number of graft messages allowed per gossip message
-     */
-    val maxGraftMessages: Int? = null,
 
     /**
      * [maxPeersSentInPruneMsg] controls the number of peers to include in prune Peer eXchange.
@@ -240,11 +224,6 @@ data class GossipParams(
      * before attempting to re-graft.
      */
     val pruneBackoff: Duration = 1.minutes,
-
-    /**
-     * [maxPruneMessages] is the maximum number of prune messages allowed per gossip message
-     */
-    val maxPruneMessages: Int? = null,
 
     /**
      * [gossipRetransmission] controls how many times we will allow a peer to request

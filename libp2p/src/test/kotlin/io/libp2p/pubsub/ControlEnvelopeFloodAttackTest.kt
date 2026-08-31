@@ -32,13 +32,9 @@ class ControlEnvelopeFloodAttackTest {
         maxGossipMessageSize = 12_234_442,
         maxPublishedMessages = 1000,
         maxTopicsPerPublishedMessage = 1,
-        maxSubscriptions = 200,
-        maxGraftMessages = 200,
-        maxPruneMessages = 200,
         maxPeersSentInPruneMsg = 0,
         maxPeersAcceptedInPruneMsg = 0,
         maxIHaveLength = 5000,
-        maxIWantMessageIds = 5000,
         maxIDontWantMessageIds = 5000,
     )
 
