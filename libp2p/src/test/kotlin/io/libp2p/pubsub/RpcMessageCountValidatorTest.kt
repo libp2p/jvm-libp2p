@@ -97,14 +97,6 @@ class RpcMessageCountValidatorTest {
         val limits = PubsubRpcLimits(
             maxPublishedMessages = 10,
             maxTopicsPerPublishedMessage = 4,
-            maxSubscriptions = 10,
-            maxIHaveMessageIds = 10,
-            maxIWantMessageIds = 10,
-            maxGraftMessages = 10,
-            maxPruneMessages = 10,
-            maxPeersPerPruneMessage = 10,
-            maxIDontWantMessages = 10,
-            maxIDontWantMessageIds = 10,
             rejectEmptyPublishEntries = true,
         )
         assertThat(RpcMessageCountValidator.validate(bytesOf(rpc), limits))

@@ -283,15 +283,7 @@ open class GossipRouter(
         PubsubRpcLimits(
             maxPublishedMessages = params.maxPublishedMessages,
             maxTopicsPerPublishedMessage = params.maxTopicsPerPublishedMessage,
-            maxSubscriptions = params.maxSubscriptions,
-            maxIHaveMessageIds = params.maxIHaveLength,
-            maxIWantMessageIds = params.maxIWantMessageIds,
-            maxGraftMessages = params.maxGraftMessages,
-            maxPruneMessages = params.maxPruneMessages,
-            maxPeersPerPruneMessage = params.maxPeersAcceptedInPruneMsg,
-            maxIDontWantMessageIds = params.maxIDontWantMessageIds,
             rejectEmptyPublishEntries = true,
-            rejectEmptyIDontWantEntries = true,
             maxControlMessageSize = params.maxControlMessageSize,
         )
     }
