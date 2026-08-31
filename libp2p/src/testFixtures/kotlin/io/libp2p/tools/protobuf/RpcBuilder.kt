@@ -57,6 +57,16 @@ class RpcBuilder {
         }
     }
 
+    fun addIdontwants(iDontWantCount: Int, messageIdCount: Int) {
+        for (i in 0 until iDontWantCount) {
+            val iDontWantBuilder = Rpc.ControlIDontWant.newBuilder()
+            for (j in 0 until messageIdCount) {
+                iDontWantBuilder.addMessageIDs(Random.nextBytes(6).toProtobuf())
+            }
+            builder.controlBuilder.addIdontwant(iDontWantBuilder)
+        }
+    }
+
     fun addPrunes(pruneCount: Int, peerCount: Int) {
         for (i in 0 until pruneCount) {
             val pruneBuilder = Rpc.ControlPrune.newBuilder()

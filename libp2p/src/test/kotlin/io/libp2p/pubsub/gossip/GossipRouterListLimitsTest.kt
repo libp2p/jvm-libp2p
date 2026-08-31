@@ -17,6 +17,7 @@ class GossipRouterListLimitsTest {
     private val maxGraftMessages = 15
     private val maxPruneMessages = 16
     private val maxPeersAcceptedInPruneMsg = 17
+    private val maxIDontWantMessageIds = 18
 
     private val gossipParamsWithLimits = GossipParamsBuilder()
         .maxPublishedMessages(maxPublishedMessages)
@@ -27,6 +28,7 @@ class GossipRouterListLimitsTest {
         .maxGraftMessages(maxGraftMessages)
         .maxPruneMessages(maxPruneMessages)
         .maxPeersAcceptedInPruneMsg(maxPeersAcceptedInPruneMsg)
+        .maxIDontWantMessageIds(maxIDontWantMessageIds)
         .build()
 
     private val gossipParamsNoLimits = GossipParamsBuilder()
@@ -157,6 +159,24 @@ class GossipRouterListLimitsTest {
         val msg = builder.build()
 
         Assertions.assertThat(routerWithLimits.validateMessageListLimits(msg)).isFalse()
+    }
+
+    @Test
+    fun validateProtobufLists_tooManyIDontWantMsgIds() {
+        val builder = fullMsgBuilder()
+        builder.addIdontwants(1, maxIDontWantMessageIds + 1)
+        val msg = builder.build()
+
+        Assertions.assertThat(routerWithLimits.validateMessageListLimits(msg)).isFalse()
+    }
+
+    @Test
+    fun validateProtobufLists_maxIDontWantMsgIds() {
+        val builder = fullMsgBuilder()
+        builder.addIdontwants(1, maxIDontWantMessageIds)
+        val msg = builder.build()
+
+        Assertions.assertThat(routerWithLimits.validateMessageListLimits(msg)).isTrue()
     }
 
     @Test
