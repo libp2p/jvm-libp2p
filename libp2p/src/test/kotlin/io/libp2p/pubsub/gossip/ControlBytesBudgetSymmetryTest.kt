@@ -46,8 +46,8 @@ class ControlBytesBudgetSymmetryTest {
     )
 
     /**
-     * Library defaults. `maxIWantMessageIds` / `maxPublishedMessages` are `null` here, which
-     * `takeBatch` reads as unbounded, so only the byte budget bounds those categories.
+     * Library defaults. `maxPublishedMessages` is `null` here, which `takeBatch` reads as
+     * unbounded, so only the byte budget bounds published messages.
      */
     private val defaultParams = GossipParams()
 

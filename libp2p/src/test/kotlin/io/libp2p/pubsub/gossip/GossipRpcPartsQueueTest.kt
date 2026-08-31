@@ -88,7 +88,7 @@ class GossipRpcPartsQueueTest {
 
     companion object {
         private val maxPublishedMessages = 10
-        private val maxSubscriptions = 12
+        private val subscriptionCount = 12
         private val maxIHaveLength = 13
 
         private val gossipParamsWithLimits = GossipParamsBuilder()
@@ -299,11 +299,11 @@ class GossipRpcPartsQueueTest {
     fun `mergeMessageParts() test that split doesn't result in topic publish before subscribe`() {
         val router = GossipRouterBuilder(params = gossipParamsWithLimits).build()
         val partsQueue = TestGossipQueue(gossipParamsWithLimits)
-        (0 until maxSubscriptions + 1).forEach {
+        (0 until subscriptionCount + 1).forEach {
             partsQueue.addSubscribe("topic-$it")
         }
 
-        partsQueue.addPublish(createRpcMessage("topic-$maxSubscriptions", "data"))
+        partsQueue.addPublish(createRpcMessage("topic-$subscriptionCount", "data"))
 
         val single = partsQueue.mergedSingle()
         val msgs = partsQueue.takeMerged()
@@ -316,7 +316,7 @@ class GossipRpcPartsQueueTest {
         // batch — priority-list draining order, not count splitting, is what's under test here.
         assertThat(msgs).hasSize(2)
         assertThat(msgs[0].publishCount).isZero()
-        assertThat(msgs[0].subscriptionsCount).isEqualTo(maxSubscriptions + 1)
+        assertThat(msgs[0].subscriptionsCount).isEqualTo(subscriptionCount + 1)
         assertThat(msgs[1].publishCount).isEqualTo(1)
         assertThat(msgs.merge()).isEqualTo(single)
     }
@@ -325,7 +325,7 @@ class GossipRpcPartsQueueTest {
     fun `mergeMessageParts() test priority batches split independently`() {
         val router = GossipRouterBuilder(params = gossipParamsWithLimits).build()
         val partsQueue = TestGossipQueue(gossipParamsWithLimits)
-        (0 until maxSubscriptions + 1).forEach {
+        (0 until subscriptionCount + 1).forEach {
             partsQueue.addSubscribe("topic-$it")
         }
 
@@ -343,7 +343,7 @@ class GossipRpcPartsQueueTest {
         // BULK-priority publish batches, still split independently by maxPublishedMessages.
         assertThat(msgs).hasSize(3)
         assertThat(msgs[0].publishCount).isZero()
-        assertThat(msgs[0].subscriptionsCount).isEqualTo(maxSubscriptions + 1)
+        assertThat(msgs[0].subscriptionsCount).isEqualTo(subscriptionCount + 1)
         assertThat(msgs.drop(1).map { it.publishCount }).containsExactly(
             maxPublishedMessages,
             maxPublishedMessages

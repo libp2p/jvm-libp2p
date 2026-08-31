@@ -214,10 +214,10 @@ class ControlEnvelopeFloodAttackTest {
     }
 
     /**
-     * `maxSubscriptions`/`maxGraftMessages`/`maxPruneMessages` are all left `null` here, so only
-     * the control byte budget can reject this frame. Before the budget existed, an equivalent
-     * frame was accepted by an unmodified per-shape validator and materialised one object per two
-     * wire bytes.
+     * The per-type counters (`maxSubscriptions`/`maxGraftMessages`/`maxPruneMessages`) no longer
+     * exist on GossipParams, so only the control byte budget can reject this frame. Before the
+     * budget existed, an equivalent frame was accepted by an unmodified per-shape validator and
+     * materialised one object per two wire bytes.
      */
     @Test
     fun `control byte budget rejects floods that no per-shape count cap covers`() {
