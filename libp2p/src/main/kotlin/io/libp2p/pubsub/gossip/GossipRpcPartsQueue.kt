@@ -183,12 +183,8 @@ open class DefaultGossipRpcPartsQueue(
 
     private fun takeBatch(priorityParts: MutableList<AbstractPart>): RpcPartsBatch? {
         var publishCount = params.maxPublishedMessages ?: Int.MAX_VALUE
-        var subscriptionCount = params.maxSubscriptions ?: Int.MAX_VALUE
         var iHaveCount = params.maxIHaveLength
-        var iWantCount = params.maxIWantMessageIds ?: Int.MAX_VALUE
         var iDontWantCount = params.maxIDontWantMessageIdsPerRpc
-        var graftCount = params.maxGraftMessages ?: Int.MAX_VALUE
-        var pruneCount = params.maxPruneMessages ?: Int.MAX_VALUE
         var sizeLeft = params.maxGossipMessageSize
 
         /**
@@ -208,18 +204,13 @@ open class DefaultGossipRpcPartsQueue(
         var partIdx = 0
 
         while (partIdx < priorityParts.size &&
-            publishCount > 0 && subscriptionCount > 0 && iHaveCount > 0 &&
-            iWantCount > 0 && iDontWantCount > 0 && graftCount > 0 && pruneCount > 0
+            publishCount > 0 && iHaveCount > 0 && iDontWantCount > 0
         ) {
             val part = priorityParts[partIdx]
             when (part) {
                 is PublishPart -> publishCount--
-                is SubscriptionPart -> subscriptionCount--
                 is IHavePart -> iHaveCount--
-                is IWantPart -> iWantCount--
                 is IDontWantPart -> iDontWantCount--
-                is GraftPart -> graftCount--
-                is PrunePart -> pruneCount--
             }
             sizeLeft -= part.estimatedMaxSerializedSize
             controlLeft -= when (part) {
