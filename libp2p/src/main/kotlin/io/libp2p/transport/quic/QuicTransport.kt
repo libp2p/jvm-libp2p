@@ -31,6 +31,7 @@ import io.netty.channel.nio.NioIoHandler
 import io.netty.channel.socket.nio.NioDatagramChannel
 import io.netty.handler.codec.quic.*
 import io.netty.handler.ssl.ClientAuth
+import io.netty.util.concurrent.ImmediateEventExecutor
 import org.slf4j.LoggerFactory
 import java.net.Inet6Address
 import java.net.InetSocketAddress
@@ -281,7 +282,14 @@ class QuicTransport(
         val sslContext = quicSslContext(true, trustManager)
         val requestsHandler = QuicClientCodecBuilder()
             .sslEngineProvider { q -> sslContext.newEngine(q.alloc()) }
-            .sslTaskExecutor(workerGroup)
+            // Delegated TLS tasks must run on the connection's own event-loop thread, not a
+            // shared multi-thread pool: Netty QUIC only serializes task retrieval (SSL_getTask)
+            // against connection teardown (SSL_cleanup/quiche_conn_free), not the task's native
+            // execution itself, so a task run on a background thread can race a concurrent close
+            // and use freed native SSL/quiche state (see
+            // https://github.com/libp2p/jvm-libp2p/issues/523). ImmediateEventExecutor
+            // makes Netty run tasks inline on the calling (event-loop) thread instead.
+            .sslTaskExecutor(ImmediateEventExecutor.INSTANCE)
             .maxIdleTimeout(config.idleTimeout.toMillis(), TimeUnit.MILLISECONDS)
             .initialMaxData(config.maxConnectionData)
             .initialMaxStreamsBidirectional(config.maxStreamsBidirectional)
@@ -480,7 +488,10 @@ class QuicTransport(
         val sslContext = quicSslContext(false, trustManager)
         return QuicServerCodecBuilder()
             .sslEngineProvider { q -> sslContext.newEngine(q.alloc()) }
-            .sslTaskExecutor(workerGroup)
+            // See the matching comment in dial(): delegated TLS tasks must run inline on the
+            // connection's own event-loop thread, not the shared workerGroup
+            // (https://github.com/libp2p/jvm-libp2p/issues/523).
+            .sslTaskExecutor(ImmediateEventExecutor.INSTANCE)
             .tokenHandler(NoTokenHandler())
             .handler(
                 nettyInitializer {
