@@ -211,7 +211,9 @@ data class GossipParams(
     val maxPeersSentInPruneMsg: Int = 16,
 
     /**
-     * [maxPeersAcceptedInPruneMsg] is the maximum number of peers allowed in an incoming prune message
+     * [maxPeersAcceptedInPruneMsg] is the maximum number of peers we take from the Peer eXchange
+     * list of an incoming PRUNE. The PRUNE itself is always processed; any peers beyond this many
+     * are discarded before [connectCallback] is invoked. Set to 0 to ignore PX entirely.
      */
     val maxPeersAcceptedInPruneMsg: Int = 16,
 
