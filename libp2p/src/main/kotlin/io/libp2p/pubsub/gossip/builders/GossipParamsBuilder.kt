@@ -78,6 +78,8 @@ class GossipParamsBuilder {
 
     private var maxIDontWantMessageIdsPerRpc: Int? = null
 
+    private var maxSubscriptionsPerRpc: Int? = null
+
     init {
         val source = GossipParams()
         this.D = source.D
@@ -109,6 +111,7 @@ class GossipParamsBuilder {
         this.slowPeerHeartbeatThreshold = source.slowPeerHeartbeatThreshold
         this.maxControlMessageSize = source.maxControlMessageSize
         this.maxIDontWantMessageIdsPerRpc = source.maxIDontWantMessageIdsPerRpc
+        this.maxSubscriptionsPerRpc = source.maxSubscriptionsPerRpc
     }
 
     fun D(value: Int): GossipParamsBuilder = apply { D = value }
@@ -187,6 +190,8 @@ class GossipParamsBuilder {
 
     fun maxIDontWantMessageIdsPerRpc(value: Int): GossipParamsBuilder = apply { maxIDontWantMessageIdsPerRpc = value }
 
+    fun maxSubscriptionsPerRpc(value: Int): GossipParamsBuilder = apply { maxSubscriptionsPerRpc = value }
+
     fun build(): GossipParams {
         calculateMissing()
         checkRequiredFields()
@@ -224,7 +229,8 @@ class GossipParamsBuilder {
             slowPeerPendingBytesThreshold = slowPeerPendingBytesThreshold!!,
             slowPeerHeartbeatThreshold = slowPeerHeartbeatThreshold!!,
             maxControlMessageSize = maxControlMessageSize!!,
-            maxIDontWantMessageIdsPerRpc = maxIDontWantMessageIdsPerRpc!!
+            maxIDontWantMessageIdsPerRpc = maxIDontWantMessageIdsPerRpc!!,
+            maxSubscriptionsPerRpc = maxSubscriptionsPerRpc!!
         )
     }
 
@@ -269,5 +275,6 @@ class GossipParamsBuilder {
         check(slowPeerHeartbeatThreshold != null, { "slowPeerHeartbeatThreshold must not be null" })
         check(maxControlMessageSize != null, { "maxControlMessageSize must not be null" })
         check(maxIDontWantMessageIdsPerRpc != null, { "maxIDontWantMessageIdsPerRpc must not be null" })
+        check(maxSubscriptionsPerRpc != null, { "maxSubscriptionsPerRpc must not be null" })
     }
 }

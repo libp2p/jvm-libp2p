@@ -294,7 +294,23 @@ data class GossipParams(
      * may carry. [maxIDontWantMessageIds] remains the per-heartbeat allowance; this splits that
      * allowance across RPCs so each one fits inside [maxControlMessageSize].
      */
-    val maxIDontWantMessageIdsPerRpc: Int = 5000
+    val maxIDontWantMessageIdsPerRpc: Int = 5000,
+
+    /**
+     * [maxSubscriptionsPerRpc] bounds how many subscription entries a single outbound RPC may
+     * carry. It is an outbound batching limit only: inbound subscription counts are bounded by
+     * [maxControlMessageSize], and by the [io.libp2p.pubsub.TopicSubscriptionFilter] if one is
+     * configured.
+     *
+     * It exists because peers do enforce a count here, and typically drop the whole RPC when it is
+     * exceeded rather than just the surplus subscriptions - go-libp2p ignores the RPC on any
+     * subscription filter error, and [io.libp2p.pubsub.MaxCountTopicSubscriptionFilter] throws.
+     * Since a router announces every subscribed topic in one go when a peer becomes active, a node
+     * subscribed to many topics would otherwise emit a single unacceptable RPC.
+     *
+     * Defaults to go-libp2p's limit. Lower it to match the strictest peer you expect to talk to.
+     */
+    val maxSubscriptionsPerRpc: Int = 500
 
 ) {
     init {
@@ -314,6 +330,7 @@ data class GossipParams(
         check(slowPeerHeartbeatThreshold > 0, "slowPeerHeartbeatThreshold should be > 0")
         check(maxControlMessageSize > 0, "maxControlMessageSize should be > 0")
         check(maxIDontWantMessageIdsPerRpc > 0, "maxIDontWantMessageIdsPerRpc should be > 0")
+        check(maxSubscriptionsPerRpc > 0, "maxSubscriptionsPerRpc should be > 0")
     }
 
     companion object {

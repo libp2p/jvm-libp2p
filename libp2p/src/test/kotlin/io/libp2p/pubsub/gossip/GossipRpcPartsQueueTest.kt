@@ -718,6 +718,26 @@ class GossipRpcPartsQueueTest {
         assertThat(merged[1].publishList).hasSize(maxPublishedMessages)
     }
 
+    @Test
+    fun `takeBatch splits subscriptions at maxSubscriptionsPerRpc`() {
+        val maxSubscriptionsPerRpc = 5
+        val params = GossipParamsBuilder()
+            .maxSubscriptionsPerRpc(maxSubscriptionsPerRpc)
+            .build()
+        val partsQueue = TestGossipQueue(params)
+
+        val totalSubscriptions = maxSubscriptionsPerRpc * 2 + 1
+        (1..totalSubscriptions).forEach {
+            partsQueue.addSubscribe("topic-$it")
+        }
+
+        val merged = partsQueue.takeMerged()
+
+        assertThat(merged).hasSize(3)
+        assertThat(merged).allMatch { it.subscriptionsCount <= maxSubscriptionsPerRpc }
+        assertThat(merged.sumOf { it.subscriptionsCount }).isEqualTo(totalSubscriptions)
+    }
+
     private fun standaloneGraftRpc(topic: Topic): Rpc.RPC =
         Rpc.RPC.newBuilder().apply {
             controlBuilder.addGraftBuilder().setTopicID(topic)
