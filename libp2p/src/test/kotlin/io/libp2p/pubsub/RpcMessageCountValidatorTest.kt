@@ -73,92 +73,9 @@ class RpcMessageCountValidatorTest {
     }
 
     @Test
-    fun `rejects when subscriptions count exceeds limit`() {
-        val rpc = Rpc.RPC.newBuilder()
-            .apply { repeat(3) { addSubscriptions(subOpt("t$it")) } }
-            .build()
-        val limits = PubsubRpcLimits.NONE.copy(maxSubscriptions = 2)
-        assertThat(RpcMessageCountValidator.validate(bytesOf(rpc), limits))
-            .isInstanceOf(RpcMessageCountValidator.Result.Rejected::class.java)
-    }
-
-    @Test
     fun `rejects when topicIDs per publish exceeds limit`() {
         val rpc = Rpc.RPC.newBuilder().addPublish(message(topics = 5)).build()
         val limits = PubsubRpcLimits.NONE.copy(maxTopicsPerPublishedMessage = 4)
-        assertThat(RpcMessageCountValidator.validate(bytesOf(rpc), limits))
-            .isInstanceOf(RpcMessageCountValidator.Result.Rejected::class.java)
-    }
-
-    @Test
-    fun `rejects when ihave messageIDs total exceeds limit`() {
-        val rpc = Rpc.RPC.newBuilder()
-            .setControl(
-                Rpc.ControlMessage.newBuilder()
-                    .addIhave(ihave(ids = 4))
-                    .addIhave(ihave(ids = 4))
-            )
-            .build()
-        val limits = PubsubRpcLimits.NONE.copy(maxIHaveMessageIds = 7)
-        assertThat(RpcMessageCountValidator.validate(bytesOf(rpc), limits))
-            .isInstanceOf(RpcMessageCountValidator.Result.Rejected::class.java)
-    }
-
-    @Test
-    fun `rejects when iwant messageIDs total exceeds limit`() {
-        val rpc = Rpc.RPC.newBuilder()
-            .setControl(Rpc.ControlMessage.newBuilder().addIwant(iwant(ids = 10)))
-            .build()
-        val limits = PubsubRpcLimits.NONE.copy(maxIWantMessageIds = 9)
-        assertThat(RpcMessageCountValidator.validate(bytesOf(rpc), limits))
-            .isInstanceOf(RpcMessageCountValidator.Result.Rejected::class.java)
-    }
-
-    @Test
-    fun `rejects when graft count exceeds limit`() {
-        val rpc = Rpc.RPC.newBuilder()
-            .setControl(
-                Rpc.ControlMessage.newBuilder()
-                    .addGraft(Rpc.ControlGraft.newBuilder().setTopicID("a"))
-                    .addGraft(Rpc.ControlGraft.newBuilder().setTopicID("b"))
-                    .addGraft(Rpc.ControlGraft.newBuilder().setTopicID("c"))
-            )
-            .build()
-        val limits = PubsubRpcLimits.NONE.copy(maxGraftMessages = 2)
-        assertThat(RpcMessageCountValidator.validate(bytesOf(rpc), limits))
-            .isInstanceOf(RpcMessageCountValidator.Result.Rejected::class.java)
-    }
-
-    @Test
-    fun `rejects when prune count exceeds limit`() {
-        val rpc = Rpc.RPC.newBuilder()
-            .setControl(
-                Rpc.ControlMessage.newBuilder()
-                    .addPrune(pruneWithPeers(peers = 0))
-                    .addPrune(pruneWithPeers(peers = 0))
-            )
-            .build()
-        val limits = PubsubRpcLimits.NONE.copy(maxPruneMessages = 1)
-        assertThat(RpcMessageCountValidator.validate(bytesOf(rpc), limits))
-            .isInstanceOf(RpcMessageCountValidator.Result.Rejected::class.java)
-    }
-
-    @Test
-    fun `rejects when peers per prune exceeds limit`() {
-        val rpc = Rpc.RPC.newBuilder()
-            .setControl(Rpc.ControlMessage.newBuilder().addPrune(pruneWithPeers(peers = 17)))
-            .build()
-        val limits = PubsubRpcLimits.NONE.copy(maxPeersPerPruneMessage = 16)
-        assertThat(RpcMessageCountValidator.validate(bytesOf(rpc), limits))
-            .isInstanceOf(RpcMessageCountValidator.Result.Rejected::class.java)
-    }
-
-    @Test
-    fun `rejects when idontwant messageIDs exceed limit`() {
-        val rpc = Rpc.RPC.newBuilder()
-            .setControl(Rpc.ControlMessage.newBuilder().addIdontwant(idontwant(ids = 5)))
-            .build()
-        val limits = PubsubRpcLimits.NONE.copy(maxIDontWantMessageIds = 4)
         assertThat(RpcMessageCountValidator.validate(bytesOf(rpc), limits))
             .isInstanceOf(RpcMessageCountValidator.Result.Rejected::class.java)
     }
@@ -180,14 +97,6 @@ class RpcMessageCountValidatorTest {
         val limits = PubsubRpcLimits(
             maxPublishedMessages = 10,
             maxTopicsPerPublishedMessage = 4,
-            maxSubscriptions = 10,
-            maxIHaveMessageIds = 10,
-            maxIWantMessageIds = 10,
-            maxGraftMessages = 10,
-            maxPruneMessages = 10,
-            maxPeersPerPruneMessage = 10,
-            maxIDontWantMessages = 10,
-            maxIDontWantMessageIds = 10,
             rejectEmptyPublishEntries = true,
         )
         assertThat(RpcMessageCountValidator.validate(bytesOf(rpc), limits))
@@ -212,21 +121,6 @@ class RpcMessageCountValidatorTest {
     }
 
     @Test
-    fun `rejects when idontwant message count exceeds limit`() {
-        val rpc = Rpc.RPC.newBuilder()
-            .setControl(
-                Rpc.ControlMessage.newBuilder()
-                    .addIdontwant(idontwant(ids = 1))
-                    .addIdontwant(idontwant(ids = 1))
-                    .addIdontwant(idontwant(ids = 1))
-            )
-            .build()
-        val limits = PubsubRpcLimits.NONE.copy(maxIDontWantMessages = 2)
-        assertThat(RpcMessageCountValidator.validate(bytesOf(rpc), limits))
-            .isInstanceOf(RpcMessageCountValidator.Result.Rejected::class.java)
-    }
-
-    @Test
     fun `accepts when count equals limit exactly`() {
         val rpc = Rpc.RPC.newBuilder()
             .apply { repeat(3) { addPublish(message(topics = 1)) } }
@@ -234,64 +128,6 @@ class RpcMessageCountValidatorTest {
         val limits = PubsubRpcLimits.NONE.copy(maxPublishedMessages = 3)
         assertThat(RpcMessageCountValidator.validate(bytesOf(rpc), limits))
             .isEqualTo(RpcMessageCountValidator.Result.Accepted)
-    }
-
-    @Test
-    fun `rejects RPC containing an empty idontwant entry`() {
-        val rpc = Rpc.RPC.newBuilder()
-            .setControl(
-                Rpc.ControlMessage.newBuilder()
-                    .addIdontwant(Rpc.ControlIDontWant.getDefaultInstance())
-            )
-            .build()
-        val limits = PubsubRpcLimits.NONE.copy(rejectEmptyIDontWantEntries = true)
-        assertThat(RpcMessageCountValidator.validate(bytesOf(rpc), limits))
-            .isInstanceOf(RpcMessageCountValidator.Result.Rejected::class.java)
-    }
-
-    @Test
-    fun `accepts empty idontwant entry when flag is off`() {
-        val rpc = Rpc.RPC.newBuilder()
-            .setControl(
-                Rpc.ControlMessage.newBuilder()
-                    .addIdontwant(Rpc.ControlIDontWant.getDefaultInstance())
-            )
-            .build()
-        val limits = PubsubRpcLimits.NONE
-        assertThat(RpcMessageCountValidator.validate(bytesOf(rpc), limits))
-            .isEqualTo(RpcMessageCountValidator.Result.Accepted)
-    }
-
-    @Test
-    fun `rejects when graft count across split control fields exceeds limit`() {
-        // Build a frame with TWO top-level control fields manually, each containing
-        // 2 grafts. After protobuf merge the ControlMessage has 4 grafts, so a limit
-        // of 3 must reject. The validator must aggregate across both control fields.
-        val firstHalf = Rpc.RPC.newBuilder()
-            .setControl(
-                Rpc.ControlMessage.newBuilder()
-                    .addGraft(Rpc.ControlGraft.newBuilder().setTopicID("a"))
-                    .addGraft(Rpc.ControlGraft.newBuilder().setTopicID("b"))
-            )
-            .build()
-            .toByteArray()
-        val secondHalf = Rpc.RPC.newBuilder()
-            .setControl(
-                Rpc.ControlMessage.newBuilder()
-                    .addGraft(Rpc.ControlGraft.newBuilder().setTopicID("c"))
-                    .addGraft(Rpc.ControlGraft.newBuilder().setTopicID("d"))
-            )
-            .build()
-            .toByteArray()
-        val combined = firstHalf + secondHalf
-
-        // Sanity: the combined bytes parse to a merged ControlMessage with 4 grafts.
-        val parsed = Rpc.RPC.parseFrom(combined)
-        assertThat(parsed.control.graftCount).isEqualTo(4)
-
-        val limits = PubsubRpcLimits.NONE.copy(maxGraftMessages = 3)
-        val result = RpcMessageCountValidator.validate(Unpooled.wrappedBuffer(combined), limits)
-        assertThat(result).isInstanceOf(RpcMessageCountValidator.Result.Rejected::class.java)
     }
 
     @Test

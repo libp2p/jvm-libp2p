@@ -283,33 +283,14 @@ open class GossipRouter(
         PubsubRpcLimits(
             maxPublishedMessages = params.maxPublishedMessages,
             maxTopicsPerPublishedMessage = params.maxTopicsPerPublishedMessage,
-            maxSubscriptions = params.maxSubscriptions,
-            maxIHaveMessageIds = params.maxIHaveLength,
-            maxIWantMessageIds = params.maxIWantMessageIds,
-            maxGraftMessages = params.maxGraftMessages,
-            maxPruneMessages = params.maxPruneMessages,
-            maxPeersPerPruneMessage = params.maxPeersAcceptedInPruneMsg,
-            maxIDontWantMessageIds = params.maxIDontWantMessageIds,
             rejectEmptyPublishEntries = true,
-            rejectEmptyIDontWantEntries = true,
             maxControlMessageSize = params.maxControlMessageSize,
         )
     }
 
     override fun validateMessageListLimits(msg: Rpc.RPCOrBuilder): Boolean {
-        val iWantMessageIdCount = msg.control?.iwantList?.sumOf { w -> w.messageIDsCount } ?: 0
-        val iHaveMessageIdCount = msg.control?.ihaveList?.sumOf { w -> w.messageIDsCount } ?: 0
-        val iDontWantMessageIdCount = msg.control?.idontwantList?.sumOf { w -> w.messageIDsCount } ?: 0
-
         return params.maxPublishedMessages?.let { msg.publishCount <= it } ?: true &&
-            params.maxTopicsPerPublishedMessage?.let { msg.publishList.none { m -> m.topicIDsCount > it } } ?: true &&
-            params.maxSubscriptions?.let { msg.subscriptionsCount <= it } ?: true &&
-            params.maxIHaveLength.let { iHaveMessageIdCount <= it } &&
-            params.maxIWantMessageIds?.let { iWantMessageIdCount <= it } ?: true &&
-            params.maxIDontWantMessageIds.let { iDontWantMessageIdCount <= it } &&
-            params.maxGraftMessages?.let { (msg.control?.graftCount ?: 0) <= it } ?: true &&
-            params.maxPruneMessages?.let { (msg.control?.pruneCount ?: 0) <= it } ?: true &&
-            params.maxPeersAcceptedInPruneMsg.let { msg.control?.pruneList?.none { p -> p.peersCount > it } } ?: true
+            params.maxTopicsPerPublishedMessage?.let { msg.publishList.none { m -> m.topicIDsCount > it } } ?: true
     }
 
     private fun processControlMessage(controlMsg: Any, receivedFrom: PeerHandler) {

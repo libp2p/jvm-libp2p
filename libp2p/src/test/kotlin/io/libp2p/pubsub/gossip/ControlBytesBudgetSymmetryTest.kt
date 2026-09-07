@@ -39,19 +39,15 @@ class ControlBytesBudgetSymmetryTest {
         maxGossipMessageSize = 12_234_442,
         maxPublishedMessages = 1000,
         maxTopicsPerPublishedMessage = 1,
-        maxSubscriptions = 200,
-        maxGraftMessages = 200,
-        maxPruneMessages = 200,
         maxPeersSentInPruneMsg = 0,
         maxPeersAcceptedInPruneMsg = 0,
         maxIHaveLength = 5000,
-        maxIWantMessageIds = 5000,
         maxIDontWantMessageIds = 5000,
     )
 
     /**
-     * Library defaults. `maxIWantMessageIds` / `maxPublishedMessages` are `null` here, which
-     * `takeBatch` reads as unbounded, so only the byte budget bounds those categories.
+     * Library defaults. `maxPublishedMessages` is `null` here, which `takeBatch` reads as
+     * unbounded, so only the byte budget bounds published messages.
      */
     private val defaultParams = GossipParams()
 
@@ -139,17 +135,17 @@ class ControlBytesBudgetSymmetryTest {
             drain(tekuParams, "IHAVE x maxIHaveLength (64 topics)") { q ->
                 repeat(tekuParams.maxIHaveLength) { q.addIHave(messageId(it), topic(it % 64)) }
             },
-            drain(tekuParams, "IWANT x maxIWantMessageIds") { q ->
-                repeat(tekuParams.maxIWantMessageIds!!) { q.addIWant(messageId(it)) }
+            drain(tekuParams, "IWANT x 5000 (Teku-configured value)") { q ->
+                repeat(5000) { q.addIWant(messageId(it)) }
             },
-            drain(tekuParams, "subscriptions x maxSubscriptions") { q ->
-                repeat(tekuParams.maxSubscriptions!!) { q.addSubscribe(topic(it)) }
+            drain(tekuParams, "subscriptions x 200 (Teku-configured value)") { q ->
+                repeat(200) { q.addSubscribe(topic(it)) }
             },
-            drain(tekuParams, "graft x maxGraftMessages") { q ->
-                repeat(tekuParams.maxGraftMessages!!) { q.addGraft(topic(it)) }
+            drain(tekuParams, "graft x 200 (Teku-configured value)") { q ->
+                repeat(200) { q.addGraft(topic(it)) }
             },
-            drain(tekuParams, "prune x maxPruneMessages") { q ->
-                repeat(tekuParams.maxPruneMessages!!) { q.addPrune(topic(it), 60L, listOf(PeerId.random())) }
+            drain(tekuParams, "prune x 200 (Teku-configured value)") { q ->
+                repeat(200) { q.addPrune(topic(it), 60L, listOf(PeerId.random())) }
             },
             drain(tekuParams, "publish x maxPublishedMessages (small messages)") { q ->
                 repeat(tekuParams.maxPublishedMessages!!) { q.addPublish(publishMessage()) }
@@ -181,7 +177,7 @@ class ControlBytesBudgetSymmetryTest {
         val worst = drain(tekuParams, "IHAVE + IWANT + publish interleaved") { q ->
             q.fillInterleaved(
                 iHaves = tekuParams.maxIHaveLength,
-                iWants = tekuParams.maxIWantMessageIds!!,
+                iWants = 5000,
                 publishes = tekuParams.maxPublishedMessages!!,
                 idSize = 20
             )

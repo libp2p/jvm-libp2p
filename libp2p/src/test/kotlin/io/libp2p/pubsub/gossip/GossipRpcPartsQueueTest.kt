@@ -88,19 +88,12 @@ class GossipRpcPartsQueueTest {
 
     companion object {
         private val maxPublishedMessages = 10
-        private val maxSubscriptions = 12
+        private val subscriptionCount = 12
         private val maxIHaveLength = 13
-        private val maxIWantMessageIds = 14
-        private val maxGraftMessages = 15
-        private val maxPruneMessages = 16
 
         private val gossipParamsWithLimits = GossipParamsBuilder()
             .maxPublishedMessages(maxPublishedMessages)
-            .maxSubscriptions(maxSubscriptions)
             .maxIHaveLength(maxIHaveLength)
-            .maxIWantMessageIds(maxIWantMessageIds)
-            .maxGraftMessages(maxGraftMessages)
-            .maxPruneMessages(maxPruneMessages)
             .build()
 
         private val gossipParamsNoLimits = GossipParamsBuilder()
@@ -306,11 +299,11 @@ class GossipRpcPartsQueueTest {
     fun `mergeMessageParts() test that split doesn't result in topic publish before subscribe`() {
         val router = GossipRouterBuilder(params = gossipParamsWithLimits).build()
         val partsQueue = TestGossipQueue(gossipParamsWithLimits)
-        (0 until maxSubscriptions + 1).forEach {
+        (0 until subscriptionCount + 1).forEach {
             partsQueue.addSubscribe("topic-$it")
         }
 
-        partsQueue.addPublish(createRpcMessage("topic-$maxSubscriptions", "data"))
+        partsQueue.addPublish(createRpcMessage("topic-$subscriptionCount", "data"))
 
         val single = partsQueue.mergedSingle()
         val msgs = partsQueue.takeMerged()
@@ -318,10 +311,13 @@ class GossipRpcPartsQueueTest {
         msgs.forEach {
             assertThat(router.validateMessageListLimits(it)).isTrue()
         }
-        assertThat(msgs).hasSize(3)
+        // Subscriptions no longer split by count (only maxPublishedMessages/maxIHaveLength still
+        // do), so all of them land in one STATE-priority batch ahead of the BULK-priority publish
+        // batch — priority-list draining order, not count splitting, is what's under test here.
+        assertThat(msgs).hasSize(2)
         assertThat(msgs[0].publishCount).isZero()
-        assertThat(msgs[1].publishCount).isZero()
-        assertThat(msgs[2].publishCount).isEqualTo(1)
+        assertThat(msgs[0].subscriptionsCount).isEqualTo(subscriptionCount + 1)
+        assertThat(msgs[1].publishCount).isEqualTo(1)
         assertThat(msgs.merge()).isEqualTo(single)
     }
 
@@ -329,7 +325,7 @@ class GossipRpcPartsQueueTest {
     fun `mergeMessageParts() test priority batches split independently`() {
         val router = GossipRouterBuilder(params = gossipParamsWithLimits).build()
         val partsQueue = TestGossipQueue(gossipParamsWithLimits)
-        (0 until maxSubscriptions + 1).forEach {
+        (0 until subscriptionCount + 1).forEach {
             partsQueue.addSubscribe("topic-$it")
         }
 
@@ -343,9 +339,12 @@ class GossipRpcPartsQueueTest {
         msgs.forEach {
             assertThat(router.validateMessageListLimits(it)).isTrue()
         }
-        assertThat(msgs).hasSize(4)
-        assertThat(msgs.take(2)).allMatch { it.publishCount == 0 }
-        assertThat(msgs.drop(2).map { it.publishCount }).containsExactly(
+        // One STATE-priority batch (subscriptions no longer split by count) followed by two
+        // BULK-priority publish batches, still split independently by maxPublishedMessages.
+        assertThat(msgs).hasSize(3)
+        assertThat(msgs[0].publishCount).isZero()
+        assertThat(msgs[0].subscriptionsCount).isEqualTo(subscriptionCount + 1)
+        assertThat(msgs.drop(1).map { it.publishCount }).containsExactly(
             maxPublishedMessages,
             maxPublishedMessages
         )
@@ -717,6 +716,26 @@ class GossipRpcPartsQueueTest {
         assertThat(merged[0].control.hasExtensions()).isTrue()
         assertThat(merged[0].control.extensions.partialMessages).isTrue()
         assertThat(merged[1].publishList).hasSize(maxPublishedMessages)
+    }
+
+    @Test
+    fun `takeBatch splits subscriptions at maxSubscriptionsPerRpc`() {
+        val maxSubscriptionsPerRpc = 5
+        val params = GossipParamsBuilder()
+            .maxSubscriptionsPerRpc(maxSubscriptionsPerRpc)
+            .build()
+        val partsQueue = TestGossipQueue(params)
+
+        val totalSubscriptions = maxSubscriptionsPerRpc * 2 + 1
+        (1..totalSubscriptions).forEach {
+            partsQueue.addSubscribe("topic-$it")
+        }
+
+        val merged = partsQueue.takeMerged()
+
+        assertThat(merged).hasSize(3)
+        assertThat(merged).allMatch { it.subscriptionsCount <= maxSubscriptionsPerRpc }
+        assertThat(merged.sumOf { it.subscriptionsCount }).isEqualTo(totalSubscriptions)
     }
 
     private fun standaloneGraftRpc(topic: Topic): Rpc.RPC =

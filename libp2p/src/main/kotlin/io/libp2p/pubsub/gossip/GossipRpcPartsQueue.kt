@@ -183,12 +183,9 @@ open class DefaultGossipRpcPartsQueue(
 
     private fun takeBatch(priorityParts: MutableList<AbstractPart>): RpcPartsBatch? {
         var publishCount = params.maxPublishedMessages ?: Int.MAX_VALUE
-        var subscriptionCount = params.maxSubscriptions ?: Int.MAX_VALUE
         var iHaveCount = params.maxIHaveLength
-        var iWantCount = params.maxIWantMessageIds ?: Int.MAX_VALUE
         var iDontWantCount = params.maxIDontWantMessageIdsPerRpc
-        var graftCount = params.maxGraftMessages ?: Int.MAX_VALUE
-        var pruneCount = params.maxPruneMessages ?: Int.MAX_VALUE
+        var subscriptionCount = params.maxSubscriptionsPerRpc
         var sizeLeft = params.maxGossipMessageSize
 
         /**
@@ -202,24 +199,24 @@ open class DefaultGossipRpcPartsQueue(
          * overhead is charged here. [AbstractPart.estimatedMaxSerializedSize] is a standalone-RPC
          * estimate and over-counts once parts merge and share protobuf wrappers, which errs towards
          * splitting a batch earlier than strictly required.
+         *
+         * [GossipParams.maxSubscriptionsPerRpc] is the one count that the byte budget does not
+         * subsume, because peers enforce subscriptions by count and drop the whole RPC when the
+         * count is exceeded.
          */
         var controlLeft = params.maxControlMessageSize
 
         var partIdx = 0
 
         while (partIdx < priorityParts.size &&
-            publishCount > 0 && subscriptionCount > 0 && iHaveCount > 0 &&
-            iWantCount > 0 && iDontWantCount > 0 && graftCount > 0 && pruneCount > 0
+            publishCount > 0 && iHaveCount > 0 && iDontWantCount > 0 && subscriptionCount > 0
         ) {
             val part = priorityParts[partIdx]
             when (part) {
                 is PublishPart -> publishCount--
-                is SubscriptionPart -> subscriptionCount--
                 is IHavePart -> iHaveCount--
-                is IWantPart -> iWantCount--
                 is IDontWantPart -> iDontWantCount--
-                is GraftPart -> graftCount--
-                is PrunePart -> pruneCount--
+                is SubscriptionPart -> subscriptionCount--
             }
             sizeLeft -= part.estimatedMaxSerializedSize
             controlLeft -= when (part) {

@@ -182,11 +182,6 @@ data class GossipParams(
     val maxTopicsPerPublishedMessage: Int? = null,
 
     /**
-     * [maxSubscriptions] is the maximum number of subscriptions allowed per gossip message.
-     */
-    val maxSubscriptions: Int? = null,
-
-    /**
      * [maxIHaveLength] is the maximum number of messages to include in an IHAVE message.
      * Also controls the maximum number of IHAVE ids we will accept and request with IWANT from a
      * peer within a heartbeat, to protect from IHAVE floods. You should adjust this value from the
@@ -201,22 +196,11 @@ data class GossipParams(
     val maxIHaveMessages: Int = 10,
 
     /**
-     * [maxIWantMessageIds] The maximum number of message ids that can be included across IWANT messages within
-     * a single gossip message
-     */
-    val maxIWantMessageIds: Int? = null,
-
-    /**
      * Time to wait for a message requested through IWANT following an IHAVE advertisement.
      * If the message is not received within this window, a broken promise is declared and
      * the router may apply behavioural penalties.
      */
     val iWantFollowupTime: Duration = 3.seconds,
-
-    /**
-     * [maxGraftMessages] is the maximum number of graft messages allowed per gossip message
-     */
-    val maxGraftMessages: Int? = null,
 
     /**
      * [maxPeersSentInPruneMsg] controls the number of peers to include in prune Peer eXchange.
@@ -227,7 +211,9 @@ data class GossipParams(
     val maxPeersSentInPruneMsg: Int = 16,
 
     /**
-     * [maxPeersAcceptedInPruneMsg] is the maximum number of peers allowed in an incoming prune message
+     * [maxPeersAcceptedInPruneMsg] is the maximum number of peers we take from the Peer eXchange
+     * list of an incoming PRUNE. The PRUNE itself is always processed; any peers beyond this many
+     * are discarded before [connectCallback] is invoked. Set to 0 to ignore PX entirely.
      */
     val maxPeersAcceptedInPruneMsg: Int = 16,
 
@@ -240,11 +226,6 @@ data class GossipParams(
      * before attempting to re-graft.
      */
     val pruneBackoff: Duration = 1.minutes,
-
-    /**
-     * [maxPruneMessages] is the maximum number of prune messages allowed per gossip message
-     */
-    val maxPruneMessages: Int? = null,
 
     /**
      * [gossipRetransmission] controls how many times we will allow a peer to request
@@ -315,7 +296,23 @@ data class GossipParams(
      * may carry. [maxIDontWantMessageIds] remains the per-heartbeat allowance; this splits that
      * allowance across RPCs so each one fits inside [maxControlMessageSize].
      */
-    val maxIDontWantMessageIdsPerRpc: Int = 5000
+    val maxIDontWantMessageIdsPerRpc: Int = 5000,
+
+    /**
+     * [maxSubscriptionsPerRpc] bounds how many subscription entries a single outbound RPC may
+     * carry. It is an outbound batching limit only: inbound subscription counts are bounded by
+     * [maxControlMessageSize], and by the [io.libp2p.pubsub.TopicSubscriptionFilter] if one is
+     * configured.
+     *
+     * It exists because peers do enforce a count here, and typically drop the whole RPC when it is
+     * exceeded rather than just the surplus subscriptions - go-libp2p ignores the RPC on any
+     * subscription filter error, and [io.libp2p.pubsub.MaxCountTopicSubscriptionFilter] throws.
+     * Since a router announces every subscribed topic in one go when a peer becomes active, a node
+     * subscribed to many topics would otherwise emit a single unacceptable RPC.
+     *
+     * Defaults to go-libp2p's limit. Lower it to match the strictest peer you expect to talk to.
+     */
+    val maxSubscriptionsPerRpc: Int = 500
 
 ) {
     init {
@@ -335,6 +332,7 @@ data class GossipParams(
         check(slowPeerHeartbeatThreshold > 0, "slowPeerHeartbeatThreshold should be > 0")
         check(maxControlMessageSize > 0, "maxControlMessageSize should be > 0")
         check(maxIDontWantMessageIdsPerRpc > 0, "maxIDontWantMessageIdsPerRpc should be > 0")
+        check(maxSubscriptionsPerRpc > 0, "maxSubscriptionsPerRpc should be > 0")
     }
 
     companion object {

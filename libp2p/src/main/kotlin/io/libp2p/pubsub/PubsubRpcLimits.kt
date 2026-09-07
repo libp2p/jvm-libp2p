@@ -11,16 +11,7 @@ package io.libp2p.pubsub
 data class PubsubRpcLimits(
     val maxPublishedMessages: Int?,
     val maxTopicsPerPublishedMessage: Int?,
-    val maxSubscriptions: Int?,
-    val maxIHaveMessageIds: Int?,
-    val maxIWantMessageIds: Int?,
-    val maxGraftMessages: Int?,
-    val maxPruneMessages: Int?,
-    val maxPeersPerPruneMessage: Int?,
-    val maxIDontWantMessages: Int? = null,
-    val maxIDontWantMessageIds: Int? = null,
     val rejectEmptyPublishEntries: Boolean = true,
-    val rejectEmptyIDontWantEntries: Boolean = true,
     /**
      * Cumulative wire size of an inbound RPC's control plane: everything except
      * `publish` payloads and `RPC.partial`. Bounds allocation shape-agnostically,
@@ -36,32 +27,14 @@ data class PubsubRpcLimits(
     val isNoop: Boolean =
         maxPublishedMessages == null &&
             maxTopicsPerPublishedMessage == null &&
-            maxSubscriptions == null &&
-            maxIHaveMessageIds == null &&
-            maxIWantMessageIds == null &&
-            maxGraftMessages == null &&
-            maxPruneMessages == null &&
-            maxPeersPerPruneMessage == null &&
-            maxIDontWantMessages == null &&
-            maxIDontWantMessageIds == null &&
             !rejectEmptyPublishEntries &&
-            !rejectEmptyIDontWantEntries &&
             maxControlMessageSize == null
 
     companion object {
         val NONE = PubsubRpcLimits(
             maxPublishedMessages = null,
             maxTopicsPerPublishedMessage = null,
-            maxSubscriptions = null,
-            maxIHaveMessageIds = null,
-            maxIWantMessageIds = null,
-            maxGraftMessages = null,
-            maxPruneMessages = null,
-            maxPeersPerPruneMessage = null,
-            maxIDontWantMessages = null,
-            maxIDontWantMessageIds = null,
             rejectEmptyPublishEntries = false,
-            rejectEmptyIDontWantEntries = false,
             maxControlMessageSize = null,
         )
     }

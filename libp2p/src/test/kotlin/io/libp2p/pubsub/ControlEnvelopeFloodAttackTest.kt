@@ -32,13 +32,9 @@ class ControlEnvelopeFloodAttackTest {
         maxGossipMessageSize = 12_234_442,
         maxPublishedMessages = 1000,
         maxTopicsPerPublishedMessage = 1,
-        maxSubscriptions = 200,
-        maxGraftMessages = 200,
-        maxPruneMessages = 200,
         maxPeersSentInPruneMsg = 0,
         maxPeersAcceptedInPruneMsg = 0,
         maxIHaveLength = 5000,
-        maxIWantMessageIds = 5000,
         maxIDontWantMessageIds = 5000,
     )
 
@@ -218,10 +214,13 @@ class ControlEnvelopeFloodAttackTest {
     }
 
     /**
-     * `maxSubscriptions`/`maxGraftMessages`/`maxPruneMessages` are all left `null` here, so only
-     * the control byte budget can reject this frame. Before the budget existed, an equivalent
-     * frame was accepted by an unmodified per-shape validator and materialised one object per two
-     * wire bytes.
+     * The inbound per-type counters (`maxSubscriptions`/`maxGraftMessages`/`maxPruneMessages`) no
+     * longer exist on GossipParams, so only the control byte budget can reject this frame. Before
+     * the budget existed, an equivalent frame was accepted by an unmodified per-shape validator and
+     * materialised one object per two wire bytes.
+     *
+     * `maxSubscriptionsPerRpc` is unrelated: it bounds outbound batching only, and is never
+     * consulted on this path.
      */
     @Test
     fun `control byte budget rejects floods that no per-shape count cap covers`() {
