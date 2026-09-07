@@ -83,6 +83,10 @@ class GossipMultipleConnectionsTest {
 
         waitFor { gossipConnected(router1) && gossipConnected(router2) }
         waitFor { router1.getPeerTopics().join().values.any { topic.topic in it } }
+        // Wait for the peer to be grafted rather than just re-subscribed. The peer handler is
+        // rebuilt on the remaining connection, so publishing straight after the subscription
+        // arrives can still find `peersTopics` empty for the new handler.
+        waitFor { meshed(router1) && meshed(router2) }
 
         val msgBytes = ByteArray(32) { 0xab.toByte() }
         gossip1.createPublisher(null).publish(msgBytes.toByteBuf(), topic).get(10, TimeUnit.SECONDS)
@@ -102,6 +106,9 @@ class GossipMultipleConnectionsTest {
         waitFor { host2.network.connections.count { it.secureSession().remoteId == host1.peerId } == 2 }
         return connection
     }
+
+    private fun meshed(router: GossipRouter) =
+        router.submitOnEventThread { router.mesh[topic.topic]?.isNotEmpty() == true }.join()
 
     private fun gossipConnected(router: GossipRouter) =
         router.peers.size == 1 &&
