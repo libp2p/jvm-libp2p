@@ -41,11 +41,17 @@ abstract class P2PServiceSemiDuplex(executor: ScheduledExecutorService) : P2PSer
             when {
                 peerHandler.otherStreamHandler != null -> {
                     streamHandler.closeAbruptly()
-                    throw BadPeerException("Duplicate steam for peer ${peerHandler.peerId}. Closing it silently")
+                    throw BadPeerException(
+                        "Third stream $stream for peer ${peerHandler.peerId} which already has " +
+                            "${peerHandler.streamHandler.stream} and ${peerHandler.otherStreamHandler?.stream}. Closing it"
+                    )
                 }
                 peerHandler.streamHandler.stream.isInitiator == stream.isInitiator -> {
                     streamHandler.closeAbruptly()
-                    throw BadPeerException("Duplicate stream with initiator = ${stream.isInitiator} for peer ${peerHandler.peerId}")
+                    throw BadPeerException(
+                        "Duplicate stream $stream with initiator = ${stream.isInitiator} for peer " +
+                            "${peerHandler.peerId} which already has ${peerHandler.streamHandler.stream}. Closing it"
+                    )
                 }
                 else -> {
                     peerHandler.otherStreamHandler = streamHandler
