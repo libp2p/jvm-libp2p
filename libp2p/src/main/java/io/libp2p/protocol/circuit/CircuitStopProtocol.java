@@ -109,8 +109,9 @@ public class CircuitStopProtocol
         // remove STOP handler from stream before upgrading
         stream.pushHandler(STOP_REMOVER_NAME, new StopRemover());
 
-        // now upgrade connection with security and muxer protocol
-        ConnectionHandler connHandler = null; // TODO
+        // now upgrade connection with security and muxer protocol, running the host's connection
+        // handlers so inbound relayed connections are visible (e.g. to trigger DCUtR)
+        ConnectionHandler connHandler = transport.inboundConnectionHandler();
         RelayTransport.upgradeStream(
             stream, false, transport.upgrader, transport, remote, connHandler);
       }
