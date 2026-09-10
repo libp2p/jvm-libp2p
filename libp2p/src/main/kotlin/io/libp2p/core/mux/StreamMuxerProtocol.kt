@@ -23,7 +23,9 @@ fun interface StreamMuxerProtocol {
         }
 
         /**
-         * @param maxBufferedConnectionWrites the maximum amount of bytes in the write buffer per connection
+         * @param maxBufferedConnectionWrites the maximum amount of bytes which may be buffered (pending)
+         * across the write buffers of all streams of a single connection. When the limit is overflowed,
+         * the stream attempting to write is reset
          * @param ackBacklogLimit the maximum amount of opened streams per connection which have not been acknowledged
          */
         @JvmStatic
