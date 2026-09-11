@@ -80,6 +80,8 @@ class GossipParamsBuilder {
 
     private var maxSubscriptionsPerRpc: Int? = null
 
+    private var maxTotalFields: Int? = null
+
     init {
         val source = GossipParams()
         this.D = source.D
@@ -112,6 +114,7 @@ class GossipParamsBuilder {
         this.maxControlMessageSize = source.maxControlMessageSize
         this.maxIDontWantMessageIdsPerRpc = source.maxIDontWantMessageIdsPerRpc
         this.maxSubscriptionsPerRpc = source.maxSubscriptionsPerRpc
+        this.maxTotalFields = source.maxTotalFields
     }
 
     fun D(value: Int): GossipParamsBuilder = apply { D = value }
@@ -188,6 +191,8 @@ class GossipParamsBuilder {
 
     fun maxControlMessageSize(value: Int): GossipParamsBuilder = apply { maxControlMessageSize = value }
 
+    fun maxTotalFields(value: Int): GossipParamsBuilder = apply { maxTotalFields = value }
+
     fun maxIDontWantMessageIdsPerRpc(value: Int): GossipParamsBuilder = apply { maxIDontWantMessageIdsPerRpc = value }
 
     fun maxSubscriptionsPerRpc(value: Int): GossipParamsBuilder = apply { maxSubscriptionsPerRpc = value }
@@ -230,7 +235,8 @@ class GossipParamsBuilder {
             slowPeerHeartbeatThreshold = slowPeerHeartbeatThreshold!!,
             maxControlMessageSize = maxControlMessageSize!!,
             maxIDontWantMessageIdsPerRpc = maxIDontWantMessageIdsPerRpc!!,
-            maxSubscriptionsPerRpc = maxSubscriptionsPerRpc!!
+            maxSubscriptionsPerRpc = maxSubscriptionsPerRpc!!,
+            maxTotalFields = maxTotalFields
         )
     }
 

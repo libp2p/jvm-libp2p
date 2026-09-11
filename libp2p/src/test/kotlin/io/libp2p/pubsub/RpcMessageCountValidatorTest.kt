@@ -269,6 +269,154 @@ class RpcMessageCountValidatorTest {
             .isEqualTo(RpcMessageCountValidator.Result.Rejected("control bytes > ${256 * 1024}"))
     }
 
+    /**
+     * The gap [PubsubRpcLimits.maxTotalFields] closes: 40_000 empty `ControlIHave` envelopes are
+     * 80 KB on the wire, comfortably inside a 256 KiB control budget, yet protobuf-java would
+     * materialise 40_000 objects from them. The byte budget alone accepts this.
+     */
+    @Test
+    fun `empty control envelopes under the byte budget are rejected on field count`() {
+        val attack = controlOf(emptyIhaveEntries = 40_000)
+        val byteBudgetOnly = PubsubRpcLimits.NONE.copy(maxControlMessageSize = 256 * 1024)
+
+        assertThat(RpcMessageCountValidator.validate(Unpooled.wrappedBuffer(attack), byteBudgetOnly))
+            .isEqualTo(RpcMessageCountValidator.Result.Accepted)
+
+        val withFieldBudget = byteBudgetOnly.copy(maxTotalFields = 32768)
+        assertThat(RpcMessageCountValidator.validate(Unpooled.wrappedBuffer(attack), withFieldBudget))
+            .isEqualTo(RpcMessageCountValidator.Result.Rejected("total fields > 32768"))
+    }
+
+    @Test
+    fun `empty subscription envelopes under the byte budget are rejected on field count`() {
+        // 40_000 empty SubOpts entries: RPC field 1, length-delimited, zero length.
+        val attack = ByteArray(40_000 * 2) { if (it % 2 == 0) 0x0A else 0x00 }
+        val limits = PubsubRpcLimits.NONE.copy(
+            maxControlMessageSize = 256 * 1024,
+            maxTotalFields = 32768,
+        )
+
+        assertThat(RpcMessageCountValidator.validate(Unpooled.wrappedBuffer(attack), limits))
+            .isEqualTo(RpcMessageCountValidator.Result.Rejected("total fields > 32768"))
+    }
+
+    @Test
+    fun `field budget counts fields nested inside control entries`() {
+        // One ihave carrying 100 messageIDs: 1 control + 1 ihave + 1 topicID + 100 ids = 103.
+        val rpc = Rpc.RPC.newBuilder()
+            .setControl(Rpc.ControlMessage.newBuilder().addIhave(ihave(ids = 100)))
+            .build()
+
+        assertThat(RpcMessageCountValidator.validate(bytesOf(rpc), limitsWithFields(103)))
+            .isEqualTo(RpcMessageCountValidator.Result.Accepted)
+        assertThat(RpcMessageCountValidator.validate(bytesOf(rpc), limitsWithFields(102)))
+            .isEqualTo(RpcMessageCountValidator.Result.Rejected("total fields > 102"))
+    }
+
+    @Test
+    fun `field budget counts peers nested inside a prune entry`() {
+        // control + prune + topicID + 3 * (peers envelope + peerID) = 9.
+        val rpc = Rpc.RPC.newBuilder()
+            .setControl(Rpc.ControlMessage.newBuilder().addPrune(pruneWithPeers(peers = 3)))
+            .build()
+
+        assertThat(RpcMessageCountValidator.validate(bytesOf(rpc), limitsWithFields(9)))
+            .isEqualTo(RpcMessageCountValidator.Result.Accepted)
+        assertThat(RpcMessageCountValidator.validate(bytesOf(rpc), limitsWithFields(8)))
+            .isEqualTo(RpcMessageCountValidator.Result.Rejected("total fields > 8"))
+    }
+
+    @Test
+    fun `no field budget configured means no field count enforcement`() {
+        val attack = controlOf(emptyIhaveEntries = 40_000)
+        assertThat(RpcMessageCountValidator.validate(Unpooled.wrappedBuffer(attack), PubsubRpcLimits.NONE))
+            .isEqualTo(RpcMessageCountValidator.Result.Accepted)
+    }
+
+    @Test
+    fun `well-formed RPC is accepted under a realistic field budget`() {
+        val rpc = Rpc.RPC.newBuilder()
+            .addSubscriptions(subOpt("t"))
+            .addPublish(message(topics = 1))
+            .setControl(
+                Rpc.ControlMessage.newBuilder()
+                    .addIhave(ihave(ids = 2))
+                    .addIwant(iwant(ids = 2))
+                    .addGraft(Rpc.ControlGraft.newBuilder().setTopicID("t"))
+                    .addPrune(pruneWithPeers(peers = 1))
+                    .addIdontwant(idontwant(ids = 1))
+            )
+            .build()
+
+        assertThat(RpcMessageCountValidator.validate(bytesOf(rpc), limitsWithFields(32768)))
+            .isEqualTo(RpcMessageCountValidator.Result.Accepted)
+    }
+
+    /**
+     * Groups are the one unknown shape protobuf-java expands field by field, so the field budget
+     * has to walk into them: 40_000 tiny fields inside an unknown group are 80 KB on the wire and
+     * would materialise 40_000 entries in a nested UnknownFieldSet.
+     */
+    @Test
+    fun `fields inside an unknown group are counted`() {
+        val attack = unknownGroup(fieldNumber = 99, innerFields = 40_000)
+        val limits = PubsubRpcLimits.NONE.copy(
+            maxControlMessageSize = 256 * 1024,
+            maxTotalFields = 32768,
+        )
+
+        assertThat(RpcMessageCountValidator.validate(Unpooled.wrappedBuffer(attack), limits))
+            .isEqualTo(RpcMessageCountValidator.Result.Rejected("total fields > 32768"))
+    }
+
+    @Test
+    fun `nested unknown groups do not recurse the walker`() {
+        // 5000 levels of nesting: a stack-recursive walk would overflow, the depth counter does not.
+        val depth = 5_000
+        val open = (1..depth).flatMap { varint((99 shl 3) or 3).toList() }.toByteArray()
+        val close = (1..depth).flatMap { varint((99 shl 3) or 4).toList() }.toByteArray()
+        val limits = PubsubRpcLimits.NONE.copy(maxTotalFields = 32768)
+
+        assertThat(RpcMessageCountValidator.validate(Unpooled.wrappedBuffer(open + close), limits))
+            .isEqualTo(RpcMessageCountValidator.Result.Accepted)
+    }
+
+    /**
+     * Pins the assumption that lets the walker leave unknown length-delimited fields alone:
+     * protobuf-java keeps the whole body as one opaque ByteString and never parses its interior,
+     * so however many fields it appears to hold, it costs one allocation - unlike a group.
+     */
+    @Test
+    fun `unknown length-delimited bodies are one ByteString, so their interior needs no counting`() {
+        val inner = ByteArray(1_000 * 2) { if (it % 2 == 0) 0x08 else 0x01 }
+        val raw = varint((99 shl 3) or 2) + varint(inner.size) + inner
+
+        val parsed = Rpc.RPC.parseFrom(raw).unknownFields.asMap()[99]!!
+        assertThat(parsed.lengthDelimitedList).hasSize(1)
+        assertThat(parsed.lengthDelimitedList.single().size()).isEqualTo(inner.size)
+        assertThat(parsed.varintList).isEmpty()
+        assertThat(parsed.groupList).isEmpty()
+
+        // A group carrying the same 1000 fields expands into 1000 retained entries instead.
+        val asGroup = Rpc.RPC.parseFrom(unknownGroup(fieldNumber = 99, innerFields = 1_000))
+        assertThat(asGroup.unknownFields.asMap()[99]!!.groupList.single().asMap()[1]!!.varintList)
+            .hasSize(1_000)
+    }
+
+    private fun limitsWithFields(max: Int) = PubsubRpcLimits.NONE.copy(maxTotalFields = max)
+
+    /** An unknown group holding [innerFields] two-byte varint fields. */
+    private fun unknownGroup(fieldNumber: Int, innerFields: Int): ByteArray {
+        val inner = ByteArray(innerFields * 2) { if (it % 2 == 0) 0x08 else 0x01 }
+        return varint((fieldNumber shl 3) or 3) + inner + varint((fieldNumber shl 3) or 4)
+    }
+
+    /** A `control` field (RPC field 3) holding [emptyIhaveEntries] zero-length ihave envelopes. */
+    private fun controlOf(emptyIhaveEntries: Int): ByteArray {
+        val body = ByteArray(emptyIhaveEntries * 2) { if (it % 2 == 0) 0x0A else 0x00 }
+        return byteArrayOf(0x1A) + varint(body.size) + body
+    }
+
     private fun unknownVarintField(fieldNumber: Int, value: Int): ByteArray =
         byteArrayOf((fieldNumber shl 3).toByte(), value.toByte())
 
