@@ -73,92 +73,9 @@ class RpcMessageCountValidatorTest {
     }
 
     @Test
-    fun `rejects when subscriptions count exceeds limit`() {
-        val rpc = Rpc.RPC.newBuilder()
-            .apply { repeat(3) { addSubscriptions(subOpt("t$it")) } }
-            .build()
-        val limits = PubsubRpcLimits.NONE.copy(maxSubscriptions = 2)
-        assertThat(RpcMessageCountValidator.validate(bytesOf(rpc), limits))
-            .isInstanceOf(RpcMessageCountValidator.Result.Rejected::class.java)
-    }
-
-    @Test
     fun `rejects when topicIDs per publish exceeds limit`() {
         val rpc = Rpc.RPC.newBuilder().addPublish(message(topics = 5)).build()
         val limits = PubsubRpcLimits.NONE.copy(maxTopicsPerPublishedMessage = 4)
-        assertThat(RpcMessageCountValidator.validate(bytesOf(rpc), limits))
-            .isInstanceOf(RpcMessageCountValidator.Result.Rejected::class.java)
-    }
-
-    @Test
-    fun `rejects when ihave messageIDs total exceeds limit`() {
-        val rpc = Rpc.RPC.newBuilder()
-            .setControl(
-                Rpc.ControlMessage.newBuilder()
-                    .addIhave(ihave(ids = 4))
-                    .addIhave(ihave(ids = 4))
-            )
-            .build()
-        val limits = PubsubRpcLimits.NONE.copy(maxIHaveMessageIds = 7)
-        assertThat(RpcMessageCountValidator.validate(bytesOf(rpc), limits))
-            .isInstanceOf(RpcMessageCountValidator.Result.Rejected::class.java)
-    }
-
-    @Test
-    fun `rejects when iwant messageIDs total exceeds limit`() {
-        val rpc = Rpc.RPC.newBuilder()
-            .setControl(Rpc.ControlMessage.newBuilder().addIwant(iwant(ids = 10)))
-            .build()
-        val limits = PubsubRpcLimits.NONE.copy(maxIWantMessageIds = 9)
-        assertThat(RpcMessageCountValidator.validate(bytesOf(rpc), limits))
-            .isInstanceOf(RpcMessageCountValidator.Result.Rejected::class.java)
-    }
-
-    @Test
-    fun `rejects when graft count exceeds limit`() {
-        val rpc = Rpc.RPC.newBuilder()
-            .setControl(
-                Rpc.ControlMessage.newBuilder()
-                    .addGraft(Rpc.ControlGraft.newBuilder().setTopicID("a"))
-                    .addGraft(Rpc.ControlGraft.newBuilder().setTopicID("b"))
-                    .addGraft(Rpc.ControlGraft.newBuilder().setTopicID("c"))
-            )
-            .build()
-        val limits = PubsubRpcLimits.NONE.copy(maxGraftMessages = 2)
-        assertThat(RpcMessageCountValidator.validate(bytesOf(rpc), limits))
-            .isInstanceOf(RpcMessageCountValidator.Result.Rejected::class.java)
-    }
-
-    @Test
-    fun `rejects when prune count exceeds limit`() {
-        val rpc = Rpc.RPC.newBuilder()
-            .setControl(
-                Rpc.ControlMessage.newBuilder()
-                    .addPrune(pruneWithPeers(peers = 0))
-                    .addPrune(pruneWithPeers(peers = 0))
-            )
-            .build()
-        val limits = PubsubRpcLimits.NONE.copy(maxPruneMessages = 1)
-        assertThat(RpcMessageCountValidator.validate(bytesOf(rpc), limits))
-            .isInstanceOf(RpcMessageCountValidator.Result.Rejected::class.java)
-    }
-
-    @Test
-    fun `rejects when peers per prune exceeds limit`() {
-        val rpc = Rpc.RPC.newBuilder()
-            .setControl(Rpc.ControlMessage.newBuilder().addPrune(pruneWithPeers(peers = 17)))
-            .build()
-        val limits = PubsubRpcLimits.NONE.copy(maxPeersPerPruneMessage = 16)
-        assertThat(RpcMessageCountValidator.validate(bytesOf(rpc), limits))
-            .isInstanceOf(RpcMessageCountValidator.Result.Rejected::class.java)
-    }
-
-    @Test
-    fun `rejects when idontwant messageIDs exceed limit`() {
-        val rpc = Rpc.RPC.newBuilder()
-            .setControl(Rpc.ControlMessage.newBuilder().addIdontwant(idontwant(ids = 5)))
-            .build()
-        val limits = PubsubRpcLimits.NONE.copy(maxIDontWantMessageIds = 4)
         assertThat(RpcMessageCountValidator.validate(bytesOf(rpc), limits))
             .isInstanceOf(RpcMessageCountValidator.Result.Rejected::class.java)
     }
@@ -180,14 +97,6 @@ class RpcMessageCountValidatorTest {
         val limits = PubsubRpcLimits(
             maxPublishedMessages = 10,
             maxTopicsPerPublishedMessage = 4,
-            maxSubscriptions = 10,
-            maxIHaveMessageIds = 10,
-            maxIWantMessageIds = 10,
-            maxGraftMessages = 10,
-            maxPruneMessages = 10,
-            maxPeersPerPruneMessage = 10,
-            maxIDontWantMessages = 10,
-            maxIDontWantMessageIds = 10,
             rejectEmptyPublishEntries = true,
         )
         assertThat(RpcMessageCountValidator.validate(bytesOf(rpc), limits))
@@ -212,21 +121,6 @@ class RpcMessageCountValidatorTest {
     }
 
     @Test
-    fun `rejects when idontwant message count exceeds limit`() {
-        val rpc = Rpc.RPC.newBuilder()
-            .setControl(
-                Rpc.ControlMessage.newBuilder()
-                    .addIdontwant(idontwant(ids = 1))
-                    .addIdontwant(idontwant(ids = 1))
-                    .addIdontwant(idontwant(ids = 1))
-            )
-            .build()
-        val limits = PubsubRpcLimits.NONE.copy(maxIDontWantMessages = 2)
-        assertThat(RpcMessageCountValidator.validate(bytesOf(rpc), limits))
-            .isInstanceOf(RpcMessageCountValidator.Result.Rejected::class.java)
-    }
-
-    @Test
     fun `accepts when count equals limit exactly`() {
         val rpc = Rpc.RPC.newBuilder()
             .apply { repeat(3) { addPublish(message(topics = 1)) } }
@@ -237,60 +131,158 @@ class RpcMessageCountValidatorTest {
     }
 
     @Test
-    fun `rejects RPC containing an empty idontwant entry`() {
-        val rpc = Rpc.RPC.newBuilder()
-            .setControl(
-                Rpc.ControlMessage.newBuilder()
-                    .addIdontwant(Rpc.ControlIDontWant.getDefaultInstance())
-            )
-            .build()
-        val limits = PubsubRpcLimits.NONE.copy(rejectEmptyIDontWantEntries = true)
-        assertThat(RpcMessageCountValidator.validate(bytesOf(rpc), limits))
-            .isInstanceOf(RpcMessageCountValidator.Result.Rejected::class.java)
+    fun `rejects when control bytes exceed the budget`() {
+        // 200_000 empty ControlIHave envelopes = 400_000 control bytes.
+        val control = ByteArray(200_000 * 2) { if (it % 2 == 0) 0x0A else 0x00 }
+        val raw = byteArrayOf(0x1A) + varint(control.size) + control
+        val limits = PubsubRpcLimits.NONE.copy(maxControlMessageSize = 256 * 1024)
+
+        assertThat(RpcMessageCountValidator.validate(Unpooled.wrappedBuffer(raw), limits))
+            .isEqualTo(RpcMessageCountValidator.Result.Rejected("control bytes > ${256 * 1024}"))
     }
 
     @Test
-    fun `accepts empty idontwant entry when flag is off`() {
+    fun `accepts control bytes under the budget`() {
+        val control = ByteArray(1_000 * 2) { if (it % 2 == 0) 0x0A else 0x00 }
+        val raw = byteArrayOf(0x1A) + varint(control.size) + control
+        val limits = PubsubRpcLimits.NONE.copy(maxControlMessageSize = 256 * 1024)
+
+        assertThat(RpcMessageCountValidator.validate(Unpooled.wrappedBuffer(raw), limits))
+            .isEqualTo(RpcMessageCountValidator.Result.Accepted)
+    }
+
+    @Test
+    fun `publish payloads are not charged to the control budget`() {
+        // One publish Message with a 1 MiB data payload, against a 4 KiB budget.
         val rpc = Rpc.RPC.newBuilder()
-            .setControl(
-                Rpc.ControlMessage.newBuilder()
-                    .addIdontwant(Rpc.ControlIDontWant.getDefaultInstance())
+            .addPublish(
+                Rpc.Message.newBuilder()
+                    .setData(ByteString.copyFrom(ByteArray(1024 * 1024)))
+                    .addTopicIDs("t")
             )
             .build()
-        val limits = PubsubRpcLimits.NONE
+        val limits = PubsubRpcLimits.NONE.copy(maxControlMessageSize = 4096)
+
         assertThat(RpcMessageCountValidator.validate(bytesOf(rpc), limits))
             .isEqualTo(RpcMessageCountValidator.Result.Accepted)
     }
 
     @Test
-    fun `rejects when graft count across split control fields exceeds limit`() {
-        // Build a frame with TWO top-level control fields manually, each containing
-        // 2 grafts. After protobuf merge the ControlMessage has 4 grafts, so a limit
-        // of 3 must reject. The validator must aggregate across both control fields.
-        val firstHalf = Rpc.RPC.newBuilder()
-            .setControl(
-                Rpc.ControlMessage.newBuilder()
-                    .addGraft(Rpc.ControlGraft.newBuilder().setTopicID("a"))
-                    .addGraft(Rpc.ControlGraft.newBuilder().setTopicID("b"))
+    fun `publish envelope overhead is charged to the control budget`() {
+        // 5000 publish entries, each with a tiny payload: payloads are exempt but the
+        // envelope framing and topicIDs are not, so the budget still trips.
+        val rpc = Rpc.RPC.newBuilder()
+            .also { r ->
+                repeat(5_000) {
+                    r.addPublish(
+                        Rpc.Message.newBuilder()
+                            .setData(ByteString.copyFromUtf8("x"))
+                            .addTopicIDs("/eth2/aabbccdd/beacon_block/ssz_snappy")
+                    )
+                }
+            }
+            .build()
+        val limits = PubsubRpcLimits.NONE.copy(maxControlMessageSize = 4096)
+
+        assertThat(RpcMessageCountValidator.validate(bytesOf(rpc), limits))
+            .isEqualTo(RpcMessageCountValidator.Result.Rejected("control bytes > 4096"))
+    }
+
+    @Test
+    fun `unknown fields are charged to the budget, not rejected`() {
+        val small = unknownVarintField(14, 1) + unknownVarintField(15, 1)
+        val limits = PubsubRpcLimits.NONE.copy(maxControlMessageSize = 256 * 1024)
+
+        assertThat(RpcMessageCountValidator.validate(Unpooled.wrappedBuffer(small), limits))
+            .isEqualTo(RpcMessageCountValidator.Result.Accepted)
+
+        // Enough unknown fields to blow the budget are rejected on size, not on being unknown.
+        val many = ByteArray(200_000 * 2) { if (it % 2 == 0) 0x70 else 0x01 }
+        assertThat(RpcMessageCountValidator.validate(Unpooled.wrappedBuffer(many), limits))
+            .isEqualTo(RpcMessageCountValidator.Result.Rejected("control bytes > ${256 * 1024}"))
+    }
+
+    @Test
+    fun `no budget configured means no control byte enforcement`() {
+        val control = ByteArray(200_000 * 2) { if (it % 2 == 0) 0x0A else 0x00 }
+        val raw = byteArrayOf(0x1A) + varint(control.size) + control
+
+        assertThat(RpcMessageCountValidator.validate(Unpooled.wrappedBuffer(raw), PubsubRpcLimits.NONE))
+            .isEqualTo(RpcMessageCountValidator.Result.Accepted)
+    }
+
+    @Test
+    fun `partial extension unknown fields are charged to the budget`() {
+        // 200_000 unknown varint fields inside `partial`, mirroring the top-level unknown-field
+        // case: the exemption only covers opaque payload bytes, not the whole field.
+        val body = ByteArray(200_000 * 2) { if (it % 2 == 0) 0x70 else 0x01 }
+        val raw = byteArrayOf(0x52) + varint(body.size) + body
+        val limits = PubsubRpcLimits.NONE.copy(maxControlMessageSize = 256 * 1024)
+
+        assertThat(RpcMessageCountValidator.validate(Unpooled.wrappedBuffer(raw), limits))
+            .isEqualTo(RpcMessageCountValidator.Result.Rejected("control bytes > ${256 * 1024}"))
+    }
+
+    @Test
+    fun `partial payloads are not charged to the control budget`() {
+        // A partial extension with a 1 MiB partialMessage payload, against a 4 KiB budget.
+        val rpc = Rpc.RPC.newBuilder()
+            .setPartial(
+                Rpc.PartialMessagesExtension.newBuilder()
+                    .setPartialMessage(ByteString.copyFrom(ByteArray(1024 * 1024)))
             )
             .build()
-            .toByteArray()
-        val secondHalf = Rpc.RPC.newBuilder()
-            .setControl(
-                Rpc.ControlMessage.newBuilder()
-                    .addGraft(Rpc.ControlGraft.newBuilder().setTopicID("c"))
-                    .addGraft(Rpc.ControlGraft.newBuilder().setTopicID("d"))
+        val limits = PubsubRpcLimits.NONE.copy(maxControlMessageSize = 4096)
+
+        assertThat(RpcMessageCountValidator.validate(bytesOf(rpc), limits))
+            .isEqualTo(RpcMessageCountValidator.Result.Accepted)
+    }
+
+    @Test
+    fun `partsMetadata payloads are not charged to the control budget`() {
+        // partsMetadata (field 4) shares the exemption branch with partialMessage (field 3):
+        // a 1 MiB payload against a 4 KiB budget must still be accepted.
+        val rpc = Rpc.RPC.newBuilder()
+            .setPartial(
+                Rpc.PartialMessagesExtension.newBuilder()
+                    .setPartsMetadata(ByteString.copyFrom(ByteArray(1024 * 1024)))
             )
             .build()
-            .toByteArray()
-        val combined = firstHalf + secondHalf
+        val limits = PubsubRpcLimits.NONE.copy(maxControlMessageSize = 4096)
 
-        // Sanity: the combined bytes parse to a merged ControlMessage with 4 grafts.
-        val parsed = Rpc.RPC.parseFrom(combined)
-        assertThat(parsed.control.graftCount).isEqualTo(4)
+        assertThat(RpcMessageCountValidator.validate(bytesOf(rpc), limits))
+            .isEqualTo(RpcMessageCountValidator.Result.Accepted)
+    }
 
-        val limits = PubsubRpcLimits.NONE.copy(maxGraftMessages = 3)
-        val result = RpcMessageCountValidator.validate(Unpooled.wrappedBuffer(combined), limits)
-        assertThat(result).isInstanceOf(RpcMessageCountValidator.Result.Rejected::class.java)
+    @Test
+    fun `partial field at wrong wire type is charged, not exempted`() {
+        val limits = PubsubRpcLimits.NONE.copy(maxControlMessageSize = 256 * 1024)
+
+        val one = byteArrayOf(0x50, 0x01)
+        assertThat(RpcMessageCountValidator.validate(Unpooled.wrappedBuffer(one), limits))
+            .isEqualTo(RpcMessageCountValidator.Result.Accepted)
+
+        // Enough varint-typed `partial` fields to blow the budget confirms they're charged like
+        // any other field, not silently exempted because the field number matches RPC_PARTIAL.
+        val many = ByteArray(200_000 * 2) { if (it % 2 == 0) 0x50 else 0x01 }
+        assertThat(RpcMessageCountValidator.validate(Unpooled.wrappedBuffer(many), limits))
+            .isEqualTo(RpcMessageCountValidator.Result.Rejected("control bytes > ${256 * 1024}"))
+    }
+
+    private fun unknownVarintField(fieldNumber: Int, value: Int): ByteArray =
+        byteArrayOf((fieldNumber shl 3).toByte(), value.toByte())
+
+    private fun varint(value: Int): ByteArray {
+        val out = mutableListOf<Byte>()
+        var v = value
+        while (true) {
+            if (v and 0x7F.inv() == 0) {
+                out.add(v.toByte())
+                break
+            }
+            out.add(((v and 0x7F) or 0x80).toByte())
+            v = v ushr 7
+        }
+        return out.toByteArray()
     }
 }

@@ -52,19 +52,11 @@ class GossipParamsBuilder {
 
     private var maxTopicsPerPublishedMessage: Int? = null
 
-    private var maxSubscriptions: Int? = null
-
     private var maxIHaveLength: Int? = null
 
     private var maxIHaveMessages: Int? = null
 
-    private var maxIWantMessageIds: Int? = null
-
     private var iWantFollowupTime: Duration? = null
-
-    private var maxGraftMessages: Int? = null
-
-    private var maxPruneMessages: Int? = null
 
     private var gossipRetransmission: Int? = null
 
@@ -81,6 +73,12 @@ class GossipParamsBuilder {
     private var slowPeerPendingBytesThreshold: Int? = null
 
     private var slowPeerHeartbeatThreshold: Int? = null
+
+    private var maxControlMessageSize: Int? = null
+
+    private var maxIDontWantMessageIdsPerRpc: Int? = null
+
+    private var maxSubscriptionsPerRpc: Int? = null
 
     init {
         val source = GossipParams()
@@ -101,13 +99,9 @@ class GossipParamsBuilder {
         this.graftFloodThreshold = source.graftFloodThreshold
         this.maxPublishedMessages = source.maxPublishedMessages
         this.maxTopicsPerPublishedMessage = source.maxTopicsPerPublishedMessage
-        this.maxSubscriptions = source.maxSubscriptions
         this.maxIHaveLength = source.maxIHaveLength
         this.maxIHaveMessages = source.maxIHaveMessages
-        this.maxIWantMessageIds = source.maxIWantMessageIds
         this.iWantFollowupTime = source.iWantFollowupTime
-        this.maxGraftMessages = source.maxGraftMessages
-        this.maxPruneMessages = source.maxPruneMessages
         this.gossipRetransmission = source.gossipRetransmission
         this.connectCallback = source.connectCallback
         this.maxIDontWantMessageIds = source.maxIDontWantMessageIds
@@ -115,6 +109,9 @@ class GossipParamsBuilder {
         this.iDontWantTTL = source.iDontWantTTL
         this.slowPeerPendingBytesThreshold = source.slowPeerPendingBytesThreshold
         this.slowPeerHeartbeatThreshold = source.slowPeerHeartbeatThreshold
+        this.maxControlMessageSize = source.maxControlMessageSize
+        this.maxIDontWantMessageIdsPerRpc = source.maxIDontWantMessageIdsPerRpc
+        this.maxSubscriptionsPerRpc = source.maxSubscriptionsPerRpc
     }
 
     fun D(value: Int): GossipParamsBuilder = apply { D = value }
@@ -165,19 +162,11 @@ class GossipParamsBuilder {
 
     fun maxTopicsPerPublishedMessage(value: Int): GossipParamsBuilder = apply { maxTopicsPerPublishedMessage = value }
 
-    fun maxSubscriptions(value: Int): GossipParamsBuilder = apply { maxSubscriptions = value }
-
     fun maxIHaveLength(value: Int): GossipParamsBuilder = apply { maxIHaveLength = value }
 
     fun maxIHaveMessages(value: Int): GossipParamsBuilder = apply { maxIHaveMessages = value }
 
-    fun maxIWantMessageIds(value: Int): GossipParamsBuilder = apply { maxIWantMessageIds = value }
-
     fun iWantFollowupTime(value: Duration): GossipParamsBuilder = apply { iWantFollowupTime = value }
-
-    fun maxGraftMessages(value: Int): GossipParamsBuilder = apply { maxGraftMessages = value }
-
-    fun maxPruneMessages(value: Int): GossipParamsBuilder = apply { maxPruneMessages = value }
 
     fun gossipRetransmission(value: Int): GossipParamsBuilder = apply { gossipRetransmission = value }
 
@@ -196,6 +185,12 @@ class GossipParamsBuilder {
     fun slowPeerPendingBytesThreshold(value: Int): GossipParamsBuilder = apply { slowPeerPendingBytesThreshold = value }
 
     fun slowPeerHeartbeatThreshold(value: Int): GossipParamsBuilder = apply { slowPeerHeartbeatThreshold = value }
+
+    fun maxControlMessageSize(value: Int): GossipParamsBuilder = apply { maxControlMessageSize = value }
+
+    fun maxIDontWantMessageIdsPerRpc(value: Int): GossipParamsBuilder = apply { maxIDontWantMessageIdsPerRpc = value }
+
+    fun maxSubscriptionsPerRpc(value: Int): GossipParamsBuilder = apply { maxSubscriptionsPerRpc = value }
 
     fun build(): GossipParams {
         calculateMissing()
@@ -220,23 +215,22 @@ class GossipParamsBuilder {
             graftFloodThreshold = graftFloodThreshold!!,
             maxPublishedMessages = maxPublishedMessages,
             maxTopicsPerPublishedMessage = maxTopicsPerPublishedMessage,
-            maxSubscriptions = maxSubscriptions,
             maxIHaveLength = maxIHaveLength!!,
             maxIHaveMessages = maxIHaveMessages!!,
-            maxIWantMessageIds = maxIWantMessageIds,
             iWantFollowupTime = iWantFollowupTime!!,
-            maxGraftMessages = maxGraftMessages,
             maxPeersSentInPruneMsg = maxPeersSentInPruneMsg!!,
             maxPeersAcceptedInPruneMsg = maxPeersAcceptedInPruneMsg!!,
             pruneBackoff = pruneBackoff!!,
-            maxPruneMessages = maxPruneMessages,
             gossipRetransmission = gossipRetransmission!!,
             connectCallback = connectCallback!!,
             maxIDontWantMessageIds = maxIDontWantMessageIds!!,
             iDontWantMinMessageSizeThreshold = iDontWantMinMessageSizeThreshold!!,
             iDontWantTTL = iDontWantTTL!!,
             slowPeerPendingBytesThreshold = slowPeerPendingBytesThreshold!!,
-            slowPeerHeartbeatThreshold = slowPeerHeartbeatThreshold!!
+            slowPeerHeartbeatThreshold = slowPeerHeartbeatThreshold!!,
+            maxControlMessageSize = maxControlMessageSize!!,
+            maxIDontWantMessageIdsPerRpc = maxIDontWantMessageIdsPerRpc!!,
+            maxSubscriptionsPerRpc = maxSubscriptionsPerRpc!!
         )
     }
 
@@ -279,5 +273,8 @@ class GossipParamsBuilder {
         check(iDontWantTTL != null, { "iDontWantTTL must not be null" })
         check(slowPeerPendingBytesThreshold != null, { "slowPeerPendingBytesThreshold must not be null" })
         check(slowPeerHeartbeatThreshold != null, { "slowPeerHeartbeatThreshold must not be null" })
+        check(maxControlMessageSize != null, { "maxControlMessageSize must not be null" })
+        check(maxIDontWantMessageIdsPerRpc != null, { "maxIDontWantMessageIdsPerRpc must not be null" })
+        check(maxSubscriptionsPerRpc != null, { "maxSubscriptionsPerRpc must not be null" })
     }
 }
