@@ -285,6 +285,7 @@ open class GossipRouter(
             maxTopicsPerPublishedMessage = params.maxTopicsPerPublishedMessage,
             rejectEmptyPublishEntries = true,
             maxControlMessageSize = params.maxControlMessageSize,
+            maxTotalFields = params.maxTotalFields,
         )
     }
 

@@ -31,6 +31,36 @@ class PubsubRpcLimitsDefaultTest {
     }
 
     @Test
+    fun `GossipRouter plumbs the total field budget`() {
+        val builder = GossipRouterBuilder(params = GossipParams(maxTotalFields = 1_234))
+        try {
+            assertThat(builder.build().readRpcLimits().maxTotalFields).isEqualTo(1_234)
+        } finally {
+            builder.scheduledAsyncExecutor.shutdownNow()
+        }
+    }
+
+    @Test
+    fun `GossipParams defaults the total field budget`() {
+        assertThat(GossipParams().maxTotalFields).isEqualTo(65536)
+        assertThat(GossipParams.builder().build().maxTotalFields).isEqualTo(65536)
+    }
+
+    /**
+     * The field budget is only meaningful relative to the byte budget: their ratio is the minimum
+     * average wire bytes per field below which it can fire. Conformant peers sit well above it -
+     * the tight shape is short topic names at ~8 bytes per field - so the defaults must keep this
+     * ratio at or below 4. Pinned because raising one default without the other silently changes
+     * which honest traffic gets dropped.
+     */
+    @Test
+    fun `default field budget leaves at most four wire bytes per field`() {
+        val params = GossipParams()
+        val bytesPerField = params.maxControlMessageSize.toDouble() / params.maxTotalFields!!
+        assertThat(bytesPerField).isLessThanOrEqualTo(4.0)
+    }
+
+    @Test
     fun `GossipParams defaults the control byte budget to 256 KiB`() {
         assertThat(GossipParams().maxControlMessageSize).isEqualTo(256 * 1024)
         assertThat(GossipParams.builder().build().maxControlMessageSize).isEqualTo(256 * 1024)

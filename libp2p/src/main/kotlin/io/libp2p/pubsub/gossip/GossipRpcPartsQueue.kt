@@ -125,6 +125,16 @@ open class DefaultGossipRpcPartsQueue(
                     "maxGossipMessageSize ${params.maxGossipMessageSize}: $part"
             )
         }
+        // Reject a part that alone exceeds the inbound field budget. takeBatch emits a lone
+        // over-budget part rather than stall, so without this guard such a part would be sent and
+        // rejected pre-decode by a peer running this same code, breaking outbound/inbound symmetry.
+        val maxFields = params.maxTotalFields
+        if (maxFields != null && part.estimatedMaxFieldCount > maxFields) {
+            throw TooLargeMessageException(
+                "RPC part estimated field count ${part.estimatedMaxFieldCount} exceeds " +
+                    "maxTotalFields $maxFields: $part"
+            )
+        }
         priorityPartList(part).add(part)
         addPartSize(part)
     }
@@ -206,6 +216,16 @@ open class DefaultGossipRpcPartsQueue(
          */
         var controlLeft = params.maxControlMessageSize
 
+        /**
+         * Remaining protobuf field budget for this batch, mirroring the inbound
+         * [GossipParams.maxTotalFields] guard so we never emit an RPC a peer running this same code
+         * would reject pre-decode. The control-byte budget does not subsume this: a publish's `data`
+         * payload is exempt from [controlLeft] but each `data` field still costs one field inbound,
+         * so a burst of small-envelope publishes can stay within the byte budgets while overflowing
+         * the field count.
+         */
+        var fieldsLeft = params.maxTotalFields ?: Int.MAX_VALUE
+
         var partIdx = 0
 
         while (partIdx < priorityParts.size &&
@@ -223,9 +243,10 @@ open class DefaultGossipRpcPartsQueue(
                 is PublishPart -> part.estimatedMaxSerializedSize - part.message.data.size()
                 else -> part.estimatedMaxSerializedSize
             }
+            fieldsLeft -= part.estimatedMaxFieldCount
             // A part that alone exceeds a budget is still emitted, otherwise the queue would
             // never drain past it.
-            if (partIdx > 0 && (sizeLeft < 0 || controlLeft < 0)) {
+            if (partIdx > 0 && (sizeLeft < 0 || controlLeft < 0 || fieldsLeft < 0)) {
                 break
             }
             partIdx++

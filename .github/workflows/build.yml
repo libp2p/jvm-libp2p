@@ -37,9 +37,12 @@ jobs:
         uses: gradle/gradle-build-action@v2
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v3.2.2
         with:
           cmdline-tools-version: 8512546
+          # Default packages include the deprecated 'tools' package, which Google removed and
+          # sdkmanager can no longer install; keep only platform-tools.
+          packages: platform-tools
 
       - name: Execute Gradle build
         run: ./gradlew -s build dokkaJar

@@ -312,7 +312,33 @@ data class GossipParams(
      *
      * Defaults to go-libp2p's limit. Lower it to match the strictest peer you expect to talk to.
      */
-    val maxSubscriptionsPerRpc: Int = 500
+    val maxSubscriptionsPerRpc: Int = 500,
+
+    /**
+     * [maxTotalFields] bounds how many protobuf fields a single inbound RPC may contain, summed
+     * across every nesting level. It backstops [maxControlMessageSize], which bounds allocation
+     * only indirectly: the cheapest object protobuf-java will materialise - an empty repeated
+     * sub-message such as `subscriptions` or `control.ihave`, or a retained unknown field - costs
+     * two wire bytes, so a 256 KiB byte budget alone still admits ~131k allocations from one frame.
+     *
+     * Read it against [maxControlMessageSize] rather than on its own: the ratio of the two is a
+     * minimum average wire size per field, and the limit can only fire below that. At the defaults
+     * that is 256 KiB / 65536 = 4 bytes per field, against a floor of 2 for an empty envelope. An
+     * RPC whose fields each carry a message id or a topic name is nowhere near it; only one padded
+     * with empty or near-empty envelopes is.
+     *
+     * The 4-byte ratio is chosen to stay clear of shapes a conformant peer can produce. Neither
+     * go-libp2p nor rust-libp2p bounds field count - go bounds control bytes only, with a
+     * computation equivalent to [maxControlMessageSize] - so the whole burden of not rejecting
+     * honest traffic sits here. Short topic names are the tight case: an app using topics of
+     * ~16 characters, batching subscriptions or small unsigned publishes, lands near 8 bytes per
+     * field and would trip a tighter setting.
+     *
+     * Inbound only, like [maxSubscriptionsPerRpc]: the outbound batcher splits on bytes, not field
+     * count, so a value below what this library itself emits would make it produce frames its own
+     * guard rejects. Null disables the check.
+     */
+    val maxTotalFields: Int? = 65536
 
 ) {
     init {
@@ -333,6 +359,7 @@ data class GossipParams(
         check(maxControlMessageSize > 0, "maxControlMessageSize should be > 0")
         check(maxIDontWantMessageIdsPerRpc > 0, "maxIDontWantMessageIdsPerRpc should be > 0")
         check(maxSubscriptionsPerRpc > 0, "maxSubscriptionsPerRpc should be > 0")
+        check(maxTotalFields == null || maxTotalFields > 0, "maxTotalFields should be > 0 or null")
     }
 
     companion object {
