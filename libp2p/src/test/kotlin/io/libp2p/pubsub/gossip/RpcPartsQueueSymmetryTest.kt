@@ -3,8 +3,10 @@ package io.libp2p.pubsub.gossip
 import com.google.protobuf.ByteString
 import io.libp2p.pubsub.PubsubRpcLimits
 import io.libp2p.pubsub.RpcMessageCountValidator
+import io.libp2p.pubsub.TooLargeMessageException
 import io.netty.buffer.Unpooled
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 import pubsub.pb.Rpc
 
@@ -61,5 +63,22 @@ class RpcPartsQueueSymmetryTest {
 
         assertThat(batches).isGreaterThan(1) // the field budget forced a split
         assertThat(publishesSeen).isEqualTo(count) // no publish lost across the split
+    }
+
+    @Test
+    fun `a single part exceeding the field budget is rejected at enqueue, never emitted`() {
+        // takeBatch emits a lone over-budget part rather than stall, so the queue must refuse one at
+        // enqueue - otherwise it would emit an RPC RpcMessageCountValidator rejects pre-decode.
+        val tightParams = GossipParams(maxTotalFields = 10)
+        val queue = DefaultGossipRpcPartsQueue(tightParams)
+
+        // One publish with 20 topicIDs: ~22 inbound fields (envelope + data + 20 topics) > 10.
+        val fat = Rpc.Message.newBuilder()
+            .setData(ByteString.copyFromUtf8("x"))
+            .also { b -> repeat(20) { b.addTopicIDs("t$it") } }
+            .build()
+
+        assertThrows(TooLargeMessageException::class.java) { queue.addPublish(fat) }
+        assertThat(queue.isEmpty()).isTrue()
     }
 }

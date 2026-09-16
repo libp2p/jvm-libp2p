@@ -125,6 +125,16 @@ open class DefaultGossipRpcPartsQueue(
                     "maxGossipMessageSize ${params.maxGossipMessageSize}: $part"
             )
         }
+        // Reject a part that alone exceeds the inbound field budget. takeBatch emits a lone
+        // over-budget part rather than stall, so without this guard such a part would be sent and
+        // rejected pre-decode by a peer running this same code, breaking outbound/inbound symmetry.
+        val maxFields = params.maxTotalFields
+        if (maxFields != null && part.estimatedMaxFieldCount > maxFields) {
+            throw TooLargeMessageException(
+                "RPC part estimated field count ${part.estimatedMaxFieldCount} exceeds " +
+                    "maxTotalFields $maxFields: $part"
+            )
+        }
         priorityPartList(part).add(part)
         addPartSize(part)
     }
