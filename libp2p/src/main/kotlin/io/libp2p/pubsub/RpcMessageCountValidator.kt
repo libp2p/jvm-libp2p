@@ -311,15 +311,25 @@ object RpcMessageCountValidator {
         }
         // Depth-counted rather than recursive: nesting is attacker-controlled, so the walk must
         // not consume JVM stack proportional to it.
+        //
+        // Charge a nested START_GROUP (a nested group is one retained UnknownFieldSet entry) and each
+        // scalar field, but never an END_GROUP: it is a delimiter protobuf-java does not materialise
+        // as a field, so charging it would over-count against the outbound estimate in
+        // [io.libp2p.pubsub.RpcPartsQueue]'s countUnknownFields and break outbound/inbound symmetry.
         var depth = 1
         while (depth > 0) {
-            fields.charge()?.let { return it }
             val inner = input.readTag()
             if (inner == 0) throw IOException("truncated group")
             when (WireFormat.getTagWireType(inner)) {
-                WireFormat.WIRETYPE_START_GROUP -> depth++
+                WireFormat.WIRETYPE_START_GROUP -> {
+                    fields.charge()?.let { return it }
+                    depth++
+                }
                 WireFormat.WIRETYPE_END_GROUP -> depth--
-                else -> input.skipField(inner)
+                else -> {
+                    fields.charge()?.let { return it }
+                    input.skipField(inner)
+                }
             }
         }
         return null
