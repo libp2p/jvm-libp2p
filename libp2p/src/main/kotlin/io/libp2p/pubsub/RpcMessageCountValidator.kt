@@ -250,7 +250,7 @@ object RpcMessageCountValidator {
                     scanPrune(input, fields)?.let { return it }
                     input.popLimit(oldLimit)
                 }
-                else -> input.skipField(tag)
+                else -> skipCounting(input, tag, fields)?.let { return it }
             }
         }
         return null

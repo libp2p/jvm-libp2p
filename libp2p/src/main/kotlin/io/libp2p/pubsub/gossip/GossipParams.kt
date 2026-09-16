@@ -359,6 +359,7 @@ data class GossipParams(
         check(maxControlMessageSize > 0, "maxControlMessageSize should be > 0")
         check(maxIDontWantMessageIdsPerRpc > 0, "maxIDontWantMessageIdsPerRpc should be > 0")
         check(maxSubscriptionsPerRpc > 0, "maxSubscriptionsPerRpc should be > 0")
+        check(maxTotalFields == null || maxTotalFields > 0, "maxTotalFields should be > 0 or null")
     }
 
     companion object {
