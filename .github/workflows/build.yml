@@ -37,7 +37,7 @@ jobs:
         uses: gradle/gradle-build-action@v2
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v3.2.2
         with:
           cmdline-tools-version: 8512546
 
