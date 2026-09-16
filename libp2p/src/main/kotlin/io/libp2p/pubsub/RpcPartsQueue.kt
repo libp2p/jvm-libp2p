@@ -2,6 +2,7 @@ package io.libp2p.pubsub
 
 import com.google.protobuf.Descriptors.FieldDescriptor
 import com.google.protobuf.Message
+import com.google.protobuf.UnknownFieldSet
 import io.libp2p.etc.types.forward
 import pubsub.pb.Rpc
 import java.util.concurrent.CompletableFuture
@@ -112,6 +113,24 @@ private fun countFields(message: Message): Int {
                 count += countFields(value as Message)
             }
         }
+    }
+    // Unknown fields are excluded from allFields but protobuf-java retains and re-serializes them,
+    // and the inbound walker charges them, so a forwarded message carrying unknowns would be
+    // under-estimated without this. Each scalar occurrence is one field; a group is one field plus
+    // its interior, matching RpcMessageCountValidator.skipCounting.
+    count += countUnknownFields(message.unknownFields)
+    return count
+}
+
+private fun countUnknownFields(unknownFields: UnknownFieldSet): Int {
+    var count = 0
+    for (entry in unknownFields.asMap()) {
+        val field = entry.value
+        count += field.varintList.size +
+            field.fixed32List.size +
+            field.fixed64List.size +
+            field.lengthDelimitedList.size
+        field.groupList.forEach { count += 1 + countUnknownFields(it) }
     }
     return count
 }

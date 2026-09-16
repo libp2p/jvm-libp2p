@@ -1,6 +1,7 @@
 package io.libp2p.pubsub.gossip
 
 import com.google.protobuf.ByteString
+import com.google.protobuf.UnknownFieldSet
 import io.libp2p.pubsub.PubsubRpcLimits
 import io.libp2p.pubsub.RpcMessageCountValidator
 import io.libp2p.pubsub.TooLargeMessageException
@@ -80,5 +81,50 @@ class RpcPartsQueueSymmetryTest {
 
         assertThrows(TooLargeMessageException::class.java) { queue.addPublish(fat) }
         assertThat(queue.isEmpty()).isTrue()
+    }
+
+    @Test
+    fun `every batch of publishes carrying unknown fields passes the inbound validator`() {
+        // A forwarded message can retain unknown protobuf fields. allFields excludes them but the
+        // inbound walker charges them, so the outbound field estimate must count them too.
+        val unknownVarints = 100
+        val count = 2_000 // (3 known + 100 unknown) x 2000 = ~206k inbound fields, over 65536.
+
+        fun withUnknowns(): Rpc.Message {
+            val unknowns = UnknownFieldSet.newBuilder()
+                .addField(
+                    99,
+                    UnknownFieldSet.Field.newBuilder()
+                        .also { f -> repeat(unknownVarints) { f.addVarint(1) } }
+                        .build()
+                )
+                .build()
+            return Rpc.Message.newBuilder()
+                .setData(ByteString.copyFromUtf8("x"))
+                .addTopicIDs("t")
+                .setUnknownFields(unknowns)
+                .build()
+        }
+
+        val monolith = Rpc.RPC.newBuilder().also { b -> repeat(count) { b.addPublish(withUnknowns()) } }.build()
+        assertThat(validate(monolith))
+            .isInstanceOf(RpcMessageCountValidator.Result.Rejected::class.java)
+
+        val queue = DefaultGossipRpcPartsQueue(params)
+        repeat(count) { queue.addPublish(withUnknowns()) }
+
+        var batches = 0
+        var publishesSeen = 0
+        while (!queue.isEmpty()) {
+            val rpc = queue.takeBatch()!!.rpc
+            batches++
+            publishesSeen += rpc.publishCount
+            assertThat(validate(rpc))
+                .withFailMessage("batch %d with %d publishes was rejected inbound", batches, rpc.publishCount)
+                .isEqualTo(RpcMessageCountValidator.Result.Accepted)
+        }
+
+        assertThat(batches).isGreaterThan(1)
+        assertThat(publishesSeen).isEqualTo(count)
     }
 }
