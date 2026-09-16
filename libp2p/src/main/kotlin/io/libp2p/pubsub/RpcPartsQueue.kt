@@ -1,5 +1,7 @@
 package io.libp2p.pubsub
 
+import com.google.protobuf.Descriptors.FieldDescriptor
+import com.google.protobuf.Message
 import io.libp2p.etc.types.forward
 import pubsub.pb.Rpc
 import java.util.concurrent.CompletableFuture
@@ -87,6 +89,33 @@ interface RpcPartsQueue {
     fun estimateMaxSerializedSize(): Int
 }
 
+/**
+ * Counts protobuf field occurrences in [message], descending into every sub-message, matching
+ * [io.libp2p.pubsub.RpcMessageCountValidator]'s inbound accounting: each repeated element and each
+ * set singular field is one field, and message-typed fields also add the fields of their bodies.
+ * Exact for the well-formed messages this library builds (no unknown fields, no groups).
+ */
+private fun countFields(message: Message): Int {
+    var count = 0
+    for (entry in message.allFields) {
+        val field = entry.key
+        val value = entry.value
+        if (field.isRepeated) {
+            val elements = value as List<*>
+            count += elements.size
+            if (field.javaType == FieldDescriptor.JavaType.MESSAGE) {
+                elements.forEach { count += countFields(it as Message) }
+            }
+        } else {
+            count += 1
+            if (field.javaType == FieldDescriptor.JavaType.MESSAGE) {
+                count += countFields(value as Message)
+            }
+        }
+    }
+    return count
+}
+
 abstract class AbstractRpcPartsQueue : RpcPartsQueue {
 
     protected abstract class AbstractPart {
@@ -101,6 +130,18 @@ abstract class AbstractRpcPartsQueue : RpcPartsQueue {
          */
         val estimatedMaxSerializedSize: Int by lazy {
             Rpc.RPC.newBuilder().also { appendToBuilder(it) }.buildPartial().serializedSize
+        }
+
+        /**
+         * Conservative upper bound for the number of protobuf fields this part contributes to a
+         * merged RPC, counted exactly as [io.libp2p.pubsub.RpcMessageCountValidator] counts them on
+         * the inbound side (one per field occurrence, descending into every sub-message). Based on
+         * the part's standalone RPC, so it over-counts once parts merge and share protobuf wrappers,
+         * which errs towards splitting a batch earlier than strictly required - the queue must never
+         * emit an RPC that a peer running this same code would reject pre-decode.
+         */
+        val estimatedMaxFieldCount: Int by lazy {
+            countFields(Rpc.RPC.newBuilder().also { appendToBuilder(it) }.buildPartial())
         }
 
         open val writePromise: CompletableFuture<Unit>? = null
