@@ -8,6 +8,7 @@ import io.libp2p.pubsub.RpcPartsBatch
 import io.libp2p.pubsub.RpcPartsQueue
 import io.libp2p.pubsub.TooLargeMessageException
 import io.libp2p.pubsub.Topic
+import io.libp2p.pubsub.countUnknownFields
 import pubsub.pb.Rpc
 
 interface GossipRpcPartsQueue : RpcPartsQueue {
@@ -58,6 +59,9 @@ open class DefaultGossipRpcPartsQueue(
 
             iHaveBuilder.addMessageIDs(messageId.toProtobuf())
         }
+
+        // control + ihave entry + topicID + messageID
+        override val estimatedMaxFieldCount: Int get() = 4
     }
 
     protected data class IWantPart(val messageId: MessageId) : AbstractPart() {
@@ -70,6 +74,9 @@ open class DefaultGossipRpcPartsQueue(
             }
             iWantBuilder.addMessageIDs(messageId.toProtobuf())
         }
+
+        // control + iwant entry + messageID
+        override val estimatedMaxFieldCount: Int get() = 3
     }
 
     protected data class IDontWantPart(val messageId: MessageId) : AbstractPart() {
@@ -82,12 +89,18 @@ open class DefaultGossipRpcPartsQueue(
             }
             iDontWantBuilder.addMessageIDs(messageId.toProtobuf())
         }
+
+        // control + idontwant entry + messageID
+        override val estimatedMaxFieldCount: Int get() = 3
     }
 
     protected data class GraftPart(val topic: Topic) : AbstractPart() {
         override fun appendToBuilder(builder: Rpc.RPC.Builder) {
             builder.controlBuilder.addGraftBuilder().setTopicID(topic)
         }
+
+        // control + graft entry + topicID
+        override val estimatedMaxFieldCount: Int get() = 3
     }
 
     protected data class PrunePart(val topic: Topic, val backoffSeconds: Long?, val backoffPeers: List<PeerId>) :
@@ -104,12 +117,28 @@ open class DefaultGossipRpcPartsQueue(
                 )
             }
         }
+
+        // control + prune entry + topicID, then backoff plus (peers entry + peerID) per peer.
+        override val estimatedMaxFieldCount: Int
+            get() = 3 + if (backoffSeconds != null) 1 + 2 * backoffPeers.size else 0
     }
 
     protected data class ControlExtensionPart(val ctrlExtension: Rpc.ControlExtensions) : AbstractPart() {
         override fun appendToBuilder(builder: Rpc.RPC.Builder) {
             builder.controlBuilder.setExtensions(ctrlExtension)
         }
+
+        // control + extensions, then one per set flag. The inbound walker does not descend into the
+        // extension's sub-messages, and ControlExtensions holds only scalars, so this is flat.
+        // Pinned against the inbound walker by RpcPartsFieldCountTest; schema changes are guarded
+        // by RpcSchemaAccountingTest.
+        // The extension is immutable, so count once instead of walking its unknown fields
+        // again at enqueue and during batching.
+        override val estimatedMaxFieldCount: Int =
+            2 +
+                (if (ctrlExtension.hasPartialMessages()) 1 else 0) +
+                (if (ctrlExtension.hasTestExtension()) 1 else 0) +
+                countUnknownFields(ctrlExtension.unknownFields)
     }
 
     protected val priorityPartLists = listOf(
@@ -123,6 +152,16 @@ open class DefaultGossipRpcPartsQueue(
             throw TooLargeMessageException(
                 "RPC part estimated serialized size ${part.estimatedMaxSerializedSize} exceeds " +
                     "maxGossipMessageSize ${params.maxGossipMessageSize}: $part"
+            )
+        }
+        // Reject a part that alone exceeds the inbound field budget. takeBatch emits a lone
+        // over-budget part rather than stall, so without this guard such a part would be sent and
+        // rejected pre-decode by a peer running this same code, breaking outbound/inbound symmetry.
+        val maxFields = params.maxTotalFields
+        if (maxFields != null && part.estimatedMaxFieldCount > maxFields) {
+            throw TooLargeMessageException(
+                "RPC part estimated field count ${part.estimatedMaxFieldCount} exceeds " +
+                    "maxTotalFields $maxFields: $part"
             )
         }
         priorityPartList(part).add(part)
@@ -206,6 +245,16 @@ open class DefaultGossipRpcPartsQueue(
          */
         var controlLeft = params.maxControlMessageSize
 
+        /**
+         * Remaining protobuf field budget for this batch, mirroring the inbound
+         * [GossipParams.maxTotalFields] guard so we never emit an RPC a peer running this same code
+         * would reject pre-decode. The control-byte budget does not subsume this: a publish's `data`
+         * payload is exempt from [controlLeft] but each `data` field still costs one field inbound,
+         * so a burst of small-envelope publishes can stay within the byte budgets while overflowing
+         * the field count.
+         */
+        var fieldsLeft = params.maxTotalFields ?: Int.MAX_VALUE
+
         var partIdx = 0
 
         while (partIdx < priorityParts.size &&
@@ -223,9 +272,10 @@ open class DefaultGossipRpcPartsQueue(
                 is PublishPart -> part.estimatedMaxSerializedSize - part.message.data.size()
                 else -> part.estimatedMaxSerializedSize
             }
+            fieldsLeft -= part.estimatedMaxFieldCount
             // A part that alone exceeds a budget is still emitted, otherwise the queue would
             // never drain past it.
-            if (partIdx > 0 && (sizeLeft < 0 || controlLeft < 0)) {
+            if (partIdx > 0 && (sizeLeft < 0 || controlLeft < 0 || fieldsLeft < 0)) {
                 break
             }
             partIdx++

@@ -48,6 +48,11 @@ class RpcCountFrameDecoder(private val limits: PubsubRpcLimits) : MessageToMessa
                 throw CorruptedFrameException(result.reason)
             }
             is RpcMessageCountValidator.Result.Rejected -> {
+                // Deliberately silent: a rejection here is not evidence of misbehaviour. Throwing
+                // instead would reach the behaviour penalty via the same path as Malformed, but a
+                // limit rejection also fires on a conformant peer whose configured limits are
+                // simply looser than ours, and scoring that peer down would partition us from
+                // honest traffic. See the note on PubsubRpcLimits.
                 logger.debug("Dropping pubsub RPC frame: {}", result.reason)
             }
         }

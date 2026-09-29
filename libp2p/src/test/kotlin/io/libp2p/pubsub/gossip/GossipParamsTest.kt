@@ -197,6 +197,16 @@ class GossipParamsTest {
     }
 
     @Test
+    fun `test invalid maxTotalFields is zero`() {
+        val exception = assertThrows<IllegalArgumentException> {
+            GossipParams.builder()
+                .maxTotalFields(0)
+                .build()
+        }
+        assertEquals("maxTotalFields should be > 0 or null", exception.message)
+    }
+
+    @Test
     fun `maxIDontWantMessageIdsPerRpc defaults to 5000 and is independently settable`() {
         assertEquals(5000, GossipParams().maxIDontWantMessageIdsPerRpc)
         assertEquals(5000, GossipParams.builder().build().maxIDontWantMessageIdsPerRpc)
