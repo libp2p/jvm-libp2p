@@ -54,6 +54,21 @@ interface GossipRouterEventListener {
      * now, the RPC exceeded the configured list limits, or the subscription filter rejected it.
      */
     fun notifyRpcDropped(peerId: PeerId, rpc: Rpc.RPC) {}
+
+    /**
+     * Called when the application handler returned [ValidationResult.Ignore] for a first-seen
+     * message. Distinct from a rejection: the message is dropped without penalising the sender.
+     */
+    fun notifyUnseenIgnoredMessage(peerId: PeerId, msg: PubsubMessage) {}
+
+    /** Called for an inbound message on a topic this router is not subscribed to. */
+    fun notifyNonSubscribedMessage(peerId: PeerId, msg: Rpc.Message) {}
+
+    /** Called when this router joins [topic]. */
+    fun notifySubscribed(topic: Topic) {}
+
+    /** Called when this router leaves [topic]. */
+    fun notifyUnsubscribed(topic: Topic) {}
 }
 
 class GossipRouterEventBroadcaster : GossipRouterEventListener {
@@ -117,5 +132,21 @@ class GossipRouterEventBroadcaster : GossipRouterEventListener {
 
     override fun notifyRpcDropped(peerId: PeerId, rpc: Rpc.RPC) {
         listeners.forEach { it.notifyRpcDropped(peerId, rpc) }
+    }
+
+    override fun notifyUnseenIgnoredMessage(peerId: PeerId, msg: PubsubMessage) {
+        listeners.forEach { it.notifyUnseenIgnoredMessage(peerId, msg) }
+    }
+
+    override fun notifyNonSubscribedMessage(peerId: PeerId, msg: Rpc.Message) {
+        listeners.forEach { it.notifyNonSubscribedMessage(peerId, msg) }
+    }
+
+    override fun notifySubscribed(topic: Topic) {
+        listeners.forEach { it.notifySubscribed(topic) }
+    }
+
+    override fun notifyUnsubscribed(topic: Topic) {
+        listeners.forEach { it.notifyUnsubscribed(topic) }
     }
 }

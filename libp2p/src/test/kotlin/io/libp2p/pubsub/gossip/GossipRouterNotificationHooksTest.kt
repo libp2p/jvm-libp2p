@@ -34,6 +34,26 @@ class GossipRouterNotificationHooksTest : GossipTestsBase() {
         val rpcReceived = mutableListOf<Rpc.RPC>()
         val rpcSent = mutableListOf<Rpc.RPC>()
         val rpcDropped = mutableListOf<Rpc.RPC>()
+        val ignoredMessages = mutableListOf<PubsubMessage>()
+        val nonSubscribedMessages = mutableListOf<Rpc.Message>()
+        val subscribed = mutableListOf<Topic>()
+        val unsubscribed = mutableListOf<Topic>()
+
+        override fun notifyUnseenIgnoredMessage(peerId: PeerId, msg: PubsubMessage) {
+            ignoredMessages += msg
+        }
+
+        override fun notifyNonSubscribedMessage(peerId: PeerId, msg: Rpc.Message) {
+            nonSubscribedMessages += msg
+        }
+
+        override fun notifySubscribed(topic: Topic) {
+            subscribed += topic
+        }
+
+        override fun notifyUnsubscribed(topic: Topic) {
+            unsubscribed += topic
+        }
 
         override fun notifyUnseenInvalidMessage(
             peerId: PeerId,
@@ -192,6 +212,47 @@ class GossipRouterNotificationHooksTest : GossipTestsBase() {
 
         assertThat(test.listener.rpcDropped).hasSize(1)
         assertThat(test.listener.rpcReceived).isEmpty()
+    }
+
+    @Test
+    fun `a message the handler ignores is reported ignored, not rejected`() {
+        val test = Harness(acceptEverything)
+        test.gossipRouter.initHandler { CompletableFuture.completedFuture(ValidationResult.Ignore) }
+        test.subscribeBoth("topic1")
+
+        test.mockRouter.sendToSingle(publishRpc("topic1", 0L))
+        test.fuzz.timeController.addTime(1.seconds)
+
+        assertThat(test.listener.ignoredMessages).hasSize(1)
+        assertThat(test.listener.rejectReasons).isEmpty()
+    }
+
+    @Test
+    fun `a message for an unsubscribed topic is reported non-subscribed`() {
+        val test = Harness(acceptEverything)
+        test.gossipRouter.initHandler { CompletableFuture.completedFuture(ValidationResult.Valid) }
+        test.subscribeBoth("topic1")
+
+        test.mockRouter.sendToSingle(publishRpc("some-other-topic", 0L))
+        test.fuzz.timeController.addTime(1.seconds)
+
+        assertThat(test.listener.nonSubscribedMessages.flatMap { it.topicIDsList })
+            .containsExactly("some-other-topic")
+    }
+
+    @Test
+    fun `joining and leaving a topic is reported`() {
+        val test = Harness(acceptEverything)
+        test.gossipRouter.initHandler { CompletableFuture.completedFuture(ValidationResult.Valid) }
+
+        test.gossipRouter.subscribe("topic1")
+        test.fuzz.timeController.addTime(1.seconds)
+        assertThat(test.listener.subscribed).containsExactly("topic1")
+        assertThat(test.listener.unsubscribed).isEmpty()
+
+        test.gossipRouter.unsubscribe("topic1")
+        test.fuzz.timeController.addTime(1.seconds)
+        assertThat(test.listener.unsubscribed).containsExactly("topic1")
     }
 
     private fun publishRpc(topic: Topic, seqNo: Long) =

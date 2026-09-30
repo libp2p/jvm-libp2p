@@ -200,6 +200,22 @@ open class GossipRouter(
         eventBroadcaster.notifyUnseenInvalidMessage(peer.peerId, msg, reason)
     }
 
+    override fun notifyUnseenIgnoredMessage(peer: PeerHandler, msg: PubsubMessage) {
+        eventBroadcaster.notifyUnseenIgnoredMessage(peer.peerId, msg)
+    }
+
+    override fun notifyNonSubscribedMessage(peer: PeerHandler, msg: Rpc.Message) {
+        eventBroadcaster.notifyNonSubscribedMessage(peer.peerId, msg)
+    }
+
+    override fun notifySubscribed(topic: Topic) {
+        eventBroadcaster.notifySubscribed(topic)
+    }
+
+    override fun notifyUnsubscribed(topic: Topic) {
+        eventBroadcaster.notifyUnsubscribed(topic)
+    }
+
     override fun notifyRpcReceived(peer: PeerHandler, rpc: Rpc.RPC) {
         eventBroadcaster.notifyRpcReceived(peer.peerId, rpc)
     }
