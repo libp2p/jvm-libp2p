@@ -8,6 +8,7 @@ import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.etc.types.cappedDouble
 import io.libp2p.etc.types.createLRUMap
 import io.libp2p.etc.types.millis
+import io.libp2p.pubsub.MessageRejectReason
 import io.libp2p.pubsub.PubsubMessage
 import io.libp2p.pubsub.Topic
 import java.util.Optional
@@ -280,7 +281,12 @@ class DefaultGossipScore(
             }
     }
 
-    override fun notifyUnseenInvalidMessage(peerId: PeerId, msg: PubsubMessage) {
+    override fun notifyUnseenInvalidMessage(
+        peerId: PeerId,
+        msg: PubsubMessage,
+        reason: MessageRejectReason
+    ) {
+        // Both reject reasons are penalised identically; the distinction is for observability only.
         validationTime[msg] = curTimeMillis()
         msg.topics.forEach { getTopicScores(peerId, it).invalidMessages++ }
     }

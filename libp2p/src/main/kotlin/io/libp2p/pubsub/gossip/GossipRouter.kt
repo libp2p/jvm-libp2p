@@ -192,8 +192,24 @@ open class GossipRouter(
         }
     }
 
-    override fun notifyUnseenInvalidMessage(peer: PeerHandler, msg: PubsubMessage) {
-        eventBroadcaster.notifyUnseenInvalidMessage(peer.peerId, msg)
+    override fun notifyUnseenInvalidMessage(
+        peer: PeerHandler,
+        msg: PubsubMessage,
+        reason: MessageRejectReason
+    ) {
+        eventBroadcaster.notifyUnseenInvalidMessage(peer.peerId, msg, reason)
+    }
+
+    override fun notifyRpcReceived(peer: PeerHandler, rpc: Rpc.RPC) {
+        eventBroadcaster.notifyRpcReceived(peer.peerId, rpc)
+    }
+
+    override fun notifyRpcSent(peer: PeerHandler, rpc: Rpc.RPC) {
+        eventBroadcaster.notifyRpcSent(peer.peerId, rpc)
+    }
+
+    override fun notifyRpcDropped(peer: PeerHandler, rpc: Rpc.RPC) {
+        eventBroadcaster.notifyRpcDropped(peer.peerId, rpc)
     }
 
     override fun notifyUnseenValidMessage(peer: PeerHandler, msg: PubsubMessage) {

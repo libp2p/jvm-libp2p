@@ -169,18 +169,40 @@ abstract class AbstractRouter(
     protected open fun notifyUnseenMessage(peer: PeerHandler, msg: PubsubMessage) {}
     protected open fun notifyNonSubscribedMessage(peer: PeerHandler, msg: Rpc.Message) {}
     protected open fun notifySeenMessage(peer: PeerHandler, msg: PubsubMessage, validationResult: Optional<ValidationResult>) {}
-    protected open fun notifyUnseenInvalidMessage(peer: PeerHandler, msg: PubsubMessage) {}
+    protected open fun notifyUnseenInvalidMessage(
+        peer: PeerHandler,
+        msg: PubsubMessage,
+        reason: MessageRejectReason
+    ) {}
     protected open fun notifyUnseenValidMessage(peer: PeerHandler, msg: PubsubMessage) {}
     protected open fun acceptRequestsFrom(peer: PeerHandler) = true
 
-    override fun onInbound(peer: PeerHandler, msg: Any) {
-        if (!acceptRequestsFrom(peer)) return
+    /**
+     * Called for every inbound RPC before any of it is processed. The control messages it carries
+     * (IHAVE/IWANT/GRAFT/PRUNE/IDONTWANT) are not otherwise observable from outside the router.
+     */
+    protected open fun notifyRpcReceived(peer: PeerHandler, rpc: Rpc.RPC) {}
 
+    /** Called for every outbound RPC, immediately before it is written. */
+    protected open fun notifyRpcSent(peer: PeerHandler, rpc: Rpc.RPC) {}
+
+    /** Called for an inbound RPC discarded without being processed. */
+    protected open fun notifyRpcDropped(peer: PeerHandler, rpc: Rpc.RPC) {}
+
+    override fun onInbound(peer: PeerHandler, msg: Any) {
         msg as Rpc.RPC
+
+        if (!acceptRequestsFrom(peer)) {
+            notifyRpcDropped(peer, msg)
+            return
+        }
+
+        notifyRpcReceived(peer, msg)
 
         // Validate message
         if (!validateMessageListLimits(msg)) {
             logger.debug("Dropping msg with lists exceeding limits from peer {}", peer)
+            notifyRpcDropped(peer, msg)
             return
         }
 
@@ -191,6 +213,7 @@ abstract class AbstractRouter(
                 .forEach { handleMessageSubscriptions(peer, it) }
         } catch (e: Exception) {
             logger.debug("Subscription filter error, ignoring message from peer {}", peer, e)
+            notifyRpcDropped(peer, msg)
             return
         }
 
@@ -232,7 +255,7 @@ abstract class AbstractRouter(
                 // Avoid rejecting a future legitimate message with the same id
                 // (e.g. same from||seqno)
                 seenMessages -= it.messageId
-                notifyUnseenInvalidMessage(peer, it)
+                notifyUnseenInvalidMessage(peer, it, MessageRejectReason.ValidationFailed)
                 false
             }
         }
@@ -249,7 +272,7 @@ abstract class AbstractRouter(
                         // Evict so a later legitimate message with the same id is not
                         // suppressed by this rejected one.
                         seenMessages -= msg.messageId
-                        notifyUnseenInvalidMessage(peer, msg)
+                        notifyUnseenInvalidMessage(peer, msg, MessageRejectReason.RejectedByHandler)
                     } else {
                         seenMessages[msg] = Optional.of(res)
                     }
@@ -335,6 +358,7 @@ abstract class AbstractRouter(
 
     override fun pollOutboundMessage(peer: PeerHandler): MessageAndPromise? {
         val batch = pendingRpcParts.getExistingQueue(peer)?.takeBatch() ?: return null
+        notifyRpcSent(peer, batch.rpc)
         return MessageAndPromise(batch.rpc, batch.writePromise)
     }
 
@@ -373,6 +397,7 @@ abstract class AbstractRouter(
     }
 
     protected open fun send(peer: PeerHandler, msg: Rpc.RPC): CompletableFuture<Unit> {
+        notifyRpcSent(peer, msg)
         return peer.writeAndFlush(msg)
     }
 

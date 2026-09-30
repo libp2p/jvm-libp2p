@@ -11,6 +11,7 @@ import io.libp2p.pubsub.DefaultPubsubMessage
 import io.libp2p.pubsub.DeterministicFuzz
 import io.libp2p.pubsub.DeterministicFuzz.Companion.createGossipFuzzRouterFactory
 import io.libp2p.pubsub.DroppedRpcPartsException
+import io.libp2p.pubsub.MessageRejectReason
 import io.libp2p.pubsub.NOP_ROUTER_VALIDATOR
 import io.libp2p.pubsub.PubsubMessage
 import io.libp2p.pubsub.PubsubProtocol
@@ -228,7 +229,11 @@ class GossipSlowPeerTest : GossipTestsBase() {
         ) {
         }
 
-        override fun notifyUnseenInvalidMessage(peerId: PeerId, msg: PubsubMessage) {
+        override fun notifyUnseenInvalidMessage(
+            peerId: PeerId,
+            msg: PubsubMessage,
+            reason: MessageRejectReason
+        ) {
         }
 
         override fun notifyUnseenValidMessage(peerId: PeerId, msg: PubsubMessage) {
