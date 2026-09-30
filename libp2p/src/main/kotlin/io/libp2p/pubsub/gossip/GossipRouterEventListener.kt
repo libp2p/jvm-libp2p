@@ -131,6 +131,10 @@ class GossipRouterEventBroadcaster : GossipRouterEventListener {
         forEachListener { it.notifyUnseenInvalidMessage(peerId, msg, reason) }
     }
 
+    @Deprecated("Call the overload that also receives the MessageRejectReason")
+    override fun notifyUnseenInvalidMessage(peerId: PeerId, msg: PubsubMessage) =
+        notifyUnseenInvalidMessage(peerId, msg, MessageRejectReason.ValidationFailed)
+
     override fun notifyUnseenValidMessage(peerId: PeerId, msg: PubsubMessage) {
         forEachListener { it.notifyUnseenValidMessage(peerId, msg) }
     }

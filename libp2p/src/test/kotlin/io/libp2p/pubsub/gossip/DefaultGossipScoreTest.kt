@@ -350,6 +350,31 @@ class DefaultGossipScoreTest {
     }
 
     @Test
+    fun `legacy rejection callback still penalises the sender`() {
+        val peer = mockPeer()
+        val topic: Topic = "testTopic"
+        val topicScoreParams = GossipTopicScoreParams.builder()
+            .topicWeight(1.0)
+            .invalidMessageDeliveriesWeight(-2.0)
+            .build()
+        val scoreParams = GossipScoreParams(
+            topicsScoreParams = GossipTopicsScoreParams(
+                GossipTopicScoreParams.builder().build(),
+                mutableMapOf(Pair(topic, topicScoreParams))
+            )
+        )
+        val timeController = TimeControllerImpl()
+        timeController.addTime(1.hours)
+        val score = DefaultGossipScore(scoreParams, ControlledExecutorServiceImpl(timeController), { timeController.time })
+        score.notifyMeshed(peer.peerId, topic)
+
+        @Suppress("DEPRECATION")
+        score.notifyUnseenInvalidMessage(peer.peerId, DefaultPubsubMessage(createRpcMessage(topic)))
+
+        assertThat(score.score(peer.peerId)).isEqualTo(-2.0)
+    }
+
+    @Test
     fun `update topic weight param`() {
         val peer = mockPeer()
 

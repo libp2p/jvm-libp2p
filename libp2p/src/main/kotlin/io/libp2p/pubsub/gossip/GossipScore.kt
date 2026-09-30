@@ -291,6 +291,10 @@ class DefaultGossipScore(
         msg.topics.forEach { getTopicScores(peerId, it).invalidMessages++ }
     }
 
+    @Deprecated("Call the overload that also receives the MessageRejectReason")
+    override fun notifyUnseenInvalidMessage(peerId: PeerId, msg: PubsubMessage) =
+        notifyUnseenInvalidMessage(peerId, msg, MessageRejectReason.ValidationFailed)
+
     override fun notifyUnseenValidMessage(peerId: PeerId, msg: PubsubMessage) {
         validationTime[msg] = curTimeMillis()
         msg.topics

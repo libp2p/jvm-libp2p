@@ -5,6 +5,7 @@ import io.libp2p.core.PeerId
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.etc.types.seconds
+import io.libp2p.pubsub.DefaultPubsubMessage
 import io.libp2p.pubsub.DeterministicFuzz
 import io.libp2p.pubsub.DeterministicFuzz.Companion.createGossipFuzzRouterFactory
 import io.libp2p.pubsub.DeterministicFuzz.Companion.createMockFuzzRouterFactory
@@ -184,6 +185,22 @@ class GossipRouterNotificationHooksTest : GossipTestsBase() {
         test.fuzz.timeController.addTime(1.seconds)
 
         assertThat(legacy.invalidMessages).hasSize(1)
+    }
+
+    @Test
+    fun `the broadcaster forwards calls to the legacy rejection callback`() {
+        val legacy = LegacyListener()
+        val recording = RecordingListener()
+        val broadcaster = GossipRouterEventBroadcaster()
+        broadcaster.listeners += legacy
+        broadcaster.listeners += recording
+        val msg = DefaultPubsubMessage(publishRpc("topic1", 0L).getPublish(0))
+
+        @Suppress("DEPRECATION")
+        broadcaster.notifyUnseenInvalidMessage(PeerId.random(), msg)
+
+        assertThat(legacy.invalidMessages).containsExactly(msg)
+        assertThat(recording.rejectReasons).containsExactly(MessageRejectReason.ValidationFailed)
     }
 
     @Test
