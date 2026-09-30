@@ -179,10 +179,10 @@ abstract class AbstractRouter(
     /** Called when the application handler returned [ValidationResult.Ignore] for a first-seen message. */
     protected open fun notifyUnseenIgnoredMessage(peer: PeerHandler, msg: PubsubMessage) {}
 
-    /** Called when this router joins [topic]. */
+    /** Called when this router joins [topic]. Not called again for a topic it has already joined. */
     protected open fun notifySubscribed(topic: Topic) {}
 
-    /** Called when this router leaves [topic]. */
+    /** Called when this router leaves [topic]. Not called for a topic it had not joined. */
     protected open fun notifyUnsubscribed(topic: Topic) {}
 
     protected open fun acceptRequestsFrom(peer: PeerHandler) = true
@@ -384,8 +384,7 @@ abstract class AbstractRouter(
 
     protected open fun subscribe(topic: Topic) {
         activePeers.forEach { pendingRpcParts.getOrCreateQueue(it).addSubscribe(topic) }
-        subscribedTopics += topic
-        notifySubscribed(topic)
+        if (subscribedTopics.add(topic)) notifySubscribed(topic)
     }
 
     override fun unsubscribe(vararg topics: Topic) {
@@ -397,8 +396,7 @@ abstract class AbstractRouter(
 
     protected open fun unsubscribe(topic: Topic) {
         activePeers.forEach { pendingRpcParts.getOrCreateQueue(it).addUnsubscribe(topic) }
-        subscribedTopics -= topic
-        notifyUnsubscribed(topic)
+        if (subscribedTopics.remove(topic)) notifyUnsubscribed(topic)
     }
 
     override fun getPeerTopics(): CompletableFuture<Map<PeerId, Set<Topic>>> {

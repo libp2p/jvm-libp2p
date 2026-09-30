@@ -329,6 +329,20 @@ class GossipRouterNotificationHooksTest : GossipTestsBase() {
         assertThat(test.listener.unsubscribed).containsExactly("topic1")
     }
 
+    @Test
+    fun `subscribing twice or leaving a topic never joined is not reported`() {
+        val test = Harness(acceptEverything)
+        test.gossipRouter.initHandler { CompletableFuture.completedFuture(ValidationResult.Valid) }
+
+        test.gossipRouter.subscribe("topic1")
+        test.gossipRouter.subscribe("topic1")
+        test.gossipRouter.unsubscribe("never-joined")
+        test.fuzz.timeController.addTime(1.seconds)
+
+        assertThat(test.listener.subscribed).containsExactly("topic1")
+        assertThat(test.listener.unsubscribed).isEmpty()
+    }
+
     private fun publishRpc(topic: Topic, seqNo: Long) =
         Rpc.RPC.newBuilder()
             .addPublish(newProtoMessage(topic, seqNo, "Hello-$seqNo".toByteArray()))

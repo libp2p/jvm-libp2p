@@ -77,10 +77,10 @@ interface GossipRouterEventListener {
     /** Called for an inbound message on a topic this router is not subscribed to. */
     fun notifyNonSubscribedMessage(peerId: PeerId, msg: Rpc.Message) {}
 
-    /** Called when this router joins [topic]. */
+    /** Called when this router joins [topic]. Not called again for a topic it has already joined. */
     fun notifySubscribed(topic: Topic) {}
 
-    /** Called when this router leaves [topic]. */
+    /** Called when this router leaves [topic]. Not called for a topic it had not joined. */
     fun notifyUnsubscribed(topic: Topic) {}
 }
 
