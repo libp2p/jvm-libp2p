@@ -38,6 +38,7 @@ class GossipRouterNotificationHooksTest : GossipTestsBase() {
         val nonSubscribedMessages = mutableListOf<Rpc.Message>()
         val subscribed = mutableListOf<Topic>()
         val unsubscribed = mutableListOf<Topic>()
+        var throwOnRpcSent = false
 
         override fun notifyUnseenIgnoredMessage(peerId: PeerId, msg: PubsubMessage) {
             ignoredMessages += msg
@@ -68,6 +69,7 @@ class GossipRouterNotificationHooksTest : GossipTestsBase() {
         }
 
         override fun notifyRpcSent(peerId: PeerId, rpc: Rpc.RPC) {
+            if (throwOnRpcSent) throw IllegalStateException("listener bug")
             rpcSent += rpc
         }
 
@@ -90,15 +92,41 @@ class GossipRouterNotificationHooksTest : GossipTestsBase() {
         override fun notifySlowPeer(peerId: PeerId) {}
     }
 
+    /** A listener written against the API before the reject reason was added. */
+    private class LegacyListener : GossipRouterEventListener {
+        val invalidMessages = mutableListOf<PubsubMessage>()
+
+        @Deprecated("Override the overload that also receives the MessageRejectReason")
+        override fun notifyUnseenInvalidMessage(peerId: PeerId, msg: PubsubMessage) {
+            invalidMessages += msg
+        }
+
+        override fun notifyDisconnected(peerId: PeerId) {}
+        override fun notifyConnected(peerId: PeerId, peerAddress: Multiaddr) {}
+        override fun notifyUnseenMessage(peerId: PeerId, msg: PubsubMessage) {}
+        override fun notifySeenMessage(
+            peerId: PeerId,
+            msg: PubsubMessage,
+            validationResult: Optional<ValidationResult>
+        ) {}
+        override fun notifyUnseenValidMessage(peerId: PeerId, msg: PubsubMessage) {}
+        override fun notifyMeshed(peerId: PeerId, topic: Topic) {}
+        override fun notifyPruned(peerId: PeerId, topic: Topic) {}
+        override fun notifyRouterMisbehavior(peerId: PeerId, count: Int) {}
+        override fun notifySlowPeer(peerId: PeerId) {}
+    }
+
     private class Harness(
         messageValidator: PubsubRouterMessageValidator,
-        scoreParams: GossipScoreParams = GossipScoreParams()
+        scoreParams: GossipScoreParams = GossipScoreParams(),
+        listenersBefore: List<GossipRouterEventListener> = emptyList()
     ) {
         val listener = RecordingListener()
         val fuzz = DeterministicFuzz()
         private val builderFactory = {
             GossipRouterBuilder(protocol = PubsubProtocol.Gossip_V_1_2, scoreParams = scoreParams).also {
                 it.messageValidator = messageValidator
+                it.gossipRouterEventListeners += listenersBefore
                 it.gossipRouterEventListeners += listener
             }
         }
@@ -146,6 +174,19 @@ class GossipRouterNotificationHooksTest : GossipTestsBase() {
     }
 
     @Test
+    fun `a listener overriding only the legacy rejection callback still receives rejections`() {
+        val legacy = LegacyListener()
+        val test = Harness(rejectEverything, listenersBefore = listOf(legacy))
+        test.gossipRouter.initHandler { CompletableFuture.completedFuture(ValidationResult.Valid) }
+        test.subscribeBoth("topic1")
+
+        test.mockRouter.sendToSingle(publishRpc("topic1", 0L))
+        test.fuzz.timeController.addTime(1.seconds)
+
+        assertThat(legacy.invalidMessages).hasSize(1)
+    }
+
+    @Test
     fun `a valid message is not reported as rejected`() {
         val test = Harness(acceptEverything)
         test.gossipRouter.initHandler { CompletableFuture.completedFuture(ValidationResult.Valid) }
@@ -183,6 +224,22 @@ class GossipRouterNotificationHooksTest : GossipTestsBase() {
 
         // Subscribing makes the router announce the subscription to its peer.
         assertThat(test.listener.rpcSent.sumOf { it.subscriptionsCount }).isGreaterThan(0)
+    }
+
+    @Test
+    fun `a listener throwing from notifyRpcSent does not stop the RPC being sent`() {
+        val failing = RecordingListener().also { it.throwOnRpcSent = true }
+        val test = Harness(acceptEverything, listenersBefore = listOf(failing))
+        test.gossipRouter.initHandler { CompletableFuture.completedFuture(ValidationResult.Valid) }
+        test.subscribeBoth("topic1")
+
+        val published = test.gossipRouter.publish(newMessage("topic1", 0L, "Hello".toByteArray()))
+        test.fuzz.timeController.addTime(1.seconds)
+
+        assertThat(test.mockRouter.inboundMessages.sumOf { it.publishCount }).isEqualTo(1)
+        assertThat(published).isCompleted
+        // A failing listener must not starve the listeners registered after it.
+        assertThat(test.listener.rpcSent.sumOf { it.publishCount }).isEqualTo(1)
     }
 
     @Test

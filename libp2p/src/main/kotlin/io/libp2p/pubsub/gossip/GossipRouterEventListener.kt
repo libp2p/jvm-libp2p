@@ -6,6 +6,7 @@ import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.pubsub.MessageRejectReason
 import io.libp2p.pubsub.PubsubMessage
 import io.libp2p.pubsub.Topic
+import org.slf4j.LoggerFactory
 import pubsub.pb.Rpc
 import java.util.*
 import java.util.concurrent.CopyOnWriteArrayList
@@ -20,7 +21,19 @@ interface GossipRouterEventListener {
 
     fun notifySeenMessage(peerId: PeerId, msg: PubsubMessage, validationResult: Optional<ValidationResult>)
 
-    fun notifyUnseenInvalidMessage(peerId: PeerId, msg: PubsubMessage, reason: MessageRejectReason)
+    @Deprecated("Override the overload that also receives the MessageRejectReason")
+    fun notifyUnseenInvalidMessage(peerId: PeerId, msg: PubsubMessage) {}
+
+    /**
+     * Called for a first-seen message that was rejected, with the [reason] it was rejected.
+     *
+     * Defaulted to the deprecated two-argument overload so that existing implementations keep
+     * working unchanged.
+     */
+    fun notifyUnseenInvalidMessage(peerId: PeerId, msg: PubsubMessage, reason: MessageRejectReason) {
+        @Suppress("DEPRECATION")
+        notifyUnseenInvalidMessage(peerId, msg)
+    }
 
     fun notifyUnseenValidMessage(peerId: PeerId, msg: PubsubMessage)
 
@@ -71,19 +84,35 @@ interface GossipRouterEventListener {
     fun notifyUnsubscribed(topic: Topic) {}
 }
 
+private val logger = LoggerFactory.getLogger(GossipRouterEventBroadcaster::class.java)
+
 class GossipRouterEventBroadcaster : GossipRouterEventListener {
     val listeners = CopyOnWriteArrayList<GossipRouterEventListener>()
 
+    /**
+     * Listeners run on the router's event thread, some on the outbound write path. A throwing
+     * listener must not break message processing or starve the listeners after it.
+     */
+    private inline fun forEachListener(action: (GossipRouterEventListener) -> Unit) {
+        listeners.forEach {
+            try {
+                action(it)
+            } catch (e: Exception) {
+                logger.warn("GossipRouterEventListener {} failed", it, e)
+            }
+        }
+    }
+
     override fun notifyDisconnected(peerId: PeerId) {
-        listeners.forEach { it.notifyDisconnected(peerId) }
+        forEachListener { it.notifyDisconnected(peerId) }
     }
 
     override fun notifyConnected(peerId: PeerId, peerAddress: Multiaddr) {
-        listeners.forEach { it.notifyConnected(peerId, peerAddress) }
+        forEachListener { it.notifyConnected(peerId, peerAddress) }
     }
 
     override fun notifyUnseenMessage(peerId: PeerId, msg: PubsubMessage) {
-        listeners.forEach { it.notifyUnseenMessage(peerId, msg) }
+        forEachListener { it.notifyUnseenMessage(peerId, msg) }
     }
 
     override fun notifySeenMessage(
@@ -91,7 +120,7 @@ class GossipRouterEventBroadcaster : GossipRouterEventListener {
         msg: PubsubMessage,
         validationResult: Optional<ValidationResult>
     ) {
-        listeners.forEach { it.notifySeenMessage(peerId, msg, validationResult) }
+        forEachListener { it.notifySeenMessage(peerId, msg, validationResult) }
     }
 
     override fun notifyUnseenInvalidMessage(
@@ -99,54 +128,54 @@ class GossipRouterEventBroadcaster : GossipRouterEventListener {
         msg: PubsubMessage,
         reason: MessageRejectReason
     ) {
-        listeners.forEach { it.notifyUnseenInvalidMessage(peerId, msg, reason) }
+        forEachListener { it.notifyUnseenInvalidMessage(peerId, msg, reason) }
     }
 
     override fun notifyUnseenValidMessage(peerId: PeerId, msg: PubsubMessage) {
-        listeners.forEach { it.notifyUnseenValidMessage(peerId, msg) }
+        forEachListener { it.notifyUnseenValidMessage(peerId, msg) }
     }
 
     override fun notifyMeshed(peerId: PeerId, topic: Topic) {
-        listeners.forEach { it.notifyMeshed(peerId, topic) }
+        forEachListener { it.notifyMeshed(peerId, topic) }
     }
 
     override fun notifyPruned(peerId: PeerId, topic: Topic) {
-        listeners.forEach { it.notifyPruned(peerId, topic) }
+        forEachListener { it.notifyPruned(peerId, topic) }
     }
 
     override fun notifyRouterMisbehavior(peerId: PeerId, count: Int) {
-        listeners.forEach { it.notifyRouterMisbehavior(peerId, count) }
+        forEachListener { it.notifyRouterMisbehavior(peerId, count) }
     }
 
     override fun notifySlowPeer(peerId: PeerId) {
-        listeners.forEach { it.notifySlowPeer(peerId) }
+        forEachListener { it.notifySlowPeer(peerId) }
     }
 
     override fun notifyRpcReceived(peerId: PeerId, rpc: Rpc.RPC) {
-        listeners.forEach { it.notifyRpcReceived(peerId, rpc) }
+        forEachListener { it.notifyRpcReceived(peerId, rpc) }
     }
 
     override fun notifyRpcSent(peerId: PeerId, rpc: Rpc.RPC) {
-        listeners.forEach { it.notifyRpcSent(peerId, rpc) }
+        forEachListener { it.notifyRpcSent(peerId, rpc) }
     }
 
     override fun notifyRpcDropped(peerId: PeerId, rpc: Rpc.RPC) {
-        listeners.forEach { it.notifyRpcDropped(peerId, rpc) }
+        forEachListener { it.notifyRpcDropped(peerId, rpc) }
     }
 
     override fun notifyUnseenIgnoredMessage(peerId: PeerId, msg: PubsubMessage) {
-        listeners.forEach { it.notifyUnseenIgnoredMessage(peerId, msg) }
+        forEachListener { it.notifyUnseenIgnoredMessage(peerId, msg) }
     }
 
     override fun notifyNonSubscribedMessage(peerId: PeerId, msg: Rpc.Message) {
-        listeners.forEach { it.notifyNonSubscribedMessage(peerId, msg) }
+        forEachListener { it.notifyNonSubscribedMessage(peerId, msg) }
     }
 
     override fun notifySubscribed(topic: Topic) {
-        listeners.forEach { it.notifySubscribed(topic) }
+        forEachListener { it.notifySubscribed(topic) }
     }
 
     override fun notifyUnsubscribed(topic: Topic) {
-        listeners.forEach { it.notifyUnsubscribed(topic) }
+        forEachListener { it.notifyUnsubscribed(topic) }
     }
 }
