@@ -5,6 +5,7 @@ import io.libp2p.core.PeerId
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.etc.types.seconds
+import io.libp2p.etc.util.P2PService.PeerHandler
 import io.libp2p.pubsub.DefaultPubsubMessage
 import io.libp2p.pubsub.DeterministicFuzz
 import io.libp2p.pubsub.DeterministicFuzz.Companion.createGossipFuzzRouterFactory
@@ -117,15 +118,49 @@ class GossipRouterNotificationHooksTest : GossipTestsBase() {
         override fun notifySlowPeer(peerId: PeerId) {}
     }
 
+    /** Builds a router subclass written against the API before the reject reason was added. */
+    private class LegacyRouterBuilder : GossipRouterBuilder(protocol = PubsubProtocol.Gossip_V_1_2) {
+        val invalidMessages = mutableListOf<PubsubMessage>()
+
+        override fun createGossipRouter(): GossipRouter {
+            val gossipScore = scoreFactory(scoreParams, scheduledAsyncExecutor, currentTimeSupplier) {
+                gossipRouterEventListeners += it
+            }
+            val router = object : GossipRouter(
+                params = params,
+                scoreParams = scoreParams,
+                currentTimeSupplier = currentTimeSupplier,
+                random = random,
+                name = name,
+                mCache = mCache,
+                score = gossipScore,
+                subscriptionTopicSubscriptionFilter = subscriptionTopicSubscriptionFilter,
+                protocol = protocol,
+                executor = scheduledAsyncExecutor,
+                messageFactory = messageFactory,
+                seenMessages = seenCache,
+                messageValidator = messageValidator
+            ) {
+                @Deprecated("Override the overload that also receives the MessageRejectReason")
+                override fun notifyUnseenInvalidMessage(peer: PeerHandler, msg: PubsubMessage) {
+                    invalidMessages += msg
+                }
+            }
+            router.eventBroadcaster.listeners += gossipRouterEventListeners
+            return router
+        }
+    }
+
     private class Harness(
         messageValidator: PubsubRouterMessageValidator,
         scoreParams: GossipScoreParams = GossipScoreParams(),
-        listenersBefore: List<GossipRouterEventListener> = emptyList()
+        listenersBefore: List<GossipRouterEventListener> = emptyList(),
+        routerBuilder: GossipRouterBuilder = GossipRouterBuilder(protocol = PubsubProtocol.Gossip_V_1_2, scoreParams = scoreParams)
     ) {
         val listener = RecordingListener()
         val fuzz = DeterministicFuzz()
         private val builderFactory = {
-            GossipRouterBuilder(protocol = PubsubProtocol.Gossip_V_1_2, scoreParams = scoreParams).also {
+            routerBuilder.also {
                 it.messageValidator = messageValidator
                 it.gossipRouterEventListeners += listenersBefore
                 it.gossipRouterEventListeners += listener
@@ -185,6 +220,20 @@ class GossipRouterNotificationHooksTest : GossipTestsBase() {
         test.fuzz.timeController.addTime(1.seconds)
 
         assertThat(legacy.invalidMessages).hasSize(1)
+    }
+
+    @Test
+    fun `a router subclass overriding only the legacy rejection callback still receives rejections`() {
+        val builder = LegacyRouterBuilder()
+        val test = Harness(rejectEverything, routerBuilder = builder)
+        test.gossipRouter.initHandler { CompletableFuture.completedFuture(ValidationResult.Valid) }
+        test.subscribeBoth("topic1")
+
+        test.mockRouter.sendToSingle(publishRpc("topic1", 0L))
+        test.fuzz.timeController.addTime(1.seconds)
+
+        assertThat(builder.invalidMessages).hasSize(1)
+        assertThat(test.listener.rejectReasons).containsExactly(MessageRejectReason.ValidationFailed)
     }
 
     @Test

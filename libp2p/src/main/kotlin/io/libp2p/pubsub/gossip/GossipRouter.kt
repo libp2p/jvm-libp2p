@@ -198,6 +198,7 @@ open class GossipRouter(
         reason: MessageRejectReason
     ) {
         eventBroadcaster.notifyUnseenInvalidMessage(peer.peerId, msg, reason)
+        super.notifyUnseenInvalidMessage(peer, msg, reason)
     }
 
     override fun notifyUnseenIgnoredMessage(peer: PeerHandler, msg: PubsubMessage) {

@@ -169,11 +169,19 @@ abstract class AbstractRouter(
     protected open fun notifyUnseenMessage(peer: PeerHandler, msg: PubsubMessage) {}
     protected open fun notifyNonSubscribedMessage(peer: PeerHandler, msg: Rpc.Message) {}
     protected open fun notifySeenMessage(peer: PeerHandler, msg: PubsubMessage, validationResult: Optional<ValidationResult>) {}
+
+    @Deprecated("Override the overload that also receives the MessageRejectReason")
+    protected open fun notifyUnseenInvalidMessage(peer: PeerHandler, msg: PubsubMessage) {}
+
+    /** Defaulted to the deprecated two-argument overload so that existing subclasses keep working. */
     protected open fun notifyUnseenInvalidMessage(
         peer: PeerHandler,
         msg: PubsubMessage,
         reason: MessageRejectReason
-    ) {}
+    ) {
+        @Suppress("DEPRECATION")
+        notifyUnseenInvalidMessage(peer, msg)
+    }
     protected open fun notifyUnseenValidMessage(peer: PeerHandler, msg: PubsubMessage) {}
 
     /** Called when the application handler returned [ValidationResult.Ignore] for a first-seen message. */
