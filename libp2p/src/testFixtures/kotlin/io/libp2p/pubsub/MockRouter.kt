@@ -58,11 +58,14 @@ open class MockRouter(executor: ScheduledExecutorService) : AbstractRouter(
         return super.pollOutboundMessage(peer)
     }
 
-    fun pendingPeerCountForTest(): Int = pendingRpcParts.getPeersWithPendingOutboundData().size
-    fun getRpcQueueIfExist(peer: PeerHandler) = pendingRpcParts.getExistingQueue(peer)
+    fun pendingPeerCountForTest(): Int =
+        peerStates.getAllStates().count { !it.rpcPartsQueue.isEmpty() }
+
+    fun getRpcQueueIfExist(peer: PeerHandler) = peerStates.get(peer)?.rpcPartsQueue
 
     fun enqueuePublishForTest(peer: PeerHandler, msg: Rpc.Message) {
-        pendingRpcParts.getOrCreateQueue(peer).addPublish(msg)
+        val peerQueue = peerStates.get(peer)?.rpcPartsQueue ?: return
+        peerQueue.addPublish(msg)
         notifyOutboundDataAvailable(peer)
     }
 
