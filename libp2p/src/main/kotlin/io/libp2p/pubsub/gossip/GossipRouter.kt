@@ -192,8 +192,41 @@ open class GossipRouter(
         }
     }
 
-    override fun notifyUnseenInvalidMessage(peer: PeerHandler, msg: PubsubMessage) {
-        eventBroadcaster.notifyUnseenInvalidMessage(peer.peerId, msg)
+    override fun notifyUnseenInvalidMessage(
+        peer: PeerHandler,
+        msg: PubsubMessage,
+        reason: MessageRejectReason
+    ) {
+        eventBroadcaster.notifyUnseenInvalidMessage(peer.peerId, msg, reason)
+        super.notifyUnseenInvalidMessage(peer, msg, reason)
+    }
+
+    override fun notifyUnseenIgnoredMessage(peer: PeerHandler, msg: PubsubMessage) {
+        eventBroadcaster.notifyUnseenIgnoredMessage(peer.peerId, msg)
+    }
+
+    override fun notifyNonSubscribedMessage(peer: PeerHandler, msg: Rpc.Message) {
+        eventBroadcaster.notifyNonSubscribedMessage(peer.peerId, msg)
+    }
+
+    override fun notifySubscribed(topic: Topic) {
+        eventBroadcaster.notifySubscribed(topic)
+    }
+
+    override fun notifyUnsubscribed(topic: Topic) {
+        eventBroadcaster.notifyUnsubscribed(topic)
+    }
+
+    override fun notifyRpcReceived(peer: PeerHandler, rpc: Rpc.RPC) {
+        eventBroadcaster.notifyRpcReceived(peer.peerId, rpc)
+    }
+
+    override fun notifyRpcSent(peer: PeerHandler, rpc: Rpc.RPC) {
+        eventBroadcaster.notifyRpcSent(peer.peerId, rpc)
+    }
+
+    override fun notifyRpcDropped(peer: PeerHandler, rpc: Rpc.RPC) {
+        eventBroadcaster.notifyRpcDropped(peer.peerId, rpc)
     }
 
     override fun notifyUnseenValidMessage(peer: PeerHandler, msg: PubsubMessage) {

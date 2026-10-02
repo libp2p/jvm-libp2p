@@ -11,6 +11,7 @@ import io.libp2p.etc.types.toBytesBigEndian
 import io.libp2p.etc.types.toProtobuf
 import io.libp2p.etc.util.P2PService
 import io.libp2p.pubsub.DefaultPubsubMessage
+import io.libp2p.pubsub.MessageRejectReason
 import io.libp2p.pubsub.Topic
 import io.libp2p.tools.schedulers.ControlledExecutorServiceImpl
 import io.libp2p.tools.schedulers.TimeControllerImpl
@@ -127,12 +128,12 @@ class DefaultGossipScoreTest {
 
         // Invalid msg should decrement score
         val invalidMsg = DefaultPubsubMessage(createRpcMessage(topic, 2))
-        score.notifyUnseenInvalidMessage(peer.peerId, invalidMsg)
+        score.notifyUnseenInvalidMessage(peer.peerId, invalidMsg, MessageRejectReason.ValidationFailed)
         assertThat(score.score(peer.peerId)).isEqualTo(2.5)
 
         // Invalid msg for unknown topic should not decrement score
         val unknownInvalidMsg = DefaultPubsubMessage(createRpcMessage(otherTopic, 2))
-        score.notifyUnseenInvalidMessage(peer.peerId, unknownInvalidMsg)
+        score.notifyUnseenInvalidMessage(peer.peerId, unknownInvalidMsg, MessageRejectReason.ValidationFailed)
         assertThat(score.score(peer.peerId)).isEqualTo(2.5)
 
         // Advance time to activate low delivery penalty
@@ -339,13 +340,38 @@ class DefaultGossipScoreTest {
 
         // After delivering an invalid message, we should get a penalty
         val msg = DefaultPubsubMessage(createRpcMessage(topic))
-        score.notifyUnseenInvalidMessage(peer.peerId, msg)
+        score.notifyUnseenInvalidMessage(peer.peerId, msg, MessageRejectReason.ValidationFailed)
         assertThat(score.score(peer.peerId)).isEqualTo(-2.0)
 
         // Refresh to decay score
         // counter 1 decays to 0.5, score = weight * counter^2 = -0.5
         score.refreshScores()
         assertThat(score.score(peer.peerId)).isEqualTo(-0.5)
+    }
+
+    @Test
+    fun `legacy rejection callback still penalises the sender`() {
+        val peer = mockPeer()
+        val topic: Topic = "testTopic"
+        val topicScoreParams = GossipTopicScoreParams.builder()
+            .topicWeight(1.0)
+            .invalidMessageDeliveriesWeight(-2.0)
+            .build()
+        val scoreParams = GossipScoreParams(
+            topicsScoreParams = GossipTopicsScoreParams(
+                GossipTopicScoreParams.builder().build(),
+                mutableMapOf(Pair(topic, topicScoreParams))
+            )
+        )
+        val timeController = TimeControllerImpl()
+        timeController.addTime(1.hours)
+        val score = DefaultGossipScore(scoreParams, ControlledExecutorServiceImpl(timeController), { timeController.time })
+        score.notifyMeshed(peer.peerId, topic)
+
+        @Suppress("DEPRECATION")
+        score.notifyUnseenInvalidMessage(peer.peerId, DefaultPubsubMessage(createRpcMessage(topic)))
+
+        assertThat(score.score(peer.peerId)).isEqualTo(-2.0)
     }
 
     @Test
@@ -634,7 +660,7 @@ class DefaultGossipScoreTest {
 
         // After delivering an invalid message, we should get a penalty
         val msg = DefaultPubsubMessage(createRpcMessage(topic))
-        score.notifyUnseenInvalidMessage(peer.peerId, msg)
+        score.notifyUnseenInvalidMessage(peer.peerId, msg, MessageRejectReason.ValidationFailed)
         assertThat(score.score(peer.peerId)).isEqualTo(-2.0)
 
         // Update params and check score is updated
@@ -716,7 +742,7 @@ class DefaultGossipScoreTest {
 
             // Deliver an invalid message
             val invalidMsg = DefaultPubsubMessage(createRpcMessage(curTopic, 2))
-            score.notifyUnseenInvalidMessage(peer.peerId, invalidMsg)
+            score.notifyUnseenInvalidMessage(peer.peerId, invalidMsg, MessageRejectReason.ValidationFailed)
         }
 
         // Increase time in mesh past activation period
