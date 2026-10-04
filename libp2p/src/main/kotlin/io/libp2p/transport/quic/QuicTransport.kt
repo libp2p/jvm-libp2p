@@ -480,6 +480,10 @@ class QuicTransport(
             )
             .trustManager(trustManager)
             .applicationProtocols("libp2p")
+            // Netty (4.2.18+) verifies the peer hostname ("HTTPS") by default. libp2p certificates
+            // carry no hostname: the peer is authenticated by the libp2p extension in
+            // Libp2pTrustManager, so hostname verification must stay off.
+            .endpointIdentificationAlgorithm(null)
             .build()
     }
 
