@@ -40,6 +40,8 @@ class GossipParamsBuilder {
 
     private var pruneBackoff: Duration? = null
 
+    private var backoffSlack: Duration? = null
+
     private var gossipFactor: Double? = null
 
     private var opportunisticGraftPeers: Int? = null
@@ -147,6 +149,8 @@ class GossipParamsBuilder {
 
     fun pruneBackoff(value: Duration): GossipParamsBuilder = apply { pruneBackoff = value }
 
+    fun backoffSlack(value: Duration): GossipParamsBuilder = apply { backoffSlack = value }
+
     fun gossipFactor(value: Double): GossipParamsBuilder = apply { gossipFactor = value }
 
     fun opportunisticGraftPeers(value: Int): GossipParamsBuilder = apply {
@@ -236,7 +240,9 @@ class GossipParamsBuilder {
             maxControlMessageSize = maxControlMessageSize!!,
             maxIDontWantMessageIdsPerRpc = maxIDontWantMessageIdsPerRpc!!,
             maxSubscriptionsPerRpc = maxSubscriptionsPerRpc!!,
-            maxTotalFields = maxTotalFields
+            maxTotalFields = maxTotalFields,
+            // defaults to one heartbeat, resolved here so a custom heartbeatInterval is honoured
+            backoffSlack = backoffSlack ?: heartbeatInterval!!
         )
     }
 

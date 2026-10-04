@@ -344,10 +344,21 @@ data class GossipParams(
      * first, so the field limit mainly catches empty-envelope attacks. A consumer such as Teku may
      * set a lower value to tighten that catch. Null disables the check.
      */
-    val maxTotalFields: Int? = 65536
+    val maxTotalFields: Int? = 65536,
+
+    /**
+     * [backoffSlack] is the extra time we wait after a PRUNE backoff expires before we
+     * re-GRAFT the peer. The two sides start their backoff clocks at slightly different moments,
+     * so a GRAFT sent right at expiry can still land inside the remote window and be answered with
+     * a PRUNE plus a behaviour penalty. rust-libp2p waits one heartbeat by default and
+     * go-libp2p-pubsub waits two. It only applies to GRAFTs we send; GRAFTs we receive are
+     * checked against the exact backoff. Zero disables the slack. Defaults to one [heartbeatInterval].
+     */
+    val backoffSlack: Duration = heartbeatInterval
 
 ) {
     init {
+        check(!backoffSlack.isNegative, "backoffSlack should be >= 0")
         check(D >= 0, "D should be >= 0")
         check(DOut >= 0, "DOut should be >= 0")
         check(DLow >= 0, "DLow should be >= 0")
