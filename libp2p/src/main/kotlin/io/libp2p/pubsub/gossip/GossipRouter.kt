@@ -143,8 +143,16 @@ open class GossipRouter(
         backoffExpireTimes[peer.peerId to topic] = currentTimeSupplier() + delay
     }
 
+    // Strict check, used for GRAFTs we receive.
     private fun isBackOff(peer: PeerHandler, topic: Topic) =
         currentTimeSupplier() < (backoffExpireTimes[peer.peerId to topic] ?: 0)
+
+    // Check with slack, used before we GRAFT a peer ourselves. The remote clock started its
+    // backoff slightly later than ours, so re-GRAFTing exactly at expiry risks a PRUNE + P7 penalty.
+    private fun isBackOffWithSlack(peer: PeerHandler, topic: Topic): Boolean {
+        val expire = backoffExpireTimes[peer.peerId to topic] ?: return false
+        return currentTimeSupplier() < expire + params.backoffSlack.toMillis()
+    }
 
     private fun isBackOffFlood(peer: PeerHandler, topic: Topic): Boolean {
         val expire = backoffExpireTimes[peer.peerId to topic] ?: return false
@@ -192,8 +200,41 @@ open class GossipRouter(
         }
     }
 
-    override fun notifyUnseenInvalidMessage(peer: PeerHandler, msg: PubsubMessage) {
-        eventBroadcaster.notifyUnseenInvalidMessage(peer.peerId, msg)
+    override fun notifyUnseenInvalidMessage(
+        peer: PeerHandler,
+        msg: PubsubMessage,
+        reason: MessageRejectReason
+    ) {
+        eventBroadcaster.notifyUnseenInvalidMessage(peer.peerId, msg, reason)
+        super.notifyUnseenInvalidMessage(peer, msg, reason)
+    }
+
+    override fun notifyUnseenIgnoredMessage(peer: PeerHandler, msg: PubsubMessage) {
+        eventBroadcaster.notifyUnseenIgnoredMessage(peer.peerId, msg)
+    }
+
+    override fun notifyNonSubscribedMessage(peer: PeerHandler, msg: Rpc.Message) {
+        eventBroadcaster.notifyNonSubscribedMessage(peer.peerId, msg)
+    }
+
+    override fun notifySubscribed(topic: Topic) {
+        eventBroadcaster.notifySubscribed(topic)
+    }
+
+    override fun notifyUnsubscribed(topic: Topic) {
+        eventBroadcaster.notifyUnsubscribed(topic)
+    }
+
+    override fun notifyRpcReceived(peer: PeerHandler, rpc: Rpc.RPC) {
+        eventBroadcaster.notifyRpcReceived(peer.peerId, rpc)
+    }
+
+    override fun notifyRpcSent(peer: PeerHandler, rpc: Rpc.RPC) {
+        eventBroadcaster.notifyRpcSent(peer.peerId, rpc)
+    }
+
+    override fun notifyRpcDropped(peer: PeerHandler, rpc: Rpc.RPC) {
+        eventBroadcaster.notifyRpcDropped(peer.peerId, rpc)
     }
 
     override fun notifyUnseenValidMessage(peer: PeerHandler, msg: PubsubMessage) {
@@ -285,6 +326,7 @@ open class GossipRouter(
             maxTopicsPerPublishedMessage = params.maxTopicsPerPublishedMessage,
             rejectEmptyPublishEntries = true,
             maxControlMessageSize = params.maxControlMessageSize,
+            maxTotalFields = params.maxTotalFields,
         )
     }
 
@@ -618,10 +660,10 @@ open class GossipRouter(
         // path of the reference implementation. Heartbeat-driven mesh maintenance has
         // always filtered by isBackOff; this path historically did not.
         val fanoutPeers = (fanout[topic] ?: mutableSetOf())
-            .filter { score.score(it.peerId) >= 0 && !isDirect(it) && !isBackOff(it, topic) }
+            .filter { score.score(it.peerId) >= 0 && !isDirect(it) && !isBackOffWithSlack(it, topic) }
         val meshPeers = mesh.getOrPut(topic) { mutableSetOf() }
         val otherPeers = (getTopicPeers(topic) - meshPeers - fanoutPeers)
-            .filter { score.score(it.peerId) >= 0 && !isDirect(it) && !isBackOff(it, topic) }
+            .filter { score.score(it.peerId) >= 0 && !isDirect(it) && !isBackOffWithSlack(it, topic) }
 
         if (meshPeers.size < params.D) {
             val addFromFanout = fanoutPeers.shuffled(random)
@@ -688,7 +730,7 @@ open class GossipRouter(
                 if (peers.size < params.DLow) {
                     // need more mesh peers
                     (getTopicPeers(topic) - peers)
-                        .filter { score.score(it.peerId) >= 0 && !isDirect(it) && !isBackOff(it, topic) }
+                        .filter { score.score(it.peerId) >= 0 && !isDirect(it) && !isBackOffWithSlack(it, topic) }
                         .shuffled(random)
                         .take(params.D - peers.size)
                         .forEach { graft(it, topic) }
@@ -713,7 +755,7 @@ open class GossipRouter(
                 // keep outbound peers > DOut
                 val outboundCount = peers.count { it.isOutbound() }
                 (getTopicPeers(topic) - peers)
-                    .filter { it.isOutbound() && score.score(it.peerId) >= 0 && !isDirect(it) && !isBackOff(it, topic) }
+                    .filter { it.isOutbound() && score.score(it.peerId) >= 0 && !isDirect(it) && !isBackOffWithSlack(it, topic) }
                     .shuffled(random)
                     .take(max(0, params.DOut - outboundCount))
                     .forEach { graft(it, topic) }
@@ -723,7 +765,7 @@ open class GossipRouter(
                     val scoreMedian = peers.map { score.score(it.peerId) }.median()
                     if (scoreMedian < scoreParams.opportunisticGraftThreshold) {
                         (getTopicPeers(topic) - peers)
-                            .filter { score.score(it.peerId) > scoreMedian && !isDirect(it) && !isBackOff(it, topic) }
+                            .filter { score.score(it.peerId) > scoreMedian && !isDirect(it) && !isBackOffWithSlack(it, topic) }
                             .take(params.opportunisticGraftPeers)
                             .forEach { graft(it, topic) }
                     }

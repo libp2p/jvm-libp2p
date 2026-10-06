@@ -312,10 +312,53 @@ data class GossipParams(
      *
      * Defaults to go-libp2p's limit. Lower it to match the strictest peer you expect to talk to.
      */
-    val maxSubscriptionsPerRpc: Int = 500
+    val maxSubscriptionsPerRpc: Int = 500,
+
+    /**
+     * [maxTotalFields] bounds how many protobuf fields a single inbound RPC may contain, summed
+     * across every nesting level. It backstops [maxControlMessageSize], which bounds allocation
+     * only indirectly: the cheapest object protobuf-java will materialise - an empty repeated
+     * sub-message such as `subscriptions` or `control.ihave`, or a retained unknown field - costs
+     * two wire bytes, so a 256 KiB byte budget alone still admits ~131k allocations from one frame.
+     *
+     * Read it against [maxControlMessageSize] rather than on its own: the ratio of the two is a
+     * minimum average wire size per field, and the limit can only fire below that. At the defaults
+     * that is 256 KiB / 65536 = 4 bytes per field, against a floor of 2 for an empty envelope. An
+     * RPC whose fields each carry a message id or a topic name is nowhere near it; only one padded
+     * with empty or near-empty envelopes is.
+     *
+     * The 4-byte ratio is chosen to stay clear of shapes a conformant peer can produce. Neither
+     * go-libp2p nor rust-libp2p bounds field count - go bounds control bytes only, with a
+     * computation equivalent to [maxControlMessageSize] - so the whole burden of not rejecting
+     * honest traffic sits here. Short topic names are the tight case: an app using topics of
+     * ~16 characters, batching subscriptions or small unsigned publishes, lands near 8 bytes per
+     * field and would trip a tighter setting.
+     *
+     * Enforced on both sides: [io.libp2p.pubsub.RpcMessageCountValidator] rejects an inbound RPC over
+     * the limit, and the outbound batcher [io.libp2p.pubsub.gossip.DefaultGossipRpcPartsQueue] splits
+     * batches on the same budget (and refuses a single part that exceeds it), so this library never
+     * emits a frame its own guard would reject.
+     *
+     * The default is a loose backstop rather than a tight cap: for real Ethereum shapes, where each
+     * field carries a ~22-byte message id or a topic, the [maxControlMessageSize] byte budget binds
+     * first, so the field limit mainly catches empty-envelope attacks. A consumer such as Teku may
+     * set a lower value to tighten that catch. Null disables the check.
+     */
+    val maxTotalFields: Int? = 65536,
+
+    /**
+     * [backoffSlack] is the extra time we wait after a PRUNE backoff expires before we
+     * re-GRAFT the peer. The two sides start their backoff clocks at slightly different moments,
+     * so a GRAFT sent right at expiry can still land inside the remote window and be answered with
+     * a PRUNE plus a behaviour penalty. rust-libp2p waits one heartbeat by default and
+     * go-libp2p-pubsub waits two. It only applies to GRAFTs we send; GRAFTs we receive are
+     * checked against the exact backoff. Zero disables the slack. Defaults to one [heartbeatInterval].
+     */
+    val backoffSlack: Duration = heartbeatInterval
 
 ) {
     init {
+        check(!backoffSlack.isNegative, "backoffSlack should be >= 0")
         check(D >= 0, "D should be >= 0")
         check(DOut >= 0, "DOut should be >= 0")
         check(DLow >= 0, "DLow should be >= 0")
@@ -333,6 +376,7 @@ data class GossipParams(
         check(maxControlMessageSize > 0, "maxControlMessageSize should be > 0")
         check(maxIDontWantMessageIdsPerRpc > 0, "maxIDontWantMessageIdsPerRpc should be > 0")
         check(maxSubscriptionsPerRpc > 0, "maxSubscriptionsPerRpc should be > 0")
+        check(maxTotalFields == null || maxTotalFields > 0, "maxTotalFields should be > 0 or null")
     }
 
     companion object {

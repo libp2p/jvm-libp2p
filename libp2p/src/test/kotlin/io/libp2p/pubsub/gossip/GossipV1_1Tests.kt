@@ -329,6 +329,123 @@ class GossipV1_1Tests : GossipTestsBase() {
     }
 
     @Test
+    fun testRegraftWaitsForBackoffSlack() {
+        // Regression test for https://github.com/libp2p/jvm-libp2p/issues/536
+        //
+        // The two sides of a PRUNE start their backoff clocks at slightly different moments, so a
+        // GRAFT sent exactly at expiry can still land inside the remote peer's window, earning a
+        // P7 penalty and another full backoff. go-libp2p-pubsub and rust-libp2p both wait an extra
+        // slack period before re-GRAFTing; receiving a GRAFT keeps the strict check.
+        val test = TwoRoutersTest()
+
+        test.mockRouter.subscribe("topic1")
+        test.gossipRouter.subscribe("topic1")
+
+        test.fuzz.timeController.addTime(2.seconds)
+        test.mockRouter.waitForMessage { it.hasControl() && it.control.graftCount > 0 }
+        test.mockRouter.inboundMessages.clear()
+
+        val pruneMsg = Rpc.RPC.newBuilder().setControl(
+            Rpc.ControlMessage.newBuilder().addPrune(
+                Rpc.ControlPrune.newBuilder()
+                    .setTopicID("topic1")
+                    .setBackoff(30)
+            )
+        ).build()
+        test.mockRouter.sendToSingle(pruneMsg)
+
+        // Exactly at backoff expiry we are still inside the slack window: no GRAFT yet.
+        test.fuzz.timeController.addTime(30.seconds)
+        assertEquals(
+            0,
+            test.mockRouter.inboundMessages
+                .count { it.hasControl() && it.control.graftCount > 0 },
+            "must not re-GRAFT before backoff + slack has elapsed"
+        )
+
+        // One slack period (default: one heartbeat interval) later the GRAFT goes out.
+        test.fuzz.timeController.addTime(1.seconds)
+        test.mockRouter.waitForMessage {
+            it.hasControl() &&
+                it.control.graftCount > 0 && it.control.getGraft(0).topicID == "topic1"
+        }
+    }
+
+    @Test
+    fun testInboundGraftAcceptedDuringSlack() {
+        // Slack only delays GRAFTs we send. A GRAFT received exactly at backoff expiry is valid
+        // per spec and must be accepted without a PRUNE or a behaviour penalty.
+        val test = TwoRoutersTest()
+
+        test.mockRouter.subscribe("topic1")
+        test.gossipRouter.subscribe("topic1")
+
+        test.fuzz.timeController.addTime(2.seconds)
+        test.mockRouter.waitForMessage { it.hasControl() && it.control.graftCount > 0 }
+
+        val pruneMsg = Rpc.RPC.newBuilder().setControl(
+            Rpc.ControlMessage.newBuilder().addPrune(
+                Rpc.ControlPrune.newBuilder()
+                    .setTopicID("topic1")
+                    .setBackoff(30)
+            )
+        ).build()
+        test.mockRouter.sendToSingle(pruneMsg)
+        test.fuzz.timeController.addTime(30.seconds)
+        test.mockRouter.inboundMessages.clear()
+
+        val graftMsg = Rpc.RPC.newBuilder().setControl(
+            Rpc.ControlMessage.newBuilder().addGraft(
+                Rpc.ControlGraft.newBuilder().setTopicID("topic1")
+            )
+        ).build()
+        test.mockRouter.sendToSingle(graftMsg)
+
+        val peerHandler = test.gossipRouter.peers.first()
+        assertTrue(test.gossipRouter.mesh["topic1"]!!.contains(peerHandler), "inbound GRAFT at expiry must be accepted")
+        assertEquals(0, test.mockRouter.inboundMessages.count { it.hasControl() && it.control.pruneCount > 0 })
+        assertEquals(0.0, test.gossipRouter.score.testPeerScores.values.first().behaviorPenalty)
+    }
+
+    @Test
+    fun testSubscribeRespectsBackoffSlack() {
+        // subscribe() seeds the mesh directly; it must honour the slack window as well.
+        val test = TwoRoutersTest()
+
+        test.mockRouter.subscribe("topic1")
+        test.fuzz.timeController.addTime(1.seconds)
+
+        val pruneMsg = Rpc.RPC.newBuilder().setControl(
+            Rpc.ControlMessage.newBuilder().addPrune(
+                Rpc.ControlPrune.newBuilder()
+                    .setTopicID("topic1")
+                    .setBackoff(30)
+            )
+        ).build()
+        test.mockRouter.sendToSingle(pruneMsg)
+        test.fuzz.timeController.addTime(100.millis)
+
+        // Land exactly on backoff expiry, then subscribe.
+        test.fuzz.timeController.addTime(30.seconds)
+        test.mockRouter.inboundMessages.clear()
+        test.gossipRouter.subscribe("topic1")
+        test.fuzz.timeController.addTime(500.millis)
+
+        assertEquals(
+            0,
+            test.mockRouter.inboundMessages
+                .count { it.hasControl() && it.control.graftCount > 0 },
+            "subscribe() must not GRAFT a peer inside the backoff slack window"
+        )
+
+        test.fuzz.timeController.addTime(2.seconds)
+        test.mockRouter.waitForMessage {
+            it.hasControl() &&
+                it.control.graftCount > 0 && it.control.getGraft(0).topicID == "topic1"
+        }
+    }
+
+    @Test
     fun testGraftFloodPenalty() {
         val test = TwoRoutersTest()
 

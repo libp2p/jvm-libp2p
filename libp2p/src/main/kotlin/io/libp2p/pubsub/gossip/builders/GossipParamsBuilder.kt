@@ -40,6 +40,8 @@ class GossipParamsBuilder {
 
     private var pruneBackoff: Duration? = null
 
+    private var backoffSlack: Duration? = null
+
     private var gossipFactor: Double? = null
 
     private var opportunisticGraftPeers: Int? = null
@@ -80,6 +82,8 @@ class GossipParamsBuilder {
 
     private var maxSubscriptionsPerRpc: Int? = null
 
+    private var maxTotalFields: Int? = null
+
     init {
         val source = GossipParams()
         this.D = source.D
@@ -112,6 +116,7 @@ class GossipParamsBuilder {
         this.maxControlMessageSize = source.maxControlMessageSize
         this.maxIDontWantMessageIdsPerRpc = source.maxIDontWantMessageIdsPerRpc
         this.maxSubscriptionsPerRpc = source.maxSubscriptionsPerRpc
+        this.maxTotalFields = source.maxTotalFields
     }
 
     fun D(value: Int): GossipParamsBuilder = apply { D = value }
@@ -143,6 +148,8 @@ class GossipParamsBuilder {
     fun maxPeersAcceptedInPruneMsg(value: Int): GossipParamsBuilder = apply { maxPeersAcceptedInPruneMsg = value }
 
     fun pruneBackoff(value: Duration): GossipParamsBuilder = apply { pruneBackoff = value }
+
+    fun backoffSlack(value: Duration): GossipParamsBuilder = apply { backoffSlack = value }
 
     fun gossipFactor(value: Double): GossipParamsBuilder = apply { gossipFactor = value }
 
@@ -188,6 +195,8 @@ class GossipParamsBuilder {
 
     fun maxControlMessageSize(value: Int): GossipParamsBuilder = apply { maxControlMessageSize = value }
 
+    fun maxTotalFields(value: Int): GossipParamsBuilder = apply { maxTotalFields = value }
+
     fun maxIDontWantMessageIdsPerRpc(value: Int): GossipParamsBuilder = apply { maxIDontWantMessageIdsPerRpc = value }
 
     fun maxSubscriptionsPerRpc(value: Int): GossipParamsBuilder = apply { maxSubscriptionsPerRpc = value }
@@ -230,7 +239,10 @@ class GossipParamsBuilder {
             slowPeerHeartbeatThreshold = slowPeerHeartbeatThreshold!!,
             maxControlMessageSize = maxControlMessageSize!!,
             maxIDontWantMessageIdsPerRpc = maxIDontWantMessageIdsPerRpc!!,
-            maxSubscriptionsPerRpc = maxSubscriptionsPerRpc!!
+            maxSubscriptionsPerRpc = maxSubscriptionsPerRpc!!,
+            maxTotalFields = maxTotalFields,
+            // defaults to one heartbeat, resolved here so a custom heartbeatInterval is honoured
+            backoffSlack = backoffSlack ?: heartbeatInterval!!
         )
     }
 

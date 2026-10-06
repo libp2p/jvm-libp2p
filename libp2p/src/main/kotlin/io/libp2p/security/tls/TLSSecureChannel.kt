@@ -119,6 +119,10 @@ fun buildTlsHandler(
         .ciphers(listOf("TLS_AES_128_GCM_SHA256", "TLS_AES_256_GCM_SHA384", "TLS_CHACHA20_POLY1305_SHA256"))
         .clientAuth(ClientAuth.REQUIRE)
         .trustManager(Libp2pTrustManager(expectedRemotePeer))
+        // Netty (4.2.18+) verifies the peer hostname ("HTTPS") by default. libp2p certificates
+        // carry no hostname: the peer is authenticated by the libp2p extension in
+        // Libp2pTrustManager, so hostname verification must stay off.
+        .endpointIdentificationAlgorithm(null)
         .sslProvider(SslProvider.OPENSSL)
         .secureRandom(SecureRandom())
         .applicationProtocolConfig(

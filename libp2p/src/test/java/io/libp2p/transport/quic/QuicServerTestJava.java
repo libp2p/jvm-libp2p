@@ -30,6 +30,7 @@ import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.channel.ConnectTimeoutException;
 import io.netty.channel.socket.ChannelOutputShutdownException;
 import io.netty.handler.codec.quic.QuicChannel;
 import io.netty.handler.codec.quic.QuicException;
@@ -1247,6 +1248,106 @@ public class QuicServerTestJava {
       Assertions.assertTrue(
           releaseMillis < Duration.ofSeconds(5).toMillis(),
           "cancelled pending QUIC dial did not promptly release its UDP socket");
+    } finally {
+      clientTransport.close().get(5, TimeUnit.SECONDS);
+    }
+  }
+
+  /**
+   * {@code QuicConfig.connectTimeout} must reach the QUIC channel itself. Netty schedules the
+   * connect timeout from the QuicChannel's own config; setting the option only on the datagram
+   * bootstrap (which is just bound, never connected) leaves the QuicChannel on Netty's 30s default.
+   */
+  @Test
+  void dialAppliesConfiguredConnectTimeoutToQuicChannel() throws Exception {
+    String serverListenAddress = "/ip4/127.0.0.1/udp/" + getPort() + "/quic-v1";
+
+    Pair<PrivKey, PubKey> serverKeyPair = KeyKt.generateKeyPair(KeyType.ED25519);
+    Pair<PrivKey, PubKey> clientKeyPair = KeyKt.generateKeyPair(KeyType.ED25519);
+    List<io.libp2p.core.multistream.ProtocolBinding<?>> emptyProtocols = new ArrayList<>();
+
+    QuicTransport serverTransport = QuicTransport.ECDSA(serverKeyPair.component1(), emptyProtocols);
+    QuicTransport clientTransport = QuicTransport.ECDSA(clientKeyPair.component1(), emptyProtocols);
+    serverTransport.initialize();
+    clientTransport.initialize();
+
+    try {
+      serverTransport
+          .listen(new Multiaddr(serverListenAddress), conn -> {}, null)
+          .get(5, TimeUnit.SECONDS);
+
+      Connection connection =
+          clientTransport
+              .dial(new Multiaddr(serverListenAddress), conn -> {}, null)
+              .get(10, TimeUnit.SECONDS);
+
+      Channel quicChannel = ((ConnectionOverNetty) connection).getNettyChannel();
+      Assertions.assertEquals(
+          new QuicConfig().getConnectTimeout().toMillis(),
+          quicChannel.config().getConnectTimeoutMillis(),
+          "QUIC channel must use QuicConfig.connectTimeout, not Netty's default");
+    } finally {
+      clientTransport.close().get(5, TimeUnit.SECONDS);
+      serverTransport.close().get(5, TimeUnit.SECONDS);
+    }
+  }
+
+  /**
+   * A dial to a peer that never answers must fail with Netty's ConnectTimeoutException once {@code
+   * QuicConfig.connectTimeout} elapses, and the failed dial must release its ephemeral UDP socket
+   * and leave no tracked connection behind.
+   */
+  @Test
+  void dialTimeoutFailsAtConfiguredTimeoutAndReleasesUdpSocket() throws Exception {
+    Duration connectTimeout = Duration.ofSeconds(1);
+    QuicConfig defaults = new QuicConfig();
+    QuicConfig config =
+        new QuicConfig(
+            connectTimeout,
+            defaults.getIdleTimeout(),
+            defaults.getMaxConnectionData(),
+            defaults.getMaxStreamDataLocal(),
+            defaults.getMaxStreamDataRemote(),
+            defaults.getMaxStreamsBidirectional());
+
+    Pair<PrivKey, PubKey> clientKeyPair = KeyKt.generateKeyPair(KeyType.ED25519);
+    List<io.libp2p.core.multistream.ProtocolBinding<?>> emptyProtocols = new ArrayList<>();
+    QuicTransport clientTransport =
+        QuicTransport.ECDSA(clientKeyPair.component1(), emptyProtocols, config);
+    clientTransport.initialize();
+
+    try (DatagramSocket blackhole =
+        new DatagramSocket(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0))) {
+      blackhole.setSoTimeout(5_000);
+      String targetAddress = "/ip4/127.0.0.1/udp/" + blackhole.getLocalPort() + "/quic-v1";
+
+      long startedAt = System.nanoTime();
+      CompletableFuture<Connection> dial =
+          clientTransport.dial(new Multiaddr(targetAddress), conn -> {}, null);
+
+      DatagramPacket firstPacket = new DatagramPacket(new byte[2_048], 2_048);
+      blackhole.receive(firstPacket);
+      int clientPort = firstPacket.getPort();
+
+      // Well below both Netty's 30s default connect timeout and the 30s QUIC idle timeout.
+      ExecutionException failure =
+          Assertions.assertThrows(ExecutionException.class, () -> dial.get(10, TimeUnit.SECONDS));
+      long elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAt);
+      System.out.println("QUIC dial timed out after " + elapsedMillis + " ms");
+
+      Assertions.assertInstanceOf(ConnectTimeoutException.class, failure.getCause());
+      Assertions.assertTrue(
+          elapsedMillis >= connectTimeout.toMillis() - 100,
+          "dial failed after " + elapsedMillis + " ms, before the configured connect timeout");
+
+      long releaseMillis = awaitUdpPortReusable(clientPort, Duration.ofSeconds(6));
+      Assertions.assertTrue(
+          releaseMillis < Duration.ofSeconds(5).toMillis(),
+          "timed out QUIC dial did not promptly release its UDP socket");
+      Assertions.assertEquals(
+          0,
+          clientTransport.getActiveConnections(),
+          "a timed out dial must not leave a tracked QUIC connection");
     } finally {
       clientTransport.close().get(5, TimeUnit.SECONDS);
     }

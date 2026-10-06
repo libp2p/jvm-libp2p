@@ -186,7 +186,6 @@ class QuicTransport(
     private var client by lazyVar {
         Bootstrap().group(workerGroup)
             .channel(NioDatagramChannel::class.java)
-            .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, connectTimeout.toMillis().toInt())
     }
 
     private var server by lazyVar {
@@ -320,6 +319,10 @@ class QuicTransport(
                     .streamOption(ChannelOption.ALLOCATOR, allocator)
                     .option(ChannelOption.AUTO_READ, true)
                     .option(ChannelOption.ALLOCATOR, allocator)
+                    // The connect timeout is scheduled by the QuicChannel from its own config.
+                    // Setting it on the datagram bootstrap has no effect: that channel is only
+                    // bound, and the QuicChannel would stay on Netty's 30s default.
+                    .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, connectTimeout.toMillis().toInt())
                     .remoteAddress(targetAddr)
                     .handler(
                         nettyInitializer {
@@ -477,6 +480,10 @@ class QuicTransport(
             )
             .trustManager(trustManager)
             .applicationProtocols("libp2p")
+            // Netty (4.2.18+) verifies the peer hostname ("HTTPS") by default. libp2p certificates
+            // carry no hostname: the peer is authenticated by the libp2p extension in
+            // Libp2pTrustManager, so hostname verification must stay off.
+            .endpointIdentificationAlgorithm(null)
             .build()
     }
 
