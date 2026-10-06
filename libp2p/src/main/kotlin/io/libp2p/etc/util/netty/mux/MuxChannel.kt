@@ -2,9 +2,9 @@ package io.libp2p.etc.util.netty.mux
 
 import io.libp2p.core.ConnectionClosedException
 import io.libp2p.etc.util.netty.AbstractChildChannel
+import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelMetadata
 import io.netty.channel.ChannelOutboundBuffer
-import io.netty.util.ReferenceCountUtil
 import java.net.SocketAddress
 
 /**
@@ -19,6 +19,8 @@ class MuxChannel<TData>(
 
     var remoteDisconnected = false
     var localDisconnected = false
+    private var localDisconnectSent = false
+    private var pendingDisconnectWrites = 0
 
     override fun metadata(): ChannelMetadata = ChannelMetadata(true)
     override fun localAddress0() =
@@ -32,11 +34,23 @@ class MuxChannel<TData>(
         initializer(this)
     }
 
+    fun retryWrite() {
+        if (isActive) {
+            flush()
+        }
+    }
+
+    fun setMuxWritability(index: Int, writable: Boolean) {
+        unsafe().outboundBuffer()?.setUserDefinedWritability(index, writable)
+    }
+
+    fun pendingWriteBytes(): Long = unsafe().outboundBuffer()?.totalPendingWriteBytes() ?: 0L
+
     @Suppress("SwallowedException")
     override fun doWrite(buf: ChannelOutboundBuffer) {
         while (true) {
             val msg = buf.current() ?: break
-            if (localDisconnected) {
+            if (localDisconnected && pendingDisconnectWrites == 0) {
                 // Must not throw from doWrite — exceptions escape uncaught to the Netty event loop.
                 // Wrap buf.remove() defensively: in some Netty versions promise listeners triggered
                 // by buf.remove() can propagate back through it.
@@ -46,23 +60,52 @@ class MuxChannel<TData>(
                 continue
             }
             try {
-                // the msg is released by both onChildWrite and buf.remove() so we need to retain
-                // however it is still to be confirmed that no buf leaks happen here TODO
-                ReferenceCountUtil.retain(msg)
                 @Suppress("UNCHECKED_CAST")
-                parent.onChildWrite(this, msg as TData)
-                buf.remove()
+                msg as TData
+                val complete: Boolean
+                if (msg is ByteBuf && msg.isReadable) {
+                    val consumedBytes = parent.onChildWrite(this, msg)
+                    if (consumedBytes <= 0) {
+                        // the muxer can't write at the moment: the message stays buffered
+                        // (the outbound buffer owns it) until the parent retries this write
+                        break
+                    }
+                    complete = consumedBytes >= msg.readableBytes()
+                    buf.removeBytes(consumedBytes.toLong())
+                } else {
+                    parent.onChildWrite(this, msg)
+                    complete = true
+                    buf.remove()
+                }
+                parent.flushChildWrites()
+                if (!complete) {
+                    // partially written: wait for a retry before sending the rest
+                    break
+                }
+                onPendingDisconnectWriteCompleted()
             } catch (cause: Throwable) {
                 buf.remove(cause)
+                onPendingDisconnectWriteCompleted()
             }
         }
     }
 
     override fun doDisconnect() {
         localDisconnected = true
-        parent.localDisconnect(this)
-        deactivate()
-        closeIfBothDisconnected()
+        // delay the local disconnect until all writes flushed before the disconnect are sent
+        pendingDisconnectWrites = unsafe().outboundBuffer()?.size() ?: 0
+        if (pendingDisconnectWrites == 0) {
+            finishLocalDisconnect()
+        }
+    }
+
+    private fun onPendingDisconnectWriteCompleted() {
+        if (localDisconnected && pendingDisconnectWrites > 0) {
+            pendingDisconnectWrites--
+            if (pendingDisconnectWrites == 0) {
+                finishLocalDisconnect()
+            }
+        }
     }
 
     fun onRemoteDisconnected() {
@@ -81,7 +124,17 @@ class MuxChannel<TData>(
     }
 
     private fun closeIfBothDisconnected() {
-        if (remoteDisconnected && localDisconnected) closeImpl()
+        if (remoteDisconnected && localDisconnectSent) closeImpl()
+    }
+
+    private fun finishLocalDisconnect() {
+        if (localDisconnectSent) {
+            return
+        }
+        localDisconnectSent = true
+        parent.localDisconnect(this)
+        deactivate()
+        closeIfBothDisconnected()
     }
 }
 
