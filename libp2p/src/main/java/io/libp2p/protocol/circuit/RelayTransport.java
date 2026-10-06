@@ -49,6 +49,15 @@ public class RelayTransport implements Transport, HostConsumer {
     hop.setHost(us);
   }
 
+  /**
+   * The connection handler to run for inbound relayed connections, so the host's registered
+   * connection handlers (identify, DCUtR, ...) fire for a connection established through a relay.
+   */
+  public ConnectionHandler inboundConnectionHandler() {
+    Host host = us;
+    return host == null ? connection -> {} : host.getNetwork().getConnectionHandler();
+  }
+
   public static class CandidateRelay {
     public final PeerId id;
     public final List<Multiaddr> addrs;
@@ -225,7 +234,7 @@ public class RelayTransport implements Transport, HostConsumer {
                 .thenAccept(
                     sess -> {
                       conn.setMuxerSession(sess);
-                      connHandler.handleConnection(conn);
+                      if (connHandler != null) connHandler.handleConnection(conn);
                       res.complete(conn);
                     })
                 .exceptionally(
@@ -264,6 +273,8 @@ public class RelayTransport implements Transport, HostConsumer {
         try {
           CircuitHopProtocol.Reservation reservation = relay.controller.reserve().join();
           relay.renewAfter = reservation.expiry.minusMinutes(1);
+          if (reservation.addrs != null && reservation.addrs.length > 0)
+            relay.addrs = Arrays.asList(reservation.addrs);
           active++;
         } catch (Exception e) {
           listeners.remove(current.getKey());
@@ -274,16 +285,40 @@ public class RelayTransport implements Transport, HostConsumer {
 
     List<CandidateRelay> candidates = candidateRelays.apply(us);
     for (CandidateRelay candidate : candidates) {
+      if (listeners.containsKey(candidate.id)) continue;
       // connect to relay and get reservation
-      CircuitHopProtocol.HopController ctr =
-          hop.dial(us, candidate.id, candidate.addrs.toArray(new Multiaddr[0]))
-              .getController()
-              .join();
-      CircuitHopProtocol.Reservation resv = ctr.reserve().join();
-      active++;
-      listeners.put(candidate.id, new RelayState());
+      try {
+        StreamPromise<? extends CircuitHopProtocol.HopController> promise =
+            hop.dial(us, candidate.id, candidate.addrs.toArray(new Multiaddr[0]));
+        CircuitHopProtocol.HopController ctr = promise.getController().join();
+        CircuitHopProtocol.Reservation resv = ctr.reserve().join();
+        listeners.put(candidate.id, newRelayState(ctr, resv, candidate.addrs, promise));
+        active++;
+      } catch (Exception e) {
+        continue;
+      }
       if (active >= relayCount.get()) return;
     }
+  }
+
+  private static RelayState newRelayState(
+      CircuitHopProtocol.HopController controller,
+      CircuitHopProtocol.Reservation reservation,
+      List<Multiaddr> dialledAddrs,
+      StreamPromise<? extends CircuitHopProtocol.HopController> promise) {
+    RelayState state = new RelayState();
+    state.controller = controller;
+    state.addrs =
+        reservation.addrs != null && reservation.addrs.length > 0
+            ? Arrays.asList(reservation.addrs)
+            : dialledAddrs;
+    state.renewAfter = reservation.expiry.minusMinutes(1);
+    try {
+      state.conn = promise.getStream().join().getConnection();
+    } catch (Exception e) {
+      // connection reference is only used for unlisten; fine to leave unset
+    }
+    return state;
   }
 
   @NotNull
@@ -294,8 +329,16 @@ public class RelayTransport implements Transport, HostConsumer {
       @Nullable ChannelVisitor<P2PChannel> channelVisitor) {
     List<MultiaddrComponent> components = relayAddr.getComponents();
     Multiaddr withoutCircuit = new Multiaddr(components.subList(0, components.size() - 1));
-    CircuitHopProtocol.HopController ctr = hop.dial(us, withoutCircuit).getController().join();
-    return ctr.reserve().thenApply(res -> null);
+    PeerId relayId = withoutCircuit.getPeerId();
+    StreamPromise<? extends CircuitHopProtocol.HopController> promise =
+        hop.dial(us, withoutCircuit);
+    CircuitHopProtocol.HopController ctr = promise.getController().join();
+    return ctr.reserve()
+        .thenApply(
+            res -> {
+              listeners.put(relayId, newRelayState(ctr, res, List.of(withoutCircuit), promise));
+              return null;
+            });
   }
 
   @NotNull
@@ -310,9 +353,10 @@ public class RelayTransport implements Transport, HostConsumer {
                             a.withP2P(r.getKey())
                                 .concatenated(
                                     new Multiaddr(
-                                            List.of(
-                                                new MultiaddrComponent(Protocol.P2PCIRCUIT, null)))
-                                        .withP2P(us.getPeerId()))))
+                                        List.of(
+                                            new MultiaddrComponent(Protocol.P2PCIRCUIT, null),
+                                            new MultiaddrComponent(
+                                                Protocol.P2P, us.getPeerId().getBytes()))))))
         .collect(Collectors.toList());
   }
 
