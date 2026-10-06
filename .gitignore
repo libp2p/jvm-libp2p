@@ -198,3 +198,8 @@ package-lock.json
 CLAUDE.local.md
 .claude
 .worktrees/
+
+# Eclipse / Java language server
+.project
+.classpath
+.settings/
