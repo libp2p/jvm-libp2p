@@ -25,12 +25,54 @@ import io.netty.handler.logging.LogLevel
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import pubsub.pb.Rpc
 import java.util.Optional
 import java.util.Random
 import java.util.concurrent.ScheduledExecutorService
 
 class GossipSlowPeerTest : GossipTestsBase() {
+
+    @ParameterizedTest
+    @ValueSource(ints = [256, 257, 1000])
+    fun `pressure history is retained for every backlogged peer`(peerCount: Int) {
+        val fuzz = DeterministicFuzz()
+        val params = GossipParams(
+            D = 0,
+            DLow = 0,
+            DHigh = 0,
+            DOut = 0,
+            gossipSize = 0,
+            floodPublishMaxMessageSizeThreshold = ALWAYS_FLOOD_PUBLISH,
+            slowPeerPendingBytesThreshold = 1,
+            slowPeerHeartbeatThreshold = 3
+        )
+        val local = fuzz.createSlowPeerTrackingRouter(params)
+        val router = local.router as SlowPeerTrackingGossipRouter
+        val remotePeers = List(peerCount) { fuzz.createMockRouter() }
+        val connections = remotePeers.map { remote ->
+            local.connectSemiDuplex(remote).also { remote.router.subscribe("topic1") }
+        }
+        fuzz.timeController.addTime(100.millis)
+        connections.forEach { it.conn1.ch1.setWritableForTest(false) }
+
+        val publishFuture = router.publish(newMessage("topic1", 0L, "Hello".toByteArray()))
+        fuzz.timeController.addTime(100.millis)
+        assertThat(router.activePeers).hasSize(peerCount)
+
+        fuzz.timeController.addTime(2.seconds)
+        assertThat(router.slowPeers).isEmpty()
+        assertThat(publishFuture).isNotDone()
+
+        fuzz.timeController.addTime(1.seconds)
+        assertThat(router.slowPeers).containsExactlyInAnyOrderElementsOf(remotePeers.map { it.peerId })
+        assertThat(publishFuture).isCompletedExceptionally
+
+        fuzz.timeController.addTime(3.seconds)
+        assertThat(router.slowPeers).hasSize(peerCount)
+        connections.forEach { it.disconnect() }
+    }
 
     @Test
     fun `slow gossip peer is downscored and its queued bulk parts are dropped`() {

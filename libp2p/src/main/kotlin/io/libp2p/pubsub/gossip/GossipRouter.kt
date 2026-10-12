@@ -55,7 +55,6 @@ const val MaxIAskedEntries = 256
 const val MaxPeerIHaveEntries = 256
 const val MaxIWantRequestsEntries = 10 * 1024
 const val MaxPeerIDontWantEntries = 256
-const val MaxSlowPeerPressureEntries = 256
 
 typealias CurrentTimeSupplier = () -> Long
 
@@ -124,7 +123,9 @@ open class GossipRouter(
     private val peerIHave = createLRUMap<PeerHandler, AtomicInteger>(MaxPeerIHaveEntries)
     private val iWantRequests = createLRUMap<Pair<PeerHandler, MessageId>, Long>(MaxIWantRequestsEntries)
     private val peerIDontWant = createLRUMap<PeerHandler, IDontWantCacheEntry>(MaxPeerIDontWantEntries)
-    private val slowPeerQueuePressure = createLRUMap<PeerHandler, SlowPeerQueuePressure>(MaxSlowPeerPressureEntries)
+
+    // Keep history until recovery or disconnect; capacity eviction prevents sustained pressure detection.
+    private val slowPeerQueuePressure = mutableMapOf<PeerHandler, SlowPeerQueuePressure>()
     private val heartbeatTask by lazy {
         executor.scheduleWithFixedDelay(
             ::catchingHeartbeat,
