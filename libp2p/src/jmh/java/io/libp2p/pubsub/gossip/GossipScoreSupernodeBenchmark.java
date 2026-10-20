@@ -34,6 +34,12 @@ import pubsub.pb.Rpc;
  * </ul>
  *
  * Results are per peer (one score() call, or one delivery plus one score() call).
+ *
+ * <p>Setup computes every topic score of a peer within the same millisecond, so all per-topic
+ * caches expire together and {@link #repeatedScore} runs almost entirely on the per-peer sum cache.
+ * On a live node topic caches expire at staggered times, so the sum is rebuilt roughly every
+ * timeInMeshQuantum / topicCount per peer; each rebuild costs about what {@link #scoreAfterMessage}
+ * measures on top of {@link #messageOnly}.
  */
 @State(Scope.Thread)
 @Fork(3)
