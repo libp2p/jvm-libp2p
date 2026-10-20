@@ -903,6 +903,8 @@ class DefaultGossipScoreTest {
                 // each topic either returns its own cached value or recomputes it, as it did before the
                 // peer level cache existed: a stale peer level sum shows up as a mismatch here
                 val perTopicSum = peerScores.topicScores.values.sumOf { it.calcTopicScore(timeController.time) }
+                // exact equality holds because both sums add the topics in insertion order: the list in
+                // PeerScores and the LinkedHashMap behind topicScores
                 assertThat(cachedSum).isEqualTo(perTopicSum)
             }
         }
@@ -937,6 +939,41 @@ class DefaultGossipScoreTest {
 
         topicsScoreParams.clearTopicParams(topic)
         assertThat(score.score(peer.peerId)).isEqualTo(0.0)
+    }
+
+    @Test
+    fun `cached topic score is kept across params updates of other topics`() {
+        val peer = mockPeer()
+        val topic = "testTopic"
+        val otherTopic = "otherTopic"
+        val topicScoreParams = GossipTopicScoreParams.builder()
+            .topicWeight(1.0)
+            .timeInMeshWeight(1.0)
+            .timeInMeshQuantum(1.seconds)
+            .timeInMeshCap(100.0)
+            .build()
+        val topicsScoreParams = GossipTopicsScoreParams(GossipTopicScoreParams.builder().build(), mapOf(topic to topicScoreParams))
+        val scoreParams = GossipScoreParams(peerScoreParams = GossipPeerScoreParams.builder().build(), topicsScoreParams = topicsScoreParams)
+        val timeController = TimeControllerImpl()
+        timeController.addTime(1.hours)
+        val score = DefaultGossipScore(scoreParams, ControlledExecutorServiceImpl(timeController), { timeController.time })
+
+        score.notifyMeshed(peer.peerId, topic)
+        timeController.addTime(2.seconds)
+        // P1: 2 s in mesh over a 1 s quantum
+        assertThat(score.score(peer.peerId)).isEqualTo(2.0)
+
+        // within the quantum the cached value is kept although more time passed in mesh
+        timeController.addTime(500.millis)
+        assertThat(score.score(peer.peerId)).isEqualTo(2.0)
+
+        // params of another topic are set: this topic's params are the same instance, so still cached
+        topicsScoreParams.setTopicParams(otherTopic, topicScoreParams)
+        assertThat(score.score(peer.peerId)).isEqualTo(2.0)
+
+        // this topic's params are replaced by an equal instance: recomputed with 2.5 s in mesh
+        topicsScoreParams.setTopicParams(topic, topicScoreParams.copy())
+        assertThat(score.score(peer.peerId)).isEqualTo(2.5)
     }
 
     private fun createRpcMessage(topic: String, seqNo: Int = 1): Rpc.Message {

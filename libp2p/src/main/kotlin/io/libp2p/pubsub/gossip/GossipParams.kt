@@ -11,6 +11,7 @@ import io.libp2p.pubsub.gossip.builders.GossipPeerScoreParamsBuilder
 import io.libp2p.pubsub.gossip.builders.GossipScoreParamsBuilder
 import io.libp2p.pubsub.gossip.builders.GossipTopicScoreParamsBuilder
 import java.time.Duration
+import java.util.Collections
 import kotlin.math.max
 import kotlin.math.min
 
@@ -561,8 +562,8 @@ class GossipTopicsScoreParams(
 ) {
     private val mutableTopicParams: MutableMap<Topic, GossipTopicScoreParams> = topicParamsMap.toMutableMap()
 
-    /** Per-topic params, modified through [setTopicParams] and [clearTopicParams] */
-    val topicParams: Map<Topic, GossipTopicScoreParams> = mutableTopicParams
+    /** Per-topic params, read-only: modify them through [setTopicParams] and [clearTopicParams] */
+    val topicParams: Map<Topic, GossipTopicScoreParams> = Collections.unmodifiableMap(mutableTopicParams)
 
     /**
      * Incremented on every [setTopicParams] and [clearTopicParams] call, so score caches can tell that
@@ -573,11 +574,16 @@ class GossipTopicsScoreParams(
 
     operator fun get(topic: Topic) = topicParams.getOrDefault(topic, defaultParams)
 
+    /**
+     * Sets the params of [topic]. Neither the map nor [version] is synchronized: call this on the thread
+     * that computes scores, as [GossipScore.updateTopicParams] does through the score executor
+     */
     fun setTopicParams(topic: Topic, params: GossipTopicScoreParams) {
         mutableTopicParams[topic] = params
         version++
     }
 
+    /** Removes the params of [topic] so that [defaultParams] apply; same threading as [setTopicParams] */
     fun clearTopicParams(topic: Topic) {
         mutableTopicParams.remove(topic)
         version++

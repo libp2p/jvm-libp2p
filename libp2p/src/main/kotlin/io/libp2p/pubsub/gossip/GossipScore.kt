@@ -11,6 +11,7 @@ import io.libp2p.etc.types.millis
 import io.libp2p.pubsub.MessageRejectReason
 import io.libp2p.pubsub.PubsubMessage
 import io.libp2p.pubsub.Topic
+import java.util.Collections
 import java.util.Optional
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ScheduledExecutorService
@@ -157,7 +158,7 @@ class DefaultGossipScore(
         var disconnectedTimeMillis: Long = 0
 
         private val mutableTopicScores = mutableMapOf<Topic, TopicScores>()
-        val topicScores: Map<Topic, TopicScores> = mutableTopicScores
+        val topicScores: Map<Topic, TopicScores> = Collections.unmodifiableMap(mutableTopicScores)
         var behaviorPenalty: Double by cappedDouble(0.0, peerParams.decayToZero)
 
         // The topics in topicScores order; an ArrayList iterates faster than the map values
