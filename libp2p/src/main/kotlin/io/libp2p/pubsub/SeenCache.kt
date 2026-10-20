@@ -2,9 +2,9 @@ package io.libp2p.pubsub
 
 import io.libp2p.etc.types.contains
 import io.libp2p.etc.types.get
-import io.libp2p.etc.types.mutableBiMultiMap
 import io.libp2p.etc.types.set
 import java.time.Duration
+import java.util.ArrayDeque
 import java.util.LinkedList
 
 /**
@@ -30,7 +30,28 @@ interface SeenCache<TValue> {
      * have positive performance effect
      */
     fun getSeenMessageCached(msg: PubsubMessage): PubsubMessage
+
+    /**
+     * Single lookup combining [get] and [getSeenMessageCached]: returns the cached message together
+     * with its value, or `null` if the message was not seen.
+     * Implementations which need an expensive key per lookup should override this to pay it once.
+     */
+    fun getSeen(msg: PubsubMessage): SeenEntry<TValue>? =
+        get(msg)?.let { SimpleSeenEntry(getSeenMessageCached(msg), it) }
 }
+
+/**
+ * A seen message together with the value stored for it, as returned by [SeenCache.getSeen]
+ */
+interface SeenEntry<TValue> {
+    val message: PubsubMessage
+    val value: TValue
+}
+
+private class SimpleSeenEntry<TValue>(
+    override val message: PubsubMessage,
+    override val value: TValue
+) : SeenEntry<TValue>
 
 operator fun <TValue> SeenCache<TValue>.get(msg: PubsubMessage) = get(msg)
 operator fun <TValue> SeenCache<TValue>.set(msg: PubsubMessage, value: TValue) = put(msg, value)
@@ -84,48 +105,106 @@ class TTLSeenCache<TValue>(
 
     data class TimedMessage(val time: Long, val messageId: MessageId)
 
-    val putTimes = LinkedList<TimedMessage>()
+    /**
+     * One entry per message in the [delegate], in put order. A message which is put again while
+     * still present keeps its original time: re-putting (e.g. storing the validation result) must
+     * neither extend its TTL nor queue a second, useless removal.
+     */
+    val putTimes = ArrayDeque<TimedMessage>()
 
     override fun put(msg: PubsubMessage, value: TValue) {
+        val oldSize = delegate.size
         delegate[msg] = value
-        putTimes += TimedMessage(curTime(), msg.messageId)
+        if (delegate.size > oldSize) {
+            putTimes += TimedMessage(curTime(), msg.messageId)
+        }
         pruneOld()
     }
 
     private fun pruneOld() {
         val pruneBefore = curTime() - ttl.toMillis()
-        val it = putTimes.iterator()
-        while (it.hasNext()) {
-            val n = it.next()
-            if (n.time >= pruneBefore) {
+        while (true) {
+            val oldest = putTimes.peekFirst() ?: break
+            if (oldest.time >= pruneBefore) {
                 break
             }
-            delegate -= n.messageId
-            it.remove()
+            putTimes.pollFirst()
+            delegate -= oldest.messageId
         }
     }
 }
 
+/**
+ * Keeps the seen messages under two keys: the cheap `fastId` computed by [fastIdFunction] from the
+ * message instance (e.g. a digest of the wire bytes) and the canonical [PubsubMessage.messageId],
+ * which may be expensive to derive. Both maps point at the same [Entry], so a lookup by fast id
+ * (the hot path: every duplicate copy of a message) costs a single map probe and never touches the
+ * slow id, while removal by message id (TTL/LRU eviction) still finds every fast id of the message.
+ */
 class FastIdSeenCache<TValue>(private val fastIdFunction: (PubsubMessage) -> Any) : SeenCache<TValue> {
-    val fastIdMap = mutableBiMultiMap<Any, MessageId>()
-    val slowIdMap: MutableMap<MessageId, TValue> = mutableMapOf()
+
+    /**
+     * A seen message: its canonical id, the value stored for it and the fast id(s) under which
+     * [fastIdMap] currently points at it. A message normally has exactly one fast id, kept in
+     * [fastId]; [otherFastIds] only exists when the same message was put under different fast ids.
+     * [fastId] is null once another message has taken that id over.
+     */
+    class Entry<TValue> internal constructor(
+        val messageId: MessageId,
+        internal var fastId: Any?,
+        internal var value: TValue
+    ) {
+        internal var otherFastIds: MutableList<Any>? = null
+
+        internal fun hasFastId(id: Any) = fastId == id || otherFastIds?.contains(id) == true
+
+        internal fun addFastId(id: Any) {
+            if (fastId == null) {
+                fastId = id
+            } else {
+                (otherFastIds ?: mutableListOf<Any>().also { otherFastIds = it }) += id
+            }
+        }
+
+        /** Forgets [id]: [fastIdMap] no longer points at this entry under it */
+        internal fun removeFastId(id: Any) {
+            if (fastId == id) {
+                fastId = null
+            } else {
+                otherFastIds?.remove(id)
+            }
+        }
+    }
+
+    val fastIdMap = HashMap<Any, Entry<TValue>>()
+    val slowIdMap = HashMap<MessageId, Entry<TValue>>()
 
     override val size: Int
         get() = slowIdMap.size
 
+    private fun findEntry(msg: PubsubMessage): Entry<TValue>? =
+        fastIdMap[fastIdFunction(msg)] ?: slowIdMap[msg.messageId]
+
     override fun getSeenMessageCached(msg: PubsubMessage): PubsubMessage {
-        val slowId = fastIdMap[fastIdFunction(msg)]
+        val entry = fastIdMap[fastIdFunction(msg)]
         return when {
-            slowId == null -> msg
-            msg is FastIdPubsubMessage -> msg
-            else -> FastIdPubsubMessage(msg, slowId)
+            entry == null -> msg
+            msg is FastIdPubsubMessage<*> && msg.entry === entry -> msg
+            else -> FastIdPubsubMessage(msg, entry)
         }
     }
 
-    override fun get(msg: PubsubMessage): TValue? {
-        val slowId = fastIdMap[fastIdFunction(msg)] ?: msg.messageId
-        return slowIdMap[slowId]
+    @Suppress("UNCHECKED_CAST")
+    override fun getSeen(msg: PubsubMessage): SeenEntry<TValue>? {
+        val entry = findEntry(msg) ?: return null
+        return if (msg is FastIdPubsubMessage<*> && msg.entry === entry) {
+            msg as SeenEntry<TValue>
+        } else {
+            FastIdPubsubMessage(msg, entry)
+        }
     }
+
+    override fun get(msg: PubsubMessage): TValue? = findEntry(msg)?.value
 
     override fun isSeen(msg: PubsubMessage) =
         fastIdFunction(msg) in fastIdMap || msg.messageId in slowIdMap
@@ -133,21 +212,37 @@ class FastIdSeenCache<TValue>(private val fastIdFunction: (PubsubMessage) -> Any
     override fun isSeen(messageId: MessageId) = messageId in slowIdMap
 
     override fun put(msg: PubsubMessage, value: TValue) {
-        fastIdMap[fastIdFunction(msg)] = msg.messageId
-        slowIdMap[msg.messageId] = value
+        val fastId = fastIdFunction(msg)
+        val messageId = msg.messageId
+        val fresh = Entry(messageId, fastId, value)
+        val entry = slowIdMap.computeIfAbsent(messageId) { fresh }
+        if (entry === fresh) {
+            fastIdMap.put(fastId, entry)?.removeFastId(fastId)
+        } else {
+            entry.value = value
+            if (!entry.hasFastId(fastId)) {
+                entry.addFastId(fastId)
+                fastIdMap.put(fastId, entry)?.removeFastId(fastId)
+            }
+        }
     }
 
     override fun remove(messageId: MessageId) {
-        slowIdMap -= messageId
-        fastIdMap.removeAllByValue(messageId)
+        val entry = slowIdMap.remove(messageId) ?: return
+        entry.fastId?.let { fastIdMap.remove(it, entry) }
+        entry.otherFastIds?.forEach { fastIdMap.remove(it, entry) }
     }
 
     /**
-     * Wraps [delegate] instance and overrides [messageId] with a cached value
+     * Wraps [delegate] instance and overrides [messageId] with the cached value
      * to avoid slow `messageId` computation by the [delegate] instance
      */
-    private class FastIdPubsubMessage(
+    private class FastIdPubsubMessage<TValue>(
         val delegate: PubsubMessage,
-        override val messageId: MessageId
-    ) : PubsubMessage by delegate
+        val entry: Entry<TValue>
+    ) : PubsubMessage by delegate, SeenEntry<TValue> {
+        override val messageId: MessageId get() = entry.messageId
+        override val message: PubsubMessage get() = this
+        override val value: TValue get() = entry.value
+    }
 }

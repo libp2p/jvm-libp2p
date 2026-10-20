@@ -312,6 +312,46 @@ class TTLSeenCacheTest {
         assertThat(ttlCache.putTimes.size).isLessThan(2)
     }
 
+    @Test
+    fun `test getSeen is forwarded to the fast id delegate`() {
+        val backingCache = FastIdSeenCache<String> { (it as TestPubsubMessage).fastID }
+        val ttlCache = TTLSeenCache(backingCache, 1.seconds, { 1 })
+        val lruCache = LRUSeenCache(backingCache, 10)
+        val m1 = createPubsubMessage(1, 1)
+        ttlCache[m1] = "1"
+
+        for (cache in listOf(ttlCache, lruCache)) {
+            val copy = createPubsubMessage(1, 1)
+            val seen = cache.getSeen(copy)!!
+            assertThat(seen.value).isEqualTo("1")
+            assertThat(seen.message.messageId).isEqualTo(m1.canonicalId)
+            // the slow id of the copy was never needed: the fast id delegate answered
+            assertThat(copy.canonicalId).isNull()
+            assertThat(cache.getSeen(createPubsubMessage(2, 2))).isNull()
+        }
+    }
+
+    @Test
+    fun `test re-putting a present message keeps its original expiry and a single queue entry`() {
+        val backingCache = SimpleSeenCache<String>()
+        val time = AtomicLong()
+        val ttlCache = TTLSeenCache(backingCache, 1.seconds, time::get)
+        time.set(0)
+        ttlCache[createPubsubMessage(1)] = "pending"
+        time.set(900)
+        ttlCache[createPubsubMessage(1)] = "valid"
+
+        assertThat(ttlCache.putTimes).hasSize(1)
+        assertThat(ttlCache.get(createPubsubMessage(1))).isEqualTo("valid")
+
+        time.set(1001)
+        ttlCache[createPubsubMessage(2)] = "2"
+
+        assertDoesntContainEntry(ttlCache, 1)
+        assertContainsEntry(ttlCache, 2)
+        assertThat(ttlCache.putTimes).hasSize(1)
+    }
+
     @Test()
     fun `test large size not quadratic time`() {
         val backingCache = FastIdSeenCache<String> { it.protobufMessage.data }
@@ -407,5 +447,107 @@ class FastIdSeenCacheTest {
 
         assertThat(cache.fastIdMap.isEmpty()).isTrue()
         assertThat(cache.slowIdMap).isEmpty()
+    }
+
+    @Test
+    fun `test getSeen is a single lookup returning the cached id and value`() {
+        val cache = FastIdSeenCache<String> { (it as TestPubsubMessage).fastID }
+        val m1_1 = createPubsubMessage(1, 1)
+        cache[m1_1] = "1-1"
+
+        val m1_2 = createPubsubMessage(1, 1)
+        val seen = cache.getSeen(m1_2)!!
+        assertThat(seen.value).isEqualTo("1-1")
+        assertThat(seen.message.messageId).isEqualTo(m1_1.canonicalId)
+        assertThat(seen.message.protobufMessage).isEqualTo(m1_2.protobufMessage)
+        assertThat(m1_2.canonicalId).isNull()
+
+        // a different fast id still resolves through the slow id
+        val m1_3 = createPubsubMessage(1, 3)
+        assertThat(cache.getSeen(m1_3)!!.value).isEqualTo("1-1")
+        assertThat(m1_3.canonicalId).isNotNull()
+
+        assertThat(cache.getSeen(createPubsubMessage(2, 2))).isNull()
+
+        cache -= m1_1
+        assertThat(cache.getSeen(createPubsubMessage(1, 1))).isNull()
+    }
+
+    @Test
+    fun `test the cached message returned by getSeen is reused and follows value updates`() {
+        val cache = FastIdSeenCache<String> { it.protobufMessage.data }
+        cache[createPubsubMessage(1)] = "1-1"
+
+        val seen = cache.getSeen(createPubsubMessage(1))!!
+        assertThat(cache.getSeen(seen.message)).isSameAs(seen.message)
+        assertThat(cache.getSeenMessageCached(seen.message)).isSameAs(seen.message)
+
+        cache[createPubsubMessage(1)] = "1-2"
+        assertThat(cache.getSeen(seen.message)!!.value).isEqualTo("1-2")
+        assertThat(cache.get(seen.message)).isEqualTo("1-2")
+
+        // after removal and re-insertion the stale wrapper is replaced, not reused
+        cache -= createPubsubMessage(1)
+        assertThat(cache.getSeen(seen.message)).isNull()
+        cache[createPubsubMessage(1)] = "1-3"
+        val seenAgain = cache.getSeen(seen.message)!!
+        assertThat(seenAgain.message).isNotSameAs(seen.message)
+        assertThat(seenAgain.value).isEqualTo("1-3")
+    }
+
+    @Test
+    fun `test fast id taken over by another message is not removed with the old one`() {
+        val cache = FastIdSeenCache<String> { (it as TestPubsubMessage).fastID }
+        val m1 = createPubsubMessage(1, 7)
+        val m2 = createPubsubMessage(2, 7)
+        cache[m1] = "1"
+        cache[m2] = "2"
+
+        assertThat(cache.size).isEqualTo(2)
+        assertThat(cache.get(createPubsubMessage(3, 7))).isEqualTo("2")
+
+        cache -= m1
+        assertThat(cache.size).isEqualTo(1)
+        assertThat(cache.get(createPubsubMessage(3, 7))).isEqualTo("2")
+        assertThat(cache.isSeen(m2.messageId)).isTrue()
+
+        cache -= m2
+        assertThat(cache.fastIdMap).isEmpty()
+        assertThat(cache.slowIdMap).isEmpty()
+    }
+
+    @Test
+    fun `test the last put under a contended fast id wins`() {
+        val cache = FastIdSeenCache<String> { (it as TestPubsubMessage).fastID }
+        val m1 = createPubsubMessage(1, 7)
+        val m2 = createPubsubMessage(2, 7)
+        cache[m1] = "1"
+        cache[m2] = "2"
+        assertThat(cache.get(createPubsubMessage(3, 7))).isEqualTo("2")
+
+        // m1 takes the fast id back, exactly as the previous implementation did
+        cache[m1] = "1 again"
+        assertThat(cache.get(createPubsubMessage(3, 7))).isEqualTo("1 again")
+        // m2 is still present under its own id (its fast id lookup now resolves to m1, as before)
+        assertThat(cache.isSeen(m2.messageId)).isTrue()
+        assertThat(cache.size).isEqualTo(2)
+
+        cache -= m1
+        assertThat(cache.get(createPubsubMessage(3, 7))).isNull()
+        assertThat(cache.get(m2)).isEqualTo("2")
+        assertThat(cache.fastIdMap).isEmpty()
+
+        cache -= m2
+        assertThat(cache.slowIdMap).isEmpty()
+    }
+
+    @Test
+    fun `test default getSeen of a simple cache`() {
+        val cache = SimpleSeenCache<String>()
+        assertThat(cache.getSeen(createPubsubMessage(1))).isNull()
+        cache[createPubsubMessage(1)] = "1"
+        val seen = cache.getSeen(createPubsubMessage(1))!!
+        assertThat(seen.value).isEqualTo("1")
+        assertThat(seen.message).isEqualTo(createPubsubMessage(1))
     }
 }

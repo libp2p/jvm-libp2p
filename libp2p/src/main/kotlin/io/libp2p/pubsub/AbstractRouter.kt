@@ -251,10 +251,10 @@ abstract class AbstractRouter(
         val pMsgSubscribed = msgSubscribed.map { messageFactory(it) }
         val msgUnseen = pMsgSubscribed
             .filter { subscribedMessage ->
-                val validationResult = seenMessages[subscribedMessage]
-                if (validationResult != null) {
+                val seen = seenMessages.getSeen(subscribedMessage)
+                if (seen != null) {
                     // Message has been seen
-                    notifySeenMessage(peer, seenMessages.getSeenMessageCached(subscribedMessage), validationResult)
+                    notifySeenMessage(peer, seen.message, seen.value)
                     false
                 } else {
                     // Message is unseen
