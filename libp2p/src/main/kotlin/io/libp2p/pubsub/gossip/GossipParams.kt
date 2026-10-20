@@ -559,16 +559,30 @@ class GossipTopicsScoreParams(
     val defaultParams: GossipTopicScoreParams = GossipTopicScoreParams(),
     topicParamsMap: Map<Topic, GossipTopicScoreParams> = mapOf()
 ) {
+    /**
+     * Per-topic params. Modify through [setTopicParams] and [clearTopicParams]: a direct change to this
+     * map does not increment [version], so cached peer scores pick it up only when they expire
+     * (after [GossipTopicScoreParams.timeInMeshQuantum]) or when the peer's topic score changes
+     */
     val topicParams: MutableMap<Topic, GossipTopicScoreParams> = topicParamsMap.toMutableMap()
+
+    /**
+     * Incremented on every [setTopicParams] and [clearTopicParams] call, so score caches can tell that
+     * no topic params changed without looking them up
+     */
+    var version: Long = 0
+        private set
 
     operator fun get(topic: Topic) = topicParams.getOrDefault(topic, defaultParams)
 
     fun setTopicParams(topic: Topic, params: GossipTopicScoreParams) {
         topicParams[topic] = params
+        version++
     }
 
     fun clearTopicParams(topic: Topic) {
         topicParams.remove(topic)
+        version++
     }
 }
 

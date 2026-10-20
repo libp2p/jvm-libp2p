@@ -20,6 +20,8 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
 
+private const val INITIAL_TOPICS_CAPACITY = 16
+
 interface GossipScore {
 
     fun updateTopicParams(topicScoreParams: Map<String, GossipTopicScoreParams>)
@@ -42,74 +44,97 @@ class DefaultGossipScore(
         }
     }
 
-    inner class TopicScores(val topic: Topic) {
+    inner class TopicScores(val topic: Topic, private val peerScores: PeerScores) {
         private val params: GossipTopicScoreParams
             get() = topicParams[topic]
-        private val recalcMaxDuration = params.timeInMeshQuantum
+        private val recalcMaxDurationMillis = params.timeInMeshQuantum.toMillis()
         private var cachedScore: Double = 0.0
         private var cacheValid: Boolean = false
         private var prevParams = params
+        private var prevParamsVersion = topicParams.version
         private var prevTime = curTimeMillis()
+
+        /** Time from which [calcTopicScore] recomputes the score even if nothing else changed */
+        val cacheExpiryTimeMillis: Long
+            get() = prevTime + recalcMaxDurationMillis
 
         var joinedMeshTimeMillis: Long = 0
             set(value) {
                 field = value
-                cacheValid = false
+                invalidateCache()
             }
 
         var firstMessageDeliveries: Double by cappedDouble(
             0.0,
             this@DefaultGossipScore.peerParams.decayToZero,
             { params.firstMessageDeliveriesCap },
-            { cacheValid = false }
+            { invalidateCache() }
         )
         var meshMessageDeliveries: Double by cappedDouble(
             0.0,
             this@DefaultGossipScore.peerParams.decayToZero,
             { params.meshMessageDeliveriesCap },
-            { cacheValid = false }
+            { invalidateCache() }
         )
         var meshFailurePenalty: Double by cappedDouble(
             0.0,
             this@DefaultGossipScore.peerParams.decayToZero,
-            { _ -> cacheValid = false }
+            { _ -> invalidateCache() }
         )
 
         var invalidMessages: Double by cappedDouble(
             0.0,
             this@DefaultGossipScore.peerParams.decayToZero,
-            { _ -> cacheValid = false }
+            { _ -> invalidateCache() }
         )
+
+        // position of this topic in the peer's topicScores, which never removes topics
+        private val peerTopicIndex = peerScores.addTopic(this)
+
+        private fun invalidateCache() {
+            cacheValid = false
+            peerScores.invalidateTopic(peerTopicIndex)
+        }
 
         fun inMesh() = joinedMeshTimeMillis > 0
 
-        private fun meshTimeNorm() = min(
-            (if (inMesh()) curTimeMillis() - joinedMeshTimeMillis else 0).toDouble() / params.timeInMeshQuantum.toMillis(),
+        private fun meshTimeNorm(curTime: Long) = min(
+            (if (inMesh()) curTime - joinedMeshTimeMillis else 0).toDouble() / params.timeInMeshQuantum.toMillis(),
             params.timeInMeshCap
         )
 
-        private fun isMeshMessageDeliveriesActive() =
-            inMesh() && ((curTimeMillis() - joinedMeshTimeMillis).millis > params.meshMessageDeliveriesActivation)
+        private fun isMeshMessageDeliveriesActive(curTime: Long) =
+            inMesh() && ((curTime - joinedMeshTimeMillis).millis > params.meshMessageDeliveriesActivation)
 
-        private fun meshMessageDeliveriesDeficit() =
-            if (isMeshMessageDeliveriesActive()) {
+        private fun meshMessageDeliveriesDeficit(curTime: Long) =
+            if (isMeshMessageDeliveriesActive(curTime)) {
                 max(0.0, params.meshMessageDeliveriesThreshold - meshMessageDeliveries)
             } else {
                 0.0
             }
 
-        fun meshMessageDeliveriesDeficitSqr() = meshMessageDeliveriesDeficit().pow(2)
+        fun meshMessageDeliveriesDeficitSqr(curTime: Long = curTimeMillis()) =
+            meshMessageDeliveriesDeficit(curTime).pow(2)
 
-        fun calcTopicScore(): Double {
-            val curTime = curTimeMillis()
-            if (cacheValid && prevParams === params && curTime - prevTime < recalcMaxDuration.toMillis()) {
+        // Same as `prevParams === params`, without the params lookup while no topic params were set
+        private fun isParamsUnchanged(): Boolean {
+            val version = topicParams.version
+            if (prevParamsVersion == version) return true
+            if (prevParams !== params) return false
+            prevParamsVersion = version
+            return true
+        }
+
+        fun calcTopicScore(curTime: Long = curTimeMillis()): Double {
+            if (cacheValid && curTime - prevTime < recalcMaxDurationMillis && isParamsUnchanged()) {
                 return cachedScore
             }
             prevParams = params
+            prevParamsVersion = topicParams.version
             prevTime = curTime
-            val p1 = meshTimeNorm()
+            val p1 = meshTimeNorm(curTime)
             val p2 = firstMessageDeliveries
-            val p3 = meshMessageDeliveriesDeficitSqr()
+            val p3 = meshMessageDeliveriesDeficitSqr(curTime)
             val p3b = meshFailurePenalty
             val p4 = invalidMessages.pow(2)
             cachedScore = params.topicWeight * (
@@ -139,8 +164,73 @@ class DefaultGossipScore(
         var connectedTimeMillis: Long = 0
         var disconnectedTimeMillis: Long = 0
 
-        val topicScores = mutableMapOf<Topic, TopicScores>()
+        internal val mutableTopicScores = mutableMapOf<Topic, TopicScores>()
+        val topicScores: Map<Topic, TopicScores> = mutableTopicScores
         var behaviorPenalty: Double by cappedDouble(0.0, peerParams.decayToZero)
+
+        // The topics in topicScores order, with the last value each one returned from calcTopicScore(),
+        // the time that value expires and whether the topic was invalidated since. Kept in arrays so
+        // that recomputing the sum after a change in one topic does not visit every TopicScores.
+        private var topicCount = 0
+        private var topics = arrayOfNulls<TopicScores>(INITIAL_TOPICS_CAPACITY)
+        private var topicValues = DoubleArray(INITIAL_TOPICS_CAPACITY)
+        private var topicExpiryTimes = LongArray(INITIAL_TOPICS_CAPACITY)
+        private var topicInvalidated = BooleanArray(INITIAL_TOPICS_CAPACITY)
+
+        // The sum of topicValues, reused while every topic would return its own cached value: none
+        // was invalidated or added, no topic params were set and no topic value has expired
+        private var topicsScore: Double = 0.0
+        private var topicsScoreValid: Boolean = false
+        private var topicsScoreValidUntilMillis: Long = 0
+        private var topicsScoreParamsVersion: Long = topicParams.version
+
+        internal fun addTopic(topicScores: TopicScores): Int {
+            if (topicCount == topics.size) {
+                val newCapacity = topicCount * 2
+                topics = topics.copyOf(newCapacity)
+                topicValues = topicValues.copyOf(newCapacity)
+                topicExpiryTimes = topicExpiryTimes.copyOf(newCapacity)
+                topicInvalidated = topicInvalidated.copyOf(newCapacity)
+            }
+            val index = topicCount++
+            topics[index] = topicScores
+            invalidateTopic(index)
+            return index
+        }
+
+        internal fun invalidateTopic(index: Int) {
+            topicInvalidated[index] = true
+            topicsScoreValid = false
+        }
+
+        /**
+         * Returns the same value as `topicScores.values.sumOf { it.calcTopicScore(curTime) }`, calling
+         * [TopicScores.calcTopicScore] only for topics that would not return their cached value
+         */
+        fun calcTopicsScore(curTime: Long): Double {
+            val paramsVersion = topicParams.version
+            val paramsChanged = paramsVersion != topicsScoreParamsVersion
+            if (topicsScoreValid && !paramsChanged && curTime < topicsScoreValidUntilMillis) {
+                return topicsScore
+            }
+            var sum = 0.0
+            var validUntil = Long.MAX_VALUE
+            for (i in 0 until topicCount) {
+                if (paramsChanged || topicInvalidated[i] || curTime >= topicExpiryTimes[i]) {
+                    val topic = topics[i]!!
+                    topicValues[i] = topic.calcTopicScore(curTime)
+                    topicExpiryTimes[i] = topic.cacheExpiryTimeMillis
+                    topicInvalidated[i] = false
+                }
+                sum += topicValues[i]
+                validUntil = min(validUntil, topicExpiryTimes[i])
+            }
+            topicsScore = sum
+            topicsScoreValidUntilMillis = validUntil
+            topicsScoreParamsVersion = paramsVersion
+            topicsScoreValid = true
+            return sum
+        }
 
         fun isConnected() = connectedTimeMillis > 0 && disconnectedTimeMillis == 0L
         fun isDisconnected() = disconnectedTimeMillis > 0
@@ -175,7 +265,9 @@ class DefaultGossipScore(
     private fun getPeerIp(peerId: PeerId): PeerIP? = peerIdToIP[peerId]
 
     private fun getTopicScores(peerId: PeerId, topic: Topic) =
-        getPeerScores(peerId).topicScores.computeIfAbsent(topic) { TopicScores(it) }
+        getPeerScores(peerId).let { peerScores ->
+            peerScores.mutableTopicScores.computeIfAbsent(topic) { TopicScores(it, peerScores) }
+        }
 
     private fun isInMesh(peerId: PeerId, topic: Topic) = getTopicScores(peerId, topic).inMesh()
 
@@ -191,7 +283,7 @@ class DefaultGossipScore(
         val peerScore = getPeerScores(peerId)
         val topicsScore = min(
             if (peerParams.topicScoreCap > 0) peerParams.topicScoreCap else Double.MAX_VALUE,
-            peerScore.topicScores.values.sumOf { it.calcTopicScore() }
+            peerScore.calcTopicsScore(curTimeMillis())
         )
         val appScore = peerParams.appSpecificScore(peerId) * peerParams.appSpecificWeight
 
