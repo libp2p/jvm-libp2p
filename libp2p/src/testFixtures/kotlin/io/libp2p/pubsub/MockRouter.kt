@@ -66,6 +66,24 @@ open class MockRouter(executor: ScheduledExecutorService) : AbstractRouter(
         notifyOutboundDataAvailable(peer)
     }
 
+    /**
+     * Queues [msg] for [peer] without notifying the outbound pump, the same way
+     * [submitPublishMessageSilently] does. Pair with [flushAllPendingForTest].
+     */
+    fun queuePublishForTest(peer: PeerHandler, msg: Rpc.Message) {
+        pendingRpcParts.getOrCreateQueue(peer).addPublish(msg)
+    }
+
+    /**
+     * Mirrors [flushAllPending] but returns the peers whose outbound pump was notified,
+     * so tests can check which peers a flush actually wakes up.
+     */
+    fun flushAllPendingForTest(): List<PeerHandler> {
+        val notifiedPeers = pendingRpcParts.getPeersWithPendingOutboundData()
+        notifiedPeers.forEach { notifyOutboundDataAvailable(it) }
+        return notifiedPeers
+    }
+
     override fun broadcastOutbound(msg: PubsubMessage): CompletableFuture<Unit> = CompletableFuture.completedFuture(null)
     override fun broadcastInbound(msgs: List<PubsubMessage>, receivedFrom: PeerHandler) {}
     override fun processControl(ctrl: Rpc.ControlMessage, receivedFrom: PeerHandler) {}
