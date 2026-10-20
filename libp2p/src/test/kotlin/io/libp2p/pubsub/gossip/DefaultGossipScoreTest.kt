@@ -976,6 +976,36 @@ class DefaultGossipScoreTest {
         assertThat(score.score(peer.peerId)).isEqualTo(2.5)
     }
 
+    @Test
+    fun `recompute window follows the time in mesh quantum of updated params`() {
+        val peer = mockPeer()
+        val topic = "testTopic"
+        val topicScoreParams = GossipTopicScoreParams.builder()
+            .topicWeight(1.0)
+            .timeInMeshWeight(1.0)
+            .timeInMeshQuantum(10.seconds)
+            .timeInMeshCap(100.0)
+            .build()
+        val topicsScoreParams = GossipTopicsScoreParams(GossipTopicScoreParams.builder().build(), mapOf(topic to topicScoreParams))
+        val scoreParams = GossipScoreParams(peerScoreParams = GossipPeerScoreParams.builder().build(), topicsScoreParams = topicsScoreParams)
+        val timeController = TimeControllerImpl()
+        timeController.addTime(1.hours)
+        val score = DefaultGossipScore(scoreParams, ControlledExecutorServiceImpl(timeController), { timeController.time })
+
+        score.notifyMeshed(peer.peerId, topic)
+        timeController.addTime(10.seconds)
+        // P1: 10 s in mesh over a 10 s quantum
+        assertThat(score.score(peer.peerId)).isEqualTo(1.0)
+
+        // the quantum shrinks to 1 s: recomputed now (11 s / 1 s) and again after one more second,
+        // where the old 10 s window would still have served the cached value
+        topicsScoreParams.setTopicParams(topic, topicScoreParams.copy(timeInMeshQuantum = 1.seconds))
+        timeController.addTime(1.seconds)
+        assertThat(score.score(peer.peerId)).isEqualTo(11.0)
+        timeController.addTime(1.seconds)
+        assertThat(score.score(peer.peerId)).isEqualTo(12.0)
+    }
+
     private fun createRpcMessage(topic: String, seqNo: Int = 1): Rpc.Message {
         return Rpc.Message.newBuilder()
             .addTopicIDs(topic)

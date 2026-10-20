@@ -46,7 +46,7 @@ class DefaultGossipScore(
     inner class TopicScores(val topic: Topic, private val peer: PeerScores) {
         private val params: GossipTopicScoreParams
             get() = topicParams[topic]
-        private val recalcMaxDurationMillis = params.timeInMeshQuantum.toMillis()
+        private var recalcMaxDurationMillis = params.timeInMeshQuantum.toMillis()
         private var cachedScore: Double = 0.0
         private var cacheValid: Boolean = false
         private var cachedParams = params
@@ -123,6 +123,7 @@ class DefaultGossipScore(
                 }
             }
             cachedParams = params
+            recalcMaxDurationMillis = cachedParams.timeInMeshQuantum.toMillis()
             cachedParamsVersion = paramsVersion
             prevTime = curTime
             val p1 = meshTimeNorm(curTime)
