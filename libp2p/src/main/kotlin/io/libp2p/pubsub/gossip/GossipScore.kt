@@ -48,6 +48,7 @@ class DefaultGossipScore(
         private val recalcMaxDurationMillis = params.timeInMeshQuantum.toMillis()
         private var cachedScore: Double = 0.0
         private var cacheValid: Boolean = false
+        private var cachedParams = params
         private var cachedParamsVersion = topicParams.version
         private var prevTime = curTimeMillis()
 
@@ -112,9 +113,15 @@ class DefaultGossipScore(
 
         fun calcTopicScore(curTime: Long = curTimeMillis()): Double {
             val paramsVersion = topicParams.version
-            if (cacheValid && paramsVersion == cachedParamsVersion && curTime - prevTime < recalcMaxDurationMillis) {
-                return cachedScore
+            if (cacheValid && curTime - prevTime < recalcMaxDurationMillis) {
+                if (paramsVersion == cachedParamsVersion) return cachedScore
+                // topic params were set since, but maybe not this topic's: only then recompute
+                if (params === cachedParams) {
+                    cachedParamsVersion = paramsVersion
+                    return cachedScore
+                }
             }
+            cachedParams = params
             cachedParamsVersion = paramsVersion
             prevTime = curTime
             val p1 = meshTimeNorm(curTime)
