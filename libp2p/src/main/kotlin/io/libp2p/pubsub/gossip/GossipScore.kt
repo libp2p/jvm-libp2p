@@ -85,10 +85,6 @@ class DefaultGossipScore(
             { _ -> invalidateCache() }
         )
 
-        init {
-            peer.addTopic(this)
-        }
-
         private fun invalidateCache() {
             cacheValid = false
             peer.invalidateTopicsScore()
@@ -153,7 +149,7 @@ class DefaultGossipScore(
         var connectedTimeMillis: Long = 0
         var disconnectedTimeMillis: Long = 0
 
-        internal val mutableTopicScores = mutableMapOf<Topic, TopicScores>()
+        private val mutableTopicScores = mutableMapOf<Topic, TopicScores>()
         val topicScores: Map<Topic, TopicScores> = mutableTopicScores
         var behaviorPenalty: Double by cappedDouble(0.0, peerParams.decayToZero)
 
@@ -166,10 +162,13 @@ class DefaultGossipScore(
         private var topicsScoreValidUntilMillis: Long = Long.MIN_VALUE
         private var topicsScoreParamsVersion: Long = topicParams.version
 
-        internal fun addTopic(topicScores: TopicScores) {
-            topicList.add(topicScores)
-            invalidateTopicsScore()
-        }
+        fun getOrCreateTopicScores(topic: Topic): TopicScores =
+            mutableTopicScores.getOrPut(topic) {
+                TopicScores(topic, this).also {
+                    topicList.add(it)
+                    invalidateTopicsScore()
+                }
+            }
 
         internal fun invalidateTopicsScore() {
             topicsScoreValidUntilMillis = Long.MIN_VALUE
@@ -227,9 +226,7 @@ class DefaultGossipScore(
     private fun getPeerIp(peerId: PeerId): PeerIP? = peerIdToIP[peerId]
 
     private fun getTopicScores(peerId: PeerId, topic: Topic) =
-        getPeerScores(peerId).let { peerScores ->
-            peerScores.mutableTopicScores.computeIfAbsent(topic) { TopicScores(it, peerScores) }
-        }
+        getPeerScores(peerId).getOrCreateTopicScores(topic)
 
     private fun isInMesh(peerId: PeerId, topic: Topic) = getTopicScores(peerId, topic).inMesh()
 
