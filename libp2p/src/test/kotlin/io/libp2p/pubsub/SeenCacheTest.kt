@@ -323,6 +323,9 @@ class TTLSeenCacheTest {
         for (cache in listOf(ttlCache, lruCache)) {
             val copy = createPubsubMessage(1, 1)
             val seen = cache.getSeen(copy)!!
+            // only FastIdSeenCache's own getSeen hands out its wrapper as the entry itself; the
+            // interface default would wrap it in a separate SeenEntry
+            assertThat(seen.message).isSameAs(seen)
             assertThat(seen.value).isEqualTo("1")
             assertThat(seen.message.messageId).isEqualTo(m1.canonicalId)
             // the slow id of the copy was never needed: the fast id delegate answered

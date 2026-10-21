@@ -1,8 +1,6 @@
 package io.libp2p.pubsub
 
-import io.libp2p.etc.types.contains
-import io.libp2p.etc.types.get
-import io.libp2p.etc.types.set
+import com.google.common.annotations.VisibleForTesting
 import java.time.Duration
 import java.util.ArrayDeque
 import java.util.LinkedList
@@ -106,12 +104,23 @@ class TTLSeenCache<TValue>(
     data class TimedMessage(val time: Long, val messageId: MessageId)
 
     /**
-     * One entry per message in the [delegate], in put order. A message which is put again while
-     * still present keeps its original time: re-putting (e.g. storing the validation result) must
-     * neither extend its TTL nor queue a second, useless removal.
+     * One entry per put which inserted a message into the [delegate], in put order. A message
+     * which is put again while still present keeps its original time: re-putting (e.g. storing the
+     * validation result) must neither extend its TTL nor queue a second, useless removal.
+     *
+     * Entries are not withdrawn when a message leaves the delegate early (through [remove] or an
+     * eviction of the delegate's own). Such an entry removes nothing when it expires, unless the
+     * message was put again in the meantime: then it is evicted at the first put's expiry, as it
+     * always was.
      */
-    val putTimes = ArrayDeque<TimedMessage>()
+    @VisibleForTesting
+    internal val putTimes = ArrayDeque<TimedMessage>()
 
+    /**
+     * Whether the put inserted the message is derived from the delegate's size, as [LRUSeenCache]
+     * does: a delegate which evicts another message on insert (e.g. a full LRU) hides the insert
+     * and the message then gets no entry here.
+     */
     override fun put(msg: PubsubMessage, value: TValue) {
         val oldSize = delegate.size
         delegate[msg] = value
@@ -149,16 +158,16 @@ class FastIdSeenCache<TValue>(private val fastIdFunction: (PubsubMessage) -> Any
      * [fastId]; [otherFastIds] only exists when the same message was put under different fast ids.
      * [fastId] is null once another message has taken that id over.
      */
-    class Entry<TValue> internal constructor(
+    internal class Entry<TValue>(
         val messageId: MessageId,
-        internal var fastId: Any?,
-        internal var value: TValue
+        var fastId: Any?,
+        var value: TValue
     ) {
-        internal var otherFastIds: MutableList<Any>? = null
+        var otherFastIds: MutableList<Any>? = null
 
-        internal fun hasFastId(id: Any) = fastId == id || otherFastIds?.contains(id) == true
+        fun hasFastId(id: Any) = fastId == id || otherFastIds?.contains(id) == true
 
-        internal fun addFastId(id: Any) {
+        fun addFastId(id: Any) {
             if (fastId == null) {
                 fastId = id
             } else {
@@ -167,7 +176,7 @@ class FastIdSeenCache<TValue>(private val fastIdFunction: (PubsubMessage) -> Any
         }
 
         /** Forgets [id]: [fastIdMap] no longer points at this entry under it */
-        internal fun removeFastId(id: Any) {
+        fun removeFastId(id: Any) {
             if (fastId == id) {
                 fastId = null
             } else {
@@ -176,8 +185,11 @@ class FastIdSeenCache<TValue>(private val fastIdFunction: (PubsubMessage) -> Any
         }
     }
 
-    val fastIdMap = HashMap<Any, Entry<TValue>>()
-    val slowIdMap = HashMap<MessageId, Entry<TValue>>()
+    @VisibleForTesting
+    internal val fastIdMap = HashMap<Any, Entry<TValue>>()
+
+    @VisibleForTesting
+    internal val slowIdMap = HashMap<MessageId, Entry<TValue>>()
 
     override val size: Int
         get() = slowIdMap.size
@@ -185,46 +197,46 @@ class FastIdSeenCache<TValue>(private val fastIdFunction: (PubsubMessage) -> Any
     private fun findEntry(msg: PubsubMessage): Entry<TValue>? =
         fastIdMap[fastIdFunction(msg)] ?: slowIdMap[msg.messageId]
 
-    override fun getSeenMessageCached(msg: PubsubMessage): PubsubMessage {
-        val entry = fastIdMap[fastIdFunction(msg)]
-        return when {
-            entry == null -> msg
-            msg is FastIdPubsubMessage<*> && msg.entry === entry -> msg
-            else -> FastIdPubsubMessage(msg, entry)
-        }
+    /**
+     * [msg] as the cached message of [entry]: [msg] itself if it already is that, else a wrapper
+     * (around the original message, never around a stale wrapper)
+     */
+    @Suppress("UNCHECKED_CAST")
+    private fun cached(msg: PubsubMessage, entry: Entry<TValue>): FastIdPubsubMessage<TValue> = when {
+        msg !is FastIdPubsubMessage<*> -> FastIdPubsubMessage(msg, entry)
+        msg.entry === entry -> msg as FastIdPubsubMessage<TValue>
+        else -> FastIdPubsubMessage(msg.delegate, entry)
     }
 
-    @Suppress("UNCHECKED_CAST")
-    override fun getSeen(msg: PubsubMessage): SeenEntry<TValue>? {
-        val entry = findEntry(msg) ?: return null
-        return if (msg is FastIdPubsubMessage<*> && msg.entry === entry) {
-            msg as SeenEntry<TValue>
-        } else {
-            FastIdPubsubMessage(msg, entry)
-        }
-    }
+    // deliberately a fast id lookup only: the result exists to avoid computing the slow id
+    override fun getSeenMessageCached(msg: PubsubMessage): PubsubMessage =
+        fastIdMap[fastIdFunction(msg)]?.let { cached(msg, it) } ?: msg
+
+    override fun getSeen(msg: PubsubMessage): SeenEntry<TValue>? = findEntry(msg)?.let { cached(msg, it) }
 
     override fun get(msg: PubsubMessage): TValue? = findEntry(msg)?.value
 
-    override fun isSeen(msg: PubsubMessage) =
-        fastIdFunction(msg) in fastIdMap || msg.messageId in slowIdMap
+    override fun isSeen(msg: PubsubMessage) = findEntry(msg) != null
 
     override fun isSeen(messageId: MessageId) = messageId in slowIdMap
 
     override fun put(msg: PubsubMessage, value: TValue) {
         val fastId = fastIdFunction(msg)
         val messageId = msg.messageId
-        val fresh = Entry(messageId, fastId, value)
-        val entry = slowIdMap.computeIfAbsent(messageId) { fresh }
-        if (entry === fresh) {
-            fastIdMap.put(fastId, entry)?.removeFastId(fastId)
+        var entry = slowIdMap[messageId]
+        if (entry == null) {
+            entry = Entry(messageId, fastId, value)
+            slowIdMap[messageId] = entry
         } else {
             entry.value = value
-            if (!entry.hasFastId(fastId)) {
-                entry.addFastId(fastId)
-                fastIdMap.put(fastId, entry)?.removeFastId(fastId)
+            if (entry.hasFastId(fastId)) {
+                // the usual re-put, e.g. storing the validation result: one probe, no allocation
+                return
             }
+            entry.addFastId(fastId)
         }
+        // the last put wins a contended fast id: the previous holder forgets it
+        fastIdMap.put(fastId, entry)?.removeFastId(fastId)
     }
 
     override fun remove(messageId: MessageId) {

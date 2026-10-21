@@ -2,8 +2,6 @@ package io.libp2p.pubsub;
 
 import io.libp2p.core.pubsub.ValidationResult;
 import io.libp2p.etc.types.WBytes;
-import io.libp2p.pubsub.LegacySeenCaches.LegacyFastIdSeenCache;
-import io.libp2p.pubsub.LegacySeenCaches.LegacyTTLSeenCache;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
@@ -28,12 +26,12 @@ import pubsub.pb.Rpc;
 
 /**
  * The seen cache as the router drives it, {@code TTLSeenCache(FastIdSeenCache)} pre-filled with
- * {@code size} messages, before ({@code LEGACY}) and after the single-entry restructuring.
+ * {@code size} messages.
  *
  * <ul>
- *   <li>{@code duplicate}: an inbound copy of a seen message, i.e. what every mesh peer forwards.
- *       Legacy: {@code get} + {@code getSeenMessageCached}; new: {@code getSeen}.
- *   <li>{@code firstDelivery}: an unseen message: {@code get} (miss), {@code put(empty)} on
+ *   <li>{@code duplicate}: an inbound copy of a seen message, i.e. what every mesh peer forwards: a
+ *       single {@code getSeen}.
+ *   <li>{@code firstDelivery}: an unseen message: {@code getSeen} (miss), {@code put(empty)} on
  *       receipt, {@code put(valid)} after validation, and the TTL eviction of the message that
  *       entered the cache {@code size} messages earlier, so the cache stays at a steady size.
  * </ul>
@@ -53,14 +51,6 @@ public class SeenCacheBenchmark {
   private static final Optional<ValidationResult> PENDING = Optional.empty();
   private static final Optional<ValidationResult> VALID = Optional.of(ValidationResult.Valid);
 
-  public enum Impl {
-    LEGACY,
-    NEW
-  }
-
-  @Param({"LEGACY", "NEW"})
-  public Impl impl;
-
   @Param({"100000", "2000000"})
   public int size;
 
@@ -73,14 +63,9 @@ public class SeenCacheBenchmark {
   @Setup(Level.Trial)
   public void setUp() {
     final Random random = new Random(4321);
-    final SeenCache<Optional<ValidationResult>> inner;
-    if (impl == Impl.LEGACY) {
-      inner = new LegacyFastIdSeenCache<>(msg -> new DigestKey(msg.messageSha256()));
-      cache = new LegacyTTLSeenCache<>(inner, Duration.ofMillis(size), () -> clock);
-    } else {
-      inner = new FastIdSeenCache<>(msg -> new DigestKey(msg.messageSha256()));
-      cache = new TTLSeenCache<>(inner, Duration.ofMillis(size), () -> clock);
-    }
+    final SeenCache<Optional<ValidationResult>> inner =
+        new FastIdSeenCache<>(msg -> new DigestKey(msg.messageSha256()));
+    cache = new TTLSeenCache<>(inner, Duration.ofMillis(size), () -> clock);
     final byte[][] digests = new byte[size][];
     for (int i = 0; i < size; i++) {
       clock = i;
@@ -100,25 +85,17 @@ public class SeenCacheBenchmark {
     System.gc();
     final Runtime rt = Runtime.getRuntime();
     System.out.printf(
-        "%n# %s size=%d: cache=%d entries, heap used after fill %d MB%n",
-        impl, size, cache.getSize(), (rt.totalMemory() - rt.freeMemory()) >> 20);
+        "%n# size=%d: cache=%d entries, heap used after fill %d MB%n",
+        size, cache.getSize(), (rt.totalMemory() - rt.freeMemory()) >> 20);
   }
 
   @Benchmark
   public void duplicate(final Blackhole blackhole) {
     final PubsubMessage msg = duplicates[next()];
-    if (impl == Impl.LEGACY) {
-      final Optional<ValidationResult> result = cache.get(msg);
-      if (result != null) {
-        blackhole.consume(cache.getSeenMessageCached(msg));
-        blackhole.consume(result);
-      }
-    } else {
-      final SeenEntry<Optional<ValidationResult>> seen = cache.getSeen(msg);
-      if (seen != null) {
-        blackhole.consume(seen.getMessage());
-        blackhole.consume(seen.getValue());
-      }
+    final SeenEntry<Optional<ValidationResult>> seen = cache.getSeen(msg);
+    if (seen != null) {
+      blackhole.consume(seen.getMessage());
+      blackhole.consume(seen.getValue());
     }
   }
 
@@ -127,7 +104,7 @@ public class SeenCacheBenchmark {
     final int i = next();
     // a fresh instance each time, as the router's message factory produces one per inbound copy
     final DigestMessage msg = ((DigestMessage) fresh[i]).copy();
-    blackhole.consume(impl == Impl.LEGACY ? cache.get(msg) : cache.getSeen(msg));
+    blackhole.consume(cache.getSeen(msg));
     clock++;
     cache.put(msg, PENDING);
     cache.put(msg, VALID);
