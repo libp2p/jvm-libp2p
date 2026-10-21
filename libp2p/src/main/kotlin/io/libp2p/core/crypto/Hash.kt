@@ -28,4 +28,4 @@ fun sha512(data: ByteArray): ByteArray = sha512Pool.get().digest(data)
  * Returns a reset SHA-256 [MessageDigest] owned by the calling thread, for callers which
  * feed the data incrementally. The instance must not be retained across calls.
  */
-fun sha256Digest(): MessageDigest = sha256Pool.get()
+internal fun sha256Digest(): MessageDigest = sha256Pool.get()
