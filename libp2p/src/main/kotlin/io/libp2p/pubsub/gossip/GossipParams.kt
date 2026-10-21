@@ -554,6 +554,10 @@ data class GossipPeerScoreParams(
  * The mapping `topic => GossipTopicScoreParams`
  * If params are not specified for a `topic` explicitly the [defaultParams] is returned
  *
+ * Change params only through [setTopicParams] and [clearTopicParams]: they also tell the score caches
+ * that params changed. [topicParams] is a read-only view and mutating it throws
+ * [UnsupportedOperationException]. It was a mutable map before the caches existed.
+ *
  * @see GossipTopicScoreParams
  */
 class GossipTopicsScoreParams(
@@ -562,7 +566,10 @@ class GossipTopicsScoreParams(
 ) {
     private val mutableTopicParams: MutableMap<Topic, GossipTopicScoreParams> = topicParamsMap.toMutableMap()
 
-    /** Per-topic params, read-only: modify them through [setTopicParams] and [clearTopicParams] */
+    /**
+     * Per-topic params, read-only: mutating this map throws [UnsupportedOperationException], modify
+     * params through [setTopicParams] and [clearTopicParams]
+     */
     val topicParams: Map<Topic, GossipTopicScoreParams> = Collections.unmodifiableMap(mutableTopicParams)
 
     /**
