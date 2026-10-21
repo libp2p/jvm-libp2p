@@ -355,6 +355,57 @@ class TTLSeenCacheTest {
         assertThat(ttlCache.putTimes).hasSize(1)
     }
 
+    @Test
+    fun `test a message expired and re-put is not evicted early by a stale entry of an earlier re-put`() {
+        val backingCache = SimpleSeenCache<String>()
+        val time = AtomicLong()
+        val ttlCache = TTLSeenCache(backingCache, 1.seconds, time::get)
+        time.set(0)
+        ttlCache[createPubsubMessage(1)] = "pending"
+        time.set(900)
+        ttlCache[createPubsubMessage(1)] = "valid"
+
+        time.set(1001)
+        ttlCache[createPubsubMessage(2)] = "2"
+        assertDoesntContainEntry(ttlCache, 1)
+
+        time.set(1100)
+        ttlCache[createPubsubMessage(1)] = "1"
+
+        // the previous implementation queued the 900 re-put as well and evicted 1 at 1900
+        time.set(1950)
+        ttlCache[createPubsubMessage(3)] = "3"
+        assertContainsEntry(ttlCache, 1)
+
+        time.set(2101)
+        ttlCache[createPubsubMessage(4)] = "4"
+        assertDoesntContainEntry(ttlCache, 1)
+        assertContainsEntries(ttlCache, 3, 4)
+    }
+
+    @Test
+    fun `test a delegate evicting on insert hides the insert from the TTL queue`() {
+        // documents the known limitation: the insert is detected from the delegate's size
+        val time = AtomicLong()
+        val ttlCache = TTLSeenCache(LRUSeenCache(SimpleSeenCache<String>(), 1), 1.seconds, time::get)
+        time.set(0)
+        ttlCache[createPubsubMessage(1)] = "1"
+        assertThat(ttlCache.putTimes.map { it.messageId }).containsExactly(createPubsubMessage(1).messageId)
+
+        time.set(100)
+        ttlCache[createPubsubMessage(2)] = "2"
+        assertDoesntContainEntry(ttlCache, 1)
+        assertContainsEntry(ttlCache, 2)
+        assertThat(ttlCache.putTimes.map { it.messageId }).containsExactly(createPubsubMessage(1).messageId)
+
+        // 2 outlives the TTL: it is only ever evicted by the LRU
+        time.set(1101)
+        ttlCache[createPubsubMessage(3)] = "3"
+        assertThat(ttlCache.putTimes).isEmpty()
+        assertDoesntContainEntry(ttlCache, 2)
+        assertContainsEntry(ttlCache, 3)
+    }
+
     @Test()
     fun `test large size not quadratic time`() {
         val backingCache = FastIdSeenCache<String> { it.protobufMessage.data }
@@ -541,6 +592,33 @@ class FastIdSeenCacheTest {
         assertThat(cache.fastIdMap).isEmpty()
 
         cache -= m2
+        assertThat(cache.slowIdMap).isEmpty()
+    }
+
+    @Test
+    fun `test removing a message with several fast ids keeps the fast id taken over by another message`() {
+        val cache = FastIdSeenCache<String> { (it as TestPubsubMessage).fastID }
+        val m1_7 = createPubsubMessage(1, 7)
+        val m1_8 = createPubsubMessage(1, 8)
+        val m2 = createPubsubMessage(2, 7)
+        cache[m1_7] = "1"
+        cache[m1_8] = "1"
+        assertThat(cache.fastIdMap.keys).containsExactlyInAnyOrder(7, 8)
+
+        cache[m2] = "2"
+        assertThat(cache.fastIdMap.keys).containsExactlyInAnyOrder(7, 8)
+        assertThat(cache.get(createPubsubMessage(3, 7))).isEqualTo("2")
+        assertThat(cache.get(createPubsubMessage(3, 8))).isEqualTo("1")
+
+        cache -= m1_7
+        assertThat(cache.fastIdMap.keys).containsExactly(7)
+        assertThat(cache.slowIdMap.keys).containsExactly(m2.messageId)
+        assertThat(cache.get(createPubsubMessage(3, 7))).isEqualTo("2")
+        assertThat(cache.get(createPubsubMessage(3, 8))).isNull()
+        assertThat(cache.isSeen(m1_7.messageId)).isFalse()
+
+        cache -= m2
+        assertThat(cache.fastIdMap).isEmpty()
         assertThat(cache.slowIdMap).isEmpty()
     }
 
