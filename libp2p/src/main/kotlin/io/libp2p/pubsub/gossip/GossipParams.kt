@@ -11,6 +11,7 @@ import io.libp2p.pubsub.gossip.builders.GossipPeerScoreParamsBuilder
 import io.libp2p.pubsub.gossip.builders.GossipScoreParamsBuilder
 import io.libp2p.pubsub.gossip.builders.GossipTopicScoreParamsBuilder
 import java.time.Duration
+import java.util.Collections
 import kotlin.math.max
 import kotlin.math.min
 
@@ -553,22 +554,46 @@ data class GossipPeerScoreParams(
  * The mapping `topic => GossipTopicScoreParams`
  * If params are not specified for a `topic` explicitly the [defaultParams] is returned
  *
+ * Change params only through [setTopicParams] and [clearTopicParams]: they also tell the score caches
+ * that params changed. [topicParams] is a read-only view and mutating it throws
+ * [UnsupportedOperationException]. It was a mutable map before the caches existed.
+ *
  * @see GossipTopicScoreParams
  */
 class GossipTopicsScoreParams(
     val defaultParams: GossipTopicScoreParams = GossipTopicScoreParams(),
     topicParamsMap: Map<Topic, GossipTopicScoreParams> = mapOf()
 ) {
-    val topicParams: MutableMap<Topic, GossipTopicScoreParams> = topicParamsMap.toMutableMap()
+    private val mutableTopicParams: MutableMap<Topic, GossipTopicScoreParams> = topicParamsMap.toMutableMap()
+
+    /**
+     * Per-topic params, read-only: mutating this map throws [UnsupportedOperationException], modify
+     * params through [setTopicParams] and [clearTopicParams]
+     */
+    val topicParams: Map<Topic, GossipTopicScoreParams> = Collections.unmodifiableMap(mutableTopicParams)
+
+    /**
+     * Incremented on every [setTopicParams] and [clearTopicParams] call, so score caches can tell that
+     * no topic params changed without looking them up
+     */
+    internal var version: Long = 0
+        private set
 
     operator fun get(topic: Topic) = topicParams.getOrDefault(topic, defaultParams)
 
+    /**
+     * Sets the params of [topic]. Neither the map nor [version] is synchronized: call this on the thread
+     * that computes scores, as [GossipScore.updateTopicParams] does through the score executor
+     */
     fun setTopicParams(topic: Topic, params: GossipTopicScoreParams) {
-        topicParams[topic] = params
+        mutableTopicParams[topic] = params
+        version++
     }
 
+    /** Removes the params of [topic] so that [defaultParams] apply; same threading as [setTopicParams] */
     fun clearTopicParams(topic: Topic) {
-        topicParams.remove(topic)
+        mutableTopicParams.remove(topic)
+        version++
     }
 }
 
