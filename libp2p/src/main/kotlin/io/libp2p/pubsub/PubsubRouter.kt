@@ -3,10 +3,13 @@ package io.libp2p.pubsub
 import io.libp2p.core.PeerId
 import io.libp2p.core.Stream
 import io.libp2p.core.crypto.sha256
+import io.libp2p.core.crypto.sha256Digest
 import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.etc.types.WBytes
 import io.netty.channel.ChannelHandler
 import pubsub.pb.Rpc
+import java.io.OutputStream
+import java.security.DigestOutputStream
 import java.util.concurrent.CompletableFuture
 
 typealias Topic = String
@@ -39,12 +42,21 @@ interface PubsubMessage {
 abstract class AbstractPubsubMessage : PubsubMessage {
     @Volatile private var sha256: ByteArray? = null
 
+    /**
+     * Same value as [PubsubMessage.messageSha256] (the SHA-256 of the serialized [protobufMessage])
+     * but the message is serialized straight into the digest instead of into an intermediate
+     * byte array copy, and the result is cached for the lifetime of this instance.
+     * This method is on the hot path of the pubsub router: a seen cache may call it for every
+     * inbound copy of a message, including duplicates.
+     */
     override fun messageSha256(): ByteArray {
         val cached = sha256
         if (cached != null) {
             return cached
         }
-        val result = sha256(protobufMessage.toByteArray())
+        val digest = sha256Digest()
+        protobufMessage.writeTo(DigestOutputStream(OutputStream.nullOutputStream(), digest))
+        val result = digest.digest()
         sha256 = result
         return result
     }

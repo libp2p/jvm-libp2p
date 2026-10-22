@@ -55,13 +55,27 @@ abstract class AbstractRouter(
     ) {
         private val map = linkedMapOf<PeerHandler, TPartsQueue>()
 
-        fun getPeersWithPendingOutboundData() = map.entries
-            .filter { !it.value.isEmpty() }
-            .map { it.key }
-        fun getOrCreateQueue(peer: PeerHandler) = map.computeIfAbsent(peer) { queueFactory() }
+        // Peers that received parts since the last flush. Every enqueue goes through
+        // [getOrCreateQueue], so this is exactly the set the outbound pump must be notified about:
+        // a peer whose queue already held data has been notified before and its pump keeps
+        // polling until the queue is empty. This restores the pre-1.3.6 per-flush cost, which was
+        // proportional to the peers touched since the last flush, not to all connected peers.
+        private val peersWithNewParts = linkedSetOf<PeerHandler>()
+
+        fun getPeersWithPendingOutboundData(): List<PeerHandler> {
+            if (peersWithNewParts.isEmpty()) return emptyList()
+            val pending = peersWithNewParts.filter { map[it]?.isEmpty() == false }
+            peersWithNewParts.clear()
+            return pending
+        }
+        fun getOrCreateQueue(peer: PeerHandler): TPartsQueue {
+            peersWithNewParts += peer
+            return map.computeIfAbsent(peer) { queueFactory() }
+        }
         fun getExistingQueue(peer: PeerHandler) = map[peer]
         fun getQueues(): Map<PeerHandler, TPartsQueue> = map
         fun onDisconnected(peer: PeerHandler) {
+            peersWithNewParts -= peer
             map.remove(peer)?.dropAll(ConnectionClosedException())
         }
     }
@@ -251,10 +265,10 @@ abstract class AbstractRouter(
         val pMsgSubscribed = msgSubscribed.map { messageFactory(it) }
         val msgUnseen = pMsgSubscribed
             .filter { subscribedMessage ->
-                val validationResult = seenMessages[subscribedMessage]
-                if (validationResult != null) {
+                val seen = seenMessages.getSeen(subscribedMessage)
+                if (seen != null) {
                     // Message has been seen
-                    notifySeenMessage(peer, seenMessages.getSeenMessageCached(subscribedMessage), validationResult)
+                    notifySeenMessage(peer, seen.message, seen.value)
                     false
                 } else {
                     // Message is unseen

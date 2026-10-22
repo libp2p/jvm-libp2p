@@ -7,6 +7,7 @@ import com.google.protobuf.ByteString
 import io.libp2p.core.PeerId
 import io.libp2p.core.pubsub.*
 import io.libp2p.etc.types.*
+import io.libp2p.pubsub.DeterministicFuzz
 import io.libp2p.pubsub.MockRouter
 import io.libp2p.pubsub.TooLargeMessageException
 import io.netty.buffer.ByteBuf
@@ -1659,6 +1660,95 @@ class GossipV1_1Tests : GossipTestsBase() {
 
         assertEquals(listOf("Hello-1"), rpc1.publishList.map { it.data.toStringUtf8() })
         assertEquals(listOf("Hello-2"), rpc2.publishList.map { it.data.toStringUtf8() })
+    }
+
+    /**
+     * A [MockRouter] hub connected to two [MockRouter] peers, with handles on the hub's
+     * outbound channel to each peer so tests can block and unblock the outbound pump.
+     */
+    private class HubWithTwoPeersTest {
+        val fuzz = DeterministicFuzz()
+        val hub = fuzz.createMockRouter()
+        val peerA = fuzz.createMockRouter()
+        val peerB = fuzz.createMockRouter()
+        val hubRouter = hub.router as MockRouter
+        val peerARouter = peerA.router as MockRouter
+        val peerBRouter = peerB.router as MockRouter
+        val connectionA = hub.connectSemiDuplex(peerA, null, LogLevel.ERROR)
+        val connectionB = hub.connectSemiDuplex(peerB, null, LogLevel.ERROR)
+        val hubOutboundToA = connectionA.conn1.ch1
+        val hubOutboundToB = connectionB.conn1.ch1
+        val handlerA = hubRouter.peers.single { it.peerId == peerA.peerId }
+        val handlerB = hubRouter.peers.single { it.peerId == peerB.peerId }
+    }
+
+    private fun MockRouter.waitForPublishData(count: Int): List<String> {
+        val data = mutableListOf<String>()
+        while (data.size < count) {
+            data += waitForMessage { it.publishCount > 0 }.publishList.map { it.data.toStringUtf8() }
+        }
+        return data
+    }
+
+    @Test
+    fun `flush notifies only peers with new parts since the previous flush`() {
+        val test = HubWithTwoPeersTest()
+        // block both outbound channels so queued parts stay pending (pumps BLOCKED, queues non-empty)
+        test.hubOutboundToA.setWritableForTest(false)
+        test.hubOutboundToB.setWritableForTest(false)
+
+        test.hubRouter.queuePublishForTest(test.handlerA, newProtoMessage("topic1", 1L, "A-1".toByteArray()))
+        test.hubRouter.queuePublishForTest(test.handlerB, newProtoMessage("topic1", 2L, "B-1".toByteArray()))
+        assertEquals(setOf(test.handlerA, test.handlerB), test.hubRouter.flushAllPendingForTest().toSet())
+        assertFalse(test.hubRouter.getRpcQueueIfExist(test.handlerA)!!.isEmpty())
+        assertFalse(test.hubRouter.getRpcQueueIfExist(test.handlerB)!!.isEmpty())
+
+        // only A gets new parts: B's queue is still non-empty but B was already notified
+        test.hubRouter.queuePublishForTest(test.handlerA, newProtoMessage("topic1", 3L, "A-2".toByteArray()))
+        assertEquals(listOf(test.handlerA), test.hubRouter.flushAllPendingForTest())
+
+        // nothing new since the last flush: nobody is notified even though both queues are non-empty
+        assertEquals(emptyList<Any>(), test.hubRouter.flushAllPendingForTest())
+
+        // the earlier notifications are enough for both pumps to drain once writable again
+        test.hubOutboundToA.setWritableForTest(true)
+        test.hubOutboundToB.setWritableForTest(true)
+        assertEquals(listOf("A-1", "A-2"), test.peerARouter.waitForPublishData(2))
+        assertEquals(listOf("B-1"), test.peerBRouter.waitForPublishData(1))
+        assertTrue(test.peerARouter.inboundMessages.none { it.publishCount > 0 })
+        assertTrue(test.peerBRouter.inboundMessages.none { it.publishCount > 0 })
+        assertTrue(test.hubRouter.getRpcQueueIfExist(test.handlerA)!!.isEmpty())
+        assertTrue(test.hubRouter.getRpcQueueIfExist(test.handlerB)!!.isEmpty())
+    }
+
+    @Test
+    fun `peer with parts queued while its pump is idle is notified once and delivered`() {
+        val test = HubWithTwoPeersTest()
+
+        test.hubRouter.queuePublishForTest(test.handlerA, newProtoMessage("topic1", 1L, "A-1".toByteArray()))
+        assertEquals(listOf(test.handlerA), test.hubRouter.flushAllPendingForTest())
+
+        assertEquals(listOf("A-1"), test.peerARouter.waitForPublishData(1))
+        assertTrue(test.hubRouter.getRpcQueueIfExist(test.handlerA)!!.isEmpty())
+        assertTrue(test.peerBRouter.inboundMessages.isEmpty())
+
+        assertEquals(emptyList<Any>(), test.hubRouter.flushAllPendingForTest())
+    }
+
+    @Test
+    fun `disconnected peer with queued parts is not notified by a later flush`() {
+        val test = HubWithTwoPeersTest()
+        test.hubOutboundToA.setWritableForTest(false)
+
+        test.hubRouter.queuePublishForTest(test.handlerA, newProtoMessage("topic1", 1L, "A-1".toByteArray()))
+
+        test.connectionA.disconnect()
+        test.connectionA.connections
+            .flatMap { listOf(it.ch1, it.ch2) }
+            .forEach { it.runPendingTasks() }
+
+        assertNull(test.hubRouter.getRpcQueueIfExist(test.handlerA))
+        assertEquals(emptyList<Any>(), test.hubRouter.flushAllPendingForTest())
     }
 
     private fun createGraftMessage(topic: String): Rpc.RPC {
