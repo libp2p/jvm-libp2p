@@ -89,6 +89,54 @@ class GossipV1_2Tests : GossipTestsBase() {
     }
 
     @Test
+    fun iWantIsIgnoredIfPeerHasSentIDONTWANT() {
+        val test = startSingleTopicNetwork(
+            params = GossipParams(iDontWantMinMessageSizeThreshold = 5),
+            mockRouterCount = 2
+        )
+
+        val publisher = test.mockRouters[0]
+        val iDontWantPeer = test.mockRouters[1]
+        val iDontWantPeerId = test.routers[1].peerId
+
+        val msg = newMessage("topic1", 0L, "Hello".toByteArray())
+
+        // sending IDONTWANT
+        iDontWantPeer.sendToSingle(
+            Rpc.RPC.newBuilder().setControl(
+                Rpc.ControlMessage.newBuilder().addIdontwant(
+                    Rpc.ControlIDontWant.newBuilder().addMessageIDs(msg.messageId.toProtobuf())
+                )
+            ).build()
+        )
+
+        test.fuzz.timeController.addTime(100.millis)
+
+        publisher.sendToSingle(
+            Rpc.RPC.newBuilder().addPublish(msg.protobufMessage).build()
+        )
+
+        test.fuzz.timeController.addTime(100.millis)
+
+        // asking for the same message via IWANT
+        iDontWantPeer.sendToSingle(
+            Rpc.RPC.newBuilder().setControl(
+                Rpc.ControlMessage.newBuilder().addIwant(
+                    Rpc.ControlIWant.newBuilder().addMessageIDs(msg.messageId.toProtobuf())
+                )
+            ).build()
+        )
+
+        test.fuzz.timeController.addTime(100.millis)
+
+        val receivedMessages = iDontWantPeer.inboundMessages.flatMap { it.publishList }
+
+        // message shouldn't have been received and no retransmission should have been counted
+        assertThat(receivedMessages).isEmpty()
+        assertThat(test.gossipRouter.mCache.getMessageForPeer(iDontWantPeerId, msg.messageId)?.sentCount).isEqualTo(0)
+    }
+
+    @Test
     fun iDontWantIsNotSentIfSizeIsLessThanTheMinimumConfigured() {
         val test = startSingleTopicNetwork(
             params = GossipParams(iDontWantMinMessageSizeThreshold = 5),

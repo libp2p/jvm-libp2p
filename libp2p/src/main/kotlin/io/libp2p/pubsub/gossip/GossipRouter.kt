@@ -424,7 +424,9 @@ open class GossipRouter(
         val peerScore = score.score(peer.peerId)
         if (peerScore < scoreParams.gossipThreshold) return
         msg.messageIDsList
-            .mapNotNull { mCache.getMessageForPeer(peer.peerId, it.toWBytes()) }
+            .map { it.toWBytes() }
+            .filterNot { peerDoesNotWantMessage(peer, it) }
+            .mapNotNull { mCache.getMessageForPeer(peer.peerId, it) }
             .filter { it.sentCount < params.gossipRetransmission }
             .forEach { submitPublishMessageSilently(peer, it.msg) }
     }
