@@ -15,8 +15,11 @@ class QuicStream(
     initiator: Boolean
 ) : StreamOverNetty(quicStreamChannel, connection, initiator) {
 
+    internal val bothSidesClosedHandler = QuicStreamBothSidesClosedHandler()
+
     init {
         pushHandler(QuicStreamReadCloseEventConverter())
+        pushHandler(bothSidesClosedHandler)
     }
 
     override fun closeWrite(): CompletableFuture<Unit> {
@@ -24,9 +27,14 @@ class QuicStream(
         // connection was closed first), matching the muxer-based transports where this is a no-op.
         // Netty fails shutdownOutput in both cases since closing a QUIC stream also sends the FIN.
         if (!quicStreamChannel.isOpen || quicStreamChannel.isOutputShutdown) {
+            bothSidesClosedHandler.onLocalWriteClosed()
             return CompletableFuture.completedFuture(Unit)
         }
         return quicStreamChannel.shutdownOutput().toVoidCompletableFuture()
+            // The local side is finished whether or not the FIN could be sent: after a peer's
+            // STOP_SENDING it never can be, and that is precisely when Netty will not close the
+            // stream by itself (see QuicStreamBothSidesClosedHandler).
+            .whenComplete { _, _ -> bothSidesClosedHandler.onLocalWriteClosed() }
             .exceptionally { t ->
                 val cause = if (t is CompletionException) t.cause ?: t else t
                 when (cause) {
