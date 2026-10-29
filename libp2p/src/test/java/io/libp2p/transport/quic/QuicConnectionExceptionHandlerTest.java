@@ -7,8 +7,11 @@ import io.netty.handler.codec.quic.QuicException;
 import io.netty.handler.codec.quic.QuicTransportError;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Stream;
+import javax.net.ssl.SSLException;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 class QuicConnectionExceptionHandlerTest {
 
@@ -21,12 +24,22 @@ class QuicConnectionExceptionHandlerTest {
     }
   }
 
-  @Test
-  void quicExceptionIsConsumedAndClosesChannel() {
+  static Stream<Throwable> quicExceptions() {
+    return Stream.of(
+        new QuicException("invalid QUIC state", QuicTransportError.PROTOCOL_VIOLATION),
+        // Netty reports QUICHE_ERR_CRYPTO_FAIL as an SSLException wrapping the QuicException.
+        new SSLException(new QuicException("QUICHE_ERR_CRYPTO_FAIL", QuicTransportError.NO_ERROR)));
+  }
+
+  static Stream<Throwable> unrelatedExceptions() {
+    return Stream.of(new SSLException("not from quiche"), new RuntimeException("boom"));
+  }
+
+  @ParameterizedTest
+  @MethodSource("quicExceptions")
+  void quicExceptionIsConsumedAndClosesChannel(Throwable exception) {
     CapturingHandler capturing = new CapturingHandler();
     EmbeddedChannel channel = new EmbeddedChannel(new QuicConnectionExceptionHandler(), capturing);
-    QuicException exception =
-        new QuicException("invalid QUIC state", QuicTransportError.PROTOCOL_VIOLATION);
 
     channel.pipeline().fireExceptionCaught(exception);
     channel.runPendingTasks();
@@ -36,11 +49,11 @@ class QuicConnectionExceptionHandlerTest {
     channel.finishAndReleaseAll();
   }
 
-  @Test
-  void unrelatedExceptionIsPropagatedWithoutClosingChannel() {
+  @ParameterizedTest
+  @MethodSource("unrelatedExceptions")
+  void unrelatedExceptionIsPropagatedWithoutClosingChannel(Throwable exception) {
     CapturingHandler capturing = new CapturingHandler();
     EmbeddedChannel channel = new EmbeddedChannel(new QuicConnectionExceptionHandler(), capturing);
-    RuntimeException exception = new RuntimeException("boom");
 
     channel.pipeline().fireExceptionCaught(exception);
 

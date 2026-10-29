@@ -580,8 +580,13 @@ class QuicTransport(
 
                             @Deprecated("Deprecated in Java")
                             override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
-                                logger.error("An error during handshake", cause)
-                                ctx.close()
+                                if (cause.hasCauseOfType(QuicException::class)) {
+                                    // Remote-triggered: QuicConnectionExceptionHandler logs and closes.
+                                    ctx.fireExceptionCaught(cause)
+                                } else {
+                                    logger.error("An error during handshake", cause)
+                                    ctx.close()
+                                }
                             }
                         }
                     )

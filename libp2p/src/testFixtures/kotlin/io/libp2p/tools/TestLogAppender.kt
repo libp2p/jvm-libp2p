@@ -5,10 +5,11 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.core.LogEvent
 import org.apache.logging.log4j.core.Logger
 import org.apache.logging.log4j.core.appender.AbstractAppender
-import java.util.ArrayList
+import java.util.concurrent.CopyOnWriteArrayList
 
 class TestLogAppender : AbstractAppender("test", null, null, false, null), AutoCloseable {
-    val logs: MutableList<LogEvent> = ArrayList()
+    // Appended from whichever thread logs (e.g. Netty event loops) while tests read it.
+    val logs: MutableList<LogEvent> = CopyOnWriteArrayList()
 
     fun install(): TestLogAppender {
         (LogManager.getRootLogger() as Logger).addAppender(this)
