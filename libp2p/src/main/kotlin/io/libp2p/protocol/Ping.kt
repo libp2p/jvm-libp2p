@@ -53,7 +53,7 @@ open class PingProtocol(var pingSize: Int) : ProtocolHandler<PingController>(Lon
 
     open inner class PingResponder : ProtocolMessageHandler<ByteBuf>, PingController {
         override fun onMessage(stream: Stream, msg: ByteBuf) {
-            stream.writeAndFlush(msg)
+            stream.writeAndFlush(msg.retain())
         }
 
         override fun ping(): CompletableFuture<Long> {

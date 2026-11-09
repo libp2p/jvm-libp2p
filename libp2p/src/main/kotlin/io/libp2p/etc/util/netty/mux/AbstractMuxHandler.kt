@@ -84,7 +84,42 @@ abstract class AbstractMuxHandler<TData>() :
      */
     abstract fun releaseMessage(msg: TData)
 
-    abstract fun onChildWrite(child: MuxChannel<TData>, data: TData)
+    /**
+     * Writes the child channel data to the underlying connection.
+     * Returns the number of consumed bytes which may be less than the readable bytes of [data]
+     * (including 0) when the muxer can't write at the moment (e.g. flow control window exhausted).
+     * Unconsumed data remains buffered in the child channel and is written again on [retryChildWrite]
+     */
+    abstract fun onChildWrite(child: MuxChannel<TData>, data: TData): Int
+
+    fun flushChildWrites() {
+        getChannelHandlerContext().flush()
+    }
+
+    protected fun retryChildWrite(id: MuxId) {
+        streamMap[id]?.retryWrite()
+    }
+
+    protected fun retryAllChildWrites() {
+        streamMap.values.forEach { it.retryWrite() }
+    }
+
+    protected fun setChildMuxWritability(id: MuxId, index: Int, writable: Boolean) {
+        streamMap[id]?.setMuxWritability(index, writable)
+    }
+
+    protected fun setAllChildMuxWritability(index: Int, writable: Boolean) {
+        streamMap.values.forEach { it.setMuxWritability(index, writable) }
+    }
+
+    /**
+     * Total bytes (including a small per-message accounting overhead) buffered
+     * in the outbound buffers of all child channels
+     */
+    protected fun totalChildPendingWriteBytes(): Long =
+        streamMap.values.sumOf { it.pendingWriteBytes() }
+
+    protected open fun onChildRegistered(child: MuxChannel<TData>) {}
 
     protected fun onRemoteOpen(id: MuxId) {
         val initializer = inboundInitializer
@@ -138,6 +173,7 @@ abstract class AbstractMuxHandler<TData>() :
         val child = MuxChannel(this, id, initializer, initiator)
         streamMap[id] = child
         ctx!!.channel().eventLoop().register(child).sync()
+        onChildRegistered(child)
         return child
     }
 
